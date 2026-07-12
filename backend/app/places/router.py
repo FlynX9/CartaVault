@@ -1,12 +1,15 @@
-from geoalchemy2.elements import WKTElement
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.places.models import Place
-from app.places.schemas import PlaceCreate, PlaceRead
+from app.places.schemas import PlaceCreate, PlaceRead, PlaceUpdate
+
 
 router = APIRouter(
     prefix="/places",
@@ -24,6 +27,12 @@ def build_place_read_statement():
         Place.address,
         Place.country,
         Place.region,
+        Place.construction_date,
+        Place.abandonment_date,
+        Place.condition,
+        Place.access,
+        Place.danger_level,
+        Place.owner,
         func.ST_X(Place.location).label("longitude"),
         func.ST_Y(Place.location).label("latitude"),
         Place.created_at,
@@ -47,6 +56,31 @@ def get_places(
     rows = database_session.execute(statement).mappings().all()
 
     return [PlaceRead(**row) for row in rows]
+
+
+@router.get(
+    "/{place_id}",
+    response_model=PlaceRead,
+)
+def get_place(
+    place_id: UUID,
+    database_session: Session = Depends(get_db),
+) -> PlaceRead:
+    """Return one place by its UUID."""
+
+    statement = build_place_read_statement().where(
+        Place.id == place_id
+    )
+
+    row = database_session.execute(statement).mappings().one_or_none()
+
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    return PlaceRead(**row)
 
 
 @router.post(
@@ -99,4 +133,58 @@ def create_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to create the place",
+        ) from error
+
+
+@router.patch(
+    "/{place_id}",
+    response_model=PlaceRead,
+)
+def update_place(
+    place_id: UUID,
+    place_data: PlaceUpdate,
+    database_session: Session = Depends(get_db),
+) -> PlaceRead:
+    """Partially update an existing place."""
+
+    place = database_session.get(Place, place_id)
+
+    if place is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    supplied_data = place_data.model_dump(exclude_unset=True)
+
+    latitude = supplied_data.pop("latitude", None)
+    longitude = supplied_data.pop("longitude", None)
+
+    for field_name, field_value in supplied_data.items():
+        setattr(place, field_name, field_value)
+
+    if latitude is not None and longitude is not None:
+        place.location = WKTElement(
+            f"POINT({longitude} {latitude})",
+            srid=4326,
+        )
+
+    try:
+        database_session.commit()
+        database_session.refresh(place)
+
+        statement = build_place_read_statement().where(
+            Place.id == place_id
+        )
+
+        row = database_session.execute(statement).mappings().one()
+
+        return PlaceRead(**row)
+
+    except SQLAlchemyError as error:
+        database_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to update the place",
         ) from error
