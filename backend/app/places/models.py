@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from geoalchemy2 import Geometry
-from sqlalchemy import DateTime, String, Text, func, text
+from sqlalchemy import DateTime, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,6 +13,14 @@ class Place(Base):
     """Database representation of a point of interest."""
 
     __tablename__ = "places"
+
+    __table_args__ = (
+        Index(
+            "places_location_idx",
+            "location",
+            postgresql_using="gist",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -31,7 +39,11 @@ class Place(Base):
     )
 
     location: Mapped[object | None] = mapped_column(
-        Geometry(geometry_type="POINT", srid=4326),
+        Geometry(
+            geometry_type="POINT",
+            srid=4326,
+            spatial_index=False,
+        ),
         nullable=True,
     )
 
