@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -187,4 +187,39 @@ def update_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to update the place",
+        ) from error
+
+
+@router.delete(
+    "/{place_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_place(
+    place_id: UUID,
+    database_session: Session = Depends(get_db),
+) -> Response:
+    """Delete an existing place."""
+
+    place = database_session.get(Place, place_id)
+
+    if place is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    try:
+        database_session.delete(place)
+        database_session.commit()
+
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT,
+        )
+
+    except SQLAlchemyError as error:
+        database_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete the place",
         ) from error
