@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 
+from app.categories.router import router as categories_router
 from app.places.router import router as places_router
+
 
 app = FastAPI(
     title="POI Manager API",
@@ -9,6 +11,7 @@ app = FastAPI(
 )
 
 app.include_router(places_router)
+app.include_router(categories_router)
 
 
 @app.get(

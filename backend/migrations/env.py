@@ -5,6 +5,7 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
+from app.categories.models import Category  # noqa: F401
 from app.database import Base
 from app.places.models import Place  # noqa: F401
 
