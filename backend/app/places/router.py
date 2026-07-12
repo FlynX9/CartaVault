@@ -1,8 +1,15 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -45,12 +52,69 @@ def build_place_read_statement():
     response_model=list[PlaceRead],
 )
 def get_places(
+    q: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description=(
+            "Case-insensitive search in the name, description and address"
+        ),
+    ),
+    country: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Filter places by country",
+    ),
+    region: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Filter places by region",
+    ),
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=100,
+        description="Maximum number of places returned",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Number of places to skip",
+    ),
     database_session: Session = Depends(get_db),
 ) -> list[PlaceRead]:
-    """Return all registered places."""
+    """Return places using optional search, filters and pagination."""
 
-    statement = build_place_read_statement().order_by(
-        Place.created_at.desc()
+    statement = build_place_read_statement()
+
+    if q is not None:
+        search_pattern = f"%{q.strip()}%"
+
+        statement = statement.where(
+            or_(
+                Place.name.ilike(search_pattern),
+                Place.description.ilike(search_pattern),
+                Place.address.ilike(search_pattern),
+            )
+        )
+
+    if country is not None:
+        statement = statement.where(
+            func.lower(Place.country) == country.strip().lower()
+        )
+
+    if region is not None:
+        statement = statement.where(
+            func.lower(Place.region) == region.strip().lower()
+        )
+
+    statement = (
+        statement
+        .order_by(Place.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
 
     rows = database_session.execute(statement).mappings().all()
