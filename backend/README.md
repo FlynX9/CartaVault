@@ -36,6 +36,7 @@ Git et ne doit contenir aucun secret destiné au dépôt.
 | `DATABASE_URL` | Oui | URL SQLAlchemy PostgreSQL utilisée par l'API et Alembic. Exemple non secret : `postgresql+psycopg://poi_user:change_me@localhost:5432/poi_manager`. Aucune valeur par défaut. |
 | `TEST_DATABASE_URL` | Non pour l'API, requise pour l'intégration | Base PostgreSQL/PostGIS dédiée aux tests. Aucune valeur par défaut ni reprise automatique de `DATABASE_URL`. |
 | `PHOTO_STORAGE_PATH` | Non | Racine du stockage photo. Valeur par défaut : `storage/photos`, résolue relativement au dossier `backend`. Un chemin absolu peut aussi être fourni. |
+| `CORS_ALLOWED_ORIGINS` | Non | Liste d'origines web séparées par des virgules. Valeur par défaut : `http://localhost:5173,http://127.0.0.1:5173`. |
 
 Les variables de `.env.example` couvrent toutes les lectures d'environnement
 actuellement présentes dans le code.
@@ -51,6 +52,10 @@ python -m uvicorn app.main:app --reload
 - Swagger UI : <http://127.0.0.1:8000/docs>
 - OpenAPI JSON : <http://127.0.0.1:8000/openapi.json>
 - contrôle de santé : <http://127.0.0.1:8000/>
+
+Le middleware CORS autorise par défaut les deux origines Vite locales. Il
+n'autorise pas les credentials et limite les méthodes cross-origin à `GET`,
+ce qui correspond aux besoins de la première carte en lecture seule.
 
 ## Aperçu des endpoints
 
@@ -149,7 +154,7 @@ backend/
 
 ## Limitations actuelles
 
-- aucun frontend cartographique n'est encore implémenté ;
+- le frontend cartographique est limité à la consultation des marqueurs ;
 - aucune authentification n'est présente ;
 - la baseline Alembic ne recrée pas seule une base vide ;
 - le stockage photo local n'est pas adapté tel quel à plusieurs instances.

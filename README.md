@@ -2,8 +2,8 @@
 
 POI Manager est un projet auto-hébergé de gestion de points d'intérêt (POI)
 géographiques. Le backend fournit une API FastAPI synchrone adossée à
-PostgreSQL/PostGIS. Une interface avec carte interactive est prévue, mais
-n'est pas encore développée.
+PostgreSQL/PostGIS. Une première interface React affiche les POI visibles sur
+une carte interactive Leaflet alimentée par OpenStreetMap.
 
 ## Fonctionnalités actuelles
 
@@ -11,6 +11,7 @@ n'est pas encore développée.
 - recherche textuelle, filtres par pays, région, catégorie et tag ;
 - filtrage des POI par zone géographique visible ;
 - endpoint léger `GET /places/map` pour les marqueurs cartographiques ;
+- frontend React TypeScript avec carte, marqueurs et aperçu d'un POI ;
 - CRUD des catégories et association avec les POI ;
 - CRUD des tags et association avec les POI ;
 - métadonnées photo, upload sécurisé JPEG, PNG et WebP ;
@@ -29,7 +30,7 @@ poi-manager/
 │   └── tests/          # tests pytest
 ├── database/
 │   └── init/           # initialisation SQL du conteneur PostgreSQL
-├── frontend/           # réservé au futur frontend cartographique
+├── frontend/           # application Vite, React TypeScript et Leaflet
 ├── docker-compose.yml
 └── README.md
 ```
@@ -67,21 +68,33 @@ python -m uvicorn app.main:app --reload
 
 Swagger est alors disponible sur <http://127.0.0.1:8000/docs>.
 
+Dans un second terminal, démarrez le frontend :
+
+```powershell
+Set-Location frontend
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
+
+Vite affiche l'URL locale, généralement <http://localhost:5173>.
+
 > La baseline Alembic initiale représente un schéma préexistant et ne crée
 > aucune table. `alembic upgrade head` ne suffit donc pas, à lui seul, à
 > reconstruire une base entièrement vide hors de la procédure Docker fournie.
 
 ## État du projet
 
-Le backend couvre actuellement la gestion des POI, catégories, tags et
-photos. Le dossier `frontend` est vide : la carte interactive et son interface
-utilisateur restent à construire.
+Le backend couvre la gestion des POI, catégories, tags et photos. Le frontend
+affiche désormais la carte, les marqueurs visibles et une fiche légère. Il
+reste volontairement en lecture seule : l'édition et la fiche complète ne
+sont pas encore développées.
 
 ## Feuille de route
 
 Ces éléments sont envisagés et ne sont pas encore disponibles :
 
-- frontend avec carte interactive ;
+- fiche détaillée et formulaires de gestion dans le frontend ;
 - clustering des marqueurs ;
 - import KML/KMZ ;
 - export KMZ ;
