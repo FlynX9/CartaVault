@@ -1,8 +1,8 @@
 # Frontend cartographique de POI Manager
 
-Première interface React TypeScript de POI Manager. Elle affiche les POI
-visibles sur une carte Leaflet et présente un aperçu léger au clic sur un
-marqueur.
+Interface React TypeScript de POI Manager. Elle affiche les POI visibles sur
+une carte Leaflet, présente un aperçu au clic et propose une fiche détaillée
+en lecture seule avec les photos du POI.
 
 ## Prérequis
 
@@ -51,6 +51,7 @@ défaut via `CORS_ALLOWED_ORIGINS`.
 ```powershell
 npm run dev
 npm run lint
+npm run test
 npm run build
 npm run preview
 ```
@@ -65,11 +66,24 @@ npm run preview
 - limite de 1 000 marqueurs par requête ;
 - affichage des catégories, tags et coordonnées sans appel de détail.
 
+## Routes
+
+- `/` affiche la carte et son panneau léger ;
+- `/places/:placeId` charge la fiche complète et les photos du POI.
+
+Le bouton « Voir la fiche » ouvre la route détaillée. Le retour conserve en
+mémoire les marqueurs, le POI sélectionné, le centre et le zoom tant que
+l'application n'est pas rechargée.
+
+La fiche charge séparément `GET /places/{placeId}` et
+`GET /places/{placeId}/photos`. Les images utilisent exclusivement
+`GET /photos/{photoId}/file` : le champ de stockage `path` n'est jamais
+transformé en URL côté navigateur.
+
 ## Limites de cette version
 
 - aucun formulaire de création ou de modification ;
-- le bouton « Voir la fiche » est volontairement inactif ;
-- aucun routing applicatif ;
+- aucune création ou modification depuis la fiche ;
 - aucun filtre visible par catégorie ou tag, même si le client API accepte ces
   paramètres ;
 - aucun clustering de marqueurs ;
