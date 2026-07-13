@@ -16,12 +16,10 @@ const FIELD_MAX_LENGTHS = {
   condition: 50,
   access: 50,
   danger_level: 50,
-  owner: 255,
 } as const
 
 const NULLABLE_TEXT_FIELDS = [
   'description',
-  'address',
   'country',
   'region',
   'construction_date',
@@ -29,13 +27,11 @@ const NULLABLE_TEXT_FIELDS = [
   'condition',
   'access',
   'danger_level',
-  'owner',
 ] as const
 
 export const EMPTY_PLACE_FORM_VALUES: PlaceFormValues = {
   name: '',
   description: '',
-  address: '',
   country: '',
   region: '',
   construction_date: '',
@@ -43,7 +39,6 @@ export const EMPTY_PLACE_FORM_VALUES: PlaceFormValues = {
   condition: '',
   access: '',
   danger_level: '',
-  owner: '',
   latitude: '',
   longitude: '',
   categoryIds: [],
@@ -118,7 +113,6 @@ export function buildCreatePayload(
     latitude,
     longitude,
     description: nullableText(values.description),
-    address: nullableText(values.address),
     country: nullableText(values.country),
     region: nullableText(values.region),
     construction_date: nullableText(values.construction_date),
@@ -126,7 +120,6 @@ export function buildCreatePayload(
     condition: nullableText(values.condition),
     access: nullableText(values.access),
     danger_level: nullableText(values.danger_level),
-    owner: nullableText(values.owner),
   }
 
   return payload
@@ -187,7 +180,6 @@ export function placeDetailsToFormValues(
   return {
     name: place.name,
     description: place.description ?? '',
-    address: place.address ?? '',
     country: place.country ?? '',
     region: place.region ?? '',
     construction_date: place.construction_date ?? '',
@@ -195,7 +187,6 @@ export function placeDetailsToFormValues(
     condition: place.condition ?? '',
     access: place.access ?? '',
     danger_level: place.danger_level ?? '',
-    owner: place.owner ?? '',
     latitude: place.latitude?.toString() ?? '',
     longitude: place.longitude?.toString() ?? '',
     categoryIds: place.categories.map((category) => category.id),

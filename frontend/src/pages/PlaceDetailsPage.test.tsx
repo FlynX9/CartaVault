@@ -10,7 +10,6 @@ const PLACE_RESPONSE = {
   id: PLACE_ID,
   name: 'Ancienne manufacture',
   description: 'Un bâtiment industriel remarquable.',
-  address: '1 rue des Forges',
   country: 'France',
   region: 'Grand Est',
   construction_date: '1890',
@@ -18,7 +17,6 @@ const PLACE_RESPONSE = {
   condition: 'Dégradé',
   access: 'Interdit',
   danger_level: 'Élevé',
-  owner: null,
   longitude: 6.45,
   latitude: 48.17,
   categories: [],
@@ -69,6 +67,8 @@ describe('PlaceDetailsPage', () => {
       await screen.findByRole('heading', { name: 'Ancienne manufacture' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Un bâtiment industriel remarquable.')).toBeVisible()
+    expect(screen.queryByText('Adresse')).not.toBeInTheDocument()
+    expect(screen.queryByText('Propriétaire')).not.toBeInTheDocument()
     expect(await screen.findByText('Aucune photo pour ce POI.')).toBeVisible()
   })
 

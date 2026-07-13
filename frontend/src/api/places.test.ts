@@ -27,7 +27,6 @@ describe('place response validation', () => {
       id: PLACE_ID,
       name: 'Ancienne manufacture',
       description: 'Un bâtiment industriel.',
-      address: '1 rue des Forges',
       country: 'France',
       region: 'Grand Est',
       construction_date: '1890',
@@ -35,7 +34,6 @@ describe('place response validation', () => {
       condition: 'Dégradé',
       access: 'Interdit',
       danger_level: 'Élevé',
-      owner: null,
       longitude: 6.45,
       latitude: 48.17,
       categories: [
@@ -52,6 +50,8 @@ describe('place response validation', () => {
 
     expect(place.name).toBe('Ancienne manufacture')
     expect(place.categories[0]?.description).toBeNull()
+    expect(place).not.toHaveProperty('address')
+    expect(place).not.toHaveProperty('owner')
   })
 
   it('rejects an incoherent detailed response', () => {

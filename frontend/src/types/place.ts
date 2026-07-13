@@ -23,7 +23,6 @@ export interface PlaceDetails {
   id: string
   name: string
   description: string | null
-  address: string | null
   country: string | null
   region: string | null
   construction_date: string | null
@@ -31,7 +30,6 @@ export interface PlaceDetails {
   condition: string | null
   access: string | null
   danger_level: string | null
-  owner: string | null
   longitude: number | null
   latitude: number | null
   categories: PlaceCategory[]
@@ -70,7 +68,6 @@ export interface MapPlaceQuery {
 
 interface PlaceNullableFields {
   description: string | null
-  address: string | null
   country: string | null
   region: string | null
   construction_date: string | null
@@ -78,7 +75,6 @@ interface PlaceNullableFields {
   condition: string | null
   access: string | null
   danger_level: string | null
-  owner: string | null
 }
 
 export interface PlaceCreatePayload extends PlaceNullableFields {
@@ -90,7 +86,6 @@ export interface PlaceCreatePayload extends PlaceNullableFields {
 export interface PlaceUpdatePayload {
   name?: string
   description?: string | null
-  address?: string | null
   country?: string | null
   region?: string | null
   construction_date?: string | null
@@ -98,7 +93,6 @@ export interface PlaceUpdatePayload {
   condition?: string | null
   access?: string | null
   danger_level?: string | null
-  owner?: string | null
   latitude?: number
   longitude?: number
 }
@@ -106,7 +100,6 @@ export interface PlaceUpdatePayload {
 export interface PlaceFormValues {
   name: string
   description: string
-  address: string
   country: string
   region: string
   construction_date: string
@@ -114,7 +107,6 @@ export interface PlaceFormValues {
   condition: string
   access: string
   danger_level: string
-  owner: string
   latitude: string
   longitude: string
   categoryIds: string[]

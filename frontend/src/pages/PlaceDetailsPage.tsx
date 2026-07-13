@@ -157,13 +157,11 @@ export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
     )
   }
 
-  const hasLocation =
-    place.address !== null || place.region !== null || place.country !== null
+  const hasLocation = place.region !== null || place.country !== null
   const hasPracticalDetails =
     place.condition !== null ||
     place.access !== null ||
-    place.danger_level !== null ||
-    place.owner !== null
+    place.danger_level !== null
   const hasChronology =
     place.construction_date !== null || place.abandonment_date !== null
 
@@ -236,9 +234,6 @@ export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
             <section className="details-section">
               <h3>Localisation</h3>
               <dl className="details-list">
-                {place.address !== null && (
-                  <DetailItem label="Adresse" value={place.address} />
-                )}
                 {place.region !== null && (
                   <DetailItem label="Région" value={place.region} />
                 )}
@@ -291,9 +286,6 @@ export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
                 )}
                 {place.danger_level !== null && (
                   <DetailItem label="Danger" value={place.danger_level} />
-                )}
-                {place.owner !== null && (
-                  <DetailItem label="Propriétaire" value={place.owner} />
                 )}
               </dl>
             </section>

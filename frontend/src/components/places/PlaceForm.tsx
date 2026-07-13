@@ -20,15 +20,19 @@ interface PlaceFormProps {
   onSubmit: (values: PlaceFormValues) => Promise<void>
 }
 
-const TEXT_FIELDS = [
+const GENERAL_FIELDS = [
   ['name', 'Nom', 255],
-  ['address', 'Adresse', undefined],
   ['region', 'Région', 100],
   ['country', 'Pays', 100],
+] as const
+
+const PRACTICAL_FIELDS = [
   ['condition', 'État', 50],
   ['access', 'Accès', 50],
   ['danger_level', 'Niveau de danger', 50],
-  ['owner', 'Propriétaire', 255],
+] as const
+
+const CHRONOLOGY_FIELDS = [
   ['construction_date', 'Construction', 100],
   ['abandonment_date', 'Abandon', 100],
 ] as const
@@ -77,7 +81,7 @@ export function PlaceForm({
       <section className="form-section">
         <h3>Informations générales</h3>
         <div className="form-grid">
-          {TEXT_FIELDS.slice(0, 4).map(([field, label, maxLength]) => (
+          {GENERAL_FIELDS.map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}{field === 'name' ? ' *' : ''}</span>
               <input
@@ -119,13 +123,33 @@ export function PlaceForm({
       </section>
 
       <section className="form-section">
-        <h3>État et chronologie</h3>
+        <h3>État et accès</h3>
         <div className="form-grid">
-          {TEXT_FIELDS.slice(4).map(([field, label, maxLength]) => (
+          {PRACTICAL_FIELDS.map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}</span>
               <input value={values[field]} maxLength={maxLength} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
               {errors[field] && <small className="field-error">{errors[field]}</small>}
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className="form-section">
+        <h3>Chronologie</h3>
+        <div className="form-grid">
+          {CHRONOLOGY_FIELDS.map(([field, label, maxLength]) => (
+            <label className="form-field" key={field}>
+              <span>{label}</span>
+              <input
+                value={values[field]}
+                maxLength={maxLength}
+                onChange={(event) => setValue(field, event.target.value)}
+                aria-invalid={Boolean(errors[field])}
+              />
+              {errors[field] && (
+                <small className="field-error">{errors[field]}</small>
+              )}
             </label>
           ))}
         </div>

@@ -30,7 +30,6 @@ describe('place form helpers', () => {
       latitude: 48.17,
       longitude: 6.45,
       description: null,
-      address: null,
       country: null,
       region: null,
       construction_date: null,
@@ -38,15 +37,16 @@ describe('place form helpers', () => {
       condition: null,
       access: null,
       danger_level: null,
-      owner: null,
     })
+    expect(buildCreatePayload(validValues)).not.toHaveProperty('address')
+    expect(buildCreatePayload(validValues)).not.toHaveProperty('owner')
   })
 
   it('only includes changed fields and sends explicit nulls', () => {
-    const initial = { ...validValues, owner: 'Ville', description: 'Texte' }
-    const current = { ...initial, owner: '  ', description: 'Texte modifié' }
+    const initial = { ...validValues, country: 'France', description: 'Texte' }
+    const current = { ...initial, country: '  ', description: 'Texte modifié' }
     expect(buildMinimalUpdatePayload(initial, current)).toEqual({
-      owner: null,
+      country: null,
       description: 'Texte modifié',
     })
   })

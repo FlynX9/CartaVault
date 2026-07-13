@@ -92,7 +92,6 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     id: readUuid(payload, 'id', context),
     name: readString(payload, 'name', context),
     description: readNullableString(payload, 'description', context),
-    address: readNullableString(payload, 'address', context),
     country: readNullableString(payload, 'country', context),
     region: readNullableString(payload, 'region', context),
     construction_date: readNullableString(
@@ -108,7 +107,6 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     condition: readNullableString(payload, 'condition', context),
     access: readNullableString(payload, 'access', context),
     danger_level: readNullableString(payload, 'danger_level', context),
-    owner: readNullableString(payload, 'owner', context),
     longitude: readNullableNumber(payload, 'longitude', context),
     latitude: readNullableNumber(payload, 'latitude', context),
     categories: readArray(payload, 'categories', context).map(
