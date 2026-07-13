@@ -1,4 +1,5 @@
 import pytest
+from uuid import uuid4
 from starlette.testclient import TestClient
 
 from app.places.schemas import PlaceCreate
@@ -52,10 +53,12 @@ def test_place_openapi_and_extra_field_policy_exclude_removed_fields(
         properties = schemas[schema_name]["properties"]
         assert "address" not in properties
         assert "owner" not in properties
+        assert "country" not in properties
 
     parsed = PlaceCreate.model_validate(
         {
             "name": "Legacy client",
+            "map_id": str(uuid4()),
             "latitude": 48.0,
             "longitude": 6.0,
             "address": "ignored",

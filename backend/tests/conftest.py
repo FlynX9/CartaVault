@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from app.database import Base, get_db
+from app.countries.catalog import load_country_catalog
+from app.countries.models import Country
+from app.maps.models import PoiMap
 from app.main import app
 
 
@@ -101,6 +104,15 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
             )
 
         Base.metadata.create_all(engine)
+        with engine.begin() as connection:
+            existing_countries = connection.scalar(
+                text("SELECT count(*) FROM countries")
+            )
+            if existing_countries == 0:
+                connection.execute(
+                    Country.__table__.insert(),
+                    [dict(country) for country in load_country_catalog()],
+                )
         yield engine
     finally:
         engine.dispose()
@@ -129,6 +141,19 @@ def database_session(
             transaction.rollback()
 
         connection.close()
+
+
+@pytest.fixture
+def france_country(database_session: Session) -> Country:
+    return database_session.query(Country).filter_by(iso_alpha3="FRA").one()
+
+
+@pytest.fixture
+def poi_map(database_session: Session, france_country: Country) -> PoiMap:
+    result = PoiMap(name="France", country_id=france_country.id)
+    database_session.add(result)
+    database_session.flush()
+    return result
 
 
 @pytest.fixture

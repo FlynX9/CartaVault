@@ -21,6 +21,7 @@ class PlaceMapRead(BaseModel):
     """Minimal place representation used by the interactive map."""
 
     id: UUID
+    map_id: UUID
     name: str
     longitude: float
     latitude: float

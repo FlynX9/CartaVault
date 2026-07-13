@@ -1,5 +1,14 @@
 # Tests du backend POI Manager
 
+## Scénarios pays et cartes
+
+Les intégrations couvrent le catalogue, le CRUD et les conflits des cartes,
+ainsi que la création et les filtres `map_id` des POI. Le cycle Alembic
+`upgrade → downgrade → upgrade` doit viser uniquement une base dédiée telle que
+`poi_manager_test`, jamais une base de développement contenant des données.
+La migration refuse toute ancienne valeur `places.country` non reconnue et le
+contrôle final vérifie qu'aucun POI ne conserve un `map_id` nul.
+
 ## Types de tests
 
 - le marqueur `unit` couvre le contrôle de santé, le stockage photo et les

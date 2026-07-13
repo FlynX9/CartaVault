@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 from starlette.testclient import TestClient
+from app.maps.models import PoiMap
 
 
 pytestmark = pytest.mark.integration
@@ -14,11 +15,13 @@ JPEG_BYTES = b"\xff\xd8\xff\xe0integration-jpeg\xff\xd9"
 def test_photo_upload_download_and_delete(
     integration_client: TestClient,
     photo_storage: Path,
+    poi_map: PoiMap,
 ) -> None:
     place_response = integration_client.post(
         "/places",
         json={
             "name": f"Photo Place {uuid4().hex}",
+            "map_id": str(poi_map.id),
             "latitude": 45.764,
             "longitude": 4.8357,
         },

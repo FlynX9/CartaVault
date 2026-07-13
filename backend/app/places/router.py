@@ -11,11 +11,14 @@ from fastapi import (
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.categories.models import Category
 from app.categories.schemas import CategoryRead
 from app.database import get_db
+from app.countries.schemas import CountrySummary
+from app.maps.models import PoiMap
+from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.models import Place
 from app.places.schemas import PlaceCreate, PlaceRead, PlaceUpdate
@@ -39,6 +42,7 @@ def build_place_read_statement():
             func.ST_Y(Place.location).label("latitude"),
         )
         .options(
+            joinedload(Place.map).joinedload(PoiMap.country),
             selectinload(Place.categories),
             selectinload(Place.tags),
         )
@@ -55,8 +59,18 @@ def place_to_read(
     return PlaceRead(
         id=place.id,
         name=place.name,
+        map_id=place.map_id,
+        map=MapSummary(
+            id=place.map.id,
+            name=place.map.name,
+            country=CountrySummary(
+                id=place.map.country.id,
+                iso_alpha2=place.map.country.iso_alpha2,
+                iso_alpha3=place.map.country.iso_alpha3,
+                name=place.map.country.name,
+            ),
+        ),
         description=place.description,
-        country=place.country,
         region=place.region,
         construction_date=place.construction_date,
         abandonment_date=place.abandonment_date,
@@ -119,11 +133,9 @@ def get_places(
             "Case-insensitive search in the name and description"
         ),
     ),
-    country: str | None = Query(
+    map_id: UUID | None = Query(
         default=None,
-        min_length=1,
-        max_length=100,
-        description="Filter places by country",
+        description="Filter places by map UUID",
     ),
     region: str | None = Query(
         default=None,
@@ -167,10 +179,8 @@ def get_places(
             )
         )
 
-    if country is not None:
-        statement = statement.where(
-            func.lower(Place.country) == country.strip().lower()
-        )
+    if map_id is not None:
+        statement = statement.where(Place.map_id == map_id)
 
     if region is not None:
         statement = statement.where(
@@ -268,6 +278,12 @@ def create_place(
 ) -> PlaceRead:
     """Create a new point of interest."""
 
+    if database_session.get(PoiMap, place_data.map_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Map with id {place_data.map_id} was not found",
+        )
+
     location = WKTElement(
         f"POINT({place_data.longitude} {place_data.latitude})",
         srid=4326,
@@ -275,9 +291,9 @@ def create_place(
 
     place = Place(
         name=place_data.name,
+        map_id=place_data.map_id,
         description=place_data.description,
         location=location,
-        country=place_data.country,
         region=place_data.region,
         construction_date=place_data.construction_date,
         abandonment_date=place_data.abandonment_date,
@@ -325,6 +341,16 @@ def update_place(
         )
 
     supplied_data = place_data.model_dump(exclude_unset=True)
+
+    requested_map_id = supplied_data.get("map_id")
+    if requested_map_id is not None and database_session.get(
+        PoiMap,
+        requested_map_id,
+    ) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Map with id {requested_map_id} was not found",
+        )
 
     latitude = supplied_data.pop("latitude", None)
     longitude = supplied_data.pop("longitude", None)

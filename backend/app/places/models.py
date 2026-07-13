@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from geoalchemy2 import Geometry
-from sqlalchemy import DateTime, Index, String, Text, func, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,7 @@ from app.tags.associations import place_tags_table
 if TYPE_CHECKING:
     from app.categories.models import Category
     from app.photos.models import Photo
+    from app.maps.models import PoiMap
     from app.tags.models import Tag
 
 
@@ -24,6 +25,7 @@ class Place(Base):
     __tablename__ = "places"
 
     __table_args__ = (
+        Index("places_map_id_idx", "map_id"),
         Index(
             "places_location_idx",
             "location",
@@ -56,9 +58,10 @@ class Place(Base):
         nullable=True,
     )
 
-    country: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
+    map_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("poi_maps.id", ondelete="RESTRICT"),
+        nullable=False,
     )
 
     region: Mapped[str | None] = mapped_column(
@@ -120,4 +123,8 @@ class Place(Base):
         back_populates="place",
         order_by="(Photo.created_at, Photo.id)",
         passive_deletes=True,
+    )
+
+    map: Mapped["PoiMap"] = relationship(
+        back_populates="places",
     )
