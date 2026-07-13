@@ -1,0 +1,160 @@
+import { useState, type FormEvent } from 'react'
+
+import { validatePlaceForm } from '../../forms/placeForm'
+import type {
+  PlaceCategory,
+  PlaceFormErrors,
+  PlaceFormValues,
+  PlaceTag,
+} from '../../types/place'
+import { LocationPicker } from '../map/LocationPicker'
+
+interface PlaceFormProps {
+  initialValues: PlaceFormValues
+  categories: PlaceCategory[]
+  tags: PlaceTag[]
+  submitLabel: string
+  isSubmitting: boolean
+  serverErrors?: PlaceFormErrors
+  globalError?: string | null
+  onSubmit: (values: PlaceFormValues) => Promise<void>
+}
+
+const TEXT_FIELDS = [
+  ['name', 'Nom', 255],
+  ['address', 'Adresse', undefined],
+  ['region', 'Région', 100],
+  ['country', 'Pays', 100],
+  ['condition', 'État', 50],
+  ['access', 'Accès', 50],
+  ['danger_level', 'Niveau de danger', 50],
+  ['owner', 'Propriétaire', 255],
+  ['construction_date', 'Construction', 100],
+  ['abandonment_date', 'Abandon', 100],
+] as const
+
+export function PlaceForm({
+  initialValues,
+  categories,
+  tags,
+  submitLabel,
+  isSubmitting,
+  serverErrors = {},
+  globalError,
+  onSubmit,
+}: PlaceFormProps) {
+  const [values, setValues] = useState(initialValues)
+  const [localErrors, setLocalErrors] = useState<PlaceFormErrors>({})
+  const errors = { ...localErrors, ...serverErrors }
+
+  const setValue = (field: keyof PlaceFormValues, value: string | string[]) => {
+    setValues((current) => ({ ...current, [field]: value }))
+    setLocalErrors((current) => ({ ...current, [field]: undefined }))
+  }
+
+  const toggleAssociation = (
+    field: 'categoryIds' | 'tagIds',
+    id: string,
+  ) => {
+    const ids = values[field]
+    setValue(field, ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
+  }
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    const validationErrors = validatePlaceForm(values)
+    setLocalErrors(validationErrors)
+    if (Object.keys(validationErrors).length === 0) void onSubmit(values)
+  }
+
+  const latitude = values.latitude.trim() === '' ? null : Number(values.latitude)
+  const longitude = values.longitude.trim() === '' ? null : Number(values.longitude)
+
+  return (
+    <form className="place-form" onSubmit={handleSubmit} noValidate>
+      {globalError && <div className="form-alert" role="alert">{globalError}</div>}
+
+      <section className="form-section">
+        <h3>Informations générales</h3>
+        <div className="form-grid">
+          {TEXT_FIELDS.slice(0, 4).map(([field, label, maxLength]) => (
+            <label className="form-field" key={field}>
+              <span>{label}{field === 'name' ? ' *' : ''}</span>
+              <input
+                value={values[field]}
+                maxLength={maxLength}
+                onChange={(event) => setValue(field, event.target.value)}
+                aria-invalid={Boolean(errors[field])}
+              />
+              {errors[field] && <small className="field-error">{errors[field]}</small>}
+            </label>
+          ))}
+          <label className="form-field form-field-wide">
+            <span>Description</span>
+            <textarea value={values.description} rows={5} onChange={(event) => setValue('description', event.target.value)} />
+          </label>
+        </div>
+      </section>
+
+      <section className="form-section">
+        <h3>Localisation</h3>
+        <p className="form-hint">Saisissez les coordonnées, cliquez sur la carte ou déplacez le marqueur.</p>
+        <div className="coordinate-grid">
+          {(['latitude', 'longitude'] as const).map((field) => (
+            <label className="form-field" key={field}>
+              <span>{field === 'latitude' ? 'Latitude' : 'Longitude'} *</span>
+              <input type="number" step="any" value={values[field]} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
+              {errors[field] && <small className="field-error">{errors[field]}</small>}
+            </label>
+          ))}
+        </div>
+        <LocationPicker
+          latitude={Number.isFinite(latitude) ? latitude : null}
+          longitude={Number.isFinite(longitude) ? longitude : null}
+          onChange={(nextLatitude, nextLongitude) => {
+            setValue('latitude', nextLatitude.toFixed(6))
+            setValue('longitude', nextLongitude.toFixed(6))
+          }}
+        />
+      </section>
+
+      <section className="form-section">
+        <h3>État et chronologie</h3>
+        <div className="form-grid">
+          {TEXT_FIELDS.slice(4).map(([field, label, maxLength]) => (
+            <label className="form-field" key={field}>
+              <span>{label}</span>
+              <input value={values[field]} maxLength={maxLength} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
+              {errors[field] && <small className="field-error">{errors[field]}</small>}
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className="form-section association-grid">
+        <fieldset>
+          <legend>Catégories</legend>
+          {categories.length === 0 ? <p className="form-hint">Aucune catégorie disponible.</p> : categories.map((category) => (
+            <label className="checkbox-field" key={category.id}>
+              <input type="checkbox" checked={values.categoryIds.includes(category.id)} onChange={() => toggleAssociation('categoryIds', category.id)} />
+              <span>{category.name}</span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset>
+          <legend>Tags</legend>
+          {tags.length === 0 ? <p className="form-hint">Aucun tag disponible.</p> : tags.map((tag) => (
+            <label className="checkbox-field" key={tag.id}>
+              <input type="checkbox" checked={values.tagIds.includes(tag.id)} onChange={() => toggleAssociation('tagIds', tag.id)} />
+              <span>{tag.name}</span>
+            </label>
+          ))}
+        </fieldset>
+      </section>
+
+      <button className="primary-button" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Enregistrement…' : submitLabel}
+      </button>
+    </form>
+  )
+}

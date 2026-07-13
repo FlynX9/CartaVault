@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import { PoiMap } from '../components/map/PoiMap'
 import { PlacePreview } from '../components/places/PlacePreview'
 import type { MapBounds, MapPlace, MapView } from '../types/place'
@@ -27,6 +29,10 @@ export function MapPage({
 }: MapPageProps) {
   return (
     <section className="map-layout" aria-label="Carte des points d'intérêt">
+      <Link className="map-create-button" to="/places/new">
+        + Ajouter un POI
+      </Link>
+
       <PoiMap
         places={places}
         selectedPlaceId={selectedPlace?.id ?? null}

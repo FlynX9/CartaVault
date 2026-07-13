@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError } from '../api/client'
 import { getPlacePhotos } from '../api/photos'
-import { getPlaceDetails } from '../api/places'
+import { deletePlace, getPlaceDetails } from '../api/places'
 import { PhotoGallery } from '../components/photos/PhotoGallery'
 import type { Photo } from '../types/photo'
 import type { PlaceDetails } from '../types/place'
@@ -32,8 +32,13 @@ function DetailItem({ label, value }: DetailItemProps) {
   )
 }
 
-export function PlaceDetailsPage() {
+interface PlaceDetailsPageProps {
+  onPlaceDeleted?: (placeId: string) => void
+}
+
+export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
   const { placeId } = useParams<{ placeId: string }>()
+  const navigate = useNavigate()
   const [place, setPlace] = useState<PlaceDetails | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [isPlaceLoading, setIsPlaceLoading] = useState(true)
@@ -41,6 +46,8 @@ export function PlaceDetailsPage() {
   const [placeError, setPlaceError] = useState<string | null>(null)
   const [photosError, setPhotosError] = useState<string | null>(null)
   const [isNotFound, setIsNotFound] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (placeId === undefined) {
@@ -160,13 +167,55 @@ export function PlaceDetailsPage() {
   const hasChronology =
     place.construction_date !== null || place.abandonment_date !== null
 
+  const handleDelete = async () => {
+    if (
+      placeId === undefined ||
+      !window.confirm(`Supprimer « ${place.name} » ?`)
+    ) {
+      return
+    }
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      await deletePlace(placeId)
+      onPlaceDeleted?.(placeId)
+      navigate('/')
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : 'La suppression a échoué.',
+      )
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <article className="details-page">
       <div className="details-toolbar">
         <Link className="back-link" to="/">
           ← Retour à la carte
         </Link>
+        <div className="details-actions">
+          <Link className="secondary-button" to={`/places/${place.id}/edit`}>
+            Modifier
+          </Link>
+          <button
+            className="danger-button"
+            type="button"
+            disabled={isDeleting}
+            onClick={() => void handleDelete()}
+          >
+            {isDeleting ? 'Suppression…' : 'Supprimer'}
+          </button>
+        </div>
       </div>
+
+      {deleteError && (
+        <div className="form-alert" role="alert">
+          {deleteError}
+        </div>
+      )}
 
       <header className="details-hero">
         <p className="details-kicker">Point d'intérêt</p>

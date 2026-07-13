@@ -4,6 +4,7 @@ import { Route, Routes, useLocation } from 'react-router-dom'
 import { getMapPlaces } from './api/places'
 import { MapPage } from './pages/MapPage'
 import { PlaceDetailsPage } from './pages/PlaceDetailsPage'
+import { PlaceEditorPage } from './pages/PlaceEditorPage'
 import type { MapBounds, MapPlace, MapView } from './types/place'
 
 const REQUEST_DEBOUNCE_MS = 350
@@ -26,6 +27,7 @@ function App() {
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [mapRefreshVersion, setMapRefreshVersion] = useState(0)
   const requestSequence = useRef(0)
 
   useEffect(() => {
@@ -84,7 +86,19 @@ function App() {
       window.clearTimeout(timeoutId)
       controller.abort()
     }
-  }, [bounds, isMapRoute])
+  }, [bounds, isMapRoute, mapRefreshVersion])
+
+  const handlePlaceMutated = () => {
+    setSelectedPlace(null)
+    setMapRefreshVersion((version) => version + 1)
+  }
+
+  const handlePlaceDeleted = (placeId: string) => {
+    setPlaces((current) => current.filter((place) => place.id !== placeId))
+    setSelectedPlace((current) =>
+      current?.id === placeId ? null : current,
+    )
+  }
 
   return (
     <main className="app-shell">
@@ -125,7 +139,30 @@ function App() {
             />
           }
         />
-        <Route path="/places/:placeId" element={<PlaceDetailsPage />} />
+        <Route
+          path="/places/new"
+          element={
+            <PlaceEditorPage
+              mode="create"
+              onPlaceMutated={handlePlaceMutated}
+            />
+          }
+        />
+        <Route
+          path="/places/:placeId/edit"
+          element={
+            <PlaceEditorPage
+              mode="edit"
+              onPlaceMutated={handlePlaceMutated}
+            />
+          }
+        />
+        <Route
+          path="/places/:placeId"
+          element={
+            <PlaceDetailsPage onPlaceDeleted={handlePlaceDeleted} />
+          }
+        />
       </Routes>
     </main>
   )

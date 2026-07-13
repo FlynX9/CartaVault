@@ -67,3 +67,65 @@ export interface MapPlaceQuery {
   tagId?: string
   limit?: number
 }
+
+interface PlaceNullableFields {
+  description: string | null
+  address: string | null
+  country: string | null
+  region: string | null
+  construction_date: string | null
+  abandonment_date: string | null
+  condition: string | null
+  access: string | null
+  danger_level: string | null
+  owner: string | null
+}
+
+export interface PlaceCreatePayload extends PlaceNullableFields {
+  name: string
+  latitude: number
+  longitude: number
+}
+
+export interface PlaceUpdatePayload {
+  name?: string
+  description?: string | null
+  address?: string | null
+  country?: string | null
+  region?: string | null
+  construction_date?: string | null
+  abandonment_date?: string | null
+  condition?: string | null
+  access?: string | null
+  danger_level?: string | null
+  owner?: string | null
+  latitude?: number
+  longitude?: number
+}
+
+export interface PlaceFormValues {
+  name: string
+  description: string
+  address: string
+  country: string
+  region: string
+  construction_date: string
+  abandonment_date: string
+  condition: string
+  access: string
+  danger_level: string
+  owner: string
+  latitude: string
+  longitude: string
+  categoryIds: string[]
+  tagIds: string[]
+}
+
+export type PlaceFormErrors = Partial<
+  Record<keyof PlaceFormValues, string>
+>
+
+export interface AssociationDiff {
+  added: string[]
+  removed: string[]
+}

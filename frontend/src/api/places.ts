@@ -5,9 +5,11 @@ import type {
   MapTag,
   PlaceCategory,
   PlaceDetails,
+  PlaceCreatePayload,
+  PlaceUpdatePayload,
   PlaceTag,
 } from '../types/place'
-import { getJson } from './client'
+import { getJson, sendJson, sendWithoutResponse } from './client'
 import {
   isRecord,
   readArray,
@@ -158,3 +160,89 @@ export async function getPlaceDetails(
 
   return parsePlaceDetailsResponse(payload)
 }
+
+export async function createPlace(
+  payload: PlaceCreatePayload,
+  signal?: AbortSignal,
+): Promise<PlaceDetails> {
+  return parsePlaceDetailsResponse(
+    await sendJson('/places', 'POST', payload, signal),
+  )
+}
+
+export async function updatePlace(
+  placeId: string,
+  payload: PlaceUpdatePayload,
+  signal?: AbortSignal,
+): Promise<PlaceDetails> {
+  return parsePlaceDetailsResponse(
+    await sendJson(
+      `/places/${encodeURIComponent(placeId)}`,
+      'PATCH',
+      payload,
+      signal,
+    ),
+  )
+}
+
+export async function deletePlace(
+  placeId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await sendWithoutResponse(
+    `/places/${encodeURIComponent(placeId)}`,
+    'DELETE',
+    signal,
+  )
+}
+
+async function addAssociation(
+  placeId: string,
+  kind: 'categories' | 'tags',
+  associationId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await sendJson(
+    `/places/${encodeURIComponent(placeId)}/${kind}/${encodeURIComponent(associationId)}`,
+    'POST',
+    undefined,
+    signal,
+  )
+}
+
+async function removeAssociation(
+  placeId: string,
+  kind: 'categories' | 'tags',
+  associationId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await sendWithoutResponse(
+    `/places/${encodeURIComponent(placeId)}/${kind}/${encodeURIComponent(associationId)}`,
+    'DELETE',
+    signal,
+  )
+}
+
+export const addPlaceCategory = (
+  placeId: string,
+  categoryId: string,
+  signal?: AbortSignal,
+) => addAssociation(placeId, 'categories', categoryId, signal)
+
+export const removePlaceCategory = (
+  placeId: string,
+  categoryId: string,
+  signal?: AbortSignal,
+) => removeAssociation(placeId, 'categories', categoryId, signal)
+
+export const addPlaceTag = (
+  placeId: string,
+  tagId: string,
+  signal?: AbortSignal,
+) => addAssociation(placeId, 'tags', tagId, signal)
+
+export const removePlaceTag = (
+  placeId: string,
+  tagId: string,
+  signal?: AbortSignal,
+) => removeAssociation(placeId, 'tags', tagId, signal)

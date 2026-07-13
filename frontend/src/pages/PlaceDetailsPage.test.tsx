@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
@@ -34,11 +34,11 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
-function renderDetailsPage() {
+function renderDetailsPage(onPlaceDeleted?: (placeId: string) => void) {
   render(
     <MemoryRouter initialEntries={[`/places/${PLACE_ID}`]}>
       <Routes>
-        <Route path="/places/:placeId" element={<PlaceDetailsPage />} />
+        <Route path="/places/:placeId" element={<PlaceDetailsPage onPlaceDeleted={onPlaceDeleted} />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -93,6 +93,26 @@ describe('PlaceDetailsPage', () => {
     expect(screen.getByRole('link', { name: /Retour à la carte/ })).toHaveAttribute(
       'href',
       '/',
+    )
+  })
+
+  it('requires confirmation before deleting and reports the deletion', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return Promise.resolve(new Response(null, { status: 204 }))
+      return Promise.resolve(String(input).endsWith('/photos') ? jsonResponse([]) : jsonResponse(PLACE_RESPONSE))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    const onPlaceDeleted = vi.fn()
+    renderDetailsPage(onPlaceDeleted)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Supprimer' }))
+
+    expect(window.confirm).toHaveBeenCalledWith('Supprimer « Ancienne manufacture » ?')
+    await waitFor(() => expect(onPlaceDeleted).toHaveBeenCalledWith(PLACE_ID))
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/places/${PLACE_ID}`),
+      expect.objectContaining({ method: 'DELETE' }),
     )
   })
 })

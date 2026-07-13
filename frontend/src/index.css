@@ -537,6 +537,176 @@ button {
   }
 }
 
+.map-create-button {
+  position: absolute;
+  z-index: 500;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.75rem 1rem;
+  color: white;
+  background: #245c45;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgb(20 47 35 / 25%);
+  text-decoration: none;
+}
+
+.editor-page {
+  width: min(1040px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 4rem;
+}
+
+.editor-header {
+  padding: 1.5rem 0 2rem;
+}
+
+.editor-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.place-form,
+.form-section {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.place-form {
+  gap: 2rem;
+}
+
+.form-section {
+  padding: clamp(1.2rem, 3vw, 2rem);
+  background: #f8faf8;
+  border: 1px solid #dce6df;
+  border-radius: 1rem;
+}
+
+.form-section h3,
+.form-section legend {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.form-grid,
+.coordinate-grid,
+.association-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 650;
+}
+
+.form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.form-field input,
+.form-field textarea {
+  width: 100%;
+  padding: 0.75rem;
+  color: #183528;
+  background: white;
+  border: 1px solid #aebfb5;
+  border-radius: 0.55rem;
+  font: inherit;
+}
+
+.form-field input[aria-invalid='true'] {
+  border-color: #ad2f2f;
+}
+
+.field-error,
+.form-alert {
+  color: #8c2020;
+}
+
+.form-alert {
+  padding: 1rem;
+  background: #fff1f0;
+  border: 1px solid #efb5b0;
+  border-radius: 0.65rem;
+}
+
+.form-hint {
+  margin: 0;
+  color: #607168;
+}
+
+.location-picker {
+  width: 100%;
+  height: 360px;
+  border-radius: 0.75rem;
+}
+
+.association-grid fieldset {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #c9d7ce;
+  border-radius: 0.75rem;
+}
+
+.checkbox-field {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.75rem 1.15rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.primary-button {
+  justify-self: start;
+  color: white;
+  background: #245c45;
+}
+
+.secondary-button {
+  color: #245c45;
+  background: #e8f0eb;
+}
+
+.danger-button {
+  color: white;
+  background: #a52b2b;
+}
+
+.primary-button:disabled,
+.danger-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.details-toolbar,
+.details-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.partial-save-link {
+  margin: 0 0 1rem;
+}
+
 @media (max-width: 600px) {
   .app-header {
     min-height: 68px;
@@ -591,6 +761,16 @@ button {
 
   .details-state {
     padding: 1.5rem;
+  }
+
+  .form-grid,
+  .coordinate-grid,
+  .association-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .location-picker {
+    height: 280px;
   }
 }
 
