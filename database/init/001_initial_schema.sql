@@ -1,20 +1,67 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE TABLE countries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    iso_alpha2 VARCHAR(2) UNIQUE NOT NULL,
+    iso_alpha3 VARCHAR(3) UNIQUE NOT NULL,
+    name VARCHAR(120) UNIQUE NOT NULL,
+    center_latitude DOUBLE PRECISION NOT NULL,
+    center_longitude DOUBLE PRECISION NOT NULL,
+    default_zoom SMALLINT NOT NULL,
+    min_latitude DOUBLE PRECISION,
+    max_latitude DOUBLE PRECISION,
+    min_longitude DOUBLE PRECISION,
+    max_longitude DOUBLE PRECISION,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT countries_iso_alpha2_uppercase CHECK (iso_alpha2 = upper(iso_alpha2)),
+    CONSTRAINT countries_iso_alpha3_uppercase CHECK (iso_alpha3 = upper(iso_alpha3)),
+    CONSTRAINT countries_center_latitude_range CHECK (center_latitude BETWEEN -90 AND 90),
+    CONSTRAINT countries_center_longitude_range CHECK (center_longitude BETWEEN -180 AND 180),
+    CONSTRAINT countries_default_zoom_range CHECK (default_zoom BETWEEN 1 AND 18),
+    CONSTRAINT countries_bounds_consistency CHECK (
+        (min_latitude IS NULL AND max_latitude IS NULL AND min_longitude IS NULL AND max_longitude IS NULL)
+        OR (min_latitude IS NOT NULL AND max_latitude IS NOT NULL
+            AND min_longitude IS NOT NULL AND max_longitude IS NOT NULL
+            AND min_latitude BETWEEN -90 AND 90 AND max_latitude BETWEEN -90 AND 90
+            AND min_longitude BETWEEN -180 AND 180 AND max_longitude BETWEEN -180 AND 180
+            AND min_latitude < max_latitude AND min_longitude < max_longitude)
+    )
+);
+
+CREATE TABLE poi_maps (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(120) NOT NULL,
+    country_id UUID NOT NULL REFERENCES countries(id) ON DELETE RESTRICT,
+    center_latitude DOUBLE PRECISION,
+    center_longitude DOUBLE PRECISION,
+    default_zoom SMALLINT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT poi_maps_country_id_key UNIQUE (country_id),
+    CONSTRAINT poi_maps_center_consistency CHECK (
+        (center_latitude IS NULL AND center_longitude IS NULL)
+        OR (center_latitude IS NOT NULL AND center_longitude IS NOT NULL
+            AND center_latitude BETWEEN -90 AND 90 AND center_longitude BETWEEN -180 AND 180)
+    ),
+    CONSTRAINT poi_maps_default_zoom_range CHECK (default_zoom IS NULL OR default_zoom BETWEEN 1 AND 18)
+);
+
 CREATE TABLE places (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     location GEOMETRY(Point,4326),
-    country VARCHAR(100),
+    map_id UUID NOT NULL REFERENCES poi_maps(id) ON DELETE RESTRICT,
     region VARCHAR(100),
     construction_date VARCHAR(100),
     abandonment_date VARCHAR(100),
     condition VARCHAR(50),
     access VARCHAR(50),
     danger_level VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE categories (
@@ -54,3 +101,6 @@ CREATE TABLE place_tags (
 CREATE INDEX places_location_idx
 ON places
 USING GIST(location);
+
+CREATE INDEX places_map_id_idx
+ON places(map_id);

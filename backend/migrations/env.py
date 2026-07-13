@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from app.categories.models import Category  # noqa: F401
+from app.countries.models import Country  # noqa: F401
 from app.database import Base
 from app.photos.models import Photo  # noqa: F401
+from app.maps.models import PoiMap  # noqa: F401
 from app.places.models import Place  # noqa: F401
 from app.tags.models import Tag  # noqa: F401
 

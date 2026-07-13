@@ -1,0 +1,1 @@
+"""POI map feature."""
