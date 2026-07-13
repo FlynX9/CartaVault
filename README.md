@@ -87,14 +87,14 @@ Vite affiche l'URL locale, généralement <http://localhost:5173>.
 
 Le backend couvre la gestion des POI, catégories, tags et photos. Le frontend
 affiche la carte, les marqueurs visibles, une fiche détaillée et les photos.
-Il reste volontairement en lecture seule : l'édition n'est pas encore
-développée.
+Il permet aussi de créer, modifier et supprimer un POI, avec sélection de la
+position sur carte et gestion de ses catégories et tags.
 
 ## Feuille de route
 
 Ces éléments sont envisagés et ne sont pas encore disponibles :
 
-- formulaires de gestion dans le frontend ;
+- gestion autonome des catégories et tags dans le frontend ;
 - clustering des marqueurs ;
 - import KML/KMZ ;
 - export KMZ ;

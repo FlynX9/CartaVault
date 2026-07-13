@@ -54,8 +54,8 @@ python -m uvicorn app.main:app --reload
 - contrôle de santé : <http://127.0.0.1:8000/>
 
 Le middleware CORS autorise par défaut les deux origines Vite locales. Il
-n'autorise pas les credentials et limite les méthodes cross-origin à `GET`,
-ce qui correspond aux besoins de la première carte en lecture seule.
+n'autorise pas les credentials et limite explicitement les méthodes
+cross-origin à `GET`, `POST`, `PATCH`, `DELETE` et `OPTIONS`.
 
 ## Aperçu des endpoints
 
@@ -154,7 +154,7 @@ backend/
 
 ## Limitations actuelles
 
-- le frontend cartographique est limité à la consultation des marqueurs ;
+- la gestion des catégories et tags reste disponible via l'API uniquement ;
 - aucune authentification n'est présente ;
 - la baseline Alembic ne recrée pas seule une base vide ;
 - le stockage photo local n'est pas adapté tel quel à plusieurs instances.
