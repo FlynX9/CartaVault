@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import type { MapPlace } from '../../types/place'
 
 interface PlacePreviewProps {
@@ -57,10 +59,13 @@ export function PlacePreview({ place, onClose }: PlacePreviewProps) {
         )}
       </section>
 
-      <button className="details-button" type="button" disabled>
+      <Link
+        className="details-button"
+        to={`/places/${place.id}`}
+        state={{ fromMap: true }}
+      >
         Voir la fiche
-      </button>
-      <p className="preview-note">La fiche complète sera ajoutée prochainement.</p>
+      </Link>
     </article>
   )
 }

@@ -2,10 +2,11 @@ import { useCallback, useEffect } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import { useMap, useMapEvents } from 'react-leaflet'
 
-import type { MapBounds } from '../../types/place'
+import type { MapBounds, MapView } from '../../types/place'
 
 interface MapBoundsWatcherProps {
   onBoundsChange: (bounds: MapBounds) => void
+  onViewChange: (view: MapView) => void
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -33,6 +34,7 @@ function readValidBounds(map: LeafletMap): MapBounds | null {
 
 export function MapBoundsWatcher({
   onBoundsChange,
+  onViewChange,
 }: MapBoundsWatcherProps) {
   const map = useMap()
 
@@ -43,8 +45,14 @@ export function MapBoundsWatcher({
       if (bounds !== null) {
         onBoundsChange(bounds)
       }
+
+      const center = sourceMap.getCenter()
+      onViewChange({
+        center: [center.lat, center.lng],
+        zoom: sourceMap.getZoom(),
+      })
     },
-    [onBoundsChange],
+    [onBoundsChange, onViewChange],
   )
 
   useEffect(() => {

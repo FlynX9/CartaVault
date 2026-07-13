@@ -1,19 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
+import { Route, Routes, useLocation } from 'react-router-dom'
 
 import { getMapPlaces } from './api/places'
-import { PoiMap } from './components/map/PoiMap'
-import { PlacePreview } from './components/places/PlacePreview'
-import type { MapBounds, MapPlace } from './types/place'
+import { MapPage } from './pages/MapPage'
+import { PlaceDetailsPage } from './pages/PlaceDetailsPage'
+import type { MapBounds, MapPlace, MapView } from './types/place'
 
 const REQUEST_DEBOUNCE_MS = 350
 const MAP_MARKER_LIMIT = 1000
+const INITIAL_MAP_VIEW: MapView = {
+  center: [48.17, 6.45],
+  zoom: 9,
+}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
 function App() {
+  const location = useLocation()
+  const isMapRoute = location.pathname === '/'
   const [bounds, setBounds] = useState<MapBounds | null>(null)
+  const [mapView, setMapView] = useState<MapView>(INITIAL_MAP_VIEW)
   const [places, setPlaces] = useState<MapPlace[]>([])
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -21,7 +29,7 @@ function App() {
   const requestSequence = useRef(0)
 
   useEffect(() => {
-    if (bounds === null) {
+    if (!isMapRoute || bounds === null) {
       return
     }
 
@@ -76,50 +84,49 @@ function App() {
       window.clearTimeout(timeoutId)
       controller.abort()
     }
-  }, [bounds])
+  }, [bounds, isMapRoute])
 
   return (
     <main className="app-shell">
       <header className="app-header">
         <div>
-          <p className="app-eyebrow">Carte des points d'intérêt</p>
+          <p className="app-eyebrow">
+            {isMapRoute ? "Carte des points d'intérêt" : "Fiche du point d'intérêt"}
+          </p>
           <h1>POI Manager</h1>
         </div>
-        <div className="marker-count" aria-live="polite">
-          <strong>{places.length}</strong>
-          <span>marqueur{places.length > 1 ? 's' : ''} visible{places.length > 1 ? 's' : ''}</span>
-        </div>
+        {isMapRoute ? (
+          <div className="marker-count" aria-live="polite">
+            <strong>{places.length}</strong>
+            <span>
+              marqueur{places.length > 1 ? 's' : ''} visible
+              {places.length > 1 ? 's' : ''}
+            </span>
+          </div>
+        ) : (
+          <span className="read-only-label">Lecture seule</span>
+        )}
       </header>
 
-      <section className="map-layout" aria-label="Carte des points d'intérêt">
-        <PoiMap
-          places={places}
-          selectedPlaceId={selectedPlace?.id ?? null}
-          onBoundsChange={setBounds}
-          onPlaceSelect={setSelectedPlace}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <MapPage
+              places={places}
+              selectedPlace={selectedPlace}
+              initialView={mapView}
+              isLoading={isLoading}
+              errorMessage={errorMessage}
+              onBoundsChange={setBounds}
+              onViewChange={setMapView}
+              onPlaceSelect={setSelectedPlace}
+              onPlaceClose={() => setSelectedPlace(null)}
+            />
+          }
         />
-
-        {isLoading && (
-          <div className="status-banner loading-status" role="status">
-            <span className="loading-dot" aria-hidden="true" />
-            Chargement des POI…
-          </div>
-        )}
-
-        {errorMessage !== null && (
-          <div className="status-banner error-status" role="alert">
-            <strong>Impossible de charger la carte.</strong>
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {selectedPlace !== null && (
-          <PlacePreview
-            place={selectedPlace}
-            onClose={() => setSelectedPlace(null)}
-          />
-        )}
-      </section>
+        <Route path="/places/:placeId" element={<PlaceDetailsPage />} />
+      </Routes>
     </main>
   )
 }

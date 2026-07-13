@@ -1,5 +1,15 @@
 import { API_BASE_URL } from '../config'
 
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 function describeApiError(payload: unknown): string | null {
   if (typeof payload !== 'object' || payload === null || !('detail' in payload)) {
     return null
@@ -60,7 +70,7 @@ export async function getJson(
   )
 
   if (!response.ok) {
-    throw new Error(await getResponseError(response))
+    throw new ApiError(response.status, await getResponseError(response))
   }
 
   return response.json()

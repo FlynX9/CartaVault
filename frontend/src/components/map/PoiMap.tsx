@@ -4,10 +4,9 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { MapContainer, Marker, TileLayer } from 'react-leaflet'
 
-import type { MapBounds, MapPlace } from '../../types/place'
+import type { MapBounds, MapPlace, MapView } from '../../types/place'
 import { MapBoundsWatcher } from './MapBoundsWatcher'
 
-const INITIAL_POSITION: [number, number] = [48.17, 6.45]
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 
 const defaultMarkerIcon = new Icon({
@@ -32,20 +31,24 @@ const selectedMarkerIcon = new Icon({
 interface PoiMapProps {
   places: MapPlace[]
   selectedPlaceId: string | null
+  initialView: MapView
   onBoundsChange: (bounds: MapBounds) => void
+  onViewChange: (view: MapView) => void
   onPlaceSelect: (place: MapPlace) => void
 }
 
 export function PoiMap({
   places,
   selectedPlaceId,
+  initialView,
   onBoundsChange,
+  onViewChange,
   onPlaceSelect,
 }: PoiMapProps) {
   return (
     <MapContainer
-      center={INITIAL_POSITION}
-      zoom={9}
+      center={initialView.center}
+      zoom={initialView.zoom}
       minZoom={2}
       maxBounds={WORLD_BOUNDS}
       maxBoundsViscosity={1}
@@ -56,7 +59,10 @@ export function PoiMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <MapBoundsWatcher onBoundsChange={onBoundsChange} />
+      <MapBoundsWatcher
+        onBoundsChange={onBoundsChange}
+        onViewChange={onViewChange}
+      />
 
       {places.map((place) => (
         <Marker
