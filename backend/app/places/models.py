@@ -56,11 +56,6 @@ class Place(Base):
         nullable=True,
     )
 
-    address: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
-    )
-
     country: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
@@ -93,11 +88,6 @@ class Place(Base):
 
     danger_level: Mapped[str | None] = mapped_column(
         String(50),
-        nullable=True,
-    )
-
-    owner: Mapped[str | None] = mapped_column(
-        String(255),
         nullable=True,
     )
 

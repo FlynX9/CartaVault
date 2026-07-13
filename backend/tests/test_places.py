@@ -15,6 +15,7 @@ def test_place_crud_filters_and_map_bounds(
         "name": place_name,
         "latitude": 48.8566,
         "longitude": 2.3522,
+        "description": "Integration search description",
         "country": "France",
         "region": "Île-de-France",
     }
@@ -23,12 +24,34 @@ def test_place_crud_filters_and_map_bounds(
     assert created.status_code == 201
     place = created.json()
     place_id = place["id"]
+    assert "address" not in place
+    assert "owner" not in place
     assert place["latitude"] == pytest.approx(payload["latitude"])
     assert place["longitude"] == pytest.approx(payload["longitude"])
 
     read = integration_client.get(f"/places/{place_id}")
     assert read.status_code == 200
     assert read.json()["name"] == place_name
+    assert "address" not in read.json()
+    assert "owner" not in read.json()
+
+    updated = integration_client.patch(
+        f"/places/{place_id}",
+        json={"condition": "Restored"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["condition"] == "Restored"
+    assert "address" not in updated.json()
+    assert "owner" not in updated.json()
+
+    searched = integration_client.get(
+        "/places",
+        params={"q": "search description"},
+    )
+    assert searched.status_code == 200
+    assert place_id in {item["id"] for item in searched.json()}
+    assert all("address" not in item for item in searched.json())
+    assert all("owner" not in item for item in searched.json())
 
     inside_map = integration_client.get(
         "/places/map",
@@ -41,6 +64,8 @@ def test_place_crud_filters_and_map_bounds(
     )
     assert inside_map.status_code == 200
     assert place_id in {item["id"] for item in inside_map.json()}
+    assert all("address" not in item for item in inside_map.json())
+    assert all("owner" not in item for item in inside_map.json())
 
     outside_map = integration_client.get(
         "/places/map",

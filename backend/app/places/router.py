@@ -56,7 +56,6 @@ def place_to_read(
         id=place.id,
         name=place.name,
         description=place.description,
-        address=place.address,
         country=place.country,
         region=place.region,
         construction_date=place.construction_date,
@@ -64,7 +63,6 @@ def place_to_read(
         condition=place.condition,
         access=place.access,
         danger_level=place.danger_level,
-        owner=place.owner,
         longitude=longitude,
         latitude=latitude,
         categories=[
@@ -118,7 +116,7 @@ def get_places(
         min_length=1,
         max_length=100,
         description=(
-            "Case-insensitive search in the name, description and address"
+            "Case-insensitive search in the name and description"
         ),
     ),
     country: str | None = Query(
@@ -166,7 +164,6 @@ def get_places(
             or_(
                 Place.name.ilike(search_pattern),
                 Place.description.ilike(search_pattern),
-                Place.address.ilike(search_pattern),
             )
         )
 
@@ -280,7 +277,6 @@ def create_place(
         name=place_data.name,
         description=place_data.description,
         location=location,
-        address=place_data.address,
         country=place_data.country,
         region=place_data.region,
         construction_date=place_data.construction_date,
@@ -288,7 +284,6 @@ def create_place(
         condition=place_data.condition,
         access=place_data.access,
         danger_level=place_data.danger_level,
-        owner=place_data.owner,
     )
 
     try:

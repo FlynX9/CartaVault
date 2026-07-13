@@ -28,7 +28,6 @@ class PlaceCreate(BaseModel):
         le=180,
     )
 
-    address: str | None = None
     country: str | None = Field(default=None, max_length=100)
     region: str | None = Field(default=None, max_length=100)
     construction_date: str | None = Field(default=None, max_length=100)
@@ -36,7 +35,6 @@ class PlaceCreate(BaseModel):
     condition: str | None = Field(default=None, max_length=50)
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
-    owner: str | None = Field(default=None, max_length=255)
 
 
 class PlaceUpdate(BaseModel):
@@ -62,7 +60,6 @@ class PlaceUpdate(BaseModel):
         le=180,
     )
 
-    address: str | None = None
     country: str | None = Field(default=None, max_length=100)
     region: str | None = Field(default=None, max_length=100)
     construction_date: str | None = Field(default=None, max_length=100)
@@ -70,7 +67,6 @@ class PlaceUpdate(BaseModel):
     condition: str | None = Field(default=None, max_length=50)
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
-    owner: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
     def validate_partial_update(self) -> Self:
@@ -105,7 +101,6 @@ class PlaceRead(BaseModel):
     id: UUID
     name: str
     description: str | None
-    address: str | None
     country: str | None
     region: str | None
     construction_date: str | None
@@ -113,7 +108,6 @@ class PlaceRead(BaseModel):
     condition: str | None
     access: str | None
     danger_level: str | None
-    owner: str | None
     longitude: float | None
     latitude: float | None
     categories: list[CategoryRead]

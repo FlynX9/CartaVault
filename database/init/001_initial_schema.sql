@@ -6,7 +6,6 @@ CREATE TABLE places (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     location GEOMETRY(Point,4326),
-    address TEXT,
     country VARCHAR(100),
     region VARCHAR(100),
     construction_date VARCHAR(100),
@@ -14,7 +13,6 @@ CREATE TABLE places (
     condition VARCHAR(50),
     access VARCHAR(50),
     danger_level VARCHAR(50),
-    owner VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
