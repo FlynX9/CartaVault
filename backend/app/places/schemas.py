@@ -7,11 +7,13 @@ from pydantic import BaseModel, Field, model_validator
 from app.categories.schemas import CategoryRead
 from app.maps.schemas import MapSummary
 from app.tags.schemas import TagRead
+from app.statuses.schemas import PlaceStatusSummary
 
 
 class PlaceCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     map_id: UUID
+    status_id: UUID | None = None
     description: str | None = None
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
@@ -26,6 +28,7 @@ class PlaceCreate(BaseModel):
 class PlaceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     map_id: UUID | None = None
+    status_id: UUID | None = None
     description: str | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -43,6 +46,8 @@ class PlaceUpdate(BaseModel):
             raise ValueError("The name cannot be null")
         if "map_id" in supplied and self.map_id is None:
             raise ValueError("The map_id cannot be null")
+        if "status_id" in supplied and self.status_id is None:
+            raise ValueError("The status_id cannot be null")
         latitude_supplied = "latitude" in supplied
         longitude_supplied = "longitude" in supplied
         if latitude_supplied != longitude_supplied:
@@ -57,6 +62,7 @@ class PlaceRead(BaseModel):
     name: str
     map_id: UUID
     map: MapSummary
+    status: PlaceStatusSummary
     description: str | None
     region: str | None
     construction_date: str | None

@@ -8,6 +8,7 @@ import type {
   PlaceTag,
 } from '../../types/place'
 import type { PoiMap } from '../../types/map'
+import type { PlaceStatusSummary } from '../../types/status'
 import { LocationPicker } from '../map/LocationPicker'
 
 interface PlaceFormProps {
@@ -15,6 +16,7 @@ interface PlaceFormProps {
   categories: PlaceCategory[]
   tags: PlaceTag[]
   maps: PoiMap[]
+  statuses?: PlaceStatusSummary[]
   allowMapChange: boolean
   submitLabel: string
   isSubmitting: boolean
@@ -44,6 +46,7 @@ export function PlaceForm({
   categories,
   tags,
   maps,
+  statuses = [],
   allowMapChange,
   submitLabel,
   isSubmitting,
@@ -77,6 +80,7 @@ export function PlaceForm({
 
   const latitude = values.latitude.trim() === '' ? null : Number(values.latitude)
   const longitude = values.longitude.trim() === '' ? null : Number(values.longitude)
+  const selectedStatus = statuses.find((item) => item.id === values.statusId)
 
   return (
     <form className="place-form" onSubmit={handleSubmit} noValidate>
@@ -92,6 +96,15 @@ export function PlaceForm({
               {maps.map((poiMap) => <option key={poiMap.id} value={poiMap.id}>{poiMap.name} — {poiMap.country.name}</option>)}
             </select>
             {errors.mapId && <small className="field-error">{errors.mapId}</small>}
+          </label>
+          <label className="form-field">
+            <span>Statut de suivi *</span>
+            <select value={values.statusId} onChange={(event) => setValue('statusId', event.target.value)} aria-invalid={Boolean(errors.statusId)}>
+              <option value="">Choisir un statut</option>
+              {statuses.map((placeStatus) => <option key={placeStatus.id} value={placeStatus.id}>{placeStatus.name}{placeStatus.is_active ? '' : ' (inactif)'}</option>)}
+            </select>
+            {selectedStatus && <small className="place-status-label"><i className="status-dot" style={{ backgroundColor: selectedStatus.color }} />{selectedStatus.name}</small>}
+            {errors.statusId && <small className="field-error">{errors.statusId}</small>}
           </label>
           {GENERAL_FIELDS.map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>

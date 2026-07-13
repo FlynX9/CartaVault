@@ -10,6 +10,8 @@ from app.places.filters import MapBounds, get_required_map_bounds
 from app.places.map_schemas import MapCategoryRead, MapTagRead, PlaceMapRead
 from app.places.models import Place
 from app.tags.models import Tag
+from app.statuses.models import PlaceStatus
+from app.statuses.schemas import PlaceStatusSummary
 
 
 router = APIRouter(
@@ -34,6 +36,10 @@ def get_map_places(
     tag_id: UUID | None = Query(
         default=None,
         description="Filter map markers by tag UUID",
+    ),
+    status_id: UUID | None = Query(
+        default=None,
+        description="Filter map markers by tracking status UUID",
     ),
     limit: int = Query(
         default=1000,
@@ -74,6 +80,13 @@ def get_map_places(
                 Tag.id,
                 Tag.name,
             ),
+            selectinload(Place.status).load_only(
+                PlaceStatus.id,
+                PlaceStatus.name,
+                PlaceStatus.slug,
+                PlaceStatus.color,
+                PlaceStatus.is_active,
+            ),
         )
         .where(
             Place.location.is_not(None),
@@ -106,6 +119,9 @@ def get_map_places(
             )
         )
 
+    if status_id is not None:
+        statement = statement.where(Place.status_id == status_id)
+
     rows = database_session.execute(statement).all()
 
     return [
@@ -115,6 +131,13 @@ def get_map_places(
             name=place.name,
             longitude=longitude,
             latitude=latitude,
+            status=PlaceStatusSummary(
+                id=place.status.id,
+                name=place.status.name,
+                slug=place.status.slug,
+                color=place.status.color,
+                is_active=place.status.is_active,
+            ),
             categories=[
                 MapCategoryRead(
                     id=category.id,

@@ -27,6 +27,7 @@ export function PlaceMapPopup({ placeId, onEdit, onDeleted, onClose }: Props) {
   return <article className="place-map-popup" aria-labelledby={`popup-title-${place.id}`}>
     <PlacePopupGallery placeName={place.name} photos={photos} isLoading={photosLoading} error={photosError} />
     <div className="popup-heading"><div><p>{place.map.name} · {place.map.country.name}</p><h2 id={`popup-title-${place.id}`} ref={titleRef} tabIndex={-1}>{place.name}</h2></div><PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} /></div>
+    <p className="place-status-label"><span className="status-dot" style={{ backgroundColor: place.status.color }} />Statut : {place.status.name}</p>
     {detailsError && <p className="inline-error" role="alert">{detailsError}</p>}
     {place.description && <p className="popup-description">{place.description}</p>}
     {(place.categories.length > 0 || place.tags.length > 0) && <ul className="popup-chips">{place.categories.map((item) => <li key={item.id}>{item.name}</li>)}{place.tags.map((item) => <li className="tag" key={item.id}>{item.name}</li>)}</ul>}

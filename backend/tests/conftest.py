@@ -14,6 +14,7 @@ from app.countries.catalog import load_country_catalog
 from app.countries.models import Country
 from app.maps.models import PoiMap
 from app.main import app
+from app.statuses.models import PlaceStatus
 
 
 MISSING_TEST_DATABASE_REASON = (
@@ -112,6 +113,21 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
                 connection.execute(
                     Country.__table__.insert(),
                     [dict(country) for country in load_country_catalog()],
+                )
+            existing_statuses = connection.scalar(
+                text("SELECT count(*) FROM place_statuses")
+            )
+            if existing_statuses == 0:
+                connection.execute(
+                    PlaceStatus.__table__.insert(),
+                    [{
+                        "name": "À faire",
+                        "slug": "a-faire",
+                        "color": "#2563EB",
+                        "sort_order": 10,
+                        "is_default": True,
+                        "is_active": True,
+                    }],
                 )
         yield engine
     finally:

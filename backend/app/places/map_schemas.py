@@ -2,6 +2,8 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.statuses.schemas import PlaceStatusSummary
+
 
 class MapCategoryRead(BaseModel):
     """Minimal category representation used by map markers."""
@@ -25,5 +27,6 @@ class PlaceMapRead(BaseModel):
     name: str
     longitude: float
     latitude: float
+    status: PlaceStatusSummary
     categories: list[MapCategoryRead]
     tags: list[MapTagRead]

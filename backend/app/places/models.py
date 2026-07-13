@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.photos.models import Photo
     from app.maps.models import PoiMap
     from app.tags.models import Tag
+    from app.statuses.models import PlaceStatus
 
 
 class Place(Base):
@@ -26,6 +27,7 @@ class Place(Base):
 
     __table_args__ = (
         Index("places_map_id_idx", "map_id"),
+        Index("places_status_id_idx", "status_id"),
         Index(
             "places_location_idx",
             "location",
@@ -113,6 +115,12 @@ class Place(Base):
         order_by="Category.name",
     )
 
+    status_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("place_statuses.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
     tags: Mapped[list["Tag"]] = relationship(
         secondary=place_tags_table,
         back_populates="places",
@@ -126,5 +134,9 @@ class Place(Base):
     )
 
     map: Mapped["PoiMap"] = relationship(
+        back_populates="places",
+    )
+
+    status: Mapped["PlaceStatus"] = relationship(
         back_populates="places",
     )

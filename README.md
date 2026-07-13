@@ -1,5 +1,9 @@
 # POI Manager
 
+## Statuts de suivi configurables
+
+Chaque POI possède un statut de suivi administrable (`À faire`, `Fait`, etc.). Sa couleur hexadécimale pilote directement le marqueur et le filtre `status` de l’URL est appliqué à la carte comme à la liste. Le statut de suivi est distinct de `condition`, qui décrit l’état physique du lieu. Les pictogrammes par catégorie restent hors périmètre.
+
 ## Pays, cartes et POI
 
 Le domaine suit la relation normalisée `countries → poi_maps → places`. Le

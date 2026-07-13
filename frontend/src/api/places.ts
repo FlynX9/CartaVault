@@ -12,6 +12,7 @@ import type {
   PlaceMapSummary,
 } from '../types/place'
 import { getJson, sendJson, sendWithoutResponse } from './client'
+import { parseStatusSummary } from './statuses'
 import {
   isRecord,
   readArray,
@@ -82,6 +83,7 @@ function parseMapPlace(value: unknown): MapPlace {
     name: readString(value, 'name', context),
     longitude: readNumber(value, 'longitude', context),
     latitude: readNumber(value, 'latitude', context),
+    status: parseStatusSummary(value.status),
     categories: readArray(value, 'categories', context).map((category) =>
       parseNamedEntity(category, 'la catégorie'),
     ),
@@ -111,6 +113,7 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     name: readString(payload, 'name', context),
     map_id: readUuid(payload, 'map_id', context),
     map: parsePlaceMap(payload.map),
+    status: parseStatusSummary(payload.status),
     description: readNullableString(payload, 'description', context),
     region: readNullableString(payload, 'region', context),
     construction_date: readNullableString(
@@ -168,6 +171,8 @@ export async function getMapPlaces(
     searchParams.set('tag_id', query.tagId)
   }
 
+  if (query.statusId !== undefined) searchParams.set('status_id', query.statusId)
+
   if (query.limit !== undefined) {
     searchParams.set('limit', String(query.limit))
   }
@@ -185,6 +190,7 @@ export async function getPlaces(
 
   if (query.mapId !== undefined) searchParams.set('map_id', query.mapId)
   if (query.q !== undefined) searchParams.set('q', query.q)
+  if (query.statusId !== undefined) searchParams.set('status_id', query.statusId)
   if (query.limit !== undefined) searchParams.set('limit', String(query.limit))
   if (query.offset !== undefined) searchParams.set('offset', String(query.offset))
 

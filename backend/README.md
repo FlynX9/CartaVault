@@ -1,5 +1,11 @@
 # Backend de POI Manager
 
+## Statuts des POI
+
+La feature `app/statuses` expose le CRUD `/statuses`. Un seul statut actif est défini par défaut et il est appliqué lorsque `status_id` est omis à la création d’un POI. Un statut inactif reste lisible sur les anciens POI mais ne peut plus être sélectionné. La suppression du défaut ou d’un statut utilisé renvoie `409`.
+
+`condition` reste l’état physique du site. `status_id` représente exclusivement son suivi. `GET /places` et `GET /places/map` acceptent le filtre `status_id`.
+
 ## Modèle pays → cartes → POI
 
 - `GET /countries` expose le catalogue mondial avec recherche par nom ou code.

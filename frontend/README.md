@@ -1,5 +1,11 @@
 # Frontend cartographique de POI Manager
 
+## Statuts et marqueurs
+
+Les statuts sont gérés dans `/admin/statuses` (nom, couleur `#RRGGBB`, ordre, activité et défaut). Le formulaire POI ne propose que les statuts actifs, tout en conservant le statut inactif courant en édition. Le générateur central de marqueurs utilise `place.status.color`; la sélection ajoute un contour sans remplacer cette couleur métier. Le filtre visible est conservé dans le paramètre d’URL `status`.
+
+Les futures icônes liées aux catégories ne sont pas encore implémentées.
+
 ## Cartes normalisées
 
 « Créer une carte » recherche dans le catalogue mondial et propose le nom du

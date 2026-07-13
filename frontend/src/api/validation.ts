@@ -80,6 +80,18 @@ export function readNumber(
   return value
 }
 
+export function readBoolean(
+  record: Record<string, unknown>,
+  field: string,
+  context: string,
+): boolean {
+  const value = record[field]
+  if (typeof value !== 'boolean') {
+    throw new Error(`${context} contient un booléen « ${field} » invalide.`)
+  }
+  return value
+}
+
 export function readNullableNumber(
   record: Record<string, unknown>,
   field: string,

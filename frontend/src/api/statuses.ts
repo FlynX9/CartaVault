@@ -1,0 +1,50 @@
+import type { PlaceStatus, PlaceStatusCreatePayload, PlaceStatusSummary, PlaceStatusUpdatePayload } from '../types/status'
+import { getJson, sendJson, sendWithoutResponse } from './client'
+import { isRecord, readBoolean, readDateTime, readNumber, readString, readUuid } from './validation'
+
+export function parseStatusSummary(value: unknown): PlaceStatusSummary {
+  const context = 'Le statut de suivi renvoyé par l’API'
+  if (!isRecord(value)) throw new Error(`${context} est invalide.`)
+  const color = readString(value, 'color', context)
+  if (!/^#[0-9A-F]{6}$/.test(color)) throw new Error(`${context} contient une couleur invalide.`)
+  return {
+    id: readUuid(value, 'id', context),
+    name: readString(value, 'name', context),
+    slug: readString(value, 'slug', context),
+    color,
+    is_active: readBoolean(value, 'is_active', context),
+  }
+}
+
+export function parseStatus(value: unknown): PlaceStatus {
+  if (!isRecord(value)) throw new Error('Le statut renvoyé par l’API est invalide.')
+  return {
+    ...parseStatusSummary(value),
+    sort_order: readNumber(value, 'sort_order', 'Le statut'),
+    is_default: readBoolean(value, 'is_default', 'Le statut'),
+    created_at: readDateTime(value, 'created_at', 'Le statut'),
+    updated_at: readDateTime(value, 'updated_at', 'Le statut'),
+    places_count: readNumber(value, 'places_count', 'Le statut'),
+  }
+}
+
+export async function getStatuses(signal?: AbortSignal, options: { q?: string; activeOnly?: boolean } = {}): Promise<PlaceStatus[]> {
+  const params = new URLSearchParams()
+  if (options.q?.trim()) params.set('q', options.q.trim())
+  if (options.activeOnly) params.set('active_only', 'true')
+  const payload = await getJson('/statuses', params, signal)
+  if (!Array.isArray(payload)) throw new Error('La liste des statuts est invalide.')
+  return payload.map(parseStatus)
+}
+
+export async function createStatus(data: PlaceStatusCreatePayload): Promise<PlaceStatus> {
+  return parseStatus(await sendJson('/statuses', 'POST', data))
+}
+
+export async function updateStatus(id: string, data: PlaceStatusUpdatePayload): Promise<PlaceStatus> {
+  return parseStatus(await sendJson(`/statuses/${encodeURIComponent(id)}`, 'PATCH', data))
+}
+
+export async function deleteStatus(id: string): Promise<void> {
+  await sendWithoutResponse(`/statuses/${encodeURIComponent(id)}`, 'DELETE')
+}

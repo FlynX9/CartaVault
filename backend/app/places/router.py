@@ -24,6 +24,8 @@ from app.places.models import Place
 from app.places.schemas import PlaceCreate, PlaceRead, PlaceUpdate
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
+from app.statuses.models import PlaceStatus
+from app.statuses.schemas import PlaceStatusSummary
 
 
 router = APIRouter(
@@ -43,6 +45,7 @@ def build_place_read_statement():
         )
         .options(
             joinedload(Place.map).joinedload(PoiMap.country),
+            joinedload(Place.status),
             selectinload(Place.categories),
             selectinload(Place.tags),
         )
@@ -69,6 +72,13 @@ def place_to_read(
                 iso_alpha3=place.map.country.iso_alpha3,
                 name=place.map.country.name,
             ),
+        ),
+        status=PlaceStatusSummary(
+            id=place.status.id,
+            name=place.status.name,
+            slug=place.status.slug,
+            color=place.status.color,
+            is_active=place.status.is_active,
         ),
         description=place.description,
         region=place.region,
@@ -151,6 +161,10 @@ def get_places(
         default=None,
         description="Filter places by tag UUID",
     ),
+    status_id: UUID | None = Query(
+        default=None,
+        description="Filter places by tracking status UUID",
+    ),
     limit: int = Query(
         default=50,
         ge=1,
@@ -200,6 +214,9 @@ def get_places(
                 Tag.id == tag_id
             )
         )
+
+    if status_id is not None:
+        statement = statement.where(Place.status_id == status_id)
 
     if map_bounds is not None:
         visible_area = func.ST_MakeEnvelope(
@@ -284,6 +301,22 @@ def create_place(
             detail=f"Map with id {place_data.map_id} was not found",
         )
 
+    if place_data.status_id is None:
+        place_status = database_session.scalar(
+            select(PlaceStatus).where(PlaceStatus.is_default.is_(True))
+        )
+        if place_status is None:
+            raise HTTPException(status_code=409, detail="No default place status is configured")
+    else:
+        place_status = database_session.get(PlaceStatus, place_data.status_id)
+        if place_status is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Status with id {place_data.status_id} was not found",
+            )
+        if not place_status.is_active:
+            raise HTTPException(status_code=409, detail="An inactive status cannot be selected")
+
     location = WKTElement(
         f"POINT({place_data.longitude} {place_data.latitude})",
         srid=4326,
@@ -292,6 +325,7 @@ def create_place(
     place = Place(
         name=place_data.name,
         map_id=place_data.map_id,
+        status_id=place_status.id,
         description=place_data.description,
         location=location,
         region=place_data.region,
@@ -351,6 +385,17 @@ def update_place(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Map with id {requested_map_id} was not found",
         )
+
+    requested_status_id = supplied_data.get("status_id")
+    if requested_status_id is not None:
+        requested_status = database_session.get(PlaceStatus, requested_status_id)
+        if requested_status is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Status with id {requested_status_id} was not found",
+            )
+        if not requested_status.is_active:
+            raise HTTPException(status_code=409, detail="An inactive status cannot be selected")
 
     latitude = supplied_data.pop("latitude", None)
     longitude = supplied_data.pop("longitude", None)

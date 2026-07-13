@@ -11,6 +11,7 @@ from app.photos.router import router as photos_router
 from app.places.map_router import router as places_map_router
 from app.places.router import router as places_router
 from app.tags.router import router as tags_router
+from app.statuses.router import router as statuses_router
 
 
 DEFAULT_CORS_ALLOWED_ORIGINS = (
@@ -56,6 +57,7 @@ app.include_router(categories_router)
 app.include_router(countries_router)
 app.include_router(maps_router)
 app.include_router(tags_router)
+app.include_router(statuses_router)
 app.include_router(photos_router)
 
 

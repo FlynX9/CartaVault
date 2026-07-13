@@ -1,0 +1,1 @@
+"""Configurable place tracking statuses."""

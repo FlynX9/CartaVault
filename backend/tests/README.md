@@ -1,5 +1,11 @@
 # Tests du backend POI Manager
 
+## Tests des statuts et migrations
+
+Les tests unitaires couvrent la normalisation du slug et des couleurs. Les scénarios d’intégration couvrent le CRUD, le défaut unique, les conflits de suppression, l’affectation aux POI et le filtre cartographique. Ils nécessitent une `TEST_DATABASE_URL` dédiée.
+
+Le cycle Alembic `upgrade → downgrade → upgrade` doit être exécuté uniquement sur `poi_manager_test` : le downgrade supprime `places.status_id` et perd donc les associations de statut. Ne jamais lancer ce cycle sur la base de développement.
+
 ## Scénarios pays et cartes
 
 Les intégrations couvrent le catalogue, le CRUD et les conflits des cartes,

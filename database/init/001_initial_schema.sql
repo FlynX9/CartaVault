@@ -15,6 +15,7 @@ CREATE TABLE countries (
     max_longitude DOUBLE PRECISION,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT place_statuses_name_nonempty CHECK (btrim(name) <> ''),
     CONSTRAINT countries_iso_alpha2_uppercase CHECK (iso_alpha2 = upper(iso_alpha2)),
     CONSTRAINT countries_iso_alpha3_uppercase CHECK (iso_alpha3 = upper(iso_alpha3)),
     CONSTRAINT countries_center_latitude_range CHECK (center_latitude BETWEEN -90 AND 90),
@@ -48,12 +49,39 @@ CREATE TABLE poi_maps (
     CONSTRAINT poi_maps_default_zoom_range CHECK (default_zoom IS NULL OR default_zoom BETWEEN 1 AND 18)
 );
 
+CREATE TABLE place_statuses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    color VARCHAR(7) NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT place_statuses_sort_order_nonnegative CHECK (sort_order >= 0),
+    CONSTRAINT place_statuses_color_format CHECK (color ~ '^#[0-9A-F]{6}$')
+);
+
+CREATE UNIQUE INDEX place_statuses_one_default_idx
+ON place_statuses(is_default)
+WHERE is_default;
+
+INSERT INTO place_statuses (id, name, slug, color, sort_order, is_default)
+VALUES
+    ('10000000-0000-4000-8000-000000000001', 'À faire', 'a-faire', '#2563EB', 10, TRUE),
+    ('10000000-0000-4000-8000-000000000002', 'Fait', 'fait', '#16A34A', 20, FALSE),
+    ('10000000-0000-4000-8000-000000000003', 'À vérifier', 'a-verifier', '#D97706', 30, FALSE),
+    ('10000000-0000-4000-8000-000000000004', 'À revisiter', 'a-revisiter', '#7C3AED', 40, FALSE),
+    ('10000000-0000-4000-8000-000000000005', 'Inaccessible', 'inaccessible', '#DC2626', 50, FALSE);
+
 CREATE TABLE places (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     location GEOMETRY(Point,4326),
     map_id UUID NOT NULL REFERENCES poi_maps(id) ON DELETE RESTRICT,
+    status_id UUID NOT NULL REFERENCES place_statuses(id) ON DELETE RESTRICT,
     region VARCHAR(100),
     construction_date VARCHAR(100),
     abandonment_date VARCHAR(100),
@@ -104,3 +132,6 @@ USING GIST(location);
 
 CREATE INDEX places_map_id_idx
 ON places(map_id);
+
+CREATE INDEX places_status_id_idx
+ON places(status_id);

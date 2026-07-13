@@ -6,7 +6,7 @@ import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/
 import { MapBoundsWatcher } from './MapBoundsWatcher'
 import { MapFocusController } from './MapFocusController'
 import { MapResizeWatcher } from './MapResizeWatcher'
-import { defaultMarkerIcon, selectedMarkerIcon } from './markerIcons'
+import { getStatusMarkerIcon } from './markerIcons'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 
@@ -52,7 +52,7 @@ function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: 
     <Marker
       ref={markerRef}
       position={[place.latitude, place.longitude]}
-      icon={selected ? selectedMarkerIcon : defaultMarkerIcon}
+      icon={getStatusMarkerIcon(place.status.color, selected)}
       eventHandlers={{
         click: onSelect,
         popupopen: () => { popupOpenedRef.current = true },

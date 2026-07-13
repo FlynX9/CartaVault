@@ -12,6 +12,7 @@ from app.photos.models import Photo  # noqa: F401
 from app.maps.models import PoiMap  # noqa: F401
 from app.places.models import Place  # noqa: F401
 from app.tags.models import Tag  # noqa: F401
+from app.statuses.models import PlaceStatus  # noqa: F401
 
 
 load_dotenv()
