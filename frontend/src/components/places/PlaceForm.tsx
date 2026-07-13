@@ -7,12 +7,15 @@ import type {
   PlaceFormValues,
   PlaceTag,
 } from '../../types/place'
+import type { PoiMap } from '../../types/map'
 import { LocationPicker } from '../map/LocationPicker'
 
 interface PlaceFormProps {
   initialValues: PlaceFormValues
   categories: PlaceCategory[]
   tags: PlaceTag[]
+  maps: PoiMap[]
+  allowMapChange: boolean
   submitLabel: string
   isSubmitting: boolean
   serverErrors?: PlaceFormErrors
@@ -23,7 +26,6 @@ interface PlaceFormProps {
 const GENERAL_FIELDS = [
   ['name', 'Nom', 255],
   ['region', 'Région', 100],
-  ['country', 'Pays', 100],
 ] as const
 
 const PRACTICAL_FIELDS = [
@@ -41,6 +43,8 @@ export function PlaceForm({
   initialValues,
   categories,
   tags,
+  maps,
+  allowMapChange,
   submitLabel,
   isSubmitting,
   serverErrors = {},
@@ -81,6 +85,14 @@ export function PlaceForm({
       <section className="form-section">
         <h3>Informations générales</h3>
         <div className="form-grid">
+          <label className="form-field">
+            <span>Carte *</span>
+            <select value={values.mapId} disabled={!allowMapChange} onChange={(event) => setValue('mapId', event.target.value)} aria-invalid={Boolean(errors.mapId)}>
+              <option value="">Choisir une carte</option>
+              {maps.map((poiMap) => <option key={poiMap.id} value={poiMap.id}>{poiMap.name} — {poiMap.country.name}</option>)}
+            </select>
+            {errors.mapId && <small className="field-error">{errors.mapId}</small>}
+          </label>
           {GENERAL_FIELDS.map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}{field === 'name' ? ' *' : ''}</span>

@@ -9,6 +9,7 @@ import type {
   PlaceCreatePayload,
   PlaceUpdatePayload,
   PlaceTag,
+  PlaceMapSummary,
 } from '../types/place'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import {
@@ -53,6 +54,21 @@ function parsePlaceTag(value: unknown): PlaceTag {
   return parseNamedEntity(value, 'le tag')
 }
 
+function parsePlaceMap(value: unknown): PlaceMapSummary {
+  const context = 'La carte du POI'
+  if (!isRecord(value) || !isRecord(value.country)) throw new Error(`${context} est invalide.`)
+  return {
+    id: readUuid(value, 'id', context),
+    name: readString(value, 'name', context),
+    country: {
+      id: readUuid(value.country, 'id', context),
+      iso_alpha2: readString(value.country, 'iso_alpha2', context),
+      iso_alpha3: readString(value.country, 'iso_alpha3', context),
+      name: readString(value.country, 'name', context),
+    },
+  }
+}
+
 function parseMapPlace(value: unknown): MapPlace {
   const context = "La réponse cartographique de l'API"
 
@@ -62,6 +78,7 @@ function parseMapPlace(value: unknown): MapPlace {
 
   return {
     id: readUuid(value, 'id', context),
+    map_id: readUuid(value, 'map_id', context),
     name: readString(value, 'name', context),
     longitude: readNumber(value, 'longitude', context),
     latitude: readNumber(value, 'latitude', context),
@@ -92,8 +109,9 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
   return {
     id: readUuid(payload, 'id', context),
     name: readString(payload, 'name', context),
+    map_id: readUuid(payload, 'map_id', context),
+    map: parsePlaceMap(payload.map),
     description: readNullableString(payload, 'description', context),
-    country: readNullableString(payload, 'country', context),
     region: readNullableString(payload, 'region', context),
     construction_date: readNullableString(
       payload,
@@ -142,8 +160,8 @@ export async function getMapPlaces(
     searchParams.set('category_id', query.categoryId)
   }
 
-  if (query.country !== undefined) {
-    searchParams.set('country', query.country)
+  if (query.mapId !== undefined) {
+    searchParams.set('map_id', query.mapId)
   }
 
   if (query.tagId !== undefined) {
@@ -165,40 +183,12 @@ export async function getPlaces(
 ): Promise<PlaceDetails[]> {
   const searchParams = new URLSearchParams()
 
-  if (query.country !== undefined) searchParams.set('country', query.country)
+  if (query.mapId !== undefined) searchParams.set('map_id', query.mapId)
   if (query.q !== undefined) searchParams.set('q', query.q)
   if (query.limit !== undefined) searchParams.set('limit', String(query.limit))
   if (query.offset !== undefined) searchParams.set('offset', String(query.offset))
 
   return parsePlacesResponse(await getJson('/places', searchParams, signal))
-}
-
-export function extractCountries(places: PlaceDetails[]): string[] {
-  const countries = new Map<string, string>()
-
-  for (const place of places) {
-    const country = place.country?.trim()
-    if (country) countries.set(country.toLocaleLowerCase('fr'), country)
-  }
-
-  return [...countries.values()].sort((left, right) =>
-    left.localeCompare(right, 'fr', { sensitivity: 'base' }),
-  )
-}
-
-export async function getAvailableCountries(
-  signal?: AbortSignal,
-): Promise<string[]> {
-  const pageSize = 100
-  const places: PlaceDetails[] = []
-
-  for (let offset = 0; ; offset += pageSize) {
-    const page = await getPlaces({ limit: pageSize, offset }, signal)
-    places.push(...page)
-    if (page.length < pageSize) break
-  }
-
-  return extractCountries(places)
 }
 
 export async function getPlaceDetails(

@@ -1,17 +1,17 @@
 import { Link } from 'react-router-dom'
 
 import type { PreviewPlace } from '../../types/place'
-import { withCountry } from '../../utils/country'
+import { withMap } from '../../utils/map'
 import { buildGoogleMapsUrl } from '../../utils/googleMaps'
 
 interface PlacePreviewProps {
   place: PreviewPlace
-  activeCountry?: string | null
+  activeMapId?: string | null
   onClose?: () => void
   embedded?: boolean
 }
 
-export function PlacePreview({ place, activeCountry = null, onClose, embedded = false }: PlacePreviewProps) {
+export function PlacePreview({ place, activeMapId = null, onClose, embedded = false }: PlacePreviewProps) {
   const googleMapsUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
 
   return (
@@ -72,7 +72,7 @@ export function PlacePreview({ place, activeCountry = null, onClose, embedded = 
 
       <Link
         className="details-button"
-        to={withCountry(`/places/${place.id}`, activeCountry)}
+        to={withMap(`/places/${place.id}`, activeMapId)}
         state={{ fromMap: true }}
       >
         Fiche

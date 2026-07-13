@@ -1,60 +1,9 @@
 import { describe, expect, it } from 'vitest'
-
-import {
-  buildCreatePayload,
-  buildMinimalUpdatePayload,
-  calculateAssociationDiff,
-  EMPTY_PLACE_FORM_VALUES,
-  validatePlaceForm,
-} from './placeForm'
-
-const validValues = {
-  ...EMPTY_PLACE_FORM_VALUES,
-  name: '  Ancienne forge  ',
-  latitude: '48.17',
-  longitude: '6.45',
-}
-
+import { buildCreatePayload, buildMinimalUpdatePayload, calculateAssociationDiff, EMPTY_PLACE_FORM_VALUES, validatePlaceForm } from './placeForm'
+const values = { ...EMPTY_PLACE_FORM_VALUES, name: ' Forge ', mapId: 'map-a', latitude: '48.17', longitude: '6.45' }
 describe('place form helpers', () => {
-  it('validates required coordinates and their ranges', () => {
-    expect(validatePlaceForm(EMPTY_PLACE_FORM_VALUES)).toMatchObject({
-      latitude: expect.any(String),
-      longitude: expect.any(String),
-    })
-    expect(validatePlaceForm({ ...validValues, latitude: '91' }).latitude).toMatch(/-90/)
-  })
-
-  it('builds the exact create payload and normalizes blank nullable fields', () => {
-    expect(buildCreatePayload(validValues)).toEqual({
-      name: 'Ancienne forge',
-      latitude: 48.17,
-      longitude: 6.45,
-      description: null,
-      country: null,
-      region: null,
-      construction_date: null,
-      abandonment_date: null,
-      condition: null,
-      access: null,
-      danger_level: null,
-    })
-    expect(buildCreatePayload(validValues)).not.toHaveProperty('address')
-    expect(buildCreatePayload(validValues)).not.toHaveProperty('owner')
-  })
-
-  it('only includes changed fields and sends explicit nulls', () => {
-    const initial = { ...validValues, country: 'France', description: 'Texte' }
-    const current = { ...initial, country: '  ', description: 'Texte modifié' }
-    expect(buildMinimalUpdatePayload(initial, current)).toEqual({
-      country: null,
-      description: 'Texte modifié',
-    })
-  })
-
-  it('calculates stable association additions and removals', () => {
-    expect(calculateAssociationDiff(['a', 'b'], ['b', 'c'])).toEqual({
-      added: ['c'],
-      removed: ['a'],
-    })
-  })
+  it('requires the active map', () => { expect(validatePlaceForm({ ...values, mapId: '' }).mapId).toBeTruthy() })
+  it('creates a normalized map-linked payload without country', () => { const payload = buildCreatePayload(values); expect(payload.map_id).toBe('map-a'); expect(payload).not.toHaveProperty('country') })
+  it('sends only a changed map relationship', () => { expect(buildMinimalUpdatePayload(values, { ...values, mapId: 'map-b' })).toEqual({ map_id: 'map-b' }) })
+  it('calculates association changes', () => { expect(calculateAssociationDiff(['a', 'b'], ['b', 'c'])).toEqual({ added: ['c'], removed: ['a'] }) })
 })

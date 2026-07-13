@@ -1,160 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-
 import { getCategories } from '../api/categories'
 import { ApiError } from '../api/client'
-import {
-  addPlaceCategory,
-  addPlaceTag,
-  createPlace,
-  getPlaceDetails,
-  removePlaceCategory,
-  removePlaceTag,
-  updatePlace,
-} from '../api/places'
+import { addPlaceCategory, addPlaceTag, createPlace, getPlaceDetails, removePlaceCategory, removePlaceTag, updatePlace } from '../api/places'
 import { getTags } from '../api/tags'
 import { PlaceForm } from '../components/places/PlaceForm'
-import {
-  buildCreatePayload,
-  buildMinimalUpdatePayload,
-  calculateAssociationDiff,
-  EMPTY_PLACE_FORM_VALUES,
-  mergeApiFieldErrors,
-  placeDetailsToFormValues,
-} from '../forms/placeForm'
-import type {
-  PlaceCategory,
-  PlaceFormErrors,
-  PlaceFormValues,
-  PlaceMutation,
-  PlaceTag,
-} from '../types/place'
-import { withCountry } from '../utils/country'
+import { buildCreatePayload, buildMinimalUpdatePayload, calculateAssociationDiff, EMPTY_PLACE_FORM_VALUES, mergeApiFieldErrors, placeDetailsToFormValues } from '../forms/placeForm'
+import type { PoiMap } from '../types/map'
+import type { PlaceCategory, PlaceFormErrors, PlaceFormValues, PlaceMutation, PlaceTag } from '../types/place'
+import { withMap } from '../utils/map'
 
-interface PlaceEditorPageProps {
-  mode: 'create' | 'edit'
-  placeId?: string
-  embedded?: boolean
-  activeCountry?: string | null
-  onPlaceMutated: (mutation: PlaceMutation) => void
-}
+interface Props { mode: 'create' | 'edit'; placeId?: string; embedded?: boolean; activeMapId?: string | null; maps: PoiMap[]; onPlaceMutated: (mutation: PlaceMutation) => void }
+async function syncAssociations(placeId: string, initial: PlaceFormValues, current: PlaceFormValues) { const categories = calculateAssociationDiff(initial.categoryIds, current.categoryIds); const tags = calculateAssociationDiff(initial.tagIds, current.tagIds); for (const id of categories.added) await addPlaceCategory(placeId, id); for (const id of categories.removed) await removePlaceCategory(placeId, id); for (const id of tags.added) await addPlaceTag(placeId, id); for (const id of tags.removed) await removePlaceTag(placeId, id) }
 
-async function syncAssociations(
-  placeId: string,
-  initial: PlaceFormValues,
-  current: PlaceFormValues,
-): Promise<void> {
-  const categories = calculateAssociationDiff(initial.categoryIds, current.categoryIds)
-  const tags = calculateAssociationDiff(initial.tagIds, current.tagIds)
-  for (const id of categories.added) await addPlaceCategory(placeId, id)
-  for (const id of categories.removed) await removePlaceCategory(placeId, id)
-  for (const id of tags.added) await addPlaceTag(placeId, id)
-  for (const id of tags.removed) await removePlaceTag(placeId, id)
-}
-
-export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = false, activeCountry = null, onPlaceMutated }: PlaceEditorPageProps) {
-  const { placeId: routePlaceId } = useParams<{ placeId: string }>()
-  const placeId = providedPlaceId ?? routePlaceId
-  const navigate = useNavigate()
-  const [initialValues, setInitialValues] = useState<PlaceFormValues | null>(null)
-  const [categories, setCategories] = useState<PlaceCategory[]>([])
-  const [tags, setTags] = useState<PlaceTag[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isNotFound, setIsNotFound] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<PlaceFormErrors>({})
-  const [partialPlaceId, setPartialPlaceId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    const placeRequest = mode === 'edit'
-      ? placeId === undefined
-        ? Promise.reject(new Error("L'identifiant du POI est absent."))
-        : getPlaceDetails(placeId, controller.signal)
-      : Promise.resolve(null)
-
-    void Promise.all([
-      getCategories(controller.signal),
-      getTags(controller.signal),
-      placeRequest,
-    ])
-      .then(([loadedCategories, loadedTags, place]) => {
-        setCategories(loadedCategories)
-        setTags(loadedTags)
-        setInitialValues(
-          place === null
-            ? {
-                ...EMPTY_PLACE_FORM_VALUES,
-                country: activeCountry ?? '',
-              }
-            : placeDetailsToFormValues(place),
-        )
-      })
-      .catch((caught: unknown) => {
-        if (caught instanceof Error && caught.name === 'AbortError') return
-        if (caught instanceof ApiError && caught.status === 404) setIsNotFound(true)
-        else setError(caught instanceof Error ? caught.message : 'Impossible de préparer le formulaire.')
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsLoading(false)
-      })
-    return () => controller.abort()
-  }, [activeCountry, mode, placeId])
-
-  const submit = async (values: PlaceFormValues) => {
-    if (initialValues === null) return
-    setIsSubmitting(true)
-    setError(null)
-    setFieldErrors({})
-    setPartialPlaceId(null)
-    let savedPlaceId: string | null = mode === 'edit' ? placeId ?? null : null
-
-    try {
-      if (mode === 'create') {
-        const created = await createPlace(buildCreatePayload(values))
-        savedPlaceId = created.id
-      } else if (placeId !== undefined) {
-        const payload = buildMinimalUpdatePayload(initialValues, values)
-        if (Object.keys(payload).length > 0) await updatePlace(placeId, payload)
-      }
-
-      if (savedPlaceId === null) throw new Error("L'identifiant du POI enregistré est absent.")
-      await syncAssociations(savedPlaceId, initialValues, values)
-      const savedCountry = values.country.trim() || null
-      onPlaceMutated({ placeId: savedPlaceId, country: savedCountry })
-      navigate(withCountry(`/places/${savedPlaceId}`, savedCountry))
-    } catch (caught) {
-      if (mode === 'create' && savedPlaceId !== null) {
-        setPartialPlaceId(savedPlaceId)
-      }
-
-      if (caught instanceof ApiError && caught.status === 422) {
-        setFieldErrors(mergeApiFieldErrors({}, caught.fieldErrors))
-        setError(caught.message)
-      } else {
-        setError(caught instanceof Error ? caught.message : "L'enregistrement a échoué.")
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (isLoading) return <section className="details-state" role="status">Chargement du formulaire…</section>
-  if (isNotFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withCountry('/', activeCountry)}>← Retour à la carte</Link></section>
-  if (initialValues === null) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher le formulaire</h2><p>{error}</p><Link to={withCountry('/', activeCountry)}>← Retour à la carte</Link></section>
-
-  const globalError = partialPlaceId === null ? error : `${error ?? 'Certaines associations ont échoué.'} Le POI principal a bien été créé.`
-
-  return (
-    <article className={`editor-page${embedded ? ' embedded' : ''}`}>
-      {!embedded && <div className="details-toolbar"><Link className="back-link" to={withCountry(mode === 'edit' && placeId ? `/places/${placeId}` : '/', activeCountry)}>← Annuler</Link></div>}
-      <header className="editor-header">
-        <p className="details-kicker">{mode === 'create' ? 'Nouveau point d’intérêt' : 'Modification'}</p>
-        <h2>{mode === 'create' ? 'Ajouter un POI' : initialValues.name}</h2>
-      </header>
-      {partialPlaceId && <p className="partial-save-link"><Link to={withCountry(`/places/${partialPlaceId}`, activeCountry)}>Ouvrir le POI créé</Link></p>}
-      <PlaceForm initialValues={initialValues} categories={categories} tags={tags} submitLabel={mode === 'create' ? 'Créer le POI' : 'Enregistrer les modifications'} isSubmitting={isSubmitting} serverErrors={fieldErrors} globalError={globalError} onSubmit={submit} />
-    </article>
-  )
+export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = false, activeMapId = null, maps, onPlaceMutated }: Props) {
+  const { placeId: routePlaceId } = useParams<{ placeId: string }>(); const placeId = providedPlaceId ?? routePlaceId; const navigate = useNavigate()
+  const [initialValues, setInitialValues] = useState<PlaceFormValues | null>(null); const [categories, setCategories] = useState<PlaceCategory[]>([]); const [tags, setTags] = useState<PlaceTag[]>([]); const [loading, setLoading] = useState(true); const [submitting, setSubmitting] = useState(false); const [notFound, setNotFound] = useState(false); const [error, setError] = useState<string | null>(null); const [fieldErrors, setFieldErrors] = useState<PlaceFormErrors>({})
+  useEffect(() => { const controller = new AbortController(); const placeRequest = mode === 'edit' ? placeId ? getPlaceDetails(placeId, controller.signal) : Promise.reject(new Error('Identifiant absent.')) : Promise.resolve(null); void Promise.all([getCategories(controller.signal), getTags(controller.signal), placeRequest]).then(([loadedCategories, loadedTags, place]) => { setCategories(loadedCategories); setTags(loadedTags); setInitialValues(place ? placeDetailsToFormValues(place) : { ...EMPTY_PLACE_FORM_VALUES, mapId: activeMapId ?? '' }) }).catch((caught: unknown) => { if (caught instanceof ApiError && caught.status === 404) setNotFound(true); else if (!(caught instanceof Error && caught.name === 'AbortError')) setError(caught instanceof Error ? caught.message : 'Préparation impossible.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) }); return () => controller.abort() }, [activeMapId, mode, placeId])
+  const submit = async (values: PlaceFormValues) => { if (!initialValues) return; setSubmitting(true); setError(null); setFieldErrors({}); let savedId = mode === 'edit' ? placeId ?? null : null; try { if (mode === 'create') { const created = await createPlace(buildCreatePayload(values)); savedId = created.id } else if (placeId) { const payload = buildMinimalUpdatePayload(initialValues, values); if (Object.keys(payload).length) await updatePlace(placeId, payload) } if (!savedId) throw new Error('Identifiant absent.'); await syncAssociations(savedId, initialValues, values); onPlaceMutated({ placeId: savedId, mapId: values.mapId }); navigate(withMap(`/places/${savedId}`, values.mapId)) } catch (caught) { if (caught instanceof ApiError && caught.status === 422) { setFieldErrors(mergeApiFieldErrors({}, caught.fieldErrors)); setError(caught.message) } else setError(caught instanceof Error ? caught.message : 'Enregistrement impossible.') } finally { setSubmitting(false) } }
+  if (loading) return <section className="details-state" role="status">Chargement du formulaire…</section>
+  if (notFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withMap('/', activeMapId)}>← Retour à la carte</Link></section>
+  if (!initialValues) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher le formulaire</h2><p>{error}</p></section>
+  return <article className={`editor-page${embedded ? ' embedded' : ''}`}>{!embedded && <Link className="back-link" to={withMap('/', activeMapId)}>← Annuler</Link>}<header className="editor-header"><p className="details-kicker">{mode === 'create' ? 'Nouveau point d’intérêt' : 'Modification'}</p><h2>{mode === 'create' ? 'Ajouter un POI' : initialValues.name}</h2></header><PlaceForm initialValues={initialValues} maps={maps} allowMapChange={mode === 'edit'} categories={categories} tags={tags} submitLabel={mode === 'create' ? 'Créer le POI' : 'Enregistrer les modifications'} isSubmitting={submitting} serverErrors={fieldErrors} globalError={error} onSubmit={submit} /></article>
 }

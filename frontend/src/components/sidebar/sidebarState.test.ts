@@ -4,6 +4,7 @@ import type { MapPlace } from '../../types/place'
 import { deriveMapSidebarState } from './sidebarState'
 
 const place: MapPlace = {
+  map_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   id: '11111111-1111-4111-8111-111111111111',
   name: 'Manufacture',
   latitude: 48.17,

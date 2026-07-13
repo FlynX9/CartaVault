@@ -4,13 +4,15 @@ import { PlacePreview } from '../places/PlacePreview'
 import { PlaceDetailsPage } from '../../pages/PlaceDetailsPage'
 import { PlaceEditorPage } from '../../pages/PlaceEditorPage'
 import type { PlaceMutation } from '../../types/place'
-import { withCountry } from '../../utils/country'
+import type { PoiMap } from '../../types/map'
+import { withMap } from '../../utils/map'
 import type { MapSidebarState } from './sidebarState'
 import { SidebarHeader } from './SidebarHeader'
 
 interface MapSidebarProps {
   state: MapSidebarState
-  activeCountry: string | null
+  activeMapId: string | null
+  maps: PoiMap[]
   onClose: () => void
   onPlaceMutated: (mutation: PlaceMutation) => void
   onPlaceDeleted: (placeId: string) => void
@@ -33,7 +35,8 @@ function getStateKey(state: Exclude<MapSidebarState, { mode: 'closed' }>): strin
 
 export function MapSidebar({
   state,
-  activeCountry,
+  activeMapId,
+  maps,
   onClose,
   onPlaceMutated,
   onPlaceDeleted,
@@ -49,18 +52,18 @@ export function MapSidebar({
         onClose={onClose}
         onBack={
           state.mode === 'edit'
-            ? () => navigate(withCountry(`/places/${state.placeId}`, activeCountry))
+            ? () => navigate(withMap(`/places/${state.placeId}`, activeMapId))
             : undefined
         }
       />
       <div className="sidebar-content">
         {state.mode === 'preview' && (
-          <PlacePreview place={state.place} activeCountry={activeCountry} embedded />
+          <PlacePreview place={state.place} activeMapId={activeMapId} embedded />
         )}
         {state.mode === 'details' && (
           <PlaceDetailsPage
             placeId={state.placeId}
-            activeCountry={activeCountry}
+            activeMapId={activeMapId}
             embedded
             onPlaceDeleted={onPlaceDeleted}
           />
@@ -68,7 +71,8 @@ export function MapSidebar({
         {state.mode === 'create' && (
           <PlaceEditorPage
             mode="create"
-            activeCountry={activeCountry}
+            activeMapId={activeMapId}
+            maps={maps}
             embedded
             onPlaceMutated={onPlaceMutated}
           />
@@ -77,7 +81,8 @@ export function MapSidebar({
           <PlaceEditorPage
             mode="edit"
             placeId={state.placeId}
-            activeCountry={activeCountry}
+            activeMapId={activeMapId}
+            maps={maps}
             embedded
             onPlaceMutated={onPlaceMutated}
           />

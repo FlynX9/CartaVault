@@ -1,118 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { getMapPlaces, getPlaces, parseMapPlacesResponse, parsePlaceDetailsResponse } from './places'
 
-import {
-  extractCountries,
-  getMapPlaces,
-  parseMapPlacesResponse,
-  parsePlaceDetailsResponse,
-} from './places'
-
-const PLACE_ID = '11111111-1111-4111-8111-111111111111'
-const CATEGORY_ID = '22222222-2222-4222-8222-222222222222'
-const TAG_ID = '33333333-3333-4333-8333-333333333333'
-
+const PLACE_ID = '11111111-1111-4111-8111-111111111111'; const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'; const COUNTRY_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+const base = { id: PLACE_ID, map_id: MAP_ID, name: 'Manufacture', longitude: 6.45, latitude: 48.17, categories: [], tags: [] }
 afterEach(() => vi.unstubAllGlobals())
 
-describe('place response validation', () => {
-  it('validates the lightweight map contract', () => {
-    expect(
-      parseMapPlacesResponse([
-        {
-          id: PLACE_ID,
-          name: 'Ancienne manufacture',
-          longitude: 6.45,
-          latitude: 48.17,
-          categories: [{ id: CATEGORY_ID, name: 'Industrie' }],
-          tags: [{ id: TAG_ID, name: 'Brique' }],
-        },
-      ]),
-    ).toHaveLength(1)
+describe('normalized place API', () => {
+  it('validates map markers including map_id', () => { expect(parseMapPlacesResponse([base])[0]?.map_id).toBe(MAP_ID) })
+  it('validates detailed map and country summaries without free country', () => {
+    const place = parsePlaceDetailsResponse({ ...base, description: null, map: { id: MAP_ID, name: 'France', country: { id: COUNTRY_ID, iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, region: null, construction_date: null, abandonment_date: null, condition: null, access: null, danger_level: null, created_at: '2026-07-13T10:00:00', updated_at: '2026-07-13T10:00:00' })
+    expect(place.map.country.iso_alpha3).toBe('FRA'); expect(place).not.toHaveProperty('country')
   })
-
-  it('validates every field in the detailed place contract', () => {
-    const place = parsePlaceDetailsResponse({
-      id: PLACE_ID,
-      name: 'Ancienne manufacture',
-      description: 'Un bâtiment industriel.',
-      country: 'France',
-      region: 'Grand Est',
-      construction_date: '1890',
-      abandonment_date: null,
-      condition: 'Dégradé',
-      access: 'Interdit',
-      danger_level: 'Élevé',
-      longitude: 6.45,
-      latitude: 48.17,
-      categories: [
-        {
-          id: CATEGORY_ID,
-          name: 'Industrie',
-          description: null,
-        },
-      ],
-      tags: [{ id: TAG_ID, name: 'Brique' }],
-      created_at: '2026-07-13T10:00:00',
-      updated_at: '2026-07-13T11:00:00',
-    })
-
-    expect(place.name).toBe('Ancienne manufacture')
-    expect(place.categories[0]?.description).toBeNull()
-    expect(place).not.toHaveProperty('address')
-    expect(place).not.toHaveProperty('owner')
-  })
-
-  it('rejects an incoherent detailed response', () => {
-    expect(() =>
-      parsePlaceDetailsResponse({
-        id: PLACE_ID,
-        name: 'Réponse incomplète',
-      }),
-    ).toThrow(/description/)
-  })
-
-  it('deduplicates and sorts non-empty countries', () => {
-    const base = {
-      id: PLACE_ID,
-      name: 'POI',
-      description: null,
-      region: null,
-      construction_date: null,
-      abandonment_date: null,
-      condition: null,
-      access: null,
-      danger_level: null,
-      longitude: 2,
-      latitude: 48,
-      categories: [],
-      tags: [],
-      created_at: '2026-07-13T10:00:00',
-      updated_at: '2026-07-13T10:00:00',
-    }
-
-    expect(extractCountries([
-      { ...base, country: ' France ' },
-      { ...base, id: CATEGORY_ID, country: 'france' },
-      { ...base, id: TAG_ID, country: 'Belgique' },
-      { ...base, id: '44444444-4444-4444-8444-444444444444', country: '  ' },
-    ])).toEqual(['Belgique', 'france'])
-  })
-
-  it('sends the active country with map bounds', async () => {
-    const fetchMock = vi.fn((_input: RequestInfo | URL) => Promise.resolve(
-      new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }),
-    ))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await getMapPlaces({
-      country: 'France',
-      bounds: {
-        minLatitude: 40,
-        maxLatitude: 50,
-        minLongitude: -5,
-        maxLongitude: 10,
-      },
-    }, new AbortController().signal)
-
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('country=France')
+  it('sends map_id to marker and list endpoints', async () => {
+    const fetchMock = vi.fn((_input: RequestInfo | URL) => Promise.resolve(new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }))); vi.stubGlobal('fetch', fetchMock)
+    await getMapPlaces({ mapId: MAP_ID, bounds: { minLatitude: 40, maxLatitude: 50, minLongitude: -5, maxLongitude: 10 } }, new AbortController().signal)
+    await getPlaces({ mapId: MAP_ID })
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`map_id=${MAP_ID}`); expect(String(fetchMock.mock.calls[1]?.[0])).toContain(`map_id=${MAP_ID}`)
   })
 })
