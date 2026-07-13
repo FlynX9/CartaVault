@@ -5,8 +5,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { MapPage } from './MapPage'
 
 vi.mock('../components/map/PoiMap', () => ({
-  PoiMap: ({ sidebarOpen }: { sidebarOpen: boolean }) => (
-    <div data-testid="poi-map" data-sidebar-open={String(sidebarOpen)} />
+  PoiMap: ({ layoutKey }: { layoutKey: string }) => (
+    <div data-testid="poi-map" data-layout-key={layoutKey} />
   ),
 }))
 
@@ -23,7 +23,10 @@ describe('MapPage', () => {
           isLoading={false}
           errorMessage={null}
           sidebarOpen
+          placeListOpen
           sidebar={<aside aria-label="Volet de test">Contenu</aside>}
+          placeList={<aside aria-label="Liste de test">Liste</aside>}
+          focusRequest={null}
           onBoundsChange={vi.fn()}
           onViewChange={vi.fn()}
           onPlaceSelect={vi.fn()}
@@ -32,8 +35,9 @@ describe('MapPage', () => {
     )
 
     const workspace = screen.getByLabelText("Carte des points d'intérêt").parentElement
-    expect(workspace).toHaveClass('map-workspace', 'sidebar-open')
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-sidebar-open', 'true')
+    expect(workspace).toHaveClass('map-workspace', 'place-list-open', 'sidebar-open')
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-layout-key', 'true-true')
+    expect(screen.getByLabelText('Liste de test')).toBeVisible()
     expect(screen.getByLabelText('Volet de test')).toBeVisible()
   })
 })

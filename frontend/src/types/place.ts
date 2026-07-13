@@ -38,13 +38,18 @@ export interface PlaceDetails {
   updated_at: string
 }
 
-export interface MapPlace {
+export interface PreviewPlace {
   id: string
   name: string
-  longitude: number
-  latitude: number
+  longitude: number | null
+  latitude: number | null
   categories: MapCategory[]
   tags: MapTag[]
+}
+
+export interface MapPlace extends PreviewPlace {
+  longitude: number
+  latitude: number
 }
 
 export interface MapBounds {
@@ -59,11 +64,29 @@ export interface MapView {
   zoom: number
 }
 
+export interface MapFocusRequest {
+  id: number
+  view: MapView
+}
+
+export interface PlaceMutation {
+  placeId: string
+  country: string | null
+}
+
 export interface MapPlaceQuery {
   bounds: MapBounds
+  country?: string
   categoryId?: string
   tagId?: string
   limit?: number
+}
+
+export interface PlaceListQuery {
+  country?: string
+  q?: string
+  limit?: number
+  offset?: number
 }
 
 interface PlaceNullableFields {

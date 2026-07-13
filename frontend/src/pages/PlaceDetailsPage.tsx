@@ -8,6 +8,7 @@ import { PhotoGallery } from '../components/photos/PhotoGallery'
 import type { Photo } from '../types/photo'
 import type { PlaceDetails } from '../types/place'
 import { buildGoogleMapsUrl } from '../utils/googleMaps'
+import { withCountry } from '../utils/country'
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
@@ -36,10 +37,11 @@ function DetailItem({ label, value }: DetailItemProps) {
 interface PlaceDetailsPageProps {
   placeId?: string
   embedded?: boolean
+  activeCountry?: string | null
   onPlaceDeleted?: (placeId: string) => void
 }
 
-export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, onPlaceDeleted }: PlaceDetailsPageProps) {
+export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, activeCountry = null, onPlaceDeleted }: PlaceDetailsPageProps) {
   const { placeId: routePlaceId } = useParams<{ placeId: string }>()
   const placeId = providedPlaceId ?? routePlaceId
   const navigate = useNavigate()
@@ -142,7 +144,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, o
         <p className="details-kicker">Erreur 404</p>
         <h2>POI introuvable</h2>
         <p>Ce point d'intérêt n'existe pas ou a été supprimé.</p>
-        <Link className="back-link" to="/">
+        <Link className="back-link" to={withCountry('/', activeCountry)}>
           ← Retour à la carte
         </Link>
       </section>
@@ -154,7 +156,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, o
       <section className="details-state details-error" role="alert">
         <h2>Impossible d'afficher ce POI</h2>
         <p>{placeError ?? 'La réponse du serveur est incomplète.'}</p>
-        <Link className="back-link" to="/">
+        <Link className="back-link" to={withCountry('/', activeCountry)}>
           ← Retour à la carte
         </Link>
       </section>
@@ -184,7 +186,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, o
     try {
       await deletePlace(placeId)
       onPlaceDeleted?.(placeId)
-      navigate('/')
+      navigate(withCountry('/', activeCountry))
     } catch (error) {
       setDeleteError(
         error instanceof Error ? error.message : 'La suppression a échoué.',
@@ -197,10 +199,10 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, o
     <article className={`details-page${embedded ? ' embedded' : ''}`}>
       <div className="details-toolbar">
         {!embedded && (
-          <Link className="back-link" to="/">← Retour à la carte</Link>
+          <Link className="back-link" to={withCountry('/', activeCountry)}>← Retour à la carte</Link>
         )}
         <div className="details-actions">
-          <Link className="secondary-button" to={`/places/${place.id}/edit`}>
+          <Link className="secondary-button" to={withCountry(`/places/${place.id}/edit`, activeCountry)}>
             Modifier
           </Link>
           <button

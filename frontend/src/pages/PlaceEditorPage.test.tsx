@@ -19,9 +19,14 @@ vi.mock('../api/places', () => ({
 }))
 vi.mock('../components/places/PlaceForm', () => ({
   PlaceForm: ({ initialValues, onSubmit }: { initialValues: PlaceFormValues; onSubmit: (values: PlaceFormValues) => Promise<void> }) => (
-    <button type="button" onClick={() => void onSubmit({ ...initialValues, name: initialValues.name ? `${initialValues.name} modifié` : 'POI créé', latitude: '48.17', longitude: '6.45' })}>
-      Envoyer le formulaire
-    </button>
+    <>
+      <button type="button" onClick={() => void onSubmit({ ...initialValues, name: initialValues.name ? `${initialValues.name} modifié` : 'POI créé', latitude: '48.17', longitude: '6.45' })}>
+        Envoyer le formulaire
+      </button>
+      <button type="button" onClick={() => void onSubmit({ ...initialValues, country: 'Belgique' })}>
+        Changer de pays
+      </button>
+    </>
   ),
 }))
 
@@ -46,7 +51,8 @@ const PLACE: PlaceDetails = {
 }
 
 function CurrentPath() {
-  return <output data-testid="path">{useLocation().pathname}</output>
+  const location = useLocation()
+  return <output data-testid="path">{location.pathname}{location.search}</output>
 }
 
 beforeEach(() => {
@@ -63,10 +69,10 @@ afterEach(() => {
 describe('PlaceEditorPage sidebar navigation', () => {
   it('opens the created place details after success', async () => {
     const onPlaceMutated = vi.fn()
-    render(<MemoryRouter initialEntries={['/places/new']}><PlaceEditorPage mode="create" embedded onPlaceMutated={onPlaceMutated} /><CurrentPath /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/places/new?country=France']}><PlaceEditorPage mode="create" activeCountry="France" embedded onPlaceMutated={onPlaceMutated} /><CurrentPath /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Envoyer le formulaire' }))
-    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/places/${PLACE_ID}`))
-    expect(onPlaceMutated).toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/places/${PLACE_ID}?country=France`))
+    expect(onPlaceMutated).toHaveBeenCalledWith({ placeId: PLACE_ID, country: 'France' })
   })
 
   it('returns to details after an edit and refreshes markers', async () => {
@@ -76,5 +82,17 @@ describe('PlaceEditorPage sidebar navigation', () => {
     await waitFor(() => expect(updatePlace).toHaveBeenCalledWith(PLACE_ID, { name: 'Manufacture modifié' }))
     expect(screen.getByTestId('path')).toHaveTextContent(`/places/${PLACE_ID}`)
     expect(onPlaceMutated).toHaveBeenCalled()
+  })
+
+  it('switches the active country when an edit moves the POI', async () => {
+    vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, country: 'France' })
+    const onPlaceMutated = vi.fn()
+    render(<MemoryRouter initialEntries={[`/places/${PLACE_ID}/edit?country=France`]}><PlaceEditorPage mode="edit" placeId={PLACE_ID} activeCountry="France" embedded onPlaceMutated={onPlaceMutated} /><CurrentPath /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Changer de pays' }))
+
+    await waitFor(() => expect(updatePlace).toHaveBeenCalledWith(PLACE_ID, { country: 'Belgique' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/places/${PLACE_ID}?country=Belgique`))
+    expect(onPlaceMutated).toHaveBeenCalledWith({ placeId: PLACE_ID, country: 'Belgique' })
   })
 })

@@ -4,6 +4,7 @@ import type {
   MapPlaceQuery,
   MapTag,
   PlaceCategory,
+  PlaceListQuery,
   PlaceDetails,
   PlaceCreatePayload,
   PlaceUpdatePayload,
@@ -118,6 +119,14 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
   }
 }
 
+export function parsePlacesResponse(payload: unknown): PlaceDetails[] {
+  if (!Array.isArray(payload)) {
+    throw new Error("La réponse de l'API pour les POI n'est pas une liste.")
+  }
+
+  return payload.map(parsePlaceDetailsResponse)
+}
+
 export async function getMapPlaces(
   query: MapPlaceQuery,
   signal: AbortSignal,
@@ -133,6 +142,10 @@ export async function getMapPlaces(
     searchParams.set('category_id', query.categoryId)
   }
 
+  if (query.country !== undefined) {
+    searchParams.set('country', query.country)
+  }
+
   if (query.tagId !== undefined) {
     searchParams.set('tag_id', query.tagId)
   }
@@ -144,6 +157,48 @@ export async function getMapPlaces(
   const payload = await getJson('/places/map', searchParams, signal)
 
   return parseMapPlacesResponse(payload)
+}
+
+export async function getPlaces(
+  query: PlaceListQuery,
+  signal?: AbortSignal,
+): Promise<PlaceDetails[]> {
+  const searchParams = new URLSearchParams()
+
+  if (query.country !== undefined) searchParams.set('country', query.country)
+  if (query.q !== undefined) searchParams.set('q', query.q)
+  if (query.limit !== undefined) searchParams.set('limit', String(query.limit))
+  if (query.offset !== undefined) searchParams.set('offset', String(query.offset))
+
+  return parsePlacesResponse(await getJson('/places', searchParams, signal))
+}
+
+export function extractCountries(places: PlaceDetails[]): string[] {
+  const countries = new Map<string, string>()
+
+  for (const place of places) {
+    const country = place.country?.trim()
+    if (country) countries.set(country.toLocaleLowerCase('fr'), country)
+  }
+
+  return [...countries.values()].sort((left, right) =>
+    left.localeCompare(right, 'fr', { sensitivity: 'base' }),
+  )
+}
+
+export async function getAvailableCountries(
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const pageSize = 100
+  const places: PlaceDetails[] = []
+
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await getPlaces({ limit: pageSize, offset }, signal)
+    places.push(...page)
+    if (page.length < pageSize) break
+  }
+
+  return extractCountries(places)
 }
 
 export async function getPlaceDetails(

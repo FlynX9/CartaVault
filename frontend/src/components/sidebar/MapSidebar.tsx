@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { PlacePreview } from '../places/PlacePreview'
 import { PlaceDetailsPage } from '../../pages/PlaceDetailsPage'
 import { PlaceEditorPage } from '../../pages/PlaceEditorPage'
+import type { PlaceMutation } from '../../types/place'
+import { withCountry } from '../../utils/country'
 import type { MapSidebarState } from './sidebarState'
 import { SidebarHeader } from './SidebarHeader'
 
 interface MapSidebarProps {
   state: MapSidebarState
+  activeCountry: string | null
   onClose: () => void
-  onPlaceMutated: () => void
+  onPlaceMutated: (mutation: PlaceMutation) => void
   onPlaceDeleted: (placeId: string) => void
 }
 
@@ -30,6 +33,7 @@ function getStateKey(state: Exclude<MapSidebarState, { mode: 'closed' }>): strin
 
 export function MapSidebar({
   state,
+  activeCountry,
   onClose,
   onPlaceMutated,
   onPlaceDeleted,
@@ -45,15 +49,18 @@ export function MapSidebar({
         onClose={onClose}
         onBack={
           state.mode === 'edit'
-            ? () => navigate(`/places/${state.placeId}`)
+            ? () => navigate(withCountry(`/places/${state.placeId}`, activeCountry))
             : undefined
         }
       />
       <div className="sidebar-content">
-        {state.mode === 'preview' && <PlacePreview place={state.place} embedded />}
+        {state.mode === 'preview' && (
+          <PlacePreview place={state.place} activeCountry={activeCountry} embedded />
+        )}
         {state.mode === 'details' && (
           <PlaceDetailsPage
             placeId={state.placeId}
+            activeCountry={activeCountry}
             embedded
             onPlaceDeleted={onPlaceDeleted}
           />
@@ -61,6 +68,7 @@ export function MapSidebar({
         {state.mode === 'create' && (
           <PlaceEditorPage
             mode="create"
+            activeCountry={activeCountry}
             embedded
             onPlaceMutated={onPlaceMutated}
           />
@@ -69,6 +77,7 @@ export function MapSidebar({
           <PlaceEditorPage
             mode="edit"
             placeId={state.placeId}
+            activeCountry={activeCountry}
             embedded
             onPlaceMutated={onPlaceMutated}
           />

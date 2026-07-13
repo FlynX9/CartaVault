@@ -1,15 +1,17 @@
 import { Link } from 'react-router-dom'
 
-import type { MapPlace } from '../../types/place'
+import type { PreviewPlace } from '../../types/place'
+import { withCountry } from '../../utils/country'
 import { buildGoogleMapsUrl } from '../../utils/googleMaps'
 
 interface PlacePreviewProps {
-  place: MapPlace
+  place: PreviewPlace
+  activeCountry?: string | null
   onClose?: () => void
   embedded?: boolean
 }
 
-export function PlacePreview({ place, onClose, embedded = false }: PlacePreviewProps) {
+export function PlacePreview({ place, activeCountry = null, onClose, embedded = false }: PlacePreviewProps) {
   const googleMapsUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
 
   return (
@@ -24,9 +26,13 @@ export function PlacePreview({ place, onClose, embedded = false }: PlacePreviewP
         )}
       </div>
 
-      <p className="coordinates">
-        {place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}
-      </p>
+      {place.latitude !== null && place.longitude !== null ? (
+        <p className="coordinates">
+          {place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}
+        </p>
+      ) : (
+        <p className="coordinates">Coordonnées indisponibles</p>
+      )}
 
       <section className="preview-section">
         <h3>Catégories</h3>
@@ -66,7 +72,7 @@ export function PlacePreview({ place, onClose, embedded = false }: PlacePreviewP
 
       <Link
         className="details-button"
-        to={`/places/${place.id}`}
+        to={withCountry(`/places/${place.id}`, activeCountry)}
         state={{ fromMap: true }}
       >
         Fiche

@@ -26,14 +26,17 @@ import type {
   PlaceCategory,
   PlaceFormErrors,
   PlaceFormValues,
+  PlaceMutation,
   PlaceTag,
 } from '../types/place'
+import { withCountry } from '../utils/country'
 
 interface PlaceEditorPageProps {
   mode: 'create' | 'edit'
   placeId?: string
   embedded?: boolean
-  onPlaceMutated: () => void
+  activeCountry?: string | null
+  onPlaceMutated: (mutation: PlaceMutation) => void
 }
 
 async function syncAssociations(
@@ -49,7 +52,7 @@ async function syncAssociations(
   for (const id of tags.removed) await removePlaceTag(placeId, id)
 }
 
-export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = false, onPlaceMutated }: PlaceEditorPageProps) {
+export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = false, activeCountry = null, onPlaceMutated }: PlaceEditorPageProps) {
   const { placeId: routePlaceId } = useParams<{ placeId: string }>()
   const placeId = providedPlaceId ?? routePlaceId
   const navigate = useNavigate()
@@ -79,7 +82,14 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
       .then(([loadedCategories, loadedTags, place]) => {
         setCategories(loadedCategories)
         setTags(loadedTags)
-        setInitialValues(place === null ? { ...EMPTY_PLACE_FORM_VALUES } : placeDetailsToFormValues(place))
+        setInitialValues(
+          place === null
+            ? {
+                ...EMPTY_PLACE_FORM_VALUES,
+                country: activeCountry ?? '',
+              }
+            : placeDetailsToFormValues(place),
+        )
       })
       .catch((caught: unknown) => {
         if (caught instanceof Error && caught.name === 'AbortError') return
@@ -90,7 +100,7 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
         if (!controller.signal.aborted) setIsLoading(false)
       })
     return () => controller.abort()
-  }, [mode, placeId])
+  }, [activeCountry, mode, placeId])
 
   const submit = async (values: PlaceFormValues) => {
     if (initialValues === null) return
@@ -111,8 +121,9 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
 
       if (savedPlaceId === null) throw new Error("L'identifiant du POI enregistré est absent.")
       await syncAssociations(savedPlaceId, initialValues, values)
-      onPlaceMutated()
-      navigate(`/places/${savedPlaceId}`)
+      const savedCountry = values.country.trim() || null
+      onPlaceMutated({ placeId: savedPlaceId, country: savedCountry })
+      navigate(withCountry(`/places/${savedPlaceId}`, savedCountry))
     } catch (caught) {
       if (mode === 'create' && savedPlaceId !== null) {
         setPartialPlaceId(savedPlaceId)
@@ -130,19 +141,19 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
   }
 
   if (isLoading) return <section className="details-state" role="status">Chargement du formulaire…</section>
-  if (isNotFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to="/">← Retour à la carte</Link></section>
-  if (initialValues === null) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher le formulaire</h2><p>{error}</p><Link to="/">← Retour à la carte</Link></section>
+  if (isNotFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withCountry('/', activeCountry)}>← Retour à la carte</Link></section>
+  if (initialValues === null) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher le formulaire</h2><p>{error}</p><Link to={withCountry('/', activeCountry)}>← Retour à la carte</Link></section>
 
   const globalError = partialPlaceId === null ? error : `${error ?? 'Certaines associations ont échoué.'} Le POI principal a bien été créé.`
 
   return (
     <article className={`editor-page${embedded ? ' embedded' : ''}`}>
-      {!embedded && <div className="details-toolbar"><Link className="back-link" to={mode === 'edit' && placeId ? `/places/${placeId}` : '/'}>← Annuler</Link></div>}
+      {!embedded && <div className="details-toolbar"><Link className="back-link" to={withCountry(mode === 'edit' && placeId ? `/places/${placeId}` : '/', activeCountry)}>← Annuler</Link></div>}
       <header className="editor-header">
         <p className="details-kicker">{mode === 'create' ? 'Nouveau point d’intérêt' : 'Modification'}</p>
         <h2>{mode === 'create' ? 'Ajouter un POI' : initialValues.name}</h2>
       </header>
-      {partialPlaceId && <p className="partial-save-link"><Link to={`/places/${partialPlaceId}`}>Ouvrir le POI créé</Link></p>}
+      {partialPlaceId && <p className="partial-save-link"><Link to={withCountry(`/places/${partialPlaceId}`, activeCountry)}>Ouvrir le POI créé</Link></p>}
       <PlaceForm initialValues={initialValues} categories={categories} tags={tags} submitLabel={mode === 'create' ? 'Créer le POI' : 'Enregistrer les modifications'} isSubmitting={isSubmitting} serverErrors={fieldErrors} globalError={globalError} onSubmit={submit} />
     </article>
   )

@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 
 import { PoiMap } from '../components/map/PoiMap'
-import type { MapBounds, MapPlace, MapView } from '../types/place'
+import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 
 interface MapPageProps {
   places: MapPlace[]
@@ -11,7 +10,10 @@ interface MapPageProps {
   isLoading: boolean
   errorMessage: string | null
   sidebarOpen: boolean
+  placeListOpen: boolean
   sidebar: ReactNode
+  placeList: ReactNode
+  focusRequest: MapFocusRequest | null
   onBoundsChange: (bounds: MapBounds) => void
   onViewChange: (view: MapView) => void
   onPlaceSelect: (place: MapPlace) => void
@@ -24,18 +26,20 @@ export function MapPage({
   isLoading,
   errorMessage,
   sidebarOpen,
+  placeListOpen,
   sidebar,
+  placeList,
+  focusRequest,
   onBoundsChange,
   onViewChange,
   onPlaceSelect,
 }: MapPageProps) {
   return (
-    <section className={`map-workspace${sidebarOpen ? ' sidebar-open' : ''}`}>
+    <section
+      className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}`}
+    >
+      {placeList}
       <div className="map-layout" aria-label="Carte des points d'intérêt">
-        <Link className="map-create-button" to="/places/new">
-          + Ajouter un POI
-        </Link>
-
         <PoiMap
           places={places}
           selectedPlaceId={selectedPlaceId}
@@ -43,7 +47,8 @@ export function MapPage({
           onBoundsChange={onBoundsChange}
           onViewChange={onViewChange}
           onPlaceSelect={onPlaceSelect}
-          sidebarOpen={sidebarOpen}
+          focusRequest={focusRequest}
+          layoutKey={`${placeListOpen}-${sidebarOpen}`}
         />
 
         {isLoading && (

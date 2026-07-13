@@ -2,16 +2,29 @@ import { useEffect } from 'react'
 import { useMap } from 'react-leaflet'
 
 interface MapResizeWatcherProps {
-  sidebarOpen: boolean
+  layoutKey: string
 }
 
-export function MapResizeWatcher({ sidebarOpen }: MapResizeWatcherProps) {
+export function MapResizeWatcher({ layoutKey }: MapResizeWatcherProps) {
   const map = useMap()
 
   useEffect(() => {
     const timeout = window.setTimeout(() => map.invalidateSize({ pan: false }), 220)
     return () => window.clearTimeout(timeout)
-  }, [map, sidebarOpen])
+  }, [layoutKey, map])
+
+  useEffect(() => {
+    let timeout: number | undefined
+    const handleResize = () => {
+      window.clearTimeout(timeout)
+      timeout = window.setTimeout(() => map.invalidateSize({ pan: false }), 120)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.clearTimeout(timeout)
+    }
+  }, [map])
 
   return null
 }
