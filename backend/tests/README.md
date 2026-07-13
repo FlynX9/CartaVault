@@ -2,32 +2,40 @@
 
 ## Types de tests
 
-- `unit` couvre le stockage photo et les validations qui ne doivent jamais
-  ouvrir de connexion PostgreSQL.
-- `integration` exerce l'API avec une base PostgreSQL/PostGIS séparée.
+- le marqueur `unit` couvre le contrôle de santé, le stockage photo et les
+  validations de configuration sans ouvrir de connexion PostgreSQL ;
+- le marqueur `integration` exerce les routes des places, tags et photos avec
+  une base PostgreSQL/PostGIS séparée.
 
 Sans `TEST_DATABASE_URL`, les tests d'intégration sont ignorés avec une raison
 explicite. Ils n'utilisent jamais `DATABASE_URL` comme valeur de secours.
 
 ## Créer la base PostGIS de test
 
-Le conteneur défini par `docker-compose.yml` peut héberger une base séparée,
-sans supprimer ni modifier `poi_manager` :
+Le service `postgres` défini dans `docker-compose.yml` peut héberger une base
+séparée sans supprimer ni modifier `poi_manager`. Depuis `backend` :
 
 ```powershell
-docker exec poi-postgres psql -U poi_user -d postgres -c "CREATE DATABASE poi_manager_test;"
-docker exec poi-postgres psql -U poi_user -d poi_manager_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-docker exec poi-postgres psql -U poi_user -d poi_manager_test -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+docker compose -f ..\docker-compose.yml up -d postgres
+docker compose -f ..\docker-compose.yml exec postgres psql -U poi_user -d postgres -c "CREATE DATABASE poi_manager_test;"
+docker compose -f ..\docker-compose.yml exec postgres psql -U poi_user -d poi_manager_test -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+docker compose -f ..\docker-compose.yml exec postgres psql -U poi_user -d poi_manager_test -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
 ```
 
-Configurez ensuite uniquement la variable de test dans le terminal courant :
+La création de la base n'est nécessaire qu'une fois. Si elle existe déjà,
+exécutez uniquement les commandes d'extensions, qui sont idempotentes.
+
+Configurez ensuite uniquement la variable de test dans le terminal courant,
+en remplaçant la valeur d'exemple du mot de passe par celle de votre
+environnement :
 
 ```powershell
-$env:TEST_DATABASE_URL="postgresql+psycopg://poi_user:poi_password@localhost:5432/poi_manager_test"
+$env:TEST_DATABASE_URL="postgresql+psycopg://poi_user:change_me@localhost:5432/poi_manager_test"
 ```
 
-Le nom de la base de test doit contenir `test`. La suite refuse aussi une URL
-qui cible le même hôte, port et nom de base que `DATABASE_URL`.
+La suite exige PostgreSQL, vérifie que PostGIS est activé et impose un nom de
+base contenant `test`. Elle refuse aussi une URL qui cible le même hôte, port
+et nom de base que `DATABASE_URL`.
 
 ## Préparation temporaire du schéma
 
@@ -40,9 +48,9 @@ la fixture de session :
 3. charge tous les modèles via `app.main` ;
 4. appelle `Base.metadata.create_all()` dans cette base de test uniquement.
 
-La suite ne supprime jamais les tables. Cette stratégie est temporaire jusqu'à
-ce que les migrations puissent reconstruire tout le schéma depuis une base
-vide.
+La suite ne supprime jamais les tables et n'applique aucune migration. Cette
+stratégie est temporaire jusqu'à ce que les migrations puissent reconstruire
+tout le schéma depuis une base vide.
 
 ## Isolation et nettoyage
 
@@ -77,8 +85,10 @@ python -m pytest -m integration
 python -m pytest
 ```
 
-Sans `TEST_DATABASE_URL`, la première commande réussit et les deux autres
-signalent clairement les tests d'intégration ignorés.
+Sans `TEST_DATABASE_URL`, les tests `unit` réussissent. Les tests marqués
+`integration` sont ignorés avec la raison explicite définie dans
+`tests/conftest.py`, y compris pendant une exécution complète. Avec une base
+dédiée correctement configurée, la suite complète exécute les 26 tests.
 
 > N'utilisez jamais l'URL de la base de développement comme
 > `TEST_DATABASE_URL`. La suite ne supprime ni base, ni conteneur, ni volume.
