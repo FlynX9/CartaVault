@@ -72,6 +72,9 @@ npm run preview
 - `/places/new` affiche le formulaire de création ;
 - `/places/:placeId` charge la fiche complète et les photos du POI.
 - `/places/:placeId/edit` affiche le formulaire de modification.
+- `/admin` redirige vers l'administration des catégories ;
+- `/admin/categories` gère la recherche et le CRUD des catégories ;
+- `/admin/tags` gère la recherche et le CRUD des tags.
 
 Le bouton « Voir la fiche » ouvre la route détaillée. Le retour conserve en
 mémoire les marqueurs, le POI sélectionné, le centre et le zoom tant que
@@ -89,9 +92,17 @@ catégories et tags sont synchronisés par différence. En création, le POI est
 créé avant ses associations : si une association échoue, la fiche créée est
 conservée et un lien permet de la retrouver.
 
+L'administration interroge les recherches backend avec un délai de 300 ms et
+affiche explicitement les conflits, notamment l'unicité des noms de tags. La
+suppression d'une catégorie ou d'un tag retire aussi ses associations aux POI
+grâce aux cascades de la base. Le formulaire POI recharge ces référentiels à
+chaque ouverture et ne conserve donc pas de cache global obsolète.
+
 ## Limites de cette version
 
-- aucune gestion autonome des catégories ou tags dans le frontend ;
+- aucune authentification ni restriction d'accès à l'administration ;
+- les icônes, couleurs et aperçus de marqueur des catégories restent prévus
+  pour une évolution ultérieure ;
 - aucun filtre visible par catégorie ou tag, même si le client API accepte ces
   paramètres ;
 - aucun clustering de marqueurs ;
