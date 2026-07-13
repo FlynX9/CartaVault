@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from uuid import UUID
 
 from fastapi import (
@@ -24,6 +25,89 @@ router = APIRouter(
     prefix="/places",
     tags=["places"],
 )
+
+
+@dataclass(frozen=True)
+class MapBounds:
+    """Geographic bounds of the visible map area."""
+
+    min_latitude: float
+    max_latitude: float
+    min_longitude: float
+    max_longitude: float
+
+
+def get_map_bounds(
+    min_latitude: float | None = Query(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Southern latitude of the visible map area",
+    ),
+    max_latitude: float | None = Query(
+        default=None,
+        ge=-90,
+        le=90,
+        description="Northern latitude of the visible map area",
+    ),
+    min_longitude: float | None = Query(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Western longitude of the visible map area",
+    ),
+    max_longitude: float | None = Query(
+        default=None,
+        ge=-180,
+        le=180,
+        description="Eastern longitude of the visible map area",
+    ),
+) -> MapBounds | None:
+    """Validate and return optional geographic map bounds."""
+
+    supplied_values = (
+        min_latitude,
+        max_latitude,
+        min_longitude,
+        max_longitude,
+    )
+
+    if all(value is None for value in supplied_values):
+        return None
+
+    if any(value is None for value in supplied_values):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "All four map bounds must be provided together: "
+                "min_latitude, max_latitude, "
+                "min_longitude and max_longitude"
+            ),
+        )
+
+    assert min_latitude is not None
+    assert max_latitude is not None
+    assert min_longitude is not None
+    assert max_longitude is not None
+
+    if min_latitude >= max_latitude:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="min_latitude must be lower than max_latitude",
+        )
+
+    if min_longitude >= max_longitude:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="min_longitude must be lower than max_longitude",
+        )
+
+    return MapBounds(
+        min_latitude=min_latitude,
+        max_latitude=max_latitude,
+        min_longitude=min_longitude,
+        max_longitude=max_longitude,
+    )
 
 
 def build_place_read_statement():
@@ -134,6 +218,7 @@ def get_places(
         ge=0,
         description="Number of places to skip",
     ),
+    map_bounds: MapBounds | None = Depends(get_map_bounds),
     database_session: Session = Depends(get_db),
 ) -> list[PlaceRead]:
     """Return places using optional search, filters and pagination."""
@@ -165,6 +250,22 @@ def get_places(
         statement = statement.where(
             Place.categories.any(
                 Category.id == category_id
+            )
+        )
+
+    if map_bounds is not None:
+        visible_area = func.ST_MakeEnvelope(
+            map_bounds.min_longitude,
+            map_bounds.min_latitude,
+            map_bounds.max_longitude,
+            map_bounds.max_latitude,
+            4326,
+        )
+
+        statement = statement.where(
+            func.ST_Intersects(
+                Place.location,
+                visible_area,
             )
         )
 
