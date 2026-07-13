@@ -16,3 +16,6 @@ Thumbs.db
 
 # Environment
 .env
+
+# Uploaded photos
+backend/storage/photos/
