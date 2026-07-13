@@ -10,6 +10,13 @@ class MapCategoryRead(BaseModel):
     name: str
 
 
+class MapTagRead(BaseModel):
+    """Minimal tag representation used by map markers."""
+
+    id: UUID
+    name: str
+
+
 class PlaceMapRead(BaseModel):
     """Minimal place representation used by the interactive map."""
 
@@ -18,3 +25,4 @@ class PlaceMapRead(BaseModel):
     longitude: float
     latitude: float
     categories: list[MapCategoryRead]
+    tags: list[MapTagRead]

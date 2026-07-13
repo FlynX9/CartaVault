@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session, load_only, selectinload
 from app.categories.models import Category
 from app.database import get_db
 from app.places.filters import MapBounds, get_required_map_bounds
-from app.places.map_schemas import MapCategoryRead, PlaceMapRead
+from app.places.map_schemas import MapCategoryRead, MapTagRead, PlaceMapRead
 from app.places.models import Place
+from app.tags.models import Tag
 
 
 router = APIRouter(
@@ -25,6 +26,10 @@ def get_map_places(
     category_id: UUID | None = Query(
         default=None,
         description="Filter map markers by category UUID",
+    ),
+    tag_id: UUID | None = Query(
+        default=None,
+        description="Filter map markers by tag UUID",
     ),
     limit: int = Query(
         default=1000,
@@ -60,6 +65,10 @@ def get_map_places(
                 Category.id,
                 Category.name,
             ),
+            selectinload(Place.tags).load_only(
+                Tag.id,
+                Tag.name,
+            ),
         )
         .where(
             Place.location.is_not(None),
@@ -82,6 +91,13 @@ def get_map_places(
             )
         )
 
+    if tag_id is not None:
+        statement = statement.where(
+            Place.tags.any(
+                Tag.id == tag_id
+            )
+        )
+
     rows = database_session.execute(statement).all()
 
     return [
@@ -96,6 +112,13 @@ def get_map_places(
                     name=category.name,
                 )
                 for category in place.categories
+            ],
+            tags=[
+                MapTagRead(
+                    id=tag.id,
+                    name=tag.name,
+                )
+                for tag in place.tags
             ],
         )
         for place, longitude, latitude in rows

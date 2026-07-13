@@ -9,10 +9,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.categories.associations import place_categories_table
 from app.database import Base
+from app.tags.associations import place_tags_table
 
 
 if TYPE_CHECKING:
     from app.categories.models import Category
+    from app.tags.models import Tag
 
 
 class Place(Base):
@@ -115,4 +117,10 @@ class Place(Base):
         secondary=place_categories_table,
         back_populates="places",
         order_by="Category.name",
+    )
+
+    tags: Mapped[list["Tag"]] = relationship(
+        secondary=place_tags_table,
+        back_populates="places",
+        order_by="Tag.name",
     )

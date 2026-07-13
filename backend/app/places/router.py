@@ -19,6 +19,8 @@ from app.database import get_db
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.models import Place
 from app.places.schemas import PlaceCreate, PlaceRead, PlaceUpdate
+from app.tags.models import Tag
+from app.tags.schemas import TagRead
 
 
 router = APIRouter(
@@ -37,7 +39,8 @@ def build_place_read_statement():
             func.ST_Y(Place.location).label("latitude"),
         )
         .options(
-            selectinload(Place.categories)
+            selectinload(Place.categories),
+            selectinload(Place.tags),
         )
     )
 
@@ -71,6 +74,13 @@ def place_to_read(
                 description=category.description,
             )
             for category in place.categories
+        ],
+        tags=[
+            TagRead(
+                id=tag.id,
+                name=tag.name,
+            )
+            for tag in place.tags
         ],
         created_at=place.created_at,
         updated_at=place.updated_at,
@@ -127,6 +137,10 @@ def get_places(
         default=None,
         description="Filter places by category UUID",
     ),
+    tag_id: UUID | None = Query(
+        default=None,
+        description="Filter places by tag UUID",
+    ),
     limit: int = Query(
         default=50,
         ge=1,
@@ -170,6 +184,13 @@ def get_places(
         statement = statement.where(
             Place.categories.any(
                 Category.id == category_id
+            )
+        )
+
+    if tag_id is not None:
+        statement = statement.where(
+            Place.tags.any(
+                Tag.id == tag_id
             )
         )
 
@@ -477,4 +498,109 @@ def remove_category_from_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to remove the category from the place",
+        ) from error
+
+
+@router.post(
+    "/{place_id}/tags/{tag_id}",
+    response_model=PlaceRead,
+)
+def add_tag_to_place(
+    place_id: UUID,
+    tag_id: UUID,
+    database_session: Session = Depends(get_db),
+) -> PlaceRead:
+    """Assign a tag to a place."""
+
+    place = database_session.get(
+        Place,
+        place_id,
+        options=[
+            selectinload(Place.tags),
+        ],
+    )
+
+    if place is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    tag = database_session.get(Tag, tag_id)
+
+    if tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tag with id {tag_id} was not found",
+        )
+
+    if tag not in place.tags:
+        place.tags.append(tag)
+
+    try:
+        database_session.commit()
+
+        return read_place(
+            database_session=database_session,
+            place_id=place_id,
+        )
+
+    except SQLAlchemyError as error:
+        database_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to assign the tag to the place",
+        ) from error
+
+
+@router.delete(
+    "/{place_id}/tags/{tag_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_tag_from_place(
+    place_id: UUID,
+    tag_id: UUID,
+    database_session: Session = Depends(get_db),
+) -> Response:
+    """Remove a tag from a place."""
+
+    place = database_session.get(
+        Place,
+        place_id,
+        options=[
+            selectinload(Place.tags),
+        ],
+    )
+
+    if place is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    tag = database_session.get(Tag, tag_id)
+
+    if tag is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tag with id {tag_id} was not found",
+        )
+
+    if tag in place.tags:
+        place.tags.remove(tag)
+
+    try:
+        database_session.commit()
+
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT,
+        )
+
+    except SQLAlchemyError as error:
+        database_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to remove the tag from the place",
         ) from error

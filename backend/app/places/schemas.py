@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from app.categories.schemas import CategoryRead
+from app.tags.schemas import TagRead
 
 
 class PlaceCreate(BaseModel):
@@ -116,5 +117,6 @@ class PlaceRead(BaseModel):
     longitude: float | None
     latitude: float | None
     categories: list[CategoryRead]
+    tags: list[TagRead]
     created_at: datetime
     updated_at: datetime
