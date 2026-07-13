@@ -70,6 +70,10 @@ describe('PlaceDetailsPage', () => {
     expect(screen.queryByText('Adresse')).not.toBeInTheDocument()
     expect(screen.queryByText('Propriétaire')).not.toBeInTheDocument()
     expect(await screen.findByText('Aucune photo pour ce POI.')).toBeVisible()
+    const googleMapsLink = screen.getByRole('link', { name: 'Ouvrir Ancienne manufacture dans Google Maps' })
+    expect(googleMapsLink).toHaveAttribute('href', 'https://www.google.com/maps/search/?api=1&query=48.17%2C6.45')
+    expect(googleMapsLink).toHaveAttribute('target', '_blank')
+    expect(googleMapsLink).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('shows a clear page when the API returns 404', async () => {
@@ -94,6 +98,31 @@ describe('PlaceDetailsPage', () => {
       'href',
       '/',
     )
+  })
+
+  it('keeps textual details visible when photos fail', async () => {
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith('/photos')
+        ? jsonResponse({ detail: 'Photos unavailable' }, 500)
+        : jsonResponse(PLACE_RESPONSE),
+    )))
+
+    renderDetailsPage()
+
+    expect(await screen.findByRole('heading', { name: 'Ancienne manufacture' })).toBeVisible()
+    expect(await screen.findByText('Les photos ne sont pas disponibles.')).toBeVisible()
+  })
+
+  it('hides Google Maps when coordinates are missing', async () => {
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => Promise.resolve(
+      String(input).endsWith('/photos')
+        ? jsonResponse([])
+        : jsonResponse({ ...PLACE_RESPONSE, latitude: null, longitude: null }),
+    )))
+
+    renderDetailsPage()
+    await screen.findByRole('heading', { name: 'Ancienne manufacture' })
+    expect(screen.queryByRole('link', { name: 'Ouvrir Ancienne manufacture dans Google Maps' })).not.toBeInTheDocument()
   })
 
   it('requires confirmation before deleting and reports the deletion', async () => {

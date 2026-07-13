@@ -1,28 +1,27 @@
 import { Link } from 'react-router-dom'
 
 import type { MapPlace } from '../../types/place'
+import { buildGoogleMapsUrl } from '../../utils/googleMaps'
 
 interface PlacePreviewProps {
   place: MapPlace
-  onClose: () => void
+  onClose?: () => void
+  embedded?: boolean
 }
 
-export function PlacePreview({ place, onClose }: PlacePreviewProps) {
+export function PlacePreview({ place, onClose, embedded = false }: PlacePreviewProps) {
+  const googleMapsUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
+
   return (
-    <article className="place-preview" aria-label={`Aperçu de ${place.name}`}>
+    <article className={`place-preview${embedded ? ' embedded' : ''}`} aria-label={`Aperçu de ${place.name}`}>
       <div className="preview-heading">
         <div>
           <p className="preview-kicker">Point d'intérêt</p>
           <h2>{place.name}</h2>
         </div>
-        <button
-          className="close-button"
-          type="button"
-          onClick={onClose}
-          aria-label="Fermer la fiche"
-        >
-          ×
-        </button>
+        {onClose && (
+          <button className="close-button" type="button" onClick={onClose} aria-label="Fermer la fiche">×</button>
+        )}
       </div>
 
       <p className="coordinates">
@@ -44,6 +43,12 @@ export function PlacePreview({ place, onClose }: PlacePreviewProps) {
         )}
       </section>
 
+      {googleMapsUrl && (
+        <a className="external-map-link" href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+          Ouvrir {place.name} dans Google Maps
+        </a>
+      )}
+
       <section className="preview-section">
         <h3>Tags</h3>
         {place.tags.length > 0 ? (
@@ -64,7 +69,7 @@ export function PlacePreview({ place, onClose }: PlacePreviewProps) {
         to={`/places/${place.id}`}
         state={{ fromMap: true }}
       >
-        Voir la fiche
+        Fiche
       </Link>
     </article>
   )

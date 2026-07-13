@@ -7,6 +7,7 @@ import { deletePlace, getPlaceDetails } from '../api/places'
 import { PhotoGallery } from '../components/photos/PhotoGallery'
 import type { Photo } from '../types/photo'
 import type { PlaceDetails } from '../types/place'
+import { buildGoogleMapsUrl } from '../utils/googleMaps'
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
@@ -33,11 +34,14 @@ function DetailItem({ label, value }: DetailItemProps) {
 }
 
 interface PlaceDetailsPageProps {
+  placeId?: string
+  embedded?: boolean
   onPlaceDeleted?: (placeId: string) => void
 }
 
-export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
-  const { placeId } = useParams<{ placeId: string }>()
+export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, onPlaceDeleted }: PlaceDetailsPageProps) {
+  const { placeId: routePlaceId } = useParams<{ placeId: string }>()
+  const placeId = providedPlaceId ?? routePlaceId
   const navigate = useNavigate()
   const [place, setPlace] = useState<PlaceDetails | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
@@ -164,6 +168,7 @@ export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
     place.danger_level !== null
   const hasChronology =
     place.construction_date !== null || place.abandonment_date !== null
+  const googleMapsUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
 
   const handleDelete = async () => {
     if (
@@ -189,11 +194,11 @@ export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
   }
 
   return (
-    <article className="details-page">
+    <article className={`details-page${embedded ? ' embedded' : ''}`}>
       <div className="details-toolbar">
-        <Link className="back-link" to="/">
-          ← Retour à la carte
-        </Link>
+        {!embedded && (
+          <Link className="back-link" to="/">← Retour à la carte</Link>
+        )}
         <div className="details-actions">
           <Link className="secondary-button" to={`/places/${place.id}/edit`}>
             Modifier
@@ -222,9 +227,16 @@ export function PlaceDetailsPage({ onPlaceDeleted }: PlaceDetailsPageProps) {
           <p className="details-description">{place.description}</p>
         )}
         {place.latitude !== null && place.longitude !== null && (
-          <p className="details-coordinates">
-            {place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}
-          </p>
+          <>
+            <p className="details-coordinates">
+              {place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}
+            </p>
+            {googleMapsUrl && (
+              <a className="external-map-link" href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                Ouvrir {place.name} dans Google Maps
+              </a>
+            )}
+          </>
         )}
       </header>
 

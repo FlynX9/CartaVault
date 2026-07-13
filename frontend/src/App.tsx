@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import { getMapPlaces } from './api/places'
+import { MapSidebar } from './components/sidebar/MapSidebar'
+import { deriveMapSidebarState, getSidebarPlaceId } from './components/sidebar/sidebarState'
 import { MapPage } from './pages/MapPage'
-import { PlaceDetailsPage } from './pages/PlaceDetailsPage'
-import { PlaceEditorPage } from './pages/PlaceEditorPage'
 import { AdminLayout } from './pages/admin/AdminLayout'
 import { CategoriesPage } from './pages/admin/CategoriesPage'
 import { TagsPage } from './pages/admin/TagsPage'
@@ -23,7 +23,8 @@ function isAbortError(error: unknown): boolean {
 
 function App() {
   const location = useLocation()
-  const isMapRoute = location.pathname === '/'
+  const navigate = useNavigate()
+  const isMapWorkspace = !location.pathname.startsWith('/admin')
   const [bounds, setBounds] = useState<MapBounds | null>(null)
   const [mapView, setMapView] = useState<MapView>(INITIAL_MAP_VIEW)
   const [places, setPlaces] = useState<MapPlace[]>([])
@@ -34,7 +35,7 @@ function App() {
   const requestSequence = useRef(0)
 
   useEffect(() => {
-    if (!isMapRoute || bounds === null) {
+    if (!isMapWorkspace || bounds === null) {
       return
     }
 
@@ -89,7 +90,7 @@ function App() {
       window.clearTimeout(timeoutId)
       controller.abort()
     }
-  }, [bounds, isMapRoute, mapRefreshVersion])
+  }, [bounds, isMapWorkspace, mapRefreshVersion])
 
   const handlePlaceMutated = () => {
     setSelectedPlace(null)
@@ -103,18 +104,24 @@ function App() {
     )
   }
 
+  const sidebarState = deriveMapSidebarState(location.pathname, selectedPlace)
+  const closeSidebar = () => {
+    setSelectedPlace(null)
+    if (location.pathname !== '/') navigate('/')
+  }
+
   return (
     <main className="app-shell">
       <header className="app-header">
         <div>
           <p className="app-eyebrow">
-            {isMapRoute ? "Carte des points d'intérêt" : "Fiche du point d'intérêt"}
+            {isMapWorkspace ? "Carte des points d'intérêt" : 'Administration'}
           </p>
           <h1>POI Manager</h1>
         </div>
         <div className="app-header-actions">
           <Link className="header-link" to="/admin/categories">Administration</Link>
-          {isMapRoute ? (
+          {isMapWorkspace ? (
             <div className="marker-count" aria-live="polite">
               <strong>{places.length}</strong>
               <span>
@@ -130,43 +137,27 @@ function App() {
 
       <Routes>
         <Route
-          path="/"
+          path="*"
           element={
             <MapPage
               places={places}
-              selectedPlace={selectedPlace}
+              selectedPlaceId={getSidebarPlaceId(sidebarState)}
               initialView={mapView}
               isLoading={isLoading}
               errorMessage={errorMessage}
+              sidebarOpen={sidebarState.mode !== 'closed'}
+              sidebar={
+                <MapSidebar
+                  state={sidebarState}
+                  onClose={closeSidebar}
+                  onPlaceMutated={handlePlaceMutated}
+                  onPlaceDeleted={handlePlaceDeleted}
+                />
+              }
               onBoundsChange={setBounds}
               onViewChange={setMapView}
               onPlaceSelect={setSelectedPlace}
-              onPlaceClose={() => setSelectedPlace(null)}
             />
-          }
-        />
-        <Route
-          path="/places/new"
-          element={
-            <PlaceEditorPage
-              mode="create"
-              onPlaceMutated={handlePlaceMutated}
-            />
-          }
-        />
-        <Route
-          path="/places/:placeId/edit"
-          element={
-            <PlaceEditorPage
-              mode="edit"
-              onPlaceMutated={handlePlaceMutated}
-            />
-          }
-        />
-        <Route
-          path="/places/:placeId"
-          element={
-            <PlaceDetailsPage onPlaceDeleted={handlePlaceDeleted} />
           }
         />
         <Route path="/admin" element={<AdminLayout />}>

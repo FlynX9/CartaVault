@@ -31,6 +31,8 @@ import type {
 
 interface PlaceEditorPageProps {
   mode: 'create' | 'edit'
+  placeId?: string
+  embedded?: boolean
   onPlaceMutated: () => void
 }
 
@@ -47,8 +49,9 @@ async function syncAssociations(
   for (const id of tags.removed) await removePlaceTag(placeId, id)
 }
 
-export function PlaceEditorPage({ mode, onPlaceMutated }: PlaceEditorPageProps) {
-  const { placeId } = useParams<{ placeId: string }>()
+export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = false, onPlaceMutated }: PlaceEditorPageProps) {
+  const { placeId: routePlaceId } = useParams<{ placeId: string }>()
+  const placeId = providedPlaceId ?? routePlaceId
   const navigate = useNavigate()
   const [initialValues, setInitialValues] = useState<PlaceFormValues | null>(null)
   const [categories, setCategories] = useState<PlaceCategory[]>([])
@@ -133,8 +136,8 @@ export function PlaceEditorPage({ mode, onPlaceMutated }: PlaceEditorPageProps) 
   const globalError = partialPlaceId === null ? error : `${error ?? 'Certaines associations ont échoué.'} Le POI principal a bien été créé.`
 
   return (
-    <article className="editor-page">
-      <div className="details-toolbar"><Link className="back-link" to={mode === 'edit' && placeId ? `/places/${placeId}` : '/'}>← Annuler</Link></div>
+    <article className={`editor-page${embedded ? ' embedded' : ''}`}>
+      {!embedded && <div className="details-toolbar"><Link className="back-link" to={mode === 'edit' && placeId ? `/places/${placeId}` : '/'}>← Annuler</Link></div>}
       <header className="editor-header">
         <p className="details-kicker">{mode === 'create' ? 'Nouveau point d’intérêt' : 'Modification'}</p>
         <h2>{mode === 'create' ? 'Ajouter un POI' : initialValues.name}</h2>

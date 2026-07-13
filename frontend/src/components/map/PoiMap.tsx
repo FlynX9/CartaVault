@@ -3,6 +3,7 @@ import { MapContainer, Marker, TileLayer } from 'react-leaflet'
 
 import type { MapBounds, MapPlace, MapView } from '../../types/place'
 import { MapBoundsWatcher } from './MapBoundsWatcher'
+import { MapResizeWatcher } from './MapResizeWatcher'
 import { defaultMarkerIcon, selectedMarkerIcon } from './markerIcons'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
@@ -14,6 +15,7 @@ interface PoiMapProps {
   onBoundsChange: (bounds: MapBounds) => void
   onViewChange: (view: MapView) => void
   onPlaceSelect: (place: MapPlace) => void
+  sidebarOpen: boolean
 }
 
 export function PoiMap({
@@ -23,6 +25,7 @@ export function PoiMap({
   onBoundsChange,
   onViewChange,
   onPlaceSelect,
+  sidebarOpen,
 }: PoiMapProps) {
   return (
     <MapContainer
@@ -42,6 +45,7 @@ export function PoiMap({
         onBoundsChange={onBoundsChange}
         onViewChange={onViewChange}
       />
+      <MapResizeWatcher sidebarOpen={sidebarOpen} />
 
       {places.map((place) => (
         <Marker
