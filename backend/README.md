@@ -72,7 +72,9 @@ cross-origin à `GET`, `POST`, `PATCH`, `DELETE` et `OPTIONS`.
 `GET /places` accepte notamment la recherche `q`, la pagination et les
 filtres par pays, région, catégorie, tag et zone visible. `GET /places/map`
 renvoie une représentation légère destinée aux marqueurs et exige
-`min_latitude`, `max_latitude`, `min_longitude` et `max_longitude`.
+`min_latitude`, `max_latitude`, `min_longitude` et `max_longitude`. Il accepte
+également le filtre facultatif `country`, comparé sans tenir compte de la
+casse, ainsi que `category_id`, `tag_id` et `limit`.
 
 ## Base de données et Alembic
 

@@ -11,7 +11,7 @@ une carte interactive Leaflet alimentée par OpenStreetMap.
 - recherche textuelle, filtres par pays, région, catégorie et tag ;
 - filtrage des POI par zone géographique visible ;
 - endpoint léger `GET /places/map` pour les marqueurs cartographiques ;
-- frontend React TypeScript avec carte permanente, volet latéral de gestion des POI et administration des catégories et tags ;
+- frontend React TypeScript avec carte permanente, sélection du pays, liste synchronisée des POI, volet latéral de gestion et administration des catégories et tags ;
 - CRUD des catégories et association avec les POI ;
 - CRUD des tags et association avec les POI ;
 - métadonnées photo, upload sécurisé JPEG, PNG et WebP ;
@@ -86,7 +86,9 @@ Vite affiche l'URL locale, généralement <http://localhost:5173>.
 ## État du projet
 
 Le backend couvre la gestion des POI, catégories, tags et photos. Le frontend
-conserve la carte visible et affiche dans un volet latéral l'aperçu, la fiche
+conserve la carte visible, filtre les marqueurs par pays et affiche une liste
+alphabétique recherchable synchronisée avec la carte. Le pays actif est
+partageable dans l'URL et déclenche un recentrage adapté. Un volet latéral affiche l'aperçu, la fiche
 détaillée, les photos ainsi que les formulaires de création et de modification.
 Les URL directes des POI restent partageables et un lien vers Google Maps est
 proposé lorsque les coordonnées sont disponibles. Sur mobile, le volet devient
@@ -94,6 +96,10 @@ un panneau superposé et défilable. Il est aussi possible de supprimer un POI,
 de choisir sa position sur carte et de gérer ses catégories et tags. Une section
 d'administration permet également de rechercher, créer, modifier et supprimer
 les catégories et tags, sans authentification à ce stade.
+
+La configuration cartographique des pays est encore temporaire et limitée aux
+valeurs réellement utilisées — actuellement la France. La normalisation future
+prévoit des codes ISO, centres, zooms et limites stockés en base.
 
 ## Feuille de route
 

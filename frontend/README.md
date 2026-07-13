@@ -59,15 +59,30 @@ npm run preview
 ## Fonctionnement
 
 - la carte constitue l'écran principal permanent pour la consultation et la gestion des POI ;
+- la barre supérieure centralise le pays actif, l'ajout d'un POI et l'accès à l'administration ;
+- une liste fixe à gauche affiche les POI du pays actif, avec recherche serveur et pagination par 100 éléments ;
 - un unique volet latéral propose successivement les modes aperçu, détails, création et modification ;
 - position initiale : latitude `48.17`, longitude `6.45`, zoom `9` ;
 - fond OpenStreetMap avec attribution ;
-- appel de `GET /places/map` avec les limites visibles ;
+- appel de `GET /places/map` avec les limites visibles et le pays actif ;
 - délai de 350 ms après les déplacements et changements de zoom ;
 - annulation des appels obsolètes avec `AbortController` ;
 - limite de 1 000 marqueurs par requête ;
 - affichage des catégories, tags et coordonnées sans appel de détail lors du simple aperçu ;
 - lien « Ouvrir dans Google Maps » construit uniquement à partir des coordonnées, sans clé API.
+
+Les pays proposés sont extraits des valeurs non vides réellement retournées
+par `GET /places`, parcouru par pages de 100. Les doublons sont supprimés sans
+tenir compte de la casse. Le pays actif est conservé dans `?country=`, ce qui
+rend le filtre partageable et compatible avec le rechargement et l'historique
+du navigateur.
+
+La liste de gauche utilise `GET /places?country=...&q=...&limit=100&offset=...`.
+Elle trie les résultats chargés alphabétiquement, propose « Charger plus »
+tant qu'une page complète est reçue et ne charge aucune photo. Un clic dans la
+liste ouvre le même aperçu qu'un marqueur et recentre la carte si les
+coordonnées existent. Inversement, un marqueur sélectionne et révèle l'entrée
+correspondante dans la liste.
 
 ## Routes
 
@@ -92,9 +107,17 @@ dans le volet et actualise les marqueurs visibles. Après une suppression, elle
 ferme le volet, revient à `/` et retire immédiatement le marqueur local.
 
 Sur ordinateur, le volet réduit la largeur disponible pour la carte ; Leaflet
-est alors redimensionné sans modifier le zoom. Sur mobile, le volet devient un
-panneau superposé occupant la majorité de la largeur, avec fermeture visible
-et défilement interne.
+est alors redimensionné sans modifier le zoom. Le panneau de liste peut être
+masqué depuis la barre supérieure. Sur tablette et mobile, liste et détails
+deviennent des panneaux superposés ; la liste est masquée pendant l'affichage
+des détails afin d'éviter trois zones concurrentes. Les panneaux conservent
+une fermeture visible et un défilement interne.
+
+La sélection de `France`, seule valeur actuellement présente dans les données
+de développement, utilise temporairement un centre et un zoom définis dans le
+frontend. Les pays inconnus utilisent un cadrage mondial sûr. Cette
+configuration est volontairement transitoire : une prochaine évolution doit
+normaliser les pays avec code ISO, centre, zoom et limites en base.
 
 La fiche charge séparément `GET /places/{placeId}` et
 `GET /places/{placeId}/photos`. Les images utilisent exclusivement
@@ -122,5 +145,7 @@ chaque ouverture et ne conserve donc pas de cache global obsolète.
 - aucun filtre visible par catégorie ou tag, même si le client API accepte ces
   paramètres ;
 - aucun clustering de marqueurs ;
+- pays non normalisés et cadrage détaillé configuré uniquement pour la France ;
+- le compteur de liste représente les éléments chargés, l'API ne fournissant pas encore de total ;
 - aucune recherche d'adresse, vue satellite ou interaction par clic droit ;
 - aucun upload photo ni authentification.
