@@ -14,6 +14,7 @@ from app.tags.associations import place_tags_table
 
 if TYPE_CHECKING:
     from app.categories.models import Category
+    from app.photos.models import Photo
     from app.tags.models import Tag
 
 
@@ -123,4 +124,10 @@ class Place(Base):
         secondary=place_tags_table,
         back_populates="places",
         order_by="Tag.name",
+    )
+
+    photos: Mapped[list["Photo"]] = relationship(
+        back_populates="place",
+        order_by="(Photo.created_at, Photo.id)",
+        passive_deletes=True,
     )
