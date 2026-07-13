@@ -10,13 +10,19 @@ place_categories_table = Table(
     Column(
         "place_id",
         PostgreSQLUUID(as_uuid=True),
-        ForeignKey("places.id"),
+        ForeignKey(
+            "places.id",
+            ondelete="CASCADE",
+        ),
         primary_key=True,
     ),
     Column(
         "category_id",
         PostgreSQLUUID(as_uuid=True),
-        ForeignKey("categories.id"),
+        ForeignKey(
+            "categories.id",
+            ondelete="CASCADE",
+        ),
         primary_key=True,
     ),
 )

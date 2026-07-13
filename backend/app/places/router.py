@@ -119,6 +119,10 @@ def get_places(
         max_length=100,
         description="Filter places by region",
     ),
+    category_id: UUID | None = Query(
+        default=None,
+        description="Filter places by category UUID",
+    ),
     limit: int = Query(
         default=50,
         ge=1,
@@ -155,6 +159,13 @@ def get_places(
     if region is not None:
         statement = statement.where(
             func.lower(Place.region) == region.strip().lower()
+        )
+
+    if category_id is not None:
+        statement = statement.where(
+            Place.categories.any(
+                Category.id == category_id
+            )
         )
 
     statement = (
