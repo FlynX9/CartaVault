@@ -1,5 +1,6 @@
-import { LatLngBounds } from 'leaflet'
-import { MapContainer, Marker, TileLayer } from 'react-leaflet'
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'
 
 import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/place'
 import { MapBoundsWatcher } from './MapBoundsWatcher'
@@ -18,6 +19,66 @@ interface PoiMapProps {
   onPlaceSelect: (place: MapPlace) => void
   focusRequest: MapFocusRequest | null
   layoutKey: string
+  popupContent: ReactNode
+  onPopupClose: () => void
+}
+
+function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
+  const markerRef = useRef<LeafletMarker>(null)
+  const popupRef = useRef<LeafletPopup>(null)
+  const popupOpenedRef = useRef(false)
+  const controlledCloseRef = useRef(false)
+
+  useLayoutEffect(() => {
+    const popup = popupRef.current
+    if (!selected && popup !== null && popupOpenedRef.current) {
+      controlledCloseRef.current = true
+      popup.close()
+    }
+  }, [selected])
+
+  useEffect(() => {
+    const marker = markerRef.current
+    const popup = popupRef.current
+    if (selected && marker !== null && popup !== null && marker.getPopup() === popup) {
+      marker.openPopup()
+      if (marker.isPopupOpen()) {
+        popupOpenedRef.current = true
+      }
+    }
+  }, [selected])
+
+  return (
+    <Marker
+      ref={markerRef}
+      position={[place.latitude, place.longitude]}
+      icon={selected ? selectedMarkerIcon : defaultMarkerIcon}
+      eventHandlers={{
+        click: onSelect,
+        popupopen: () => { popupOpenedRef.current = true },
+        popupclose: () => {
+          const controlledClose = controlledCloseRef.current
+          popupOpenedRef.current = false
+          controlledCloseRef.current = false
+          if (!controlledClose && selected) {
+            onPopupClose()
+          }
+        },
+      }}
+      title={place.name}
+    >
+      <Popup
+        ref={popupRef}
+        autoPan={false}
+        closeOnClick
+        maxWidth={430}
+        minWidth={300}
+        closeButton={false}
+      >
+        {selected && popupContent ? popupContent : <p className="place-popup-loading">Chargement…</p>}
+      </Popup>
+    </Marker>
+  )
 }
 
 export function PoiMap({
@@ -29,6 +90,8 @@ export function PoiMap({
   onPlaceSelect,
   focusRequest,
   layoutKey,
+  popupContent,
+  onPopupClose,
 }: PoiMapProps) {
   return (
     <MapContainer
@@ -51,21 +114,7 @@ export function PoiMap({
       <MapFocusController request={focusRequest} />
       <MapResizeWatcher layoutKey={layoutKey} />
 
-      {places.map((place) => (
-        <Marker
-          key={place.id}
-          position={[place.latitude, place.longitude]}
-          icon={
-            place.id === selectedPlaceId
-              ? selectedMarkerIcon
-              : defaultMarkerIcon
-          }
-          eventHandlers={{
-            click: () => onPlaceSelect(place),
-          }}
-          title={place.name}
-        />
-      ))}
+      {places.map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
     </MapContainer>
   )
 }

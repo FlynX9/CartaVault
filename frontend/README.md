@@ -10,7 +10,22 @@ centre/zoom provient des valeurs effectives de l'API.
 La liste et les marqueurs envoient `map_id`. La création d'un POI utilise
 automatiquement la carte active; l'édition permet de déplacer le POI vers une
 autre carte. Limites V1 : une carte par pays, pas de frontières, clustering,
-vue satellite, recherche géographique ni infobulle enrichie.
+vue satellite, recherche géographique ni icônes métier des POI.
+
+## Consultation et édition intégrées
+
+La consultation suit une interaction proche de Google My Maps : liste fixe à
+gauche, carte permanente et infobulle enrichie au marqueur. La fiche charge
+indépendamment `GET /places/{id}` et `GET /places/{id}/photos`; chaque image est
+servie exclusivement par `GET /photos/{photo_id}/file`. Une image manquante ou
+une erreur photo ne masque jamais les informations textuelles.
+
+Les actions compactes de la popup permettent de modifier, confirmer une
+suppression, ouvrir Google Maps ou fermer. Le formulaire POI existant est
+réutilisé dans un panneau flottant pour la création et l'édition. Fermer la
+popup revient à `/?map=<uuid>`; les liens directs restaurent la carte, la
+sélection et la fiche. Sous 760 px, le panneau d'édition devient une fiche
+inférieure et la liste est masquée pendant l'édition.
 
 Interface React TypeScript de POI Manager. Elle affiche les POI visibles sur
 une carte Leaflet, présente un aperçu au clic et permet de consulter, créer,

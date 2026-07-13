@@ -11,6 +11,20 @@ n'est plus stocké comme texte libre.
 La V1 impose une seule carte par pays. Une carte contenant des POI ne peut pas
 être supprimée et aucune cascade destructive n'est configurée.
 
+## Interface cartographique type My Maps
+
+La carte reste visible pendant toutes les opérations. La liste fixe gauche
+affiche les POI de la carte active; un clic dans la liste ou sur un marqueur
+ouvre une infobulle enrichie ancrée au marqueur avec détails, catégories, tags,
+coordonnées et photos. Les actions modifier, supprimer, Google Maps et fermer
+sont directement disponibles dans cette fiche.
+
+La création et l'édition utilisent le formulaire existant dans un panneau
+flottant au-dessus de la carte. Les URLs `/places/:id`, `/places/:id/edit` et
+`/places/new` restent partageables sans produire de page de consultation
+isolée. Sur mobile, la liste est escamotable et le formulaire devient un
+panneau inférieur afin de conserver la carte visible.
+
 POI Manager est un projet auto-hébergé de gestion de points d'intérêt (POI)
 géographiques. Le backend fournit une API FastAPI synchrone adossée à
 PostgreSQL/PostGIS. Une première interface React affiche les POI visibles sur
