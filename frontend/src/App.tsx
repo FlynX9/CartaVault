@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { getMapPlaces } from './api/places'
 import { MapPage } from './pages/MapPage'
 import { PlaceDetailsPage } from './pages/PlaceDetailsPage'
 import { PlaceEditorPage } from './pages/PlaceEditorPage'
+import { AdminLayout } from './pages/admin/AdminLayout'
+import { CategoriesPage } from './pages/admin/CategoriesPage'
+import { TagsPage } from './pages/admin/TagsPage'
 import type { MapBounds, MapPlace, MapView } from './types/place'
 
 const REQUEST_DEBOUNCE_MS = 350
@@ -109,17 +112,20 @@ function App() {
           </p>
           <h1>POI Manager</h1>
         </div>
-        {isMapRoute ? (
-          <div className="marker-count" aria-live="polite">
-            <strong>{places.length}</strong>
-            <span>
-              marqueur{places.length > 1 ? 's' : ''} visible
-              {places.length > 1 ? 's' : ''}
-            </span>
-          </div>
-        ) : (
-          <span className="read-only-label">Lecture seule</span>
-        )}
+        <div className="app-header-actions">
+          <Link className="header-link" to="/admin/categories">Administration</Link>
+          {isMapRoute ? (
+            <div className="marker-count" aria-live="polite">
+              <strong>{places.length}</strong>
+              <span>
+                marqueur{places.length > 1 ? 's' : ''} visible
+                {places.length > 1 ? 's' : ''}
+              </span>
+            </div>
+          ) : (
+            <Link className="header-link" to="/">Carte</Link>
+          )}
+        </div>
       </header>
 
       <Routes>
@@ -163,6 +169,11 @@ function App() {
             <PlaceDetailsPage onPlaceDeleted={handlePlaceDeleted} />
           }
         />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="categories" replace />} />
+          <Route path="categories" element={<CategoriesPage />} />
+          <Route path="tags" element={<TagsPage />} />
+        </Route>
       </Routes>
     </main>
   )
