@@ -116,26 +116,26 @@ def get_map_bounds(
 
 
 def get_required_map_bounds(
-    min_latitude: float | None = Query(
-        default=None,
+    min_latitude: float = Query(
+        default=...,
         ge=-90,
         le=90,
         description="Southern latitude of the visible map area",
     ),
-    max_latitude: float | None = Query(
-        default=None,
+    max_latitude: float = Query(
+        default=...,
         ge=-90,
         le=90,
         description="Northern latitude of the visible map area",
     ),
-    min_longitude: float | None = Query(
-        default=None,
+    min_longitude: float = Query(
+        default=...,
         ge=-180,
         le=180,
         description="Western longitude of the visible map area",
     ),
-    max_longitude: float | None = Query(
-        default=None,
+    max_longitude: float = Query(
+        default=...,
         ge=-180,
         le=180,
         description="Eastern longitude of the visible map area",

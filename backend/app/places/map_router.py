@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, load_only, selectinload
 
 from app.categories.models import Category
 from app.database import get_db
@@ -52,7 +52,14 @@ def get_map_places(
             func.ST_Y(Place.location).label("latitude"),
         )
         .options(
-            selectinload(Place.categories)
+            load_only(
+                Place.id,
+                Place.name,
+            ),
+            selectinload(Place.categories).load_only(
+                Category.id,
+                Category.name,
+            ),
         )
         .where(
             Place.location.is_not(None),
