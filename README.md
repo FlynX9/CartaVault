@@ -1,5 +1,16 @@
 # POI Manager
 
+## Pays, cartes et POI
+
+Le domaine suit la relation normalisée `countries → poi_maps → places`. Le
+catalogue des pays alimente « Créer une carte », tandis que le sélecteur
+principal n'affiche que les cartes effectivement créées. Chaque POI appartient
+obligatoirement à une carte par `map_id`; son pays est déduit de cette carte et
+n'est plus stocké comme texte libre.
+
+La V1 impose une seule carte par pays. Une carte contenant des POI ne peut pas
+être supprimée et aucune cascade destructive n'est configurée.
+
 POI Manager est un projet auto-hébergé de gestion de points d'intérêt (POI)
 géographiques. Le backend fournit une API FastAPI synchrone adossée à
 PostgreSQL/PostGIS. Une première interface React affiche les POI visibles sur

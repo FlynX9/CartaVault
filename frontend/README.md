@@ -1,5 +1,17 @@
 # Frontend cartographique de POI Manager
 
+## Cartes normalisées
+
+« Créer une carte » recherche dans le catalogue mondial et propose le nom du
+pays. Le sélecteur principal consomme uniquement `GET /maps`, donc un pays sans
+carte n'y apparaît pas. La carte active est conservée sous `?map=<uuid>` et son
+centre/zoom provient des valeurs effectives de l'API.
+
+La liste et les marqueurs envoient `map_id`. La création d'un POI utilise
+automatiquement la carte active; l'édition permet de déplacer le POI vers une
+autre carte. Limites V1 : une carte par pays, pas de frontières, clustering,
+vue satellite, recherche géographique ni infobulle enrichie.
+
 Interface React TypeScript de POI Manager. Elle affiche les POI visibles sur
 une carte Leaflet, présente un aperçu au clic et permet de consulter, créer,
 modifier et supprimer les POI et leurs associations.

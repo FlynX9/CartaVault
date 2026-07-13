@@ -1,5 +1,28 @@
 # Backend de POI Manager
 
+## Modèle pays → cartes → POI
+
+- `GET /countries` expose le catalogue mondial avec recherche par nom ou code.
+- `/maps` fournit le CRUD des cartes; centre et zoom `null` héritent du pays.
+- `/places` et `/places/map` filtrent par `map_id`; la création l'exige et les
+  lectures détaillées embarquent seulement une synthèse carte/pays.
+- supprimer une carte non vide renvoie `409 Conflict`.
+
+Le catalogue local `app/countries/data/countries.json` est dérivé de
+[mledoze/countries](https://github.com/mledoze/countries), révision
+`09b28e3d03e6ca3fbbac996d716a50d929781e8c`, sous
+[ODbL 1.0](https://github.com/mledoze/countries/blob/09b28e3d03e6ca3fbbac996d716a50d929781e8c/LICENSE).
+Il conserve les codes ISO, le nom français (anglais en repli), le centre et un
+zoom calculé de manière déterministe. Les deux territoires Saint-Martin sont
+explicitement désambiguïsés. Aucun réseau n'est utilisé au runtime. Le seed
+Docker `database/init/002_country_catalog.sql` est généré depuis cette source
+unique avec `python scripts/generate_country_seed.py`.
+
+La migration `6f2d8a4c91b0` crée le catalogue et les cartes, rattache chaque POI,
+vérifie l'absence de `map_id` nul, puis supprime `places.country`. Une valeur
+vide, inconnue ou ambiguë interrompt la transaction. Le downgrade reconstruit
+le pays texte depuis les relations avant de supprimer les nouvelles tables.
+
 API FastAPI synchrone de POI Manager, structurée par fonctionnalité et basée
 sur SQLAlchemy 2, PostgreSQL/PostGIS, Pydantic 2 et Alembic.
 
