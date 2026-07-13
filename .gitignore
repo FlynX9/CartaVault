@@ -19,3 +19,7 @@ Thumbs.db
 
 # Uploaded photos
 backend/storage/photos/
+
+# Pytest
+backend/.pytest_tmp/
+backend/.pytest_cache/
