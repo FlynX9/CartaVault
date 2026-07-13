@@ -58,27 +58,43 @@ npm run preview
 
 ## Fonctionnement
 
+- la carte constitue l'écran principal permanent pour la consultation et la gestion des POI ;
+- un unique volet latéral propose successivement les modes aperçu, détails, création et modification ;
 - position initiale : latitude `48.17`, longitude `6.45`, zoom `9` ;
 - fond OpenStreetMap avec attribution ;
 - appel de `GET /places/map` avec les limites visibles ;
 - délai de 350 ms après les déplacements et changements de zoom ;
 - annulation des appels obsolètes avec `AbortController` ;
 - limite de 1 000 marqueurs par requête ;
-- affichage des catégories, tags et coordonnées sans appel de détail.
+- affichage des catégories, tags et coordonnées sans appel de détail lors du simple aperçu ;
+- lien « Ouvrir dans Google Maps » construit uniquement à partir des coordonnées, sans clé API.
 
 ## Routes
 
-- `/` affiche la carte et son panneau léger ;
-- `/places/new` affiche le formulaire de création ;
-- `/places/:placeId` charge la fiche complète et les photos du POI.
-- `/places/:placeId/edit` affiche le formulaire de modification.
+- `/` affiche la carte seule ou l'aperçu local du marqueur sélectionné ;
+- `/places/new` affiche la carte et le formulaire de création dans le volet ;
+- `/places/:placeId` affiche la carte et charge la fiche complète avec ses photos dans le volet ;
+- `/places/:placeId/edit` affiche la carte et le formulaire de modification dans le volet ;
 - `/admin` redirige vers l'administration des catégories ;
 - `/admin/categories` gère la recherche et le CRUD des catégories ;
 - `/admin/tags` gère la recherche et le CRUD des tags.
 
-Le bouton « Voir la fiche » ouvre la route détaillée. Le retour conserve en
-mémoire les marqueurs, le POI sélectionné, le centre et le zoom tant que
-l'application n'est pas rechargée.
+Le clic sur un marqueur ouvre un aperçu sans modifier l'URL. Le bouton
+« Fiche » ouvre ensuite la route détaillée partageable. Les URL de détail,
+création et modification fonctionnent aussi en accès direct : la carte reste
+montée derrière le même volet. La fermeture revient vers `/` sans recharger
+l'application et le retour du navigateur reste utilisable. Le centre, le
+zoom, les limites, les marqueurs chargés et la sélection sont conservés lors
+des changements de mode.
+
+Après une création ou une modification, l'application ouvre la fiche du POI
+dans le volet et actualise les marqueurs visibles. Après une suppression, elle
+ferme le volet, revient à `/` et retire immédiatement le marqueur local.
+
+Sur ordinateur, le volet réduit la largeur disponible pour la carte ; Leaflet
+est alors redimensionné sans modifier le zoom. Sur mobile, le volet devient un
+panneau superposé occupant la majorité de la largeur, avec fermeture visible
+et défilement interne.
 
 La fiche charge séparément `GET /places/{placeId}` et
 `GET /places/{placeId}/photos`. Les images utilisent exclusivement
@@ -106,4 +122,5 @@ chaque ouverture et ne conserve donc pas de cache global obsolète.
 - aucun filtre visible par catégorie ou tag, même si le client API accepte ces
   paramètres ;
 - aucun clustering de marqueurs ;
+- aucune recherche d'adresse, vue satellite ou interaction par clic droit ;
 - aucun upload photo ni authentification.

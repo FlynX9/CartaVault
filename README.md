@@ -11,7 +11,7 @@ une carte interactive Leaflet alimentée par OpenStreetMap.
 - recherche textuelle, filtres par pays, région, catégorie et tag ;
 - filtrage des POI par zone géographique visible ;
 - endpoint léger `GET /places/map` pour les marqueurs cartographiques ;
-- frontend React TypeScript avec carte, gestion des POI et administration des catégories et tags ;
+- frontend React TypeScript avec carte permanente, volet latéral de gestion des POI et administration des catégories et tags ;
 - CRUD des catégories et association avec les POI ;
 - CRUD des tags et association avec les POI ;
 - métadonnées photo, upload sécurisé JPEG, PNG et WebP ;
@@ -86,9 +86,12 @@ Vite affiche l'URL locale, généralement <http://localhost:5173>.
 ## État du projet
 
 Le backend couvre la gestion des POI, catégories, tags et photos. Le frontend
-affiche la carte, les marqueurs visibles, une fiche détaillée et les photos.
-Il permet aussi de créer, modifier et supprimer un POI, avec sélection de la
-position sur carte et gestion de ses catégories et tags. Une section
+conserve la carte visible et affiche dans un volet latéral l'aperçu, la fiche
+détaillée, les photos ainsi que les formulaires de création et de modification.
+Les URL directes des POI restent partageables et un lien vers Google Maps est
+proposé lorsque les coordonnées sont disponibles. Sur mobile, le volet devient
+un panneau superposé et défilable. Il est aussi possible de supprimer un POI,
+de choisir sa position sur carte et de gérer ses catégories et tags. Une section
 d'administration permet également de rechercher, créer, modifier et supprimer
 les catégories et tags, sans authentification à ce stade.
 
