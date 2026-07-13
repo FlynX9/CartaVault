@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.categories.schemas import CategoryRead
+
 
 class PlaceCreate(BaseModel):
     """Data accepted by the API when creating a place."""
@@ -113,5 +115,6 @@ class PlaceRead(BaseModel):
     owner: str | None
     longitude: float | None
     latitude: float | None
+    categories: list[CategoryRead]
     created_at: datetime
     updated_at: datetime

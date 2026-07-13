@@ -11,8 +11,10 @@ from fastapi import (
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.categories.models import Category
+from app.categories.schemas import CategoryRead
 from app.database import get_db
 from app.places.models import Place
 from app.places.schemas import PlaceCreate, PlaceRead, PlaceUpdate
@@ -28,22 +30,67 @@ def build_place_read_statement():
     """Build the common query used to expose places through the API."""
 
     return select(
-        Place.id,
-        Place.name,
-        Place.description,
-        Place.address,
-        Place.country,
-        Place.region,
-        Place.construction_date,
-        Place.abandonment_date,
-        Place.condition,
-        Place.access,
-        Place.danger_level,
-        Place.owner,
+        Place,
         func.ST_X(Place.location).label("longitude"),
         func.ST_Y(Place.location).label("latitude"),
-        Place.created_at,
-        Place.updated_at,
+    ).options(
+        selectinload(Place.categories)
+    )
+
+
+def place_to_read(
+    place: Place,
+    longitude: float | None,
+    latitude: float | None,
+) -> PlaceRead:
+    """Convert a SQLAlchemy place and its coordinates to an API schema."""
+
+    return PlaceRead(
+        id=place.id,
+        name=place.name,
+        description=place.description,
+        address=place.address,
+        country=place.country,
+        region=place.region,
+        construction_date=place.construction_date,
+        abandonment_date=place.abandonment_date,
+        condition=place.condition,
+        access=place.access,
+        danger_level=place.danger_level,
+        owner=place.owner,
+        longitude=longitude,
+        latitude=latitude,
+        categories=[
+            CategoryRead(
+                id=category.id,
+                name=category.name,
+                description=category.description,
+            )
+            for category in place.categories
+        ],
+        created_at=place.created_at,
+        updated_at=place.updated_at,
+    )
+
+
+def read_place(
+    database_session: Session,
+    place_id: UUID,
+) -> PlaceRead:
+    """Read one place after a create, update or relationship change."""
+
+    statement = build_place_read_statement().where(
+        Place.id == place_id
+    )
+
+    row = database_session.execute(statement).one()
+
+    place, longitude, latitude = row
+
+    return place_to_read(
+        place=place,
+        longitude=longitude,
+        latitude=latitude,
     )
 
 
@@ -117,9 +164,16 @@ def get_places(
         .limit(limit)
     )
 
-    rows = database_session.execute(statement).mappings().all()
+    rows = database_session.execute(statement).all()
 
-    return [PlaceRead(**row) for row in rows]
+    return [
+        place_to_read(
+            place=place,
+            longitude=longitude,
+            latitude=latitude,
+        )
+        for place, longitude, latitude in rows
+    ]
 
 
 @router.get(
@@ -136,7 +190,7 @@ def get_place(
         Place.id == place_id
     )
 
-    row = database_session.execute(statement).mappings().one_or_none()
+    row = database_session.execute(statement).one_or_none()
 
     if row is None:
         raise HTTPException(
@@ -144,7 +198,13 @@ def get_place(
             detail=f"Place with id {place_id} was not found",
         )
 
-    return PlaceRead(**row)
+    place, longitude, latitude = row
+
+    return place_to_read(
+        place=place,
+        longitude=longitude,
+        latitude=latitude,
+    )
 
 
 @router.post(
@@ -183,13 +243,10 @@ def create_place(
         database_session.commit()
         database_session.refresh(place)
 
-        statement = build_place_read_statement().where(
-            Place.id == place.id
+        return read_place(
+            database_session=database_session,
+            place_id=place.id,
         )
-
-        row = database_session.execute(statement).mappings().one()
-
-        return PlaceRead(**row)
 
     except SQLAlchemyError as error:
         database_session.rollback()
@@ -237,13 +294,10 @@ def update_place(
         database_session.commit()
         database_session.refresh(place)
 
-        statement = build_place_read_statement().where(
-            Place.id == place_id
+        return read_place(
+            database_session=database_session,
+            place_id=place_id,
         )
-
-        row = database_session.execute(statement).mappings().one()
-
-        return PlaceRead(**row)
 
     except SQLAlchemyError as error:
         database_session.rollback()
@@ -286,4 +340,109 @@ def delete_place(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to delete the place",
+        ) from error
+
+
+@router.post(
+    "/{place_id}/categories/{category_id}",
+    response_model=PlaceRead,
+)
+def add_category_to_place(
+    place_id: UUID,
+    category_id: UUID,
+    database_session: Session = Depends(get_db),
+) -> PlaceRead:
+    """Assign a category to a place."""
+
+    place = database_session.get(
+        Place,
+        place_id,
+        options=[
+            selectinload(Place.categories),
+        ],
+    )
+
+    if place is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    category = database_session.get(Category, category_id)
+
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with id {category_id} was not found",
+        )
+
+    if category not in place.categories:
+        place.categories.append(category)
+
+    try:
+        database_session.commit()
+
+        return read_place(
+            database_session=database_session,
+            place_id=place_id,
+        )
+
+    except SQLAlchemyError as error:
+        database_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to assign the category to the place",
+        ) from error
+
+
+@router.delete(
+    "/{place_id}/categories/{category_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_category_from_place(
+    place_id: UUID,
+    category_id: UUID,
+    database_session: Session = Depends(get_db),
+) -> Response:
+    """Remove a category from a place."""
+
+    place = database_session.get(
+        Place,
+        place_id,
+        options=[
+            selectinload(Place.categories),
+        ],
+    )
+
+    if place is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Place with id {place_id} was not found",
+        )
+
+    category = database_session.get(Category, category_id)
+
+    if category is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with id {category_id} was not found",
+        )
+
+    if category in place.categories:
+        place.categories.remove(category)
+
+    try:
+        database_session.commit()
+
+        return Response(
+            status_code=status.HTTP_204_NO_CONTENT,
+        )
+
+    except SQLAlchemyError as error:
+        database_session.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to remove the category from the place",
         ) from error

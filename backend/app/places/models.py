@@ -1,12 +1,18 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from geoalchemy2 import Geometry
 from sqlalchemy import DateTime, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.categories.associations import place_categories_table
 from app.database import Base
+
+
+if TYPE_CHECKING:
+    from app.categories.models import Category
 
 
 class Place(Base):
@@ -103,4 +109,10 @@ class Place(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    categories: Mapped[list["Category"]] = relationship(
+        secondary=place_categories_table,
+        back_populates="places",
+        order_by="Category.name",
     )
