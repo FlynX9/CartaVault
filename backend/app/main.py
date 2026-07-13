@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.categories.router import router as categories_router
 from app.places.map_router import router as places_map_router
 from app.places.router import router as places_router
+from app.tags.router import router as tags_router
 
 
 app = FastAPI(
@@ -14,6 +15,7 @@ app = FastAPI(
 app.include_router(places_map_router)
 app.include_router(places_router)
 app.include_router(categories_router)
+app.include_router(tags_router)
 
 
 @app.get(
