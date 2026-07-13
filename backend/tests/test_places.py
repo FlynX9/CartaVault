@@ -67,6 +67,32 @@ def test_place_crud_filters_and_map_bounds(
     assert all("address" not in item for item in inside_map.json())
     assert all("owner" not in item for item in inside_map.json())
 
+    filtered_map = integration_client.get(
+        "/places/map",
+        params={
+            "country": "france",
+            "min_latitude": 48.0,
+            "max_latitude": 49.0,
+            "min_longitude": 2.0,
+            "max_longitude": 3.0,
+        },
+    )
+    assert filtered_map.status_code == 200
+    assert place_id in {item["id"] for item in filtered_map.json()}
+
+    other_country_map = integration_client.get(
+        "/places/map",
+        params={
+            "country": "Belgique",
+            "min_latitude": 48.0,
+            "max_latitude": 49.0,
+            "min_longitude": 2.0,
+            "max_longitude": 3.0,
+        },
+    )
+    assert other_country_map.status_code == 200
+    assert place_id not in {item["id"] for item in other_country_map.json()}
+
     outside_map = integration_client.get(
         "/places/map",
         params={

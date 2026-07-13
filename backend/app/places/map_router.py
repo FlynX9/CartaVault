@@ -23,6 +23,12 @@ router = APIRouter(
     response_model=list[PlaceMapRead],
 )
 def get_map_places(
+    country: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Filter map markers by country",
+    ),
     category_id: UUID | None = Query(
         default=None,
         description="Filter map markers by category UUID",
@@ -89,6 +95,11 @@ def get_map_places(
             Place.categories.any(
                 Category.id == category_id
             )
+        )
+
+    if country is not None:
+        statement = statement.where(
+            func.lower(Place.country) == country.strip().lower()
         )
 
     if tag_id is not None:
