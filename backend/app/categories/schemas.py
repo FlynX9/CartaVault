@@ -3,7 +3,10 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.categories.icons import ALLOWED_CATEGORY_ICONS, DEFAULT_CATEGORY_ICON
+from app.categories.icon_catalog import (
+    DEFAULT_CATEGORY_ICON_ID,
+    is_allowed_category_icon,
+)
 
 
 class CategoryCreate(BaseModel):
@@ -15,13 +18,13 @@ class CategoryCreate(BaseModel):
     )
 
     description: str | None = None
-    icon: str = DEFAULT_CATEGORY_ICON
+    icon: str = DEFAULT_CATEGORY_ICON_ID
 
     @field_validator("icon")
     @classmethod
     def validate_icon(cls, value: str) -> str:
         normalized = value.strip()
-        if normalized not in ALLOWED_CATEGORY_ICONS:
+        if not is_allowed_category_icon(normalized):
             raise ValueError("The category icon is not allowed")
         return normalized
 
@@ -44,6 +47,8 @@ class CategoryUpdate(BaseModel):
 
         if "name" in self.model_fields_set and self.name is None:
             raise ValueError("The category name cannot be null")
+        if "icon" in self.model_fields_set and self.icon is None:
+            raise ValueError("The category icon cannot be null")
 
         return self
 
@@ -53,7 +58,7 @@ class CategoryUpdate(BaseModel):
         if value is None:
             return value
         normalized = value.strip()
-        if normalized not in ALLOWED_CATEGORY_ICONS:
+        if not is_allowed_category_icon(normalized):
             raise ValueError("The category icon is not allowed")
         return normalized
 

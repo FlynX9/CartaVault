@@ -4,7 +4,11 @@
 
 ## Catégories et pictogrammes
 
-`categories.icon` contient un identifiant validé dans un catalogue fermé et utilise `map-pin` par défaut. L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `poi_manager_test`, jamais sur `poi_manager`.
+`shared/category-icons.json` est la source de vérité unique des pictogrammes de catégories. `app.categories.icon_catalog` le charge une seule fois au démarrage du processus, depuis un chemin calculé à partir de son propre fichier, puis valide strictement ses 80 entrées (structure, groupes, préfixes, absence de contenu URL/HTML/SVG, défaut et fallback).
+
+Les nouvelles écritures de `categories.icon` acceptent exclusivement des identifiants qualifiés présents dans ce catalogue, par exemple `mdi:church`. L’absence d’icône utilise `material-symbols:location-on-outline`; le fallback disponible est `material-symbols:help-outline`. Les anciennes valeurs Lucide simples déjà présentes en base restent retournées telles quelles en lecture jusqu’à leur migration ultérieure : elles ne sont ni transformées ni réécrites par l’API. Cet atelier ne crée aucune migration.
+
+L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `poi_manager_test`, jamais sur `poi_manager`.
 
 La feature `app/statuses` expose le CRUD `/statuses`. Un seul statut actif est défini par défaut et il est appliqué lorsque `status_id` est omis à la création d’un POI. Un statut inactif reste lisible sur les anciens POI mais ne peut plus être sélectionné. La suppression du défaut ou d’un statut utilisé renvoie `409`.
 

@@ -13,6 +13,10 @@ La carte comporte une légende compacte des statuts actifs, qui affiche le nom a
 
 Chaque POI possède un statut de suivi administrable (`À faire`, `Fait`, etc.). Sa couleur hexadécimale pilote directement le marqueur et le filtre `status` de l’URL est appliqué à la carte comme à la liste. Le statut de suivi est distinct de `condition`, qui décrit l’état physique du lieu. Les pictogrammes par catégorie restent hors périmètre.
 
+## Catalogue partagé des icônes de catégories
+
+`shared/category-icons.json` est la source de vérité commune au frontend et au backend. Il contient 80 identifiants Iconify qualifiés, validés au chargement côté API et résolus localement côté frontend, sans URL, SVG arbitraire ni appel réseau. Les nouvelles catégories utilisent `material-symbols:location-on-outline` par défaut et n’acceptent que les identifiants du catalogue; `material-symbols:help-outline` est le fallback. Les anciennes valeurs Lucide stockées en base restent temporairement lisibles jusqu’à une migration dédiée, qui ne fait pas partie de cet atelier.
+
 ## Pays, cartes et POI
 
 Le domaine suit la relation normalisée `countries → poi_maps → places`. Le

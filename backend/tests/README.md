@@ -20,9 +20,15 @@ contrôle final vérifie qu'aucun POI ne conserve un `map_id` nul.
 ## Types de tests
 
 - le marqueur `unit` couvre le contrôle de santé, le stockage photo et les
-  validations de configuration sans ouvrir de connexion PostgreSQL ;
+  validations de configuration, ainsi que le chargeur strict de
+  `shared/category-icons.json`, sans ouvrir de connexion PostgreSQL ;
 - le marqueur `integration` exerce les routes des places, tags et photos avec
   une base PostgreSQL/PostGIS séparée.
+
+Les tests d’icônes de catégories vérifient aussi que les nouvelles écritures
+acceptent uniquement les identifiants qualifiés du catalogue partagé. Les
+valeurs Lucide historiques restent lisibles tant qu’une migration dédiée n’a
+pas été appliquée, mais elles ne sont plus acceptées à l’écriture.
 
 Sans `TEST_DATABASE_URL`, les tests d'intégration sont ignorés avec une raison
 explicite. Ils n'utilisent jamais `DATABASE_URL` comme valeur de secours.
