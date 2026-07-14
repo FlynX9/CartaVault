@@ -36,6 +36,9 @@ Le frontend utilise désormais un shell CartaVault : navigation compacte sombre,
 barre supérieure claire, panneau de POI latéral et carte centrale. Cette première
 étape ne modifie ni les routes, ni les appels API, ni les composants métier.
 
+Une seconde passe visuelle harmonise les panneaux, popup et contrôles de carte
+sans changer les contrats métier ni l'API.
+
 La recherche géographique est distincte de la recherche textuelle des POI :
 elle interroge Stadia Maps seulement après une action explicite de l'utilisateur
 et accepte aussi les coordonnées GPS. Les résultats servent à recentrer la

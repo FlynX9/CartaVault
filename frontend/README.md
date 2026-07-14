@@ -96,6 +96,11 @@ issus de `src/assets/branding/`. Sur mobile, la navigation devient une barre
 inférieure compacte ; les composants métier (formulaires, popup et lignes POI)
 conservent volontairement leur structure actuelle pour une passe ultérieure.
 
+La seconde passe harmonise les surfaces métier visibles : panneau et lignes de
+POI, filtres, popup, recherche géographique, sélection de fond, légende,
+menu contextuel et panneau d'édition. Les données, les routes, les appels API
+et les interactions existantes sont conservés.
+
 ## Recherche géographique
 
 La recherche géographique superposée à la carte est indépendante du filtre
