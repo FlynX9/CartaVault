@@ -9,6 +9,8 @@ encore d’endpoint de miniatures.
 
 ## Statuts et marqueurs
 
+Une légende compacte des statuts actifs reste visible sur la carte : chaque nom accompagne sa couleur afin que l’information ne soit jamais portée par la seule pastille.
+
 Les statuts sont gérés dans `/admin/statuses` (nom, couleur `#RRGGBB`, ordre, activité et défaut). Le formulaire POI ne propose que les statuts actifs, tout en conservant le statut inactif courant en édition. Le générateur central de marqueurs utilise `place.status.color`; la sélection ajoute un contour sans remplacer cette couleur métier. Le filtre visible est conservé dans le paramètre d’URL `status`.
 
 Les futures icônes liées aux catégories ne sont pas encore implémentées.

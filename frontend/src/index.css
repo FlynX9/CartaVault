@@ -1456,6 +1456,10 @@ button {
 .status-marker { display: block; width: 28px; height: 28px; background: var(--marker-color); border: 3px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 3px 9px rgb(15 35 25 / 35%); transform: rotate(-45deg); }
 .status-marker.selected { width: 34px; height: 34px; outline: 4px solid rgb(23 61 45 / 35%); }
 .status-dot { display: inline-block; flex: 0 0 auto; width: 0.8rem; height: 0.8rem; border: 1px solid rgb(0 0 0 / 18%); border-radius: 50%; }
+.status-legend { position: absolute; z-index: 800; right: 1rem; bottom: 1.5rem; max-width: min(14rem, calc(100% - 2rem)); padding: 0.65rem 0.8rem; color: #183528; background: rgb(255 255 255 / 94%); border: 1px solid #bdcec3; border-radius: 0.65rem; box-shadow: 0 3px 12px rgb(18 47 34 / 18%); font-size: 0.8rem; }
+.status-legend strong { display: block; margin-bottom: 0.35rem; }
+.status-legend ul { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.status-legend li { display: flex; align-items: center; gap: 0.45rem; }
 .place-status-label { display: flex; align-items: center; gap: 0.4rem; margin: 0; padding: 0.25rem 1rem; color: #40584c; font-size: 0.78rem; }
 .place-list-item .place-status-label { padding: 0; }
 .status-summary { display: flex; align-items: center; gap: 0.75rem; }
@@ -1473,4 +1477,5 @@ button {
   .place-map-popup { max-height: 58vh; }
   .popup-gallery img,
   .popup-photo-placeholder { height: 150px; }
+  .status-legend { right: 0.65rem; bottom: 0.8rem; max-width: 10.5rem; }
 }

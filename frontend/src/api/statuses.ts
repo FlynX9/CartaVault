@@ -1,4 +1,4 @@
-import type { PlaceStatus, PlaceStatusCreatePayload, PlaceStatusSummary, PlaceStatusUpdatePayload } from '../types/status'
+import type { MapStatusSummary, PlaceStatus, PlaceStatusCreatePayload, PlaceStatusSummary, PlaceStatusUpdatePayload } from '../types/status'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { isRecord, readBoolean, readDateTime, readNumber, readString, readUuid } from './validation'
 
@@ -13,6 +13,19 @@ export function parseStatusSummary(value: unknown): PlaceStatusSummary {
     slug: readString(value, 'slug', context),
     color,
     is_active: readBoolean(value, 'is_active', context),
+  }
+}
+
+export function parseMapStatusSummary(value: unknown): MapStatusSummary {
+  const context = 'Le statut cartographique renvoyé par l’API'
+  if (!isRecord(value)) throw new Error(`${context} est invalide.`)
+  const color = readString(value, 'color', context)
+  if (!/^#[0-9A-F]{6}$/.test(color)) throw new Error(`${context} contient une couleur invalide.`)
+  return {
+    id: readUuid(value, 'id', context),
+    name: readString(value, 'name', context),
+    slug: readString(value, 'slug', context),
+    color,
   }
 }
 

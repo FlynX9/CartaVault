@@ -24,6 +24,7 @@ describe('MapPage', () => {
           errorMessage={null}
           sidebarOpen
           placeListOpen
+          statuses={[{ id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }]}
           sidebar={<aside aria-label="Volet de test">Contenu</aside>}
           placeList={<aside aria-label="Liste de test">Liste</aside>}
           focusRequest={null}
@@ -39,5 +40,6 @@ describe('MapPage', () => {
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-layout-key', 'true-true')
     expect(screen.getByLabelText('Liste de test')).toBeVisible()
     expect(screen.getByLabelText('Volet de test')).toBeVisible()
+    expect(screen.getByLabelText('Légende des statuts')).toHaveTextContent('À faire')
   })
 })

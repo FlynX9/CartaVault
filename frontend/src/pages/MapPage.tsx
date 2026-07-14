@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 
 import { PoiMap } from '../components/map/PoiMap'
+import { StatusLegend } from '../components/map/StatusLegend'
 import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
+import type { PlaceStatusSummary } from '../types/status'
 
 interface MapPageProps {
   places: MapPlace[]
@@ -11,6 +13,7 @@ interface MapPageProps {
   errorMessage: string | null
   sidebarOpen: boolean
   placeListOpen: boolean
+  statuses: PlaceStatusSummary[]
   sidebar: ReactNode
   popupContent?: ReactNode
   placeList: ReactNode
@@ -29,6 +32,7 @@ export function MapPage({
   errorMessage,
   sidebarOpen,
   placeListOpen,
+  statuses,
   sidebar,
   popupContent = null,
   placeList,
@@ -56,6 +60,7 @@ export function MapPage({
           popupContent={popupContent}
           onPopupClose={onPopupClose}
         />
+        <StatusLegend statuses={statuses} />
 
         {isLoading && (
           <div className="status-banner loading-status" role="status">

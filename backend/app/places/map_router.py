@@ -7,11 +7,15 @@ from sqlalchemy.orm import Session, load_only, selectinload
 from app.categories.models import Category
 from app.database import get_db
 from app.places.filters import MapBounds, get_required_map_bounds
-from app.places.map_schemas import MapCategoryRead, MapTagRead, PlaceMapRead
+from app.places.map_schemas import (
+    MapCategoryRead,
+    MapStatusRead,
+    MapTagRead,
+    PlaceMapRead,
+)
 from app.places.models import Place
 from app.tags.models import Tag
 from app.statuses.models import PlaceStatus
-from app.statuses.schemas import PlaceStatusSummary
 
 
 router = APIRouter(
@@ -131,12 +135,11 @@ def get_map_places(
             name=place.name,
             longitude=longitude,
             latitude=latitude,
-            status=PlaceStatusSummary(
+            status=MapStatusRead(
                 id=place.status.id,
                 name=place.status.name,
                 slug=place.status.slug,
                 color=place.status.color,
-                is_active=place.status.is_active,
             ),
             categories=[
                 MapCategoryRead(

@@ -81,6 +81,7 @@ def test_places_use_and_filter_tracking_status(integration_client, poi_map) -> N
     assert filtered.status_code == 200
     assert [item["name"] for item in filtered.json()] == ["Explicit"]
     assert filtered.json()[0]["status"]["color"] == "#16A34A"
+    assert "is_active" not in filtered.json()[0]["status"]
     assert integration_client.get(
         "/places/map",
         params={"status_id": str(uuid4()), "min_latitude": 48, "max_latitude": 49, "min_longitude": 2, "max_longitude": 3},

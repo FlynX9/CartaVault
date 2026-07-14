@@ -2,9 +2,6 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.statuses.schemas import PlaceStatusSummary
-
-
 class MapCategoryRead(BaseModel):
     """Minimal category representation used by map markers."""
 
@@ -19,6 +16,15 @@ class MapTagRead(BaseModel):
     name: str
 
 
+class MapStatusRead(BaseModel):
+    """Minimal tracking-status representation used by map markers."""
+
+    id: UUID
+    name: str
+    slug: str
+    color: str
+
+
 class PlaceMapRead(BaseModel):
     """Minimal place representation used by the interactive map."""
 
@@ -27,6 +33,6 @@ class PlaceMapRead(BaseModel):
     name: str
     longitude: float
     latitude: float
-    status: PlaceStatusSummary
+    status: MapStatusRead
     categories: list[MapCategoryRead]
     tags: list[MapTagRead]

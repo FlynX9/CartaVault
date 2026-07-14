@@ -6,6 +6,13 @@ export interface PlaceStatusSummary {
   is_active: boolean
 }
 
+export interface MapStatusSummary {
+  id: string
+  name: string
+  slug: string
+  color: string
+}
+
 export interface PlaceStatus extends PlaceStatusSummary {
   sort_order: number
   is_default: boolean

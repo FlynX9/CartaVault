@@ -12,7 +12,7 @@ import type {
   PlaceMapSummary,
 } from '../types/place'
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import { parseStatusSummary } from './statuses'
+import { parseMapStatusSummary, parseStatusSummary } from './statuses'
 import {
   isRecord,
   readArray,
@@ -83,7 +83,7 @@ function parseMapPlace(value: unknown): MapPlace {
     name: readString(value, 'name', context),
     longitude: readNumber(value, 'longitude', context),
     latitude: readNumber(value, 'latitude', context),
-    status: parseStatusSummary(value.status),
+    status: parseMapStatusSummary(value.status),
     categories: readArray(value, 'categories', context).map((category) =>
       parseNamedEntity(category, 'la catégorie'),
     ),

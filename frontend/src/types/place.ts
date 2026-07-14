@@ -1,5 +1,5 @@
 import type { CountrySummary } from './map'
-import type { PlaceStatusSummary } from './status'
+import type { MapStatusSummary, PlaceStatusSummary } from './status'
 
 export interface MapCategory { id: string; name: string }
 export interface MapTag { id: string; name: string }
@@ -28,7 +28,7 @@ export interface PlaceDetails {
   updated_at: string
 }
 
-export interface PreviewPlace { id: string; name: string; longitude: number | null; latitude: number | null; status: PlaceStatusSummary; categories: MapCategory[]; tags: MapTag[] }
+export interface PreviewPlace { id: string; name: string; longitude: number | null; latitude: number | null; status: MapStatusSummary; categories: MapCategory[]; tags: MapTag[] }
 export interface MapPlace extends PreviewPlace { map_id: string; longitude: number; latitude: number }
 export interface MapBounds { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }
 export interface MapView { center: [number, number]; zoom: number }
