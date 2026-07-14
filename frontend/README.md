@@ -1,5 +1,12 @@
 # Frontend cartographique de POI Manager
 
+## Gestion des photos
+
+Le panneau d’édition fournit l’upload multiple JPEG, PNG et WebP (20 Mio par
+fichier), la photo principale, l’ordre et la suppression. Les images restent
+chargées uniquement depuis l’endpoint de fichier officiel ; il n’existe pas
+encore d’endpoint de miniatures.
+
 ## Statuts et marqueurs
 
 Les statuts sont gérés dans `/admin/statuses` (nom, couleur `#RRGGBB`, ordre, activité et défaut). Le formulaire POI ne propose que les statuts actifs, tout en conservant le statut inactif courant en édition. Le générateur central de marqueurs utilise `place.status.color`; la sélection ajoute un contour sans remplacer cette couleur métier. Le filtre visible est conservé dans le paramètre d’URL `status`.

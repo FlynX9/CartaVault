@@ -16,6 +16,8 @@ describe('photo response validation', () => {
         path: `${PLACE_ID}/${PHOTO_ID}.jpg`,
         description: 'Façade principale',
         taken_at: '2026-07-13',
+        sort_order: 0,
+        is_primary: true,
         created_at: '2026-07-13T10:00:00',
       },
     ])
@@ -37,6 +39,8 @@ describe('photo response validation', () => {
           path: null,
           description: null,
           taken_at: '13/07/2026',
+          sort_order: 0,
+          is_primary: true,
           created_at: null,
         },
       ]),

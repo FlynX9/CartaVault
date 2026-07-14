@@ -10,9 +10,10 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
   if (isLoading) return <div className="popup-photo-placeholder" role="status">Chargement des photos…</div>
   if (error) return <div className="popup-photo-placeholder" role="alert">Photos indisponibles</div>
   if (photos.length === 0) return <div className="popup-photo-placeholder">Aucune photo</div>
-  const photo = photos[index]
+  const orderedPhotos = [...photos].sort((left, right) => Number(right.is_primary) - Number(left.is_primary) || left.sort_order - right.sort_order)
+  const photo = orderedPhotos[index]
   return <figure className="popup-gallery">
     {failed ? <div className="popup-photo-placeholder" role="img" aria-label={`Photo de ${placeName}`}>Image indisponible</div> : <img src={getPhotoFileUrl(photo.id)} alt={photo.description || `Photo de ${placeName}`} onError={() => setFailed(true)} />}
-    {photos.length > 1 && <figcaption><button type="button" aria-label="Photo précédente" title="Photo précédente" onClick={() => { setFailed(false); setIndex((index - 1 + photos.length) % photos.length) }}>‹</button><span>{index + 1} / {photos.length}</span><button type="button" aria-label="Photo suivante" title="Photo suivante" onClick={() => { setFailed(false); setIndex((index + 1) % photos.length) }}>›</button></figcaption>}
+    {orderedPhotos.length > 1 && <figcaption><button type="button" aria-label="Photo précédente" title="Photo précédente" onClick={() => { setFailed(false); setIndex((index - 1 + orderedPhotos.length) % orderedPhotos.length) }}>‹</button><span>{index + 1} / {orderedPhotos.length}</span><button type="button" aria-label="Photo suivante" title="Photo suivante" onClick={() => { setFailed(false); setIndex((index + 1) % orderedPhotos.length) }}>›</button></figcaption>}
   </figure>
 }

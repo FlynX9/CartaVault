@@ -7,4 +7,6 @@ export interface Photo {
   description: string | null
   taken_at: string | null
   created_at: string | null
+  sort_order: number
+  is_primary: boolean
 }

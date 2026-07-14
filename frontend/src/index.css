@@ -1442,6 +1442,16 @@ button {
 .popup-details dd { margin: 0; }
 .popup-error { display: grid; gap: 0.5rem; padding: 1rem; }
 
+.photo-uploader, .photo-manager { display: grid; gap: 0.8rem; margin-top: 1rem; padding: 1rem; background: #f8faf8; border: 1px solid #cbd9cf; border-radius: 0.8rem; }
+.upload-queue, .photo-manager-grid { display: grid; gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+.upload-queue li { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.photo-manager-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.photo-manager-card { overflow: hidden; border: 1px solid #d7e1da; border-radius: 0.65rem; }
+.photo-manager-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.photo-manager-card p, .photo-manager-card div { margin: 0; padding: 0.45rem; font-size: 0.78rem; }
+.photo-manager-card div { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.photo-manager-card button { min-height: 2rem; }
+
 .status-marker-container { background: transparent; border: 0; }
 .status-marker { display: block; width: 28px; height: 28px; background: var(--marker-color); border: 3px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 3px 9px rgb(15 35 25 / 35%); transform: rotate(-45deg); }
 .status-marker.selected { width: 34px; height: 34px; outline: 4px solid rgb(23 61 45 / 35%); }

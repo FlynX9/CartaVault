@@ -153,3 +153,22 @@ export async function sendWithoutResponse(
 ): Promise<void> {
   await request(path, { method, signal })
 }
+
+export async function sendFormData(
+  path: string,
+  method: 'POST',
+  body: FormData,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: { Accept: 'application/json' },
+    body,
+    signal,
+  })
+  if (!response.ok) {
+    const error = await getResponseError(response)
+    throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors)
+  }
+  return response.json()
+}
