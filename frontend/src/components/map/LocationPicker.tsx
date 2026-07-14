@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 
 import { getStatusMarkerIcon } from './markerIcons'
+import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
 
 interface LocationPickerProps {
   latitude: number | null
@@ -21,7 +22,7 @@ function MapInteraction({ latitude, longitude, onChange }: LocationPickerProps) 
   return (
     <Marker
       position={[latitude, longitude]}
-      icon={getStatusMarkerIcon('#2563EB', 'map-pin', false)}
+      icon={getStatusMarkerIcon('#2563EB', DEFAULT_CATEGORY_ICON_ID, false)}
       draggable
       eventHandlers={{
         dragend: (event) => {

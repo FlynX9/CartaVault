@@ -10,7 +10,7 @@ import type {
 import type { PoiMap } from '../../types/map'
 import type { PlaceStatusSummary } from '../../types/status'
 import { LocationPicker } from '../map/LocationPicker'
-import { CategoryIcon } from '../categories/categoryIcons'
+import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 
 interface PlaceFormProps {
   initialValues: PlaceFormValues
@@ -189,7 +189,7 @@ export function PlaceForm({
           {categories.length === 0 ? <p className="form-hint">Aucune catégorie disponible.</p> : categories.map((category) => (
             <label className="checkbox-field" key={category.id}>
               <input type="checkbox" checked={values.categoryIds.includes(category.id)} onChange={() => toggleAssociation('categoryIds', category.id)} />
-              <span><CategoryIcon icon={category.icon} /> {category.name}</span>
+              <span><CategoryIconPreview iconId={category.icon} size={16} showLabel={false} /> {category.name}</span>
               {values.categoryIds.includes(category.id) && <input aria-label={`Catégorie principale : ${category.name}`} type="radio" name="primary-category" checked={values.primaryCategoryId === category.id} onChange={() => setValue('primaryCategoryId', category.id)} />}
             </label>
           ))}

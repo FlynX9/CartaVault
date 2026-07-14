@@ -6,7 +6,7 @@ import type { PlaceDetails } from '../../types/place'
 import { buildGoogleMapsUrl } from '../../utils/googleMaps'
 import { PlacePopupActions } from './PlacePopupActions'
 import { PlacePopupGallery } from './PlacePopupGallery'
-import { CategoryIcon } from '../categories/categoryIcons'
+import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 
 interface Props { placeId: string; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
 
@@ -29,7 +29,7 @@ export function PlaceMapPopup({ placeId, onEdit, onDeleted, onClose }: Props) {
     <PlacePopupGallery placeName={place.name} photos={photos} isLoading={photosLoading} error={photosError} />
     <div className="popup-heading"><div><p>{place.map.name} · {place.map.country.name}</p><h2 id={`popup-title-${place.id}`} ref={titleRef} tabIndex={-1}>{place.name}</h2></div><PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} /></div>
     <p className="place-status-label"><span className="status-dot" style={{ backgroundColor: place.status.color }} />Statut : {place.status.name}</p>
-    {place.categories.find((item) => item.is_primary) && <p className="place-status-label"><CategoryIcon icon={place.categories.find((item) => item.is_primary)?.icon} />Catégorie principale : {place.categories.find((item) => item.is_primary)?.name}</p>}
+    {place.categories.find((item) => item.is_primary) && <p className="place-status-label"><CategoryIconPreview iconId={place.categories.find((item) => item.is_primary)?.icon} size={16} showLabel={false} />Catégorie principale : {place.categories.find((item) => item.is_primary)?.name}</p>}
     {detailsError && <p className="inline-error" role="alert">{detailsError}</p>}
     {place.description && <p className="popup-description">{place.description}</p>}
     {(place.categories.length > 0 || place.tags.length > 0) && <ul className="popup-chips">{place.categories.map((item) => <li key={item.id}>{item.name}</li>)}{place.tags.map((item) => <li className="tag" key={item.id}>{item.name}</li>)}</ul>}

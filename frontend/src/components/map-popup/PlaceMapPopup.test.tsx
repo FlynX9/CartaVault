@@ -7,7 +7,7 @@ import { PlaceMapPopup } from './PlaceMapPopup'
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), deletePlace: vi.fn() }))
 vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/photos')>()), getPlacePhotos: vi.fn() }))
 const PLACE_ID = '11111111-1111-4111-8111-111111111111'; const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null }], tags: [{ id: 'tag-id', name: 'Brique' }], created_at: '2026-01-01', updated_at: '2026-01-01' }
+const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null, icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Brique' }], created_at: '2026-01-01', updated_at: '2026-01-01' }
 const PHOTO = { id: '22222222-2222-4222-8222-222222222222', place_id: PLACE_ID, filename: 'photo.jpg', original_name: null, path: 'must-not-be-used.jpg', description: 'Façade', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
 
 beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(deletePlace).mockResolvedValue() })
@@ -19,6 +19,11 @@ describe('PlaceMapPopup', () => {
     expect(await screen.findByRole('heading', { name: 'Manufacture' })).toBeVisible(); expect(screen.getByText('Ancienne usine')).toBeVisible(); expect(screen.getByText('Carte France · France')).toBeVisible()
     const image = screen.getByRole('img', { name: 'Façade' }); expect(image).toHaveAttribute('src', expect.stringContaining(`/photos/${PHOTO.id}/file`)); expect(image).not.toHaveAttribute('src', expect.stringContaining('must-not-be-used'))
     expect(getPlaceDetails).toHaveBeenCalledWith(PLACE_ID, expect.any(AbortSignal)); expect(getPlacePhotos).toHaveBeenCalledWith(PLACE_ID, expect.any(AbortSignal))
+  })
+  it('renders the Iconify primary category icon instead of the fallback', async () => {
+    const { container } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    expect(await screen.findByText('Catégorie principale : Industrie')).toBeVisible()
+    expect(container.querySelector('.place-status-label [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
   })
   it('keeps textual details visible with no photo, a missing file, or photo API failure', async () => {
     vi.mocked(getPlacePhotos).mockResolvedValue([]); const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />); expect(await screen.findByText('Aucune photo')).toBeVisible(); expect(screen.getByText('Ancienne usine')).toBeVisible()
