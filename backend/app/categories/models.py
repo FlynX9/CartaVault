@@ -39,4 +39,8 @@ class Category(Base):
         back_populates="categories",
     )
 
-    icon: Mapped[str] = mapped_column(String(50), nullable=False, server_default=text("'map-pin'"))
+    icon: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        server_default=text("'material-symbols:location-on-outline'"),
+    )

@@ -6,7 +6,9 @@
 
 `shared/category-icons.json` est la source de vérité unique des pictogrammes de catégories. `app.categories.icon_catalog` le charge une seule fois au démarrage du processus, depuis un chemin calculé à partir de son propre fichier, puis valide strictement ses 80 entrées (structure, groupes, préfixes, absence de contenu URL/HTML/SVG, défaut et fallback).
 
-Les nouvelles écritures de `categories.icon` acceptent exclusivement des identifiants qualifiés présents dans ce catalogue, par exemple `mdi:church`. L’absence d’icône utilise `material-symbols:location-on-outline`; le fallback disponible est `material-symbols:help-outline`. Les anciennes valeurs Lucide simples déjà présentes en base restent retournées telles quelles en lecture jusqu’à leur migration ultérieure : elles ne sont ni transformées ni réécrites par l’API. Cet atelier ne crée aucune migration.
+Les nouvelles écritures de `categories.icon` acceptent exclusivement des identifiants qualifiés présents dans ce catalogue, par exemple `mdi:church`. L’absence d’icône utilise `material-symbols:location-on-outline`; le fallback disponible est `material-symbols:help-outline`.
+
+La migration `f3a7c1d9e842` remplace les 17 identifiants Lucide historiques par leurs équivalents Iconify, conserve les IDs Iconify déjà valides et remplace toute valeur inconnue par le défaut. Elle met aussi à jour le défaut SQL de `categories.icon` pour les installations existantes; `database/init/001_initial_schema.sql` emploie le même défaut pour les installations neuves. Son downgrade retourne les valeurs ayant un équivalent historique et transforme toute autre icône Iconify en `map-pin` : il est destructif et ne doit jamais être lancé sur `poi_manager`.
 
 L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `poi_manager_test`, jamais sur `poi_manager`.
 

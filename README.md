@@ -15,7 +15,9 @@ Chaque POI possède un statut de suivi administrable (`À faire`, `Fait`, etc.).
 
 ## Catalogue partagé des icônes de catégories
 
-`shared/category-icons.json` est la source de vérité commune au frontend et au backend. Il contient 80 identifiants Iconify qualifiés, validés au chargement côté API et résolus localement côté frontend, sans URL, SVG arbitraire ni appel réseau. Les nouvelles catégories utilisent `material-symbols:location-on-outline` par défaut et n’acceptent que les identifiants du catalogue; `material-symbols:help-outline` est le fallback. Les anciennes valeurs Lucide stockées en base restent temporairement lisibles jusqu’à une migration dédiée, qui ne fait pas partie de cet atelier.
+`shared/category-icons.json` est la source de vérité commune au frontend et au backend. Il contient 80 identifiants Iconify qualifiés, validés au chargement côté API et résolus localement côté frontend, sans URL, SVG arbitraire ni appel réseau. Les nouvelles catégories utilisent `material-symbols:location-on-outline` par défaut et n’acceptent que les identifiants du catalogue; `material-symbols:help-outline` est le fallback.
+
+La migration Alembic `f3a7c1d9e842` convertit les 17 identifiants Lucide historiques vers ce catalogue et remplace les valeurs inconnues par le défaut Iconify. Les identifiants Iconify déjà valides sont conservés. Son downgrade est volontairement destructif pour les nouvelles icônes sans équivalent Lucide : elles deviennent `map-pin`. Il ne doit jamais être exécuté sur `poi_manager`.
 
 ## Pays, cartes et POI
 

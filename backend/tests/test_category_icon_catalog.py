@@ -16,6 +16,13 @@ from app.categories.icon_catalog import (
     load_category_icon_catalog,
 )
 from app.categories.schemas import CategoryCreate, CategoryUpdate
+from app.categories.icon_migration import (
+    ICONIFY_TO_LEGACY_CATEGORY_ICON,
+    LEGACY_CATEGORY_ICON_DEFAULT,
+    LEGACY_CATEGORY_ICON_TO_ICONIFY,
+    downgrade_category_icon,
+    upgrade_category_icon,
+)
 
 
 pytestmark = pytest.mark.unit
@@ -103,3 +110,21 @@ def test_category_icon_schema_uses_qualified_catalog_ids() -> None:
         CategoryUpdate(icon=None)
     assert CategoryUpdate().model_dump(exclude_unset=True) == {}
     assert CategoryUpdate(icon="mdi:factory").icon == "mdi:factory"
+
+
+def test_legacy_category_icon_mappings_are_complete_and_catalog_backed() -> None:
+    assert len(LEGACY_CATEGORY_ICON_TO_ICONIFY) == 17
+    assert set(LEGACY_CATEGORY_ICON_TO_ICONIFY.values()) <= CATEGORY_ICON_IDS
+    assert {
+        iconify_icon: legacy_icon
+        for legacy_icon, iconify_icon in LEGACY_CATEGORY_ICON_TO_ICONIFY.items()
+    } == ICONIFY_TO_LEGACY_CATEGORY_ICON
+
+    for legacy_icon, iconify_icon in LEGACY_CATEGORY_ICON_TO_ICONIFY.items():
+        assert upgrade_category_icon(legacy_icon) == iconify_icon
+        assert downgrade_category_icon(iconify_icon) == legacy_icon
+
+    assert upgrade_category_icon("mdi:wall") == "mdi:wall"
+    assert upgrade_category_icon("unknown-icon") == DEFAULT_CATEGORY_ICON_ID
+    assert downgrade_category_icon("mdi:wall") == LEGACY_CATEGORY_ICON_DEFAULT
+    assert max(len(entry.id) for entry in CATEGORY_ICON_CATALOG) <= 50

@@ -30,6 +30,13 @@ acceptent uniquement les identifiants qualifiés du catalogue partagé. Les
 valeurs Lucide historiques restent lisibles tant qu’une migration dédiée n’a
 pas été appliquée, mais elles ne sont plus acceptées à l’écriture.
 
+Le test de migration `f3a7c1d9e842` affiche d’abord uniquement le nom de la
+base visée et exige exactement `poi_manager_test`. Il prépare les 17 valeurs
+Lucide, une valeur inconnue et un ID Iconify, puis exécute le cycle
+`upgrade → downgrade → upgrade`. Le downgrade est documenté comme destructif
+pour les IDs Iconify sans équivalent Lucide. Ne lancez jamais ce cycle sur
+`poi_manager`.
+
 Sans `TEST_DATABASE_URL`, les tests d'intégration sont ignorés avec une raison
 explicite. Ils n'utilisent jamais `DATABASE_URL` comme valeur de secours.
 
