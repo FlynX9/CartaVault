@@ -4,6 +4,7 @@ import { ApiError } from '../../api/client'
 import { DeleteConfirmation } from '../../components/admin/DeleteConfirmation'
 import { EntityForm, type EntityFormValues } from '../../components/admin/EntityForm'
 import { EntityList, type ManagedEntity } from '../../components/admin/EntityList'
+import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
 
 export interface EntityManagementConfig {
   singularLabel: string
@@ -124,7 +125,7 @@ export function EntityManagementPage({ config }: EntityManagementPageProps) {
         <EntityForm
           key={editing?.id ?? 'new'}
           title={editing === null ? `Créer ${config.singularLabel}` : `Modifier ${editing.name}`}
-          initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : 'map-pin' }}
+          initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : DEFAULT_CATEGORY_ICON_ID }}
           supportsDescription={config.supportsDescription}
           supportsIcon={config.supportsIcon}
           isSubmitting={isSubmitting}

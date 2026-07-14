@@ -64,6 +64,9 @@ export const CATEGORY_ICON_CATALOG = validate(rawCatalog)
 export const getCategoryIcon = (id?: string | null) => CATEGORY_ICON_CATALOG.find((item) => item.id === id) ?? CATEGORY_ICON_CATALOG.find((item) => item.id === FALLBACK_CATEGORY_ICON_ID)!
 
 export function searchCategoryIcons(query = '', group?: CategoryIconGroup): readonly CategoryIconCatalogEntry[] {
-  const term = normalizeIconSearch(query)
-  return CATEGORY_ICON_CATALOG.filter((item) => (!group || item.group === group) && (!term || normalizeIconSearch([item.label, ...item.keywords, item.id].join(' ')).includes(term)))
+  const terms = normalizeIconSearch(query).split(' ').filter(Boolean)
+  return CATEGORY_ICON_CATALOG.filter((item) => {
+    const searchableText = normalizeIconSearch([item.label, ...item.keywords, item.id].join(' '))
+    return (!group || item.group === group) && terms.every((term) => searchableText.includes(term))
+  })
 }

@@ -11,7 +11,7 @@ vi.mock('../../api/categories', () => ({
   deleteCategory: vi.fn(),
 }))
 
-const CATEGORY = { id: '11111111-1111-4111-8111-111111111111', name: 'Industrie', description: 'Patrimoine industriel' }
+const CATEGORY = { id: '11111111-1111-4111-8111-111111111111', name: 'Industrie', description: 'Patrimoine industriel', icon: 'mdi:church' }
 
 beforeEach(() => {
   vi.mocked(getCategories).mockResolvedValue([CATEGORY])
@@ -49,6 +49,38 @@ describe('CategoriesPage', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: ' ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(updateCategory).toHaveBeenCalledWith(CATEGORY.id, { description: null }))
+  })
+
+  it('sends the selected qualified icon during creation', async () => {
+    render(<CategoriesPage />)
+    await screen.findByText('Industrie')
+    fireEvent.click(screen.getByRole('button', { name: 'Créer une catégorie' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nom *' }), { target: { value: 'Église' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
+    fireEvent.click(screen.getByRole('gridcell', { name: 'Église' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choisir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(createCategory).toHaveBeenCalledWith({ name: 'Église', description: null, icon: 'mdi:church' }))
+  })
+
+  it('does not send an icon patch when editing leaves it unchanged', async () => {
+    render(<CategoriesPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Modifier Industrie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(updateCategory).not.toHaveBeenCalled())
+  })
+
+  it('sends a category icon patch only after choosing a different icon', async () => {
+    render(<CategoriesPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Modifier Industrie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
+    fireEvent.click(screen.getByRole('gridcell', { name: 'Château' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choisir' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(updateCategory).toHaveBeenCalledWith(CATEGORY.id, { icon: 'mdi:castle' }))
   })
 
   it('confirms and removes a category', async () => {
