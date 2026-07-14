@@ -5,13 +5,14 @@ import { MapContainer, Marker, Popup } from 'react-leaflet'
 import type { BasemapId } from '../../map/basemaps'
 import type { GeocodingResult } from '../../geocoding/types'
 import { BasemapLayer } from './BasemapLayer'
-import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/place'
+import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/place'
 import { MapBoundsWatcher } from './MapBoundsWatcher'
 import { MapFocusController } from './MapFocusController'
 import { MapResizeWatcher } from './MapResizeWatcher'
 import { MapContextEvents } from './MapContextEvents'
 import type { MapContextMenuState } from './mapContextMenuUtils'
 import { getStatusMarkerIcon } from './markerIcons'
+import { DraftPositionMarker } from './DraftPositionMarker'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 
@@ -31,6 +32,9 @@ interface PoiMapProps {
   temporarySearchResult?: GeocodingResult | null
   onMapContextMenuOpen?: (state: MapContextMenuState) => void
   onMapContextMenuClose?: () => void
+  draftPosition?: DraftPosition | null
+  draftPlaceId?: string | null
+  onDraftPositionChange?: (position: DraftPosition) => void
 }
 
 function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
@@ -107,6 +111,9 @@ export function PoiMap({
   temporarySearchResult = null,
   onMapContextMenuOpen = () => undefined,
   onMapContextMenuClose = () => undefined,
+  draftPosition = null,
+  draftPlaceId = null,
+  onDraftPositionChange = () => undefined,
 }: PoiMapProps) {
   return (
     <MapContainer
@@ -128,8 +135,9 @@ export function PoiMap({
       <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
+      {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
-      {places.map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
+      {places.filter((place) => place.id !== draftPlaceId).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
     </MapContainer>
   )
 }

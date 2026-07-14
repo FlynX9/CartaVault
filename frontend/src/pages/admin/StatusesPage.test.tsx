@@ -33,11 +33,12 @@ describe('StatusesPage', () => {
     expect(screen.getByRole('button', { name: 'Supprimer' })).toBeDisabled()
   })
 
-  it('creates a status with synchronized hex color fields', async () => {
+  it('creates a status with the accessible graphical color picker only', async () => {
     render(<StatusesPage />)
     await screen.findByText('À faire')
     fireEvent.change(screen.getByLabelText('Nom *'), { target: { value: 'À revoir' } })
-    fireEvent.change(screen.getByLabelText('Couleur hexadécimale'), { target: { value: '#abcdef' } })
+    expect(screen.queryByLabelText('Couleur hexadécimale')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Couleur'), { target: { value: '#abcdef' } })
     fireEvent.change(screen.getByLabelText('Ordre'), { target: { value: '25' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(createStatus).toHaveBeenCalledWith(expect.objectContaining({ name: 'À revoir', color: '#ABCDEF', sort_order: 25 })))

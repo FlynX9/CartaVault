@@ -24,16 +24,17 @@ export function PlaceMapPopup({ placeId, onEdit, onDeleted, onClose }: Props) {
   if (detailsLoading) return <div className="place-map-popup" role="status">Chargement du POI…</div>
   if (detailsError || !place) return <div className="place-map-popup popup-error" role="alert"><strong>Impossible d’afficher ce POI</strong><span>{detailsError}</span><button type="button" onClick={onClose}>Fermer</button></div>
   const googleUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
+  const coordinates = place.latitude !== null && place.longitude !== null ? `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}` : null
   const remove = async () => { if (!window.confirm(`Supprimer « ${place.name} » ?`)) return; setDeleting(true); try { await deletePlace(place.id); onDeleted(place.id) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Suppression impossible.'); setDeleting(false) } }
   return <article className="place-map-popup" aria-labelledby={`popup-title-${place.id}`}>
     <PlacePopupGallery placeName={place.name} photos={photos} isLoading={photosLoading} error={photosError} />
-    <div className="popup-heading"><div><p>{place.map.name} · {place.map.country.name}</p><h2 id={`popup-title-${place.id}`} ref={titleRef} tabIndex={-1}>{place.name}</h2></div><PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} /></div>
-    <p className="place-status-label"><span className="status-dot" style={{ backgroundColor: place.status.color }} />Statut : {place.status.name}</p>
-    {place.categories.find((item) => item.is_primary) && <p className="place-status-label"><CategoryIconPreview iconId={place.categories.find((item) => item.is_primary)?.icon} size={16} showLabel={false} />Catégorie principale : {place.categories.find((item) => item.is_primary)?.name}</p>}
+    <div className="popup-heading"><div><p>{place.map.name} · {place.map.country.name}</p><h2 id={`popup-title-${place.id}`} ref={titleRef} tabIndex={-1}>{place.name}</h2></div></div>
+    <div className="popup-summary"><p><b>Statut</b><span><i className="status-dot" style={{ backgroundColor: place.status.color }} />{place.status.name}</span></p>{place.categories.find((item) => item.is_primary) && <p><b>Catégorie</b><span><CategoryIconPreview iconId={place.categories.find((item) => item.is_primary)?.icon} size={16} showLabel={false} />{place.categories.find((item) => item.is_primary)?.name}</span></p>}</div>
     {detailsError && <p className="inline-error" role="alert">{detailsError}</p>}
-    {place.description && <p className="popup-description">{place.description}</p>}
-    {(place.categories.length > 0 || place.tags.length > 0) && <ul className="popup-chips">{place.categories.map((item) => <li key={item.id}>{item.name}</li>)}{place.tags.map((item) => <li className="tag" key={item.id}>{item.name}</li>)}</ul>}
     <dl className="popup-details">{place.condition && <><dt>État</dt><dd>{place.condition}</dd></>}{place.access && <><dt>Accès</dt><dd>{place.access}</dd></>}{place.danger_level && <><dt>Danger</dt><dd>{place.danger_level}</dd></>}{place.construction_date && <><dt>Construction</dt><dd>{place.construction_date}</dd></>}{place.abandonment_date && <><dt>Abandon</dt><dd>{place.abandonment_date}</dd></>}</dl>
-    {place.latitude !== null && place.longitude !== null && <p className="popup-coordinates">{place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}</p>}
+    {place.description && <section className="popup-description"><h3>Description</h3><p>{place.description}</p></section>}
+    {place.tags.length > 0 && <section className="popup-tags"><h3>Tags</h3><ul className="popup-chips">{place.tags.map((item) => <li className="tag" key={item.id}>{item.name}</li>)}</ul></section>}
+    {coordinates && <div className="popup-coordinates"><button type="button" aria-label="Copier les coordonnées GPS" title="Copier les coordonnées" onClick={() => void navigator.clipboard?.writeText(coordinates)}>{coordinates}</button></div>}
+    <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
   </article>
 }

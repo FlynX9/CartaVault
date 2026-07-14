@@ -33,6 +33,8 @@ describe('CategoryIconField', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
 
     const search = screen.getByRole('searchbox', { name: 'Rechercher une icône' })
+    expect(screen.getByRole('dialog').parentElement).toHaveClass('category-icon-modal-backdrop')
+    expect(document.body.contains(screen.getByRole('dialog'))).toBe(true)
     expect(search).toHaveFocus()
     fireEvent.change(search, { target: { value: 'chapelle' } })
     expect(screen.getByRole('gridcell', { name: /^Église/ })).toBeVisible()

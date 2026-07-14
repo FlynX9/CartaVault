@@ -33,6 +33,7 @@ export interface MapPlace extends PreviewPlace { map_id: string; longitude: numb
 export interface MapBounds { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }
 export interface MapView { center: [number, number]; zoom: number }
 export interface MapFocusRequest { id: number; view: MapView }
+export interface DraftPosition { latitude: number; longitude: number }
 export interface PlaceMutation { placeId: string; mapId: string }
 export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
 export interface PlaceListQuery { mapId?: string; statusId?: string; q?: string; limit?: number; offset?: number }

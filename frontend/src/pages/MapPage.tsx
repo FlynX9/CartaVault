@@ -7,7 +7,7 @@ import type { MapContextMenuState } from '../components/map/mapContextMenuUtils'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
-import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
+import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
 
@@ -34,6 +34,9 @@ interface MapPageProps {
   onGeographicResultClear?: () => void
   onCreateFromGeographicResult?: (result: GeocodingResult) => void
   onCreateFromCoordinates?: (latitude: number, longitude: number) => void
+  draftPosition?: DraftPosition | null
+  draftPlaceId?: string | null
+  onDraftPositionChange?: (position: DraftPosition) => void
 }
 
 export function MapPage({
@@ -59,6 +62,9 @@ export function MapPage({
   onGeographicResultClear = () => undefined,
   onCreateFromGeographicResult = () => undefined,
   onCreateFromCoordinates = () => undefined,
+  draftPosition = null,
+  draftPlaceId = null,
+  onDraftPositionChange = () => undefined,
 }: MapPageProps) {
   const [basemapId, setBasemapId] = useState(loadBasemapPreference)
   const [basemapError, setBasemapError] = useState(false)
@@ -96,11 +102,14 @@ export function MapPage({
           onPopupClose={onPopupClose}
           basemapId={basemapId}
           onBasemapTileError={handleBasemapTileError}
-          temporarySearchResult={selectedSearchResult}
+          temporarySearchResult={sidebarOpen ? null : selectedSearchResult}
           onMapContextMenuOpen={setContextMenu}
           onMapContextMenuClose={() => setContextMenu(null)}
+          draftPosition={draftPosition}
+          draftPlaceId={draftPlaceId}
+          onDraftPositionChange={onDraftPositionChange}
         />
-        {contextMenu && <MapContextMenu state={contextMenu} onClose={() => setContextMenu(null)} onCreate={() => { onCreateFromCoordinates(contextMenu.latitude, contextMenu.longitude); setContextMenu(null) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
+        {contextMenu && <MapContextMenu state={contextMenu} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />

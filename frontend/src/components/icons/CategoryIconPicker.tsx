@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
   CATEGORY_ICON_GROUPS,
@@ -56,8 +57,8 @@ export function CategoryIconPicker({ initialIconId, onCancel, onChoose }: Catego
     }
   }
 
-  return (
-    <div className="category-icon-modal-backdrop" role="presentation">
+  return createPortal(
+    <div className="category-icon-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel() }}>
       <div className="category-icon-modal" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="category-icon-picker-title" onKeyDown={trapFocus}>
         <header>
           <div>
@@ -85,6 +86,7 @@ export function CategoryIconPicker({ initialIconId, onCancel, onChoose }: Catego
           <button className="primary-button" type="button" onClick={() => onChoose(selectedIconId)}>Choisir</button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

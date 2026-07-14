@@ -1,9 +1,33 @@
 import { Link, useLocation } from 'react-router-dom'
-import { FolderCog, Map, MapPinned, Settings } from 'lucide-react'
+import { CircleDot, FolderOutput, Map, MapPin, Shapes, Tag } from 'lucide-react'
 
-import logo from '../../assets/branding/cartavault-logo-light.svg'
+export type WorkspacePanel = 'places' | 'categories' | 'tags' | 'statuses' | null
 
-export function MainNavigation() {
-  const location = useLocation(); const isAdmin = location.pathname.startsWith('/admin')
-  return <nav className="main-navigation" aria-label="Navigation CartaVault"><Link className="main-navigation-brand" to="/" aria-label="CartaVault, carte"><img src={logo} alt="CartaVault" /></Link><div className="main-navigation-links"><Link className={!isAdmin ? 'active' : undefined} to="/" aria-label="Carte" title="Carte"><Map size={21} /><span>Carte</span></Link><Link className={!isAdmin ? 'active' : undefined} to="/" aria-label="Lieux" title="Lieux"><MapPinned size={21} /><span>Lieux</span></Link><span className="main-navigation-disabled" aria-label="Préparation de sortie bientôt disponible" title="Bientôt disponible"><FolderCog size={21} /><span>Export</span></span></div><div className="main-navigation-bottom"><Link className={isAdmin ? 'active' : undefined} to="/admin/categories" aria-label="Administration" title="Administration"><Settings size={21} /><span>Administration</span></Link></div></nav>
+interface Props {
+  activePanel: WorkspacePanel
+  onMap: () => void
+  onPanelChange: (panel: Exclude<WorkspacePanel, null>) => void
+}
+
+function navClass(active: boolean): string {
+  return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
+}
+
+export function MainNavigation({ activePanel, onMap, onPanelChange }: Props) {
+  const location = useLocation()
+  const isAdmin = location.pathname.startsWith('/admin')
+
+  return (
+    <nav className="main-navigation cv-main-navigation" aria-label="Navigation CartaVault">
+      <Link className="main-navigation-brand" to="/" aria-label="CartaVault, carte"><img src="/cartavault-icon.svg" alt="CartaVault" /></Link>
+      <div className="main-navigation-links cv-main-navigation__items">
+        <button type="button" className={navClass(!isAdmin && activePanel === null)} aria-label="Carte" aria-pressed={!isAdmin && activePanel === null} onClick={onMap}><Map size={21} /><span>Carte</span></button>
+        <button type="button" className={navClass(!isAdmin && activePanel === 'places')} aria-label="Lieux" aria-pressed={!isAdmin && activePanel === 'places'} onClick={() => onPanelChange('places')}><MapPin size={21} /><span>Lieux</span></button>
+        <button type="button" className={navClass(!isAdmin && activePanel === 'categories')} aria-label="Catégories" aria-pressed={!isAdmin && activePanel === 'categories'} onClick={() => onPanelChange('categories')}><Shapes size={21} /><span>Catégories</span></button>
+        <button type="button" className={navClass(!isAdmin && activePanel === 'tags')} aria-label="Tags" aria-pressed={!isAdmin && activePanel === 'tags'} onClick={() => onPanelChange('tags')}><Tag size={21} /><span>Tags</span></button>
+        <button type="button" className={navClass(!isAdmin && activePanel === 'statuses')} aria-label="Statuts" aria-pressed={!isAdmin && activePanel === 'statuses'} onClick={() => onPanelChange('statuses')}><CircleDot size={21} /><span>Statuts</span></button>
+        <span className="main-navigation-disabled cv-main-navigation__item" aria-label="Export bientôt disponible"><FolderOutput size={21} /><span>Export</span></span>
+      </div>
+    </nav>
+  )
 }

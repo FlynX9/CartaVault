@@ -16,6 +16,8 @@ describe('CreateMapDialog', () => {
   it('searches the world catalogue and creates the selected country map', async () => {
     vi.mocked(getCountries).mockResolvedValue([COUNTRY]); vi.mocked(createMap).mockResolvedValue(MAP); const created = vi.fn()
     render(<CreateMapDialog onClose={vi.fn()} onCreated={created} />)
+    expect(screen.getByRole('dialog')).toHaveClass('cv-modal')
+    expect(screen.getByRole('dialog').parentElement).toHaveClass('cv-overlay')
     fireEvent.change(screen.getByRole('searchbox', { name: 'Rechercher un pays' }), { target: { value: 'Géo' } })
     expect(await screen.findByRole('option', { name: /Géorgie/ })).toBeVisible()
     fireEvent.click(screen.getByRole('option', { name: /Géorgie/ })); fireEvent.click(screen.getByRole('button', { name: 'Créer la carte' }))

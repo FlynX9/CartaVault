@@ -1,4 +1,6 @@
+import { Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+
 import { getPlaces } from '../../api/places'
 import type { PoiMap } from '../../types/map'
 import type { PlaceDetails, PreviewPlace } from '../../types/place'
@@ -6,23 +8,115 @@ import type { PlaceStatusSummary } from '../../types/status'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 
 const PAGE_SIZE = 100
-interface Props { poiMap: PoiMap | null; statuses?: PlaceStatusSummary[]; statusId?: string | null; selectedPlaceId: string | null; refreshVersion: number; removedPlaceId: string | null; onStatusChange?: (statusId: string | null) => void; onPlaceSelect: (place: PreviewPlace) => void }
+
+interface Props {
+  poiMap: PoiMap | null
+  statuses?: PlaceStatusSummary[]
+  statusId?: string | null
+  selectedPlaceId: string | null
+  refreshVersion: number
+  removedPlaceId: string | null
+  onStatusChange?: (statusId: string | null) => void
+  onPlaceSelect: (place: PreviewPlace) => void
+}
+
 const sortPlaces = (places: PlaceDetails[]) => [...places].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id))
 
+function formatLastUpdate(value: string | undefined) {
+  if (!value) return 'Mis à jour récemment'
+  const elapsedMinutes = Math.floor((Date.now() - new Date(value).getTime()) / 60_000)
+  if (!Number.isFinite(elapsedMinutes) || elapsedMinutes < 1) return 'Mis à jour à l’instant'
+  if (elapsedMinutes < 60) return `Mis à jour il y a ${elapsedMinutes} min`
+  if (elapsedMinutes < 1_440) return `Mis à jour il y a ${Math.floor(elapsedMinutes / 60)} h`
+  return `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
+}
+
 export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect }: Props) {
-  const [search, setSearch] = useState(''); const [debounced, setDebounced] = useState(''); const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [hasMore, setHasMore] = useState(false); const [error, setError] = useState<string | null>(null); const refs = useRef(new Map<string, HTMLButtonElement>())
-  useEffect(() => { const timeout = window.setTimeout(() => setDebounced(search.trim()), 300); return () => window.clearTimeout(timeout) }, [search])
+  const [search, setSearch] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [tagId, setTagId] = useState('')
+  const [places, setPlaces] = useState<PlaceDetails[]>([])
+  const [loading, setLoading] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const refs = useRef(new Map<string, HTMLButtonElement>())
+
   useEffect(() => {
-    if (!poiMap) { setPlaces([]); return }
-    const controller = new AbortController(); setLoading(true); setError(null)
-    void getPlaces({ mapId: poiMap.id, statusId: statusId ?? undefined, q: debounced || undefined, limit: PAGE_SIZE, offset: 0 }, controller.signal).then((page) => { setPlaces(page); setHasMore(page.length === PAGE_SIZE) }).catch((caught: unknown) => { if (!(caught instanceof Error && caught.name === 'AbortError')) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    const timeout = window.setTimeout(() => setDebounced(search.trim()), 300)
+    return () => window.clearTimeout(timeout)
+  }, [search])
+
+  useEffect(() => {
+    setCategoryId('')
+    setTagId('')
+  }, [poiMap?.id])
+
+  useEffect(() => {
+    if (!poiMap) {
+      setPlaces([])
+      return
+    }
+    const controller = new AbortController()
+    setLoading(true)
+    setError(null)
+    void getPlaces({ mapId: poiMap.id, statusId: statusId ?? undefined, q: debounced || undefined, limit: PAGE_SIZE, offset: 0 }, controller.signal)
+      .then((page) => { setPlaces(page); setHasMore(page.length === PAGE_SIZE) })
+      .catch((caught: unknown) => { if (!(caught instanceof Error && caught.name === 'AbortError')) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [poiMap, statusId, debounced, refreshVersion])
-  const visible = useMemo(() => sortPlaces(places.filter((item) => item.id !== removedPlaceId)), [places, removedPlaceId])
-  useEffect(() => { if (selectedPlaceId) refs.current.get(selectedPlaceId)?.scrollIntoView?.({ block: 'nearest' }) }, [selectedPlaceId, visible])
-  const loadMore = async () => { if (!poiMap) return; const page = await getPlaces({ mapId: poiMap.id, statusId: statusId ?? undefined, q: debounced || undefined, limit: PAGE_SIZE, offset: places.length }); setPlaces((current) => [...current, ...page]); setHasMore(page.length === PAGE_SIZE) }
-  return <aside className="country-place-panel" id="map-place-list" aria-labelledby="map-place-list-title"><header className="place-list-header"><div><p className="place-list-kicker">Exploration</p><h2 id="map-place-list-title">{poiMap?.name ?? 'Points d’intérêt'}</h2></div><span className="place-list-count">{visible.length} chargé{visible.length > 1 ? 's' : ''}</span></header>
-    {poiMap && <><label className="place-list-search"><span>Filtrer par statut</span><select value={statusId ?? ''} onChange={(event) => onStatusChange(event.target.value || null)}><option value="">Tous les statuts</option>{statuses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="place-list-search"><span>Rechercher un POI</span><input type="search" value={search} placeholder={`Rechercher sur ${poiMap.name}`} onChange={(event) => setSearch(event.target.value)} /></label></>}
-    <div className="place-list-body">{!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}{loading && <p role="status">Chargement…</p>}{error && <p role="alert">{error}</p>}{visible.length > 0 && <ul className="country-place-list">{visible.map((place) => <li key={place.id}><button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" className={`place-list-item${place.id === selectedPlaceId ? ' selected' : ''}`} onClick={() => onPlaceSelect(place)}><strong>{place.name}</strong><span className="place-status-label"><i className="status-dot" style={{ backgroundColor: place.status.color }} />{place.status.name}</span>{place.categories.find((item) => item.is_primary) && <span className="place-status-label"><CategoryIconPreview iconId={place.categories.find((item) => item.is_primary)?.icon} size={16} showLabel={false} />{place.categories.find((item) => item.is_primary)?.name}</span>}</button></li>)}</ul>}{hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}</div>
+
+  const categories = useMemo(() => [...new Map(places.flatMap((place) => place.categories).map((category) => [category.id, category])).values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [places])
+  const tags = useMemo(() => [...new Map(places.flatMap((place) => place.tags).map((tag) => [tag.id, tag])).values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [places])
+  const visible = useMemo(() => sortPlaces(places.filter((place) => place.id !== removedPlaceId && (categoryId === '' || place.categories.some((category) => category.id === categoryId)) && (tagId === '' || place.tags.some((tag) => tag.id === tagId)))), [places, removedPlaceId, categoryId, tagId])
+
+  useEffect(() => {
+    if (selectedPlaceId) refs.current.get(selectedPlaceId)?.scrollIntoView?.({ block: 'nearest' })
+  }, [selectedPlaceId, visible])
+
+  const loadMore = async () => {
+    if (!poiMap) return
+    const page = await getPlaces({ mapId: poiMap.id, statusId: statusId ?? undefined, q: debounced || undefined, limit: PAGE_SIZE, offset: places.length })
+    setPlaces((current) => [...current, ...page])
+    setHasMore(page.length === PAGE_SIZE)
+  }
+
+  const resetFilters = () => {
+    setSearch('')
+    setCategoryId('')
+    setTagId('')
+    onStatusChange(null)
+  }
+
+  return <aside className="country-place-panel cv-workspace-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
+    <header className="place-list-header">
+      <h2 id="map-place-list-title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>
+      {poiMap && <p className="place-list-map-meta"><span>{visible.length} POI{visible.length > 1 ? 's' : ''}</span><span aria-hidden="true">·</span><span>{formatLastUpdate(poiMap.updated_at)}</span></p>}
+    </header>
+    {poiMap && <section className="place-list-controls" aria-label="Recherche et filtres des lieux">
+      <label className="place-list-search"><Search aria-hidden="true" size={18} /><span className="visually-hidden">Rechercher un POI</span><input type="search" value={search} placeholder="Rechercher un POI…" onChange={(event) => setSearch(event.target.value)} /></label>
+      <div className="place-list-filters">
+        <select aria-label="Filtrer par catégorie" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">Catégorie</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+        <select aria-label="Filtrer par statut" value={statusId ?? ''} onChange={(event) => onStatusChange(event.target.value || null)}><option value="">Statut</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select>
+        <select aria-label="Filtrer par tag" value={tagId} onChange={(event) => setTagId(event.target.value)}><option value="">Tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select>
+        <button className="place-list-reset" type="button" onClick={resetFilters} disabled={search === '' && categoryId === '' && tagId === '' && statusId === null}>Réinitialiser</button>
+      </div>
+    </section>}
+    <div className="place-list-body cv-workspace-panel__content">
+      {!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}
+      {loading && <p role="status">Chargement…</p>}
+      {error && <p role="alert">{error}</p>}
+      {visible.length > 0 && <ul className="country-place-list cv-workspace-panel__list">{visible.map((place) => {
+        const primaryCategory = place.categories.find((item) => item.is_primary) ?? place.categories[0]
+        return <li key={place.id}><button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}`} onClick={() => onPlaceSelect(place)}>
+          <i className="place-list-status-dot" role="img" aria-label={`Statut : ${place.status.name}`} style={{ backgroundColor: place.status.color }} />
+          <span className="place-list-category-bubble" title={primaryCategory?.name} aria-hidden="true">{primaryCategory && <CategoryIconPreview iconId={primaryCategory.icon} size={18} showLabel={false} />}</span>
+          <span className="place-list-item-content"><strong>{place.name}</strong>{primaryCategory && <span className="place-list-category-name">{primaryCategory.name}</span>}{place.tags.length > 0 && <span className="place-list-tags">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}</span>}</span>
+        </button></li>
+      })}</ul>}
+      {!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}
+      {hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}
+    </div>
   </aside>
 }
