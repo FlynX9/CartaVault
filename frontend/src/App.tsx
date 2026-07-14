@@ -6,6 +6,7 @@ import { deleteMap, getMaps } from './api/maps'
 import { getMapPlaces, getPlaceDetails } from './api/places'
 import { getStatuses } from './api/statuses'
 import { TopBar } from './components/layout/TopBar'
+import { MainNavigation } from './components/layout/MainNavigation'
 import { MapPlaceList } from './components/place-list/MapPlaceList'
 import { MapSidebar } from './components/sidebar/MapSidebar'
 import { PlaceMapPopup } from './components/map-popup/PlaceMapPopup'
@@ -102,13 +103,13 @@ function App() {
   }
   const popupContent = selectedPlaceId !== null && !editorOpen ? <PlaceMapPopup placeId={selectedPlaceId} onEdit={() => navigate(withMap(`/places/${selectedPlaceId}/edit`, activeMapId, activeStatusId))} onDeleted={(id) => { handleDeletePlace(id); navigate(withMap('/', activeMapId, activeStatusId)) }} onClose={closePopup} /> : null
 
-  return <main className="app-shell">
+  return <main className="app-shell"><MainNavigation /><div className="app-body">
     <TopBar isMapWorkspace={isMapWorkspace} maps={maps} activeMapId={activeMapId} activeStatusId={activeStatusId} areMapsLoading={mapsLoading} mapsError={mapsError} markerCount={places.length} placeListOpen={placeListOpen} onMapChange={(id) => navigate(withMap(location.pathname, id, activeStatusId))} onMapCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)) }} onDeleteMap={() => void deleteActiveMap()} onTogglePlaceList={() => setPlaceListOpen((open) => !open)} />
     <Routes>
       <Route path="*" element={<MapPage places={places} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen} placeListOpen={placeListOpen} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={<MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} />} sidebar={<MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} onClose={() => { setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
       <Route path="/admin" element={<AdminLayout />}><Route index element={<Navigate to="categories" replace />} /><Route path="categories" element={<CategoriesPage />} /><Route path="tags" element={<TagsPage />} /><Route path="statuses" element={<StatusesPage />} /></Route>
     </Routes>
-  </main>
+  </div></main>
 }
 
 export default App

@@ -86,6 +86,16 @@ Stadia Maps. Les variables `VITE_*` sont publiques dans le navigateur : ne
 placez jamais de secret non restreint dans ce fichier. En cas d'indisponibilité
 de Stadia, le contrôle permet de basculer explicitement vers OpenStreetMap.
 
+## Shell CartaVault
+
+La première passe de la refonte visuelle installe un shell responsive : navigation
+verticale CartaVault, barre supérieure claire, panneau POI stable à gauche et
+carte dominante. Les couleurs, rayons, ombres, dimensions et niveaux de calques
+sont centralisés dans les variables `--cv-*` de `src/index.css`. Les logos sont
+issus de `src/assets/branding/`. Sur mobile, la navigation devient une barre
+inférieure compacte ; les composants métier (formulaires, popup et lignes POI)
+conservent volontairement leur structure actuelle pour une passe ultérieure.
+
 ## Recherche géographique
 
 La recherche géographique superposée à la carte est indépendante du filtre

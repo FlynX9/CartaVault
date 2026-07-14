@@ -32,6 +32,10 @@ La V1 impose une seule carte par pays. Une carte contenant des POI ne peut pas
 
 ## Interface cartographique type My Maps
 
+Le frontend utilise désormais un shell CartaVault : navigation compacte sombre,
+barre supérieure claire, panneau de POI latéral et carte centrale. Cette première
+étape ne modifie ni les routes, ni les appels API, ni les composants métier.
+
 La recherche géographique est distincte de la recherche textuelle des POI :
 elle interroge Stadia Maps seulement après une action explicite de l'utilisateur
 et accepte aussi les coordonnées GPS. Les résultats servent à recentrer la

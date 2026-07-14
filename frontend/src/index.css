@@ -1,6 +1,20 @@
 @import 'leaflet/dist/leaflet.css';
 
 :root {
+  --cv-color-navy: #0d1b2a;
+  --cv-color-slate: #2b3e59;
+  --cv-color-teal: #0fa68a;
+  --cv-color-mist: #f2f5f8;
+  --cv-color-gold: #c8a14a;
+  --cv-color-off-white: #fafaf8;
+  --cv-color-gray: #64707a;
+  --cv-nav-width: 72px;
+  --cv-topbar-height: 68px;
+  --cv-sidebar-width: 340px;
+  --cv-radius-md: 12px;
+  --cv-shadow-sm: 0 3px 12px rgb(13 27 42 / 10%);
+  --cv-z-map-controls: 800;
+  --cv-z-panel: 940;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -46,10 +60,34 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: var(--cv-nav-width) minmax(0, 1fr);
   height: 100%;
   background: #edf1ec;
 }
+.app-body { display: grid; grid-template-rows: var(--cv-topbar-height) minmax(0, 1fr); min-width: 0; min-height: 0; }
+.main-navigation { z-index: 1100; display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 0.8rem 0.55rem; color: #dce4eb; background: var(--cv-color-navy); }
+.main-navigation-brand { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 0.75rem; }
+.main-navigation-brand img { width: 36px; max-height: 40px; object-fit: contain; }
+.main-navigation-links, .main-navigation-bottom { display: grid; width: 100%; gap: 0.4rem; }
+.main-navigation-bottom { margin-top: auto; }
+.main-navigation a, .main-navigation-disabled { display: grid; width: 100%; min-height: 46px; place-items: center; color: #c6d0d9; border-left: 3px solid transparent; border-radius: 0.55rem; text-decoration: none; }
+.main-navigation a.active { color: white; background: rgb(15 166 138 / 18%); border-left-color: var(--cv-color-teal); }
+.main-navigation a:focus-visible { outline: 2px solid var(--cv-color-gold); outline-offset: 2px; }
+.main-navigation-disabled { color: #64707a; cursor: not-allowed; }
+.main-navigation span { font-size: 0.56rem; font-weight: 700; }
+.app-header { z-index: 1000; min-height: var(--cv-topbar-height); padding: 0.65rem 1.25rem; color: var(--cv-color-navy); background: var(--cv-color-off-white); box-shadow: var(--cv-shadow-sm); }
+.app-header h1 { color: var(--cv-color-navy); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 1.25rem; }
+.app-eyebrow { color: var(--cv-color-gray); }
+.header-link { color: var(--cv-color-slate); border-color: #d7e0e6; }
+.header-link:hover, .header-link:focus-visible { color: var(--cv-color-navy); background: var(--cv-color-mist); }
+.marker-count { color: var(--cv-color-gray); background: var(--cv-color-mist); border-color: #dce4eb; }.marker-count strong { color: var(--cv-color-navy); }
+.country-selector { color: var(--cv-color-slate); }.country-selector select { color: var(--cv-color-navy); background: white; border-color: #d7e0e6; }
+.map-workspace { background: var(--cv-color-mist); }.map-workspace.place-list-open { grid-template-columns: var(--cv-sidebar-width) minmax(0, 1fr) 0; }
+.map-workspace.place-list-open.sidebar-open { grid-template-columns: var(--cv-sidebar-width) minmax(0, 1fr) minmax(380px, 440px); }
+.country-place-panel { z-index: var(--cv-z-panel); background: var(--cv-color-off-white); border-right-color: #dce4eb; box-shadow: 6px 0 16px rgb(13 27 42 / 8%); }
+.map-layout { margin: 0.7rem 0.7rem 0.7rem 0; border-radius: var(--cv-radius-md); box-shadow: var(--cv-shadow-sm); }.poi-map, .leaflet-container { border-radius: inherit; }
+.status-legend { left: 1rem; right: auto; bottom: 1rem; z-index: var(--cv-z-map-controls); }.geographic-search { z-index: var(--cv-z-map-controls); }.basemap-selector { z-index: var(--cv-z-map-controls); }.map-context-menu { z-index: 960; }
+@media (max-width: 760px) { .app-shell { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 58px; }.main-navigation { grid-row: 2; flex-direction: row; justify-content: space-around; padding: 0.3rem; }.main-navigation-brand, .main-navigation-disabled { display: none; }.main-navigation-links, .main-navigation-bottom { display: flex; width: auto; }.main-navigation a { width: 56px; min-height: 48px; }.app-body { grid-row: 1; }.app-header { padding-inline: 0.7rem; }.map-layout { margin: 0; border-radius: 0; } }
 
 .app-header {
   z-index: 1000;
