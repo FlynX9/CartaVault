@@ -112,8 +112,14 @@ CREATE TABLE photos (
     path TEXT,
     description TEXT,
     taken_at DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    CONSTRAINT photos_sort_order_nonnegative CHECK (sort_order >= 0)
 );
+
+CREATE UNIQUE INDEX photos_place_sort_order_key ON photos(place_id, sort_order);
+CREATE UNIQUE INDEX photos_one_primary_per_place_idx ON photos(place_id) WHERE is_primary;
 
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

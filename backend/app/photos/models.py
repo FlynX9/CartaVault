@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Date, DateTime, ForeignKey, Text, text
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,12 @@ class Photo(Base):
     """Database representation of photo metadata."""
 
     __tablename__ = "photos"
+
+    __table_args__ = (
+        CheckConstraint("sort_order >= 0", name="photos_sort_order_nonnegative"),
+        Index("photos_place_sort_order_key", "place_id", "sort_order", unique=True),
+        Index("photos_one_primary_per_place_idx", "place_id", unique=True, postgresql_where=text("is_primary")),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -57,6 +63,10 @@ class Photo(Base):
         Date,
         nullable=True,
     )
+
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime,

@@ -12,13 +12,13 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.photos.models import Photo
-from app.photos.schemas import PhotoCreate, PhotoRead, PhotoUpdate
+from app.photos.schemas import PhotoCreate, PhotoRead, PhotoReorder, PhotoUpdate
 from app.photos.storage import (
     InvalidPhotoPathError,
     PhotoFileNotFoundError,
@@ -50,6 +50,8 @@ def build_photo_read_statement():
         Photo.path,
         Photo.description,
         Photo.taken_at,
+        Photo.sort_order,
+        Photo.is_primary,
         Photo.created_at,
     )
 
@@ -74,7 +76,8 @@ def get_place_photos(
         build_photo_read_statement()
         .where(Photo.place_id == place_id)
         .order_by(
-            Photo.created_at,
+            Photo.is_primary.desc(),
+            Photo.sort_order,
             Photo.id,
         )
     )
@@ -96,18 +99,22 @@ def create_place_photo(
 ) -> PhotoRead:
     """Create photo metadata associated with one place."""
 
-    if database_session.get(Place, place_id) is None:
+    place = database_session.scalar(select(Place).where(Place.id == place_id).with_for_update())
+    if place is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Place with id {place_id} was not found",
         )
 
+    next_order = database_session.scalar(select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place_id))
     photo = Photo(
         place_id=place_id,
         filename=photo_data.filename,
         original_name=photo_data.original_name,
         description=photo_data.description,
         taken_at=photo_data.taken_at,
+        sort_order=next_order,
+        is_primary=next_order == 0,
     )
 
     try:
@@ -123,6 +130,8 @@ def create_place_photo(
             path=photo.path,
             description=photo.description,
             taken_at=photo.taken_at,
+            sort_order=photo.sort_order,
+            is_primary=photo.is_primary,
             created_at=photo.created_at,
         )
 
@@ -165,7 +174,8 @@ def upload_place_photo(
 ) -> PhotoRead:
     """Store an image and create its associated database metadata."""
 
-    if database_session.get(Place, place_id) is None:
+    place = database_session.scalar(select(Place).where(Place.id == place_id).with_for_update())
+    if place is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Place with id {place_id} was not found",
@@ -196,6 +206,7 @@ def upload_place_photo(
             detail="Unable to store the uploaded image",
         ) from error
 
+    next_order = database_session.scalar(select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place_id))
     photo = Photo(
         id=photo_id,
         place_id=place_id,
@@ -204,6 +215,8 @@ def upload_place_photo(
         path=stored_photo.relative_path,
         description=description,
         taken_at=taken_at,
+        sort_order=next_order,
+        is_primary=next_order == 0,
     )
 
     try:
@@ -241,6 +254,8 @@ def upload_place_photo(
         path=photo.path,
         description=photo.description,
         taken_at=photo.taken_at,
+        sort_order=photo.sort_order,
+        is_primary=photo.is_primary,
         created_at=photo.created_at,
     )
 
@@ -353,6 +368,12 @@ def update_photo(
 
     supplied_data = photo_data.model_dump(exclude_unset=True)
 
+    if supplied_data.get("is_primary") is True:
+        database_session.execute(update(Photo).where(Photo.place_id == photo.place_id, Photo.id != photo.id).values(is_primary=False))
+
+    if supplied_data.get("is_primary") is False and photo.is_primary:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A place must keep a primary photo")
+
     for field_name, field_value in supplied_data.items():
         setattr(photo, field_name, field_value)
 
@@ -368,6 +389,8 @@ def update_photo(
             path=photo.path,
             description=photo.description,
             taken_at=photo.taken_at,
+            sort_order=photo.sort_order,
+            is_primary=photo.is_primary,
             created_at=photo.created_at,
         )
 
@@ -379,6 +402,30 @@ def update_photo(
             detail="Unable to update the photo metadata",
         ) from error
 
+
+@router.patch("/places/{place_id}/photos/reorder", response_model=list[PhotoRead])
+def reorder_place_photos(
+    place_id: UUID,
+    reorder_data: PhotoReorder,
+    database_session: Session = Depends(get_db),
+) -> list[PhotoRead]:
+    """Persist one complete, ordered photo list atomically."""
+    if database_session.scalar(select(Place).where(Place.id == place_id).with_for_update()) is None:
+        raise HTTPException(status_code=404, detail=f"Place with id {place_id} was not found")
+    photos = database_session.scalars(select(Photo).where(Photo.place_id == place_id).order_by(Photo.sort_order, Photo.id)).all()
+    requested_ids = reorder_data.photo_ids
+    if len(requested_ids) != len(set(requested_ids)) or {photo.id for photo in photos} != set(requested_ids):
+        raise HTTPException(status_code=422, detail="photo_ids must contain every photo of the place exactly once")
+    try:
+        database_session.execute(update(Photo).where(Photo.place_id == place_id).values(sort_order=Photo.sort_order + len(photos)))
+        by_id = {photo.id: photo for photo in photos}
+        for position, photo_id in enumerate(requested_ids):
+            by_id[photo_id].sort_order = position
+        database_session.commit()
+        return [PhotoRead(**row) for row in database_session.execute(build_photo_read_statement().where(Photo.place_id == place_id).order_by(Photo.is_primary.desc(), Photo.sort_order, Photo.id)).mappings()]
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to reorder the photos") from error
 
 @router.delete(
     "/photos/{photo_id}",
@@ -427,6 +474,11 @@ def delete_photo(
 
     try:
         database_session.delete(photo)
+        database_session.flush()
+        remaining = database_session.scalars(select(Photo).where(Photo.place_id == stored_place_id).order_by(Photo.sort_order, Photo.id)).all() if stored_place_id is not None else []
+        for position, remaining_photo in enumerate(remaining):
+            remaining_photo.sort_order = position
+            remaining_photo.is_primary = position == 0
         database_session.commit()
     except SQLAlchemyError as error:
         database_session.rollback()

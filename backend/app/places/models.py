@@ -129,7 +129,7 @@ class Place(Base):
 
     photos: Mapped[list["Photo"]] = relationship(
         back_populates="place",
-        order_by="(Photo.created_at, Photo.id)",
+        order_by="(Photo.is_primary.desc(), Photo.sort_order, Photo.id)",
         passive_deletes=True,
     )
 

@@ -40,6 +40,10 @@ class PhotoUpdate(BaseModel):
     original_name: str | None = None
     description: str | None = None
     taken_at: date | None = None
+    is_primary: bool | None = None
+
+class PhotoReorder(BaseModel):
+    photo_ids: list[UUID] = Field(min_length=1)
 
 
 class PhotoRead(BaseModel):
@@ -52,4 +56,6 @@ class PhotoRead(BaseModel):
     path: str | None
     description: str | None
     taken_at: date | None
+    sort_order: int
+    is_primary: bool
     created_at: datetime | None
