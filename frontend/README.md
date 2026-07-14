@@ -67,10 +67,24 @@ Le fichier `.env` local est ignoré par Git. La variable disponible est :
 
 ```dotenv
 VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_STADIA_MAPS_API_KEY=
 ```
 
 L'URL est normalisée par `src/config.ts`, afin qu'une barre oblique finale ne
 produise pas de doubles `/` dans les appels API.
+
+## Fonds cartographiques
+
+La carte principale propose CartaVault Light (Stadia Alidade Smooth), CartaVault
+Dark (Alidade Smooth Dark), Satellite (Alidade Satellite) et OpenStreetMap
+Standard. Le choix est conservé localement sous `cartavault.basemap`; il ne
+modifie ni l'URL, ni le centre, ni le zoom, ni les POI affichés.
+
+`VITE_STADIA_MAPS_API_KEY` est facultative en local sur `localhost`. Hors
+local, utilisez une clé ou l'authentification par domaine configurée dans
+Stadia Maps. Les variables `VITE_*` sont publiques dans le navigateur : ne
+placez jamais de secret non restreint dans ce fichier. En cas d'indisponibilité
+de Stadia, le contrôle permet de basculer explicitement vers OpenStreetMap.
 
 ## Lancement local
 
@@ -107,7 +121,7 @@ npm run preview
 - une liste fixe à gauche affiche les POI du pays actif, avec recherche serveur et pagination par 100 éléments ;
 - un unique volet latéral propose successivement les modes aperçu, détails, création et modification ;
 - position initiale : latitude `48.17`, longitude `6.45`, zoom `9` ;
-- fond OpenStreetMap avec attribution ;
+- fonds Stadia Maps ou OpenStreetMap avec attribution ;
 - appel de `GET /places/map` avec les limites visibles et le pays actif ;
 - délai de 350 ms après les déplacements et changements de zoom ;
 - annulation des appels obsolètes avec `AbortController` ;
@@ -191,5 +205,5 @@ chaque ouverture et ne conserve donc pas de cache global obsolète.
 - aucun clustering de marqueurs ;
 - pays non normalisés et cadrage détaillé configuré uniquement pour la France ;
 - le compteur de liste représente les éléments chargés, l'API ne fournissant pas encore de total ;
-- aucune recherche d'adresse, vue satellite ou interaction par clic droit ;
+- aucune recherche d'adresse ou interaction par clic droit ;
 - aucun upload photo ni authentification.

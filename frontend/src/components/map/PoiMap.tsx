@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet'
+import { MapContainer, Marker, Popup } from 'react-leaflet'
 
+import type { BasemapId } from '../../map/basemaps'
+import { BasemapLayer } from './BasemapLayer'
 import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/place'
 import { MapBoundsWatcher } from './MapBoundsWatcher'
 import { MapFocusController } from './MapFocusController'
@@ -21,6 +23,8 @@ interface PoiMapProps {
   layoutKey: string
   popupContent: ReactNode
   onPopupClose: () => void
+  basemapId: BasemapId
+  onBasemapTileError: () => void
 }
 
 function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
@@ -92,6 +96,8 @@ export function PoiMap({
   layoutKey,
   popupContent,
   onPopupClose,
+  basemapId,
+  onBasemapTileError,
 }: PoiMapProps) {
   return (
     <MapContainer
@@ -102,10 +108,7 @@ export function PoiMap({
       maxBoundsViscosity={1}
       className="poi-map"
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <BasemapLayer basemapId={basemapId} onTileError={onBasemapTileError} />
 
       <MapBoundsWatcher
         onBoundsChange={onBoundsChange}

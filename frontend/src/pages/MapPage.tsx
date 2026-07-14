@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
+import { BasemapSelector } from '../components/map/BasemapSelector'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
+import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
 import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
 
@@ -42,6 +44,19 @@ export function MapPage({
   onPlaceSelect,
   onPopupClose = () => undefined,
 }: MapPageProps) {
+  const [basemapId, setBasemapId] = useState(loadBasemapPreference)
+  const [basemapError, setBasemapError] = useState(false)
+
+  const selectBasemap = (id: BasemapId) => {
+    setBasemapId(id)
+    setBasemapError(false)
+    saveBasemapPreference(id)
+  }
+
+  const handleBasemapTileError = () => {
+    if (getBasemap(basemapId).requiresStadiaAuthentication) setBasemapError(true)
+  }
+
   return (
     <section
       className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}`}
@@ -59,8 +74,18 @@ export function MapPage({
           layoutKey={`${placeListOpen}-${sidebarOpen}`}
           popupContent={popupContent}
           onPopupClose={onPopupClose}
+          basemapId={basemapId}
+          onBasemapTileError={handleBasemapTileError}
         />
+        <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />
+
+        {basemapError && (
+          <div className="basemap-error" role="alert">
+            <span>Le fond Stadia Maps est indisponible. Vérifiez la configuration ou utilisez OpenStreetMap.</span>
+            <button type="button" onClick={() => selectBasemap('osm')}>Utiliser OSM</button>
+          </div>
+        )}
 
         {isLoading && (
           <div className="status-banner loading-status" role="status">

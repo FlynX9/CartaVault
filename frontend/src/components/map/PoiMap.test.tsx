@@ -40,6 +40,8 @@ function MapHarness({ initiallySelected = false }: { initiallySelected?: boolean
         </article>
       )}
       onPopupClose={() => setSelectedPlaceId(null)}
+      basemapId="cartavault-light"
+      onBasemapTileError={vi.fn()}
     />
   )
 }

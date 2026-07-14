@@ -1,12 +1,14 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { MapPage } from './MapPage'
 
 vi.mock('../components/map/PoiMap', () => ({
-  PoiMap: ({ layoutKey }: { layoutKey: string }) => (
-    <div data-testid="poi-map" data-layout-key={layoutKey} />
+  PoiMap: ({ layoutKey, basemapId, onBasemapTileError }: { layoutKey: string; basemapId: string; onBasemapTileError: () => void }) => (
+    <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId}>
+      <button type="button" onClick={onBasemapTileError}>Simuler l'erreur de tuiles</button>
+    </div>
   ),
 }))
 
@@ -41,5 +43,12 @@ describe('MapPage', () => {
     expect(screen.getByLabelText('Liste de test')).toBeVisible()
     expect(screen.getByLabelText('Volet de test')).toBeVisible()
     expect(screen.getByLabelText('Légende des statuts')).toHaveTextContent('À faire')
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Satellite' }))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'satellite')
+    fireEvent.click(screen.getByRole('button', { name: "Simuler l'erreur de tuiles" }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Stadia Maps est indisponible')
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser OSM' }))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'osm')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

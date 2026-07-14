@@ -1535,6 +1535,14 @@ button {
 .status-legend strong { display: block; margin-bottom: 0.35rem; }
 .status-legend ul { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
 .status-legend li { display: flex; align-items: center; gap: 0.45rem; }
+.basemap-selector { position: absolute; z-index: 800; top: 0.75rem; right: 0.75rem; margin: 0; padding: 0.35rem; color: #183528; background: rgb(255 255 255 / 96%); border: 1px solid rgb(23 61 45 / 22%); border-radius: 0.65rem; box-shadow: 0 5px 16px rgb(16 45 32 / 18%); backdrop-filter: blur(6px); }
+.basemap-selector legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.basemap-selector-options { display: flex; gap: 0.2rem; }
+.basemap-selector button, .basemap-error button { min-height: 2rem; padding: 0.35rem 0.55rem; color: #244737; background: transparent; border: 1px solid transparent; border-radius: 0.4rem; cursor: pointer; font-size: 0.72rem; font-weight: 750; }
+.basemap-selector button:hover, .basemap-selector button:focus-visible { background: #e6efe9; border-color: #88ad98; outline: 0; }
+.basemap-selector button.active { color: white; background: #173d2d; border-color: #173d2d; }
+.basemap-error { position: absolute; z-index: 900; top: 3.85rem; right: 0.75rem; display: flex; align-items: center; gap: 0.5rem; max-width: min(25rem, calc(100% - 1.5rem)); padding: 0.6rem 0.7rem; color: #6d1f19; background: rgb(255 244 241 / 96%); border: 1px solid #e7b8ae; border-radius: 0.6rem; box-shadow: 0 5px 16px rgb(16 45 32 / 18%); font-size: 0.75rem; }
+.basemap-error button { flex: 0 0 auto; color: #6d1f19; border-color: #d99b90; background: white; }
 .place-status-label { display: flex; align-items: center; gap: 0.4rem; margin: 0; padding: 0.25rem 1rem; color: #40584c; font-size: 0.78rem; }
 .place-list-item .place-status-label { padding: 0; }
 .status-summary { display: flex; align-items: center; gap: 0.75rem; }
@@ -1553,4 +1561,8 @@ button {
   .popup-gallery img,
   .popup-photo-placeholder { height: 150px; }
   .status-legend { right: 0.65rem; bottom: 0.8rem; max-width: 10.5rem; }
+  .basemap-selector { top: 0.6rem; right: 0.6rem; }
+  .basemap-selector-options { gap: 0.1rem; }
+  .basemap-selector button { padding-inline: 0.4rem; font-size: 0.68rem; }
+  .basemap-error { top: 3.55rem; right: 0.6rem; }
 }
