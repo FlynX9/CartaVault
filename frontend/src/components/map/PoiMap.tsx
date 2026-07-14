@@ -9,6 +9,8 @@ import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/
 import { MapBoundsWatcher } from './MapBoundsWatcher'
 import { MapFocusController } from './MapFocusController'
 import { MapResizeWatcher } from './MapResizeWatcher'
+import { MapContextEvents } from './MapContextEvents'
+import type { MapContextMenuState } from './mapContextMenuUtils'
 import { getStatusMarkerIcon } from './markerIcons'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
@@ -27,6 +29,8 @@ interface PoiMapProps {
   basemapId: BasemapId
   onBasemapTileError: () => void
   temporarySearchResult?: GeocodingResult | null
+  onMapContextMenuOpen?: (state: MapContextMenuState) => void
+  onMapContextMenuClose?: () => void
 }
 
 function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
@@ -101,6 +105,8 @@ export function PoiMap({
   basemapId,
   onBasemapTileError,
   temporarySearchResult = null,
+  onMapContextMenuOpen = () => undefined,
+  onMapContextMenuClose = () => undefined,
 }: PoiMapProps) {
   return (
     <MapContainer
@@ -119,6 +125,7 @@ export function PoiMap({
       />
       <MapFocusController request={focusRequest} />
       <MapResizeWatcher layoutKey={layoutKey} />
+      <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
 

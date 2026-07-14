@@ -2,6 +2,8 @@ import { useState, type ReactNode } from 'react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { GeographicSearch } from '../components/geocoding/GeographicSearch'
+import { MapContextMenu } from '../components/map/MapContextMenu'
+import type { MapContextMenuState } from '../components/map/mapContextMenuUtils'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
@@ -31,6 +33,7 @@ interface MapPageProps {
   onGeographicResultSelect?: (result: GeocodingResult) => void
   onGeographicResultClear?: () => void
   onCreateFromGeographicResult?: (result: GeocodingResult) => void
+  onCreateFromCoordinates?: (latitude: number, longitude: number) => void
 }
 
 export function MapPage({
@@ -55,10 +58,13 @@ export function MapPage({
   onGeographicResultSelect = () => undefined,
   onGeographicResultClear = () => undefined,
   onCreateFromGeographicResult = () => undefined,
+  onCreateFromCoordinates = () => undefined,
 }: MapPageProps) {
   const [basemapId, setBasemapId] = useState(loadBasemapPreference)
   const [basemapError, setBasemapError] = useState(false)
   const [localSearchResult, setLocalSearchResult] = useState<GeocodingResult | null>(null)
+  const [contextMenu, setContextMenu] = useState<MapContextMenuState | null>(null)
+  const [contextNotice, setContextNotice] = useState<string | null>(null)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
 
   const selectBasemap = (id: BasemapId) => {
@@ -91,7 +97,11 @@ export function MapPage({
           basemapId={basemapId}
           onBasemapTileError={handleBasemapTileError}
           temporarySearchResult={selectedSearchResult}
+          onMapContextMenuOpen={setContextMenu}
+          onMapContextMenuClose={() => setContextMenu(null)}
         />
+        {contextMenu && <MapContextMenu state={contextMenu} onClose={() => setContextMenu(null)} onCreate={() => { onCreateFromCoordinates(contextMenu.latitude, contextMenu.longitude); setContextMenu(null) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
+        {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />
