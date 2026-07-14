@@ -2,6 +2,8 @@
 
 ## Tests des statuts et migrations
 
+Les migrations des icônes de catégories et de `place_categories.is_primary` doivent être cyclées exclusivement contre `TEST_DATABASE_URL` visant `poi_manager_test`. Ne lancez jamais un downgrade sur `poi_manager`.
+
 Les tests unitaires couvrent la normalisation du slug et des couleurs. Les scénarios d’intégration couvrent le CRUD, le défaut unique, les conflits de suppression, l’affectation aux POI et le filtre cartographique. Ils nécessitent une `TEST_DATABASE_URL` dédiée.
 
 Le cycle Alembic `upgrade → downgrade → upgrade` doit être exécuté uniquement sur `poi_manager_test` : le downgrade supprime `places.status_id` et perd donc les associations de statut. Ne jamais lancer ce cycle sur la base de développement.

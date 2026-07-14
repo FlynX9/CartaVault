@@ -5,6 +5,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from app.categories.schemas import CategoryRead
+
+
+class PlaceCategoryRead(CategoryRead):
+    is_primary: bool
 from app.maps.schemas import MapSummary
 from app.tags.schemas import TagRead
 from app.statuses.schemas import PlaceStatusSummary
@@ -72,7 +76,7 @@ class PlaceRead(BaseModel):
     danger_level: str | None
     longitude: float | None
     latitude: float | None
-    categories: list[CategoryRead]
+    categories: list[PlaceCategoryRead]
     tags: list[TagRead]
     created_at: datetime
     updated_at: datetime

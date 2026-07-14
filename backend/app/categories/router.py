@@ -27,6 +27,7 @@ def build_category_read_statement():
         Category.id,
         Category.name,
         Category.description,
+        Category.icon,
     )
 
 
@@ -103,6 +104,7 @@ def create_category(
     category = Category(
         name=category_data.name.strip(),
         description=category_data.description,
+        icon=category_data.icon,
     )
 
     try:
@@ -114,6 +116,7 @@ def create_category(
             id=category.id,
             name=category.name,
             description=category.description,
+            icon=category.icon,
         )
 
     except SQLAlchemyError as error:
@@ -160,6 +163,7 @@ def update_category(
             id=category.id,
             name=category.name,
             description=category.description,
+            icon=category.icon,
         )
 
     except SQLAlchemyError as error:

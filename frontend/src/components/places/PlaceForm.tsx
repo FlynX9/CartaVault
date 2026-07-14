@@ -10,6 +10,7 @@ import type {
 import type { PoiMap } from '../../types/map'
 import type { PlaceStatusSummary } from '../../types/status'
 import { LocationPicker } from '../map/LocationPicker'
+import { CategoryIcon } from '../categories/categoryIcons'
 
 interface PlaceFormProps {
   initialValues: PlaceFormValues
@@ -68,7 +69,9 @@ export function PlaceForm({
     id: string,
   ) => {
     const ids = values[field]
-    setValue(field, ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id])
+    const next = ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
+    setValue(field, next)
+    if (field === 'categoryIds') setValue('primaryCategoryId', next.includes(values.primaryCategoryId) ? values.primaryCategoryId : (next[0] ?? ''))
   }
 
   const handleSubmit = (event: FormEvent) => {
@@ -186,7 +189,8 @@ export function PlaceForm({
           {categories.length === 0 ? <p className="form-hint">Aucune catégorie disponible.</p> : categories.map((category) => (
             <label className="checkbox-field" key={category.id}>
               <input type="checkbox" checked={values.categoryIds.includes(category.id)} onChange={() => toggleAssociation('categoryIds', category.id)} />
-              <span>{category.name}</span>
+              <span><CategoryIcon icon={category.icon} /> {category.name}</span>
+              {values.categoryIds.includes(category.id) && <input aria-label={`Catégorie principale : ${category.name}`} type="radio" name="primary-category" checked={values.primaryCategoryId === category.id} onChange={() => setValue('primaryCategoryId', category.id)} />}
             </label>
           ))}
         </fieldset>

@@ -1,9 +1,9 @@
 import type { CountrySummary } from './map'
 import type { MapStatusSummary, PlaceStatusSummary } from './status'
 
-export interface MapCategory { id: string; name: string }
+export interface MapCategory { id: string; name: string; icon?: string; is_primary?: boolean }
 export interface MapTag { id: string; name: string }
-export interface PlaceCategory { id: string; name: string; description: string | null }
+export interface PlaceCategory { id: string; name: string; description: string | null; icon?: string; is_primary?: boolean }
 export interface PlaceTag { id: string; name: string }
 export interface PlaceMapSummary { id: string; name: string; country: CountrySummary }
 
@@ -40,6 +40,6 @@ export interface PlaceListQuery { mapId?: string; statusId?: string; q?: string;
 interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null }
 export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number }
 export interface PlaceUpdatePayload { name?: string; map_id?: string; status_id?: string; description?: string | null; region?: string | null; construction_date?: string | null; abandonment_date?: string | null; condition?: string | null; access?: string | null; danger_level?: string | null; latitude?: number; longitude?: number }
-export interface PlaceFormValues { name: string; mapId: string; statusId: string; description: string; region: string; construction_date: string; abandonment_date: string; condition: string; access: string; danger_level: string; latitude: string; longitude: string; categoryIds: string[]; tagIds: string[] }
+export interface PlaceFormValues { name: string; mapId: string; statusId: string; description: string; region: string; construction_date: string; abandonment_date: string; condition: string; access: string; danger_level: string; latitude: string; longitude: string; categoryIds: string[]; primaryCategoryId: string; tagIds: string[] }
 export type PlaceFormErrors = Partial<Record<keyof PlaceFormValues, string>>
 export interface AssociationDiff { added: string[]; removed: string[] }

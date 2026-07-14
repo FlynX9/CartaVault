@@ -9,6 +9,7 @@ export interface EntityManagementConfig {
   singularLabel: string
   pluralLabel: string
   supportsDescription: boolean
+  supportsIcon?: boolean
   load: (signal: AbortSignal, q?: string) => Promise<ManagedEntity[]>
   save: (entity: ManagedEntity | null, values: EntityFormValues) => Promise<ManagedEntity>
   remove: (id: string) => Promise<void>
@@ -123,8 +124,9 @@ export function EntityManagementPage({ config }: EntityManagementPageProps) {
         <EntityForm
           key={editing?.id ?? 'new'}
           title={editing === null ? `Créer ${config.singularLabel}` : `Modifier ${editing.name}`}
-          initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '' }}
+          initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : 'map-pin' }}
           supportsDescription={config.supportsDescription}
+          supportsIcon={config.supportsIcon}
           isSubmitting={isSubmitting}
           fieldErrors={fieldErrors}
           onCancel={() => setEditing(undefined)}

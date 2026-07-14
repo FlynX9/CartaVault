@@ -13,6 +13,7 @@ export function parseCategory(value: unknown): CategoryRead {
     id: readUuid(value, 'id', context),
     name: readString(value, 'name', context),
     description: readNullableString(value, 'description', context),
+    icon: readString(value, 'icon', context),
   }
 }
 

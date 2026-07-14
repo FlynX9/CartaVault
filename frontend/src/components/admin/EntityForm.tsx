@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { CATEGORY_ICON_IDS } from '../categories/categoryIconCatalog'
+import { CategoryIcon } from '../categories/categoryIcons'
 
 export interface EntityFormValues {
   name: string
   description: string
+  icon?: string
 }
 
 interface EntityFormProps {
   title: string
   initialValues: EntityFormValues
   supportsDescription: boolean
+  supportsIcon?: boolean
   isSubmitting: boolean
   fieldErrors: Partial<Record<keyof EntityFormValues, string>>
   onCancel: () => void
@@ -19,6 +23,7 @@ export function EntityForm({
   title,
   initialValues,
   supportsDescription,
+  supportsIcon = false,
   isSubmitting,
   fieldErrors,
   onCancel,
@@ -76,6 +81,7 @@ export function EntityForm({
           {fieldErrors.description && <small className="field-error">{fieldErrors.description}</small>}
         </label>
       )}
+      {supportsIcon && <fieldset className="icon-picker"><legend>Icône</legend><div role="radiogroup" aria-label="Icône de catégorie">{CATEGORY_ICON_IDS.map((icon) => <label key={icon}><input type="radio" name="category-icon" value={icon} checked={(values.icon ?? 'map-pin') === icon} onChange={() => setValues((current) => ({ ...current, icon }))} /><CategoryIcon icon={icon} /><span>{icon}</span></label>)}</div></fieldset>}
       <div className="admin-form-actions">
         <button className="primary-button" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}

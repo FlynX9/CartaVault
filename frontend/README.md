@@ -9,6 +9,8 @@ encore d’endpoint de miniatures.
 
 ## Statuts et marqueurs
 
+La couleur d’un marqueur vient du statut ; son pictogramme vient exclusivement de l’icône de sa catégorie principale. Les icônes Lucide sont choisies dans une liste fermée de l’administration, avec `map-pin` par défaut et `circle-help` comme fallback sûr pour une donnée ancienne ou inconnue.
+
 Une légende compacte des statuts actifs reste visible sur la carte : chaque nom accompagne sa couleur afin que l’information ne soit jamais portée par la seule pastille.
 
 Les statuts sont gérés dans `/admin/statuses` (nom, couleur `#RRGGBB`, ordre, activité et défaut). Le formulaire POI ne propose que les statuts actifs, tout en conservant le statut inactif courant en édition. Le générateur central de marqueurs utilise `place.status.color`; la sélection ajoute un contour sans remplacer cette couleur métier. Le filtre visible est conservé dans le paramètre d’URL `status`.

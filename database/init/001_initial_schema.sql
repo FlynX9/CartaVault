@@ -95,12 +95,14 @@ CREATE TABLE places (
 CREATE TABLE categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
-    description TEXT
+    description TEXT,
+    icon VARCHAR(50) NOT NULL DEFAULT 'map-pin'
 );
 
 CREATE TABLE place_categories (
     place_id UUID REFERENCES places(id) ON DELETE CASCADE,
     category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY(place_id, category_id)
 );
 
@@ -117,6 +119,9 @@ CREATE TABLE photos (
     is_primary BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT photos_sort_order_nonnegative CHECK (sort_order >= 0)
 );
+
+CREATE UNIQUE INDEX place_categories_one_primary_idx
+ON place_categories(place_id) WHERE is_primary;
 
 CREATE UNIQUE INDEX photos_place_sort_order_key ON photos(place_id, sort_order);
 CREATE UNIQUE INDEX photos_one_primary_per_place_idx ON photos(place_id) WHERE is_primary;

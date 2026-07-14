@@ -1452,8 +1452,10 @@ button {
 .photo-manager-card div { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .photo-manager-card button { min-height: 2rem; }
 
-.status-marker-container { background: transparent; border: 0; }
-.status-marker { display: block; width: 28px; height: 28px; background: var(--marker-color); border: 3px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 3px 9px rgb(15 35 25 / 35%); transform: rotate(-45deg); }
+.status-marker-container { background: transparent; border: 0; overflow: visible; }
+.status-marker { display: grid; width: 28px; height: 28px; overflow: visible; color: white; background: var(--marker-color); border: 3px solid white; border-radius: 50% 50% 50% 0; box-shadow: 0 3px 9px rgb(15 35 25 / 35%); place-items: center; transform: rotate(-45deg); }
+.status-marker-glyph-wrap { display: grid; width: 18px; height: 18px; place-items: center; transform: rotate(45deg); }
+.status-marker-glyph { display: block; width: 18px; height: 18px; overflow: visible; }
 .status-marker.selected { width: 34px; height: 34px; outline: 4px solid rgb(23 61 45 / 35%); }
 .status-dot { display: inline-block; flex: 0 0 auto; width: 0.8rem; height: 0.8rem; border: 1px solid rgb(0 0 0 / 18%); border-radius: 50%; }
 .status-legend { position: absolute; z-index: 800; right: 1rem; bottom: 1.5rem; max-width: min(14rem, calc(100% - 2rem)); padding: 0.65rem 0.8rem; color: #183528; background: rgb(255 255 255 / 94%); border: 1px solid #bdcec3; border-radius: 0.65rem; box-shadow: 0 3px 12px rgb(18 47 34 / 18%); font-size: 0.8rem; }

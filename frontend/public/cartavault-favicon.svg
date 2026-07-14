@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+<title id="title">CartaVault favicon</title>
+<desc id="desc">Simplified favicon version of the CartaVault mark.</desc>
+<path d="M32 61
+         C29 56 25 51 21 46
+         C17 41 13 36 10 31.5
+         C6.8 27 5 22.5 5 17
+         C5 7.6 12.6 0 22 0
+         H42
+         C51.4 0 59 7.6 59 17
+         C59 22.5 57.2 27 54 31.5
+         C51 36 47 41 43 46
+         C39 51 35 56 32 61 Z" fill="#0D1B2A"/>
+<circle cx="32" cy="28" r="16.5" fill="none" stroke="#FFFFFF" stroke-width="3.2"/>
+<circle cx="32" cy="28" r="12.3" fill="none" stroke="#0FA68A" stroke-width="2.8"/>
+<circle cx="32" cy="28" r="9.3" fill="none" stroke="#FFFFFF" stroke-width="3.4"/>
+<circle cx="32" cy="28" r="8.6" fill="#0D1B2A"/>
+<line x1="32" y1="22" x2="32" y2="34" stroke="#E5C36A" stroke-width="1.8" stroke-linecap="round"/>
+<line x1="26" y1="28" x2="38" y2="28" stroke="#E5C36A" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="32" cy="28" r="3.2" fill="#FFFFFF"/>
+<circle cx="32" cy="28" r="2.2" fill="#E5C36A"/>
+<circle cx="32" cy="15.7" r="2.3" fill="#E5C36A"/>
+<circle cx="44.3" cy="28" r="2.3" fill="#E5C36A"/>
+<circle cx="32" cy="40.3" r="2.3" fill="#E5C36A"/>
+<circle cx="19.7" cy="28" r="2.3" fill="#E5C36A"/>
+</svg>

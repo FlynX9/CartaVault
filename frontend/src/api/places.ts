@@ -37,6 +37,12 @@ function parseNamedEntity(value: unknown, label: string): MapCategory | MapTag {
   }
 }
 
+function parseMapCategory(value: unknown): MapCategory {
+  const category = parseNamedEntity(value, 'la catégorie')
+  if (!isRecord(value)) throw new Error("La catégorie cartographique est invalide.")
+  return { ...category, icon: readString(value, 'icon', 'La catégorie cartographique'), is_primary: value.is_primary === true }
+}
+
 function parsePlaceCategory(value: unknown): PlaceCategory {
   const context = "La catégorie détaillée du POI"
 
@@ -48,6 +54,8 @@ function parsePlaceCategory(value: unknown): PlaceCategory {
     id: readUuid(value, 'id', context),
     name: readString(value, 'name', context),
     description: readNullableString(value, 'description', context),
+    icon: readString(value, 'icon', context),
+    is_primary: value.is_primary === true,
   }
 }
 
@@ -84,9 +92,7 @@ function parseMapPlace(value: unknown): MapPlace {
     longitude: readNumber(value, 'longitude', context),
     latitude: readNumber(value, 'latitude', context),
     status: parseMapStatusSummary(value.status),
-    categories: readArray(value, 'categories', context).map((category) =>
-      parseNamedEntity(category, 'la catégorie'),
-    ),
+    categories: readArray(value, 'categories', context).map(parseMapCategory),
     tags: readArray(value, 'tags', context).map((tag) =>
       parseNamedEntity(tag, 'le tag'),
     ),
@@ -283,6 +289,8 @@ export const removePlaceCategory = (
   categoryId: string,
   signal?: AbortSignal,
 ) => removeAssociation(placeId, 'categories', categoryId, signal)
+
+export const setPrimaryPlaceCategory = (placeId: string, categoryId: string, signal?: AbortSignal) => sendJson(`/places/${encodeURIComponent(placeId)}/categories/${encodeURIComponent(categoryId)}`, 'PATCH', { is_primary: true }, signal)
 
 export const addPlaceTag = (
   placeId: string,

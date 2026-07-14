@@ -21,7 +21,7 @@ function MapInteraction({ latitude, longitude, onChange }: LocationPickerProps) 
   return (
     <Marker
       position={[latitude, longitude]}
-      icon={getStatusMarkerIcon('#2563EB', false)}
+      icon={getStatusMarkerIcon('#2563EB', 'map-pin', false)}
       draggable
       eventHandlers={{
         dragend: (event) => {

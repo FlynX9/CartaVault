@@ -13,14 +13,17 @@ const categoriesConfig: EntityManagementConfig = {
   singularLabel: 'une catégorie',
   pluralLabel: 'Catégories',
   supportsDescription: true,
+  supportsIcon: true,
   load: (signal, q) => getCategories(signal, q),
   save: async (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim()
     const description = normalizeDescription(values.description)
-    if (entity === null) return createCategory({ name, description })
+    const icon = values.icon ?? 'map-pin'
+    if (entity === null) return createCategory(icon === 'map-pin' ? { name, description } : { name, description, icon })
     const payload: CategoryUpdatePayload = {}
     if (name !== entity.name) payload.name = name
     if (description !== (entity.description ?? null)) payload.description = description
+    if (entity.icon !== undefined && icon !== entity.icon) payload.icon = icon
     return Object.keys(payload).length === 0 ? entity : updateCategory(entity.id, payload)
   },
   remove: deleteCategory,

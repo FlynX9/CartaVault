@@ -38,3 +38,5 @@ class Category(Base):
         secondary=place_categories_table,
         back_populates="categories",
     )
+
+    icon: Mapped[str] = mapped_column(String(50), nullable=False, server_default=text("'map-pin'"))

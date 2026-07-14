@@ -52,7 +52,7 @@ function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: 
     <Marker
       ref={markerRef}
       position={[place.latitude, place.longitude]}
-      icon={getStatusMarkerIcon(place.status.color, selected)}
+      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected)}
       eventHandlers={{
         click: onSelect,
         popupopen: () => { popupOpenedRef.current = true },

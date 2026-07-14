@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Table
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Table, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 
 from app.database import Base
@@ -25,4 +25,7 @@ place_categories_table = Table(
         ),
         primary_key=True,
     ),
+    Column("is_primary", Boolean, nullable=False, server_default=text("false")),
 )
+
+Index("place_categories_one_primary_idx", place_categories_table.c.place_id, unique=True, postgresql_where=place_categories_table.c.is_primary)

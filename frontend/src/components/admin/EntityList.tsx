@@ -2,6 +2,7 @@ export interface ManagedEntity {
   id: string
   name: string
   description?: string | null
+  icon?: string
 }
 
 interface EntityListProps {

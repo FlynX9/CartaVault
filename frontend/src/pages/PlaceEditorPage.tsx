@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCategories } from '../api/categories'
 import { ApiError } from '../api/client'
-import { addPlaceCategory, addPlaceTag, createPlace, getPlaceDetails, removePlaceCategory, removePlaceTag, updatePlace } from '../api/places'
+import { addPlaceCategory, addPlaceTag, createPlace, getPlaceDetails, removePlaceCategory, removePlaceTag, setPrimaryPlaceCategory, updatePlace } from '../api/places'
 import { getTags } from '../api/tags'
 import { getStatuses } from '../api/statuses'
 import { uploadPlacePhoto } from '../api/photos'
@@ -16,7 +16,7 @@ import type { PlaceStatusSummary } from '../types/status'
 import { withMap } from '../utils/map'
 
 interface Props { mode: 'create' | 'edit'; placeId?: string; embedded?: boolean; activeMapId?: string | null; activeStatusId?: string | null; maps: PoiMap[]; onPlaceMutated: (mutation: PlaceMutation) => void }
-async function syncAssociations(placeId: string, initial: PlaceFormValues, current: PlaceFormValues) { const categories = calculateAssociationDiff(initial.categoryIds, current.categoryIds); const tags = calculateAssociationDiff(initial.tagIds, current.tagIds); for (const id of categories.added) await addPlaceCategory(placeId, id); for (const id of categories.removed) await removePlaceCategory(placeId, id); for (const id of tags.added) await addPlaceTag(placeId, id); for (const id of tags.removed) await removePlaceTag(placeId, id) }
+async function syncAssociations(placeId: string, initial: PlaceFormValues, current: PlaceFormValues) { const categories = calculateAssociationDiff(initial.categoryIds, current.categoryIds); const tags = calculateAssociationDiff(initial.tagIds, current.tagIds); for (const id of categories.added) await addPlaceCategory(placeId, id); for (const id of categories.removed) await removePlaceCategory(placeId, id); if (current.primaryCategoryId && current.primaryCategoryId !== initial.primaryCategoryId) await setPrimaryPlaceCategory(placeId, current.primaryCategoryId); for (const id of tags.added) await addPlaceTag(placeId, id); for (const id of tags.removed) await removePlaceTag(placeId, id) }
 
 export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = false, activeMapId = null, activeStatusId = null, maps, onPlaceMutated }: Props) {
   const { placeId: routePlaceId } = useParams<{ placeId: string }>(); const placeId = providedPlaceId ?? routePlaceId; const navigate = useNavigate()

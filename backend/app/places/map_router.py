@@ -5,10 +5,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, load_only, selectinload
 
 from app.categories.models import Category
+from app.categories.associations import place_categories_table
 from app.database import get_db
 from app.places.filters import MapBounds, get_required_map_bounds
 from app.places.map_schemas import (
     MapCategoryRead,
+    PrimaryCategoryRead,
     MapStatusRead,
     MapTagRead,
     PlaceMapRead,
@@ -79,6 +81,7 @@ def get_map_places(
             selectinload(Place.categories).load_only(
                 Category.id,
                 Category.name,
+                Category.icon,
             ),
             selectinload(Place.tags).load_only(
                 Tag.id,
@@ -141,13 +144,8 @@ def get_map_places(
                 slug=place.status.slug,
                 color=place.status.color,
             ),
-            categories=[
-                MapCategoryRead(
-                    id=category.id,
-                    name=category.name,
-                )
-                for category in place.categories
-            ],
+            primary_category=next((PrimaryCategoryRead(id=category.id, name=category.name, icon=category.icon) for category in place.categories if database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))), None),
+            categories=[MapCategoryRead(id=category.id, name=category.name, icon=category.icon, is_primary=bool(database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))) ) for category in place.categories],
             tags=[
                 MapTagRead(
                     id=tag.id,

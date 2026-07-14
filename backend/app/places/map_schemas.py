@@ -7,6 +7,8 @@ class MapCategoryRead(BaseModel):
 
     id: UUID
     name: str
+    icon: str
+    is_primary: bool
 
 
 class MapTagRead(BaseModel):
@@ -25,6 +27,12 @@ class MapStatusRead(BaseModel):
     color: str
 
 
+class PrimaryCategoryRead(BaseModel):
+    id: UUID
+    name: str
+    icon: str
+
+
 class PlaceMapRead(BaseModel):
     """Minimal place representation used by the interactive map."""
 
@@ -34,5 +42,6 @@ class PlaceMapRead(BaseModel):
     longitude: float
     latitude: float
     status: MapStatusRead
+    primary_category: PrimaryCategoryRead | None
     categories: list[MapCategoryRead]
     tags: list[MapTagRead]

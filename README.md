@@ -7,6 +7,8 @@ l’upload multiple, la photo principale, l’ordre et la suppression.
 
 ## Statuts de suivi configurables
 
+La couleur d’un marqueur provient exclusivement du statut. Son pictogramme provient de la catégorie principale du POI : une seule peut être principale, la première association est choisie automatiquement et son retrait promeut la catégorie restante au plus petit UUID. Les icônes sont des identifiants d’un catalogue fermé ; aucune URL ni aucun SVG arbitraire n’est stocké.
+
 La carte comporte une légende compacte des statuts actifs, qui affiche le nom associé à chaque couleur de marqueur.
 
 Chaque POI possède un statut de suivi administrable (`À faire`, `Fait`, etc.). Sa couleur hexadécimale pilote directement le marqueur et le filtre `status` de l’URL est appliqué à la carte comme à la liste. Le statut de suivi est distinct de `condition`, qui décrit l’état physique du lieu. Les pictogrammes par catégorie restent hors périmètre.

@@ -9,11 +9,12 @@ from fastapi import (
     status,
 )
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.categories.models import Category
+from app.categories.associations import place_categories_table
 from app.categories.schemas import CategoryRead
 from app.database import get_db
 from app.countries.schemas import CountrySummary
@@ -21,7 +22,7 @@ from app.maps.models import PoiMap
 from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.models import Place
-from app.places.schemas import PlaceCreate, PlaceRead, PlaceUpdate
+from app.places.schemas import PlaceCategoryRead, PlaceCreate, PlaceRead, PlaceUpdate
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
@@ -56,6 +57,7 @@ def place_to_read(
     place: Place,
     longitude: float | None,
     latitude: float | None,
+    database_session: Session,
 ) -> PlaceRead:
     """Convert a SQLAlchemy place and its coordinates to an API schema."""
 
@@ -90,10 +92,12 @@ def place_to_read(
         longitude=longitude,
         latitude=latitude,
         categories=[
-            CategoryRead(
+            PlaceCategoryRead(
                 id=category.id,
                 name=category.name,
                 description=category.description,
+                icon=category.icon,
+                is_primary=bool(database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))),
             )
             for category in place.categories
         ],
@@ -127,6 +131,7 @@ def read_place(
         place=place,
         longitude=longitude,
         latitude=latitude,
+        database_session=database_session,
     )
 
 
@@ -248,6 +253,7 @@ def get_places(
             place=place,
             longitude=longitude,
             latitude=latitude,
+            database_session=database_session,
         )
         for place, longitude, latitude in rows
     ]
@@ -281,6 +287,7 @@ def get_place(
         place=place,
         longitude=longitude,
         latitude=latitude,
+        database_session=database_session,
     )
 
 
@@ -497,6 +504,9 @@ def add_category_to_place(
 
     if category not in place.categories:
         place.categories.append(category)
+        database_session.flush()
+        if database_session.scalar(select(func.count()).select_from(place_categories_table).where(place_categories_table.c.place_id == place_id)) == 1:
+            database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id).values(is_primary=True))
 
     try:
         database_session.commit()
@@ -549,7 +559,13 @@ def remove_category_from_place(
         )
 
     if category in place.categories:
+        was_primary = database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id))
         place.categories.remove(category)
+        database_session.flush()
+        if was_primary:
+            replacement = database_session.scalar(select(place_categories_table.c.category_id).where(place_categories_table.c.place_id == place_id).order_by(place_categories_table.c.category_id).limit(1))
+            if replacement is not None:
+                database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == replacement).values(is_primary=True))
 
     try:
         database_session.commit()
@@ -618,6 +634,25 @@ def add_tag_to_place(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to assign the tag to the place",
         ) from error
+
+
+@router.patch("/{place_id}/categories/{category_id}", response_model=PlaceRead)
+def set_primary_category(place_id: UUID, category_id: UUID, database_session: Session = Depends(get_db)) -> PlaceRead:
+    """Atomically select an already-associated primary category."""
+    if database_session.get(Place, place_id) is None:
+        raise HTTPException(status_code=404, detail=f"Place with id {place_id} was not found")
+    if database_session.get(Category, category_id) is None:
+        raise HTTPException(status_code=404, detail=f"Category with id {category_id} was not found")
+    if database_session.scalar(select(place_categories_table.c.category_id).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id)) is None:
+        raise HTTPException(status_code=404, detail="Category is not assigned to the place")
+    try:
+        database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id).values(is_primary=False))
+        database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id).values(is_primary=True))
+        database_session.commit()
+        return read_place(database_session, place_id)
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to update the primary category") from error
 
 
 @router.delete(

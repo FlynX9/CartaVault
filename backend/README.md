@@ -2,6 +2,10 @@
 
 ## Statuts des POI
 
+## Catégories et pictogrammes
+
+`categories.icon` contient un identifiant validé dans un catalogue fermé et utilise `map-pin` par défaut. L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `poi_manager_test`, jamais sur `poi_manager`.
+
 La feature `app/statuses` expose le CRUD `/statuses`. Un seul statut actif est défini par défaut et il est appliqué lorsque `status_id` est omis à la création d’un POI. Un statut inactif reste lisible sur les anciens POI mais ne peut plus être sélectionné. La suppression du défaut ou d’un statut utilisé renvoie `409`.
 
 `condition` reste l’état physique du site. `status_id` représente exclusivement son suivi. `GET /places` et `GET /places/map` acceptent le filtre `status_id`.
