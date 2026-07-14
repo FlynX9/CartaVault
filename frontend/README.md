@@ -86,6 +86,22 @@ Stadia Maps. Les variables `VITE_*` sont publiques dans le navigateur : ne
 placez jamais de secret non restreint dans ce fichier. En cas d'indisponibilité
 de Stadia, le contrôle permet de basculer explicitement vers OpenStreetMap.
 
+## Recherche géographique
+
+La recherche géographique superposée à la carte est indépendante du filtre
+« Rechercher un POI » de la liste CartaVault. Elle envoie une requête Stadia
+uniquement après validation par le bouton ou Entrée, jamais à chaque frappe.
+Elle accepte `48.8566, 2.3522`, `48.8566 2.3522` et `48,8566 ; 2,3522` ; les
+coordonnées valides sont traitées localement sans appel réseau. Les résultats
+Stadia sont biaisés par le centre et le pays de la carte active, sans empêcher
+une recherche mondiale. La clé `VITE_STADIA_MAPS_API_KEY` reste optionnelle
+pour l'authentification par domaine, n'est jamais stockée localement et est
+visible au navigateur comme toute variable `VITE_*`.
+
+Le résultat sélectionné ajoute un marqueur temporaire doré, conserve les POI
+existants et permet d'ouvrir la création d'un POI avec nom et coordonnées
+préremplis. Aucun POI n'est enregistré avant la validation du formulaire.
+
 ## Lancement local
 
 Dans un premier terminal, démarrez le backend depuis `backend` :

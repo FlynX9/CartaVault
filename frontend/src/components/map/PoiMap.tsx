@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
-import { LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
+import { divIcon, LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
 import { MapContainer, Marker, Popup } from 'react-leaflet'
 
 import type { BasemapId } from '../../map/basemaps'
+import type { GeocodingResult } from '../../geocoding/types'
 import { BasemapLayer } from './BasemapLayer'
 import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../../types/place'
 import { MapBoundsWatcher } from './MapBoundsWatcher'
@@ -25,6 +26,7 @@ interface PoiMapProps {
   onPopupClose: () => void
   basemapId: BasemapId
   onBasemapTileError: () => void
+  temporarySearchResult?: GeocodingResult | null
 }
 
 function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
@@ -98,6 +100,7 @@ export function PoiMap({
   onPopupClose,
   basemapId,
   onBasemapTileError,
+  temporarySearchResult = null,
 }: PoiMapProps) {
   return (
     <MapContainer
@@ -116,6 +119,8 @@ export function PoiMap({
       />
       <MapFocusController request={focusRequest} />
       <MapResizeWatcher layoutKey={layoutKey} />
+
+      {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
 
       {places.map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
     </MapContainer>

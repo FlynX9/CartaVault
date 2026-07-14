@@ -32,6 +32,11 @@ La V1 impose une seule carte par pays. Une carte contenant des POI ne peut pas
 
 ## Interface cartographique type My Maps
 
+La recherche géographique est distincte de la recherche textuelle des POI :
+elle interroge Stadia Maps seulement après une action explicite de l'utilisateur
+et accepte aussi les coordonnées GPS. Les résultats servent à recentrer la
+carte et à préremplir une création de POI sans enregistrement automatique.
+
 La carte reste visible pendant toutes les opérations. La liste fixe gauche
 affiche les POI de la carte active; un clic dans la liste ou sur un marqueur
 ouvre une infobulle enrichie ancrée au marqueur avec détails, catégories, tags,

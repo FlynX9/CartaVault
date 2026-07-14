@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from 'react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
+import { GeographicSearch } from '../components/geocoding/GeographicSearch'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
 import type { MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
+import type { GeocodingResult } from '../geocoding/types'
 
 interface MapPageProps {
   places: MapPlace[]
@@ -24,6 +26,11 @@ interface MapPageProps {
   onViewChange: (view: MapView) => void
   onPlaceSelect: (place: MapPlace) => void
   onPopupClose?: () => void
+  activeCountryCode?: string
+  temporarySearchResult?: GeocodingResult | null
+  onGeographicResultSelect?: (result: GeocodingResult) => void
+  onGeographicResultClear?: () => void
+  onCreateFromGeographicResult?: (result: GeocodingResult) => void
 }
 
 export function MapPage({
@@ -43,9 +50,16 @@ export function MapPage({
   onViewChange,
   onPlaceSelect,
   onPopupClose = () => undefined,
+  activeCountryCode,
+  temporarySearchResult = null,
+  onGeographicResultSelect = () => undefined,
+  onGeographicResultClear = () => undefined,
+  onCreateFromGeographicResult = () => undefined,
 }: MapPageProps) {
   const [basemapId, setBasemapId] = useState(loadBasemapPreference)
   const [basemapError, setBasemapError] = useState(false)
+  const [localSearchResult, setLocalSearchResult] = useState<GeocodingResult | null>(null)
+  const selectedSearchResult = temporarySearchResult ?? localSearchResult
 
   const selectBasemap = (id: BasemapId) => {
     setBasemapId(id)
@@ -76,7 +90,9 @@ export function MapPage({
           onPopupClose={onPopupClose}
           basemapId={basemapId}
           onBasemapTileError={handleBasemapTileError}
+          temporarySearchResult={selectedSearchResult}
         />
+        <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />
 
