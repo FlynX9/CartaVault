@@ -5,6 +5,16 @@
 Les photos utilisent le stockage sécurisé existant. L’édition d’un POI permet
 l’upload multiple, la photo principale, l’ordre et la suppression.
 
+## Import KMZ
+
+Le panneau **Lieux** propose un import KMZ en deux étapes : l’archive est d’abord
+analysée, puis les points sélectionnés sont explicitement confirmés. Les
+`Placemark` de type `Point`, leurs `ExtendedData` et les images JPEG, PNG ou
+WebP embarquées sont pris en charge. Les champs non mappés sont conservés dans
+`places.custom_fields`, sans être concaténés à la description. L’archive est
+contrôlée (ZIP, taille, ratio, chemins, liens et archives imbriquées) et aucun
+HTML brut ou fichier externe n’est rendu.
+
 ## Statuts de suivi configurables
 
 La couleur d’un marqueur provient exclusivement du statut. Son pictogramme provient de la catégorie principale du POI : une seule peut être principale, la première association est choisie automatiquement et son retrait promeut la catégorie restante au plus petit UUID. Les icônes sont des identifiants d’un catalogue fermé ; aucune URL ni aucun SVG arbitraire n’est stocké.

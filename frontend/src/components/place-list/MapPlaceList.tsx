@@ -1,4 +1,4 @@
-import { Plus, Search, X } from 'lucide-react'
+import { FileUp, Plus, Search, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -9,6 +9,7 @@ import type { PlaceStatusSummary } from '../../types/status'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { withMap } from '../../utils/map'
 import { MapMarkerFilterContext } from '../map/mapMarkerFilterContext'
+import { KmzImportDialog } from '../imports/KmzImportDialog'
 
 const PAGE_SIZE = 100
 
@@ -22,6 +23,7 @@ interface Props {
   onStatusChange?: (statusId: string | null) => void
   onPlaceSelect: (place: PreviewPlace) => void
   onClose?: () => void
+  onImported?: () => void
 }
 
 const sortPlaces = (places: PlaceDetails[]) => [...places].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id))
@@ -35,7 +37,7 @@ function formatLastUpdate(value: string | undefined) {
   return `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 }
 
-export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined }: Props) {
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -44,6 +46,7 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
   const refs = useRef(new Map<string, HTMLButtonElement>())
   const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
 
@@ -102,7 +105,7 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
     <header className="cv-workspace-panel__header">
       <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow place-list-kicker">Lieux</p><h2 id="map-place-list-title" className="cv-workspace-panel__title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>
       {poiMap && <p className="place-list-map-meta"><span>{formatLastUpdate(poiMap.updated_at)}</span></p>}</div>
-      <div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{visible.length} POI{visible.length > 1 ? 's' : ''}</span>}{poiMap && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id, statusId)} aria-label="Ajouter un POI" title="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div>
+      <div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{visible.length} POI{visible.length > 1 ? 's' : ''}</span>}{poiMap && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" title="Importer un KMZ" onClick={() => setImporting(true)}><FileUp size={18} /></button>}{poiMap && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id, statusId)} aria-label="Ajouter un POI" title="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div>
     </header>
     {poiMap && <section className="place-list-controls" aria-label="Recherche et filtres des lieux">
       <label className="place-list-search"><Search aria-hidden="true" size={18} /><span className="visually-hidden">Rechercher un POI</span><input type="search" value={search} placeholder="Rechercher un POI…" onChange={(event) => setSearch(event.target.value)} /></label>
@@ -128,5 +131,5 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
       {!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}
       {hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}
     </div>
-  </aside>
+  {importing && poiMap && <KmzImportDialog poiMap={poiMap} onClose={() => setImporting(false)} onImported={onImported} />}</aside>
 }

@@ -1,4 +1,4 @@
-import { Map, Plus, Search, Trash2, X } from 'lucide-react'
+import { Download, Map, Plus, Search, Trash2, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 
 import type { PoiMap } from '../../types/map'
@@ -12,12 +12,13 @@ interface MapsWorkspacePanelProps {
   onOpen: (mapId: string) => void
   onDelete: (poiMap: PoiMap) => void
   onCreated: (poiMap: PoiMap) => void
+  onExport?: (poiMap: PoiMap) => void
   onClose: () => void
 }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
 
-export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onClose }: MapsWorkspacePanelProps) {
+export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onClose }: MapsWorkspacePanelProps) {
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
   const createButton = useRef<HTMLButtonElement>(null)
@@ -38,7 +39,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
       <ul className="maps-catalog" aria-label="Cartes disponibles">{filteredMaps.map((poiMap) => <li className={poiMap.id === activeMapId ? 'active' : ''} key={poiMap.id}>
         <div className="maps-catalog__preview" aria-label={`Aperçu de ${poiMap.name}`} role="img"><Map size={28} /><span>{poiMap.country.iso_alpha2}</span></div>
         <div className="maps-catalog__details"><strong>{poiMap.name}</strong><span>{poiMap.country.name}</span>{poiMap.id === activeMapId && <b>Ouverte</b>}</div>
-        <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={`Ouvrir ${poiMap.name}`} onClick={() => onOpen(poiMap.id)}>Ouvrir</button><button type="button" className="panel-icon-button danger" aria-label={`Supprimer ${poiMap.name}`} title={`Supprimer ${poiMap.name}`} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button></div>
+        <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={`Ouvrir ${poiMap.name}`} onClick={() => onOpen(poiMap.id)}>Ouvrir</button><button type="button" className="panel-icon-button" aria-label={`Exporter la carte ${poiMap.name}`} title={`Exporter ${poiMap.name}`} onClick={() => onExport(poiMap)}><Download size={16} /></button><button type="button" className="panel-icon-button danger" aria-label={`Supprimer ${poiMap.name}`} title={`Supprimer ${poiMap.name}`} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button></div>
       </li>)}</ul>
     </div>
     {creating && <CreateMapDialog onClose={closeCreateDialog} onCreated={(poiMap) => { closeCreateDialog(); onCreated(poiMap) }} />}

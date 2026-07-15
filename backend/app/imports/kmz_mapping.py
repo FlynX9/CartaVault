@@ -53,15 +53,22 @@ def map_extended_data(
         value = raw_value.strip()
         if not original_name or not value:
             continue
-        previous = custom_fields.get(original_name)
+        is_custom = original_name.startswith("custom:")
+        field_name = original_name.removeprefix("custom:") if is_custom else original_name
+        mapped_name = original_name.removeprefix("cartavault:")
+        if is_custom:
+            mapped_name = field_name
+        target = aliases.get(normalize_field_name(mapped_name))
+        if target is not None and target not in mapped:
+            mapped[target] = value
+        if original_name.startswith("cartavault:") and not is_custom:
+            continue
+        previous = custom_fields.get(field_name)
         if previous is None:
-            custom_fields[original_name] = value
+            custom_fields[field_name] = value
         elif isinstance(previous, list):
             previous.append(value)
         else:
-            custom_fields[original_name] = [previous, value]
-        target = aliases.get(normalize_field_name(original_name))
-        if target is not None and target not in mapped:
-            mapped[target] = value
+            custom_fields[field_name] = [previous, value]
 
     return mapped, custom_fields

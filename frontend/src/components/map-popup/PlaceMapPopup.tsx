@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { deletePlace, getPlaceDetails } from '../../api/places'
 import { getPlacePhotos } from '../../api/photos'
 import type { Photo } from '../../types/photo'
@@ -34,6 +34,7 @@ export function PlaceMapPopup({ placeId, onEdit, onDeleted, onClose }: Props) {
     <dl className="popup-details">{place.condition && <><dt>État</dt><dd>{place.condition}</dd></>}{place.access && <><dt>Accès</dt><dd>{place.access}</dd></>}{place.danger_level && <><dt>Danger</dt><dd>{place.danger_level}</dd></>}{place.construction_date && <><dt>Construction</dt><dd>{place.construction_date}</dd></>}{place.abandonment_date && <><dt>Abandon</dt><dd>{place.abandonment_date}</dd></>}</dl>
     {place.description && <section className="popup-description"><h3>Description</h3><p>{place.description}</p></section>}
     {place.tags.length > 0 && <section className="popup-tags"><h3>Tags</h3><ul className="popup-chips">{place.tags.map((item) => <li className="tag" key={item.id}>{item.name}</li>)}</ul></section>}
+    {place.custom_fields && Object.keys(place.custom_fields).length > 0 && <section className="popup-imported-data"><h3>Données importées</h3><dl className="popup-details">{Object.entries(place.custom_fields).map(([key, value]) => <Fragment key={key}><dt>{key}</dt><dd>{Array.isArray(value) ? value.join(', ') : String(value)}</dd></Fragment>)}</dl></section>}
     {coordinates && <div className="popup-coordinates"><button type="button" aria-label="Copier les coordonnées GPS" title="Copier les coordonnées" onClick={() => void navigator.clipboard?.writeText(coordinates)}>{coordinates}</button></div>}
     <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
   </article>

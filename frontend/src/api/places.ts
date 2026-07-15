@@ -135,6 +135,7 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     condition: readNullableString(payload, 'condition', context),
     access: readNullableString(payload, 'access', context),
     danger_level: readNullableString(payload, 'danger_level', context),
+    custom_fields: isRecord(payload.custom_fields) ? payload.custom_fields : {},
     longitude: readNullableNumber(payload, 'longitude', context),
     latitude: readNullableNumber(payload, 'latitude', context),
     categories: readArray(payload, 'categories', context).map(

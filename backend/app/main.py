@@ -8,6 +8,7 @@ from app.categories.router import router as categories_router
 from app.countries.router import router as countries_router
 from app.maps.router import router as maps_router
 from app.imports.router import router as imports_router
+from app.exports.router import router as exports_router
 from app.photos.router import router as photos_router
 from app.places.map_router import router as places_map_router
 from app.places.router import router as places_router
@@ -58,6 +59,7 @@ app.include_router(categories_router)
 app.include_router(countries_router)
 app.include_router(maps_router)
 app.include_router(imports_router)
+app.include_router(exports_router)
 app.include_router(tags_router)
 app.include_router(statuses_router)
 app.include_router(photos_router)

@@ -20,6 +20,7 @@ export interface PlaceDetails {
   condition: string | null
   access: string | null
   danger_level: string | null
+  custom_fields?: Record<string, unknown>
   longitude: number | null
   latitude: number | null
   categories: PlaceCategory[]
@@ -38,7 +39,7 @@ export interface PlaceMutation { placeId: string; mapId: string }
 export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
 export interface PlaceListQuery { mapId?: string; statusId?: string; q?: string; limit?: number; offset?: number }
 
-interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null }
+interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null; custom_fields?: Record<string, unknown> }
 export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number }
 export interface PlaceUpdatePayload { name?: string; map_id?: string; status_id?: string; description?: string | null; region?: string | null; construction_date?: string | null; abandonment_date?: string | null; condition?: string | null; access?: string | null; danger_level?: string | null; latitude?: number; longitude?: number }
 export interface PlaceFormValues { name: string; mapId: string; statusId: string; description: string; region: string; construction_date: string; abandonment_date: string; condition: string; access: string; danger_level: string; latitude: string; longitude: string; categoryIds: string[]; primaryCategoryId: string; tagIds: string[] }

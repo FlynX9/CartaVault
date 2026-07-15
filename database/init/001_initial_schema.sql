@@ -88,6 +88,7 @@ CREATE TABLE places (
     condition VARCHAR(50),
     access VARCHAR(50),
     danger_level VARCHAR(50),
+    custom_fields JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

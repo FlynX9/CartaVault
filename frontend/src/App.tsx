@@ -9,6 +9,7 @@ import { TopBar } from './components/layout/TopBar'
 import { MainNavigation, type WorkspacePanel } from './components/layout/MainNavigation'
 import { CategoriesWorkspacePanel, StatusesWorkspacePanel, TagsWorkspacePanel } from './components/layout/WorkspaceManagementPanels'
 import { MapsWorkspacePanel } from './components/maps/MapsWorkspacePanel'
+import { KmzExportDialog } from './components/exports/KmzExportDialog'
 import { MapPlaceList } from './components/place-list/MapPlaceList'
 import { MapSidebar } from './components/sidebar/MapSidebar'
 import { PlaceMapPopup } from './components/map-popup/PlaceMapPopup'
@@ -46,6 +47,7 @@ function App() {
   const [temporarySearchResult, setTemporarySearchResult] = useState<GeocodingResult | null>(null)
   const [coordinatePrefill, setCoordinatePrefill] = useState<{ latitude: number; longitude: number } | null>(null)
   const [draftPosition, setDraftPosition] = useState<DraftPosition | null>(null)
+  const [exportMap, setExportMap] = useState<PoiMap | null>(null)
 
   const loadMaps = useCallback(() => {
     const controller = new AbortController(); setMapsLoading(true); setMapsError(null)
@@ -131,9 +133,9 @@ function App() {
     window.setTimeout(() => document.getElementById(panelId)?.focus(), 0)
   }
   const workspaceContent = workspacePanel === 'maps'
-    ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onClose={() => setWorkspacePanel(null)} />
+    ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onExport={setExportMap} onClose={() => setWorkspacePanel(null)} />
     : workspacePanel === 'places'
-    ? <MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} onClose={() => setWorkspacePanel(null)} />
+    ? <MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} onClose={() => setWorkspacePanel(null)} onImported={() => setRefreshVersion((value) => value + 1)} />
     : workspacePanel === 'categories' ? <CategoriesWorkspacePanel onClose={() => setWorkspacePanel(null)} />
       : workspacePanel === 'tags' ? <TagsWorkspacePanel onClose={() => setWorkspacePanel(null)} />
         : workspacePanel === 'statuses' ? <StatusesWorkspacePanel onClose={() => setWorkspacePanel(null)} /> : null
@@ -144,7 +146,7 @@ function App() {
       <Route path="*" element={<MapPage places={places} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen} placeListOpen={workspacePanel !== null} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} draftPosition={draftPosition} draftPlaceId={sidebarState.mode === 'edit' ? sidebarState.placeId : null} onDraftPositionChange={setDraftPosition} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setCoordinatePrefill(null); setDraftPosition({ latitude: result.latitude, longitude: result.longitude }); setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} onCreateFromCoordinates={(latitude, longitude) => { setCoordinatePrefill({ latitude, longitude }); setDraftPosition({ latitude, longitude }); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={workspaceContent} sidebar={<MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
       <Route path="/admin" element={<AdminLayout />}><Route index element={<Navigate to="categories" replace />} /><Route path="categories" element={<CategoriesPage />} /><Route path="tags" element={<TagsPage />} /><Route path="statuses" element={<StatusesPage />} /></Route>
     </Routes>
-  </div></main>
+  </div>{exportMap && <KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} />}</main>
 }
 
 export default App

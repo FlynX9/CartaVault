@@ -17,9 +17,17 @@ Thumbs.db
 # Environment
 .env
 
-# Uploaded photos
-backend/storage/photos/
+# Runtime storage (uploaded photos and temporary KMZ exports)
+backend/storage/
 
 # Pytest
 backend/.pytest_tmp/
 backend/.pytest_cache/
+
+# Test coverage reports
+.coverage
+coverage/
+htmlcov/
+
+# Local Codex workspace metadata
+/.agents/

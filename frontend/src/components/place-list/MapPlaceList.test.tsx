@@ -29,6 +29,7 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.place-list-tag')).toHaveTextContent('Patrimoine')
     expect(container.querySelector('.place-list-status-dot')).toHaveStyle({ backgroundColor: '#2563EB' })
     expect(container.querySelector('.place-list-category-bubble [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
+    expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).toBeVisible()
     fireEvent.click(item)
     expect(select).toHaveBeenCalledWith(place)
   })

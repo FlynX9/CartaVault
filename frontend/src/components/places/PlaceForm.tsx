@@ -108,6 +108,8 @@ export function PlaceForm({
   const longitude = values.longitude.trim() === '' ? null : Number(values.longitude)
   const selectedStatus = statuses.find((item) => item.id === values.statusId)
   const selectedCategory = categories.find((item) => item.id === values.categoryIds[0])
+  const selectableStatuses = statuses.filter((item) => item.slug !== 'importe')
+  const selectableCategories = categories.filter((item) => item.name !== 'Importé')
   const visibleTags = tags.filter((tag) => tag.name.toLocaleLowerCase().includes(tagQuery.trim().toLocaleLowerCase())).slice(0, 10)
 
   return (
@@ -127,7 +129,7 @@ export function PlaceForm({
           </label>
           <label className="form-field status-field">
             <span>Statut de suivi *</span>
-            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={statusMenuOpen} onClick={() => setStatusMenuOpen((open) => !open)}><i className="status-dot" style={{ backgroundColor: selectedStatus?.color ?? 'transparent' }} aria-hidden="true" /><span>{selectedStatus?.name ?? 'Choisir un statut'}</span><ChevronDown aria-hidden="true" size={18} /></button>{statusMenuOpen && <div className="status-picker-options" role="listbox" aria-label="Statut de suivi">{statuses.map((placeStatus) => <button key={placeStatus.id} type="button" role="option" aria-selected={placeStatus.id === values.statusId} onClick={() => { setValue('statusId', placeStatus.id); setStatusMenuOpen(false) }}><i className="status-dot" style={{ backgroundColor: placeStatus.color }} aria-hidden="true" />{placeStatus.name}{placeStatus.is_active ? '' : ' (inactif)'}</button>)}</div>}</div>
+            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={statusMenuOpen} onClick={() => setStatusMenuOpen((open) => !open)}><i className="status-dot" style={{ backgroundColor: selectedStatus?.color ?? 'transparent' }} aria-hidden="true" /><span>{selectedStatus?.name ?? 'Choisir un statut'}</span><ChevronDown aria-hidden="true" size={18} /></button>{statusMenuOpen && <div className="status-picker-options" role="listbox" aria-label="Statut de suivi">{selectableStatuses.map((placeStatus) => <button key={placeStatus.id} type="button" role="option" aria-selected={placeStatus.id === values.statusId} onClick={() => { setValue('statusId', placeStatus.id); setStatusMenuOpen(false) }}><i className="status-dot" style={{ backgroundColor: placeStatus.color }} aria-hidden="true" />{placeStatus.name}{placeStatus.is_active ? '' : ' (inactif)'}</button>)}</div>}</div>
             {errors.statusId && <small className="field-error">{errors.statusId}</small>}
           </label>
           {GENERAL_FIELDS.map(([field, label, maxLength]) => (
@@ -148,7 +150,7 @@ export function PlaceForm({
           </label>
           <label className="form-field category-field">
             <span>Catégorie</span>
-            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)}>{selectedCategory ? <CategoryIconPreview iconId={selectedCategory.icon} size={17} showLabel={false} /> : <span className="category-picker-placeholder" />}<span>{selectedCategory?.name ?? 'Aucune catégorie'}</span><ChevronDown aria-hidden="true" size={18} /></button>{categoryMenuOpen && <div className="status-picker-options category-picker-options" role="listbox" aria-label="Catégorie">{categories.map((category) => <button key={category.id} type="button" role="option" aria-selected={category.id === selectedCategory?.id} onClick={() => { selectAssociation('categoryIds', category.id); setCategoryMenuOpen(false) }}><CategoryIconPreview iconId={category.icon} size={17} showLabel={false} />{category.name}</button>)}</div>}</div>
+            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)}>{selectedCategory ? <CategoryIconPreview iconId={selectedCategory.icon} size={17} showLabel={false} /> : <span className="category-picker-placeholder" />}<span>{selectedCategory?.name ?? 'Aucune catégorie'}</span><ChevronDown aria-hidden="true" size={18} /></button>{categoryMenuOpen && <div className="status-picker-options category-picker-options" role="listbox" aria-label="Catégorie">{selectableCategories.map((category) => <button key={category.id} type="button" role="option" aria-selected={category.id === selectedCategory?.id} onClick={() => { selectAssociation('categoryIds', category.id); setCategoryMenuOpen(false) }}><CategoryIconPreview iconId={category.icon} size={17} showLabel={false} />{category.name}</button>)}</div>}</div>
             {categories.length === 0 && <small className="form-hint">Aucune catégorie disponible.</small>}
           </label>
           <label className="form-field tag-field">

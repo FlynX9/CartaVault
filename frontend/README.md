@@ -7,6 +7,14 @@ fichier), la photo principale, l’ordre et la suppression. Les images restent
 chargées uniquement depuis l’endpoint de fichier officiel ; il n’existe pas
 encore d’endpoint de miniatures.
 
+## Import KMZ
+
+Avec une carte active, le bouton d’import du panneau **Lieux** ouvre un assistant
+en modale : sélection d’un fichier `.kmz`, analyse, aperçu compact des points,
+sélection explicite, confirmation et rapport. Aucun POI n’est créé au téléversement.
+Après confirmation, la liste et les marqueurs sont rafraîchis sans remonter
+`MapContainer`.
+
 ## Statuts et marqueurs
 
 La couleur d’un marqueur vient du statut ; son pictogramme vient exclusivement de l’icône de sa catégorie principale. Les icônes Lucide sont choisies dans une liste fermée de l’administration, avec `map-pin` par défaut et `circle-help` comme fallback sûr pour une donnée ancienne ou inconnue.

@@ -26,4 +26,15 @@ describe('PlaceForm', () => {
     expect(screen.getByText('Église')).toBeVisible()
     expect(screen.getByText('1 tag sélectionné')).toBeVisible()
   })
+
+  it('does not offer internal import status or category as editable choices', () => {
+    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES }} maps={[MAP]} allowMapChange categories={[{ id: 'import-category', name: 'Importé', description: null, icon: 'mdi:map-marker' }, { id: 'church', name: 'Église', description: null, icon: 'mdi:church' }]} tags={[]} statuses={[{ id: 'import-status', name: 'Importé', slug: 'importe', color: '#64707A', is_active: true }, { id: 'todo', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }]} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
+
+    fireEvent.click(screen.getByText('Choisir un statut'))
+    expect(screen.queryByRole('option', { name: 'Importé' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'À faire' })).toBeVisible()
+    fireEvent.click(screen.getByText('Aucune catégorie'))
+    expect(screen.queryByRole('option', { name: 'Importé' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Église' })).toBeVisible()
+  })
 })
