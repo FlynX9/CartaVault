@@ -1,5 +1,19 @@
 # Backend de POI Manager
 
+## Import KMZ
+
+`app/imports/` fournit une prévisualisation sans écriture puis une confirmation
+atomique. Le parser `defusedxml` refuse DTD et entités externes ; `doc.kml` est
+préféré, sinon le KML lexicalement premier est retenu. Les données non mappées
+sont conservées dans `places.custom_fields` et les images locales valides
+réutilisent le stockage photo sécurisé existant. Les limites configurables sont
+`KMZ_MAX_UPLOAD_SIZE` (25 Mio), `KMZ_MAX_UNCOMPRESSED_SIZE` (100 Mio),
+`KMZ_MAX_ENTRIES` (500), `KMZ_MAX_PLACEMARKS` (1000) et `KMZ_MAX_IMAGES` (100).
+
+La migration `a91d3b6e7f24` ajoute `custom_fields JSONB NOT NULL DEFAULT '{}'`.
+Elle doit être testée et appliquée d’abord sur `poi_manager_test`, jamais sur la
+base de développement `poi_manager`.
+
 ## Statuts des POI
 
 ## Catégories et pictogrammes

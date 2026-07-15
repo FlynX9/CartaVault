@@ -89,6 +89,7 @@ def place_to_read(
         condition=place.condition,
         access=place.access,
         danger_level=place.danger_level,
+        custom_fields=place.custom_fields,
         longitude=longitude,
         latitude=latitude,
         categories=[

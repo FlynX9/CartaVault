@@ -4,7 +4,7 @@ from uuid import UUID
 
 from geoalchemy2 import Geometry
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
-from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.categories.associations import place_categories_table
@@ -94,6 +94,12 @@ class Place(Base):
     danger_level: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
+    )
+
+    custom_fields: Mapped[dict[str, str | list[str]]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
     )
 
     created_at: Mapped[datetime] = mapped_column(

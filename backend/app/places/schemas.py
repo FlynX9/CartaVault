@@ -74,6 +74,7 @@ class PlaceRead(BaseModel):
     condition: str | None
     access: str | None
     danger_level: str | None
+    custom_fields: dict[str, str | list[str]]
     longitude: float | None
     latitude: float | None
     categories: list[PlaceCategoryRead]
