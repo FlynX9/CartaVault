@@ -1987,6 +1987,24 @@ button {
   padding-top: 1rem;
 }
 
+/* A panel can receive focus when it opens, but it is not an interactive control. */
+.cv-workspace-panel:focus {
+  outline: 0;
+}
+
+/* Keep the address search visually neutral while the text field is active. */
+.geographic-search:focus,
+.geographic-search form:focus,
+.geographic-search form:focus-within,
+.geographic-search input:focus {
+  outline: 0;
+}
+
+.geographic-search form:focus-within {
+  border-color: rgb(43 62 89 / 32%);
+  box-shadow: var(--cv-shadow-sm);
+}
+
 #map-place-list .place-list-map-meta {
   position: absolute;
   bottom: 0.8rem;
