@@ -238,3 +238,6 @@ chaque ouverture et ne conserve donc pas de cache global obsolète.
 - le compteur de liste représente les éléments chargés, l'API ne fournissant pas encore de total ;
 - aucune recherche d'adresse ou interaction par clic droit ;
 - aucun upload photo ni authentification.
+# Catalogue de cartes
+
+La navigation commence par **Cartes** (catalogue), puis **Lieux**. Fermer un panneau, ou cliquer une seconde fois sur son entrée active, rend la carte seule sans introduire une entrée de navigation dédiée. Le catalogue affiche les cartes de `GET /maps` dans le panneau latéral : aperçu CSS local, nom, pays, recherche locale, état actif, ouverture et suppression. Le bouton « Créer une carte » ouvre la modale existante ; après création ou ouverture, la carte active est sélectionnée et le panneau Lieux est affiché. Le changement ne remonte pas `MapContainer` et conserve le fond choisi.

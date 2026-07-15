@@ -13,6 +13,7 @@ import { MapContextEvents } from './MapContextEvents'
 import type { MapContextMenuState } from './mapContextMenuUtils'
 import { getStatusMarkerIcon } from './markerIcons'
 import { DraftPositionMarker } from './DraftPositionMarker'
+import type { MapMarkerFilter } from './mapMarkerFilterContext'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 
@@ -35,9 +36,10 @@ interface PoiMapProps {
   draftPosition?: DraftPosition | null
   draftPlaceId?: string | null
   onDraftPositionChange?: (position: DraftPosition) => void
+  markerFilter?: MapMarkerFilter
 }
 
-function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
+function PlaceMarker({ place, selected, muted, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; muted: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
   const markerRef = useRef<LeafletMarker>(null)
   const popupRef = useRef<LeafletPopup>(null)
   const popupOpenedRef = useRef(false)
@@ -66,7 +68,7 @@ function PlaceMarker({ place, selected, popupContent, onSelect, onPopupClose }: 
     <Marker
       ref={markerRef}
       position={[place.latitude, place.longitude]}
-      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected)}
+      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected, muted)}
       eventHandlers={{
         click: onSelect,
         popupopen: () => { popupOpenedRef.current = true },
@@ -114,7 +116,10 @@ export function PoiMap({
   draftPosition = null,
   draftPlaceId = null,
   onDraftPositionChange = () => undefined,
+  markerFilter = { query: '', categoryId: '', statusId: null, tagId: '' },
 }: PoiMapProps) {
+  const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
+  const matchesMarkerFilter = (place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.categories.some((category) => category.id === markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tags.some((tag) => tag.id === markerFilter.tagId))
   return (
     <MapContainer
       center={initialView.center}
@@ -137,7 +142,7 @@ export function PoiMap({
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
-      {places.filter((place) => place.id !== draftPlaceId).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
+      {places.filter((place) => place.id !== draftPlaceId).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
     </MapContainer>
   )
 }

@@ -168,3 +168,6 @@ Ces éléments sont envisagés et ne sont pas encore disponibles :
 - import depuis Google Maps ou une API compatible ;
 - authentification et gestion des utilisateurs ;
 - éventuel stockage objet des photos pour les déploiements distribués.
+# Catalogue CartaVault des cartes
+
+Le catalogue **Cartes** est accessible depuis la navigation latérale. Il remplace le sélecteur de la barre supérieure et présente chaque carte avec un aperçu local, son pays, les actions Ouvrir et Supprimer, ainsi que la création de carte. Ouvrir une carte met à jour `?map=<uuid>`, recentre la carte existante et affiche le panneau Lieux ; aucun aperçu distant ni image supplémentaire n'est utilisé.

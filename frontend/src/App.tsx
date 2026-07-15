@@ -8,6 +8,7 @@ import { getStatuses } from './api/statuses'
 import { TopBar } from './components/layout/TopBar'
 import { MainNavigation, type WorkspacePanel } from './components/layout/MainNavigation'
 import { CategoriesWorkspacePanel, StatusesWorkspacePanel, TagsWorkspacePanel } from './components/layout/WorkspaceManagementPanels'
+import { MapsWorkspacePanel } from './components/maps/MapsWorkspacePanel'
 import { MapPlaceList } from './components/place-list/MapPlaceList'
 import { MapSidebar } from './components/sidebar/MapSidebar'
 import { PlaceMapPopup } from './components/map-popup/PlaceMapPopup'
@@ -70,7 +71,7 @@ function App() {
     const controller = new AbortController(); const sequence = ++requestSequence.current
     const timeout = window.setTimeout(async () => {
       setIsLoading(true); setErrorMessage(null)
-      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, statusId: activeStatusId ?? undefined, limit: 1000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible); setSelectedPlace((current) => current === null ? null : visible.find((item) => item.id === current.id) ?? current) } }
+      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, limit: 1000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible); setSelectedPlace((current) => current === null ? null : visible.find((item) => item.id === current.id) ?? current) } }
       catch (error) { if (!isAbortError(error) && sequence === requestSequence.current) setErrorMessage(error instanceof Error ? error.message : 'Chargement impossible.') }
       finally { if (sequence === requestSequence.current) setIsLoading(false) }
     }, REQUEST_DEBOUNCE_MS)
@@ -93,7 +94,17 @@ function App() {
   const handleMutation = (mutation: PlaceMutation) => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); setRemovedPlaceId(null); setRefreshVersion((value) => value + 1); if (mutation.mapId !== activeMapId) navigate(withMap('/', mutation.mapId, activeStatusId)) }
   const handleDeletePlace = (id: string) => { setPlaces((current) => current.filter((place) => place.id !== id)); setSelectedPlace((current) => current?.id === id ? null : current); setRemovedPlaceId(id); setRefreshVersion((value) => value + 1) }
   const handleSelect = (place: PreviewPlace) => { setSelectedPlace(place); navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId)); if (place.latitude !== null && place.longitude !== null) setFocusRequest({ id: ++focusSequence.current, view: { center: [place.latitude, place.longitude], zoom: Math.max(mapView.zoom, 13) } }) }
-  const deleteActiveMap = async () => { if (!activeMap || !window.confirm(`Supprimer « ${activeMap.name} » ?`)) return; try { await deleteMap(activeMap.id); setMaps((current) => current.filter((item) => item.id !== activeMap.id)); navigate('/') } catch (error) { setMapsError(error instanceof ApiError && error.status === 409 ? 'Cette carte contient des POI et ne peut pas être supprimée.' : error instanceof Error ? error.message : 'Suppression impossible.') } }
+  const deleteWorkspaceMap = async (poiMap: PoiMap) => {
+    if (!window.confirm(`Supprimer « ${poiMap.name} » ?`)) return
+    try {
+      await deleteMap(poiMap.id)
+      const remaining = maps.filter((item) => item.id !== poiMap.id)
+      setMaps(remaining)
+      if (poiMap.id === activeMapId) navigate(withMap('/', remaining[0]?.id ?? null, activeStatusId))
+    } catch (error) {
+      setMapsError(error instanceof ApiError && error.status === 409 ? 'Cette carte contient des POI et ne peut pas être supprimée.' : error instanceof Error ? error.message : 'Suppression impossible.')
+    }
+  }
   const sidebarState = deriveMapSidebarState(
     location.pathname,
     selectedRoutePlaceId === null ? null : selectedPlace,
@@ -113,19 +124,22 @@ function App() {
     }
   }
   const popupContent = selectedPlaceId !== null && !editorOpen ? <PlaceMapPopup placeId={selectedPlaceId} onEdit={() => navigate(withMap(`/places/${selectedPlaceId}/edit`, activeMapId, activeStatusId))} onDeleted={(id) => { handleDeletePlace(id); navigate(withMap('/', activeMapId, activeStatusId)) }} onClose={closePopup} /> : null
-  const openWorkspacePanel = (panel: Exclude<WorkspacePanel, null>) => {
+  const openWorkspacePanel = (panel: WorkspacePanel) => {
     setWorkspacePanel(panel)
+    if (panel === null) return
     const panelId = panel === 'places' ? 'map-place-list' : `workspace-${panel}-panel`
     window.setTimeout(() => document.getElementById(panelId)?.focus(), 0)
   }
-  const workspaceContent = workspacePanel === 'places'
-    ? <MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} />
-    : workspacePanel === 'categories' ? <CategoriesWorkspacePanel />
-      : workspacePanel === 'tags' ? <TagsWorkspacePanel />
-        : workspacePanel === 'statuses' ? <StatusesWorkspacePanel /> : null
+  const workspaceContent = workspacePanel === 'maps'
+    ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onClose={() => setWorkspacePanel(null)} />
+    : workspacePanel === 'places'
+    ? <MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} onClose={() => setWorkspacePanel(null)} />
+    : workspacePanel === 'categories' ? <CategoriesWorkspacePanel onClose={() => setWorkspacePanel(null)} />
+      : workspacePanel === 'tags' ? <TagsWorkspacePanel onClose={() => setWorkspacePanel(null)} />
+        : workspacePanel === 'statuses' ? <StatusesWorkspacePanel onClose={() => setWorkspacePanel(null)} /> : null
 
-  return <main className="app-shell"><MainNavigation activePanel={workspacePanel} onMap={() => setWorkspacePanel(null)} onPanelChange={openWorkspacePanel} /><div className="app-body">
-    <TopBar isMapWorkspace={isMapWorkspace} maps={maps} activeMapId={activeMapId} areMapsLoading={mapsLoading} mapsError={mapsError} markerCount={places.length} onMapChange={(id) => navigate(withMap(location.pathname, id, activeStatusId))} onMapCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)) }} onDeleteMap={() => void deleteActiveMap()} />
+  return <main className="app-shell"><MainNavigation activePanel={workspacePanel} onPanelChange={openWorkspacePanel} /><div className="app-body">
+    <TopBar isMapWorkspace={isMapWorkspace} markerCount={places.length} />
     <Routes>
       <Route path="*" element={<MapPage places={places} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen} placeListOpen={workspacePanel !== null} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} draftPosition={draftPosition} draftPlaceId={sidebarState.mode === 'edit' ? sidebarState.placeId : null} onDraftPositionChange={setDraftPosition} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setCoordinatePrefill(null); setDraftPosition({ latitude: result.latitude, longitude: result.longitude }); setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} onCreateFromCoordinates={(latitude, longitude) => { setCoordinatePrefill({ latitude, longitude }); setDraftPosition({ latitude, longitude }); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={workspaceContent} sidebar={<MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
       <Route path="/admin" element={<AdminLayout />}><Route index element={<Navigate to="categories" replace />} /><Route path="categories" element={<CategoriesPage />} /><Route path="tags" element={<TagsPage />} /><Route path="statuses" element={<StatusesPage />} /></Route>

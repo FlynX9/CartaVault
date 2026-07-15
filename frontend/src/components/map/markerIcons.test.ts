@@ -8,11 +8,13 @@ describe('status marker icons', () => {
   it('uses the API color and keeps selection as a separate visual state', () => {
     const regular = getStatusMarkerIcon('#D97706', 'mdi:factory', false)
     const selected = getStatusMarkerIcon('#D97706', 'mdi:factory', true)
+    const muted = getStatusMarkerIcon('#D97706', 'mdi:factory', false, true)
     expect(regular.options.html).toContain('--marker-color:#D97706')
     expect(regular.options.html).toContain(getCategoryIconData('mdi:factory').body)
     expect(regular.options.html).not.toContain('status-marker selected')
     expect(selected.options.html).toContain('status-marker selected')
     expect(selected.options.html).toContain('--marker-color:#D97706')
+    expect(muted.options.html).toContain('status-marker muted')
   })
 
   it('uses the local MDI and Material Symbol bodies without a network request', () => {

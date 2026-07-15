@@ -12,5 +12,6 @@ describe('MapContextMenu', () => {
     render(<MapContextMenu state={{ latitude: 48, longitude: 2, containerX: 10, containerY: 20 }} onClose={vi.fn()} onCreate={vi.fn()} onCopy={vi.fn()} />)
     expect(screen.getByRole('menu')).toBeVisible()
     expect(screen.getByRole('menuitem', { name: 'Ouvrir dans Google Maps' })).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(screen.queryByRole('menuitem', { name: 'Fermer' })).not.toBeInTheDocument()
   })
 })

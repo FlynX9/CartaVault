@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { getPlaces } from '../../api/places'
 import { MapPlaceList } from './MapPlaceList'
 
@@ -7,7 +8,7 @@ vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([]))
 
 describe('MapPlaceList', () => {
   it('filters by the selected map UUID', async () => {
-    render(<MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} />)
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))
     expect(screen.getByText('France')).toBeVisible()
   })
@@ -16,7 +17,7 @@ describe('MapPlaceList', () => {
     const place = { id: 'place-id', name: 'Manufacture', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [{ id: 'category-id', name: 'Église', icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Patrimoine' }] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
     const select = vi.fn()
-    const { container } = render(<MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId="place-id" refreshVersion={0} removedPlaceId={null} onPlaceSelect={select} />)
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId="place-id" refreshVersion={0} removedPlaceId={null} onPlaceSelect={select} /></MemoryRouter>)
     const item = await screen.findByRole('button', { name: /Manufacture/ })
     expect(item).toHaveClass('selected')
     expect(screen.getByText('1 POI')).toBeVisible()

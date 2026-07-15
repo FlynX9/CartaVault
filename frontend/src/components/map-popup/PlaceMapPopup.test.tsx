@@ -22,8 +22,9 @@ describe('PlaceMapPopup', () => {
   })
   it('renders the Iconify primary category icon instead of the fallback', async () => {
     const { container } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
-    expect(await screen.findByText('Catégorie principale : Industrie')).toBeVisible()
-    expect(container.querySelector('.place-status-label [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
+    expect(await screen.findByText('Catégorie')).toBeVisible()
+    expect(screen.getByText('Industrie')).toBeVisible()
+    expect(container.querySelector('.popup-summary [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
   })
   it('keeps textual details visible with no photo, a missing file, or photo API failure', async () => {
     vi.mocked(getPlacePhotos).mockResolvedValue([]); const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />); expect(await screen.findByText('Aucune photo')).toBeVisible(); expect(screen.getByText('Ancienne usine')).toBeVisible()

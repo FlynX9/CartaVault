@@ -18,7 +18,7 @@ const place: MapPlace = {
 
 afterEach(cleanup)
 
-function MapHarness({ initiallySelected = false }: { initiallySelected?: boolean }) {
+function MapHarness({ initiallySelected = false, markerFilter }: { initiallySelected?: boolean; markerFilter?: { query: string; categoryId: string; statusId: string | null; tagId: string } }) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
     initiallySelected ? place.id : null,
   )
@@ -42,6 +42,7 @@ function MapHarness({ initiallySelected = false }: { initiallySelected?: boolean
       onPopupClose={() => setSelectedPlaceId(null)}
       basemapId="cartavault-light"
       onBasemapTileError={vi.fn()}
+      markerFilter={markerFilter}
     />
   )
 }
@@ -76,5 +77,11 @@ describe('PoiMap Leaflet popup lifecycle', () => {
     fireEvent.click(container.querySelector('.leaflet-container') as HTMLElement)
 
     await waitFor(() => expect(screen.queryByText('Détails enrichis')).not.toBeInTheDocument())
+  })
+
+  it('keeps non-matching markers on the map with a muted visual state', async () => {
+    const { container } = render(<MapHarness markerFilter={{ query: 'Absent', categoryId: '', statusId: null, tagId: '' }} />)
+
+    await waitFor(() => expect(container.querySelector('.status-marker.muted')).toBeInTheDocument())
   })
 })

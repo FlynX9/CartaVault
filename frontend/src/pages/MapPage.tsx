@@ -6,6 +6,7 @@ import { MapContextMenu } from '../components/map/MapContextMenu'
 import type { MapContextMenuState } from '../components/map/mapContextMenuUtils'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
+import { EMPTY_MAP_MARKER_FILTER, MapMarkerFilterContext, type MapMarkerFilter } from '../components/map/mapMarkerFilterContext'
 import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
@@ -71,6 +72,7 @@ export function MapPage({
   const [localSearchResult, setLocalSearchResult] = useState<GeocodingResult | null>(null)
   const [contextMenu, setContextMenu] = useState<MapContextMenuState | null>(null)
   const [contextNotice, setContextNotice] = useState<string | null>(null)
+  const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
 
   const selectBasemap = (id: BasemapId) => {
@@ -87,7 +89,7 @@ export function MapPage({
     <section
       className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}`}
     >
-      {placeList}
+      <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
       <div className="map-layout" aria-label="Carte des points d'intérêt">
         <PoiMap
           places={places}
@@ -108,6 +110,7 @@ export function MapPage({
           draftPosition={draftPosition}
           draftPlaceId={draftPlaceId}
           onDraftPositionChange={onDraftPositionChange}
+          markerFilter={markerFilter}
         />
         {contextMenu && <MapContextMenu state={contextMenu} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}

@@ -1,11 +1,14 @@
-import { Search } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Plus, Search, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
 import { getPlaces } from '../../api/places'
 import type { PoiMap } from '../../types/map'
 import type { PlaceDetails, PreviewPlace } from '../../types/place'
 import type { PlaceStatusSummary } from '../../types/status'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
+import { withMap } from '../../utils/map'
+import { MapMarkerFilterContext } from '../map/mapMarkerFilterContext'
 
 const PAGE_SIZE = 100
 
@@ -18,6 +21,7 @@ interface Props {
   removedPlaceId: string | null
   onStatusChange?: (statusId: string | null) => void
   onPlaceSelect: (place: PreviewPlace) => void
+  onClose?: () => void
 }
 
 const sortPlaces = (places: PlaceDetails[]) => [...places].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id))
@@ -31,7 +35,7 @@ function formatLastUpdate(value: string | undefined) {
   return `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 }
 
-export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined }: Props) {
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -41,6 +45,7 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const refs = useRef(new Map<string, HTMLButtonElement>())
+  const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebounced(search.trim()), 300)
@@ -51,6 +56,10 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
     setCategoryId('')
     setTagId('')
   }, [poiMap?.id])
+
+  useEffect(() => {
+    setMarkerFilter({ query: debounced, categoryId, statusId, tagId })
+  }, [categoryId, debounced, setMarkerFilter, statusId, tagId])
 
   useEffect(() => {
     if (!poiMap) {
@@ -90,16 +99,17 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
   }
 
   return <aside className="country-place-panel cv-workspace-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
-    <header className="place-list-header">
-      <h2 id="map-place-list-title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>
-      {poiMap && <p className="place-list-map-meta"><span>{visible.length} POI{visible.length > 1 ? 's' : ''}</span><span aria-hidden="true">·</span><span>{formatLastUpdate(poiMap.updated_at)}</span></p>}
+    <header className="cv-workspace-panel__header">
+      <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow place-list-kicker">Lieux</p><h2 id="map-place-list-title" className="cv-workspace-panel__title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>
+      {poiMap && <p className="place-list-map-meta"><span>{formatLastUpdate(poiMap.updated_at)}</span></p>}</div>
+      <div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{visible.length} POI{visible.length > 1 ? 's' : ''}</span>}{poiMap && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id, statusId)} aria-label="Ajouter un POI" title="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div>
     </header>
     {poiMap && <section className="place-list-controls" aria-label="Recherche et filtres des lieux">
       <label className="place-list-search"><Search aria-hidden="true" size={18} /><span className="visually-hidden">Rechercher un POI</span><input type="search" value={search} placeholder="Rechercher un POI…" onChange={(event) => setSearch(event.target.value)} /></label>
       <div className="place-list-filters">
-        <select aria-label="Filtrer par catégorie" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">Catégorie</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-        <select aria-label="Filtrer par statut" value={statusId ?? ''} onChange={(event) => onStatusChange(event.target.value || null)}><option value="">Statut</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select>
-        <select aria-label="Filtrer par tag" value={tagId} onChange={(event) => setTagId(event.target.value)}><option value="">Tags</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select>
+        <select aria-label="Filtrer par catégorie" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">Tout</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
+        <select aria-label="Filtrer par statut" value={statusId ?? ''} onChange={(event) => onStatusChange(event.target.value || null)}><option value="">Tout</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select>
+        <select aria-label="Filtrer par tag" value={tagId} onChange={(event) => setTagId(event.target.value)}><option value="">Tout</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select>
         <button className="place-list-reset" type="button" onClick={resetFilters} disabled={search === '' && categoryId === '' && tagId === '' && statusId === null}>Réinitialiser</button>
       </div>
     </section>}

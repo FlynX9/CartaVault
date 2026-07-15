@@ -223,9 +223,11 @@ export function PlaceForm({
         </div>
       </details>
 
-      <button className="primary-button" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Enregistrement…' : submitLabel}
-      </button>
+      <div className="place-form-submit">
+        <button className="primary-button" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Enregistrement…' : submitLabel}
+        </button>
+      </div>
     </form>
   )
 }
