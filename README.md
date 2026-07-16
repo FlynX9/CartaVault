@@ -1,5 +1,20 @@
 # POI Manager
 
+Le bouton utilisateur CartaVault ouvre un espace Compte superposé sans démonter la carte : profil, sécurité, sessions, préférences locales et zone sensible. Le changement d’e-mail est immédiat après confirmation du mot de passe, car aucune validation par e-mail n’est encore disponible. La 2FA n’est pas proposée dans cette version.
+
+## Accès multi-utilisateur CartaVault
+
+CartaVault utilise désormais des cartes privées et des sessions serveur. Chaque
+carte possède exactement un propriétaire et peut être partagée avec des membres
+`editor` ou `viewer`. Les administrateurs globaux peuvent gérer les utilisateurs
+et intervenir sur toutes les cartes. Il n’existe ni inscription publique, ni
+carte publique, ni envoi automatique d’e-mail pour les invitations.
+
+Avant la première ouverture d’une instance mise à niveau, sauvegardez la base,
+appliquez la première migration de sécurité, créez le premier administrateur avec
+`python -m app.cli create-admin`, puis appliquez la migration finale. La procédure
+détaillée et les variables de sécurité figurent dans `backend/README.md`.
+
 ## Photos des POI
 
 Les photos utilisent le stockage sécurisé existant. L’édition d’un POI permet

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { API_BASE_URL } from '../config'
 import { getPhotoFileUrl, parsePhotosResponse } from './photos'
 
 const PLACE_ID = '11111111-1111-4111-8111-111111111111'
@@ -24,7 +25,7 @@ describe('photo response validation', () => {
 
     expect(photos[0]?.path).toContain(PLACE_ID)
     expect(getPhotoFileUrl(PHOTO_ID)).toBe(
-      `http://127.0.0.1:8000/photos/${PHOTO_ID}/file`,
+      `${API_BASE_URL}/photos/${PHOTO_ID}/file`,
     )
   })
 

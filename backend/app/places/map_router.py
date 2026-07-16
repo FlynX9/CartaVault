@@ -5,6 +5,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, load_only, selectinload
 
 from app.categories.models import Category
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
+from app.auth.permissions import require_map_role
 from app.categories.associations import place_categories_table
 from app.database import get_db
 from app.places.filters import MapBounds, get_required_map_bounds
@@ -16,6 +19,7 @@ from app.places.map_schemas import (
     PlaceMapRead,
 )
 from app.places.models import Place
+from app.maps.models import MapMembership
 from app.tags.models import Tag
 from app.statuses.models import PlaceStatus
 
@@ -55,6 +59,7 @@ def get_map_places(
     ),
     map_bounds: MapBounds = Depends(get_required_map_bounds),
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[PlaceMapRead]:
     """Return lightweight place markers inside the visible map area."""
 
@@ -108,6 +113,13 @@ def get_map_places(
         )
         .limit(limit)
     )
+
+    if map_id is not None:
+        require_map_role(database_session, map_id, current_user, "viewer")
+    elif not current_user.is_admin:
+        statement = statement.where(
+            Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
+        )
 
     if category_id is not None:
         statement = statement.where(

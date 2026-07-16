@@ -18,6 +18,13 @@ export class ApiError extends Error {
   }
 }
 
+let csrfToken: string | null = null
+export const SESSION_EXPIRED_EVENT = 'cartavault:session-expired'
+
+export function setCsrfToken(value: string | null): void {
+  csrfToken = value
+}
+
 interface ParsedErrorPayload {
   message: string | null
   fieldErrors: ApiFieldErrors
@@ -103,6 +110,9 @@ async function request(
   if (options.body !== undefined) {
     headers['Content-Type'] = 'application/json'
   }
+  if (options.method !== undefined && options.method !== 'GET' && csrfToken !== null) {
+    headers['X-CSRF-Token'] = csrfToken
+  }
 
   const response = await fetch(
     `${API_BASE_URL}${path}${query ? `?${query}` : ''}`,
@@ -112,11 +122,16 @@ async function request(
       body:
         options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: options.signal,
+      credentials: 'include',
     },
   )
 
   if (!response.ok) {
     const error = await getResponseError(response)
+    if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
+      setCsrfToken(null)
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+    }
     throw new ApiError(
       response.status,
       error.message ?? 'Erreur API.',
@@ -148,10 +163,24 @@ export async function sendJson(
 
 export async function sendWithoutResponse(
   path: string,
-  method: 'DELETE',
+  method: 'POST' | 'DELETE',
   signal?: AbortSignal,
 ): Promise<void> {
   await request(path, { method, signal })
+}
+
+export async function sendBodyWithoutResponse(
+  path: string,
+  method: 'POST' | 'PATCH' | 'DELETE',
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<void> {
+  await request(path, { method, body, signal })
+}
+
+export async function getBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await request(path, { signal })
+  return response.blob()
 }
 
 export async function sendFormData(
@@ -162,12 +191,20 @@ export async function sendFormData(
 ): Promise<unknown> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers: { Accept: 'application/json' },
     body,
     signal,
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(csrfToken === null ? {} : { 'X-CSRF-Token': csrfToken }),
+    },
   })
   if (!response.ok) {
     const error = await getResponseError(response)
+    if (response.status === 401) {
+      setCsrfToken(null)
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+    }
     throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors)
   }
   return response.json()

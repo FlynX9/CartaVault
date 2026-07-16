@@ -21,6 +21,7 @@ interface MapPageProps {
   sidebarOpen: boolean
   placeListOpen: boolean
   statuses: PlaceStatusSummary[]
+  canEdit?: boolean
   sidebar: ReactNode
   popupContent?: ReactNode
   placeList: ReactNode
@@ -49,6 +50,7 @@ export function MapPage({
   sidebarOpen,
   placeListOpen,
   statuses,
+  canEdit = true,
   sidebar,
   popupContent = null,
   placeList,
@@ -112,9 +114,9 @@ export function MapPage({
           onDraftPositionChange={onDraftPositionChange}
           markerFilter={markerFilter}
         />
-        {contextMenu && <MapContextMenu state={contextMenu} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
+        {contextMenu && <MapContextMenu state={contextMenu} canCreate={canEdit} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
-        <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
+        <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />
 

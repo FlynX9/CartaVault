@@ -1,6 +1,7 @@
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
 from sqlalchemy import inspect, text
 
 
@@ -8,6 +9,20 @@ pytestmark = pytest.mark.integration
 
 MIGRATION_MAP_ID = "20000000-0000-4000-8000-000000000001"
 MIGRATION_PLACE_ID = "30000000-0000-4000-8000-000000000001"
+SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
+HEAD_REVISION = "e5b9c3d1a742"
+
+
+def _upgrade_to_head_with_test_admin(config: Config, engine) -> None:
+    with engine.connect() as connection:
+        if MigrationContext.configure(connection).get_current_revision() == HEAD_REVISION:
+            return
+    command.upgrade(config, SECURITY_SCHEMA_REVISION)
+    with engine.begin() as connection:
+        admin_id = connection.scalar(text("INSERT INTO users (email, display_name, password_hash, is_admin, is_active) VALUES ('status-cycle@example.test', 'Status cycle', 'test-only-hash', true, true) ON CONFLICT (email) DO UPDATE SET is_admin=true, is_active=true RETURNING id"))
+        connection.execute(text("UPDATE poi_maps SET owner_id=:admin_id WHERE owner_id IS NULL"), {"admin_id": admin_id})
+        connection.execute(text("INSERT INTO map_memberships (map_id, user_id, role) SELECT id, :admin_id, 'owner' FROM poi_maps ON CONFLICT (map_id, user_id) DO UPDATE SET role='owner'"), {"admin_id": admin_id})
+    command.upgrade(config, "head")
 
 
 def test_status_migration_downgrade_upgrade_cycle(
@@ -21,6 +36,7 @@ def test_status_migration_downgrade_upgrade_cycle(
     config = Config("alembic.ini")
 
     with test_engine.begin() as connection:
+        owner_id = connection.scalar(text("SELECT id FROM users WHERE is_admin AND is_active ORDER BY created_at LIMIT 1"))
         country_id = connection.scalar(text("SELECT c.id FROM countries c WHERE NOT EXISTS (SELECT 1 FROM poi_maps m WHERE m.country_id = c.id) ORDER BY c.id LIMIT 1"))
         default_status_id = connection.scalar(
             text("SELECT id FROM place_statuses WHERE is_default")
@@ -28,24 +44,22 @@ def test_status_migration_downgrade_upgrade_cycle(
         connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
         connection.execute(text("DELETE FROM poi_maps WHERE id = :id"), {"id": MIGRATION_MAP_ID})
         connection.execute(
-            text("INSERT INTO poi_maps (id, name, country_id) VALUES (:id, 'Migration test', :country_id)"),
-            {"id": MIGRATION_MAP_ID, "country_id": country_id},
+            text("INSERT INTO poi_maps (id, name, country_id, owner_id, is_private) VALUES (:id, 'Migration test', :country_id, :owner_id, true)"),
+            {"id": MIGRATION_MAP_ID, "country_id": country_id, "owner_id": owner_id},
         )
+        connection.execute(text("INSERT INTO map_memberships (map_id, user_id, role) VALUES (:map_id, :owner_id, 'owner')"), {"map_id": MIGRATION_MAP_ID, "owner_id": owner_id})
         connection.execute(
             text("INSERT INTO places (id, name, map_id, status_id) VALUES (:id, 'Migration test', :map_id, :status_id)"),
             {"id": MIGRATION_PLACE_ID, "map_id": MIGRATION_MAP_ID, "status_id": default_status_id},
         )
 
-    # create_all prepared the current model schema; stamp it before testing the
-    # reversible migration itself. No development database can reach here.
-    command.stamp(config, "head")
     command.downgrade(config, "6f2d8a4c91b0")
     assert "place_statuses" not in inspect(test_engine).get_table_names()
     assert "status_id" not in {
         column["name"] for column in inspect(test_engine).get_columns("places")
     }
 
-    command.upgrade(config, "head")
+    _upgrade_to_head_with_test_admin(config, test_engine)
     assert "place_statuses" in inspect(test_engine).get_table_names()
     with test_engine.connect() as connection:
         assert connection.scalar(text("SELECT count(*) FROM place_statuses")) == 5

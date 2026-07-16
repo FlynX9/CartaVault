@@ -44,19 +44,21 @@ _imports_lock = Lock()
 class CachedKmzImport:
     import_id: UUID
     map_id: UUID
+    user_id: UUID
     file_name: str
     created_at: datetime
     items: tuple[ParsedPlacemark, ...]
     global_warnings: tuple[str, ...]
 
 
-def cache_preview(map_id: UUID, file_name: str, items: list[ParsedPlacemark], warnings: list[str]) -> KmzPreviewRead:
+def cache_preview(map_id: UUID, user_id: UUID, file_name: str, items: list[ParsedPlacemark], warnings: list[str]) -> KmzPreviewRead:
     """Keep short-lived parsed data in process; no archive paths are exposed."""
 
     _purge_expired_imports()
     cached = CachedKmzImport(
         import_id=uuid4(),
         map_id=map_id,
+        user_id=user_id,
         file_name=file_name,
         created_at=datetime.now(UTC),
         items=tuple(items),
@@ -86,13 +88,13 @@ def mark_duplicate_items(database_session: Session, map_id: UUID, items: list[Pa
             item.warnings.append("Already imported or existing on this map; skipped by default")
 
 
-def get_cached_import(import_id: UUID, map_id: UUID) -> CachedKmzImport:
+def get_cached_import(import_id: UUID, map_id: UUID, user_id: UUID) -> CachedKmzImport:
     _purge_expired_imports()
     with _imports_lock:
         cached = _imports.get(import_id)
     if cached is None:
         raise HTTPException(status_code=410, detail="The KMZ import preview has expired")
-    if cached.map_id != map_id:
+    if cached.map_id != map_id or cached.user_id != user_id:
         raise HTTPException(status_code=404, detail="The KMZ import preview does not belong to this map")
     return cached
 
@@ -151,7 +153,7 @@ def confirm_import(
     remote_images_unavailable = 0
     skipped_count = 0
     try:
-        category = _get_or_create_import_category(database_session)
+        category = _get_or_create_import_category(database_session, map_id)
         place_status = _get_or_create_import_status(database_session)
         for item in selected:
             duplicate_exists = (
@@ -234,11 +236,11 @@ def _store_images(database_session: Session, place: Place, images: list[ParsedIm
     return embedded_added, remote_added, remote_unavailable
 
 
-def _get_or_create_import_category(database_session: Session) -> Category:
-    database_session.execute(select(func.pg_advisory_xact_lock(func.hashtext("cartavault:import-category"))))
-    category = database_session.scalar(select(Category).where(func.lower(Category.name) == "importé").with_for_update())
+def _get_or_create_import_category(database_session: Session, map_id: UUID) -> Category:
+    database_session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"cartavault:import-category:{map_id}"))))
+    category = database_session.scalar(select(Category).where(Category.map_id == map_id, func.lower(Category.name) == "importé").with_for_update())
     if category is None:
-        category = Category(name="Importé", description="POI importés depuis un fichier externe", icon=DEFAULT_CATEGORY_ICON_ID)
+        category = Category(map_id=map_id, name="Importé", description="POI importés depuis un fichier externe", icon=DEFAULT_CATEGORY_ICON_ID)
         database_session.add(category)
         database_session.flush()
     return category

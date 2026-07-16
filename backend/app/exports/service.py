@@ -27,7 +27,7 @@ MAX_IMAGES = 2_000
 MAX_TOTAL_SIZE = 500 * 1024 * 1024
 
 
-def create_kmz_export(session: Session, map_id: UUID, options: KmzExportOptions) -> tuple[TemporaryExport, KmzExportReport]:
+def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: KmzExportOptions) -> tuple[TemporaryExport, KmzExportReport]:
     poi_map = session.get(PoiMap, map_id)
     if poi_map is None:
         raise HTTPException(status_code=404, detail="Map not found")
@@ -102,7 +102,7 @@ def create_kmz_export(session: Session, map_id: UUID, options: KmzExportOptions)
     if not placemarks:
         raise HTTPException(status_code=422, detail="No exportable places match the selected filters")
     file_name = _file_name(poi_map.name)
-    temporary = create(map_id, file_name)
+    temporary = create(map_id, user_id, file_name)
     with ZipFile(temporary.path, "w", ZIP_DEFLATED, allowZip64=False) as archive:
         archive.writestr("doc.kml", build_kml(poi_map.name, placemarks, styles))
         for style_id, (color, group, icon_id) in marker_styles.items():

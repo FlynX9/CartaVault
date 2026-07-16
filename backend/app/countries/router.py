@@ -7,9 +7,10 @@ from sqlalchemy.orm import Session
 from app.countries.models import Country
 from app.countries.schemas import CountryRead
 from app.database import get_db
+from app.auth.dependencies import get_current_user
 
 
-router = APIRouter(prefix="/countries", tags=["countries"])
+router = APIRouter(prefix="/countries", tags=["countries"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[CountryRead])

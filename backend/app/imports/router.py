@@ -7,6 +7,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
+from app.auth.permissions import require_map_role
 from app.imports.kmz_parser import KmzParseError, parse_kmz
 from app.imports.kmz_security import KMZ_MAX_UPLOAD_SIZE, KmzSecurityError, validate_kmz_upload
 from app.imports.schemas import KmzConfirmRequest, KmzImportReport, KmzPreviewRead
@@ -19,11 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/preview", response_model=KmzPreviewRead)
-def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ archive"), database_session: Session = Depends(get_db)) -> KmzPreviewRead:
+def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ archive"), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> KmzPreviewRead:
     """Validate and parse a KMZ archive without creating any data."""
 
-    if database_session.get(PoiMap, map_id) is None:
-        raise HTTPException(status_code=404, detail=f"Map with id {map_id} was not found")
+    require_map_role(database_session, map_id, current_user, "editor")
     payload = file.file.read(KMZ_MAX_UPLOAD_SIZE + 1)
     try:
         validated = validate_kmz_upload(file.filename, payload)
@@ -44,14 +46,15 @@ def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ ar
             detail="Unable to analyze the KMZ archive",
         ) from error
     mark_duplicate_items(database_session, map_id, items)
-    return cache_preview(map_id, file.filename or "import.kmz", items, warnings)
+    return cache_preview(map_id, current_user.id, file.filename or "import.kmz", items, warnings)
 
 
 @router.post("/confirm", response_model=KmzImportReport, status_code=status.HTTP_201_CREATED)
-def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_session: Session = Depends(get_db)) -> KmzImportReport:
+def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> KmzImportReport:
     """Persist explicitly selected preview items in one atomic transaction."""
 
-    cached = get_cached_import(request.import_id, map_id)
+    require_map_role(database_session, map_id, current_user, "editor")
+    cached = get_cached_import(request.import_id, map_id, current_user.id)
     return confirm_import(
         database_session,
         map_id,

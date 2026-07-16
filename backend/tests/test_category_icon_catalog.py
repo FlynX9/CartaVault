@@ -1,6 +1,7 @@
 import json
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -98,13 +99,14 @@ def test_shared_category_icon_catalog_rejects_invalid_json(tmp_path: Path) -> No
 
 
 def test_category_icon_schema_uses_qualified_catalog_ids() -> None:
-    assert CategoryCreate(name="Category").icon == DEFAULT_CATEGORY_ICON_ID
-    assert CategoryCreate(name="Category", icon=" mdi:church ").icon == "mdi:church"
-    assert CategoryCreate(name="Category", icon="material-symbols:help-outline").icon == FALLBACK_CATEGORY_ICON_ID
+    map_id = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    assert CategoryCreate(map_id=map_id, name="Category").icon == DEFAULT_CATEGORY_ICON_ID
+    assert CategoryCreate(map_id=map_id, name="Category", icon=" mdi:church ").icon == "mdi:church"
+    assert CategoryCreate(map_id=map_id, name="Category", icon="material-symbols:help-outline").icon == FALLBACK_CATEGORY_ICON_ID
 
     for icon_id in ("church", "map-pin", "mdi:not-installed", ""):
         with pytest.raises(ValueError, match="category icon is not allowed"):
-            CategoryCreate(name="Category", icon=icon_id)
+            CategoryCreate(map_id=map_id, name="Category", icon=icon_id)
 
     with pytest.raises(ValueError, match="category icon cannot be null"):
         CategoryUpdate(icon=None)

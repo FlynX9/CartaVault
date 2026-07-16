@@ -21,26 +21,26 @@ describe('MainNavigation', () => {
     expect(onPanelChange).toHaveBeenCalledWith(null)
   })
 
-  it('uses workspace buttons for all workspace panels without changing the URL', () => {
+  it('uses workspace buttons for content, statuses and user administration', () => {
     const onPanelChange = vi.fn()
-    render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={onPanelChange} /><Location /></MemoryRouter>)
+    render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={onPanelChange} isAdmin /><Location /></MemoryRouter>)
 
     fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Tags' }))
     fireEvent.click(screen.getByRole('button', { name: 'Statuts' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Administration' }))
 
     expect(onPanelChange).toHaveBeenNthCalledWith(1, 'categories')
     expect(onPanelChange).toHaveBeenNthCalledWith(2, 'tags')
     expect(onPanelChange).toHaveBeenNthCalledWith(3, 'statuses')
+    expect(onPanelChange).toHaveBeenNthCalledWith(4, 'admin')
     expect(screen.getByTestId('location')).toHaveTextContent('/')
   })
 
-  it('does not render Administration in the primary navigation', () => {
-    render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={vi.fn()} /><Location /></MemoryRouter>)
-    expect(screen.queryByRole('button', { name: 'Carte' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Administration' })).not.toBeInTheDocument()
-    expect(screen.getByText('Catégories')).toBeVisible()
-    expect(screen.getByText('Export')).toBeVisible()
+  it('hides Administration for a non-administrator', () => {
+    render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={vi.fn()} /></MemoryRouter>)
+    expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Statuts' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
   })
 })

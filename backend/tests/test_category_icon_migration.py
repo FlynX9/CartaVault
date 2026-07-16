@@ -11,7 +11,6 @@ from app.categories.icon_migration import (
     LEGACY_CATEGORY_ICON_DEFAULT,
     LEGACY_CATEGORY_ICON_TO_ICONIFY,
 )
-from app.database import Base
 
 
 pytestmark = pytest.mark.integration
@@ -21,6 +20,20 @@ PARENT_REVISION = "e2a4b9d7c630"
 TEST_CATEGORY_NAMESPACE = "https://poi-manager.test/category-icon-migration/"
 UNKNOWN_ICON = "unknown-legacy-icon"
 PRESERVED_ICONIFY_ICON = "mdi:wall"
+SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
+HEAD_REVISION = "c1a7d4e9b620"
+
+
+def _upgrade_to_head_with_test_admin(config: Config, engine) -> None:
+    with engine.connect() as connection:
+        if MigrationContext.configure(connection).get_current_revision() == HEAD_REVISION:
+            return
+    command.upgrade(config, SECURITY_SCHEMA_REVISION)
+    with engine.begin() as connection:
+        admin_id = connection.scalar(text("INSERT INTO users (email, display_name, password_hash, is_admin, is_active) VALUES ('migration-cycle@example.test', 'Migration cycle', 'test-only-hash', true, true) ON CONFLICT (email) DO UPDATE SET is_admin=true, is_active=true RETURNING id"))
+        connection.execute(text("UPDATE poi_maps SET owner_id=:admin_id WHERE owner_id IS NULL"), {"admin_id": admin_id})
+        connection.execute(text("INSERT INTO map_memberships (map_id, user_id, role) SELECT id, :admin_id, 'owner' FROM poi_maps ON CONFLICT (map_id, user_id) DO UPDATE SET role='owner'"), {"admin_id": admin_id})
+    command.upgrade(config, "head")
 
 
 def _category_id(icon_id: str) -> str:
@@ -76,8 +89,6 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
     category_ids = [_category_id(icon_id) for icon_id in expected_upgrade]
 
     try:
-        Base.metadata.create_all(engine)
-        command.stamp(config, "head")
         command.downgrade(config, PARENT_REVISION)
 
         with engine.begin() as connection:
@@ -137,17 +148,17 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
         }
         assert LEGACY_CATEGORY_ICON_DEFAULT in (default or "")
 
-        command.upgrade(config, "head")
+        _upgrade_to_head_with_test_admin(config, engine)
 
         with engine.connect() as connection:
             final_revision = MigrationContext.configure(connection).get_current_revision()
             final_icons = set(connection.scalars(text("SELECT icon FROM categories")))
 
-        assert final_revision == MIGRATION_REVISION
+        assert final_revision == HEAD_REVISION
         assert final_icons <= CATEGORY_ICON_IDS
     finally:
         try:
-            command.upgrade(config, "head")
+            _upgrade_to_head_with_test_admin(config, engine)
             with engine.begin() as connection:
                 _delete_test_categories(connection, category_ids)
         finally:

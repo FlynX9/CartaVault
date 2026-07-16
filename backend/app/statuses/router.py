@@ -8,7 +8,10 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import get_current_user, require_admin
+from app.auth.models import User
 from app.places.models import Place
+from app.maps.models import MapMembership
 from app.statuses.models import PlaceStatus
 from app.statuses.schemas import (
     PlaceStatusCreate,
@@ -17,7 +20,7 @@ from app.statuses.schemas import (
 )
 
 
-router = APIRouter(prefix="/statuses", tags=["statuses"])
+router = APIRouter(prefix="/statuses", tags=["statuses"], dependencies=[Depends(get_current_user)])
 
 
 def slugify_status_name(name: str) -> str:
@@ -35,13 +38,17 @@ def slugify_status_name(name: str) -> str:
     return slug[:100].rstrip("-")
 
 
-def build_status_read_statement():
+def build_status_read_statement(current_user: User | None = None):
+    place_join = Place.status_id == PlaceStatus.id
+    if current_user is not None and not current_user.is_admin:
+        accessible_maps = select(MapMembership.map_id).where(MapMembership.user_id == current_user.id)
+        place_join = place_join & Place.map_id.in_(accessible_maps)
     return (
         select(
             PlaceStatus,
             func.count(Place.id).label("places_count"),
         )
-        .outerjoin(Place, Place.status_id == PlaceStatus.id)
+        .outerjoin(Place, place_join)
         .group_by(PlaceStatus.id)
     )
 
@@ -83,8 +90,9 @@ def get_statuses(
     q: str | None = Query(default=None, min_length=1, max_length=100),
     active_only: bool = Query(default=False),
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[PlaceStatusRead]:
-    statement = build_status_read_statement()
+    statement = build_status_read_statement(current_user)
     if q is not None:
         pattern = f"%{q.strip()}%"
         statement = statement.where(
@@ -104,9 +112,10 @@ def get_statuses(
 def get_status(
     status_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> PlaceStatusRead:
     row = database_session.execute(
-        build_status_read_statement().where(PlaceStatus.id == status_id)
+        build_status_read_statement(current_user).where(PlaceStatus.id == status_id)
     ).one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail=f"Status with id {status_id} was not found")
@@ -117,6 +126,7 @@ def get_status(
 def create_status(
     status_data: PlaceStatusCreate,
     database_session: Session = Depends(get_db),
+    _: User = Depends(require_admin),
 ) -> PlaceStatusRead:
     place_status = PlaceStatus(
         name=status_data.name,
@@ -147,6 +157,7 @@ def update_status(
     status_id: UUID,
     status_data: PlaceStatusUpdate,
     database_session: Session = Depends(get_db),
+    _: User = Depends(require_admin),
 ) -> PlaceStatusRead:
     place_status = database_session.get(PlaceStatus, status_id)
     if place_status is None:
@@ -184,6 +195,7 @@ def update_status(
 def delete_status(
     status_id: UUID,
     database_session: Session = Depends(get_db),
+    _: User = Depends(require_admin),
 ) -> Response:
     place_status = database_session.get(PlaceStatus, status_id)
     if place_status is None:

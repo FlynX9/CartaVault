@@ -1,6 +1,7 @@
-import { getJson, sendJson, sendWithoutResponse } from './client'
-import { isRecord, readArray, readDateTime, readNullableNumber, readNumber, readString, readUuid } from './validation'
-import type { CountrySummary, MapCreatePayload, PoiMap } from '../types/map'
+import { getJson, sendJson, sendWithoutResponse, setCsrfToken } from './client'
+import { isRecord, readArray, readBoolean, readDateTime, readNullableNumber, readNumber, readString, readUuid } from './validation'
+import type { CountrySummary, MapCreatePayload, MapInvitation, MapMember, PendingMapInvitation, PoiMap, PublicInvitation } from '../types/map'
+import type { AuthUser } from '../auth/authTypes'
 
 function parseCountrySummary(value: unknown): CountrySummary {
   const context = 'Le pays de la carte'
@@ -18,6 +19,11 @@ export function parseMap(value: unknown): PoiMap {
     effective_center_latitude: readNumber(value, 'effective_center_latitude', context), effective_center_longitude: readNumber(value, 'effective_center_longitude', context), effective_default_zoom: readNumber(value, 'effective_default_zoom', context),
     min_latitude: readNullableNumber(value, 'min_latitude', context), max_latitude: readNullableNumber(value, 'max_latitude', context), min_longitude: readNullableNumber(value, 'min_longitude', context), max_longitude: readNullableNumber(value, 'max_longitude', context),
     created_at: readDateTime(value, 'created_at', context), updated_at: readDateTime(value, 'updated_at', context),
+    owner_id: readUuid(value, 'owner_id', context), is_private: readBoolean(value, 'is_private', context), is_shared: readBoolean(value, 'is_shared', context),
+    current_user_role: readString(value, 'current_user_role', context) as PoiMap['current_user_role'],
+    can_edit: readBoolean(value, 'can_edit', context), can_delete: readBoolean(value, 'can_delete', context),
+    can_manage_members: readBoolean(value, 'can_manage_members', context), can_transfer_ownership: readBoolean(value, 'can_transfer_ownership', context),
+    can_import: readBoolean(value, 'can_import', context), can_export: readBoolean(value, 'can_export', context),
   }
 }
 
@@ -32,4 +38,54 @@ export async function createMap(payload: MapCreatePayload): Promise<PoiMap> {
 
 export async function deleteMap(mapId: string): Promise<void> {
   await sendWithoutResponse(`/maps/${encodeURIComponent(mapId)}`, 'DELETE')
+}
+
+export async function getMapMembers(mapId: string, signal?: AbortSignal): Promise<MapMember[]> {
+  return getJson(`/maps/${encodeURIComponent(mapId)}/members`, new URLSearchParams(), signal) as Promise<MapMember[]>
+}
+
+export async function updateMapMember(mapId: string, userId: string, role: 'editor' | 'viewer'): Promise<MapMember> {
+  return sendJson(`/maps/${encodeURIComponent(mapId)}/members/${encodeURIComponent(userId)}`, 'PATCH', { role }) as Promise<MapMember>
+}
+
+export async function removeMapMember(mapId: string, userId: string): Promise<void> {
+  await sendWithoutResponse(`/maps/${encodeURIComponent(mapId)}/members/${encodeURIComponent(userId)}`, 'DELETE')
+}
+
+export async function getMapInvitations(mapId: string, signal?: AbortSignal): Promise<MapInvitation[]> {
+  return getJson(`/maps/${encodeURIComponent(mapId)}/invitations`, new URLSearchParams(), signal) as Promise<MapInvitation[]>
+}
+
+export async function createMapInvitation(mapId: string, email: string, role: 'editor' | 'viewer'): Promise<MapInvitation> {
+  return sendJson(`/maps/${encodeURIComponent(mapId)}/invitations`, 'POST', { email, role }) as Promise<MapInvitation>
+}
+
+export async function revokeMapInvitation(mapId: string, invitationId: string): Promise<void> {
+  await sendWithoutResponse(`/maps/${encodeURIComponent(mapId)}/invitations/${encodeURIComponent(invitationId)}`, 'DELETE')
+}
+
+export async function transferMapOwnership(mapId: string, userId: string): Promise<PoiMap> {
+  return parseMap(await sendJson(`/maps/${encodeURIComponent(mapId)}/transfer-ownership`, 'POST', { new_owner_user_id: userId }))
+}
+
+export async function getInvitation(token: string, signal?: AbortSignal): Promise<PublicInvitation> {
+  return getJson(`/invitations/${encodeURIComponent(token)}`, new URLSearchParams(), signal) as Promise<PublicInvitation>
+}
+
+export async function acceptInvitation(token: string, account?: { display_name: string; password: string }): Promise<AuthUser> {
+  const user = await sendJson(`/invitations/${encodeURIComponent(token)}/accept`, 'POST', account ?? {}) as AuthUser
+  setCsrfToken(user.csrf_token)
+  return user
+}
+
+export async function getPendingMapInvitations(signal?: AbortSignal): Promise<PendingMapInvitation[]> {
+  return getJson('/invitations/pending', new URLSearchParams(), signal) as Promise<PendingMapInvitation[]>
+}
+
+export async function acceptPendingMapInvitation(invitationId: string): Promise<void> {
+  await sendWithoutResponse(`/invitations/pending/${encodeURIComponent(invitationId)}/accept`, 'POST')
+}
+
+export async function declinePendingMapInvitation(invitationId: string): Promise<void> {
+  await sendWithoutResponse(`/invitations/pending/${encodeURIComponent(invitationId)}/decline`, 'POST')
 }

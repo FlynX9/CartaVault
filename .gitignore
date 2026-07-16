@@ -21,8 +21,8 @@ Thumbs.db
 backend/storage/
 
 # Pytest
-backend/.pytest_tmp/
-backend/.pytest_cache/
+backend/.pytest_tmp*/
+backend/.pytest_cache*/
 
 # Test coverage reports
 .coverage

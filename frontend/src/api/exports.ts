@@ -9,7 +9,7 @@ export async function createKmzExport(mapId: string, options: KmzExportOptions):
 }
 
 export async function downloadKmzExport(url: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}${url}`)
+  const response = await fetch(`${API_BASE_URL}${url}`, { credentials: 'include' })
   if (!response.ok) throw new Error('Le fichier KMZ a expiré ou est indisponible.')
   return response.blob()
 }

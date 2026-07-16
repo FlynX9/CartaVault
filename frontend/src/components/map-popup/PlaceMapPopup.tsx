@@ -8,9 +8,9 @@ import { PlacePopupActions } from './PlacePopupActions'
 import { PlacePopupGallery } from './PlacePopupGallery'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 
-interface Props { placeId: string; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
+interface Props { placeId: string; canEdit?: boolean; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
 
-export function PlaceMapPopup({ placeId, onEdit, onDeleted, onClose }: Props) {
+export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onClose }: Props) {
   const [place, setPlace] = useState<PlaceDetails | null>(null); const [photos, setPhotos] = useState<Photo[]>([])
   const [detailsLoading, setDetailsLoading] = useState(true); const [photosLoading, setPhotosLoading] = useState(true)
   const [detailsError, setDetailsError] = useState<string | null>(null); const [photosError, setPhotosError] = useState<string | null>(null); const [deleting, setDeleting] = useState(false)
@@ -36,6 +36,6 @@ export function PlaceMapPopup({ placeId, onEdit, onDeleted, onClose }: Props) {
     {place.tags.length > 0 && <section className="popup-tags"><h3>Tags</h3><ul className="popup-chips">{place.tags.map((item) => <li className="tag" key={item.id}>{item.name}</li>)}</ul></section>}
     {place.custom_fields && Object.keys(place.custom_fields).length > 0 && <section className="popup-imported-data"><h3>Données importées</h3><dl className="popup-details">{Object.entries(place.custom_fields).map(([key, value]) => <Fragment key={key}><dt>{key}</dt><dd>{Array.isArray(value) ? value.join(', ') : String(value)}</dd></Fragment>)}</dl></section>}
     {coordinates && <div className="popup-coordinates"><button type="button" aria-label="Copier les coordonnées GPS" title="Copier les coordonnées" onClick={() => void navigator.clipboard?.writeText(coordinates)}>{coordinates}</button></div>}
-    <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
+    <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} canEdit={canEdit} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
   </article>
 }

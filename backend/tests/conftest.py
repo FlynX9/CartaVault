@@ -2,6 +2,8 @@ import os
 import shutil
 from collections.abc import Generator
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, create_engine, text
@@ -10,9 +12,11 @@ from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from app.database import Base, get_db
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
 from app.countries.catalog import load_country_catalog
 from app.countries.models import Country
-from app.maps.models import PoiMap
+from app.maps.models import MapMembership, PoiMap
 from app.main import app
 from app.statuses.models import PlaceStatus
 
@@ -165,9 +169,25 @@ def france_country(database_session: Session) -> Country:
 
 
 @pytest.fixture
-def poi_map(database_session: Session, france_country: Country) -> PoiMap:
-    result = PoiMap(name="France", country_id=france_country.id)
+def auth_user(database_session: Session) -> User:
+    result = User(
+        email=f"owner-{uuid4()}@example.test",
+        display_name="Test owner",
+        password_hash="test-only-not-a-real-password-hash",
+        is_admin=True,
+        is_active=True,
+    )
     database_session.add(result)
+    database_session.flush()
+    return result
+
+
+@pytest.fixture
+def poi_map(database_session: Session, france_country: Country, auth_user: User) -> PoiMap:
+    result = PoiMap(name="France", country_id=france_country.id, owner_id=auth_user.id, is_private=True)
+    database_session.add(result)
+    database_session.flush()
+    database_session.add(MapMembership(map_id=result.id, user_id=auth_user.id, role="owner"))
     database_session.flush()
     return result
 
@@ -206,18 +226,21 @@ def api_client() -> Generator[TestClient, None, None]:
         yield DatabaseAccessForbidden()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=uuid4(), is_admin=True, is_active=True)
 
     try:
         with TestClient(app) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture
 def integration_client(
     database_session: Session,
     photo_storage: Path,
+    auth_user: User,
 ) -> Generator[TestClient, None, None]:
     """Inject the isolated SQLAlchemy session into the FastAPI app."""
 
@@ -227,9 +250,11 @@ def integration_client(
         yield database_session
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = lambda: auth_user
 
     try:
         with TestClient(app) as client:
             yield client
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)

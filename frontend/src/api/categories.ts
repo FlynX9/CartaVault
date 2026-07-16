@@ -11,6 +11,7 @@ export function parseCategory(value: unknown): CategoryRead {
   if (!isRecord(value)) throw new Error(`${context} est invalide.`)
   return {
     id: readUuid(value, 'id', context),
+    map_id: readUuid(value, 'map_id', context),
     name: readString(value, 'name', context),
     description: readNullableString(value, 'description', context),
     icon: readString(value, 'icon', context),
@@ -20,8 +21,10 @@ export function parseCategory(value: unknown): CategoryRead {
 export async function getCategories(
   signal?: AbortSignal,
   q?: string,
+  mapId?: string | null,
 ): Promise<CategoryRead[]> {
   const searchParams = new URLSearchParams()
+  if (mapId) searchParams.set('map_id', mapId)
   if (q !== undefined && q.trim() !== '') searchParams.set('q', q.trim())
   const payload = await getJson('/categories', searchParams, signal)
   if (!Array.isArray(payload)) throw new Error("La liste des catégories est invalide.")

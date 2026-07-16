@@ -11,12 +11,12 @@ function normalizeDescription(value: string): string | null {
   return description === '' ? null : description
 }
 
-export const categoriesConfig: EntityManagementConfig = {
+export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
   singularLabel: 'une catégorie', pluralLabel: 'Catégories', supportsDescription: true, supportsIcon: true,
-  load: (signal, q) => getCategories(signal, q),
+  load: (signal, q) => mapId ? getCategories(signal, q, mapId) : getCategories(signal, q),
   save: async (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim(); const description = normalizeDescription(values.description); const icon = values.icon ?? DEFAULT_CATEGORY_ICON_ID
-    if (entity === null) return createCategory(icon === DEFAULT_CATEGORY_ICON_ID ? { name, description } : { name, description, icon })
+    if (entity === null) return createCategory(icon === DEFAULT_CATEGORY_ICON_ID ? { ...(mapId ? { map_id: mapId } : {}), name, description } : { ...(mapId ? { map_id: mapId } : {}), name, description, icon })
     const payload: CategoryUpdatePayload = {}
     if (name !== entity.name) payload.name = name
     if (description !== (entity.description ?? null)) payload.description = description
@@ -24,14 +24,14 @@ export const categoriesConfig: EntityManagementConfig = {
     return Object.keys(payload).length === 0 ? entity : updateCategory(entity.id, payload)
   },
   remove: deleteCategory,
-}
+})
 
-export const tagsConfig: EntityManagementConfig = {
+export const tagsConfig = (mapId?: string): EntityManagementConfig => ({
   singularLabel: 'un tag', pluralLabel: 'Tags', supportsDescription: false,
-  load: (signal, q) => getTags(signal, q),
+  load: (signal, q) => mapId ? getTags(signal, q, mapId) : getTags(signal, q),
   save: (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim()
-    return entity === null ? createTag({ name }) : name === entity.name ? Promise.resolve(entity) : updateTag(entity.id, { name })
+    return entity === null ? createTag({ ...(mapId ? { map_id: mapId } : {}), name }) : name === entity.name ? Promise.resolve(entity) : updateTag(entity.id, { name })
   },
   remove: deleteTag,
-}
+})

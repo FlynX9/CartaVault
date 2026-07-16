@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import String, text
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,9 @@ class Tag(Base):
     """Database representation of a place tag."""
 
     __tablename__ = "tags"
+    __table_args__ = (
+        Index("tags_map_name_key", "map_id", text("lower(btrim(name))"), unique=True),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -27,7 +30,12 @@ class Tag(Base):
     name: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
-        unique=True,
+    )
+
+    map_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("poi_maps.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     places: Mapped[list["Place"]] = relationship(

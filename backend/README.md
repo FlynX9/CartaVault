@@ -1,5 +1,65 @@
 # Backend de POI Manager
 
+Le routeur `/account` gère le profil personnel, le changement d’e-mail et de mot de passe, les sessions actives, les avatars et la suppression contrôlée. Les avatars JPEG/PNG/WebP sont décodés avec Pillow, recadrés au centre en 256×256 WebP, débarrassés des métadonnées et stockés sous `AVATAR_STORAGE_PATH` (5 Mio et 4096 px maximum). La suppression refuse les propriétaires de cartes et le dernier administrateur actif, puis révoque les sessions et anonymise le compte. Aucun e-mail de validation ni mécanisme 2FA n’est disponible actuellement.
+
+## Authentification, rôles et sécurité
+
+L’API utilise des sessions opaques stockées dans `user_sessions`. Seules les
+empreintes SHA-256 des tokens de session, CSRF et d’invitation sont persistées.
+Le cookie de session est `HttpOnly`, `SameSite=Lax`, limité à `/`, et son attribut
+`Secure` est piloté par `CARTAVAULT_COOKIE_SECURE`. Le frontend renvoie le token
+CSRF lisible dans `X-CSRF-Token` pour toute écriture. Les mots de passe sont
+hachés avec Argon2id et ne sont jamais renvoyés par l’API.
+
+Toutes les cartes sont privées. La matrice V1 est la suivante :
+
+- `owner` : contenu, import/export, membres, suppression et transfert ;
+- `editor` : contenu, photos, catégories/tags, import et export ;
+- `viewer` : lecture et export uniquement ;
+- administrateur global : accès et administration complets.
+
+Une ressource privée inaccessible renvoie `404` afin de ne pas révéler son
+existence ; une action interdite sur une carte visible renvoie `403`. Les
+contrôles sont effectués côté serveur jusqu’aux ressources indirectes (POI,
+photo, catégorie, tag, preview d’import et export temporaire).
+
+## Création du premier administrateur et mise à niveau
+
+Ne démarrez pas une instance existante entre les deux migrations de sécurité.
+Effectuez impérativement une sauvegarde, puis :
+
+```powershell
+python -m alembic upgrade d8f4a2c7e910
+python -m app.cli create-admin
+python -m alembic upgrade head
+```
+
+La commande interactive masque le mot de passe, crée un administrateur actif et
+attribue toutes les cartes orphelines avec leur membership `owner`. Elle refuse
+un e-mail existant. Pour un déploiement automatisé, renseignez temporairement
+`CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL`, `CARTAVAULT_BOOTSTRAP_ADMIN_NAME` et
+`CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD`, puis exécutez
+`python -m app.cli bootstrap-admin` et retirez les secrets de l’environnement.
+La migration finale refuse l’absence d’administrateur actif, les cartes
+orphelines ou toute divergence entre `maps.owner_id` et le membership owner.
+
+Les catégories et tags historiques sont copiés pour chaque carte afin de
+préserver leur disponibilité globale antérieure, puis toutes les associations
+sont remappées. Les nouvelles contraintes et triggers interdisent les
+associations entre cartes. Le statut reste global.
+
+## Variables de sécurité
+
+Outre `DATABASE_URL`, configurez selon l’environnement les variables
+`CARTAVAULT_SESSION_*`, `CARTAVAULT_CSRF_COOKIE_NAME`,
+`CARTAVAULT_INVITATION_HOURS`, `CARTAVAULT_COOKIE_SECURE`,
+`CARTAVAULT_PASSWORD_MIN_LENGTH` et les trois paramètres Argon2. En production,
+activez obligatoirement `CARTAVAULT_COOKIE_SECURE=true` derrière HTTPS.
+
+Les invitations sont valables sept jours par défaut. CartaVault génère un lien
+copiable mais n’envoie aucun e-mail. Le transfert de propriété est transactionnel :
+le nouveau propriétaire doit déjà être membre et l’ancien devient `editor`.
+
 ## Import KMZ
 
 `app/imports/` fournit une prévisualisation sans écriture puis une confirmation

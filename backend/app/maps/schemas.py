@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 from app.countries.schemas import CountrySummary
+from app.auth.schemas import UserRead
 
 
 class MapCreate(BaseModel):
@@ -57,9 +58,74 @@ class MapRead(BaseModel):
     max_longitude: float | None
     created_at: datetime
     updated_at: datetime
+    owner_id: UUID
+    is_private: bool
+    is_shared: bool
+    current_user_role: str
+    can_edit: bool
+    can_delete: bool
+    can_manage_members: bool
+    can_transfer_ownership: bool
+    can_import: bool
+    can_export: bool
 
 
 class MapSummary(BaseModel):
     id: UUID
     name: str
     country: CountrySummary
+
+
+class MembershipRead(BaseModel):
+    user: UserRead
+    role: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class MembershipUpdate(BaseModel):
+    role: str = Field(pattern="^(editor|viewer)$")
+
+
+class InvitationCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    role: str = Field(pattern="^(editor|viewer)$")
+
+
+class InvitationRead(BaseModel):
+    id: UUID
+    map_id: UUID
+    email: str
+    role: str
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None
+    revoked_at: datetime | None
+    invitation_url: str | None = None
+
+
+class InvitationPublicRead(BaseModel):
+    map_name: str
+    email: str
+    role: str
+    expires_at: datetime
+    requires_account: bool
+
+
+class PendingInvitationRead(BaseModel):
+    id: UUID
+    map_id: UUID
+    map_name: str
+    role: str
+    invited_by_display_name: str
+    created_at: datetime
+    expires_at: datetime
+
+
+class InvitationAccept(BaseModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=120)
+    password: str | None = Field(default=None, min_length=12, max_length=1024)
+
+
+class TransferOwnership(BaseModel):
+    new_owner_user_id: UUID

@@ -16,9 +16,13 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.categories.models import Category
 from app.categories.associations import place_categories_table
 from app.categories.schemas import CategoryRead
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
+from app.auth.permissions import require_map_role, require_place_role
 from app.database import get_db
 from app.countries.schemas import CountrySummary
 from app.maps.models import PoiMap
+from app.maps.models import MapMembership
 from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.models import Place
@@ -95,6 +99,7 @@ def place_to_read(
         categories=[
             PlaceCategoryRead(
                 id=category.id,
+                map_id=category.map_id,
                 name=category.name,
                 description=category.description,
                 icon=category.icon,
@@ -105,6 +110,7 @@ def place_to_read(
         tags=[
             TagRead(
                 id=tag.id,
+                map_id=tag.map_id,
                 name=tag.name,
             )
             for tag in place.tags
@@ -184,10 +190,15 @@ def get_places(
     ),
     map_bounds: MapBounds | None = Depends(get_map_bounds),
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[PlaceRead]:
     """Return places using optional search, filters and pagination."""
 
     statement = build_place_read_statement()
+    if not current_user.is_admin:
+        statement = statement.where(
+            Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
+        )
 
     if q is not None:
         search_pattern = f"%{q.strip()}%"
@@ -267,9 +278,11 @@ def get_places(
 def get_place(
     place_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> PlaceRead:
     """Return one place by its UUID."""
 
+    require_place_role(database_session, place_id, current_user, "viewer")
     statement = build_place_read_statement().where(
         Place.id == place_id
     )
@@ -300,14 +313,11 @@ def get_place(
 def create_place(
     place_data: PlaceCreate,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> PlaceRead:
     """Create a new point of interest."""
 
-    if database_session.get(PoiMap, place_data.map_id) is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Map with id {place_data.map_id} was not found",
-        )
+    require_map_role(database_session, place_data.map_id, current_user, "editor")
 
     if place_data.status_id is None:
         place_status = database_session.scalar(
@@ -371,28 +381,19 @@ def update_place(
     place_id: UUID,
     place_data: PlaceUpdate,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> PlaceRead:
     """Partially update an existing place."""
 
-    place = database_session.get(Place, place_id)
-
-    if place is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Place with id {place_id} was not found",
-        )
+    place = require_place_role(database_session, place_id, current_user, "editor")
 
     supplied_data = place_data.model_dump(exclude_unset=True)
 
     requested_map_id = supplied_data.get("map_id")
-    if requested_map_id is not None and database_session.get(
-        PoiMap,
-        requested_map_id,
-    ) is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Map with id {requested_map_id} was not found",
-        )
+    if requested_map_id is not None:
+        require_map_role(database_session, requested_map_id, current_user, "editor")
+        if requested_map_id != place.map_id and (place.categories or place.tags):
+            raise HTTPException(status_code=409, detail="Remove map-scoped categories and tags before moving the place")
 
     requested_status_id = supplied_data.get("status_id")
     if requested_status_id is not None:
@@ -442,16 +443,11 @@ def update_place(
 def delete_place(
     place_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """Delete an existing place."""
 
-    place = database_session.get(Place, place_id)
-
-    if place is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Place with id {place_id} was not found",
-        )
+    place = require_place_role(database_session, place_id, current_user, "editor")
 
     try:
         database_session.delete(place)
@@ -478,6 +474,7 @@ def add_category_to_place(
     place_id: UUID,
     category_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> PlaceRead:
     """Assign a category to a place."""
 
@@ -495,6 +492,7 @@ def add_category_to_place(
             detail=f"Place with id {place_id} was not found",
         )
 
+    require_map_role(database_session, place.map_id, current_user, "editor")
     category = database_session.get(Category, category_id)
 
     if category is None:
@@ -502,6 +500,9 @@ def add_category_to_place(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Category with id {category_id} was not found",
         )
+
+    if category.map_id != place.map_id:
+        raise HTTPException(status_code=409, detail="Category and place must belong to the same map")
 
     if category not in place.categories:
         place.categories.append(category)
@@ -534,6 +535,7 @@ def remove_category_from_place(
     place_id: UUID,
     category_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """Remove a category from a place."""
 
@@ -551,6 +553,7 @@ def remove_category_from_place(
             detail=f"Place with id {place_id} was not found",
         )
 
+    require_map_role(database_session, place.map_id, current_user, "editor")
     category = database_session.get(Category, category_id)
 
     if category is None:
@@ -592,6 +595,7 @@ def add_tag_to_place(
     place_id: UUID,
     tag_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> PlaceRead:
     """Assign a tag to a place."""
 
@@ -609,6 +613,7 @@ def add_tag_to_place(
             detail=f"Place with id {place_id} was not found",
         )
 
+    require_map_role(database_session, place.map_id, current_user, "editor")
     tag = database_session.get(Tag, tag_id)
 
     if tag is None:
@@ -616,6 +621,9 @@ def add_tag_to_place(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tag with id {tag_id} was not found",
         )
+
+    if tag.map_id != place.map_id:
+        raise HTTPException(status_code=409, detail="Tag and place must belong to the same map")
 
     if tag not in place.tags:
         place.tags.append(tag)
@@ -638,11 +646,11 @@ def add_tag_to_place(
 
 
 @router.patch("/{place_id}/categories/{category_id}", response_model=PlaceRead)
-def set_primary_category(place_id: UUID, category_id: UUID, database_session: Session = Depends(get_db)) -> PlaceRead:
+def set_primary_category(place_id: UUID, category_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> PlaceRead:
     """Atomically select an already-associated primary category."""
-    if database_session.get(Place, place_id) is None:
-        raise HTTPException(status_code=404, detail=f"Place with id {place_id} was not found")
-    if database_session.get(Category, category_id) is None:
+    place = require_place_role(database_session, place_id, current_user, "editor")
+    category = database_session.get(Category, category_id)
+    if category is None or category.map_id != place.map_id:
         raise HTTPException(status_code=404, detail=f"Category with id {category_id} was not found")
     if database_session.scalar(select(place_categories_table.c.category_id).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id)) is None:
         raise HTTPException(status_code=404, detail="Category is not assigned to the place")
@@ -664,6 +672,7 @@ def remove_tag_from_place(
     place_id: UUID,
     tag_id: UUID,
     database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """Remove a tag from a place."""
 
@@ -681,6 +690,7 @@ def remove_tag_from_place(
             detail=f"Place with id {place_id} was not found",
         )
 
+    require_map_role(database_session, place.map_id, current_user, "editor")
     tag = database_session.get(Tag, tag_id)
 
     if tag is None:

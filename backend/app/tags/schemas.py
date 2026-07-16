@@ -11,6 +11,7 @@ class TagCreate(BaseModel):
         min_length=1,
         max_length=100,
     )
+    map_id: UUID
 
     @field_validator("name", mode="before")
     @classmethod
@@ -50,4 +51,5 @@ class TagRead(BaseModel):
     """Public representation of a tag."""
 
     id: UUID
+    map_id: UUID
     name: str

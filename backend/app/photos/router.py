@@ -17,6 +17,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import get_current_user
+from app.auth.models import User
+from app.auth.permissions import require_photo_role, require_place_role
 from app.photos.models import Photo
 from app.photos.schemas import PhotoCreate, PhotoRead, PhotoReorder, PhotoUpdate
 from app.photos.storage import (
@@ -37,6 +40,22 @@ from app.places.models import Place
 router = APIRouter(
     tags=["photos"],
 )
+
+
+def require_place_viewer(place_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Place:
+    return require_place_role(database_session, place_id, current_user, "viewer")
+
+
+def require_place_editor(place_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Place:
+    return require_place_role(database_session, place_id, current_user, "editor")
+
+
+def require_photo_viewer(photo_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Photo:
+    return require_photo_role(database_session, photo_id, current_user, "viewer")
+
+
+def require_photo_editor(photo_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Photo:
+    return require_photo_role(database_session, photo_id, current_user, "editor")
 
 
 def build_photo_read_statement():
@@ -63,6 +82,7 @@ def build_photo_read_statement():
 def get_place_photos(
     place_id: UUID,
     database_session: Session = Depends(get_db),
+    _: Place = Depends(require_place_viewer),
 ) -> list[PhotoRead]:
     """Return photo metadata associated with one place."""
 
@@ -96,6 +116,7 @@ def create_place_photo(
     place_id: UUID,
     photo_data: PhotoCreate,
     database_session: Session = Depends(get_db),
+    _: Place = Depends(require_place_editor),
 ) -> PhotoRead:
     """Create photo metadata associated with one place."""
 
@@ -171,6 +192,7 @@ def upload_place_photo(
     description: str | None = Form(default=None),
     taken_at: date | None = Form(default=None),
     database_session: Session = Depends(get_db),
+    _: Place = Depends(require_place_editor),
 ) -> PhotoRead:
     """Store an image and create its associated database metadata."""
 
@@ -267,6 +289,7 @@ def upload_place_photo(
 def get_photo(
     photo_id: UUID,
     database_session: Session = Depends(get_db),
+    _: Photo = Depends(require_photo_viewer),
 ) -> PhotoRead:
     """Return photo metadata by UUID."""
 
@@ -300,6 +323,7 @@ def get_photo(
 def get_photo_file(
     photo_id: UUID,
     database_session: Session = Depends(get_db),
+    _: Photo = Depends(require_photo_viewer),
 ) -> FileResponse:
     """Serve one safely resolved physical photo file."""
 
@@ -355,6 +379,7 @@ def update_photo(
     photo_id: UUID,
     photo_data: PhotoUpdate,
     database_session: Session = Depends(get_db),
+    _: Photo = Depends(require_photo_editor),
 ) -> PhotoRead:
     """Partially update photo metadata."""
 
@@ -408,6 +433,7 @@ def reorder_place_photos(
     place_id: UUID,
     reorder_data: PhotoReorder,
     database_session: Session = Depends(get_db),
+    _: Place = Depends(require_place_editor),
 ) -> list[PhotoRead]:
     """Persist one complete, ordered photo list atomically."""
     if database_session.scalar(select(Place).where(Place.id == place_id).with_for_update()) is None:
@@ -434,6 +460,7 @@ def reorder_place_photos(
 def delete_photo(
     photo_id: UUID,
     database_session: Session = Depends(get_db),
+    _: Photo = Depends(require_photo_editor),
 ) -> Response:
     """Delete only the photo metadata row."""
 

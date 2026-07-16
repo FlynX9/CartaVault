@@ -8,9 +8,13 @@ import { deleteMap, getMaps } from './api/maps'
 import { getPlaceDetails } from './api/places'
 import App from './App'
 
-vi.mock('./api/maps', () => ({ getMaps: vi.fn(), deleteMap: vi.fn() }))
+vi.mock('./api/maps', () => ({ getMaps: vi.fn(), deleteMap: vi.fn(), getPendingMapInvitations: vi.fn(() => Promise.resolve([])), acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn() }))
+vi.mock('./api/users', () => ({ getUsers: vi.fn(() => Promise.resolve([])), createUser: vi.fn(), updateUser: vi.fn(), resetUserPassword: vi.fn() }))
+vi.mock('./auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-id', email: 'admin@example.test', display_name: 'Admin', is_admin: true, is_active: true }, loading: false, logout: vi.fn(), refresh: vi.fn(), login: vi.fn() }) }))
+vi.mock('./auth/RequireAuth', () => ({ RequireAuth: ({ children }: { children: ReactNode }) => children }))
 vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve([])), getPlaces: vi.fn(() => Promise.resolve([])), getPlaceDetails: vi.fn(() => Promise.resolve({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] })) }))
 vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ placeId, onClose }: { placeId: string; onClose: () => void }) => <div role="dialog">Popup {placeId}<button onClick={onClose}>Fermer popup</button></div> }))
+vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
 vi.mock('./pages/MapPage', () => ({ MapPage: ({ placeList, sidebar, popupContent, focusRequest, selectedPlaceId, onPlaceSelect }: { placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button>{placeList}{popupContent}{sidebar}</div> }))
 
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -37,6 +41,15 @@ describe('map URL workspace', () => {
     expect(screen.getByRole('heading', { name: 'Créer une carte' })).toBeVisible()
   })
 
+  it('opens administration over the persistent map instead of navigating to a page', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Administration' }))
+    expect(await screen.findByRole('heading', { name: 'Utilisateurs' })).toBeVisible()
+    expect(screen.getByTestId('workspace')).toBeVisible()
+    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
+    expect(screen.getByRole('button', { name: 'Administration' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('reports refusal when deleting a map from the maps panel', async () => {
     vi.mocked(deleteMap).mockRejectedValue(new ApiError(409, 'Conflict'))
     vi.stubGlobal('confirm', vi.fn(() => true))
@@ -59,6 +72,33 @@ describe('map URL workspace', () => {
     render(<MemoryRouter initialEntries={[`/places/place-id?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
     expect(screen.getByTestId('workspace')).toBeVisible()
+  })
+
+  it('removes a revoked active map when access is refreshed', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+    await waitFor(() => expect(getMaps).toHaveBeenCalled())
+    const callsBeforeRevocation = vi.mocked(getMaps).mock.calls.length
+    vi.mocked(getMaps).mockResolvedValue([])
+
+    fireEvent.focus(window)
+
+    await waitFor(() => expect(getMaps).toHaveBeenCalledTimes(callsBeforeRevocation + 1))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(/^\/$/))
+  })
+
+  it('refreshes map access silently without hiding the current catalog', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+    await waitFor(() => expect(getMaps).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    expect(await screen.findByRole('button', { name: 'Ouvrir Carte France' })).toBeVisible()
+
+    let resolveRefresh!: (maps: typeof MAP[]) => void
+    vi.mocked(getMaps).mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve }))
+    fireEvent.focus(window)
+
+    expect(screen.getByRole('button', { name: 'Ouvrir Carte France' })).toBeVisible()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    resolveRefresh([MAP])
   })
 
   it('does not restore an aborted direct URL selection after closing the popup', async () => {

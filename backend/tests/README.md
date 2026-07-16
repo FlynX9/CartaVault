@@ -1,5 +1,21 @@
 # Tests du backend POI Manager
 
+`test_account.py` vérifie le profil personnel, les changements sensibles, l’absence de secrets dans les sessions et l’anonymisation. Toutes les opérations d’intégration utilisent exclusivement `TEST_DATABASE_URL`.
+
+## Sécurité multi-utilisateur
+
+La suite couvre les sessions, cookies, CSRF, comptes actifs/inactifs, protection
+du dernier administrateur, rôles par carte, invitations, transfert de propriété,
+anti-IDOR, catégories/tags par carte et isolation des imports/exports temporaires.
+Les scénarios destructifs et cycles Alembic exigent que `TEST_DATABASE_URL`
+cible exactement `poi_manager_test`; le nom est affiché seul avant l’opération.
+Ils ne doivent jamais utiliser `DATABASE_URL` ni être exécutés sur `poi_manager`.
+
+Le cycle des migrations multi-utilisateur est : révision précédente →
+`d8f4a2c7e910`, bootstrap d’un administrateur de test et attribution des cartes,
+`e5b9c3d1a742`, downgrade, puis upgrade final. La base de test est restaurée à
+`head` après vérification.
+
 ## Tests des statuts et migrations
 
 Les migrations des icônes de catégories et de `place_categories.is_primary` doivent être cyclées exclusivement contre `TEST_DATABASE_URL` visant `poi_manager_test`. Ne lancez jamais un downgrade sur `poi_manager`.

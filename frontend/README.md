@@ -1,5 +1,28 @@
 # Frontend cartographique de POI Manager
 
+Le bouton utilisateur ouvre une grande modale Compte au-dessus du workspace, sans remonter Leaflet. Elle regroupe Profil, Sécurité, Sessions actives, Préférences, Administration pour les administrateurs et Zone sensible. Les préférences restent locales au navigateur ; l’avatar utilise les initiales comme fallback.
+
+## Authentification et partage privé
+
+Au démarrage, `AuthProvider` restaure la session avec `/auth/me`. Aucun token
+d’authentification n’est placé dans `localStorage` : le client central envoie le
+cookie avec `credentials: "include"` et ajoute automatiquement le token CSRF aux
+écritures. Une session expirée réinitialise l’état utilisateur et revient à la
+connexion sans boucle de requêtes.
+
+Le catalogue affiche le rôle courant et adapte les actions aux permissions
+renvoyées par l’API. Un lecteur consulte et exporte ; un éditeur gère le contenu
+et importe ; un propriétaire gère aussi les membres, invitations, suppression et
+transfert. L’administration des utilisateurs n’est visible que pour un
+administrateur global. Les invitations utilisent un lien copiable : aucun e-mail
+n’est envoyé. La route `/invitations/:token` permet la connexion d’un compte
+existant ou la création contrôlée du compte correspondant à l’adresse invitée.
+
+L’entrée **Admin** ouvre la gestion des utilisateurs dans le même panneau
+latéral flottant que Cartes, Lieux, Catégories, Tags et Statuts, sans démonter la
+carte. Le panneau Statuts reste une rubrique autonome : il n’est pas dupliqué
+dans l’administration globale.
+
 ## Gestion des photos
 
 Le panneau d’édition fournit l’upload multiple JPEG, PNG et WebP (20 Mio par
@@ -74,12 +97,17 @@ Copy-Item .env.example .env
 Le fichier `.env` local est ignoré par Git. La variable disponible est :
 
 ```dotenv
-VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_API_BASE_URL=
 VITE_STADIA_MAPS_API_KEY=
 ```
 
-L'URL est normalisée par `src/config.ts`, afin qu'une barre oblique finale ne
-produise pas de doubles `/` dans les appels API.
+Laisser `VITE_API_BASE_URL` vide en développement utilise `/api`. Le proxy Vite
+transmet ces requêtes à `http://127.0.0.1:8000` tout en conservant, côté
+navigateur, la même origine que l’interface. Le cookie de session
+`SameSite=Lax` est ainsi transmis que Vite soit ouvert avec `localhost` ou
+`127.0.0.1`. Une URL explicite reste prioritaire et doit être configurée pour
+un déploiement sans reverse proxy `/api`. Elle est normalisée par
+`src/config.ts` afin qu’une barre oblique finale ne produise pas de doubles `/`.
 
 ## Fonds cartographiques
 

@@ -9,13 +9,14 @@ pytestmark = pytest.mark.integration
 
 def test_tag_crud_search_conflict_and_delete(
     integration_client: TestClient,
+    poi_map,
 ) -> None:
     initial_name = f"Pytest Tag {uuid4().hex}"
     updated_name = f"Updated Tag {uuid4().hex}"
 
     created = integration_client.post(
         "/tags",
-        json={"name": initial_name},
+        json={"map_id": str(poi_map.id), "name": initial_name},
     )
     assert created.status_code == 201
     tag_id = created.json()["id"]
@@ -26,14 +27,14 @@ def test_tag_crud_search_conflict_and_delete(
 
     searched = integration_client.get(
         "/tags",
-        params={"q": initial_name.swapcase()},
+        params={"map_id": str(poi_map.id), "q": initial_name.swapcase()},
     )
     assert searched.status_code == 200
     assert tag_id in {tag["id"] for tag in searched.json()}
 
     duplicate = integration_client.post(
         "/tags",
-        json={"name": initial_name},
+        json={"map_id": str(poi_map.id), "name": initial_name},
     )
     assert duplicate.status_code == 409
 

@@ -4,16 +4,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCategories } from '../../api/categories'
 import { getStatuses } from '../../api/statuses'
 import { getTags } from '../../api/tags'
-import { CategoriesWorkspacePanel, StatusesWorkspacePanel, TagsWorkspacePanel } from './WorkspaceManagementPanels'
+import { getUsers } from '../../api/users'
+import { CategoriesWorkspacePanel, StatusesWorkspacePanel, TagsWorkspacePanel, UsersWorkspacePanel } from './WorkspaceManagementPanels'
 
 vi.mock('../../api/categories', () => ({ getCategories: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), deleteCategory: vi.fn() }))
 vi.mock('../../api/tags', () => ({ getTags: vi.fn(), createTag: vi.fn(), updateTag: vi.fn(), deleteTag: vi.fn() }))
 vi.mock('../../api/statuses', () => ({ getStatuses: vi.fn(), createStatus: vi.fn(), updateStatus: vi.fn(), deleteStatus: vi.fn() }))
+vi.mock('../../api/users', () => ({ getUsers: vi.fn(), createUser: vi.fn(), updateUser: vi.fn(), resetUserPassword: vi.fn() }))
 
 beforeEach(() => {
   vi.mocked(getCategories).mockResolvedValue([{ id: 'category-id', name: 'Patrimoine', description: 'Ancien bâti', icon: 'mdi:castle' }])
   vi.mocked(getTags).mockResolvedValue([{ id: 'tag-id', name: 'Historique' }])
   vi.mocked(getStatuses).mockResolvedValue([{ id: 'status-id', name: 'À voir', slug: 'a-voir', color: '#2563EB', sort_order: 10, is_default: false, is_active: true, places_count: 2, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' }])
+  vi.mocked(getUsers).mockResolvedValue([{ id: 'user-id', email: 'admin@example.test', display_name: 'Marie Admin', is_admin: true, is_active: true, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', last_login_at: null }])
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
@@ -46,5 +49,16 @@ describe('workspace management panels', () => {
     expect(screen.getByRole('button', { name: 'Créer un statut' })).toHaveClass('panel-icon-button')
     expect(screen.getByRole('button', { name: 'Modifier À voir' })).toHaveClass('panel-icon-button')
     expect(screen.getByRole('button', { name: 'Supprimer À voir' })).toHaveClass('panel-icon-button')
+  })
+
+  it('renders administration as a closable users panel without duplicating statuses', async () => {
+    const onClose = vi.fn()
+    render(<UsersWorkspacePanel onClose={onClose} />)
+    expect(await screen.findByText('Marie Admin')).toBeVisible()
+    expect(document.getElementById('workspace-admin-panel')).toHaveClass('cv-workspace-panel')
+    expect(screen.getByPlaceholderText('Rechercher un utilisateur').closest('label')).toHaveClass('cv-workspace-panel__search')
+    expect(screen.queryByText('Statuts de suivi')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer le panneau' }))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

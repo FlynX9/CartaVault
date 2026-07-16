@@ -16,6 +16,7 @@ class CategoryCreate(BaseModel):
         min_length=1,
         max_length=100,
     )
+    map_id: UUID
 
     description: str | None = None
     icon: str = DEFAULT_CATEGORY_ICON_ID
@@ -67,6 +68,7 @@ class CategoryRead(BaseModel):
     """Public representation of a category."""
 
     id: UUID
+    map_id: UUID
     name: str
     description: str | None
     icon: str

@@ -5,11 +5,12 @@ import { isRecord, readString, readUuid } from './validation'
 export function parseTag(value: unknown): TagRead {
   const context = "Le tag renvoyé par l'API"
   if (!isRecord(value)) throw new Error(`${context} est invalide.`)
-  return { id: readUuid(value, 'id', context), name: readString(value, 'name', context) }
+  return { id: readUuid(value, 'id', context), map_id: readUuid(value, 'map_id', context), name: readString(value, 'name', context) }
 }
 
-export async function getTags(signal?: AbortSignal, q?: string): Promise<TagRead[]> {
+export async function getTags(signal?: AbortSignal, q?: string, mapId?: string | null): Promise<TagRead[]> {
   const searchParams = new URLSearchParams()
+  if (mapId) searchParams.set('map_id', mapId)
   if (q !== undefined && q.trim() !== '') searchParams.set('q', q.trim())
   const payload = await getJson('/tags', searchParams, signal)
   if (!Array.isArray(payload)) throw new Error("La liste des tags est invalide.")
