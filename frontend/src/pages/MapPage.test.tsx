@@ -43,6 +43,7 @@ describe('MapPage', () => {
     expect(screen.getByLabelText('Liste de test')).toBeVisible()
     expect(screen.getByLabelText('Volet de test')).toBeVisible()
     expect(screen.getByLabelText('Légende des statuts')).toHaveTextContent('À faire')
+    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Satellite' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'satellite')
     fireEvent.click(screen.getByRole('button', { name: "Simuler l'erreur de tuiles" }))

@@ -1594,7 +1594,8 @@ button {
 .status-legend strong { display: block; margin-bottom: 0.35rem; }
 .status-legend ul { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
 .status-legend li { display: flex; align-items: center; gap: 0.45rem; }
-.basemap-selector { position: absolute; z-index: 800; top: 0.75rem; right: 0.75rem; margin: 0; padding: 0.35rem; color: #183528; background: rgb(255 255 255 / 96%); border: 1px solid rgb(23 61 45 / 22%); border-radius: 0.65rem; box-shadow: 0 5px 16px rgb(16 45 32 / 18%); backdrop-filter: blur(6px); }
+.basemap-selector { position: absolute; z-index: 800; top: 0.75rem; right: 0.75rem; margin: 0; padding: 0.35rem; overflow: hidden; color: #183528; background: rgb(255 255 255 / 96%); border: 1px solid rgb(23 61 45 / 22%); border-radius: 0.65rem; box-shadow: 0 5px 16px rgb(16 45 32 / 18%); backdrop-filter: blur(6px); transition: box-shadow 160ms ease; }
+.basemap-selector--expanded { box-shadow: 0 8px 22px rgb(16 45 32 / 20%); }
 .basemap-selector legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .basemap-selector-options { display: flex; gap: 0.2rem; }
 .basemap-selector button, .basemap-error button { min-height: 2rem; padding: 0.35rem 0.55rem; color: #244737; background: transparent; border: 1px solid transparent; border-radius: 0.4rem; cursor: pointer; font-size: 0.72rem; font-weight: 750; }
