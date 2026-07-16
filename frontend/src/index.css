@@ -1741,14 +1741,16 @@ button {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.place-list-item { grid-template-columns: 0.65rem 2.25rem minmax(0, 1fr); align-items: center; gap: 0.65rem; min-height: 4.65rem; }
-.place-list-status-dot { width: 0.58rem; height: 0.58rem; border-radius: 50%; box-shadow: 0 0 0 2px var(--cv-color-off-white); }
-.place-list-category-bubble { display: grid; width: 2.25rem; height: 2.25rem; place-items: center; color: var(--cv-color-teal); background: white; border: 1px solid rgb(43 62 89 / 12%); border-radius: 50%; }
-.place-list-category-bubble svg { flex: 0 0 auto; }
-.place-list-item-content { display: grid; min-width: 0; gap: 0.32rem; }
+.place-list-item { grid-template-columns: 2rem minmax(0, 1fr); align-items: center; gap: 0.55rem; min-height: 3.55rem; padding: 0.52rem 0.62rem; }
+.place-list-category-bubble { display: grid; width: 2rem; height: 2rem; place-items: center; color: white; background: var(--cv-color-slate); border: 1px solid var(--cv-color-slate); border-radius: 50%; box-shadow: 0 1px 3px rgb(13 27 42 / 14%); }
+.place-list-category-bubble .category-icon-preview { color: white; }
+.place-list-category-bubble .category-icon-preview svg { flex: 0 0 auto; color: white; }
+.place-list-item-content { display: grid; min-width: 0; gap: 0.16rem; }
 .place-list-item-content strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.place-list-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.place-list-item .place-list-tag { display: inline-flex; width: fit-content; max-width: 100%; padding: 0.2rem 0.45rem; color: var(--cv-color-slate); background: rgb(15 166 138 / 10%); border-radius: 999px; font-size: 0.68rem; line-height: 1.15; }
+.place-list-item-meta { display: flex; min-width: 0; align-items: center; gap: 0.28rem; overflow: hidden; color: var(--cv-color-gray); font-size: 0.67rem; line-height: 1.2; white-space: nowrap; }
+.place-list-item-meta span { overflow: hidden; text-overflow: ellipsis; }
+.place-list-tags { display: flex; flex-wrap: wrap; gap: 0.22rem; margin-top: 0.08rem; }
+.place-list-item .place-list-tag { display: inline-flex; width: fit-content; max-width: 100%; padding: 0.12rem 0.32rem; color: var(--cv-color-slate); background: rgb(15 166 138 / 10%); border-radius: 0.3rem; font-size: 0.62rem; line-height: 1.15; }
 
 /* Shared workspace panels sit as cards below the application top bar. */
 @media (min-width: 761px) {
