@@ -254,7 +254,9 @@ La feature `app/trips/` gère les voyages, journées, étapes et nuits de façon
 
 Le routage est fourni par une abstraction backend. L’implémentation actuelle utilise OSRM via `ROUTING_OSRM_BASE_URL`, avec délai d’attente et limite de points configurables. Aucune requête OSRM n’est effectuée directement par le navigateur. Les parcours calculés sont stockés dans `trip_days`, invalidés après une modification d’ordre et recalculés sur demande.
 
-Les unités persistées et retournées restent numériques : `route_distance_meters` est exprimé en mètres et `route_duration_seconds` en secondes. Les résumés dérivent aussi les kilomètres et minutes, sans inclure les visites ou les temps annexes dans ces métriques routières. Une route n’est actuelle que lorsque `route_status == "ready"` et que ses deux mesures existent. Les journées absentes ou `stale` sont exclues des sommes routières et rendent `is_route_summary_complete` faux. Aucun champ supplémentaire en base n’est requis pour ces synthèses.
+Les unités persistées et retournées restent numériques : `route_distance_meters` est exprimé en mètres et `route_duration_seconds` en secondes. Les résumés dérivent aussi les kilomètres et minutes, sans inclure les visites ou les temps annexes dans ces métriques routières. Une route n’est actuelle que lorsque `route_status == "ready"` et que ses deux mesures existent. Les journées absentes ou `stale` sont exclues des sommes routières et rendent `is_route_summary_complete` faux.
+
+La planification temporelle est centralisée dans `app.trips.summary_service` et suit exclusivement la formule `conduite + visites + tampon + marge de sécurité`. Le tampon s’applique entre deux `TripStop` consécutifs ; départs et nuits ne le déclenchent pas. La marge est fixe ou calculée avec un arrondi supérieur en pourcentage. Aucune pause n’est stockée ou calculée. `target_arrival_time` produit un départ recommandé et `planned_start_time` une arrivée estimée avec décalage de jour. Les seuils et couleurs de charge sont persistés sur le voyage et modifiables par un éditeur.
 
 ## Arborescence du backend
 

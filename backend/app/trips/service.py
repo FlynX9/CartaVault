@@ -9,6 +9,15 @@ from sqlalchemy.orm import Session, selectinload
 from app.places.models import Place
 from app.trips.models import Trip, TripDay, TripNight, TripStop
 from app.trips.routing.base import RoutingError, RoutingProvider
+from app.trips.summary_service import day_summary
+
+
+DAY_COLOR_PALETTE = ("#0FA68A", "#2563EB", "#9333EA", "#D97706", "#DC2626", "#0891B2", "#65A30D", "#DB2777")
+
+
+def next_day_color(days: list[TripDay]) -> str:
+    used = {day.color.upper() for day in days if getattr(day, "color", None)}
+    return next((color for color in DAY_COLOR_PALETTE if color not in used), DAY_COLOR_PALETTE[len(days) % len(DAY_COLOR_PALETTE)])
 
 
 def load_trip(session: Session, trip_id: UUID) -> Trip:
@@ -19,6 +28,7 @@ def load_trip(session: Session, trip_id: UUID) -> Trip:
             selectinload(Trip.days).selectinload(TripDay.stops),
             selectinload(Trip.nights),
             selectinload(Trip.departure),
+            selectinload(Trip.arrival),
         )
         .execution_options(populate_existing=True)
     )
@@ -58,6 +68,10 @@ def day_coordinates(day: TripDay) -> tuple[list[tuple[float, float]], list[str]]
         coordinates.append((stop.longitude, stop.latitude)); labels.append(f"stop:{stop.id}")
     if day.next_night:
         coordinates.append((day.next_night.longitude, day.next_night.latitude)); labels.append(f"night:{day.next_night.id}")
+    elif day.day_number == len(day.trip.days):
+        arrival = getattr(day.trip, "arrival", None) or getattr(day.trip, "departure", None)
+        if arrival:
+            coordinates.append((arrival.longitude, arrival.latitude)); labels.append(f"arrival:{arrival.id}")
     return coordinates, labels
 
 
@@ -70,8 +84,9 @@ def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvide
     day.route_distance_meters = result.distance_meters
     day.route_duration_seconds = result.duration_seconds
     day.route_segments = [{**segment, "from": labels[index], "to": labels[index + 1], "routable": True} for index, segment in enumerate(result.segments)]
-    day.visit_duration_minutes = sum(stop.visit_duration_minutes or 0 for stop in day.stops)
-    day.total_duration_minutes = round(result.duration_seconds / 60) + day.visit_duration_minutes
     day.route_status = "ready"
+    metrics = day_summary(day)
+    day.visit_duration_minutes = metrics["visit_duration_minutes"]
+    day.total_duration_minutes = metrics["total_duration_minutes"]
     session.commit()
     return day

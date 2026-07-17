@@ -40,6 +40,7 @@ interface PoiMapProps {
   onDraftPositionChange?: (position: DraftPosition) => void
   markerFilter?: MapMarkerFilter
   trip?: Trip | null
+  tripViewOnly?: boolean
   activeTripDayId?: string | null
   onTripPlaceAdd?: (place: MapPlace) => void
 }
@@ -124,11 +125,13 @@ export function PoiMap({
   onDraftPositionChange = () => undefined,
   markerFilter = { query: '', categoryId: '', statusId: null, tagId: '' },
   trip = null,
+  tripViewOnly = false,
   activeTripDayId = null,
   onTripPlaceAdd,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const matchesMarkerFilter = (place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.categories.some((category) => category.id === markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tags.some((tag) => tag.id === markerFilter.tagId))
+  const tripPlaceIds = new Set(trip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])
   return (
     <MapContainer
       center={initialView.center}
@@ -152,13 +155,13 @@ export function PoiMap({
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
-      {places.filter((place) => place.id !== draftPlaceId).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onDoubleClick={onTripPlaceAdd ? () => onTripPlaceAdd(place) : undefined} onPopupClose={onPopupClose} />)}
-      {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} />}
+      {places.filter((place) => place.id !== draftPlaceId && (!tripViewOnly || tripPlaceIds.has(place.id))).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onDoubleClick={onTripPlaceAdd ? () => onTripPlaceAdd(place) : undefined} onPopupClose={onPopupClose} />)}
+      {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} showAllDays={tripViewOnly} />}
     </MapContainer>
   )
 }
 
-const TRIP_COLORS = ['#0FA68A', '#3B82F6', '#A855F7', '#F59E0B', '#EF4444']
-function TripOverlay({ trip, activeDayId }: { trip: Trip; activeDayId: string | null }) {
-  return <>{trip.days.map((day, dayIndex) => { const color = TRIP_COLORS[dayIndex % TRIP_COLORS.length]; const active = activeDayId === null || day.id === activeDayId; return <Fragment key={day.id}>{day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 5 : 3, opacity: active ? .9 : .28 }} />}{day.stops.map((stop, index) => <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={active ? 9 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: active ? 1 : .38, weight: 2 }}><Tooltip permanent direction="center" className="trip-stop-number">{index + 1}</Tooltip></CircleMarker>)}</Fragment>})}{trip.departure && <CircleMarker center={[trip.departure.latitude, trip.departure.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#0FA68A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">D</Tooltip></CircleMarker>}{trip.nights.map((night) => <CircleMarker key={night.id} center={[night.latitude, night.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#C8A14A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">H</Tooltip></CircleMarker>)}</>
+const TRIP_COLORS = ['#0FA68A', '#2563EB', '#9333EA', '#D97706', '#DC2626', '#0891B2', '#65A30D', '#DB2777']
+function TripOverlay({ trip, activeDayId, showAllDays }: { trip: Trip; activeDayId: string | null; showAllDays: boolean }) {
+  return <>{trip.days.map((day, dayIndex) => { const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]; const active = showAllDays || activeDayId === null || day.id === activeDayId; return <Fragment key={day.id}>{day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 5 : 3, opacity: active ? .9 : .28 }} />}{day.stops.map((stop, index) => <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={active ? 9 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: active ? 1 : .38, weight: 2 }}><Tooltip permanent direction="center" className="trip-stop-number">{index + 1}</Tooltip></CircleMarker>)}</Fragment>})}{trip.departure && <CircleMarker center={[trip.departure.latitude, trip.departure.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#0FA68A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">D</Tooltip></CircleMarker>}{trip.nights.map((night) => <CircleMarker key={night.id} center={[night.latitude, night.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#C8A14A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">H</Tooltip></CircleMarker>)}</>
 }

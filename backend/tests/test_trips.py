@@ -184,3 +184,59 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     assert updated_departure.status_code == 200
     assert updated_departure.json()["name"] == "Nouveau départ"
     assert integration_client.delete(f"/trip-departures/{departure.json()['id']}").status_code == 204
+
+
+def test_trip_time_planning_settings_summaries_and_permissions(integration_client, database_session, poi_map, auth_user) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Planification horaire"}).json()
+    day = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    stops = [
+        integration_client.post(
+            f"/trip-days/{day['id']}/stops",
+            json={"stop_type": "free_location", "name": f"Visite {index}", "latitude": 48 + index / 10, "longitude": 2 + index / 10, "visit_duration_minutes": 30},
+        ).json()
+        for index in range(2)
+    ]
+    app.dependency_overrides[get_routing_provider] = lambda: StubRoutingProvider()
+    try:
+        routed = integration_client.post(f"/trip-days/{day['id']}/route", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+    assert routed.status_code == 200
+
+    timing = integration_client.patch(
+        f"/trip-days/{day['id']}/timing",
+        json={"target_arrival_time": "10:00", "default_stop_buffer_minutes": 15, "safety_margin_type": "percentage", "safety_margin_value": 10},
+    )
+    assert timing.status_code == 200
+    payload = timing.json()
+    assert payload["buffer_duration_minutes"] == 15
+    assert payload["pause_duration_minutes"] == 0
+    assert payload["recommended_start_time"] is not None
+    assert payload["estimated_arrival_time"] is not None
+    assert payload["load_level"] == "low"
+
+    load = integration_client.patch(
+        f"/trips/{trip['id']}/load-settings",
+        json={"low_load_max_minutes": 60, "medium_load_max_minutes": 90, "low_load_color": "#111111", "medium_load_color": "#222222", "high_load_color": "#333333"},
+    )
+    assert load.status_code == 200
+    summary = integration_client.get(f"/trip-days/{day['id']}/summary")
+    assert summary.status_code == 200
+    assert summary.json()["load_level"] == "high"
+    assert summary.json()["load_color"] == "#333333"
+
+    changed_visit = integration_client.patch(f"/trip-stops/{stops[0]['id']}", json={"visit_duration_minutes": 45})
+    assert changed_visit.status_code == 200
+    reloaded = integration_client.get(f"/trips/{trip['id']}").json()
+    assert reloaded["days"][0]["route_status"] == "ready"
+    assert integration_client.get(f"/trip-days/{day['id']}/summary").json()["visit_duration_minutes"] == 75
+
+    viewer = User(email=f"time-viewer-{uuid4()}@example.test", display_name="Viewer", password_hash="x", is_active=True, is_admin=False)
+    database_session.add(viewer); database_session.flush(); database_session.add(MapMembership(map_id=poi_map.id, user_id=viewer.id, role="viewer")); database_session.flush()
+    app.dependency_overrides[get_current_user] = lambda: viewer
+    try:
+        assert integration_client.get(f"/trip-days/{day['id']}/summary").status_code == 200
+        assert integration_client.patch(f"/trip-days/{day['id']}/timing", json={"target_arrival_time": None, "default_stop_buffer_minutes": 0, "safety_margin_type": "fixed", "safety_margin_value": 0}).status_code == 403
+        assert integration_client.patch(f"/trips/{trip['id']}/load-settings", json={"low_load_max_minutes": 240, "medium_load_max_minutes": 480, "low_load_color": "#0FA68A", "medium_load_color": "#D97706", "high_load_color": "#DC2626"}).status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: auth_user

@@ -16,13 +16,13 @@ from app.exports.temporary_exports import get as get_export
 from app.places.models import Place
 from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
-from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
+from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.optimizer import optimize_matrix, path_cost
-from app.trips.permissions import require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
+from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing import OsrmRoutingProvider
 from app.trips.routing.base import RoutingError, RoutingProvider
-from app.trips.schemas import ApplyPlaceStatuses, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import calculate_day_route, load_trip, normalize_day_order, place_snapshot, stale
+from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripRead, TripSummaryRead, TripUpdate
+from app.trips.service import DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, stale
 from app.trips.summary_service import day_summary, trip_summary
 
 router = APIRouter(tags=["trips"])
@@ -44,7 +44,8 @@ def list_trips(map_id: UUID, session: Session = Depends(get_db), user: User = De
 @router.post("/maps/{map_id}/trips", response_model=TripRead, status_code=201)
 def create_trip(map_id: UUID, data: TripCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_map_role(session, map_id, user, "editor")
-    trip = Trip(map_id=map_id, created_by_user_id=user.id, **data.model_dump()); session.add(trip); session.commit()
+    trip = Trip(map_id=map_id, created_by_user_id=user.id, **data.model_dump()); session.add(trip); session.flush()
+    session.add(TripDay(trip_id=trip.id, day_number=1, sort_order=0, color=DAY_COLOR_PALETTE[0])); session.commit()
     return _trip_read(session, trip.id)
 
 
@@ -63,6 +64,13 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
     session.commit(); return _trip_read(session, trip_id)
 
 
+@router.patch("/trips/{trip_id}/load-settings", response_model=TripRead)
+def update_trip_load_settings(trip_id: UUID, data: TripLoadSettings, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = require_trip_editor(session, trip_id, user).trip
+    for key, value in data.model_dump().items(): setattr(trip, key, value)
+    session.commit(); return _trip_read(session, trip_id)
+
+
 @router.delete("/trips/{trip_id}", status_code=204)
 def remove_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = require_trip_owner(session, trip_id, user).trip; session.delete(trip); session.commit()
@@ -76,21 +84,23 @@ def archive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User =
 @router.post("/trips/{trip_id}/duplicate", response_model=TripRead, status_code=201)
 def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     source = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
-    copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile)
+    copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile, low_load_max_minutes=source.low_load_max_minutes, medium_load_max_minutes=source.medium_load_max_minutes, low_load_color=source.low_load_color, medium_load_color=source.medium_load_color, high_load_color=source.high_load_color)
     session.add(copy); session.flush(); days: dict[UUID, TripDay] = {}
     for item in source.days:
-        day = TripDay(trip_id=copy.id, day_number=item.day_number, date=item.date, title=item.title, notes=item.notes, planned_start_time=item.planned_start_time, planned_end_time=item.planned_end_time, max_total_duration_minutes=item.max_total_duration_minutes, sort_order=item.sort_order)
+        day = TripDay(trip_id=copy.id, day_number=item.day_number, date=item.date, title=item.title, color=item.color, notes=item.notes, planned_start_time=item.planned_start_time, planned_end_time=item.planned_end_time, target_arrival_time=item.target_arrival_time, default_stop_buffer_minutes=item.default_stop_buffer_minutes, safety_margin_type=item.safety_margin_type, safety_margin_value=item.safety_margin_value, max_total_duration_minutes=item.max_total_duration_minutes, sort_order=item.sort_order)
         session.add(day); session.flush(); days[item.id] = day
         for stop in item.stops: session.add(TripStop(trip_day_id=day.id, place_id=stop.place_id, stop_type=stop.stop_type, name=stop.name, latitude=stop.latitude, longitude=stop.longitude, address=stop.address, sort_order=stop.sort_order, visit_duration_minutes=stop.visit_duration_minutes, notes=stop.notes, is_required=stop.is_required, is_locked=stop.is_locked, visit_status="planned"))
     for night in source.nights: session.add(TripNight(trip_id=copy.id, previous_day_id=days[night.previous_day_id].id, next_day_id=days[night.next_day_id].id, place_id=night.place_id, name=night.name, latitude=night.latitude, longitude=night.longitude, address=night.address, notes=night.notes, check_in_time=night.check_in_time, check_out_time=night.check_out_time))
     if source.departure: session.add(TripDeparture(trip_id=copy.id, place_id=source.departure.place_id, name=source.departure.name, latitude=source.departure.latitude, longitude=source.departure.longitude, address=source.departure.address, notes=source.departure.notes, departure_time=source.departure.departure_time))
+    if source.arrival: session.add(TripArrival(trip_id=copy.id, place_id=source.arrival.place_id, name=source.arrival.name, latitude=source.arrival.latitude, longitude=source.arrival.longitude, address=source.arrival.address, notes=source.arrival.notes))
     session.commit(); return _trip_read(session, copy.id)
 
 
 @router.post("/trips/{trip_id}/days", response_model=DayRead, status_code=201)
 def add_day(trip_id: UUID, data: DayCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id); index = len(trip.days)
-    day = TripDay(trip_id=trip.id, day_number=index + 1, sort_order=index, **data.model_dump()); session.add(day); session.commit(); return DayRead.model_validate(day)
+    values = data.model_dump(exclude={"color"})
+    day = TripDay(trip_id=trip.id, day_number=index + 1, sort_order=index, color=data.color or next_day_color(trip.days), **values); session.add(day); session.commit(); return DayRead.model_validate(day)
 
 
 @router.patch("/trip-days/{day_id}", response_model=DayRead)
@@ -100,9 +110,21 @@ def update_day(day_id: UUID, data: DayUpdate, session: Session = Depends(get_db)
     session.commit(); return DayRead.model_validate(day)
 
 
+@router.patch("/trip-days/{day_id}/timing", response_model=DaySummaryRead)
+def update_day_timing(day_id: UUID, data: TripDayTimingUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    day, _ = require_day_role(session, day_id, user, "editor")
+    for key, value in data.model_dump().items(): setattr(day, key, value)
+    metrics = day_summary(day)
+    day.visit_duration_minutes = metrics["visit_duration_minutes"]
+    day.total_duration_minutes = metrics["total_duration_minutes"]
+    session.commit(); return day_summary(day)
+
+
 @router.delete("/trip-days/{day_id}", status_code=204)
 def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    day, access = require_day_role(session, day_id, user, "editor"); trip_id = day.trip_id; session.delete(day); session.flush(); normalize_day_order(load_trip(session, trip_id)); session.commit()
+    day, access = require_day_role(session, day_id, user, "editor")
+    if len(load_trip(session, access.trip.id).days) <= 1: raise HTTPException(422, "A trip must keep at least one day")
+    trip_id = day.trip_id; session.delete(day); session.flush(); normalize_day_order(load_trip(session, trip_id)); session.commit()
 
 
 @router.post("/trips/{trip_id}/days/reorder", response_model=TripRead)
@@ -124,7 +146,7 @@ def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User =
     for day in trip.days: day.sort_order += 10_000; day.day_number += 10_000
     session.flush(); ordered = sorted(trip.days, key=lambda item: item.sort_order); insertion = ordered.index(source) + 1
     for index, item in enumerate(ordered): item.sort_order = index if index < insertion else index + 1; item.day_number = item.sort_order + 1
-    copy = TripDay(trip_id=trip.id, day_number=insertion + 1, sort_order=insertion, date=source.date, title=f"{source.title or f'Jour {source.day_number}'} — copie", notes=source.notes, planned_start_time=source.planned_start_time, planned_end_time=source.planned_end_time, max_total_duration_minutes=source.max_total_duration_minutes)
+    copy = TripDay(trip_id=trip.id, day_number=insertion + 1, sort_order=insertion, date=source.date, title=f"{source.title or f'Jour {source.day_number}'} — copie", color=next_day_color(trip.days), notes=source.notes, planned_start_time=source.planned_start_time, planned_end_time=source.planned_end_time, target_arrival_time=source.target_arrival_time, default_stop_buffer_minutes=source.default_stop_buffer_minutes, safety_margin_type=source.safety_margin_type, safety_margin_value=source.safety_margin_value, max_total_duration_minutes=source.max_total_duration_minutes)
     session.add(copy); session.flush()
     if source.next_night is not None: source.next_night.previous_day = copy
     for stop in source.stops: session.add(TripStop(trip_day_id=copy.id, place_id=stop.place_id, stop_type=stop.stop_type, name=stop.name, latitude=stop.latitude, longitude=stop.longitude, address=stop.address, sort_order=stop.sort_order, visit_duration_minutes=stop.visit_duration_minutes, notes=stop.notes, is_required=stop.is_required, is_locked=stop.is_locked))
@@ -142,8 +164,10 @@ def add_stop(day_id: UUID, data: StopCreate, session: Session = Depends(get_db),
 @router.patch("/trip-stops/{stop_id}", response_model=StopRead)
 def update_stop(stop_id: UUID, data: StopUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     stop, _ = require_stop_role(session, stop_id, user, "editor")
-    for key, value in data.model_dump(exclude_unset=True).items(): setattr(stop, key, value)
-    stale(stop.day); session.commit(); return StopRead.model_validate(stop)
+    values = data.model_dump(exclude_unset=True)
+    for key, value in values.items(): setattr(stop, key, value)
+    if {"latitude", "longitude"} & values.keys(): stale(stop.day)
+    session.commit(); return StopRead.model_validate(stop)
 
 
 @router.delete("/trip-stops/{stop_id}", status_code=204)
@@ -231,7 +255,9 @@ def add_departure(trip_id: UUID, data: DepartureCreate, session: Session = Depen
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude)
     departure = TripDeparture(trip_id=trip.id, **values); session.add(departure)
-    if trip.days: stale(trip.days[0])
+    if trip.days:
+        stale(trip.days[0])
+        stale(trip.days[-1])
     session.commit(); return DepartureRead.model_validate(departure)
 
 
@@ -239,7 +265,9 @@ def add_departure(trip_id: UUID, data: DepartureCreate, session: Session = Depen
 def remove_departure(departure_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     departure, access = require_departure_role(session, departure_id, user, "editor")
     trip = load_trip(session, access.trip.id)
-    if trip.days: stale(trip.days[0])
+    if trip.days:
+        stale(trip.days[0])
+        stale(trip.days[-1])
     session.delete(departure); session.commit()
 
 
@@ -251,14 +279,49 @@ def update_departure(departure_id: UUID, data: DepartureUpdate, session: Session
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude)
     for key, value in values.items(): setattr(departure, key, value)
     trip = load_trip(session, access.trip.id)
-    if trip.days: stale(trip.days[0])
+    if trip.days:
+        stale(trip.days[0])
+        stale(trip.days[-1])
     session.commit(); return DepartureRead.model_validate(departure)
+
+
+@router.post("/trips/{trip_id}/arrival", response_model=ArrivalRead, status_code=201)
+def add_arrival(trip_id: UUID, data: ArrivalCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    if trip.arrival is not None: raise HTTPException(409, "This trip already has an arrival point")
+    values = data.model_dump()
+    if data.place_id:
+        place, latitude, longitude = place_snapshot(session, data.place_id, trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude)
+    arrival = TripArrival(trip_id=trip.id, **values); session.add(arrival)
+    if trip.days: stale(trip.days[-1])
+    session.commit(); return ArrivalRead.model_validate(arrival)
+
+
+@router.patch("/trip-arrivals/{arrival_id}", response_model=ArrivalRead)
+def update_arrival(arrival_id: UUID, data: ArrivalUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    arrival, access = require_arrival_role(session, arrival_id, user, "editor"); values = data.model_dump()
+    if data.place_id:
+        place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude)
+    for key, value in values.items(): setattr(arrival, key, value)
+    trip = load_trip(session, access.trip.id)
+    if trip.days: stale(trip.days[-1])
+    session.commit(); return ArrivalRead.model_validate(arrival)
+
+
+@router.delete("/trip-arrivals/{arrival_id}", status_code=204)
+def remove_arrival(arrival_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    arrival, access = require_arrival_role(session, arrival_id, user, "editor"); trip = load_trip(session, access.trip.id)
+    if trip.days: stale(trip.days[-1])
+    session.delete(arrival); session.commit()
 
 
 @router.post("/trip-days/{day_id}/route", response_model=DayRead)
 @router.post("/trip-days/{day_id}/route/recalculate", response_model=DayRead)
 def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
-    day, access = require_day_role(session, day_id, user, "editor"); return DayRead.model_validate(calculate_day_route(session, day, provider, access.trip.routing_profile))
+    _, access = require_day_role(session, day_id, user, "editor")
+    trip = load_trip(session, access.trip.id)
+    day = next(item for item in trip.days if item.id == day_id)
+    return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile))
 
 
 @router.post("/trip-days/{day_id}/optimize")
@@ -266,7 +329,7 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
     day, access = require_day_role(session, day_id, user, "editor"); stops = sorted(day.stops, key=lambda item: item.sort_order)
     if len(stops) < 2: raise HTTPException(422, "At least two stops are required for optimization")
     start = day.previous_night or (day.trip.departure if day.day_number == 1 else None)
-    end = day.next_night
+    end = day.next_night or ((day.trip.arrival or day.trip.departure) if day.day_number == len(day.trip.days) else None)
     points = ([start] if start else []) + stops + ([end] if end else [])
     try: matrix = provider.calculate_matrix([(point.longitude, point.latitude) for point in points], access.trip.routing_profile)
     except RoutingError as error: raise HTTPException(502, str(error)) from error
@@ -328,16 +391,6 @@ def trip_summary_endpoint(trip_id: UUID, session: Session = Depends(get_db), use
 @router.get("/trip-days/{day_id}/summary", response_model=DaySummaryRead)
 def day_summary_endpoint(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     day, _ = require_day_role(session, day_id, user, "viewer"); return day_summary(day)
-
-
-@router.post("/trips/{trip_id}/start", response_model=TripRead)
-def start_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip; trip.status = "in_progress"; session.commit(); return _trip_read(session, trip_id)
-
-
-@router.post("/trips/{trip_id}/complete", response_model=TripRead)
-def complete_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip; trip.status = "completed"; trip.completed_at = datetime.now(UTC).replace(tzinfo=None); session.commit(); return _trip_read(session, trip_id)
 
 
 @router.patch("/trip-stops/{stop_id}/visit-status", response_model=StopRead)

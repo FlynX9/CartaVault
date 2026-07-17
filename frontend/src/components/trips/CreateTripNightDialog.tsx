@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEven
 import { createPortal } from 'react-dom'
 import { BedDouble, MapPin, Search, Upload, X } from 'lucide-react'
 
-import type { TripDepartureCreatePayload, TripNightCreatePayload } from '../../api/trips'
+import type { TripArrivalCreatePayload, TripDepartureCreatePayload, TripNightCreatePayload } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import { formatCoordinates } from '../../geocoding/coordinates'
 import { geocodingService } from '../../geocoding/geocodingService'
@@ -35,6 +35,11 @@ interface DepartureProps extends CommonProps {
   onCreate: (payload: TripDepartureCreatePayload) => Promise<void>
 }
 
+interface ArrivalProps extends CommonProps {
+  kind: 'arrival'
+  onCreate: (payload: TripArrivalCreatePayload) => Promise<void>
+}
+
 export interface TripFreeStopPayload {
   place_id?: string
   stop_type: 'free_location' | 'restaurant' | 'parking' | 'station' | 'airport' | 'other'
@@ -51,11 +56,12 @@ interface StopProps extends CommonProps {
   onCreate: (payload: TripFreeStopPayload) => Promise<void>
 }
 
-type Props = NightProps | DepartureProps | StopProps
+type Props = NightProps | DepartureProps | ArrivalProps | StopProps
 
 export function CreateTripNightDialog(props: Props) {
   const { mapName, countryCode, focus, initialPlaceId, initialLocation, onClose } = props
   const isDeparture = props.kind === 'departure'
+  const isArrival = props.kind === 'arrival'
   const isStop = props.kind === 'stop'
   const isEditing = props.mode === 'edit'
   const input = useRef<HTMLInputElement>(null)
@@ -130,6 +136,10 @@ export function CreateTripNightDialog(props: Props) {
         notes: String(data.get('notes') ?? '').trim() || undefined,
         departure_time: String(data.get('departure_time') ?? '') || undefined,
       })
+      else if (props.kind === 'arrival') await props.onCreate({
+        ...location,
+        notes: String(data.get('notes') ?? '').trim() || undefined,
+      })
       else await props.onCreate({
         previous_day_id: props.previousDayId,
         next_day_id: props.nextDayId,
@@ -139,7 +149,7 @@ export function CreateTripNightDialog(props: Props) {
         check_out_time: String(data.get('check_out_time') ?? '') || undefined,
       })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : `Impossible d’ajouter ${isStop ? 'ce lieu' : isDeparture ? 'ce départ' : 'cette nuit'}.`)
+      setError(caught instanceof Error ? caught.message : `Impossible d’ajouter ${isStop ? 'ce lieu' : isDeparture ? 'ce départ' : isArrival ? 'cette arrivée' : 'cette nuit'}.`)
       setBusy(false)
     }
   }
@@ -153,20 +163,20 @@ export function CreateTripNightDialog(props: Props) {
   return createPortal(<div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
     <section className="create-trip-night-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-night-title">
       <form onSubmit={(event) => void submit(event)}>
-        <header><div><p className="cv-workspace-panel__eyebrow">{isStop ? 'Étape libre' : isDeparture ? 'Départ' : 'Étape de nuit'}</p><h2 id="create-trip-night-title">{isStop ? 'Ajouter un lieu libre' : isEditing ? (isDeparture ? 'Modifier le point de départ' : 'Modifier l’hébergement') : (isDeparture ? 'Ajouter le point de départ' : 'Ajouter un hébergement')}</h2><span>{mapName ? `Sortie sur la carte ${mapName}` : isStop ? 'Nouvelle étape de la journée' : isDeparture ? 'Point de départ du premier jour' : 'Hébergement entre deux journées'}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
+        <header><div><p className="cv-workspace-panel__eyebrow">{isStop ? 'Étape libre' : isDeparture ? 'Départ' : isArrival ? 'Arrivée' : 'Étape de nuit'}</p><h2 id="create-trip-night-title">{isStop ? 'Ajouter un lieu libre' : isEditing ? (isDeparture ? 'Modifier le point de départ' : isArrival ? 'Modifier le point d’arrivée' : 'Modifier l’hébergement') : (isDeparture ? 'Ajouter le point de départ' : isArrival ? 'Ajouter le point d’arrivée' : 'Ajouter un hébergement')}</h2><span>{mapName ? `Sortie sur la carte ${mapName}` : isStop ? 'Nouvelle étape de la journée' : isDeparture ? 'Point de départ du premier jour' : isArrival ? 'Destination du dernier jour' : 'Hébergement entre deux journées'}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
         <div className="create-trip-night-dialog__body">
           {error && <p className="form-alert" role="alert">{error}</p>}
           <section className="trip-night-location"><h3>Emplacement</h3><div className="trip-night-search"><label><span className="visually-hidden">Adresse ou coordonnées GPS</span><Search size={16} /><input ref={input} type="search" value={query} placeholder="Adresse ou coordonnées GPS…" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void search() } }} /></label><button type="button" disabled={loading} onClick={() => void search()}>{loading ? 'Recherche…' : 'Rechercher'}</button></div>
             {results.length > 0 && <div className="trip-night-results" role="listbox" aria-label="Résultats géographiques">{results.map((result) => <button key={result.id} type="button" role="option" aria-selected={selectedResult?.id === result.id} onClick={() => { setSelectedResult(result); setSelectedPlace(null); setResults([]); setQuery(result.formattedAddress) }}><MapPin size={15} /><span><strong>{result.name}</strong><small>{result.formattedAddress} · {formatCoordinates(result.latitude, result.longitude)}</small></span></button>)}</div>}
             <div className={`trip-night-drop${selectedPlace ? ' selected' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={drop}><Upload size={19} /><span><strong>Ou glissez un POI ici</strong><small>Depuis le panneau Lieux</small></span></div>
-            {selectionName && <article className="trip-night-selection">{isDeparture || isStop ? <MapPin size={20} /> : <BedDouble size={20} />}<span><strong>{selectionName}</strong><small>{selectionAddress}</small><small>{selectionCoordinates}</small></span><button type="button" onClick={() => { setSelectedPlace(null); setSelectedResult(null); setQuery('') }}>Changer</button></article>}
+            {selectionName && <article className="trip-night-selection">{isDeparture || isArrival || isStop ? <MapPin size={20} /> : <BedDouble size={20} />}<span><strong>{selectionName}</strong><small>{selectionAddress}</small><small>{selectionCoordinates}</small></span><button type="button" onClick={() => { setSelectedPlace(null); setSelectedResult(null); setQuery('') }}>Changer</button></article>}
           </section>
-          {!selectedPlace && selectedResult && <label className="form-field"><span>{isStop ? 'Nom du lieu' : isDeparture ? 'Nom du point de départ' : 'Nom de l’hébergement'}</span><input name="name" defaultValue={selectedResult.name} maxLength={255} /></label>}
+          {!selectedPlace && selectedResult && <label className="form-field"><span>{isStop ? 'Nom du lieu' : isDeparture ? 'Nom du point de départ' : isArrival ? 'Nom du point d’arrivée' : 'Nom de l’hébergement'}</span><input name="name" defaultValue={selectedResult.name} maxLength={255} /></label>}
           {isStop && <label className="form-field"><span>Type d’étape</span><select name="stop_type" defaultValue="free_location"><option value="free_location">Lieu libre</option><option value="restaurant">Restaurant</option><option value="parking">Parking</option><option value="station">Station</option><option value="airport">Aéroport</option><option value="other">Autre</option></select></label>}
-          {!isStop && (isDeparture ? <label className="form-field"><span>Heure de départ</span><input name="departure_time" type="time" defaultValue={props.initialDepartureTime ?? ''} /></label> : <div className="create-trip-night-dialog__times"><label className="form-field"><span>Arrivée</span><input name="check_in_time" type="time" defaultValue={props.initialCheckInTime ?? ''} /></label><label className="form-field"><span>Départ</span><input name="check_out_time" type="time" defaultValue={props.initialCheckOutTime ?? ''} /></label></div>)}
+          {!isStop && !isArrival && (isDeparture ? <label className="form-field"><span>Heure de départ</span><input name="departure_time" type="time" defaultValue={props.initialDepartureTime ?? ''} /></label> : <div className="create-trip-night-dialog__times"><label className="form-field"><span>Arrivée</span><input name="check_in_time" type="time" defaultValue={props.initialCheckInTime ?? ''} /></label><label className="form-field"><span>Départ</span><input name="check_out_time" type="time" defaultValue={props.initialCheckOutTime ?? ''} /></label></div>)}
           <label className="form-field"><span>Notes</span><textarea name="notes" rows={3} maxLength={10000} defaultValue={props.initialNotes ?? ''} placeholder="Réservation, consignes, contact…" /></label>
         </div>
-        <footer className="dialog-actions"><button className="secondary-button" type="button" disabled={busy} onClick={onClose}>Annuler</button><button className="primary-button" type="submit" disabled={busy || (!selectedPlace && !selectedResult)}>{isDeparture || isStop ? <MapPin size={16} /> : <BedDouble size={16} />}{busy ? 'Enregistrement…' : isStop ? 'Ajouter l’étape' : isEditing ? 'Enregistrer' : isDeparture ? 'Ajouter le départ' : 'Ajouter la nuit'}</button></footer>
+        <footer className="dialog-actions"><button className="secondary-button" type="button" disabled={busy} onClick={onClose}>Annuler</button><button className="primary-button" type="submit" disabled={busy || (!selectedPlace && !selectedResult)}>{isDeparture || isArrival || isStop ? <MapPin size={16} /> : <BedDouble size={16} />}{busy ? 'Enregistrement…' : isStop ? 'Ajouter l’étape' : isEditing ? 'Enregistrer' : isDeparture ? 'Ajouter le départ' : isArrival ? 'Ajouter l’arrivée' : 'Ajouter la nuit'}</button></footer>
       </form>
     </section>
   </div>, document.body)

@@ -21,6 +21,8 @@ class Trip(Base):
     __table_args__ = (
         CheckConstraint("status IN ('draft','planned','in_progress','completed','archived')", name="trips_status_check"),
         CheckConstraint("end_date IS NULL OR start_date IS NULL OR end_date >= start_date", name="trips_dates_check"),
+        CheckConstraint("low_load_max_minutes > 0 AND medium_load_max_minutes > low_load_max_minutes", name="trips_load_thresholds_check"),
+        CheckConstraint("low_load_color ~ '^#[0-9A-Fa-f]{6}$' AND medium_load_color ~ '^#[0-9A-Fa-f]{6}$' AND high_load_color ~ '^#[0-9A-Fa-f]{6}$'", name="trips_load_colors_check"),
         Index("trips_map_id_idx", "map_id"),
         Index("trips_created_by_user_id_idx", "created_by_user_id"),
     )
@@ -34,6 +36,11 @@ class Trip(Base):
     end_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(24), nullable=False, server_default=text("'draft'"))
     routing_profile: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'driving'"))
+    low_load_max_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("240"))
+    medium_load_max_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("480"))
+    low_load_color: Mapped[str] = mapped_column(String(7), nullable=False, server_default=text("'#0FA68A'"))
+    medium_load_color: Mapped[str] = mapped_column(String(7), nullable=False, server_default=text("'#D97706'"))
+    high_load_color: Mapped[str] = mapped_column(String(7), nullable=False, server_default=text("'#DC2626'"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -44,6 +51,7 @@ class Trip(Base):
     days: Mapped[list["TripDay"]] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True, order_by="TripDay.sort_order")
     nights: Mapped[list["TripNight"]] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True)
     departure: Mapped["TripDeparture | None"] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True, uselist=False)
+    arrival: Mapped["TripArrival | None"] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True, uselist=False)
 
 
 class TripDay(Base):
@@ -53,6 +61,10 @@ class TripDay(Base):
         UniqueConstraint("trip_id", "sort_order", name="trip_days_trip_sort_order_key"),
         CheckConstraint("day_number > 0 AND sort_order >= 0", name="trip_days_order_check"),
         CheckConstraint("max_total_duration_minutes IS NULL OR max_total_duration_minutes > 0", name="trip_days_max_duration_check"),
+        CheckConstraint("default_stop_buffer_minutes BETWEEN 0 AND 720", name="trip_days_buffer_check"),
+        CheckConstraint("safety_margin_type IN ('fixed','percentage')", name="trip_days_margin_type_check"),
+        CheckConstraint("(safety_margin_type = 'fixed' AND safety_margin_value BETWEEN 0 AND 720) OR (safety_margin_type = 'percentage' AND safety_margin_value BETWEEN 0 AND 100)", name="trip_days_margin_value_check"),
+        CheckConstraint("color ~ '^#[0-9A-Fa-f]{6}$'", name="trip_days_color_check"),
         Index("trip_days_trip_id_idx", "trip_id"),
     )
 
@@ -61,9 +73,14 @@ class TripDay(Base):
     day_number: Mapped[int] = mapped_column(Integer, nullable=False)
     date: Mapped[date | None] = mapped_column(Date)
     title: Mapped[str | None] = mapped_column(String(160))
+    color: Mapped[str] = mapped_column(String(7), nullable=False, server_default=text("'#0FA68A'"))
     notes: Mapped[str | None] = mapped_column(Text)
     planned_start_time: Mapped[time | None] = mapped_column(Time)
     planned_end_time: Mapped[time | None] = mapped_column(Time)
+    target_arrival_time: Mapped[time | None] = mapped_column(Time)
+    default_stop_buffer_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    safety_margin_type: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'fixed'"))
+    safety_margin_value: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     max_total_duration_minutes: Mapped[int | None] = mapped_column(Integer)
     route_distance_meters: Mapped[float | None] = mapped_column(Float)
     route_duration_seconds: Mapped[float | None] = mapped_column(Float)
@@ -170,4 +187,27 @@ class TripDeparture(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
     trip: Mapped[Trip] = relationship(back_populates="departure")
+    place: Mapped["Place | None"] = relationship()
+
+
+class TripArrival(Base):
+    __tablename__ = "trip_arrivals"
+    __table_args__ = (
+        UniqueConstraint("trip_id", name="trip_arrivals_trip_id_key"),
+        CheckConstraint("latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180", name="trip_arrivals_coordinates_check"),
+        Index("trip_arrivals_trip_id_idx", "trip_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    trip_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    place_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("places.id", ondelete="SET NULL"))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    address: Mapped[str | None] = mapped_column(String(500))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    trip: Mapped[Trip] = relationship(back_populates="arrival")
     place: Mapped["Place | None"] = relationship()

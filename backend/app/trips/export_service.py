@@ -15,7 +15,8 @@ def google_maps_links(trip: Trip, max_points: int = 10) -> list[dict]:
     links: list[dict] = []
     for day in trip.days:
         start = day.previous_night or (getattr(trip, "departure", None) if day.day_number == 1 else None)
-        points = ([start] if start else []) + list(day.stops) + ([day.next_night] if day.next_night else [])
+        end = day.next_night or ((trip.arrival or trip.departure) if day.day_number == len(trip.days) else None)
+        points = ([start] if start else []) + list(day.stops) + ([end] if end else [])
         if len(points) < 2: continue
         chunks = [points[index:index + max_points] for index in range(0, len(points) - 1, max_points - 1)]
         for index, chunk in enumerate(chunks, 1):
@@ -33,7 +34,8 @@ def create_gpx(trip: Trip, user_id: UUID) -> TemporaryExport:
     for day in trip.days:
         route = ET.SubElement(root, "rte"); ET.SubElement(route, "name").text = day.title or f"Jour {day.day_number}"
         start = day.previous_night or (getattr(trip, "departure", None) if day.day_number == 1 else None)
-        points = ([start] if start else []) + list(day.stops) + ([day.next_night] if day.next_night else [])
+        end = day.next_night or ((trip.arrival or trip.departure) if day.day_number == len(trip.days) else None)
+        points = ([start] if start else []) + list(day.stops) + ([end] if end else [])
         for stop in points:
             node = ET.SubElement(route, "rtept", {"lat": str(stop.latitude), "lon": str(stop.longitude)})
             ET.SubElement(node, "name").text = stop.name
@@ -52,7 +54,8 @@ def create_kmz(trip: Trip, user_id: UUID) -> TemporaryExport:
         style_id = f"day-{day.day_number}"; style = ET.SubElement(document, "Style", {"id": style_id}); line = ET.SubElement(style, "LineStyle"); ET.SubElement(line, "color").text = colors[day_index % len(colors)]; ET.SubElement(line, "width").text = "4"
         folder = ET.SubElement(document, "Folder"); ET.SubElement(folder, "name").text = day.title or f"Jour {day.day_number}"
         start = day.previous_night or (getattr(trip, "departure", None) if day.day_number == 1 else None)
-        points = ([start] if start else []) + list(day.stops) + ([day.next_night] if day.next_night else [])
+        end = day.next_night or ((trip.arrival or trip.departure) if day.day_number == len(trip.days) else None)
+        points = ([start] if start else []) + list(day.stops) + ([end] if end else [])
         for index, stop in enumerate(points, 1):
             mark = ET.SubElement(folder, "Placemark"); ET.SubElement(mark, "name").text = f"{index}. {stop.name}"
             data_node = ET.SubElement(mark, "ExtendedData")

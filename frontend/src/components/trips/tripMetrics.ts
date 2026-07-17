@@ -17,3 +17,16 @@ export function formatMinutes(minutes: number | null): string {
 export function formatRouteDuration(seconds: number | null): string {
   return formatMinutes(seconds === null ? null : seconds / 60)
 }
+
+export function formatClock(value: string | null, dayOffset: number | null = 0): string {
+  if (!value) return '—'
+  const clock = value.slice(0, 5)
+  if (!dayOffset) return clock
+  return `${clock} (${dayOffset > 0 ? '+' : ''}${dayOffset} j)`
+}
+
+export function formatScheduleDelta(minutes: number | null): string {
+  if (minutes === null) return '—'
+  if (minutes === 0) return 'À l’heure'
+  return `${formatMinutes(Math.abs(minutes))} ${minutes > 0 ? 'de retard' : 'd’avance'}`
+}

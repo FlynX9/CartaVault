@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.auth.permissions import MapAccess, require_map_role
-from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
+from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
 
 
 @dataclass(frozen=True)
@@ -51,6 +51,12 @@ def require_departure_role(session: Session, departure_id: UUID, user: User, min
     departure = session.get(TripDeparture, departure_id)
     if departure is None: raise HTTPException(404, "Trip departure not found")
     return departure, require_trip_role(session, departure.trip_id, user, minimum)
+
+
+def require_arrival_role(session: Session, arrival_id: UUID, user: User, minimum: str) -> tuple[TripArrival, TripAccess]:
+    arrival = session.get(TripArrival, arrival_id)
+    if arrival is None: raise HTTPException(404, "Trip arrival not found")
+    return arrival, require_trip_role(session, arrival.trip_id, user, minimum)
 
 
 def require_trip_viewer(session: Session, trip_id: UUID, user: User) -> TripAccess: return require_trip_role(session, trip_id, user, "viewer")

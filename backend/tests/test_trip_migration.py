@@ -9,7 +9,7 @@ pytestmark = pytest.mark.integration
 
 PARENT_REVISION = "c1a7d4e9b620"
 TRIP_REVISION = "f8d2c4a6b910"
-HEAD_REVISION = "b7e1d5c9a240"
+HEAD_REVISION = "c9f4a2d8e761"
 TRIP_TABLES = {"trips", "trip_days", "trip_stops", "trip_nights"}
 
 
