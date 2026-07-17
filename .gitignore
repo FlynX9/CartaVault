@@ -21,6 +21,7 @@ Thumbs.db
 backend/storage/
 
 # Pytest
+/.pytest_tmp*/
 backend/.pytest_tmp*/
 backend/.pytest_cache*/
 

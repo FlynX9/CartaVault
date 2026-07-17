@@ -10,7 +10,7 @@ pytestmark = pytest.mark.integration
 MIGRATION_MAP_ID = "20000000-0000-4000-8000-000000000001"
 MIGRATION_PLACE_ID = "30000000-0000-4000-8000-000000000001"
 SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
-HEAD_REVISION = "e5b9c3d1a742"
+HEAD_REVISION = "f8d2c4a6b910"
 
 
 def _upgrade_to_head_with_test_admin(config: Config, engine) -> None:

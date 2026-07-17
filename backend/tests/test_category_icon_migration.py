@@ -21,7 +21,7 @@ TEST_CATEGORY_NAMESPACE = "https://poi-manager.test/category-icon-migration/"
 UNKNOWN_ICON = "unknown-legacy-icon"
 PRESERVED_ICONIFY_ICON = "mdi:wall"
 SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
-HEAD_REVISION = "c1a7d4e9b620"
+HEAD_REVISION = "b7e1d5c9a240"
 
 
 def _upgrade_to_head_with_test_admin(config: Config, engine) -> None:

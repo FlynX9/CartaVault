@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from threading import Lock
+from typing import Callable
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -36,6 +37,7 @@ from app.statuses.router import slugify_status_name
 
 
 IMPORT_TTL = timedelta(minutes=15)
+ProgressCallback = Callable[[int, int, str], None]
 _imports: dict[UUID, "CachedKmzImport"] = {}
 _imports_lock = Lock()
 
@@ -72,19 +74,21 @@ def cache_preview(map_id: UUID, user_id: UUID, file_name: str, items: list[Parse
 def mark_duplicate_items(database_session: Session, map_id: UUID, items: list[ParsedPlacemark]) -> None:
     """Mark exact, map-local name/coordinate matches without changing data."""
 
-    seen_in_file: set[tuple[str, int, int]] = set()
+    seen_in_file: set[tuple[str, float, float]] = set()
     for item in items:
         if item.name is None or item.latitude is None or item.longitude is None:
             continue
-        signature = (item.name.strip().casefold(), round(item.latitude, 5), round(item.longitude, 5))
+        signature = (item.name.strip().casefold(), item.latitude, item.longitude)
         if signature in seen_in_file:
             item.warnings.append("Potential duplicate within this KMZ file")
             item.duplicate_place_id = "within-import"
+            item.duplicate_reason = "within_file"
             continue
         seen_in_file.add(signature)
         existing_id = _find_existing_duplicate(database_session, map_id, item)
         if existing_id is not None:
             item.duplicate_place_id = str(existing_id)
+            item.duplicate_reason = "existing_map"
             item.warnings.append("Already imported or existing on this map; skipped by default")
 
 
@@ -121,6 +125,7 @@ def confirm_import(
     *,
     download_remote_images: bool = False,
     force_indexes: list[int] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> KmzImportReport:
     """Persist all selected valid points atomically and clean files on failure."""
 
@@ -152,6 +157,26 @@ def confirm_import(
     remote_images_added = 0
     remote_images_unavailable = 0
     skipped_count = 0
+    import_warnings = list(cached.global_warnings)
+    image_assignments: list[tuple[Place, list[ParsedImage]]] = []
+    image_total = sum(
+        sum(
+            image.source_type == "embedded"
+            or (download_remote_images and image.source_type == "remote_supported")
+            for image in item.images
+        )
+        for item in selected
+    )
+    progress_total = max(1, len(selected) + image_total)
+    progress_completed = 0
+
+    def report_progress(message: str, increment: int = 0) -> None:
+        nonlocal progress_completed
+        progress_completed = min(progress_total, progress_completed + increment)
+        if progress_callback is not None:
+            progress_callback(progress_completed, progress_total, message)
+
+    report_progress("Préparation de l’import")
     try:
         category = _get_or_create_import_category(database_session, map_id)
         place_status = _get_or_create_import_status(database_session)
@@ -162,6 +187,12 @@ def confirm_import(
             )
             if duplicate_exists and item.source_index not in forced_indexes:
                 skipped_count += 1
+                skipped_images = sum(
+                    image.source_type == "embedded"
+                    or (download_remote_images and image.source_type == "remote_supported")
+                    for image in item.images
+                )
+                report_progress("POI déjà présent, ignoré", 1 + skipped_images)
                 continue
             mapped_fields, custom_fields = _item_data(item)
             place = Place(
@@ -181,11 +212,60 @@ def confirm_import(
             database_session.add(place)
             database_session.flush()
             database_session.execute(place_categories_table.insert().values(place_id=place.id, category_id=category.id, is_primary=True))
-            embedded, remote_added, remote_unavailable = _store_images(database_session, place, item.images, stored_files, download_remote_images=download_remote_images)
-            embedded_images_added += embedded
-            remote_images_added += remote_added
-            remote_images_unavailable += remote_unavailable
+            image_assignments.append((place, item.images))
             created_ids.append(place.id)
+            report_progress(f"POI créé : {place.name}", 1)
+
+        for place, images in image_assignments:
+            for order, image in enumerate(images):
+                if image.source_type != "embedded" or image.payload is None:
+                    continue
+                try:
+                    _store_image(database_session, place, image, order, stored_files)
+                    embedded_images_added += 1
+                    report_progress(f"Image intégrée ajoutée à {place.name}", 1)
+                except (PhotoStorageError, OSError) as error:
+                    import_warnings.append(f"Image ignorée pour {place.name}: {error}")
+                    report_progress(f"Image ignorée pour {place.name}", 1)
+
+        if download_remote_images:
+            remote_assignments: dict[str, list[tuple[Place, ParsedImage, int]]] = {}
+            for place, images in image_assignments:
+                for order, image in enumerate(images):
+                    if image.source_type == "remote_supported" and image.remote_url:
+                        remote_assignments.setdefault(image.remote_url, []).append((place, image, order))
+
+            remote_count = len(remote_assignments)
+            for remote_index, (remote_url, assignments) in enumerate(remote_assignments.items(), start=1):
+                report_progress(f"Téléchargement de l’image distante {remote_index}/{remote_count}")
+                try:
+                    downloaded = download_remote_image(remote_url)
+                except RemoteImageError:
+                    remote_images_unavailable += len(assignments)
+                    import_warnings.append(
+                        f"Une image distante utilisée par {len(assignments)} POI n’a pas pu être téléchargée"
+                    )
+                    report_progress("Image distante indisponible", len(assignments))
+                    continue
+
+                for place, image, order in assignments:
+                    downloaded_image = ParsedImage(
+                        internal_id=image.internal_id,
+                        original_name=image.original_name,
+                        mime_type=downloaded.mime_type,
+                        size=len(downloaded.payload),
+                        payload=downloaded.payload,
+                        source_type="remote_supported",
+                        host=image.host,
+                    )
+                    try:
+                        _store_image(database_session, place, downloaded_image, order, stored_files)
+                        remote_images_added += 1
+                        report_progress(f"Image distante ajoutée à {place.name}", 1)
+                    except (PhotoStorageError, OSError) as error:
+                        remote_images_unavailable += 1
+                        import_warnings.append(f"Image distante ignorée pour {place.name}: {error}")
+                        report_progress(f"Image distante ignorée pour {place.name}", 1)
         database_session.commit()
     except (SQLAlchemyError, PhotoStorageError, OSError, TypeError) as error:
         database_session.rollback()
@@ -196,6 +276,7 @@ def confirm_import(
                 pass
         raise HTTPException(status_code=500, detail="Unable to confirm the KMZ import") from error
 
+    report_progress("Import terminé", progress_total - progress_completed)
     _remove_cached_import(cached.import_id)
     return KmzImportReport(
         created_count=len(created_ids),
@@ -207,33 +288,23 @@ def confirm_import(
         remote_images_unavailable=remote_images_unavailable,
         created_place_ids=created_ids,
         failures=[],
-        warnings=list(cached.global_warnings),
+        warnings=import_warnings,
     )
 
 
-def _store_images(database_session: Session, place: Place, images: list[ParsedImage], stored_files: list[tuple[str, UUID, UUID]], *, download_remote_images: bool) -> tuple[int, int, int]:
-    embedded_added = remote_added = remote_unavailable = 0
-    stored_images: list[ParsedImage] = []
-    for image in images:
-        if image.source_type == "embedded":
-            stored_images.append(image)
-        elif image.source_type == "remote_supported" and download_remote_images and image.remote_url:
-            try:
-                downloaded = download_remote_image(image.remote_url)
-                stored_images.append(ParsedImage(internal_id=image.internal_id, original_name=image.original_name, mime_type=downloaded.mime_type, size=len(downloaded.payload), payload=downloaded.payload, source_type="remote_supported", host=image.host))
-                remote_added += 1
-            except RemoteImageError:
-                remote_unavailable += 1
-    for order, image in enumerate(stored_images):
-        if image.payload is None:
-            continue
-        photo_id = uuid4()
-        stored = store_photo_file(BytesIO(image.payload), image.mime_type, place.id, photo_id)
-        stored_files.append((stored.relative_path, place.id, photo_id))
-        database_session.add(Photo(id=photo_id, place_id=place.id, filename=stored.filename, original_name=image.original_name, path=stored.relative_path, sort_order=order, is_primary=order == 0))
-        if image.source_type == "embedded":
-            embedded_added += 1
-    return embedded_added, remote_added, remote_unavailable
+def _store_image(
+    database_session: Session,
+    place: Place,
+    image: ParsedImage,
+    order: int,
+    stored_files: list[tuple[str, UUID, UUID]],
+) -> None:
+    if image.payload is None:
+        return
+    photo_id = uuid4()
+    stored = store_photo_file(BytesIO(image.payload), image.mime_type, place.id, photo_id)
+    stored_files.append((stored.relative_path, place.id, photo_id))
+    database_session.add(Photo(id=photo_id, place_id=place.id, filename=stored.filename, original_name=image.original_name, path=stored.relative_path, sort_order=order, is_primary=order == 0))
 
 
 def _get_or_create_import_category(database_session: Session, map_id: UUID) -> Category:
@@ -279,19 +350,21 @@ def _item_preview(item: ParsedPlacemark) -> KmzImportItemPreview:
         errors=errors,
         importable=importable,
         already_imported=already_imported,
+        duplicate_reason=item.duplicate_reason,
     )
 
 
 def _find_existing_duplicate(database_session: Session, map_id: UUID, item: ParsedPlacemark) -> UUID | None:
     if item.name is None or item.latitude is None or item.longitude is None:
         return None
-    tolerance = 0.00001
     return database_session.scalar(
         select(Place.id).where(
             Place.map_id == map_id,
             func.lower(func.btrim(Place.name)) == item.name.strip().lower(),
-            func.abs(func.ST_X(Place.location) - item.longitude) <= tolerance,
-            func.abs(func.ST_Y(Place.location) - item.latitude) <= tolerance,
+            func.ST_Equals(
+                Place.location,
+                func.ST_SetSRID(func.ST_MakePoint(item.longitude, item.latitude), 4326),
+            ),
         ).limit(1)
     )
 

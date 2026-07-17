@@ -18,7 +18,7 @@ const place: MapPlace = {
 
 afterEach(cleanup)
 
-function MapHarness({ initiallySelected = false, markerFilter }: { initiallySelected?: boolean; markerFilter?: { query: string; categoryId: string; statusId: string | null; tagId: string } }) {
+function MapHarness({ initiallySelected = false, markerFilter, onTripPlaceAdd }: { initiallySelected?: boolean; markerFilter?: { query: string; categoryId: string; statusId: string | null; tagId: string }; onTripPlaceAdd?: (place: MapPlace) => void }) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
     initiallySelected ? place.id : null,
   )
@@ -43,6 +43,7 @@ function MapHarness({ initiallySelected = false, markerFilter }: { initiallySele
       basemapId="cartavault-light"
       onBasemapTileError={vi.fn()}
       markerFilter={markerFilter}
+      onTripPlaceAdd={onTripPlaceAdd}
     />
   )
 }
@@ -83,5 +84,12 @@ describe('PoiMap Leaflet popup lifecycle', () => {
     const { container } = render(<MapHarness markerFilter={{ query: 'Absent', categoryId: '', statusId: null, tagId: '' }} />)
 
     await waitFor(() => expect(container.querySelector('.status-marker.muted')).toBeInTheDocument())
+  })
+
+  it('adds a marker to the active trip day on double click in trip mode', async () => {
+    const add = vi.fn()
+    render(<MapHarness onTripPlaceAdd={add} />)
+    fireEvent.doubleClick(await screen.findByTitle('Manufacture'))
+    expect(add).toHaveBeenCalledWith(place)
   })
 })

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.maps.models import PoiMap
     from app.tags.models import Tag
     from app.statuses.models import PlaceStatus
+    from app.trips.models import TripNight, TripStop
 
 
 class Place(Base):
@@ -146,3 +147,6 @@ class Place(Base):
     status: Mapped["PlaceStatus"] = relationship(
         back_populates="places",
     )
+
+    trip_stops: Mapped[list["TripStop"]] = relationship(back_populates="place")
+    trip_nights: Mapped[list["TripNight"]] = relationship(back_populates="place")

@@ -14,6 +14,7 @@ from app.places.models import Place
 from app.statuses.models import PlaceStatus
 from app.tags.associations import place_tags_table
 from app.tags.models import Tag
+from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
 
 __all__ = (
     "Category",
@@ -27,6 +28,11 @@ __all__ = (
     "Tag",
     "User",
     "UserSession",
+    "Trip",
+    "TripDay",
+    "TripDeparture",
+    "TripStop",
+    "TripNight",
     "place_categories_table",
     "place_tags_table",
 )

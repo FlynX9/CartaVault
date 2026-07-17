@@ -25,6 +25,9 @@ class KmzParseError(ValueError):
     """Raised when a validated archive has no usable KML document."""
 
 
+TECHNICAL_EXTENDED_DATA_KEYS = frozenset({"gx_media_links"})
+
+
 @dataclass(frozen=True)
 class ParsedImage:
     internal_id: str
@@ -52,6 +55,7 @@ class ParsedPlacemark:
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     duplicate_place_id: str | None = None
+    duplicate_reason: str | None = None
 
 
 class _DescriptionTextExtractor(HTMLParser):
@@ -105,7 +109,7 @@ def parse_kmz(archive: ZipFile, entry_names: Iterable[str]) -> tuple[list[Parsed
         item = _parse_placemark(archive, names, kml_name, placemark, index, folder_name)
         if item is not None:
             items.append(item)
-    image_count = sum(len(item.images) for item in items)
+    image_count = len({image.internal_id for item in items for image in item.images})
     if image_count > KMZ_MAX_IMAGES:
         raise KmzParseError("The KMZ archive contains too many supported images")
     if not any(item.latitude is not None and item.longitude is not None for item in items):
@@ -156,11 +160,15 @@ def _parse_placemark(archive: ZipFile, names: tuple[str, ...], kml_name: str, el
         item.errors.append(str(error))
         return item
 
+    seen_image_ids: set[str] = set()
     for source in image_sources:
         image = _read_image_reference(archive, names, kml_name, source)
         if image is None:
             item.warnings.append(f"Referenced image is unavailable or unsupported: {source}")
+        elif image.internal_id in seen_image_ids:
+            continue
         elif len(item.images) < KMZ_MAX_IMAGES:
+            seen_image_ids.add(image.internal_id)
             item.images.append(image)
             if image.source_type == "remote_supported":
                 item.warnings.append("Google My Maps image detected; anonymous access may require Google authentication and can fail")
@@ -192,6 +200,8 @@ def _read_extended_data(element) -> list[tuple[str, str]]:
                 key = node.attrib.get("name", "").strip()
                 value = (node.text or "").strip()
             else:
+                continue
+            if key.casefold() in TECHNICAL_EXTENDED_DATA_KEYS:
                 continue
             if key and value:
                 fields.append((key, html.unescape(value)))

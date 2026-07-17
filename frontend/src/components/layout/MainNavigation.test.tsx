@@ -23,17 +23,20 @@ describe('MainNavigation', () => {
 
   it('uses workspace buttons for content, statuses and user administration', () => {
     const onPanelChange = vi.fn()
-    render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={onPanelChange} isAdmin /><Location /></MemoryRouter>)
+    const onOpenTrips = vi.fn()
+    render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={onPanelChange} onOpenTrips={onOpenTrips} isAdmin /><Location /></MemoryRouter>)
 
     fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Tags' }))
     fireEvent.click(screen.getByRole('button', { name: 'Statuts' }))
     fireEvent.click(screen.getByRole('button', { name: 'Administration' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
 
     expect(onPanelChange).toHaveBeenNthCalledWith(1, 'categories')
     expect(onPanelChange).toHaveBeenNthCalledWith(2, 'tags')
     expect(onPanelChange).toHaveBeenNthCalledWith(3, 'statuses')
     expect(onPanelChange).toHaveBeenNthCalledWith(4, 'admin')
+    expect(onOpenTrips).toHaveBeenCalledOnce()
     expect(screen.getByTestId('location')).toHaveTextContent('/')
   })
 
@@ -42,5 +45,11 @@ describe('MainNavigation', () => {
     expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Statuts' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('marks only Sorties active while trip planning extends the Places workspace', () => {
+    render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Préparation de sortie' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'false')
   })
 })

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.auth.models import User
     from app.countries.models import Country
     from app.places.models import Place
+    from app.trips.models import Trip
 
 
 class PoiMap(Base):
@@ -46,6 +47,7 @@ class PoiMap(Base):
     memberships: Mapped[list["MapMembership"]] = relationship(back_populates="map", cascade="all, delete-orphan", passive_deletes=True)
     invitations: Mapped[list["MapInvitation"]] = relationship(back_populates="map", cascade="all, delete-orphan", passive_deletes=True)
     places: Mapped[list["Place"]] = relationship(back_populates="map", passive_deletes=True)
+    trips: Mapped[list["Trip"]] = relationship(back_populates="map", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class MapMembership(Base):

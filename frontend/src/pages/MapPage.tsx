@@ -11,6 +11,7 @@ import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapI
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
+import type { Trip } from '../types/trip'
 
 interface MapPageProps {
   places: MapPlace[]
@@ -39,6 +40,11 @@ interface MapPageProps {
   draftPosition?: DraftPosition | null
   draftPlaceId?: string | null
   onDraftPositionChange?: (position: DraftPosition) => void
+  trip?: Trip | null
+  activeTripDayId?: string | null
+  onTripPlaceAdd?: (place: MapPlace) => void
+  tripNotice?: string | null
+  onTripCoordinateAdd?: (dayId: string, latitude: number, longitude: number) => void
 }
 
 export function MapPage({
@@ -68,6 +74,11 @@ export function MapPage({
   draftPosition = null,
   draftPlaceId = null,
   onDraftPositionChange = () => undefined,
+  trip = null,
+  activeTripDayId = null,
+  onTripPlaceAdd,
+  tripNotice = null,
+  onTripCoordinateAdd,
 }: MapPageProps) {
   const [basemapId, setBasemapId] = useState(loadBasemapPreference)
   const [basemapError, setBasemapError] = useState(false)
@@ -113,9 +124,13 @@ export function MapPage({
           draftPlaceId={draftPlaceId}
           onDraftPositionChange={onDraftPositionChange}
           markerFilter={markerFilter}
+          trip={trip}
+          activeTripDayId={activeTripDayId}
+          onTripPlaceAdd={onTripPlaceAdd}
         />
-        {contextMenu && <MapContextMenu state={contextMenu} canCreate={canEdit} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
+        {contextMenu && <MapContextMenu state={contextMenu} canCreate={canEdit} tripDays={onTripCoordinateAdd ? trip?.days.map((day) => ({ id: day.id, label: `Jour ${day.day_number}${day.title ? ` · ${day.title}` : ''}` })) : []} onAddToTripDay={onTripCoordinateAdd ? (dayId) => { const { latitude, longitude } = contextMenu; setContextMenu(null); onTripCoordinateAdd(dayId, latitude, longitude) } : undefined} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
+        {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
         <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />

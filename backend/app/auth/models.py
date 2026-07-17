@@ -12,6 +12,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.maps.models import MapInvitation, MapMembership, PoiMap
+    from app.trips.models import Trip
 
 
 class User(Base):
@@ -38,6 +39,7 @@ class User(Base):
     owned_maps: Mapped[list["PoiMap"]] = relationship(back_populates="owner", foreign_keys="PoiMap.owner_id")
     memberships: Mapped[list["MapMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     created_invitations: Mapped[list["MapInvitation"]] = relationship(back_populates="created_by", foreign_keys="MapInvitation.created_by_user_id")
+    created_trips: Mapped[list["Trip"]] = relationship(back_populates="created_by")
 
 
 class UserSession(Base):

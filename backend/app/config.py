@@ -35,3 +35,14 @@ class SecuritySettings:
 
 
 security_settings = SecuritySettings()
+
+
+@dataclass(frozen=True)
+class RoutingSettings:
+    base_url: str = os.getenv("OSRM_BASE_URL", "https://router.project-osrm.org")
+    timeout_seconds: int = _positive_int("OSRM_TIMEOUT_SECONDS", 12)
+    max_waypoints: int = _positive_int("OSRM_MAX_WAYPOINTS", 50)
+    profile: str = os.getenv("OSRM_PROFILE", "driving")
+
+
+routing_settings = RoutingSettings()

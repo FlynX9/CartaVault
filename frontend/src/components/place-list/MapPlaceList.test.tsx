@@ -34,4 +34,14 @@ describe('MapPlaceList', () => {
     fireEvent.click(item)
     expect(select).toHaveBeenCalledWith(place)
   })
+
+  it('makes available POIs draggable only during trip planning', async () => {
+    const place = { id: 'place-id', name: 'Étape', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: /Étape/ })).toHaveAttribute('draggable', 'true')
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: /Étape/ })).toHaveAttribute('draggable', 'false')
+    expect(screen.getByText('Ajouté')).toBeVisible()
+  })
 })

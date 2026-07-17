@@ -12,7 +12,14 @@ from app.auth.models import User
 from app.auth.permissions import require_map_role
 from app.imports.kmz_parser import KmzParseError, parse_kmz
 from app.imports.kmz_security import KMZ_MAX_UPLOAD_SIZE, KmzSecurityError, validate_kmz_upload
-from app.imports.schemas import KmzConfirmRequest, KmzImportReport, KmzPreviewRead
+from app.imports.progress import get_import_job, job_to_read, start_import_job
+from app.imports.schemas import (
+    KmzConfirmRequest,
+    KmzImportJobStart,
+    KmzImportProgressRead,
+    KmzImportReport,
+    KmzPreviewRead,
+)
 from app.imports.service import cache_preview, confirm_import, get_cached_import, mark_duplicate_items
 from app.maps.models import PoiMap
 
@@ -63,3 +70,31 @@ def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_sessio
         download_remote_images=request.download_remote_images,
         force_indexes=request.force_source_indexes,
     )
+
+
+@router.post("/confirm-jobs", response_model=KmzImportJobStart, status_code=status.HTTP_202_ACCEPTED)
+def start_kmz_import(
+    map_id: UUID,
+    request: KmzConfirmRequest,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> KmzImportJobStart:
+    """Start a long KMZ confirmation and expose its measurable progress."""
+
+    require_map_role(database_session, map_id, current_user, "editor")
+    cached = get_cached_import(request.import_id, map_id, current_user.id)
+    job = start_import_job(map_id, current_user.id, cached, request)
+    return KmzImportJobStart(job_id=job.job_id)
+
+
+@router.get("/confirm-jobs/{job_id}", response_model=KmzImportProgressRead)
+def read_kmz_import_progress(
+    map_id: UUID,
+    job_id: UUID,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> KmzImportProgressRead:
+    """Return progress for an import owned by the authenticated map editor."""
+
+    require_map_role(database_session, map_id, current_user, "editor")
+    return job_to_read(get_import_job(job_id, map_id, current_user.id))

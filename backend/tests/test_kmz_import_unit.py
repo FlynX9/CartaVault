@@ -67,7 +67,7 @@ def test_mapping_preserves_duplicate_unknown_fields_in_order() -> None:
 
 def test_kmz_parser_ignores_technical_nodes_outside_extended_data() -> None:
     archive = validate_kmz_upload("places.kmz", make_kmz({
-        "doc.kml": b'''<kml xmlns:gx="http://www.google.com/kml/ext/2.2"><Placemark><name>Tour</name><gx:SimpleData name="gx_media_links">technical</gx:SimpleData><ExtendedData><Data name="Etat"><value>Mort</value></Data></ExtendedData><Point><coordinates>2.35,48.85</coordinates></Point></Placemark></kml>''',
+        "doc.kml": b'''<kml xmlns:gx="http://www.google.com/kml/ext/2.2"><Placemark><name>Tour</name><gx:SimpleData name="gx_media_links">outside</gx:SimpleData><ExtendedData><Data name="Etat"><value>Mort</value></Data><Data name="GX_MEDIA_LINKS"><value>technical-data</value></Data><SchemaData><SimpleData name="gx_media_links">technical-simple-data</SimpleData></SchemaData></ExtendedData><Point><coordinates>2.35,48.85</coordinates></Point></Placemark></kml>''',
     }))
     try:
         items, _warnings = parse_kmz(archive.archive, tuple(entry.filename for entry in archive.entries))
@@ -77,27 +77,53 @@ def test_kmz_parser_ignores_technical_nodes_outside_extended_data() -> None:
     assert items[0].extended_data == [("Etat", "Mort")]
 
 
+def test_kmz_parser_accepts_500_unique_images_and_deduplicates_repeated_urls() -> None:
+    sources = [f"https://mymaps.usercontent.google.com/image-{index}" for index in range(500)]
+    image_html = "".join(f'<img src="{source}">' for source in [sources[0], *sources])
+    kml = (
+        "<kml><Placemark><name>Collection</name><description><![CDATA["
+        f"{image_html}"
+        "]]></description><Point><coordinates>2.35,48.85</coordinates></Point>"
+        "</Placemark></kml>"
+    ).encode()
+    archive = validate_kmz_upload("images.kmz", make_kmz({"doc.kml": kml}))
+    try:
+        items, _warnings = parse_kmz(
+            archive.archive,
+            tuple(entry.filename for entry in archive.entries),
+        )
+    finally:
+        archive.archive.close()
+
+    assert len(items[0].images) == 500
+    assert len({image.internal_id for image in items[0].images}) == 500
+
+
 def test_kmz_preview_marks_map_and_file_duplicates(monkeypatch: pytest.MonkeyPatch) -> None:
     first = ParsedPlacemark(0, "Town Hall", None, 48.8566, 2.3522)
     existing = ParsedPlacemark(1, " town hall ", None, 48.8566001, 2.3521999)
     repeated = ParsedPlacemark(2, "TOWN HALL", None, 48.8566, 2.3522)
+    nearby = ParsedPlacemark(3, "Town Hall", None, 48.8566002, 2.3522)
 
     monkeypatch.setattr(
         "app.imports.service._find_existing_duplicate",
         lambda _session, _map_id, item: "existing-place" if item is existing else None,
     )
 
-    mark_duplicate_items(object(), object(), [first, existing, repeated])
+    mark_duplicate_items(object(), object(), [first, existing, repeated, nearby])
     preview = preview_to_read(type("Cached", (), {
         "import_id": uuid4(),
         "file_name": "places.kmz",
-        "items": (first, existing, repeated),
+        "items": (first, existing, repeated, nearby),
         "global_warnings": (),
     })())
 
-    assert preview.valid_count == 1
+    assert preview.valid_count == 2
     assert preview.items[0].already_imported is False
     assert preview.items[1].already_imported is True
     assert preview.items[2].already_imported is True
+    assert preview.items[3].already_imported is False
+    assert preview.items[1].duplicate_reason == "existing_map"
+    assert preview.items[2].duplicate_reason == "within_file"
     assert preview.items[1].selected_by_default is False
     assert preview.items[2].selected_by_default is False

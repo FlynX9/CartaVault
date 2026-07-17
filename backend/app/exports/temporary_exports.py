@@ -27,7 +27,10 @@ _lock = Lock()
 def create(map_id: UUID, user_id: UUID, file_name: str) -> TemporaryExport:
     purge()
     EXPORT_ROOT.mkdir(parents=True, exist_ok=True)
-    item = TemporaryExport(uuid4(), map_id, user_id, EXPORT_ROOT / f"{uuid4()}.kmz", file_name, datetime.now(UTC) + EXPORT_TTL)
+    suffix = Path(file_name).suffix.lower()
+    if suffix not in {".gpx", ".kmz"}:
+        suffix = ".bin"
+    item = TemporaryExport(uuid4(), map_id, user_id, EXPORT_ROOT / f"{uuid4()}{suffix}", file_name, datetime.now(UTC) + EXPORT_TTL)
     with _lock:
         _exports[item.export_id] = item
     return item

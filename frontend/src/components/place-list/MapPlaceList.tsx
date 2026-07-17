@@ -24,6 +24,8 @@ interface Props {
   onPlaceSelect: (place: PreviewPlace) => void
   onClose?: () => void
   onImported?: () => void
+  tripPlanningActive?: boolean
+  tripPlaceIds?: Set<string>
 }
 
 const sortPlaces = (places: PlaceDetails[]) => [...places].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id))
@@ -37,7 +39,7 @@ function formatLastUpdate(value: string | undefined) {
   return `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 }
 
-export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set() }: Props) {
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -122,9 +124,10 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
       {error && <p role="alert">{error}</p>}
       {visible.length > 0 && <ul className="country-place-list cv-workspace-panel__list">{visible.map((place) => {
         const primaryCategory = place.categories.find((item) => item.is_primary) ?? place.categories[0]
-        return <li key={place.id}><button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}`} onClick={() => onPlaceSelect(place)}>
+        const inTrip = tripPlaceIds.has(place.id)
+        return <li key={place.id}><button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}${inTrip ? ' trip-added' : ''}`} onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}>
           <span className="place-list-category-bubble" title={primaryCategory?.name ?? 'Sans catégorie'} style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primaryCategory?.icon} size={18} showLabel={false} ariaLabel={`Catégorie ${primaryCategory?.name ?? 'non définie'}, statut ${place.status.name}`} /></span>
-          <span className="place-list-item-content"><strong>{place.name}</strong><span className="place-list-item-meta"><span>{place.status.name}</span>{primaryCategory && <><span aria-hidden="true">·</span><span>{primaryCategory.name}</span></>}</span>{place.tags.length > 0 && <span className="place-list-tags">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}</span>}</span>
+          <span className="place-list-item-content"><strong>{place.name}{inTrip && <small className="place-list-trip-badge">Ajouté</small>}</strong><span className="place-list-item-meta"><span>{place.status.name}</span>{primaryCategory && <><span aria-hidden="true">·</span><span>{primaryCategory.name}</span></>}</span>{place.tags.length > 0 && <span className="place-list-tags">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}</span>}</span>
         </button></li>
       })}</ul>}
       {!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}

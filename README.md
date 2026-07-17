@@ -30,6 +30,14 @@ WebP embarquées sont pris en charge. Les champs non mappés sont conservés dan
 contrôlée (ZIP, taille, ratio, chemins, liens et archives imbriquées) et aucun
 HTML brut ou fichier externe n’est rendu.
 
+L’analyse accepte jusqu’à 500 références d’images uniques. Lors de la
+confirmation, les URL identiques sont téléchargées une seule fois, les images
+sont enregistrées progressivement et une image indisponible n’annule jamais la
+création des POI. La modale affiche l’avancement détaillé de l’opération.
+Un doublon exige le même nom normalisé et exactement les mêmes coordonnées ;
+l’aperçu distingue les répétitions internes du KMZ des POI déjà présents sur
+la carte et permet, si nécessaire, de forcer tous les doublons valides.
+
 ## Statuts de suivi configurables
 
 La couleur d’un marqueur provient exclusivement du statut. Son pictogramme provient de la catégorie principale du POI : une seule peut être principale, la première association est choisie automatiquement et son retrait promeut la catégorie restante au plus petit UUID. Les icônes sont des identifiants d’un catalogue fermé ; aucune URL ni aucun SVG arbitraire n’est stocké.
@@ -196,3 +204,9 @@ Ces éléments sont envisagés et ne sont pas encore disponibles :
 # Catalogue CartaVault des cartes
 
 Le catalogue **Cartes** est accessible depuis la navigation latérale. Il remplace le sélecteur de la barre supérieure et présente chaque carte avec un aperçu local, son pays, les actions Ouvrir et Supprimer, ainsi que la création de carte. Ouvrir une carte met à jour `?map=<uuid>`, recentre la carte existante et affiche le panneau Lieux ; aucun aperçu distant ni image supplémentaire n'est utilisé.
+
+## Préparation de sorties
+
+L’entrée **Sorties** étend l’espace cartographique existant : les POI restent dans le panneau Lieux à gauche, la même carte Leaflet reste au centre et l’itinéraire se prépare dans un panneau à droite. Les POI sont ajoutés aux journées par glisser-déposer, sans recréer la carte ni perdre son centre, son zoom ou ses marqueurs.
+
+Une sortie peut contenir plusieurs journées, des étapes liées à des POI ou libres et un hébergement entre deux journées. L’ordre manuel reste prioritaire ; une optimisation OSRM facultative propose un nouvel ordre qui doit être explicitement accepté. Les itinéraires et synthèses sont persistés, et les exports Google Maps, GPX et KMZ sont générés côté backend. Les droits de la carte s’appliquent aussi aux sorties : lecture pour les lecteurs, édition pour les éditeurs, suppression pour le propriétaire ou l’administrateur.

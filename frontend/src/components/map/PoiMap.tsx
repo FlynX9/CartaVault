@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
-import { divIcon, LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
-import { MapContainer, Marker, Popup } from 'react-leaflet'
+import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { divIcon, DomEvent, LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip } from 'react-leaflet'
 
 import type { BasemapId } from '../../map/basemaps'
 import type { GeocodingResult } from '../../geocoding/types'
@@ -13,7 +13,9 @@ import { MapContextEvents } from './MapContextEvents'
 import type { MapContextMenuState } from './mapContextMenuUtils'
 import { getStatusMarkerIcon } from './markerIcons'
 import { DraftPositionMarker } from './DraftPositionMarker'
+import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
 import type { MapMarkerFilter } from './mapMarkerFilterContext'
+import type { Trip } from '../../types/trip'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 
@@ -37,9 +39,12 @@ interface PoiMapProps {
   draftPlaceId?: string | null
   onDraftPositionChange?: (position: DraftPosition) => void
   markerFilter?: MapMarkerFilter
+  trip?: Trip | null
+  activeTripDayId?: string | null
+  onTripPlaceAdd?: (place: MapPlace) => void
 }
 
-function PlaceMarker({ place, selected, muted, popupContent, onSelect, onPopupClose }: { place: MapPlace; selected: boolean; muted: boolean; popupContent: ReactNode; onSelect: () => void; onPopupClose: () => void }) {
+function PlaceMarker({ place, selected, muted, popupContent, onSelect, onDoubleClick, onPopupClose }: { place: MapPlace; selected: boolean; muted: boolean; popupContent: ReactNode; onSelect: () => void; onDoubleClick?: () => void; onPopupClose: () => void }) {
   const markerRef = useRef<LeafletMarker>(null)
   const popupRef = useRef<LeafletPopup>(null)
   const popupOpenedRef = useRef(false)
@@ -71,6 +76,7 @@ function PlaceMarker({ place, selected, muted, popupContent, onSelect, onPopupCl
       icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected, muted)}
       eventHandlers={{
         click: onSelect,
+        dblclick: (event) => { if (onDoubleClick) { DomEvent.stop(event.originalEvent); onDoubleClick() } },
         popupopen: () => { popupOpenedRef.current = true },
         popupclose: () => {
           const controlledClose = controlledCloseRef.current
@@ -117,6 +123,9 @@ export function PoiMap({
   draftPlaceId = null,
   onDraftPositionChange = () => undefined,
   markerFilter = { query: '', categoryId: '', statusId: null, tagId: '' },
+  trip = null,
+  activeTripDayId = null,
+  onTripPlaceAdd,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const matchesMarkerFilter = (place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.categories.some((category) => category.id === markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tags.some((tag) => tag.id === markerFilter.tagId))
@@ -138,11 +147,18 @@ export function PoiMap({
       <MapFocusController request={focusRequest} />
       <MapResizeWatcher layoutKey={layoutKey} />
       <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} />
+      <MapDoubleClickZoomController disabled={trip !== null} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
-      {places.filter((place) => place.id !== draftPlaceId).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onPopupClose={onPopupClose} />)}
+      {places.filter((place) => place.id !== draftPlaceId).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onDoubleClick={onTripPlaceAdd ? () => onTripPlaceAdd(place) : undefined} onPopupClose={onPopupClose} />)}
+      {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} />}
     </MapContainer>
   )
+}
+
+const TRIP_COLORS = ['#0FA68A', '#3B82F6', '#A855F7', '#F59E0B', '#EF4444']
+function TripOverlay({ trip, activeDayId }: { trip: Trip; activeDayId: string | null }) {
+  return <>{trip.days.map((day, dayIndex) => { const color = TRIP_COLORS[dayIndex % TRIP_COLORS.length]; const active = activeDayId === null || day.id === activeDayId; return <Fragment key={day.id}>{day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 5 : 3, opacity: active ? .9 : .28 }} />}{day.stops.map((stop, index) => <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={active ? 9 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: active ? 1 : .38, weight: 2 }}><Tooltip permanent direction="center" className="trip-stop-number">{index + 1}</Tooltip></CircleMarker>)}</Fragment>})}{trip.departure && <CircleMarker center={[trip.departure.latitude, trip.departure.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#0FA68A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">D</Tooltip></CircleMarker>}{trip.nights.map((night) => <CircleMarker key={night.id} center={[night.latitude, night.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#C8A14A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">H</Tooltip></CircleMarker>)}</>
 }

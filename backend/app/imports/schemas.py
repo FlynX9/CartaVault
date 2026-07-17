@@ -1,5 +1,6 @@
 """Public request and response contracts for the preview-first KMZ flow."""
 
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -28,6 +29,7 @@ class KmzImportItemPreview(BaseModel):
     errors: list[str]
     importable: bool
     already_imported: bool
+    duplicate_reason: Literal["within_file", "existing_map"] | None = None
 
 
 class KmzPreviewRead(BaseModel):
@@ -64,3 +66,18 @@ class KmzImportReport(BaseModel):
     created_place_ids: list[UUID]
     failures: list[KmzImportFailure]
     warnings: list[str]
+
+
+class KmzImportJobStart(BaseModel):
+    job_id: UUID
+
+
+class KmzImportProgressRead(BaseModel):
+    job_id: UUID
+    status: Literal["pending", "running", "completed", "failed"]
+    completed: int = Field(ge=0)
+    total: int = Field(ge=1)
+    percent: int = Field(ge=0, le=100)
+    message: str
+    report: KmzImportReport | None = None
+    error: str | None = None
