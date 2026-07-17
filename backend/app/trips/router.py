@@ -280,8 +280,26 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
     return_to_start = options.return_to_start and end is None
     order = optimize_matrix(values, locked, keep_start, keep_end, return_to_start)
     stop_indexes = [index for index in order if offset <= index < offset + len(stops)]
-    before = path_cost(list(range(len(points))), values, return_to_start); after = path_cost(order, values, return_to_start)
-    return {"manual_stop_ids": [stop.id for stop in stops], "optimized_stop_ids": [stops[index - offset].id for index in stop_indexes], "before": before, "after": after, "gain": max(0, before - after), "metric": options.metric}
+    manual_order = list(range(len(points)))
+    before = path_cost(manual_order, values, return_to_start); after = path_cost(order, values, return_to_start)
+    before_distance = path_cost(manual_order, matrix.distances, return_to_start)
+    after_distance = path_cost(order, matrix.distances, return_to_start)
+    before_duration = path_cost(manual_order, matrix.durations, return_to_start)
+    after_duration = path_cost(order, matrix.durations, return_to_start)
+    return {
+        "manual_stop_ids": [stop.id for stop in stops],
+        "optimized_stop_ids": [stops[index - offset].id for index in stop_indexes],
+        "before": before,
+        "after": after,
+        "gain": max(0, before - after),
+        "metric": options.metric,
+        "before_distance_meters": before_distance,
+        "after_distance_meters": after_distance,
+        "distance_gain_meters": max(0, before_distance - after_distance),
+        "before_duration_seconds": before_duration,
+        "after_duration_seconds": after_duration,
+        "duration_gain_seconds": max(0, before_duration - after_duration),
+    }
 
 
 @router.post("/trip-days/{day_id}/optimize/confirm", response_model=DayRead)

@@ -1,5 +1,7 @@
 # Tests du backend POI Manager
 
+Les tests du module Sorties vérifient séparément les mesures brutes du fournisseur de routage (mètres et secondes), les visites et la durée estimée. Ils couvrent aussi les voyages vides, les journées sans route, les routes obsolètes, les totaux partiels et la comparaison distance/durée de l’optimisation.
+
 `test_account.py` vérifie le profil personnel, les changements sensibles, l’absence de secrets dans les sessions et l’anonymisation. Toutes les opérations d’intégration utilisent exclusivement `TEST_DATABASE_URL`.
 
 ## Sécurité multi-utilisateur

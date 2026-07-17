@@ -199,8 +199,13 @@ class TripRead(ORMRead):
 class TripSummaryRead(BaseModel):
     trip_id: UUID; days: int; nights: int; stops: int; unique_places: int; distance_meters: float; route_duration_seconds: float
     visit_duration_minutes: int; total_duration_minutes: int; visit_status_counts: dict[str, int]
+    total_route_distance_meters: float; total_route_distance_km: float; total_route_duration_seconds: float; total_route_duration_minutes: int
+    total_visit_duration_minutes: int; total_pause_duration_minutes: int; total_buffer_duration_minutes: int; total_estimated_duration_minutes: int
+    days_with_route: int; days_without_route: int; stale_route_days: int; is_route_summary_complete: bool
 
 
 class DaySummaryRead(BaseModel):
-    day_id: UUID; stops: int; required_stops: int; optional_stops: int; distance_meters: float; route_duration_seconds: float
-    visit_duration_minutes: int; total_duration_minutes: int; overload_minutes: int; unroutable_segments: int
+    day_id: UUID; stops: int; required_stops: int; optional_stops: int; distance_meters: float | None
+    route_distance_meters: float | None; route_distance_km: float | None; route_duration_seconds: float | None; route_duration_minutes: int | None
+    visit_duration_minutes: int; pause_duration_minutes: int; buffer_duration_minutes: int; total_duration_minutes: int | None
+    overload_minutes: int; unroutable_segments: int; route_status: str | None; route_is_stale: bool; has_current_route: bool

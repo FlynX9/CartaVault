@@ -12,7 +12,16 @@ from app.trips.routing.base import RoutingError, RoutingProvider
 
 
 def load_trip(session: Session, trip_id: UUID) -> Trip:
-    trip = session.scalar(select(Trip).where(Trip.id == trip_id).options(selectinload(Trip.days).selectinload(TripDay.stops), selectinload(Trip.nights), selectinload(Trip.departure)))
+    trip = session.scalar(
+        select(Trip)
+        .where(Trip.id == trip_id)
+        .options(
+            selectinload(Trip.days).selectinload(TripDay.stops),
+            selectinload(Trip.nights),
+            selectinload(Trip.departure),
+        )
+        .execution_options(populate_existing=True)
+    )
     if trip is None: raise HTTPException(404, "Trip not found")
     return trip
 

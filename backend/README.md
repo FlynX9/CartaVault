@@ -254,6 +254,8 @@ La feature `app/trips/` gère les voyages, journées, étapes et nuits de façon
 
 Le routage est fourni par une abstraction backend. L’implémentation actuelle utilise OSRM via `ROUTING_OSRM_BASE_URL`, avec délai d’attente et limite de points configurables. Aucune requête OSRM n’est effectuée directement par le navigateur. Les parcours calculés sont stockés dans `trip_days`, invalidés après une modification d’ordre et recalculés sur demande.
 
+Les unités persistées et retournées restent numériques : `route_distance_meters` est exprimé en mètres et `route_duration_seconds` en secondes. Les résumés dérivent aussi les kilomètres et minutes, sans inclure les visites ou les temps annexes dans ces métriques routières. Une route n’est actuelle que lorsque `route_status == "ready"` et que ses deux mesures existent. Les journées absentes ou `stale` sont exclues des sommes routières et rendent `is_route_summary_complete` faux. Aucun champ supplémentaire en base n’est requis pour ces synthèses.
+
 ## Arborescence du backend
 
 ```text

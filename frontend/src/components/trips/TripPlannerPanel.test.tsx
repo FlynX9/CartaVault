@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDeparture, addTripStop, calculateTripDayRoute, deleteTripStop, getTrip, listTrips, moveTripStop, updateTripDeparture } from '../../api/trips'
+import { addTripDeparture, addTripStop, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, getTrip, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDeparture } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -27,10 +27,12 @@ describe('TripPlannerPanel', () => {
   beforeEach(() => {
     vi.mocked(listTrips).mockResolvedValue([trip])
     vi.mocked(getTrip).mockResolvedValue(trip)
+    vi.mocked(getTripSummary).mockResolvedValue({ trip_id: 'trip-1', days: 1, nights: 0, stops: 0, unique_places: 0, distance_meters: 0, route_duration_seconds: 0, visit_duration_minutes: 0, total_duration_minutes: 0, visit_status_counts: {}, total_route_distance_meters: 0, total_route_distance_km: 0, total_route_duration_seconds: 0, total_route_duration_minutes: 0, total_visit_duration_minutes: 0, total_pause_duration_minutes: 0, total_buffer_duration_minutes: 0, total_estimated_duration_minutes: 0, days_with_route: 0, days_without_route: 1, stale_route_days: 0, is_route_summary_complete: false })
     vi.mocked(addTripStop).mockResolvedValue({} as never)
     vi.mocked(deleteTripStop).mockResolvedValue(undefined)
     vi.mocked(moveTripStop).mockResolvedValue(trip)
     vi.mocked(calculateTripDayRoute).mockResolvedValue(trip.days[0])
+    vi.mocked(confirmTripOptimization).mockResolvedValue(trip.days[0])
   })
 
   it('renders as the right workspace panel and not as a modal', async () => {
@@ -128,6 +130,46 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStops} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Itinéraire' }))
     expect(await screen.findByRole('button', { name: 'Itinéraire rafraîchi' })).toHaveClass('route-success')
+  })
+
+  it('separates daily and global route metrics from visits', async () => {
+    const routed = { ...trip, days: [{ ...trip.days[0], route_status: 'ready', route_distance_meters: 184_300, route_duration_seconds: 13_320, visit_duration_minutes: 330, stops: [{ id: 'visit-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Visite', latitude: 48, longitude: 2, address: null, sort_order: 0, visit_duration_minutes: 330, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([routed]); vi.mocked(getTrip).mockResolvedValue(routed)
+    vi.mocked(getTripSummary).mockResolvedValue({ trip_id: 'trip-1', days: 1, nights: 0, stops: 1, unique_places: 0, distance_meters: 184_300, route_duration_seconds: 13_320, visit_duration_minutes: 330, total_duration_minutes: 552, visit_status_counts: { planned: 1 }, total_route_distance_meters: 184_300, total_route_distance_km: 184.3, total_route_duration_seconds: 13_320, total_route_duration_minutes: 222, total_visit_duration_minutes: 330, total_pause_duration_minutes: 0, total_buffer_duration_minutes: 0, total_estimated_duration_minutes: 552, days_with_route: 1, days_without_route: 0, stale_route_days: 0, is_route_summary_complete: true })
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={routed} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Distance totale de route : 184,3 km')).toBeVisible()
+    expect(screen.getByLabelText('Temps total de conduite : 3 h 42')).toBeVisible()
+    expect(screen.getAllByLabelText('Visites : 5 h 30')).toHaveLength(2)
+    expect(screen.getAllByLabelText('Durée totale estimée : 9 h 12')).toHaveLength(2)
+  })
+
+  it('marks stale routes as unavailable and the global summary as partial', async () => {
+    const staleTrip = { ...trip, days: [{ ...trip.days[0], route_status: 'stale', route_distance_meters: 184_300, route_duration_seconds: 13_320 }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([staleTrip]); vi.mocked(getTrip).mockResolvedValue(staleTrip)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={staleTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findAllByText('Itinéraire à recalculer')).toHaveLength(2)
+    expect(screen.getByText(/Résumé partiel/)).toBeVisible()
+    expect(screen.queryByText('184,3 km')).not.toBeInTheDocument()
+  })
+
+  it('compares optimization distance and driving time before confirmation', async () => {
+    const stops = [0, 1].map((index) => ({ id: `opt-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
+    const optimizable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([optimizable]); vi.mocked(getTrip).mockResolvedValue(optimizable)
+    vi.mocked(optimizeTripDay).mockResolvedValue({ manual_stop_ids: ['opt-0', 'opt-1'], optimized_stop_ids: ['opt-1', 'opt-0'], before: 17_520, after: 14_880, gain: 2_640, metric: 'duration', before_distance_meters: 214_000, after_distance_meters: 176_000, distance_gain_meters: 38_000, before_duration_seconds: 17_520, after_duration_seconds: 14_880, duration_gain_seconds: 2_640 })
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={optimizable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Optimiser' }))
+
+    expect(await screen.findByText('Distance : 214 km')).toBeVisible()
+    expect(screen.getByText('Conduite : 4 h 52')).toBeVisible()
+    expect(screen.getByText('Distance : 176 km')).toBeVisible()
+    expect(screen.getByText('Conduite : 4 h 08')).toBeVisible()
+    expect(screen.getByText('Distance : 38 km')).toBeVisible()
+    expect(screen.getByText('Conduite : 44 min')).toBeVisible()
   })
 
   it('edits the fixed departure without deleting it first', async () => {

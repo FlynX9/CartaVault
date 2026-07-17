@@ -53,6 +53,9 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
 
     summary = integration_client.get(f"/trips/{trip_id}/summary")
     assert summary.status_code == 200 and summary.json()["days"] == 3 and summary.json()["nights"] == 1 and summary.json()["stops"] == 2
+    assert summary.json()["days_with_route"] == 0
+    assert summary.json()["days_without_route"] == 3
+    assert summary.json()["is_route_summary_complete"] is False
 
     viewer = User(email=f"viewer-{uuid4()}@example.test", display_name="Viewer", password_hash="x", is_active=True, is_admin=False)
     database_session.add(viewer); database_session.flush(); database_session.add(MapMembership(map_id=poi_map.id, user_id=viewer.id, role="viewer")); database_session.flush()
@@ -151,6 +154,7 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     try:
         route = integration_client.post(f"/trip-days/{first['id']}/route", json={})
         optimized = integration_client.post(f"/trip-days/{first['id']}/optimize", json={})
+        summary = integration_client.get(f"/trips/{trip['id']}/summary")
     finally:
         app.dependency_overrides.pop(get_routing_provider, None)
     assert route.status_code == 200
@@ -161,8 +165,17 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     assert coordinates[2][0] == pytest.approx(2.3)
     assert route.json()["route_segments"][0]["from"].startswith("departure:")
     assert route.json()["route_segments"][-1]["to"].startswith("night:")
+    assert summary.json()["total_route_distance_meters"] == 1500
+    assert summary.json()["total_route_duration_seconds"] == 420
+    assert summary.json()["days_with_route"] == 1
+    assert summary.json()["days_without_route"] == 1
+    assert summary.json()["is_route_summary_complete"] is False
     assert optimized.status_code == 200
     assert optimized.json()["before"] == 30
+    assert optimized.json()["before_distance_meters"] == 30
+    assert optimized.json()["before_duration_seconds"] == 30
+    assert optimized.json()["distance_gain_meters"] >= 0
+    assert optimized.json()["duration_gain_seconds"] >= 0
     assert set(optimized.json()["optimized_stop_ids"]) == {item["id"] for item in stops}
     updated_departure = integration_client.patch(
         f"/trip-departures/{departure.json()['id']}",
