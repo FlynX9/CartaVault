@@ -1,4 +1,4 @@
-# Backend de POI Manager
+# Backend de CartaVault
 
 Le routeur `/account` gère le profil personnel, le changement d’e-mail et de mot de passe, les sessions actives, les avatars et la suppression contrôlée. Les avatars JPEG/PNG/WebP sont décodés avec Pillow, recadrés au centre en 256×256 WebP, débarrassés des métadonnées et stockés sous `AVATAR_STORAGE_PATH` (5 Mio et 4096 px maximum). La suppression refuse les propriétaires de cartes et le dernier administrateur actif, puis révoque les sessions et anonymise le compte. Aucun e-mail de validation ni mécanisme 2FA n’est disponible actuellement.
 
@@ -116,7 +116,7 @@ vérifie l'absence de `map_id` nul, puis supprime `places.country`. Une valeur
 vide, inconnue ou ambiguë interrompt la transaction. Le downgrade reconstruit
 le pays texte depuis les relations avant de supprimer les nouvelles tables.
 
-API FastAPI synchrone de POI Manager, structurée par fonctionnalité et basée
+API FastAPI synchrone de CartaVault, structurée par fonctionnalité et basée
 sur SQLAlchemy 2, PostgreSQL/PostGIS, Pydantic 2 et Alembic.
 
 ## Prérequis

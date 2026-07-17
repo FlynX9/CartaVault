@@ -1,4 +1,4 @@
-# POI Manager
+# CartaVault
 
 Le bouton utilisateur CartaVault ouvre un espace Compte superposé sans démonter la carte : profil, sécurité, sessions, préférences locales et zone sensible. Le changement d’e-mail est immédiat après confirmation du mot de passe, car aucune validation par e-mail n’est encore disponible. La 2FA n’est pas proposée dans cette version.
 
@@ -89,7 +89,7 @@ flottant au-dessus de la carte. Les URLs `/places/:id`, `/places/:id/edit` et
 isolée. Sur mobile, la liste est escamotable et le formulaire devient un
 panneau inférieur afin de conserver la carte visible.
 
-POI Manager est un projet auto-hébergé de gestion de points d'intérêt (POI)
+CartaVault est un projet auto-hébergé de gestion de points d'intérêt (POI)
 géographiques. Le backend fournit une API FastAPI synchrone adossée à
 PostgreSQL/PostGIS. Une première interface React affiche les POI visibles sur
 une carte interactive Leaflet alimentée par OpenStreetMap.
@@ -173,6 +173,26 @@ Vite affiche l'URL locale, généralement <http://localhost:5173>.
 > reconstruire une base entièrement vide hors de la procédure Docker fournie.
 
 ## État du projet
+
+CartaVault est actuellement en développement actif.
+
+Fonctionnalités disponibles :
+- gestion des cartes ;
+- gestion des lieux ;
+- photos ;
+- catégories et tags ;
+- import/export KMZ ;
+- utilisateurs et permissions ;
+- préparation de sorties ;
+- itinéraires OSRM ;
+- optimisation des journées.
+
+Fonctionnalités encore en développement :
+- espace Compte complet ;
+- clustering ;
+- collections ;
+- actions groupées ;
+- déploiement de production.
 
 Le backend couvre la gestion des POI, catégories, tags et photos. Le frontend
 conserve la carte visible, filtre les marqueurs par pays et affiche une liste

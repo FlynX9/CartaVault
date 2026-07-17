@@ -13,7 +13,7 @@ def test_health_endpoint(api_client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "message": "POI Manager API is running",
+        "message": "CartaVault API is running",
     }
 
 

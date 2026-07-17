@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Database schema for POI Manager.
+Database schema for CartaVault.
 
 The application manages geographic points of interest with:
 - locations

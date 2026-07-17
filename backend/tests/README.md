@@ -1,4 +1,4 @@
-# Tests du backend POI Manager
+# Tests du backend CartaVault
 
 Les tests du module Sorties vérifient séparément les mesures brutes du fournisseur de routage (mètres et secondes), les visites, les tampons, les marges et la durée estimée, sans pause. Ils couvrent les passages de minuit, les départs recommandés, les arrivées estimées, les seuils/couleurs de charge, les voyages vides, les journées sans route ou obsolètes, les totaux partiels et la comparaison distance/durée de l’optimisation. `test_trip_time_planning_migration.py` exerce le cycle révision précédente → upgrade → downgrade → upgrade final exclusivement sur `poi_manager_test`.
 

@@ -81,7 +81,7 @@ async def lifespan(_: FastAPI):
     yield
 
 app = FastAPI(
-    title="POI Manager API",
+    title="CartaVault API",
     description="API for managing geographic points of interest",
     version="0.1.0",
     lifespan=lifespan,
@@ -118,4 +118,4 @@ app.include_router(trips_router)
     tags=["health"],
 )
 def root() -> dict[str, str]:
-    return {"message": "POI Manager API is running"}
+    return {"message": "CartaVault API is running"}

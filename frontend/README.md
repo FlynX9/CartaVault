@@ -1,4 +1,4 @@
-# Frontend cartographique de POI Manager
+# Frontend cartographique de CartaVault
 
 Le bouton utilisateur ouvre une grande modale Compte au-dessus du workspace, sans remonter Leaflet. Elle regroupe Profil, Sécurité, Sessions actives, Préférences, Administration pour les administrateurs et Zone sensible. Les préférences restent locales au navigateur ; l’avatar utilise les initiales comme fallback.
 
@@ -82,7 +82,7 @@ popup revient à `/?map=<uuid>`; les liens directs restaurent la carte, la
 sélection et la fiche. Sous 760 px, le panneau d'édition devient une fiche
 inférieure et la liste est masquée pendant l'édition.
 
-Interface React TypeScript de POI Manager. Elle affiche les POI visibles sur
+Interface React TypeScript de CartaVault. Elle affiche les POI visibles sur
 une carte Leaflet, présente un aperçu au clic et permet de consulter, créer,
 modifier et supprimer les POI et leurs associations.
 
@@ -90,7 +90,7 @@ modifier et supprimer les POI et leurs associations.
 
 - Node.js 24 (développement vérifié avec Node.js 24.18.0) ;
 - npm ;
-- le backend POI Manager accessible en HTTP.
+- le backend CartaVault accessible en HTTP.
 
 ## Installation
 

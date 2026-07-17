@@ -1412,7 +1412,7 @@ button {
   }
 }
 
-/* CartaVault scale pass: deliberately placed last to override legacy POI Manager rules. */
+/* CartaVault scale pass: deliberately placed last to override legacy CartaVault rules. */
 :root { --cv-nav-width: 84px; --cv-topbar-height: 72px; --cv-sidebar-width: 380px; --cv-control-height: 44px; --cv-font-size-sm: 0.8rem; --cv-font-size-base: 0.94rem; --cv-font-size-lg: 1.35rem; }
 .app-header { min-height: var(--cv-topbar-height); padding: 0.75rem 1.5rem; color: var(--cv-color-navy); background: var(--cv-color-off-white); box-shadow: var(--cv-shadow-sm); }
 .app-header h1 { color: var(--cv-color-navy); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: var(--cv-font-size-lg); }.app-eyebrow { color: var(--cv-color-gray); }.app-header-actions { gap: 0.65rem; }.header-link { min-height: 40px; padding: 0.55rem 0.85rem; color: var(--cv-color-slate); border-color: rgb(43 62 89 / 18%); border-radius: 0.55rem; }.marker-count { padding: 0.45rem 0.65rem; color: var(--cv-color-gray); background: var(--cv-color-mist); }.marker-count strong { color: var(--cv-color-navy); font-size: 1rem; }
