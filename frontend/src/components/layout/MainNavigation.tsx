@@ -19,7 +19,7 @@ export function MainNavigation({ activePanel, onPanelChange, isAdmin = false, on
   const togglePanel = (panel: Exclude<WorkspacePanel, null>) => onPanelChange(activePanel === panel ? null : panel)
 
   return <nav className="main-navigation cv-main-navigation" aria-label="Navigation CartaVault">
-    <Link className="main-navigation-brand" to="/" aria-label="CartaVault"><img src="/cartavault-icon.svg" alt="CartaVault" /></Link>
+    <Link className="main-navigation-brand" to="/" aria-label="CartaVault"><img src="/cartavault-logo.png" alt="CartaVault" /></Link>
     <div className="main-navigation-links cv-main-navigation__items">
       <button type="button" className={navClass(activePanel === 'maps')} aria-label="Cartes" aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={21} /><span>Cartes</span></button>
       <button type="button" className={navClass(activePanel === 'places' && !tripPlanningActive)} aria-label="Lieux" aria-pressed={activePanel === 'places' && !tripPlanningActive} onClick={() => togglePanel('places')}><MapPin size={21} /><span>Lieux</span></button>

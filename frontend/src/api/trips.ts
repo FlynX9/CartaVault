@@ -37,8 +37,8 @@ export const deleteTripArrival = (id: string) => sendWithoutResponse(`/trip-arri
 export const calculateTripDayRoute = (id: string) => sendJson(`/trip-days/${id}/route`, 'POST', {}) as Promise<TripDay>
 export const optimizeTripDay = (id: string) => sendJson(`/trip-days/${id}/optimize`, 'POST', { metric: 'duration', keep_start: true, keep_end: true, keep_locked: true }) as Promise<TripOptimization>
 export const confirmTripOptimization = (id: string, stopIds: string[]) => sendJson(`/trip-days/${id}/optimize/confirm`, 'POST', { stop_ids: stopIds }) as Promise<TripDay>
-export const getTripSummary = (id: string) => getJson(`/trips/${id}/summary`, empty) as Promise<TripSummary>
-export const getTripDaySummary = (id: string) => getJson(`/trip-days/${id}/summary`, empty) as Promise<TripDayTimeSummary>
+export const getTripSummary = (id: string, signal?: AbortSignal) => getJson(`/trips/${id}/summary`, empty, signal) as Promise<TripSummary>
+export const getTripDaySummary = (id: string, signal?: AbortSignal) => getJson(`/trip-days/${id}/summary`, empty, signal) as Promise<TripDayTimeSummary>
 export const setTripVisitStatus = (id: string, visitStatus: TripVisitStatus) => sendJson(`/trip-stops/${id}/visit-status`, 'PATCH', { visit_status: visitStatus }) as Promise<TripStop>
 export const exportTripGoogleMaps = (id: string) => sendJson(`/trips/${id}/exports/google-maps`, 'POST', {}) as Promise<{ links: Array<{ day_number: number; part: number; url: string }>; warnings: string[] }>
 export const exportTripGpx = (id: string) => sendJson(`/trips/${id}/exports/gpx`, 'POST', {}) as Promise<TripExport>

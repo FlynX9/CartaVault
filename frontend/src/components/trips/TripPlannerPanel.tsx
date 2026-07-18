@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type CSSProperties, type DragEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { ArrowDown, ArrowUp, BedDouble, CalendarPlus, Check, ChevronDown, Copy, Download, Flag, GripVertical, Lock, MapPin, Navigation, Pencil, Plus, Route, Save, Trash2, X } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGoogleMaps, exportTripGpx, exportTripKmz, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
@@ -26,33 +26,61 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [summary, setSummary] = useState<TripSummary | null>(null)
   const [daySummaries, setDaySummaries] = useState<Record<string, TripDayTimeSummary>>({})
   const [loadSettingsDraft, setLoadSettingsDraft] = useState<TripLoadSettings | null>(null)
+  const [loadingTripId, setLoadingTripId] = useState<string | null>(null)
+  const activeDayIdRef = useRef(activeDayId)
+  const loadControllerRef = useRef<AbortController | null>(null)
+  const selectionVersionRef = useRef(0)
 
-  const loadTripDetails = useCallback(async (target: string) => {
-    const loaded = await getTrip(target)
-    const [loadedSummary, perDay] = await Promise.all([getTripSummary(target), Promise.all(loaded.days.map((day) => getTripDaySummary(day.id)))])
+  useEffect(() => { activeDayIdRef.current = activeDayId }, [activeDayId])
+
+  const loadTripDetails = useCallback(async (target: string, signal?: AbortSignal) => {
+    const loaded = await getTrip(target, signal)
+    const [loadedSummary, perDay] = await Promise.all([getTripSummary(target, signal), Promise.all(loaded.days.map((day) => getTripDaySummary(day.id, signal)))])
     return { loaded, loadedSummary, daySummaries: Object.fromEntries(perDay.map((item) => [item.day_id, item])) }
   }, [])
   const applyLoadedTrip = useCallback(({ loaded, loadedSummary, daySummaries: loadedDays }: Awaited<ReturnType<typeof loadTripDetails>>) => {
     onTripChange(loaded); setSummary(loadedSummary); setDaySummaries(loadedDays); setDraftName(loaded.name); setLoadSettingsDraft(readLoadSettings(loaded)); setDirty(false)
-    onActiveDayChange(loaded.days.some((day) => day.id === activeDayId) ? activeDayId : loaded.days[0]?.id ?? null)
-  }, [activeDayId, onActiveDayChange, onTripChange])
+    const currentDayId = activeDayIdRef.current
+    onActiveDayChange(loaded.days.some((day) => day.id === currentDayId) ? currentDayId : loaded.days[0]?.id ?? null)
+  }, [onActiveDayChange, onTripChange])
+  const selectTrip = useCallback(async (target: string) => {
+    selectionVersionRef.current += 1
+    loadControllerRef.current?.abort()
+    if (!target) {
+      loadControllerRef.current = null
+      setLoadingTripId(null); setError(null); setSummary(null); setDaySummaries({})
+      onTripChange(null); onActiveDayChange(null)
+      return
+    }
+    const controller = new AbortController()
+    loadControllerRef.current = controller
+    setLoadingTripId(target); setError(null); setSummary(null); setDaySummaries({})
+    try {
+      const details = await loadTripDetails(target, controller.signal)
+      if (loadControllerRef.current === controller) applyLoadedTrip(details)
+    } catch (caught) {
+      if (!controller.signal.aborted && loadControllerRef.current === controller) setError(caught instanceof Error ? caught.message : 'Chargement impossible.')
+    } finally {
+      if (loadControllerRef.current === controller) setLoadingTripId(null)
+    }
+  }, [applyLoadedTrip, loadTripDetails, onActiveDayChange, onTripChange])
   const reload = async (id = trip?.id) => {
     const items = await listTrips(poiMap.id); setTrips(items)
     const target = id && items.some((item) => item.id === id) ? id : items[0]?.id
-    if (!target) { onTripChange(null); onActiveDayChange(null); setSummary(null); setDaySummaries({}); return }
-    applyLoadedTrip(await loadTripDetails(target))
+    if (!target) { loadControllerRef.current?.abort(); onTripChange(null); onActiveDayChange(null); setSummary(null); setDaySummaries({}); setLoadingTripId(null); return }
+    await selectTrip(target)
   }
   useEffect(() => {
     let active = true
+    const initialSelectionVersion = selectionVersionRef.current
     void listTrips(poiMap.id).then(async (items) => {
       if (!active) return
       setTrips(items)
       if (!items[0]) { onTripChange(null); onActiveDayChange(null); return }
-      const details = await loadTripDetails(items[0].id)
-      if (active) applyLoadedTrip(details)
+      if (active && selectionVersionRef.current === initialSelectionVersion) await selectTrip(items[0].id)
     }).catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') })
-    return () => { active = false }
-  }, [applyLoadedTrip, loadTripDetails, poiMap.id, onActiveDayChange, onTripChange])
+    return () => { active = false; loadControllerRef.current?.abort() }
+  }, [poiMap.id, onActiveDayChange, onTripChange, selectTrip])
 
   const run = async (action: () => Promise<void>) => { setBusy(true); setError(null); try { await action() } catch (caught) { setError(caught instanceof Error ? caught.message : 'Opération impossible.') } finally { setBusy(false) } }
   const reorderDays = (index: number, delta: number) => {
@@ -91,8 +119,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   return <aside className="map-sidebar trip-planner-panel" aria-label="Préparation de sortie">
     <header className="trip-panel-header"><div><p className="cv-workspace-panel__eyebrow">Sortie</p><h2>Préparation</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer le panneau Sortie" onClick={onClose}><X size={17} /></button></header>
     {error && <p className="trip-panel-error" role="alert">{error === 'Internal Server Error' ? 'Une erreur serveur empêche cette opération.' : error}</p>}
-    <div className="trip-panel-selector"><select aria-label="Voyage actif" value={trip?.id ?? ''} onChange={(event) => void reload(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}</div>
-    {summary && <TripSummaryMetrics summary={summary} />}
+    <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => void selectTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}</div>
+    {loadingTripId ? <div className="trip-panel-empty" role="status"><Route size={28} /><strong>Chargement du voyage…</strong></div> : <>{summary && <TripSummaryMetrics summary={summary} />}
     {!trip ? <div className="trip-panel-empty"><Route size={28} /><strong>Aucune sortie préparée</strong><span>Créez un voyage puis ajoutez les POI depuis le panneau Lieux.</span></div> : <>
       <TripSettings trip={trip} canEdit={canEdit} canDelete={poiMap.can_delete === true} busy={busy} draftName={draftName} dirty={dirty} loadSettings={loadSettingsDraft ?? readLoadSettings(trip)} onNameChange={(value) => { setDraftName(value); setDirty(value !== trip.name) }} onLoadSettingsChange={setLoadSettingsDraft} onSave={() => void run(async () => { if (draftName !== trip.name) await updateTrip(trip.id, { name: draftName }); if (loadSettingsDraft) await updateTripLoadSettings(trip.id, loadSettingsDraft); await reload(trip.id) })} onDuplicate={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })} onDelete={() => { if (window.confirm('Supprimer définitivement ce voyage ?')) void run(async () => { await deleteTrip(trip.id); await reload('') }) }} onGoogle={() => void run(async () => { const result = await exportTripGoogleMaps(trip.id); result.links.forEach((link) => window.open(link.url, '_blank', 'noopener,noreferrer')) })} onGpx={() => void run(() => exportFile('gpx'))} onKmz={() => void run(() => exportFile('kmz'))} />
       <details className="trip-panel-section trip-panel-journeys" open><summary><span>Trajets</span><small>{trip.days.length} {trip.days.length > 1 ? 'journées' : 'journée'}</small><ChevronDown className="trip-panel-chevron" size={15} /></summary>
@@ -110,7 +138,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
           {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEdit} run={run} reload={reload} />}
         </div>)}</div>
       </details>
-    </>}
+    </>}</>}
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
   </aside>
 }

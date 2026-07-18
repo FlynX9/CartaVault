@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -28,6 +29,7 @@ const emptyDaySummary = { day_id: 'day-1', stops: 0, required_stops: 0, optional
 describe('TripPlannerPanel', () => {
   afterEach(cleanup)
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.mocked(listTrips).mockResolvedValue([trip])
     vi.mocked(getTrip).mockResolvedValue(trip)
     vi.mocked(getTripSummary).mockResolvedValue(emptySummary)
@@ -71,11 +73,52 @@ describe('TripPlannerPanel', () => {
     expect(within(settings!).getByLabelText('Télécharger')).toBeVisible()
   })
 
+  it('loads the trip selected from the active trip list', async () => {
+    const otherTrip = { ...trip, id: 'trip-2', name: 'Deuxième voyage', days: [{ ...trip.days[0], id: 'day-2', trip_id: 'trip-2' }] }
+    const onTripChange = vi.fn()
+    vi.mocked(listTrips).mockResolvedValue([trip, otherTrip])
+    vi.mocked(getTrip).mockImplementation(async (id) => id === otherTrip.id ? otherTrip : trip)
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={onTripChange} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const selector = await screen.findByLabelText('Voyage actif')
+    fireEvent.change(selector, { target: { value: otherTrip.id } })
+
+    await waitFor(() => expect(onTripChange).toHaveBeenLastCalledWith(otherTrip))
+  })
+
+  it('keeps the latest requested trip when selections change rapidly', async () => {
+    const secondTrip = { ...trip, id: 'trip-2', name: 'Deuxième voyage', days: [{ ...trip.days[0], id: 'day-2', trip_id: 'trip-2' }] }
+    let resolveSecond: ((value: Trip) => void) | undefined
+    const secondRequest = new Promise<Trip>((resolve) => { resolveSecond = resolve })
+    vi.mocked(listTrips).mockResolvedValue([trip, secondTrip])
+    vi.mocked(getTrip).mockImplementation(async (id) => {
+      if (id === secondTrip.id) return secondRequest
+      return trip
+    })
+
+    function StatefulPanel() {
+      const [selectedTrip, setSelectedTrip] = useState<Trip | null>(trip)
+      const [selectedDayId, setSelectedDayId] = useState<string | null>('day-1')
+      return <TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={selectedTrip} activeDayId={selectedDayId} onTripChange={setSelectedTrip} onActiveDayChange={setSelectedDayId} onClose={vi.fn()} />
+    }
+
+    render(<StatefulPanel />)
+    const selector = await screen.findByLabelText('Voyage actif')
+    fireEvent.change(selector, { target: { value: secondTrip.id } })
+    expect(await screen.findByRole('status')).toHaveTextContent('Chargement du voyage')
+    fireEvent.change(selector, { target: { value: trip.id } })
+
+    await waitFor(() => expect(selector).toHaveValue(trip.id))
+    resolveSecond?.(secondTrip)
+    await waitFor(() => expect(selector).toHaveValue(trip.id))
+  })
+
   it('accepts a POI dragged from the Places panel into a day', async () => {
     const onTripChange = vi.fn()
     const onActiveDayChange = vi.fn()
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={onTripChange} onActiveDayChange={onActiveDayChange} onClose={vi.fn()} />)
-    await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1'))
+    await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1', expect.any(AbortSignal)))
     const day = container.querySelector('.trip-panel-day')
     expect(day).not.toBeNull()
     fireEvent.drop(day!, { dataTransfer: { getData: () => 'place:place-42' } })
@@ -122,7 +165,7 @@ describe('TripPlannerPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer l’étape' }))
 
     await waitFor(() => expect(deleteTripStop).toHaveBeenCalledWith('stop-1'))
-    await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1'))
+    await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1', expect.any(AbortSignal)))
   })
 
   it('focuses the map when a stop is selected and hides visit status controls', async () => {
