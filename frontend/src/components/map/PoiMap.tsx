@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { divIcon, DomEvent, LatLngBounds, Marker as LeafletMarker, Popup as LeafletPopup } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip } from 'react-leaflet'
 
@@ -14,6 +14,7 @@ import type { MapContextMenuState } from './mapContextMenuUtils'
 import { getStatusMarkerIcon } from './markerIcons'
 import { DraftPositionMarker } from './DraftPositionMarker'
 import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
+import { MapClusterLayer } from './MapClusterLayer'
 import type { MapMarkerFilter } from './mapMarkerFilterContext'
 import type { Trip } from '../../types/trip'
 
@@ -45,7 +46,7 @@ interface PoiMapProps {
   onTripPlaceAdd?: (place: MapPlace) => void
 }
 
-function PlaceMarker({ place, selected, muted, popupContent, onSelect, onDoubleClick, onPopupClose }: { place: MapPlace; selected: boolean; muted: boolean; popupContent: ReactNode; onSelect: () => void; onDoubleClick?: () => void; onPopupClose: () => void }) {
+const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, popupContent, onSelect, onDoubleClick, onPopupClose }: { place: MapPlace; selected: boolean; muted: boolean; popupContent: ReactNode; onSelect: () => void; onDoubleClick?: () => void; onPopupClose: () => void }) {
   const markerRef = useRef<LeafletMarker>(null)
   const popupRef = useRef<LeafletPopup>(null)
   const popupOpenedRef = useRef(false)
@@ -102,7 +103,7 @@ function PlaceMarker({ place, selected, muted, popupContent, onSelect, onDoubleC
       </Popup>
     </Marker>
   )
-}
+})
 
 export function PoiMap({
   places,
@@ -130,8 +131,10 @@ export function PoiMap({
   onTripPlaceAdd,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
-  const matchesMarkerFilter = (place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.categories.some((category) => category.id === markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tags.some((tag) => tag.id === markerFilter.tagId))
-  const tripPlaceIds = new Set(trip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])
+  const tripPlaceIds = useMemo(() => new Set(trip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? []), [trip])
+  const matchesMarkerFilter = useCallback((place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.categories.some((category) => category.id === markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tags.some((tag) => tag.id === markerFilter.tagId)), [markerFilter])
+  const standardPlaces = useMemo(() => places.filter((place) => place.id !== draftPlaceId && (!tripViewOnly || tripPlaceIds.has(place.id)) && (trip === null || !tripPlaceIds.has(place.id) || place.id === selectedPlaceId)), [draftPlaceId, places, selectedPlaceId, trip, tripPlaceIds, tripViewOnly])
+  const renderPlace = useCallback((place: MapPlace) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onDoubleClick={onTripPlaceAdd ? () => onTripPlaceAdd(place) : undefined} onPopupClose={onPopupClose} />, [hasMarkerFilter, matchesMarkerFilter, onPlaceSelect, onPopupClose, onTripPlaceAdd, popupContent, selectedPlaceId])
   return (
     <MapContainer
       center={initialView.center}
@@ -155,7 +158,7 @@ export function PoiMap({
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
-      {places.filter((place) => place.id !== draftPlaceId && (!tripViewOnly || tripPlaceIds.has(place.id))).map((place) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} popupContent={place.id === selectedPlaceId ? popupContent : null} onSelect={() => onPlaceSelect(place)} onDoubleClick={onTripPlaceAdd ? () => onTripPlaceAdd(place) : undefined} onPopupClose={onPopupClose} />)}
+      <MapClusterLayer places={standardPlaces} renderPlace={renderPlace} />
       {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} showAllDays={tripViewOnly} />}
     </MapContainer>
   )

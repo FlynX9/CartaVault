@@ -1,6 +1,7 @@
 import type {
   MapCategory,
   MapPlace,
+  MapPlaceResult,
   MapPlaceQuery,
   MapTag,
   PlaceCategory,
@@ -107,6 +108,16 @@ export function parseMapPlacesResponse(payload: unknown): MapPlace[] {
   return payload.map(parseMapPlace)
 }
 
+export function parseMapPlacesResult(payload: unknown): MapPlaceResult {
+  if (Array.isArray(payload)) return { items: parseMapPlacesResponse(payload), total: payload.length, returned: payload.length, truncated: false }
+  const context = "La réponse cartographique de l'API"
+  if (!isRecord(payload)) throw new Error(`${context} est invalide.`)
+  const items = parseMapPlacesResponse(payload.items)
+  const total = readNumber(payload, 'total', context)
+  const returned = readNumber(payload, 'returned', context)
+  return { items, total, returned, truncated: payload.truncated === true }
+}
+
 export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
   const context = "La fiche détaillée du POI"
 
@@ -158,7 +169,7 @@ export function parsePlacesResponse(payload: unknown): PlaceDetails[] {
 export async function getMapPlaces(
   query: MapPlaceQuery,
   signal: AbortSignal,
-): Promise<MapPlace[]> {
+): Promise<MapPlaceResult> {
   const searchParams = new URLSearchParams({
     min_latitude: String(query.bounds.minLatitude),
     max_latitude: String(query.bounds.maxLatitude),
@@ -183,10 +194,11 @@ export async function getMapPlaces(
   if (query.limit !== undefined) {
     searchParams.set('limit', String(query.limit))
   }
+  searchParams.set('include_meta', 'true')
 
   const payload = await getJson('/places/map', searchParams, signal)
 
-  return parseMapPlacesResponse(payload)
+  return parseMapPlacesResult(payload)
 }
 
 export async function getPlaces(

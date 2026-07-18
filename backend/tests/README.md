@@ -143,3 +143,6 @@ dédiée correctement configurée, la suite complète exécute les 26 tests.
 # Routage et frontières
 
 Les tests `test_country_route_validator.py` utilisent des polygones locaux synthétiques : ils vérifient la densification de la géométrie, la tolérance près d’une frontière et le refus d’un segment réellement extérieur, sans dépendre d’un service de cartographie externe.
+# Marqueurs cartographiques
+
+Les tests de métadonnées cartographiques (`include_meta=true`) doivent utiliser exclusivement `poi_manager_test` et vérifier compte, limite et `truncated`.

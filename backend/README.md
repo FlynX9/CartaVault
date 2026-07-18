@@ -300,3 +300,6 @@ backend/
 `app.trips.routing.country_validator.CountryRouteValidator` analyse la LineString complète retournée par OSRM après densification. La donnée locale `app/countries/data/routing_boundaries.geojson` est volontairement limitée et versionnée (Natural Earth, domaine public, simplifiée). Une frontière indisponible provoque une erreur métier claire plutôt qu’une acceptation silencieuse. OSRM standard n’est pas présenté comme capable de calculer une alternative nationale ; il est seulement post-validé.
 
 Les seuils, en mètres, sont `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` (250 par défaut) et `ROUTING_MAX_OUTSIDE_DISTANCE_METERS` (500 par défaut). Les exports contrôlent également les routes déjà calculées quand la préférence est active ; Google Maps reçoit un avertissement car son propre moteur peut choisir un autre trajet.
+# Marqueurs par emprise
+
+`GET /places/map` utilise PostGIS (`ST_MakeEnvelope`, `ST_Intersects`) et charge seulement les relations nécessaires. Avec `include_meta=true`, la réponse contient `items`, `total`, `returned` et `truncated`; la limite est explicite.

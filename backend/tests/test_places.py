@@ -26,6 +26,24 @@ def test_place_crud_uses_map_and_map_filters(integration_client: TestClient, poi
     assert markers.status_code == 200
     assert markers.json()[0]["map_id"] == str(poi_map.id)
 
+    markers_with_meta = integration_client.get(
+        "/places/map",
+        params={
+            "map_id": str(poi_map.id),
+            "min_latitude": 48,
+            "max_latitude": 49,
+            "min_longitude": 2,
+            "max_longitude": 3,
+            "limit": 1,
+            "include_meta": "true",
+        },
+    )
+    assert markers_with_meta.status_code == 200
+    payload = markers_with_meta.json()
+    assert payload["returned"] == 1
+    assert payload["total"] >= payload["returned"]
+    assert payload["truncated"] is (payload["total"] > payload["returned"])
+
 
 def test_place_rejects_missing_map(integration_client: TestClient) -> None:
     response = integration_client.post("/places", json={"name": "Unknown map", "map_id": str(uuid4()), "latitude": 48, "longitude": 2})

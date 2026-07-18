@@ -305,3 +305,6 @@ Les durées de visite proposent des préréglages (15 à 120 minutes) et une val
 # Préférence de routage
 
 La fenêtre **Compte > Préférences** permet d’activer **Rester dans le pays**. Le module Sortie distingue alors une route validée, à vérifier, refusée ou indisponible. Une erreur `ROUTE_LEAVES_COUNTRY` est affichée avec un message français lisible ; aucune géométrie refusée n’est présentée comme itinéraire actif.
+# Performance de la carte
+
+Les POI visibles sont regroupés par une grille locale légère, sans service externe ni dépendance Leaflet supplémentaire. Les clusters excluent les marqueurs fonctionnels. Les panneaux, export KMZ, membres, sorties et administration sont chargés à la demande; Vite sépare React, Leaflet et Iconify en chunks cacheables.

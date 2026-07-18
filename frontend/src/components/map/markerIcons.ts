@@ -3,6 +3,7 @@ import { DivIcon } from 'leaflet'
 import { getCategoryIconData } from '../../icons/categoryIconData'
 
 const cache = new Map<string, DivIcon>()
+const MAX_CACHED_ICONS = 256
 
 function buildSafeIconSvg(icon: string | null | undefined): string {
   const iconData = getCategoryIconData(icon)
@@ -26,6 +27,7 @@ export function getStatusMarkerIcon(color: string, icon: string | null | undefin
     iconAnchor: [size / 2, size + 8],
     popupAnchor: [0, -(size + 4)],
   })
+  if (cache.size >= MAX_CACHED_ICONS) cache.delete(cache.keys().next().value as string)
   cache.set(key, markerIcon)
   return markerIcon
 }

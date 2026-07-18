@@ -21,6 +21,7 @@ interface MapPageProps {
   initialView: MapView
   isLoading: boolean
   errorMessage: string | null
+  mapNotice?: string | null
   sidebarOpen: boolean
   placeListOpen: boolean
   statuses: PlaceStatusSummary[]
@@ -56,6 +57,7 @@ export function MapPage({
   initialView,
   isLoading,
   errorMessage,
+  mapNotice = null,
   sidebarOpen,
   placeListOpen,
   statuses,
@@ -150,6 +152,7 @@ export function MapPage({
         {contextMenu && <MapContextMenu state={contextMenu} canCreate={canEdit} tripDays={onTripCoordinateAdd ? trip?.days.map((day) => ({ id: day.id, label: `Jour ${day.day_number}${day.title ? ` · ${day.title}` : ''}` })) : []} onAddToTripDay={onTripCoordinateAdd ? (dayId) => { const { latitude, longitude } = contextMenu; setContextMenu(null); onTripCoordinateAdd(dayId, latitude, longitude) } : undefined} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
+        {mapNotice && <p className="map-results-notice" role="status">{mapNotice}</p>}
         <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />

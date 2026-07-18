@@ -244,3 +244,6 @@ Chaque voyage définit aussi trois niveaux de charge personnalisables (seuils l�
 # Routage national
 
 Dans **Compte > Préférences > Routage**, l’option **Rester dans le pays** fait contrôler la géométrie complète renvoyée par le moteur après son calcul. CartaVault ne prétend pas transmettre cette contrainte à l’OSRM public : une route qui quitte le pays est refusée et n’écrase pas une route valide. Les frontières locales actuellement embarquées sont une simplification issue de Natural Earth (domaine public), utilisée avec une tolérance par défaut de 250 m ; une sortie significative au-delà de 500 m est rejetée. Ces valeurs sont configurables avec `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` et `ROUTING_MAX_OUTSIDE_DISTANCE_METERS`.
+# Performance cartographique
+
+La carte charge uniquement les POI de l’emprise visible. Les marqueurs standards sont regroupés localement dans des clusters CartaVault ; les marqueurs temporaires, le POI sélectionné et les étapes de sortie restent individuels. L’API peut fournir `total`, `returned` et `truncated` afin d’inviter à zoomer quand l’emprise est trop large.

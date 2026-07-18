@@ -2735,3 +2735,11 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
   font-size: .75rem;
   font-weight: 400;
 }
+.cv-map-cluster-container { background: transparent; border: 0; }
+.cv-map-cluster { align-items: center; background: var(--cv-color-teal); border: 2px solid var(--cv-color-off-white); border-radius: 999px; box-shadow: 0 2px 8px rgb(13 27 42 / 24%); color: white; cursor: pointer; display: flex; flex-direction: column; font: inherit; height: 100%; justify-content: center; line-height: 1; padding: 0; width: 100%; }
+.cv-map-cluster:hover, .cv-map-cluster:focus-visible { box-shadow: 0 0 0 3px rgb(15 166 138 / 34%), 0 2px 8px rgb(13 27 42 / 24%); outline: none; }
+.cv-map-cluster--medium { background: var(--cv-color-slate); }
+.cv-map-cluster--large { background: var(--cv-color-navy); }
+.cv-map-cluster span { font-size: .78rem; font-weight: 800; }
+.cv-map-cluster small { font-size: .52rem; font-weight: 700; }
+.map-results-notice { background: rgb(13 27 42 / 92%); border-radius: var(--cv-radius-sm); bottom: 3.5rem; color: white; left: 50%; margin: 0; padding: .6rem .8rem; position: absolute; transform: translateX(-50%); z-index: var(--cv-z-map-controls); }

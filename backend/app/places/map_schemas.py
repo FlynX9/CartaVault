@@ -45,3 +45,12 @@ class PlaceMapRead(BaseModel):
     primary_category: PrimaryCategoryRead | None
     categories: list[MapCategoryRead]
     tags: list[MapTagRead]
+
+
+class PlaceMapPageRead(BaseModel):
+    """Visible map markers with an explicit truncation indicator."""
+
+    items: list[PlaceMapRead]
+    total: int
+    returned: int
+    truncated: bool

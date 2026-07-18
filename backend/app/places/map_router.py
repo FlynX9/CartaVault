@@ -16,6 +16,7 @@ from app.places.map_schemas import (
     PrimaryCategoryRead,
     MapStatusRead,
     MapTagRead,
+    PlaceMapPageRead,
     PlaceMapRead,
 )
 from app.places.models import Place
@@ -32,7 +33,7 @@ router = APIRouter(
 
 @router.get(
     "/map",
-    response_model=list[PlaceMapRead],
+    response_model=list[PlaceMapRead] | PlaceMapPageRead,
 )
 def get_map_places(
     map_id: UUID | None = Query(
@@ -57,10 +58,11 @@ def get_map_places(
         le=5000,
         description="Maximum number of markers returned",
     ),
+    include_meta: bool = Query(default=False, description="Return result count and truncation metadata"),
     map_bounds: MapBounds = Depends(get_required_map_bounds),
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[PlaceMapRead]:
+) -> list[PlaceMapRead] | PlaceMapPageRead:
     """Return lightweight place markers inside the visible map area."""
 
     visible_area = func.ST_MakeEnvelope(
@@ -141,9 +143,21 @@ def get_map_places(
     if status_id is not None:
         statement = statement.where(Place.status_id == status_id)
 
+    total = database_session.scalar(statement.with_only_columns(func.count()).order_by(None).limit(None)) if include_meta else 0
     rows = database_session.execute(statement).all()
+    place_ids = [place.id for place, _, _ in rows]
+    primary_categories = {
+        (place_id, category_id): is_primary
+        for place_id, category_id, is_primary in database_session.execute(
+            select(
+                place_categories_table.c.place_id,
+                place_categories_table.c.category_id,
+                place_categories_table.c.is_primary,
+            ).where(place_categories_table.c.place_id.in_(place_ids))
+        )
+    } if place_ids else {}
 
-    return [
+    items = [
         PlaceMapRead(
             id=place.id,
             map_id=place.map_id,
@@ -156,8 +170,8 @@ def get_map_places(
                 slug=place.status.slug,
                 color=place.status.color,
             ),
-            primary_category=next((PrimaryCategoryRead(id=category.id, name=category.name, icon=category.icon) for category in place.categories if database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))), None),
-            categories=[MapCategoryRead(id=category.id, name=category.name, icon=category.icon, is_primary=bool(database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))) ) for category in place.categories],
+            primary_category=next((PrimaryCategoryRead(id=category.id, name=category.name, icon=category.icon) for category in place.categories if primary_categories.get((place.id, category.id), False)), None),
+            categories=[MapCategoryRead(id=category.id, name=category.name, icon=category.icon, is_primary=primary_categories.get((place.id, category.id), False)) for category in place.categories],
             tags=[
                 MapTagRead(
                     id=tag.id,
@@ -168,3 +182,6 @@ def get_map_places(
         )
         for place, longitude, latitude in rows
     ]
+    if include_meta:
+        return PlaceMapPageRead(items=items, total=total or 0, returned=len(items), truncated=(total or 0) > len(items))
+    return items

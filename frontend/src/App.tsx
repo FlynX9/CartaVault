@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from './api/client'
@@ -8,12 +8,6 @@ import { getStatuses } from './api/statuses'
 import { addTripStop, getTrip } from './api/trips'
 import { TopBar } from './components/layout/TopBar'
 import { MainNavigation, type WorkspacePanel } from './components/layout/MainNavigation'
-import { CategoriesWorkspacePanel, StatusesWorkspacePanel, TagsWorkspacePanel, UsersWorkspacePanel } from './components/layout/WorkspaceManagementPanels'
-import { MapsWorkspacePanel } from './components/maps/MapsWorkspacePanel'
-import { MapMembersDialog } from './components/maps/MapMembersDialog'
-import { TripPlannerPanel } from './components/trips/TripPlannerPanel'
-import { KmzExportDialog } from './components/exports/KmzExportDialog'
-import { MapPlaceList } from './components/place-list/MapPlaceList'
 import { MapSidebar } from './components/sidebar/MapSidebar'
 import { PlaceMapPopup } from './components/map-popup/PlaceMapPopup'
 import { deriveMapSidebarState, getSidebarPlaceId } from './components/sidebar/sidebarState'
@@ -28,7 +22,17 @@ import { readMapId, readStatusId, withMap } from './utils/map'
 import { RequireAuth } from './auth/RequireAuth'
 import { useAuth } from './auth/useAuth'
 
-const REQUEST_DEBOUNCE_MS = 350
+const MapsWorkspacePanel = lazy(async () => ({ default: (await import('./components/maps/MapsWorkspacePanel')).MapsWorkspacePanel }))
+const MapMembersDialog = lazy(async () => ({ default: (await import('./components/maps/MapMembersDialog')).MapMembersDialog }))
+const TripPlannerPanel = lazy(async () => ({ default: (await import('./components/trips/TripPlannerPanel')).TripPlannerPanel }))
+const KmzExportDialog = lazy(async () => ({ default: (await import('./components/exports/KmzExportDialog')).KmzExportDialog }))
+const MapPlaceList = lazy(async () => ({ default: (await import('./components/place-list/MapPlaceList')).MapPlaceList }))
+const CategoriesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).CategoriesWorkspacePanel }))
+const TagsWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).TagsWorkspacePanel }))
+const StatusesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).StatusesWorkspacePanel }))
+const UsersWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).UsersWorkspacePanel }))
+
+const REQUEST_DEBOUNCE_MS = 250
 const MAP_ACCESS_REFRESH_MS = 30_000
 const INITIAL_MAP_VIEW: MapView = { center: [48.17, 6.45], zoom: 9 }
 const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
@@ -136,7 +140,7 @@ function WorkspaceApp() {
     const controller = new AbortController(); const sequence = ++requestSequence.current
     const timeout = window.setTimeout(async () => {
       setIsLoading(true); setErrorMessage(null)
-      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, limit: 1000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible); setSelectedPlace((current) => current === null ? null : visible.find((item) => item.id === current.id) ?? current) } }
+      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, limit: 2000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible.items); setErrorMessage(visible.truncated ? 'Trop de lieux sont visibles. Zoomez pour affiner l’affichage.' : null); setSelectedPlace((current) => current === null ? null : visible.items.find((item) => item.id === current.id) ?? current) } }
       catch (error) {
         if (!isAbortError(error) && sequence === requestSequence.current) {
           if (error instanceof ApiError && error.status === 404) {
@@ -245,23 +249,23 @@ function WorkspaceApp() {
     const panelId = panel === 'places' ? 'map-place-list' : `workspace-${panel}-panel`
     window.setTimeout(() => document.getElementById(panelId)?.focus(), 0)
   }
-  const workspaceContent = workspacePanel === 'maps'
+  const workspaceContent = <Suspense fallback={<aside className="cv-workspace-panel" role="status">Chargement du panneauâ€¦</aside>}>{workspacePanel === 'maps'
     ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onExport={setExportMap} onMembers={setMembersMap} onAccessChanged={() => setRefreshVersion((value) => value + 1)} onClose={() => setWorkspacePanel(null)} />
     : workspacePanel === 'places'
     ? <MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} onClose={() => { setWorkspacePanel(null); setTripPlannerOpen(false) }} onImported={() => setRefreshVersion((value) => value + 1)} tripPlanningActive={tripPlannerOpen} tripPlaceIds={new Set(activeTrip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])} />
     : workspacePanel === 'categories' && activeMapId !== null ? <CategoriesWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />
       : workspacePanel === 'tags' && activeMapId !== null ? <TagsWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />
         : workspacePanel === 'statuses' ? <StatusesWorkspacePanel onClose={() => setWorkspacePanel(null)} />
-          : workspacePanel === 'admin' && user?.is_admin ? <UsersWorkspacePanel onClose={() => setWorkspacePanel(null)} /> : null
+          : workspacePanel === 'admin' && user?.is_admin ? <UsersWorkspacePanel onClose={() => setWorkspacePanel(null)} /> : null}</Suspense>
 
-  const rightSidebar = tripPlannerOpen && activeMap ? <TripPlannerPanel poiMap={activeMap} trip={activeTrip} activeDayId={activeTripDayId} tripViewOnly={tripViewOnly} onTripViewOnlyChange={setTripViewOnly} onTripChange={setActiveTrip} onActiveDayChange={setActiveTripDayId} onStopFocus={(latitude, longitude) => setFocusRequest({ id: ++focusSequence.current, view: { center: [latitude, longitude], zoom: Math.max(mapView.zoom, 15) } })} onClose={() => { setTripPlannerOpen(false); setActiveTrip(null); setActiveTripDayId(null); setTripViewOnly(false) }} /> : <MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />
+  const rightSidebar = tripPlannerOpen && activeMap ? <Suspense fallback={<aside className="map-sidebar" role="status">Chargement de la préparation de sortieâ€¦</aside>}><TripPlannerPanel poiMap={activeMap} trip={activeTrip} activeDayId={activeTripDayId} tripViewOnly={tripViewOnly} onTripViewOnlyChange={setTripViewOnly} onTripChange={setActiveTrip} onActiveDayChange={setActiveTripDayId} onStopFocus={(latitude, longitude) => setFocusRequest({ id: ++focusSequence.current, view: { center: [latitude, longitude], zoom: Math.max(mapView.zoom, 15) } })} onClose={() => { setTripPlannerOpen(false); setActiveTrip(null); setActiveTripDayId(null); setTripViewOnly(false) }} /></Suspense> : <MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />
 
   return <main className="app-shell"><MainNavigation activePanel={workspacePanel} tripPlanningActive={tripPlannerOpen} onPanelChange={(panel) => { if (panel !== 'places') { setTripPlannerOpen(false); setActiveTrip(null) }; openWorkspacePanel(panel) }} onOpenTrips={() => { if (activeMap) { setSelectedPlace(null); setCoordinatePrefill(null); setDraftPosition(null); navigate(withMap('/', activeMapId, activeStatusId)); setWorkspacePanel('places'); setTripPlannerOpen(true) } else setMapsError('Sélectionnez une carte avant de préparer une sortie.') }} isAdmin={user?.is_admin === true} /><div className="app-body">
     <TopBar isMapWorkspace={isMapWorkspace} markerCount={places.length} onMapAccessChanged={() => setRefreshVersion((value) => value + 1)} onOpenAdmin={() => openWorkspacePanel('admin')} />
     <Routes>
       <Route path="*" element={<MapPage places={places} canEdit={activeMap?.can_edit === true} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen || tripPlannerOpen} placeListOpen={workspacePanel !== null} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} draftPosition={draftPosition} draftPlaceId={sidebarState.mode === 'edit' ? sidebarState.placeId : null} onDraftPositionChange={setDraftPosition} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setCoordinatePrefill(null); setDraftPosition({ latitude: result.latitude, longitude: result.longitude }); setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} onCreateFromCoordinates={(latitude, longitude) => { setCoordinatePrefill({ latitude, longitude }); setDraftPosition({ latitude, longitude }); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={workspaceContent} sidebar={rightSidebar} trip={activeTrip} tripViewOnly={tripViewOnly} activeTripDayId={activeTripDayId} onTripPlaceAdd={tripPlannerOpen ? (place) => void addPlaceToActiveTripDay(place) : undefined} onTripCoordinateAdd={tripPlannerOpen && activeMap?.can_edit === true ? (dayId, latitude, longitude) => void addCoordinatesToTripDay(dayId, latitude, longitude) : undefined} tripNotice={tripNotice} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
     </Routes>
-  </div>{exportMap && <KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} />}{membersMap && <MapMembersDialog poiMap={membersMap} onClose={() => setMembersMap(null)} onMapUpdated={(updated) => setMaps((current) => current.map((item) => item.id === updated.id ? updated : item))} />}</main>
+  </div>{exportMap && <Suspense fallback={null}><KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} /></Suspense>}{membersMap && <Suspense fallback={null}><MapMembersDialog poiMap={membersMap} onClose={() => setMembersMap(null)} onMapUpdated={(updated) => setMaps((current) => current.map((item) => item.id === updated.id ? updated : item))} /></Suspense>}</main>
 }
 
 function App() {

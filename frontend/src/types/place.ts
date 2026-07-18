@@ -37,6 +37,7 @@ export interface MapFocusRequest { id: number; view: MapView }
 export interface DraftPosition { latitude: number; longitude: number }
 export interface PlaceMutation { placeId: string; mapId: string }
 export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
+export interface MapPlaceResult { items: MapPlace[]; total: number; returned: number; truncated: boolean }
 export interface PlaceListQuery { mapId?: string; statusId?: string; q?: string; limit?: number; offset?: number }
 
 interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null; custom_fields?: Record<string, unknown> }
