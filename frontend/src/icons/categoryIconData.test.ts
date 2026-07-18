@@ -9,8 +9,8 @@ describe('category icon data', () => {
     const catalogIds = CATEGORY_ICON_CATALOG.map((icon) => icon.id)
     const dataIds = Object.keys(CATEGORY_ICON_DATA)
 
-    expect(CATEGORY_ICON_CATALOG).toHaveLength(80)
-    expect(Object.keys(CATEGORY_ICON_DATA)).toHaveLength(80)
+    expect(CATEGORY_ICON_CATALOG).toHaveLength(300)
+    expect(Object.keys(CATEGORY_ICON_DATA)).toHaveLength(300)
     expect(dataIds.sort()).toEqual(catalogIds.sort())
     expect(catalogIds.filter((id) => !dataIds.includes(id))).toEqual([])
     expect(dataIds.filter((id) => !catalogIds.includes(id))).toEqual([])

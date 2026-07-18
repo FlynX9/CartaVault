@@ -1,6 +1,6 @@
 import rawCatalog from '../../../shared/category-icons.json'
 
-export const CATEGORY_ICON_GROUPS = ['buildings', 'religion', 'industry', 'military', 'health', 'education', 'culture', 'transport', 'tourism', 'infrastructure', 'nature', 'access', 'other'] as const
+export const CATEGORY_ICON_GROUPS = ['buildings', 'religion', 'industry', 'military', 'health', 'education', 'culture', 'transport', 'tourism', 'infrastructure', 'nature', 'access', 'urban', 'commerce', 'accommodation', 'administration', 'heritage', 'other'] as const
 export type CategoryIconGroup = typeof CATEGORY_ICON_GROUPS[number]
 
 export interface CategoryIconCatalogEntry {
@@ -27,13 +27,18 @@ export const GROUP_LABELS: Readonly<Record<CategoryIconGroup, string>> = {
   infrastructure: 'Infrastructures',
   nature: 'Nature',
   access: 'Accès et sécurité',
+  urban: 'Urbain',
+  commerce: 'Commerce',
+  accommodation: 'Hébergement',
+  administration: 'Administration',
+  heritage: 'Patrimoine',
   other: 'Divers',
 }
 
 export const normalizeIconSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ')
 
 function validate(entries: unknown): readonly CategoryIconCatalogEntry[] {
-  if (!Array.isArray(entries) || entries.length < 80 || entries.length > 100) throw new Error('Invalid category icon catalog size')
+  if (!Array.isArray(entries) || entries.length !== 300) throw new Error('Invalid category icon catalog size')
 
   const ids = new Set<string>()
   for (const entry of entries) {

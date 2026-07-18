@@ -5,7 +5,7 @@ const root = resolve(import.meta.dirname, '..')
 const catalogPath = resolve(root, '..', 'shared', 'category-icons.json')
 const outputPath = resolve(root, 'src', 'icons', 'categoryIconData.generated.ts')
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'))
-if (!Array.isArray(catalog) || catalog.length !== 80) throw new Error(`Expected 80 catalog entries, received ${catalog.length}`)
+if (!Array.isArray(catalog) || catalog.length !== 300) throw new Error(`Expected 300 catalog entries, received ${catalog.length}`)
 const names = new Set()
 const lines = ['// Generated file. Do not edit manually.', "import type { IconifyIcon } from '@iconify/types'"]
 const entries = []

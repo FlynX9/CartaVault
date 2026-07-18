@@ -7,11 +7,12 @@ interface CategoryIconGridProps {
   icons: readonly CategoryIconCatalogEntry[]
   selectedIconId: string
   onSelect: (iconId: string) => void
+  onChoose: (iconId: string) => void
 }
 
 const GRID_COLUMNS = 6
 
-export function CategoryIconGrid({ icons, selectedIconId, onSelect }: CategoryIconGridProps) {
+export function CategoryIconGrid({ icons, selectedIconId, onSelect, onChoose }: CategoryIconGridProps) {
   const buttonReferences = useRef(new Map<string, HTMLButtonElement>())
 
   const moveFocus = (event: ReactKeyboardEvent<HTMLButtonElement>, iconId: string) => {
@@ -53,6 +54,7 @@ export function CategoryIconGrid({ icons, selectedIconId, onSelect }: CategoryIc
               else buttonReferences.current.delete(icon.id)
             }}
             onClick={() => onSelect(icon.id)}
+            onDoubleClick={() => onChoose(icon.id)}
             onKeyDown={(event) => moveFocus(event, icon.id)}
           >
             <CategoryIconPreview iconId={icon.id} size={24} showLabel={false} />

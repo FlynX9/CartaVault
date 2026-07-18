@@ -40,7 +40,12 @@ def _write_catalog(tmp_path: Path, payload: object) -> Path:
 
 
 def test_shared_category_icon_catalog_is_valid_and_immutable() -> None:
-    assert len(CATEGORY_ICON_CATALOG) == len(CATEGORY_ICON_IDS) == 80
+    assert len(CATEGORY_ICON_CATALOG) == len(CATEGORY_ICON_IDS) == 300
+    assert CATEGORY_ICON_GROUPS.issuperset({
+        "buildings", "religion", "industry", "military", "health", "education",
+        "culture", "transport", "tourism", "infrastructure", "nature", "access",
+        "urban", "commerce", "accommodation", "administration", "heritage", "other",
+    })
     assert DEFAULT_CATEGORY_ICON_ID in CATEGORY_ICON_IDS
     assert FALLBACK_CATEGORY_ICON_ID in CATEGORY_ICON_IDS
     assert all(entry.group in CATEGORY_ICON_GROUPS for entry in CATEGORY_ICON_CATALOG)
@@ -59,6 +64,7 @@ def test_shared_category_icon_catalog_resolves_known_and_unknown_ids() -> None:
     assert entry is not None
     assert entry.id == "mdi:church"
     assert is_allowed_category_icon("mdi:church")
+    assert is_allowed_category_icon("mdi:police-station")
     assert get_category_icon_entry("mdi:not-installed") is None
     assert not is_allowed_category_icon("mdi:not-installed")
 

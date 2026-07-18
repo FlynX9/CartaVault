@@ -81,7 +81,7 @@ base de développement `poi_manager`.
 
 ## Catégories et pictogrammes
 
-`shared/category-icons.json` est la source de vérité unique des pictogrammes de catégories. `app.categories.icon_catalog` le charge une seule fois au démarrage du processus, depuis un chemin calculé à partir de son propre fichier, puis valide strictement ses 80 entrées (structure, groupes, préfixes, absence de contenu URL/HTML/SVG, défaut et fallback).
+`shared/category-icons.json` est la source de vérité unique des pictogrammes de catégories. `app.categories.icon_catalog` le charge une seule fois au démarrage du processus, depuis un chemin calculé à partir de son propre fichier, puis valide strictement ses 300 entrées (structure, groupes, préfixes, absence de contenu URL/HTML/SVG, défaut et fallback).
 
 Les nouvelles écritures de `categories.icon` acceptent exclusivement des identifiants qualifiés présents dans ce catalogue, par exemple `mdi:church`. L’absence d’icône utilise `material-symbols:location-on-outline`; le fallback disponible est `material-symbols:help-outline`.
 

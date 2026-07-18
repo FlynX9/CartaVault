@@ -41,7 +41,7 @@ describe('CategoryIconField', () => {
     fireEvent.change(search, { target: { value: 'hopital' } })
     expect(screen.getByRole('gridcell', { name: 'Hôpital' })).toBeVisible()
     fireEvent.change(search, { target: { value: 'depot ferroviaire' } })
-    expect(screen.getByRole('gridcell', { name: 'Train' })).toBeVisible()
+    expect(screen.getByRole('gridcell', { name: 'Gare' })).toBeVisible()
   })
 
   it('filters by group without clearing the active search', () => {
@@ -68,6 +68,16 @@ describe('CategoryIconField', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('mdi:castle'))
     expect(screen.getByText('Château')).toBeVisible()
+  })
+
+  it('validates the temporary selection on double click', async () => {
+    const onChange = renderField()
+    fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
+
+    fireEvent.doubleClick(screen.getByRole('gridcell', { name: 'Château' }))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('mdi:castle'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('cancels or closes on Escape without changing the value and restores focus', async () => {

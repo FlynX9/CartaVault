@@ -22,10 +22,15 @@ CATEGORY_ICON_GROUPS = frozenset({
     "infrastructure",
     "nature",
     "access",
+    "urban",
+    "commerce",
+    "accommodation",
+    "administration",
+    "heritage",
     "other",
 })
 ALLOWED_ICON_PREFIXES = ("mdi:", "material-symbols:")
-EXPECTED_CATEGORY_ICON_COUNT = 80
+EXPECTED_CATEGORY_ICON_COUNT = 300
 CATALOG_ENTRY_FIELDS = frozenset({"id", "label", "group", "keywords"})
 CATALOG_PATH = Path(__file__).resolve().parents[3] / "shared" / "category-icons.json"
 
