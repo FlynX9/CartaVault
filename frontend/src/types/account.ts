@@ -7,3 +7,11 @@ export interface AccountProfile {
 export interface AccountSession {
   id: string; created_at: string; last_used_at: string; expires_at: string; user_agent: string | null; is_current: boolean
 }
+
+export interface AccountPreferences {
+  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'
+  density: 'comfortable' | 'compact'
+  startup_panel: 'maps' | 'places' | 'last'
+  timezone: string
+  routing: { stay_in_country: boolean }
+}

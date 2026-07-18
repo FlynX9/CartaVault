@@ -1,6 +1,8 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { AccountProfile, AccountSession } from '../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession } from '../types/account'
+
+export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
 
 export const accountAvatarUrl = (url: string | null) => url ? `${API_BASE_URL}${url}` : null
 export async function getAccountProfile(signal?: AbortSignal): Promise<AccountProfile> { return getJson('/account/profile', new URLSearchParams(), signal) as Promise<AccountProfile> }
@@ -13,3 +15,6 @@ export async function revokeOtherAccountSessions(): Promise<void> { await sendWi
 export async function uploadAccountAvatar(file: File): Promise<{ avatar_url: string }> { const data = new FormData(); data.append('file', file); return sendFormData('/account/avatar', 'POST', data) as Promise<{ avatar_url: string }> }
 export async function deleteAccountAvatar(): Promise<void> { await sendWithoutResponse('/account/avatar', 'DELETE') }
 export async function deleteOwnAccount(current_password: string, confirmation: string, acknowledged: boolean): Promise<void> { await sendBodyWithoutResponse('/account', 'DELETE', { current_password, confirmation, acknowledged }) }
+export async function getAccountPreferences(signal?: AbortSignal): Promise<AccountPreferences> { return getJson('/account/preferences', new URLSearchParams(), signal) as Promise<AccountPreferences> }
+export async function updateAccountPreferences(preferences: AccountPreferences): Promise<AccountPreferences> { return sendJson('/account/preferences', 'PUT', preferences) as Promise<AccountPreferences> }
+export async function resetAccountPreferences(): Promise<AccountPreferences> { return sendJson('/account/preferences/reset', 'POST', {}) as Promise<AccountPreferences> }

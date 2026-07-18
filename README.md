@@ -210,6 +210,13 @@ La configuration cartographique des pays est encore temporaire et limitée aux
 valeurs réellement utilisées — actuellement la France. La normalisation future
 prévoit des codes ISO, centres, zooms et limites stockés en base.
 
+## Espace Compte
+
+L’espace **Compte** centralise le profil, l’avatar, la sécurité, les sessions
+actives, les préférences persistées, l’administration pour les administrateurs
+et la suppression/anonymisation du compte. Les avatars sont distincts des
+photos de POI et les préférences ne contiennent aucune donnée sensible.
+
 ## Feuille de route
 
 Ces éléments sont envisagés et ne sont pas encore disponibles :
@@ -234,3 +241,6 @@ Une sortie peut contenir plusieurs journées, des étapes liées à des POI ou l
 Les synthèses distinguent strictement la **distance de route** et le **temps de conduite** fournis par le moteur de routage des visites, du tampon entre étapes et de la marge de sécurité. CartaVault ne modélise aucune pause : la durée planifiée vaut conduite + visites + tampon + marge. Une arrivée cible calcule le départ recommandé ; un départ planifié calcule l’arrivée estimée, y compris lors d’un passage à la veille ou au lendemain. Une journée sans itinéraire ou dont l’ordre a changé n’est pas comptée comme une route à zéro : le total global est signalé comme partiel jusqu’au recalcul.
 
 Chaque voyage définit aussi trois niveaux de charge personnalisables (seuils légère/moyenne/élevée et couleurs). Les valeurs par défaut sont 4 h et 8 h. Les durées de visite se règlent avec des préréglages ou une valeur libre, sans nouvel appel au moteur de routage.
+# Routage national
+
+Dans **Compte > Préférences > Routage**, l’option **Rester dans le pays** fait contrôler la géométrie complète renvoyée par le moteur après son calcul. CartaVault ne prétend pas transmettre cette contrainte à l’OSRM public : une route qui quitte le pays est refusée et n’écrase pas une route valide. Les frontières locales actuellement embarquées sont une simplification issue de Natural Earth (domaine public), utilisée avec une tolérance par défaut de 250 m ; une sortie significative au-delà de 500 m est rejetée. Ces valeurs sont configurables avec `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` et `ROUTING_MAX_OUTSIDE_DISTANCE_METERS`.

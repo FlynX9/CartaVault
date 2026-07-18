@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "name": "CartaVault routing boundaries",
+  "license": "Natural Earth public domain; simplified for route validation",
+  "features": [
+    {"type":"Feature","properties":{"iso_a3":"GEO","source":"Natural Earth 1:110m, simplified"},"geometry":{"type":"Polygon","coordinates":[[[40.0,43.55],[40.3,43.1],[41.2,41.4],[42.0,41.2],[43.6,41.0],[44.8,41.2],[46.5,41.1],[46.7,41.9],[46.5,42.8],[46.2,43.3],[45.1,43.6],[43.9,43.8],[42.8,43.9],[41.8,43.8],[40.9,43.8],[40.0,43.55]]]}},
+    {"type":"Feature","properties":{"iso_a3":"ARM","source":"Natural Earth 1:110m, simplified"},"geometry":{"type":"Polygon","coordinates":[[[43.45,41.12],[44.0,40.6],[44.2,39.7],[45.2,39.6],[46.4,39.0],[46.65,39.9],[46.5,41.1],[45.9,41.3],[45.0,41.3],[44.3,41.2],[43.45,41.12]]]}}
+  ]
+}

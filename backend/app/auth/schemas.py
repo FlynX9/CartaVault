@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -108,6 +108,27 @@ class AccountDelete(BaseModel):
         if self.confirmation != "SUPPRIMER MON COMPTE" or not self.acknowledged:
             raise ValueError("Account deletion confirmation is invalid")
         return self
+
+
+class RoutingPreferences(BaseModel):
+    stay_in_country: bool = False
+
+
+class AccountPreferences(BaseModel):
+    preferred_basemap: Literal["cartavault-light", "cartavault-dark", "satellite", "osm"] = "cartavault-light"
+    density: Literal["comfortable", "compact"] = "comfortable"
+    startup_panel: Literal["maps", "places", "last"] = "maps"
+    timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
+    routing: RoutingPreferences = Field(default_factory=RoutingPreferences)
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_routing_preference(cls, value: object) -> object:
+        if not isinstance(value, dict) or "routing" in value or "keep_routes_in_country" not in value:
+            return value
+        migrated = dict(value)
+        migrated["routing"] = {"stay_in_country": migrated.pop("keep_routes_in_country")}
+        return migrated
 
 
 class PasswordReset(BaseModel):

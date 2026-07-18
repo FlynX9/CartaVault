@@ -27,8 +27,10 @@ class StubRoutingProvider(RoutingProvider):
 def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_client, database_session, poi_map, auth_user, france_country) -> None:
     created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Road trip", "start_date": "2026-08-01", "end_date": "2026-08-03"})
     assert created.status_code == 201
-    trip_id = created.json()["id"]
-    days = [integration_client.post(f"/trips/{trip_id}/days", json={"title": f"Étape {index}"}).json() for index in range(1, 4)]
+    created_trip = created.json()
+    trip_id = created_trip["id"]
+    # A trip owns its first day on creation; add only the two extra days.
+    days = [created_trip["days"][0], *[integration_client.post(f"/trips/{trip_id}/days", json={"title": f"Étape {index}"}).json() for index in range(2, 4)]]
     assert [item["day_number"] for item in days] == [1, 2, 3]
     assert integration_client.patch(f"/trips/{trip_id}", json={"end_date": "2026-07-31"}).status_code == 422
     assert integration_client.patch(f"/trips/{trip_id}", json={"name": None}).status_code == 422
@@ -73,7 +75,7 @@ def test_removing_a_middle_stop_compacts_the_day_order(integration_client, poi_m
         f"/maps/{poi_map.id}/trips",
         json={"name": "Suppression d’étape"},
     ).json()
-    day = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    day = trip["days"][0]
     stops = [
         integration_client.post(
             f"/trip-days/{day['id']}/stops",
@@ -109,14 +111,14 @@ def test_trip_rejects_place_from_another_map(integration_client, database_sessio
     database_session.add(other); database_session.flush(); database_session.add(MapMembership(map_id=other.id, user_id=auth_user.id, role="owner")); database_session.flush()
     place = integration_client.post("/places", json={"name": "Other", "map_id": str(other.id), "latitude": 47, "longitude": 5}).json()
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Protected"}).json()
-    day = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    day = trip["days"][0]
     assert integration_client.post(f"/trip-days/{day['id']}/stops", json={"place_id": place["id"]}).status_code == 422
     assert database_session.scalar(select(TripStop).where(TripStop.trip_day_id == day["id"])) is None
 
 
 def test_confirming_optimization_reorders_and_recalculates_route(integration_client, poi_map) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Optimisation"}).json()
-    day = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    day = trip["days"][0]
     stops = [integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Étape {index}", "latitude": 48 + index / 10, "longitude": 2 + index / 10}).json() for index in range(3)]
     app.dependency_overrides[get_routing_provider] = lambda: StubRoutingProvider()
     try:
@@ -131,7 +133,7 @@ def test_confirming_optimization_reorders_and_recalculates_route(integration_cli
 
 def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(integration_client, poi_map) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Voyage ancré"}).json()
-    first = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    first = trip["days"][0]
     second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
     departure = integration_client.post(
         f"/trips/{trip['id']}/departure",
@@ -188,7 +190,7 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
 
 def test_trip_time_planning_settings_summaries_and_permissions(integration_client, database_session, poi_map, auth_user) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Planification horaire"}).json()
-    day = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    day = trip["days"][0]
     stops = [
         integration_client.post(
             f"/trip-days/{day['id']}/stops",

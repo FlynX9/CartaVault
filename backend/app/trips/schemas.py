@@ -263,6 +263,7 @@ class TripSummaryRead(BaseModel):
     total_safety_margin_minutes: int; total_planned_duration_minutes: int
     low_load_days: int; medium_load_days: int; high_load_days: int
     days_with_complete_time_summary: int; days_with_incomplete_time_summary: int; is_time_summary_complete: bool
+    country_constraint_enabled: bool = False; constraint_country_code: str | None = None; constraint_country_name: str | None = None
 
 
 class DaySummaryRead(BaseModel):
@@ -275,3 +276,5 @@ class DaySummaryRead(BaseModel):
     estimated_arrival_time: TimeValue | None; estimated_arrival_day_offset: int | None
     schedule_delta_minutes: int | None; schedule_status: Literal["on_time", "early", "late", "unavailable"]
     load_level: LoadLevel; load_color: str | None; is_time_summary_complete: bool
+    country_constraint_enabled: bool = False; country_constraint_status: Literal["not_applicable", "unchecked", "valid", "invalid", "unavailable"] = "not_applicable"
+    constraint_country_code: str | None = None; constraint_country_name: str | None = None

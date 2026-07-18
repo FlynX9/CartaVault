@@ -1,13 +1,15 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences } from '../api/account'
 import { GeographicSearch } from '../components/geocoding/GeographicSearch'
 import { MapContextMenu } from '../components/map/MapContextMenu'
 import type { MapContextMenuState } from '../components/map/mapContextMenuUtils'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { EMPTY_MAP_MARKER_FILTER, MapMarkerFilterContext, type MapMarkerFilter } from '../components/map/mapMarkerFilterContext'
-import { getBasemap, loadBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
+import { getBasemap, loadBasemapPreference, parseBasemapId, saveBasemapPreference, type BasemapId } from '../map/basemaps'
+import type { AccountPreferences } from '../types/account'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
@@ -89,6 +91,20 @@ export function MapPage({
   const [contextNotice, setContextNotice] = useState<string | null>(null)
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
+
+  useEffect(() => {
+    let current = true
+    void getAccountPreferences().then((preferences) => {
+      const preferred = parseBasemapId(preferences.preferred_basemap)
+      if (current && preferred) setBasemapId(preferred)
+    }).catch(() => undefined)
+    const onPreferencesUpdated = (event: Event) => {
+      const preferred = parseBasemapId((event as CustomEvent<AccountPreferences>).detail.preferred_basemap)
+      if (preferred) setBasemapId(preferred)
+    }
+    window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated)
+    return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
+  }, [])
 
   const selectBasemap = (id: BasemapId) => {
     setBasemapId(id)

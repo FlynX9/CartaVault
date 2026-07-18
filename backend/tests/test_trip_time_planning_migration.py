@@ -4,6 +4,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
 
@@ -62,7 +63,7 @@ def test_trip_time_planning_upgrade_downgrade_upgrade_cycle(test_engine, test_da
             connection.execute(text("DELETE FROM users WHERE id = :id"), {"id": user_id})
 
     with test_engine.connect() as connection:
-        assert MigrationContext.configure(connection).get_current_revision() == TIME_PLANNING_REVISION
+        assert MigrationContext.configure(connection).get_current_revision() == ScriptDirectory.from_config(config).get_current_head()
     inspector = inspect(test_engine)
     assert DAY_COLUMNS <= {item["name"] for item in inspector.get_columns("trip_days")}
     assert TRIP_COLUMNS <= {item["name"] for item in inspector.get_columns("trips")}

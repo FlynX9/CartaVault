@@ -20,15 +20,49 @@ from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNigh
 from app.trips.optimizer import optimize_matrix, path_cost
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing import OsrmRoutingProvider
-from app.trips.routing.base import RoutingError, RoutingProvider
+from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, stale
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, stale, resolve_constraint_country
+from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
 
 router = APIRouter(tags=["trips"])
 
 
 def get_routing_provider() -> RoutingProvider: return OsrmRoutingProvider()
+
+
+def _routing_constraints(user: User) -> RoutingConstraints:
+    preferences = user.preferences or {}
+    routing = preferences.get("routing") if isinstance(preferences, dict) else None
+    # Read the old flat key for users who saved it before the nested routing
+    # section existed; writes are normalized by the account endpoint.
+    enabled = routing.get("stay_in_country", False) if isinstance(routing, dict) else preferences.get("keep_routes_in_country", False)
+    return RoutingConstraints(stay_in_country=enabled is True)
+
+
+def _day_constraint_summary(session: Session, user: User, day: TripDay) -> dict[str, object]:
+    constraints = _routing_constraints(user)
+    if not constraints.stay_in_country:
+        return {"country_constraint_enabled": False, "country_constraint_status": "not_applicable", "constraint_country_code": None, "constraint_country_name": None}
+    try:
+        country = resolve_constraint_country(session, day.trip)
+    except CountryRouteError:
+        return {"country_constraint_enabled": True, "country_constraint_status": "unavailable", "constraint_country_code": None, "constraint_country_name": None}
+    base = {"country_constraint_enabled": True, "constraint_country_code": country.iso_alpha3, "constraint_country_name": country.name}
+    if day.route_status != "ready" or not day.route_geometry:
+        return {**base, "country_constraint_status": "unchecked"}
+    validation = CountryRouteValidator().validate_route_within_country(day.route_geometry, country.iso_alpha3)
+    return {**base, "country_constraint_status": "valid" if validation.is_valid else "unavailable" if validation.reason == "boundary_unavailable" else "invalid"}
+
+
+def _assert_export_routes(session: Session, user: User, trip: Trip) -> None:
+    if not _routing_constraints(user).stay_in_country:
+        return
+    for day in trip.days:
+        state = _day_constraint_summary(session, user, day)
+        if state["country_constraint_status"] in {"invalid", "unavailable"}:
+            raise CountryRouteError("ROUTE_LEAVES_COUNTRY", "Une journée ne possède pas d’itinéraire conforme au pays et ne peut pas être exportée.", country_code=state.get("constraint_country_code") if isinstance(state.get("constraint_country_code"), str) else None)
 
 
 def _trip_read(session: Session, trip_id: UUID) -> TripRead: return TripRead.model_validate(load_trip(session, trip_id))
@@ -321,7 +355,7 @@ def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Dep
     _, access = require_day_role(session, day_id, user, "editor")
     trip = load_trip(session, access.trip.id)
     day = next(item for item in trip.days if item.id == day_id)
-    return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile))
+    return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(user)))
 
 
 @router.post("/trip-days/{day_id}/optimize")
@@ -369,11 +403,22 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
 def confirm_optimization(day_id: UUID, data: OptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
     day, access = require_day_role(session, day_id, user, "editor")
     if set(data.stop_ids) != {item.id for item in day.stops} or len(data.stop_ids) != len(day.stops): raise HTTPException(422, "Optimized order must contain every stop exactly once")
+    previous_order = {stop.id: stop.sort_order for stop in day.stops}
+    previous_route_status = day.route_status
     for stop in day.stops: stop.sort_order += 10_000
     session.flush(); lookup = {stop.id: stop for stop in day.stops}
     for index, item in enumerate(data.stop_ids): lookup[item].sort_order = index
     stale(day)
-    calculated = calculate_day_route(session, day, provider, access.trip.routing_profile)
+    try:
+        calculated = calculate_day_route(session, day, provider, access.trip.routing_profile, _routing_constraints(user))
+    except CountryRouteError:
+        # Keep the existing order and route if the final optimized geometry
+        # crosses the national boundary.  The OSRM table alone is insufficient.
+        for stop in day.stops:
+            stop.sort_order = previous_order[stop.id]
+        day.route_status = previous_route_status
+        session.flush()
+        raise
     calculated.stops.sort(key=lambda item: item.sort_order)
     return DayRead.model_validate(calculated)
 
@@ -385,12 +430,22 @@ def cancel_optimization(day_id: UUID, session: Session = Depends(get_db), user: 
 
 @router.get("/trips/{trip_id}/summary", response_model=TripSummaryRead)
 def trip_summary_endpoint(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    require_trip_viewer(session, trip_id, user); return trip_summary(load_trip(session, trip_id))
+    require_trip_viewer(session, trip_id, user)
+    trip = load_trip(session, trip_id)
+    result = trip_summary(trip)
+    constraints = _routing_constraints(user)
+    if constraints.stay_in_country and trip.days:
+        status = _day_constraint_summary(session, user, trip.days[0])
+        result.update({key: status[key] for key in ("country_constraint_enabled", "constraint_country_code", "constraint_country_name")})
+    else:
+        result.update({"country_constraint_enabled": False, "constraint_country_code": None, "constraint_country_name": None})
+    return result
 
 
 @router.get("/trip-days/{day_id}/summary", response_model=DaySummaryRead)
 def day_summary_endpoint(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    day, _ = require_day_role(session, day_id, user, "viewer"); return day_summary(day)
+    day, _ = require_day_role(session, day_id, user, "viewer")
+    return {**day_summary(day), **_day_constraint_summary(session, user, day)}
 
 
 @router.patch("/trip-stops/{stop_id}/visit-status", response_model=StopRead)
@@ -416,17 +471,20 @@ def apply_place_statuses(trip_id: UUID, data: ApplyPlaceStatuses, session: Sessi
 
 @router.post("/trips/{trip_id}/exports/google-maps")
 def export_google(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    require_trip_viewer(session, trip_id, user); links = google_maps_links(load_trip(session, trip_id)); return {"links": links, "warnings": ["Large days are split into several Google Maps links"] if len(links) > len(load_trip(session, trip_id).days) else []}
+    require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); links = google_maps_links(trip)
+    warnings = ["Large days are split into several Google Maps links"] if len(links) > len(trip.days) else []
+    if _routing_constraints(user).stay_in_country: warnings.append("Google Maps peut choisir un itinéraire différent et ne garantit pas le respect de cette contrainte.")
+    return {"links": links, "warnings": warnings}
 
 
 @router.post("/trips/{trip_id}/exports/gpx", status_code=201)
 def export_gpx(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    access = require_trip_viewer(session, trip_id, user); item = create_gpx(load_trip(session, trip_id), user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
+    access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_gpx(trip, user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
 
 
 @router.post("/trips/{trip_id}/exports/kmz", status_code=201)
 def export_kmz(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    access = require_trip_viewer(session, trip_id, user); item = create_kmz(load_trip(session, trip_id), user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
+    access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_kmz(trip, user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
 
 
 @router.get("/trips/{trip_id}/exports/{export_id}/download")

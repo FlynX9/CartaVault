@@ -4,6 +4,11 @@ import { MemoryRouter } from 'react-router-dom'
 
 import { MapPage } from './MapPage'
 
+vi.mock('../api/account', () => ({
+  ACCOUNT_PREFERENCES_UPDATED_EVENT: 'cartavault:preferences-updated',
+  getAccountPreferences: vi.fn().mockResolvedValue({ preferred_basemap: 'cartavault-light' }),
+}))
+
 vi.mock('../components/map/PoiMap', () => ({
   PoiMap: ({ layoutKey, basemapId, onBasemapTileError }: { layoutKey: string; basemapId: string; onBasemapTileError: () => void }) => (
     <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId}>

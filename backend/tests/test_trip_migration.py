@@ -2,6 +2,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
 
@@ -9,7 +10,6 @@ pytestmark = pytest.mark.integration
 
 PARENT_REVISION = "c1a7d4e9b620"
 TRIP_REVISION = "f8d2c4a6b910"
-HEAD_REVISION = "c9f4a2d8e761"
 TRIP_TABLES = {"trips", "trip_days", "trip_stops", "trip_nights"}
 
 
@@ -43,7 +43,7 @@ def test_trip_migration_upgrade_downgrade_upgrade_cycle(test_engine, test_databa
         command.upgrade(config, "head")
 
     with test_engine.connect() as connection:
-        assert MigrationContext.configure(connection).get_current_revision() == HEAD_REVISION
+        assert MigrationContext.configure(connection).get_current_revision() == ScriptDirectory.from_config(config).get_current_head()
     assert TRIP_TABLES <= set(inspect(test_engine).get_table_names())
     assert "trip_departures" in inspect(test_engine).get_table_names()
     assert "trip_departures_trip_id_key" in {item["name"] for item in inspect(test_engine).get_unique_constraints("trip_departures")}

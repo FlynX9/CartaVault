@@ -41,6 +41,10 @@ function parseApiErrorPayload(payload: unknown): ParsedErrorPayload {
     return { message: detail, fieldErrors: {} }
   }
 
+  if (typeof detail === 'object' && detail !== null && 'message' in detail && typeof detail.message === 'string') {
+    return { message: detail.message, fieldErrors: {} }
+  }
+
   if (!Array.isArray(detail)) {
     return { message: null, fieldErrors: {} }
   }
@@ -92,7 +96,7 @@ async function getResponseError(response: Response): Promise<ParsedErrorPayload>
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
   searchParams?: URLSearchParams
   body?: unknown
   signal?: AbortSignal
@@ -153,7 +157,7 @@ export async function getJson(
 
 export async function sendJson(
   path: string,
-  method: 'POST' | 'PATCH',
+  method: 'POST' | 'PATCH' | 'PUT',
   body: unknown,
   signal?: AbortSignal,
 ): Promise<unknown> {

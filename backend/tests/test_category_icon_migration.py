@@ -4,6 +4,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
 
 from app.categories.icon_catalog import CATEGORY_ICON_IDS, DEFAULT_CATEGORY_ICON_ID
@@ -21,12 +22,11 @@ TEST_CATEGORY_NAMESPACE = "https://poi-manager.test/category-icon-migration/"
 UNKNOWN_ICON = "unknown-legacy-icon"
 PRESERVED_ICONIFY_ICON = "mdi:wall"
 SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
-HEAD_REVISION = "c9f4a2d8e761"
 
 
 def _upgrade_to_head_with_test_admin(config: Config, engine) -> None:
     with engine.connect() as connection:
-        if MigrationContext.configure(connection).get_current_revision() == HEAD_REVISION:
+        if MigrationContext.configure(connection).get_current_revision() == ScriptDirectory.from_config(config).get_current_head():
             return
     command.upgrade(config, SECURITY_SCHEMA_REVISION)
     with engine.begin() as connection:
@@ -154,7 +154,7 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
             final_revision = MigrationContext.configure(connection).get_current_revision()
             final_icons = set(connection.scalars(text("SELECT icon FROM categories")))
 
-        assert final_revision == HEAD_REVISION
+        assert final_revision == ScriptDirectory.from_config(config).get_current_head()
         assert final_icons <= CATEGORY_ICON_IDS
     finally:
         try:

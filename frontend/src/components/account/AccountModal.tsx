@@ -1,48 +1,125 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, MonitorSmartphone, Settings2, Shield, ShieldCheck, Trash2, Upload, UserRound, X } from 'lucide-react'
+import { AlertTriangle, Camera, MonitorSmartphone, Settings2, Shield, ShieldCheck, Trash2, Upload, UserRound, X } from 'lucide-react'
 
-import { accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountProfile, getAccountSessions, revokeAccountSession, revokeOtherAccountSessions, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
-import type { AccountProfile, AccountSession } from '../../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession } from '../../types/account'
 
-type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'admin' | 'danger'
+type Section = 'profile' | 'avatar' | 'security' | 'sessions' | 'preferences' | 'admin' | 'danger'
+
+const emptyPreferences: AccountPreferences = { preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { stay_in_country: false } }
 
 export function AccountModal({ onClose, onOpenAdmin, trigger }: { onClose: () => void; onOpenAdmin: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
   const [section, setSection] = useState<Section>('profile')
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [sessions, setSessions] = useState<AccountSession[]>([])
+  const [preferences, setPreferences] = useState<AccountPreferences>(emptyPreferences)
+  const [draftName, setDraftName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
-  const load = async () => { setProfile(await getAccountProfile()); setSessions(await getAccountSessions()) }
-  useEffect(() => { void load().catch((e: unknown) => setError(e instanceof Error ? e.message : 'Chargement impossible.')) }, [])
-  useEffect(() => {
-    const previous = document.body.style.overflow; document.body.style.overflow = 'hidden'; closeButton.current?.focus()
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
-    window.addEventListener('keydown', escape)
-    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', escape); trigger?.focus() }
-  }, [onClose, trigger])
-  const run = async (action: () => Promise<void>, success: string) => { setError(null); setMessage(null); try { await action(); setMessage(success) } catch (e) { setError(e instanceof Error ? e.message : 'Opération impossible.') } }
+  const modal = useRef<HTMLElement>(null)
+  const dirty = profile !== null && section === 'profile' && draftName.trim() !== profile.display_name
+  const dirtyRef = useRef(false)
+  const closeRef = useRef(onClose)
+  dirtyRef.current = dirty
+  closeRef.current = onClose
   const avatar = accountAvatarUrl(profile?.avatar_url ?? user?.avatar_url ?? null)
   const initials = (profile?.display_name ?? user?.display_name ?? '?').trim().charAt(0).toUpperCase()
-  const submit = (handler: (data: FormData) => Promise<void>) => (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); void handler(new FormData(event.currentTarget)) }
 
-  return createPortal(<div className="account-overlay" role="presentation"><section className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title">
-    <header className="account-modal__header"><div className="account-avatar">{avatar ? <img src={avatar} alt={`Avatar de ${profile?.display_name ?? user?.display_name}`} /> : initials}</div><div><h2 id="account-title">{profile?.display_name ?? user?.display_name}</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />Administrateur</span>}</div><button ref={closeButton} className="panel-icon-button" type="button" aria-label="Fermer l’espace compte" onClick={onClose}><X size={18} /></button></header>
-    <nav className="account-modal__nav" aria-label="Gestion du compte">{([['profile', UserRound, 'Mon profil'], ['security', ShieldCheck, 'Sécurité'], ['sessions', MonitorSmartphone, 'Sessions actives'], ['preferences', Settings2, 'Préférences']] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => setSection(id)}><Icon size={17} />{label}</button>)}{user?.is_admin && <button type="button" onClick={() => setSection('admin')} aria-current={section === 'admin' ? 'page' : undefined}><Shield size={17} />Administration</button>}<button className="danger" type="button" onClick={() => setSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />Zone sensible</button></nav>
-    <main className="account-modal__content">{error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
-      {section === 'profile' && profile && <><AccountHeading title="Mon profil" description="Gérez votre identité et votre avatar CartaVault." /><div className="account-avatar-editor"><div className="account-avatar large">{avatar ? <img src={avatar} alt="Aperçu de l’avatar" /> : initials}</div><div><label className="account-button account-button--secondary"><Upload size={15} />Modifier l’avatar<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void run(async () => { await uploadAccountAvatar(file); await refresh(); await load() }, 'Avatar mis à jour.') }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')}><Trash2 size={15} />Supprimer</button>}<small>JPEG, PNG ou WebP · 5 Mio maximum.</small></div></div><form className="account-form" onSubmit={submit(async (data) => run(async () => { await updateAccountProfile(String(data.get('display_name'))); await refresh(); await load() }, 'Profil mis à jour.'))}><label>Nom d’affichage<input name="display_name" defaultValue={profile.display_name} required maxLength={120} /></label><button className="account-button account-button--primary" type="submit">Enregistrer</button></form><dl className="account-metadata"><dt>Adresse e-mail</dt><dd>{profile.email}</dd><dt>Compte créé</dt><dd>{new Date(profile.created_at).toLocaleDateString('fr-FR')}</dd><dt>Dernière connexion</dt><dd>{profile.last_login_at ? new Date(profile.last_login_at).toLocaleString('fr-FR') : 'Non disponible'}</dd></dl></>}
-      {section === 'security' && profile && <><AccountHeading title="Sécurité" description="Les autres appareils seront déconnectés après une modification sensible." /><form className="account-form" onSubmit={submit(async (data) => run(async () => { await changeAccountEmail(String(data.get('current_password')), String(data.get('new_email'))); await refresh(); await load() }, 'Adresse e-mail mise à jour.'))}><h3>Changer l’adresse e-mail</h3><label>Nouvelle adresse<input name="new_email" type="email" required /></label><label>Mot de passe actuel<input name="current_password" type="password" required /></label><button className="account-button account-button--primary" type="submit">Modifier l’e-mail</button></form><form className="account-form" onSubmit={submit(async (data) => run(() => changeAccountPassword(String(data.get('current_password')), String(data.get('new_password')), String(data.get('confirmation'))), 'Mot de passe mis à jour.'))}><h3>Changer le mot de passe</h3><label>Mot de passe actuel<input name="current_password" type="password" required /></label><label>Nouveau mot de passe<input name="new_password" type="password" minLength={12} required /></label><label>Confirmation<input name="confirmation" type="password" minLength={12} required /></label><button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button></form><div className="account-info"><strong>{profile.active_session_count}</strong> sessions actives · Compte {profile.is_active ? 'actif' : 'inactif'}. L’authentification à deux facteurs n’est pas encore disponible.</div></>}
-      {section === 'sessions' && <><AccountHeading title="Sessions actives" description="Contrôlez les appareils connectés à votre compte." /><button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { await revokeOtherAccountSessions(); await load() }, 'Autres sessions révoquées.')}>Révoquer les autres sessions</button><ul className="account-sessions">{sessions.map((item) => <li key={item.id}><MonitorSmartphone size={19} /><div><strong>{item.user_agent || 'Appareil inconnu'}</strong><span>Dernière activité : {new Date(item.last_used_at).toLocaleString('fr-FR')}</span>{item.is_current && <b>Session actuelle</b>}</div><button className="panel-icon-button danger" type="button" aria-label="Révoquer cette session" onClick={() => void run(async () => { await revokeAccountSession(item.id); if (item.is_current) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)); else await load() }, 'Session révoquée.')}><Trash2 size={15} /></button></li>)}</ul></>}
-      {section === 'preferences' && <Preferences />}
-      {section === 'admin' && <><AccountHeading title="Administration" description="La gestion globale des utilisateurs reste séparée de votre compte personnel." /><button className="account-button account-button--primary" type="button" onClick={() => { onClose(); onOpenAdmin() }}>Ouvrir l’administration</button></>}
-      {section === 'danger' && profile && <><AccountHeading title="Zone sensible" description="La suppression désactive et anonymise définitivement votre compte." /><div className="account-danger-summary"><p>{profile.owned_maps.length} carte(s) possédée(s), {profile.shared_map_count} carte(s) partagée(s).</p>{profile.owned_maps.length > 0 && <><strong>Transférez ou supprimez d’abord :</strong><ul>{profile.owned_maps.map((map) => <li key={map.id}>{map.name}</li>)}</ul></>}</div><form className="account-form danger" onSubmit={submit(async (data) => run(async () => { await deleteOwnAccount(String(data.get('current_password')), String(data.get('confirmation')), data.get('acknowledged') === 'on'); window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)) }, 'Compte supprimé.'))}><label>Mot de passe actuel<input name="current_password" type="password" required /></label><label>Confirmation<input name="confirmation" placeholder="SUPPRIMER MON COMPTE" required /></label><label className="checkbox-field"><input name="acknowledged" type="checkbox" required />Je comprends que cette action est définitive.</label><button className="account-button account-button--danger" type="submit" disabled={!profile.can_delete}>Supprimer mon compte</button></form></>}
-    </main>
-  </section></div>, document.body)
+  const load = async () => {
+    const [nextProfile, nextSessions, nextPreferences] = await Promise.all([getAccountProfile(), getAccountSessions(), getAccountPreferences()])
+    setProfile(nextProfile); setDraftName(nextProfile.display_name); setSessions(nextSessions); setPreferences(nextPreferences)
+  }
+  useEffect(() => { void load().catch((reason: unknown) => setError(messageFor(reason, 'Chargement impossible.'))) }, [])
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeButton.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        if (!dirtyRef.current || window.confirm('Abandonner les modifications non enregistrées ?')) closeRef.current()
+        return
+      }
+      if (event.key !== 'Tab' || !modal.current) return
+      const focusable = [...modal.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
+      if (focusable.length === 0) return
+      const first = focusable[0]; const last = focusable.at(-1)!
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown); trigger?.focus() }
+  }, [trigger])
+
+  const requestClose = () => { if (!dirty || window.confirm('Abandonner les modifications non enregistrées ?')) onClose() }
+  const selectSection = (next: Section) => { if (next === section || !dirty || window.confirm('Abandonner les modifications non enregistrées ?')) setSection(next) }
+  const run = async (action: () => Promise<void>, success: string): Promise<boolean> => {
+    setError(null); setMessage(null)
+    try { await action(); setMessage(success); return true } catch (reason) { setError(messageFor(reason, 'Opération impossible.')); return false }
+  }
+  const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!dirty) return
+    await run(async () => { await updateAccountProfile(draftName); await refresh(); await load() }, 'Profil mis à jour.')
+  }
+  const uploadAvatar = async (file: File) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Choisissez une image JPEG, PNG ou WebP de 5 Mio maximum.'); return }
+    await run(async () => { await uploadAccountAvatar(file); await refresh(); await load() }, 'Avatar mis à jour.')
+  }
+
+  return createPortal(
+    <div className="account-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
+      <section ref={modal} className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title">
+        <header className="account-modal__header">
+          <div className="account-avatar">{avatar ? <img src={avatar} alt={`Avatar de ${profile?.display_name ?? user?.display_name}`} /> : initials}</div>
+          <div><h2 id="account-title">Mon compte</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />Administrateur</span>}</div>
+          <button ref={closeButton} className="panel-icon-button" type="button" aria-label="Fermer l’espace compte" onClick={requestClose}><X size={18} /></button>
+        </header>
+        <nav className="account-modal__nav" aria-label="Gestion du compte">
+          {([[ 'profile', UserRound, 'Profil' ], [ 'avatar', Camera, 'Avatar' ], [ 'security', ShieldCheck, 'Sécurité' ], [ 'sessions', MonitorSmartphone, 'Sessions' ], [ 'preferences', Settings2, 'Préférences' ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
+          {user?.is_admin && <button type="button" onClick={() => selectSection('admin')} aria-current={section === 'admin' ? 'page' : undefined}><Shield size={17} />Administration</button>}
+          <button className="danger" type="button" onClick={() => selectSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />Zone sensible</button>
+        </nav>
+        <main className="account-modal__content">
+          {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
+          {section === 'profile' && profile && <><AccountHeading title="Profil" description="Gérez votre identité CartaVault." /><form className="account-form" onSubmit={saveProfile}><label>Nom d’affichage<input name="display_name" value={draftName} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></label><button className="account-button account-button--primary" type="submit" disabled={!dirty}>Enregistrer</button></form><dl className="account-metadata"><dt>Adresse e-mail</dt><dd>{profile.email}</dd><dt>Compte créé</dt><dd>{formatDate(profile.created_at)}</dd><dt>Dernière connexion</dt><dd>{profile.last_login_at ? formatDate(profile.last_login_at, true) : 'Non disponible'}</dd><dt>Cartes possédées</dt><dd>{profile.owned_maps.length}</dd></dl></>}
+          {section === 'avatar' && <><AccountHeading title="Avatar" description="Une image carrée, traitée et stockée séparément de vos photos de lieux." /><div className="account-avatar-editor"><div className="account-avatar large">{avatar ? <img src={avatar} alt="Aperçu de l’avatar" /> : initials}</div><div><label className="account-button account-button--secondary"><Upload size={15} />Importer une image<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')}><Trash2 size={15} />Supprimer</button>}<small>JPEG, PNG ou WebP · 5 Mio maximum.</small></div></div></>}
+          {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
+          {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
+          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
+          {section === 'admin' && <><AccountHeading title="Administration" description="La gestion globale des utilisateurs reste séparée de votre compte personnel." /><button className="account-button account-button--primary" type="button" onClick={() => { onClose(); onOpenAdmin() }}>Ouvrir l’administration</button></>}
+          {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
+        </main>
+      </section>
+    </div>, document.body,
+  )
+}
+
+function SecuritySection({ profile, run, refreshProfile }: { profile: AccountProfile; run: (action: () => Promise<void>, success: string) => Promise<boolean>; refreshProfile: () => Promise<void> }) {
+  return <><AccountHeading title="Sécurité" description="Les autres appareils sont déconnectés après une modification sensible." /><form className="account-form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(async () => { await changeAccountEmail(String(data.get('current_password')), String(data.get('new_email'))); await refreshProfile() }, 'Adresse e-mail mise à jour.').then((ok) => { if (ok) form.reset() }) }}><h3>Changer l’adresse e-mail</h3><label>Nouvelle adresse<input name="new_email" type="email" required /></label><label>Mot de passe actuel<input name="current_password" type="password" required autoComplete="current-password" /></label><button className="account-button account-button--primary" type="submit">Modifier l’e-mail</button></form><form className="account-form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(() => changeAccountPassword(String(data.get('current_password')), String(data.get('new_password')), String(data.get('confirmation'))), 'Mot de passe mis à jour.').then((ok) => { if (ok) form.reset() }) }}><h3>Changer le mot de passe</h3><label>Mot de passe actuel<input name="current_password" type="password" required autoComplete="current-password" /></label><label>Nouveau mot de passe<input name="new_password" type="password" minLength={12} required autoComplete="new-password" /></label><label>Confirmation<input name="confirmation" type="password" minLength={12} required autoComplete="new-password" /></label><button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button></form><div className="account-info"><strong>{profile.active_session_count}</strong> sessions actives · Compte {profile.is_active ? 'actif' : 'inactif'}. L’authentification à deux facteurs n’est pas encore disponible.</div></>
+}
+
+function SessionsSection({ sessions, run, reload }: { sessions: AccountSession[]; run: (action: () => Promise<void>, success: string) => Promise<boolean>; reload: () => Promise<void> }) {
+  return <><AccountHeading title="Sessions actives" description="Contrôlez les appareils connectés à votre compte." /><button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { await revokeOtherAccountSessions(); await reload() }, 'Autres sessions révoquées.')}>Révoquer les autres sessions</button>{sessions.length === 0 ? <p className="account-info">Aucune session active.</p> : <ul className="account-sessions">{sessions.map((item) => <li key={item.id}><MonitorSmartphone size={19} /><div><strong>{item.user_agent || 'Appareil inconnu'}</strong><span>Dernière activité : {formatDate(item.last_used_at, true)}</span>{item.is_current && <b>Session actuelle</b>}</div>{!item.is_current && <button className="panel-icon-button danger" type="button" aria-label="Révoquer cette session" onClick={() => void run(async () => { await revokeAccountSession(item.id); await reload() }, 'Session révoquée.')}><Trash2 size={15} /></button>}</li>)}</ul>}</>
+}
+
+function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
+  const update = <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => setPreferences({ ...preferences, [key]: value })
+  const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
+  return <><AccountHeading title="Préférences" description="Ces réglages sont associés à votre compte, sur tous vos appareils." /><form className="account-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { apply(await updateAccountPreferences(preferences)) }, 'Préférences enregistrées.') }}><label>Fond cartographique préféré<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">Clair</option><option value="cartavault-dark">Sombre</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label><label>Densité d’affichage<select value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="comfortable">Confortable</option><option value="compact">Compacte</option></select></label><label>Panneau au démarrage<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">Cartes</option><option value="places">Lieux</option><option value="last">Dernière vue utilisée</option></select></label><label>Fuseau horaire<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label><fieldset className="account-routing-preferences"><legend>Routage</legend><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => setPreferences({ ...preferences, routing: { stay_in_country: event.target.checked } })} />Rester dans le pays</label><small>Empêche CartaVault d’accepter un itinéraire qui franchit une frontière. Selon le moteur de routage utilisé, CartaVault peut refuser un trajet sans pouvoir proposer automatiquement une alternative.</small></fieldset><label>Langue<input readOnly value="Français" /></label><button className="account-button account-button--primary" type="submit">Enregistrer</button><button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, 'Préférences réinitialisées.')}>Réinitialiser les préférences</button></form></>
+}
+
+function DangerSection({ profile, run }: { profile: AccountProfile; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
+  const [confirmation, setConfirmation] = useState(''); const [password, setPassword] = useState(''); const [acknowledged, setAcknowledged] = useState(false)
+  const ready = profile.can_delete && confirmation === 'SUPPRIMER MON COMPTE' && password.length > 0 && acknowledged
+  return <><AccountHeading title="Zone sensible" description="La suppression désactive et anonymise définitivement votre compte." /><div className="account-danger-summary"><p>{profile.owned_maps.length} carte(s) possédée(s), {profile.shared_map_count} carte(s) partagée(s).</p>{profile.owned_maps.length > 0 && <><strong>Transférez ou supprimez d’abord :</strong><ul>{profile.owned_maps.map((map) => <li key={map.id}>{map.name}</li>)}</ul></>}</div><form className="account-form danger" onSubmit={(event) => { event.preventDefault(); void run(async () => { await deleteOwnAccount(password, confirmation, acknowledged); window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)) }, 'Compte supprimé.') }}><label>Mot de passe actuel<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" /></label><label>Recopiez SUPPRIMER MON COMPTE<input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="SUPPRIMER MON COMPTE" required /></label><label className="checkbox-field"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />Je comprends que cette action est définitive.</label><button className="account-button account-button--danger" type="submit" disabled={!ready}>Supprimer mon compte</button></form></>
 }
 
 function AccountHeading({ title, description }: { title: string; description: string }) { return <header className="account-content-heading"><p className="cv-workspace-panel__eyebrow">Compte</p><h2>{title}</h2><span>{description}</span></header> }
-function Preferences() { const [density, setDensity] = useState(() => localStorage.getItem('cartavault.density') ?? 'comfortable'); return <><AccountHeading title="Préférences" description="Réglages conservés uniquement dans ce navigateur." /><div className="account-form"><label>Densité d’affichage<select value={density} onChange={(e) => { setDensity(e.target.value); localStorage.setItem('cartavault.density', e.target.value) }}><option value="comfortable">Confortable</option><option value="compact">Compacte</option></select></label><label>Langue<select disabled><option>Français</option></select></label><label>Fuseau horaire<input readOnly value={Intl.DateTimeFormat().resolvedOptions().timeZone} /></label><button className="account-button account-button--secondary" type="button" onClick={() => { localStorage.removeItem('cartavault.density'); localStorage.removeItem('cartavault.basemap'); setDensity('comfortable') }}>Réinitialiser les préférences</button></div></> }
+function formatDate(value: string, withTime = false): string { return new Intl.DateTimeFormat('fr-FR', withTime ? { dateStyle: 'long', timeStyle: 'short' } : { dateStyle: 'long' }).format(new Date(value)) }
+function messageFor(reason: unknown, fallback: string): string { return reason instanceof Error ? reason.message : fallback }

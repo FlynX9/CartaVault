@@ -285,6 +285,14 @@ chaque ouverture et ne conserve donc pas de cache global obsolète.
 
 La navigation commence par **Cartes** (catalogue), puis **Lieux**. Fermer un panneau, ou cliquer une seconde fois sur son entrée active, rend la carte seule sans introduire une entrée de navigation dédiée. Le catalogue affiche les cartes de `GET /maps` dans le panneau latéral : aperçu CSS local, nom, pays, recherche locale, état actif, ouverture et suppression. Le bouton « Créer une carte » ouvre la modale existante ; après création ou ouverture, la carte active est sélectionnée et le panneau Lieux est affiché. Le changement ne remonte pas `MapContainer` et conserve le fond choisi.
 
+## Compte
+
+Le menu utilisateur ouvre la modale **Compte** au-dessus de Leaflet. Elle
+propose les sections Profil, Avatar, Sécurité, Sessions, Préférences,
+Administration pour les administrateurs et Zone sensible. Les préférences sont
+persistées avec le compte ; la préférence de fond cartographique est appliquée
+sans recharger l’application.
+
 ## Mode Sorties
 
 Le mode **Sorties** n’est pas une modale. Il conserve le panneau Lieux à gauche, le `MapContainer` principal au centre et ouvre le planificateur à droite. Les POI disponibles deviennent déplaçables vers une journée ; ceux déjà utilisés sont signalés dans la liste. La carte principale superpose les tracés, les étapes numérotées et les nuits, en mettant la journée active en évidence.
@@ -294,3 +302,6 @@ Le panneau droit permet de créer et sélectionner une sortie, organiser ses jou
 Chaque journée affiche séparément route, conduite, visites, tampon entre étapes, marge de sécurité et durée totale estimée. Aucune pause n’est ajoutée au modèle ou au calcul. La configuration horaire accepte une arrivée cible, un départ planifié, un tampon et une marge fixe ou en pourcentage ; elle affiche le départ recommandé, l’arrivée estimée, leur éventuel décalage de jour et l’avance ou le retard.
 
 Les durées de visite proposent des préréglages (15 à 120 minutes) et une valeur personnalisée. Le voyage possède des seuils et couleurs de charge configurables, réinitialisables aux valeurs CartaVault de 4 h / 8 h. Le résumé global totalise séparément conduite, visites, tampon et marges et compte les journées par niveau de charge. Une journée non calculée ou obsolète affiche un état explicite et rend le résumé partiel jusqu’au prochain calcul.
+# Préférence de routage
+
+La fenêtre **Compte > Préférences** permet d’activer **Rester dans le pays**. Le module Sortie distingue alors une route validée, à vérifier, refusée ou indisponible. Une erreur `ROUTE_LEAVES_COUNTRY` est affichée avec un message français lisible ; aucune géométrie refusée n’est présentée comme itinéraire actif.

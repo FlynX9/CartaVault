@@ -231,6 +231,15 @@ La suppression de `DELETE /photos/{photo_id}` retire les métadonnées puis le
 fichier physique associé. Le stockage local convient à une instance unique ;
 un déploiement multi-instance nécessitera un stockage partagé ou objet.
 
+## Espace Compte
+
+Les endpoints sous `/account` opèrent uniquement sur l’utilisateur de la
+session authentifiée : profil, e-mail, mot de passe, sessions, avatar,
+préférences et suppression/anonymisation. Les avatars sont contrôlés (JPEG,
+PNG ou WebP, 5 Mio), convertis en WebP et stockés sous `storage/avatars/`,
+distinctement des photos de POI. `users.preferences` contient les réglages
+d’interface validés et non sensibles.
+
 ## Tests
 
 Depuis `backend` :
@@ -286,3 +295,8 @@ backend/
 - aucune authentification n'est présente ;
 - la baseline Alembic ne recrée pas seule une base vide ;
 - le stockage photo local n'est pas adapté tel quel à plusieurs instances.
+# Validation « rester dans le pays »
+
+`app.trips.routing.country_validator.CountryRouteValidator` analyse la LineString complète retournée par OSRM après densification. La donnée locale `app/countries/data/routing_boundaries.geojson` est volontairement limitée et versionnée (Natural Earth, domaine public, simplifiée). Une frontière indisponible provoque une erreur métier claire plutôt qu’une acceptation silencieuse. OSRM standard n’est pas présenté comme capable de calculer une alternative nationale ; il est seulement post-validé.
+
+Les seuils, en mètres, sont `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` (250 par défaut) et `ROUTING_MAX_OUTSIDE_DISTANCE_METERS` (500 par défaut). Les exports contrôlent également les routes déjà calculées quand la préférence est active ; Google Maps reçoit un avertissement car son propre moteur peut choisir un autre trajet.

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserSession
-from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountProfileUpdate, EmailChange
+from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
 from app.auth.security import hash_password, normalize_email, verify_password
 from app.config import security_settings
 from app.database import get_db
@@ -21,12 +21,21 @@ from app.maps.models import MapInvitation, MapMembership, PoiMap
 
 router = APIRouter(prefix="/account", tags=["account"])
 
+DEFAULT_PREFERENCES = AccountPreferences().model_dump()
+
 
 def _profile(user: User, database_session: Session) -> dict:
     owned = database_session.scalars(select(PoiMap).where(PoiMap.owner_id == user.id).order_by(PoiMap.name)).all()
     shared_count = database_session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.user_id == user.id, MapMembership.role != "owner")) or 0
     active_sessions = database_session.scalar(select(func.count()).select_from(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None), UserSession.expires_at > datetime.now(UTC).replace(tzinfo=None))) or 0
     return {"id": user.id, "email": user.email, "display_name": user.display_name, "is_admin": user.is_admin, "is_active": user.is_active, "created_at": user.created_at, "updated_at": user.updated_at, "last_login_at": user.last_login_at, "avatar_url": f"/account/avatar?v={user.avatar_updated_at.isoformat()}" if user.avatar_filename else None, "owned_maps": [{"id": item.id, "name": item.name} for item in owned], "shared_map_count": shared_count, "active_session_count": active_sessions, "can_delete": not owned}
+
+
+def _preferences(user: User) -> dict[str, object]:
+    # Normalize the one former flat routing key while retaining all other
+    # persisted settings.  No database migration is needed for JSONB data.
+    stored = user.preferences or {}
+    return AccountPreferences.model_validate({**DEFAULT_PREFERENCES, **stored}).model_dump()
 
 
 @router.get("/profile")
@@ -39,6 +48,25 @@ def update_profile(data: AccountProfileUpdate, database_session: Session = Depen
     current.user.display_name = data.display_name
     database_session.commit()
     return _profile(current.user, database_session)
+
+
+@router.get("/preferences")
+def preferences(current: UserSession = Depends(get_current_session)) -> dict[str, object]:
+    return _preferences(current.user)
+
+
+@router.put("/preferences")
+def update_preferences(data: AccountPreferences, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
+    current.user.preferences = data.model_dump()
+    database_session.commit()
+    return _preferences(current.user)
+
+
+@router.post("/preferences/reset")
+def reset_preferences(database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
+    current.user.preferences = dict(DEFAULT_PREFERENCES)
+    database_session.commit()
+    return _preferences(current.user)
 
 
 @router.post("/change-email")

@@ -6,9 +6,12 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.countries.models import Country
+from app.maps.models import PoiMap
 from app.places.models import Place
 from app.trips.models import Trip, TripDay, TripNight, TripStop
-from app.trips.routing.base import RoutingError, RoutingProvider
+from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
+from app.trips.routing.country_validator import CountryRouteValidation, CountryRouteValidator
 from app.trips.summary_service import day_summary
 
 
@@ -75,11 +78,48 @@ def day_coordinates(day: TripDay) -> tuple[list[tuple[float, float]], list[str]]
     return coordinates, labels
 
 
-def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvider, profile: str) -> TripDay:
+class CountryRouteError(HTTPException):
+    """A business error that remains readable to API clients."""
+
+    def __init__(self, code: str, message: str, *, country_code: str | None = None):
+        detail: dict[str, object] = {"code": code, "message": message}
+        if country_code:
+            detail["country_code"] = country_code
+        super().__init__(409, detail=detail)
+
+
+def resolve_constraint_country(session: Session, trip: Trip) -> Country:
+    poi_map = session.get(PoiMap, trip.map_id)
+    country = session.get(Country, poi_map.country_id) if poi_map else None
+    if country is None:
+        raise CountryRouteError("ROUTE_COUNTRY_UNAVAILABLE", "Impossible de déterminer le pays de cette sortie.")
+    return country
+
+
+def validate_route_constraint(session: Session, day: TripDay, constraints: RoutingConstraints, geometry: dict) -> CountryRouteValidation | None:
+    if not constraints.stay_in_country:
+        return None
+    country = resolve_constraint_country(session, day.trip)
+    if constraints.country_code and constraints.country_code != country.iso_alpha3:
+        raise CountryRouteError("ROUTE_COUNTRY_UNAVAILABLE", "Le pays de contrainte ne correspond pas à la carte.", country_code=country.iso_alpha3)
+    result = CountryRouteValidator().validate_route_within_country(geometry, country.iso_alpha3)
+    if result.reason == "boundary_unavailable":
+        raise CountryRouteError("ROUTE_COUNTRY_BOUNDARY_UNAVAILABLE", f"La frontière locale de {country.name} n’est pas disponible.", country_code=country.iso_alpha3)
+    if result.reason == "invalid_geometry":
+        raise CountryRouteError("ROUTE_COUNTRY_UNAVAILABLE", "La géométrie de l’itinéraire ne peut pas être vérifiée.", country_code=country.iso_alpha3)
+    if not result.is_valid:
+        raise CountryRouteError("ROUTE_LEAVES_COUNTRY", f"L’itinéraire proposé quitte {country.name}. Le moteur actuel ne peut pas proposer automatiquement une alternative restant dans le pays.", country_code=country.iso_alpha3)
+    return result
+
+
+def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvider, profile: str, constraints: RoutingConstraints | None = None) -> TripDay:
     coordinates, labels = day_coordinates(day)
     if len(coordinates) < 2: raise HTTPException(422, "At least two route points are required")
     try: result = provider.calculate_route(coordinates, profile)
     except RoutingError as error: raise HTTPException(502, str(error)) from error
+    validate_route_constraint(session, day, constraints or RoutingConstraints(), result.geometry)
+    # Mutate only after the post-routing validation: an invalid route never
+    # replaces a previously valid one or its metrics.
     day.route_geometry = result.geometry
     day.route_distance_meters = result.distance_meters
     day.route_duration_seconds = result.duration_seconds

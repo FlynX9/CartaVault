@@ -14,6 +14,16 @@ def _positive_int(name: str, default: int) -> int:
     return value
 
 
+def _nonnegative_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = int(raw)
+    if value < 0:
+        raise RuntimeError(f"{name} must be a non-negative integer")
+    return value
+
+
 def _boolean(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     if raw is None:
@@ -43,6 +53,8 @@ class RoutingSettings:
     timeout_seconds: int = _positive_int("OSRM_TIMEOUT_SECONDS", 12)
     max_waypoints: int = _positive_int("OSRM_MAX_WAYPOINTS", 50)
     profile: str = os.getenv("OSRM_PROFILE", "driving")
+    country_boundary_tolerance_meters: int = _nonnegative_int("ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS", 250)
+    max_outside_distance_meters: int = _nonnegative_int("ROUTING_MAX_OUTSIDE_DISTANCE_METERS", 500)
 
 
 routing_settings = RoutingSettings()

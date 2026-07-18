@@ -54,3 +54,21 @@ def test_account_deletion_guards_and_anonymizes(integration_client, database_ses
     assert user.is_active is False and user.deleted_at is not None
     assert user.email == f"deleted-{user.id}@invalid.local"
     assert integration_client.get("/auth/me").status_code == 401
+
+
+def test_account_preferences_are_validated_and_isolated(integration_client, database_session, auth_user, monkeypatch) -> None:
+    csrf = _login(integration_client, database_session, monkeypatch, auth_user)
+    headers = {"X-CSRF-Token": csrf}
+    defaults = integration_client.get("/account/preferences")
+    assert defaults.status_code == 200
+    assert defaults.json()["preferred_basemap"] == "cartavault-light"
+
+    updated = integration_client.put(
+        "/account/preferences",
+        json={"preferred_basemap": "satellite", "density": "compact", "startup_panel": "places", "timezone": "Europe/Paris", "routing": {"stay_in_country": True}},
+        headers=headers,
+    )
+    assert updated.status_code == 200 and updated.json()["density"] == "compact"
+    assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
+    reset = integration_client.post("/account/preferences/reset", headers=headers)
+    assert reset.status_code == 200 and reset.json()["density"] == "comfortable"

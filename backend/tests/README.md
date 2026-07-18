@@ -140,3 +140,6 @@ dédiée correctement configurée, la suite complète exécute les 26 tests.
 
 > N'utilisez jamais l'URL de la base de développement comme
 > `TEST_DATABASE_URL`. La suite ne supprime ni base, ni conteneur, ni volume.
+# Routage et frontières
+
+Les tests `test_country_route_validator.py` utilisent des polygones locaux synthétiques : ils vérifient la densification de la géométrie, la tolérance près d’une frontière et le refus d’un segment réellement extérieur, sans dépendre d’un service de cartographie externe.
