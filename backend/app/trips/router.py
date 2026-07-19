@@ -19,7 +19,7 @@ from app.trips.export_service import create_gpx, create_kmz, google_maps_links
 from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.optimizer import optimize_matrix, path_cost
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
-from app.trips.routing import OsrmRoutingProvider
+from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripRead, TripSummaryRead, TripUpdate
 from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, stale, resolve_constraint_country
@@ -29,16 +29,21 @@ from app.trips.summary_service import day_summary, trip_summary
 router = APIRouter(tags=["trips"])
 
 
-def get_routing_provider() -> RoutingProvider: return OsrmRoutingProvider()
+def get_routing_provider(user: User = Depends(get_current_user)) -> RoutingProvider:
+    preferences = routing_preferences(user.preferences)
+    try:
+        return routing_provider_registry.resolve(str(preferences["provider"]), preferences, rate_limit_key=str(user.id))
+    except RoutingError as error:
+        raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
 
 
 def _routing_constraints(user: User) -> RoutingConstraints:
-    preferences = user.preferences or {}
-    routing = preferences.get("routing") if isinstance(preferences, dict) else None
-    # Read the old flat key for users who saved it before the nested routing
-    # section existed; writes are normalized by the account endpoint.
-    enabled = routing.get("stay_in_country", False) if isinstance(routing, dict) else preferences.get("keep_routes_in_country", False)
-    return RoutingConstraints(stay_in_country=enabled is True)
+    return RoutingConstraints(stay_in_country=routing_preferences(user.preferences)["stay_in_country"] is True)
+
+
+@router.get("/routing/providers")
+def routing_providers(user: User = Depends(get_current_user)) -> dict[str, object]:
+    return {"providers": routing_provider_registry.capabilities(), "default_provider": "osrm"}
 
 
 def _day_constraint_summary(session: Session, user: User, day: TripDay) -> dict[str, object]:
@@ -372,6 +377,28 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
     start = day.previous_night or (day.trip.departure if day.day_number == 1 else None)
     end = day.next_night or ((day.trip.arrival or day.trip.departure) if day.day_number == len(day.trip.days) else None)
     points = ([start] if start else []) + stops + ([end] if end else [])
+    if provider.provider_id == "google":
+        try:
+            optimized_stops = _google_optimized_stops(provider, stops, start, end, options, access.trip.routing_profile)
+            manual_route = provider.calculate_route([(point.longitude, point.latitude) for point in points], access.trip.routing_profile)
+            optimized_points = ([start] if start else []) + optimized_stops + ([end] if end else [])
+            optimized_route = provider.calculate_route([(point.longitude, point.latitude) for point in optimized_points], access.trip.routing_profile)
+        except RoutingError as error:
+            raise HTTPException(502, {"code": error.code, "message": str(error)}) from error
+        return {
+            "manual_stop_ids": [stop.id for stop in stops],
+            "optimized_stop_ids": [stop.id for stop in optimized_stops],
+            "before": manual_route.duration_seconds if options.metric == "duration" else manual_route.distance_meters,
+            "after": optimized_route.duration_seconds if options.metric == "duration" else optimized_route.distance_meters,
+            "gain": max(0, (manual_route.duration_seconds - optimized_route.duration_seconds) if options.metric == "duration" else (manual_route.distance_meters - optimized_route.distance_meters)),
+            "metric": options.metric,
+            "before_distance_meters": manual_route.distance_meters,
+            "after_distance_meters": optimized_route.distance_meters,
+            "distance_gain_meters": max(0, manual_route.distance_meters - optimized_route.distance_meters),
+            "before_duration_seconds": manual_route.duration_seconds,
+            "after_duration_seconds": optimized_route.duration_seconds,
+            "duration_gain_seconds": max(0, manual_route.duration_seconds - optimized_route.duration_seconds),
+        }
     try: matrix = provider.calculate_matrix([(point.longitude, point.latitude) for point in points], access.trip.routing_profile)
     except RoutingError as error: raise HTTPException(502, str(error)) from error
     values = matrix.durations if options.metric == "duration" else matrix.distances
@@ -404,6 +431,46 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
         "after_duration_seconds": after_duration,
         "duration_gain_seconds": max(0, before_duration - after_duration),
     }
+
+
+def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], start: object | None, end: object | None, options: OptimizeOptions, profile: str) -> list[TripStop]:
+    """Optimize independent runs so locked CartaVault stops remain fixed."""
+    result = list(stops)
+    locked = {index for index, stop in enumerate(stops) if options.keep_locked and stop.is_locked}
+    if options.keep_start and start is None:
+        locked.add(0)
+    if options.keep_end and end is None:
+        locked.add(len(stops) - 1)
+    cursor = 0
+    while cursor < len(stops):
+        if cursor in locked:
+            cursor += 1
+            continue
+        finish = cursor
+        while finish + 1 < len(stops) and finish + 1 not in locked:
+            finish += 1
+        run = result[cursor:finish + 1]
+        left = start if cursor == 0 else result[cursor - 1]
+        right = end if finish == len(stops) - 1 else result[finish + 1]
+        coordinates = ([(left.longitude, left.latitude)] if left else []) + [(stop.longitude, stop.latitude) for stop in run] + ([(right.longitude, right.latitude)] if right else [])
+        if len(run) > 1 and len(coordinates) > 2:
+            order = provider.optimize_waypoint_order(coordinates, profile)
+            movable = run
+            if left is None:
+                movable = run[1:]
+                prefix = run[:1]
+            else:
+                prefix = []
+            if right is None:
+                movable = movable[:-1]
+                suffix = run[-1:]
+            else:
+                suffix = []
+            if len(order) != len(movable):
+                raise RoutingError("Google Routes returned an invalid waypoint order", "GOOGLE_ROUTES_INVALID_RESPONSE")
+            result[cursor:finish + 1] = prefix + [movable[index] for index in order] + suffix
+        cursor = finish + 1
+    return result
 
 
 @router.post("/trip-days/{day_id}/optimize/confirm", response_model=DayRead)

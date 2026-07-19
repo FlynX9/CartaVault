@@ -111,7 +111,12 @@ class AccountDelete(BaseModel):
 
 
 class RoutingPreferences(BaseModel):
+    provider: Literal["osrm", "google"] = "osrm"
     stay_in_country: bool = False
+    avoid_tolls: bool = False
+    avoid_highways: bool = False
+    avoid_ferries: bool = False
+    traffic_mode: Literal["traffic_unaware", "traffic_aware", "traffic_aware_optimal"] = "traffic_unaware"
 
 
 class AccountPreferences(BaseModel):

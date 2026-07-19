@@ -12,7 +12,14 @@ export function MapFocusController({ request }: MapFocusControllerProps) {
 
   useEffect(() => {
     if (request !== null) {
-      map.setView(request.view.center, request.view.zoom)
+      if (request.bounds) {
+        map.fitBounds([
+          [request.bounds.minLatitude, request.bounds.minLongitude],
+          [request.bounds.maxLatitude, request.bounds.maxLongitude],
+        ], { padding: [48, 48], maxZoom: request.maxZoom ?? 15 })
+      } else {
+        map.setView(request.view.center, request.view.zoom)
+      }
     }
   }, [map, request])
 

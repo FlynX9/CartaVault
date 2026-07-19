@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AccountModal } from './AccountModal'
 import { getAccountPreferences, getAccountProfile, getAccountSessions, updateAccountPreferences, updateAccountProfile } from '../../api/account'
+import { getRoutingProviders } from '../../api/routing'
 
 vi.mock('../../api/account', () => ({
   accountAvatarUrl: (value: string | null) => value,
@@ -10,13 +11,14 @@ vi.mock('../../api/account', () => ({
   getAccountPreferences: vi.fn(), getAccountProfile: vi.fn(), getAccountSessions: vi.fn(), resetAccountPreferences: vi.fn(),
   revokeAccountSession: vi.fn(), revokeOtherAccountSessions: vi.fn(), updateAccountPreferences: vi.fn(), updateAccountProfile: vi.fn(), uploadAccountAvatar: vi.fn(),
 }))
+vi.mock('../../api/routing', () => ({ getRoutingProviders: vi.fn() }))
 const refresh = vi.fn()
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, avatar_url: null }, refresh }) }))
 
 const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, is_active: true, avatar_url: null, created_at: '2026-01-01', updated_at: '2026-01-01', last_login_at: null, owned_maps: [], shared_map_count: 1, active_session_count: 1, can_delete: true }
-const preferences = { preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', routing: { stay_in_country: false } }
+const preferences = { preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const } }
 
-beforeEach(() => { vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { stay_in_country: true } }) })
+beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }], default_provider: 'osrm' }); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }) })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('AccountModal', () => {
@@ -44,6 +46,20 @@ describe('AccountModal', () => {
     expect(checkbox).not.toBeChecked()
     fireEvent.click(checkbox)
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, routing: { stay_in_country: true } }))
+    await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }))
+  })
+
+  it('disables Google when unavailable and exposes its options when configured', async () => {
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
+    expect(screen.getByRole('option', { name: 'Google Routes' })).toBeDisabled()
+    cleanup()
+    vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: true, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }], default_provider: 'osrm' })
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Google Routes' })).not.toBeDisabled())
+    fireEvent.change(screen.getByLabelText('Moteur de calcul'), { target: { value: 'google' } })
+    expect(screen.getByRole('checkbox', { name: 'Éviter les péages' })).toBeVisible()
+    expect(screen.getByLabelText('Prise en compte du trafic')).toBeVisible()
   })
 })

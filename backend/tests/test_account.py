@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import select
@@ -62,6 +63,12 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     defaults = integration_client.get("/account/preferences")
     assert defaults.status_code == 200
     assert defaults.json()["preferred_basemap"] == "cartavault-light"
+    assert defaults.json()["routing"]["provider"] == "osrm"
+    assert defaults.json()["routing"]["traffic_mode"] == "traffic_unaware"
+    providers = integration_client.get("/routing/providers")
+    assert providers.status_code == 200
+    assert providers.json()["default_provider"] == "osrm"
+    assert "api_key" not in providers.text.lower()
 
     updated = integration_client.put(
         "/account/preferences",
@@ -69,6 +76,23 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
         headers=headers,
     )
     assert updated.status_code == 200 and updated.json()["density"] == "compact"
+    assert updated.json()["routing"]["provider"] == "osrm"
+    unavailable = integration_client.put(
+        "/account/preferences",
+        json={**updated.json(), "routing": {**updated.json()["routing"], "provider": "google"}},
+        headers=headers,
+    )
+    assert unavailable.status_code == 409
+    assert unavailable.json()["detail"]["code"] == "ROUTING_PROVIDER_UNAVAILABLE"
+    monkeypatch.setattr("app.auth.account_router.google_routes_settings", SimpleNamespace(available=True))
+    google = integration_client.put(
+        "/account/preferences",
+        json={**updated.json(), "routing": {**updated.json()["routing"], "provider": "google", "avoid_tolls": True}},
+        headers=headers,
+    )
+    assert google.status_code == 200
+    assert google.json()["routing"]["provider"] == "google"
+    assert google.json()["routing"]["avoid_tolls"] is True
     assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
     reset = integration_client.post("/account/preferences/reset", headers=headers)
     assert reset.status_code == 200 and reset.json()["density"] == "comfortable"

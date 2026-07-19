@@ -24,6 +24,17 @@ class StubRoutingProvider(RoutingProvider):
         return MatrixResult(values, values)
 
 
+class StubGoogleRoutingProvider(StubRoutingProvider):
+    provider_id = "google"
+    label = "Google Routes"
+
+
+class FailingGoogleRoutingProvider(StubGoogleRoutingProvider):
+    def calculate_route(self, coordinates, profile="driving"):
+        from app.trips.routing.base import RoutingError
+        raise RoutingError("Google timeout", "GOOGLE_ROUTES_TIMEOUT")
+
+
 def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_client, database_session, poi_map, auth_user, france_country) -> None:
     created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Road trip", "start_date": "2026-08-01", "end_date": "2026-08-03"})
     assert created.status_code == 201
@@ -193,6 +204,37 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     assert updated_departure.status_code == 200
     assert updated_departure.json()["name"] == "Nouveau départ"
     assert integration_client.delete(f"/trip-departures/{departure.json()['id']}").status_code == 204
+
+
+def test_google_provider_is_persisted_and_failed_recalculation_keeps_previous_route(integration_client, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Google route"}).json()
+    day = trip["days"][0]
+    for index in range(2):
+        assert integration_client.post(
+            f"/trip-days/{day['id']}/stops",
+            json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index},
+        ).status_code == 201
+    app.dependency_overrides[get_routing_provider] = lambda: StubGoogleRoutingProvider()
+    try:
+        routed = integration_client.post(f"/trip-days/{day['id']}/route", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+    assert routed.status_code == 200
+    assert routed.json()["route_provider"] == "google"
+    previous_geometry = routed.json()["route_geometry"]
+    summary = integration_client.get(f"/trip-days/{day['id']}/summary")
+    assert summary.json()["route_provider_label"] == "Google Routes"
+
+    app.dependency_overrides[get_routing_provider] = lambda: FailingGoogleRoutingProvider()
+    try:
+        failed = integration_client.post(f"/trip-days/{day['id']}/route/recalculate", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+    assert failed.status_code == 502
+    assert failed.json()["detail"]["code"] == "GOOGLE_ROUTES_TIMEOUT"
+    current = integration_client.get(f"/trips/{trip['id']}").json()["days"][0]
+    assert current["route_provider"] == "google"
+    assert current["route_geometry"] == previous_geometry
 
 
 def test_trip_time_planning_settings_summaries_and_permissions(integration_client, database_session, poi_map, auth_user) -> None:

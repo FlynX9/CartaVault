@@ -250,3 +250,8 @@ La carte charge uniquement les POI de l’emprise visible. Les marqueurs standar
 # Filtres et actions groupées
 
 Les filtres de lieux combinent les groupes avec **ET** et plusieurs valeurs d’un même groupe avec **OU**. Les filtres réellement disponibles sont le texte, catégories, tags, statuts, région, photos, dates, accès, danger, état, coordonnées et présence dans une sortie. Les actions groupées concernent uniquement la page explicitement sélectionnée (500 POI maximum) et sont atomiques.
+# Routage des sorties
+
+CartaVault conserve OSRM comme moteur par défaut et peut utiliser Google Routes API comme moteur alternatif choisi dans **Compte → Préférences → Routage**. Google est appelé exclusivement par le backend : aucune clé n’est transmise au navigateur et aucun fallback silencieux vers OSRM n’est effectué. Les routes Google sont normalisées en GeoJSON puis soumises au même contrôle « Rester dans le pays » que les routes OSRM.
+
+Google nécessite une facturation Google Cloud active, une clé restreinte à Routes API et, idéalement, aux IP du serveur. Configurez des quotas et alertes budgétaires, puis stockez la clé dans le fichier `.env` non versionné ou un secret de déploiement. Une journée Google accepte au maximum 25 étapes intermédiaires. L’optimisation Google utilise `optimizeWaypointOrder`; OSRM conserve la matrice et l’optimiseur CartaVault existants.

@@ -16,6 +16,7 @@ from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPrefer
 from app.auth.security import hash_password, normalize_email, verify_password
 from app.config import security_settings
 from app.database import get_db
+from app.config import google_routes_settings
 from app.exports.temporary_exports import remove_for_user
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 
@@ -57,6 +58,8 @@ def preferences(current: UserSession = Depends(get_current_session)) -> dict[str
 
 @router.put("/preferences")
 def update_preferences(data: AccountPreferences, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
+    if data.routing.provider == "google" and not google_routes_settings.available:
+        raise HTTPException(409, {"code": "ROUTING_PROVIDER_UNAVAILABLE", "message": "Le moteur Google Routes n’est pas configuré sur ce serveur."})
     current.user.preferences = data.model_dump()
     database_session.commit()
     return _preferences(current.user)

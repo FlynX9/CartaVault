@@ -56,7 +56,14 @@ describe('TripPlannerPanel', () => {
     expect(await screen.findByText('Résumé du voyage')).toBeVisible()
     expect(screen.getByText('Paramètres du voyage')).toBeVisible()
     expect(screen.getByText('Trajets')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Ajouter une journée' })).toBeVisible()
+    const addDay = screen.getByRole('button', { name: 'Ajouter une journée' })
+    expect(addDay).toBeVisible()
+    expect(addDay).toHaveClass('trip-panel-add-day-ghost')
+    expect(addDay.querySelector('.trip-panel-add-day-ghost__plus')).toBeInTheDocument()
+    const lastDay = container.querySelector('.trip-panel-day')!
+    const arrival = container.querySelector('.trip-panel-arrival')!
+    expect(lastDay.compareDocumentPosition(addDay) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(addDay.compareDocumentPosition(arrival) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByText('Arrivée')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Démarrer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminer' })).not.toBeInTheDocument()
@@ -73,6 +80,62 @@ describe('TripPlannerPanel', () => {
     expect(within(settings!).getByLabelText('Télécharger')).toBeVisible()
   })
 
+  it('switches from the full planner to the compact trip summary from the header', async () => {
+    const onTripViewOnlyChange = vi.fn()
+    const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly={false} onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const viewButton = await screen.findByRole('button', { name: 'Activer la vue du voyage' })
+    const closeButton = screen.getByRole('button', { name: 'Fermer le panneau Sortie' })
+    expect(viewButton.compareDocumentPosition(closeButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(viewButton)
+    expect(onTripViewOnlyChange).toHaveBeenCalledWith(true)
+
+    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    expect(container.querySelector('.trip-planner-panel')).toHaveClass('trip-planner-panel--trip-view')
+    expect(screen.getByRole('button', { name: 'Quitter la vue du voyage' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByText('Résumé du voyage')).toBeVisible()
+    expect(screen.getByText('Résumé du voyage').closest('details')).toHaveAttribute('open')
+    expect(screen.getByText('Trajet total')).toBeVisible()
+    expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
+  })
+
+  it('shows routing engine and country constraint once in trip settings', async () => {
+    vi.mocked(getTripSummary).mockResolvedValue({ ...emptySummary, route_providers: ['google'], route_provider_labels: ['Google Routes'], country_constraint_enabled: true, constraint_country_code: 'GEO', constraint_country_name: 'Géorgie' })
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Géorgie', country: { name: 'Géorgie' }, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByText('Paramètres du voyage'))
+    expect(screen.getAllByText('Google Routes')).toHaveLength(1)
+    expect(screen.getAllByText('Itinéraire limité à la Géorgie')).toHaveLength(1)
+    expect(within(screen.getByLabelText('Paramètres de routage')).getByText('Moteur')).toBeVisible()
+  })
+
+  it('toggles the map visibility of each day independently', async () => {
+    const onDayVisibilityChange = vi.fn()
+    const visualTrip = { ...trip, days: [{ ...trip.days[0], route_geometry: { type: 'LineString' as const, coordinates: [[2, 48], [3, 49]] as [number, number][] } }] }
+    vi.mocked(listTrips).mockResolvedValue([visualTrip]); vi.mocked(getTrip).mockResolvedValue(visualTrip)
+    const { rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={visualTrip} activeDayId="day-1" hiddenDayIds={new Set()} onDayVisibilityChange={onDayVisibilityChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const hideToggle = await screen.findByRole('switch', { name: 'Masquer le jour 1 sur la carte' })
+    expect(hideToggle).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(hideToggle)
+    expect(onDayVisibilityChange).toHaveBeenCalledWith('day-1', false)
+
+    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={visualTrip} activeDayId="day-1" hiddenDayIds={new Set(['day-1'])} onDayVisibilityChange={onDayVisibilityChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    const showToggle = screen.getByRole('switch', { name: 'Afficher le jour 1 sur la carte' })
+    expect(showToggle).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(showToggle)
+    expect(onDayVisibilityChange).toHaveBeenLastCalledWith('day-1', true)
+  })
+
+  it('does not present an empty day as visible on the map', async () => {
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    const toggle = await screen.findByRole('switch', { name: 'Jour 1 sans contenu cartographique' })
+    expect(toggle).toBeDisabled()
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+  })
+
   it('loads the trip selected from the active trip list', async () => {
     const otherTrip = { ...trip, id: 'trip-2', name: 'Deuxième voyage', days: [{ ...trip.days[0], id: 'day-2', trip_id: 'trip-2' }] }
     const onTripChange = vi.fn()
@@ -85,6 +148,20 @@ describe('TripPlannerPanel', () => {
     fireEvent.change(selector, { target: { value: otherTrip.id } })
 
     await waitFor(() => expect(onTripChange).toHaveBeenLastCalledWith(otherTrip))
+  })
+
+  it('does not restart loading when parent callbacks change identity after a render', async () => {
+    function ParentWithInlineCallbacks() {
+      const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
+      const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
+      return <TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={selectedTrip} activeDayId={selectedDayId} onTripChange={(value) => setSelectedTrip(value)} onActiveDayChange={(value) => setSelectedDayId(value)} onClose={vi.fn()} />
+    }
+
+    render(<ParentWithInlineCallbacks />)
+    expect(await screen.findByLabelText('Voyage actif')).toHaveValue('trip-1')
+    await new Promise((resolve) => window.setTimeout(resolve, 50))
+    expect(listTrips).toHaveBeenCalledTimes(1)
+    expect(getTrip).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the latest requested trip when selections change rapidly', async () => {

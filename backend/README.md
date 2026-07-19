@@ -306,3 +306,12 @@ Les seuils, en mètres, sont `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` (250 pa
 # Filtres et opérations groupées
 
 `GET /places` et `GET /places/map` partagent les filtres validés de `app.places.filtering`. `POST /places/bulk` accepte au plus 500 identifiants explicites et une action discriminée (`set_status`, catégories, tags ou suppression). Tous les POI et les objets associés sont contrôlés dans la même transaction avec le rôle éditeur requis.
+# Moteurs de routage
+
+`RoutingProviderRegistry` résout `osrm` ou `google` depuis `users.preferences.routing`. OSRM reste disponible sans configuration supplémentaire. Google exige `GOOGLE_MAPS_ROUTES_API_KEY` et utilise Compute Routes avec un field mask minimal. Les erreurs Google sont converties en codes métier, sans réponse brute ni fallback automatique, et une route existante n’est remplacée qu’après décodage, validation et contrôle du pays.
+
+Variables Google : `GOOGLE_MAPS_ROUTES_API_KEY`, `GOOGLE_MAPS_ROUTES_BASE_URL`, `GOOGLE_MAPS_ROUTES_TIMEOUT_SECONDS`, `GOOGLE_MAPS_ROUTES_CONNECT_TIMEOUT_SECONDS`, `GOOGLE_MAPS_ROUTING_PREFERENCE`, `GOOGLE_MAPS_AVOID_TOLLS`, `GOOGLE_MAPS_AVOID_HIGHWAYS`, `GOOGLE_MAPS_AVOID_FERRIES`. Ne placez jamais une valeur de clé dans Git. Restreignez la clé à Routes API, activez quotas/alertes et effectuez sa rotation côté serveur.
+
+`GET /routing/providers` expose uniquement disponibilité et capacités. `trip_days.route_provider` mémorise le moteur réellement utilisé ; les anciennes géométries sont marquées OSRM par la migration `b2e7c4a9d531`.
+
+Les appels Google sont limités par utilisateur et ne sont pas rejoués automatiquement : cette absence de retry évite de multiplier des requêtes facturées. L’interface bloque une opération en cours et les codes `GOOGLE_ROUTES_TIMEOUT`, `GOOGLE_ROUTES_QUOTA_EXCEEDED`, `GOOGLE_ROUTING_RATE_LIMITED` et `GOOGLE_WAYPOINT_LIMIT_EXCEEDED` restent explicites.

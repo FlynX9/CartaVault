@@ -149,3 +149,6 @@ Les tests de métadonnées cartographiques (`include_meta=true`) doivent utilise
 # Filtres et actions groupées
 
 Les tests d’intégration vérifient les filtres validés et la suppression groupée atomique. Ils utilisent uniquement `poi_manager_test` et ne doivent jamais pointer vers `poi_manager`.
+# Tests de routage Google
+
+Les tests Google utilisent exclusivement des réponses HTTP simulées : aucune clé et aucun appel facturé ne sont nécessaires. Ils couvrent le field mask, les options, le décodage de polyline, les durées, les erreurs et la limite de 25 intermédiaires. Les tests d’intégration de persistance et de migration doivent utiliser uniquement `TEST_DATABASE_URL` pointant vers `poi_manager_test`.

@@ -33,6 +33,9 @@ def create_gpx(trip: Trip, user_id: UUID) -> TemporaryExport:
     ET.SubElement(root, "name").text = trip.name
     for day in trip.days:
         route = ET.SubElement(root, "rte"); ET.SubElement(route, "name").text = day.title or f"Jour {day.day_number}"
+        if getattr(day, "route_provider", None):
+            extensions = ET.SubElement(route, "extensions")
+            ET.SubElement(extensions, "routing_provider").text = "Google Routes" if day.route_provider == "google" else "OSRM"
         start = day.previous_night or (getattr(trip, "departure", None) if day.day_number == 1 else None)
         end = _day_end(trip, day)
         points = ([start] if start else []) + list(day.stops) + ([end] if end else [])
@@ -53,6 +56,10 @@ def create_kmz(trip: Trip, user_id: UUID) -> TemporaryExport:
     for day_index, day in enumerate(trip.days):
         style_id = f"day-{day.day_number}"; style = ET.SubElement(document, "Style", {"id": style_id}); line = ET.SubElement(style, "LineStyle"); ET.SubElement(line, "color").text = colors[day_index % len(colors)]; ET.SubElement(line, "width").text = "4"
         folder = ET.SubElement(document, "Folder"); ET.SubElement(folder, "name").text = day.title or f"Jour {day.day_number}"
+        if getattr(day, "route_provider", None):
+            metadata = ET.SubElement(folder, "ExtendedData")
+            provider = ET.SubElement(metadata, "Data", {"name": "routing_provider"})
+            ET.SubElement(provider, "value").text = "Google Routes" if day.route_provider == "google" else "OSRM"
         start = day.previous_night or (getattr(trip, "departure", None) if day.day_number == 1 else None)
         end = _day_end(trip, day)
         points = ([start] if start else []) + list(day.stops) + ([end] if end else [])

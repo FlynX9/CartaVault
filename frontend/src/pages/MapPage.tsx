@@ -45,6 +45,7 @@ interface MapPageProps {
   onDraftPositionChange?: (position: DraftPosition) => void
   trip?: Trip | null
   tripViewOnly?: boolean
+  hiddenTripDayIds?: ReadonlySet<string>
   activeTripDayId?: string | null
   onTripPlaceAdd?: (place: MapPlace) => void
   tripNotice?: string | null
@@ -81,6 +82,7 @@ export function MapPage({
   onDraftPositionChange = () => undefined,
   trip = null,
   tripViewOnly = false,
+  hiddenTripDayIds = new Set<string>(),
   activeTripDayId = null,
   onTripPlaceAdd,
   tripNotice = null,
@@ -146,6 +148,7 @@ export function MapPage({
           markerFilter={markerFilter}
           trip={trip}
           tripViewOnly={tripViewOnly}
+          hiddenTripDayIds={hiddenTripDayIds}
           activeTripDayId={activeTripDayId}
           onTripPlaceAdd={onTripPlaceAdd}
         />

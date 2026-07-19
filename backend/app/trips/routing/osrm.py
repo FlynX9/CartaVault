@@ -10,6 +10,8 @@ from app.trips.routing.base import Coordinate, MatrixResult, RouteResult, Routin
 
 
 class OsrmRoutingProvider(RoutingProvider):
+    provider_id = "osrm"
+    label = "OSRM"
     def __init__(self, base_url: str | None = None, timeout: int | None = None, max_waypoints: int | None = None):
         self.base_url = (base_url or routing_settings.base_url).rstrip("/")
         self.timeout = timeout or routing_settings.timeout_seconds

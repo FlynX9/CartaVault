@@ -311,3 +311,6 @@ Les POI visibles sont regroupés par une grille locale légère, sans service ex
 # Filtres et sélection multiple
 
 Le panneau Lieux conserve le clic de ligne pour la consultation. Le bouton de sélection active des cases indépendantes et une barre d’actions pour la page visible : changement de statut ou suppression confirmée. Les sélections ne signifient jamais « tous les résultats » ; le libellé indique explicitement la page courante.
+# Routage des sorties
+
+La section **Compte → Préférences → Routage** permet de choisir OSRM ou Google Routes. Google reste visible mais désactivé quand le serveur ne le configure pas. Ses options (péages, autoroutes, ferries et trafic) ne sont affichées que lorsqu’il est sélectionné. Le module Sorties affiche le moteur mémorisé avec chaque itinéraire et signale lorsqu’il diffère de la préférence actuelle. La clé Google n’appartient à aucun type, appel ou bundle frontend.

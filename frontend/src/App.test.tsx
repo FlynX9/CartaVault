@@ -15,6 +15,7 @@ vi.mock('./auth/RequireAuth', () => ({ RequireAuth: ({ children }: { children: R
 vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve([])), getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: false, index: null, page: null, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn(), getPlaceDetails: vi.fn(() => Promise.resolve({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] })) }))
 vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ placeId, onClose }: { placeId: string; onClose: () => void }) => <div role="dialog">Popup {placeId}<button onClick={onClose}>Fermer popup</button></div> }))
 vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
+vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button></aside> }))
 vi.mock('./pages/MapPage', () => ({ MapPage: ({ placeList, sidebar, popupContent, focusRequest, selectedPlaceId, onPlaceSelect }: { placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button>{placeList}{popupContent}{sidebar}</div> }))
 
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -48,6 +49,23 @@ describe('map URL workspace', () => {
     expect(screen.getByTestId('workspace')).toBeVisible()
     expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
     expect(screen.getByRole('button', { name: 'Administration' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('always opens Sorties with the complete Places and Preparation workspace', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Préparation de sortie' }))
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher un POI' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Vue du voyage' }))
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
+    expect(screen.queryByRole('searchbox', { name: 'Rechercher un POI' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher un POI' })).toBeVisible()
   })
 
   it('reports refusal when deleting a map from the maps panel', async () => {

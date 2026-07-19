@@ -116,7 +116,8 @@ def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvide
     coordinates, labels = day_coordinates(day)
     if len(coordinates) < 2: raise HTTPException(422, "At least two route points are required")
     try: result = provider.calculate_route(coordinates, profile)
-    except RoutingError as error: raise HTTPException(502, str(error)) from error
+    except RoutingError as error:
+        raise HTTPException(503 if error.code == "ROUTING_PROVIDER_UNAVAILABLE" else 502, {"code": error.code, "message": str(error)}) from error
     validate_route_constraint(session, day, constraints or RoutingConstraints(), result.geometry)
     # Mutate only after the post-routing validation: an invalid route never
     # replaces a previously valid one or its metrics.
@@ -125,6 +126,7 @@ def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvide
     day.route_duration_seconds = result.duration_seconds
     day.route_segments = [{**segment, "from": labels[index], "to": labels[index + 1], "routable": True} for index, segment in enumerate(result.segments)]
     day.route_status = "ready"
+    day.route_provider = provider.provider_id
     metrics = day_summary(day)
     day.visit_duration_minutes = metrics["visit_duration_minutes"]
     day.total_duration_minutes = metrics["total_duration_minutes"]

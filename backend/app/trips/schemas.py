@@ -243,7 +243,7 @@ class DayRead(ORMRead):
     color: str
     target_arrival_time: TimeValue | None; default_stop_buffer_minutes: int; safety_margin_type: str; safety_margin_value: int
     max_total_duration_minutes: int | None; route_distance_meters: float | None; route_duration_seconds: float | None; visit_duration_minutes: int | None
-    total_duration_minutes: int | None; route_geometry: dict | None; route_segments: list | None; route_status: str | None; sort_order: int
+    total_duration_minutes: int | None; route_geometry: dict | None; route_segments: list | None; route_status: str | None; route_provider: Literal["osrm", "google"] | None; sort_order: int
     created_at: datetime; updated_at: datetime; stops: list[StopRead] = Field(default_factory=list)
 
 
@@ -264,6 +264,8 @@ class TripSummaryRead(BaseModel):
     low_load_days: int; medium_load_days: int; high_load_days: int
     days_with_complete_time_summary: int; days_with_incomplete_time_summary: int; is_time_summary_complete: bool
     country_constraint_enabled: bool = False; constraint_country_code: str | None = None; constraint_country_name: str | None = None
+    route_providers: list[Literal["osrm", "google"]] = Field(default_factory=list)
+    route_provider_labels: list[str] = Field(default_factory=list)
 
 
 class DaySummaryRead(BaseModel):
@@ -278,3 +280,5 @@ class DaySummaryRead(BaseModel):
     load_level: LoadLevel; load_color: str | None; is_time_summary_complete: bool
     country_constraint_enabled: bool = False; country_constraint_status: Literal["not_applicable", "unchecked", "valid", "invalid", "unavailable"] = "not_applicable"
     constraint_country_code: str | None = None; constraint_country_name: str | None = None
+    route_provider: Literal["osrm", "google"] | None = None
+    route_provider_label: str | None = None

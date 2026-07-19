@@ -89,6 +89,7 @@ class TripDay(Base):
     route_geometry: Mapped[dict | None] = mapped_column(JSONB)
     route_segments: Mapped[list | None] = mapped_column(JSONB)
     route_status: Mapped[str | None] = mapped_column(String(24))
+    route_provider: Mapped[str | None] = mapped_column(String(16))
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

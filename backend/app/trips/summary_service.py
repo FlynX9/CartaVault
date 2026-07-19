@@ -60,6 +60,7 @@ def calculate_load_level(total_minutes: int | None, trip: Trip | None) -> tuple[
 
 
 def day_summary(day: TripDay) -> dict:
+    route_provider = getattr(day, "route_provider", None)
     visit = sum(stop.visit_duration_minutes or 0 for stop in day.stops)
     buffer = calculate_buffer_duration(len(day.stops), getattr(day, "default_stop_buffer_minutes", 0))
     has_route = _has_current_route(day)
@@ -102,6 +103,8 @@ def day_summary(day: TripDay) -> dict:
         "overload_minutes": max(0, total - limit) if limit and total is not None else 0,
         "unroutable_segments": sum(1 for item in (day.route_segments or []) if item.get("routable") is False),
         "route_status": day.route_status,
+        "route_provider": route_provider,
+        "route_provider_label": {"osrm": "OSRM", "google": "Google Routes"}.get(route_provider),
         "route_is_stale": day.route_status == "stale",
         "has_current_route": has_route,
         "planned_start_time": planned_start,
@@ -164,4 +167,6 @@ def trip_summary(trip: Trip) -> dict:
         "days_with_complete_time_summary": len(current),
         "days_with_incomplete_time_summary": incomplete,
         "is_time_summary_complete": incomplete == 0,
+        "route_providers": sorted({item["route_provider"] for item in summaries if item["route_provider"]}),
+        "route_provider_labels": sorted({item["route_provider_label"] for item in summaries if item["route_provider_label"]}),
     }

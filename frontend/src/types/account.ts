@@ -13,5 +13,18 @@ export interface AccountPreferences {
   density: 'comfortable' | 'compact'
   startup_panel: 'maps' | 'places' | 'last'
   timezone: string
-  routing: { stay_in_country: boolean }
+  routing: {
+    provider: 'osrm' | 'google'
+    stay_in_country: boolean
+    avoid_tolls: boolean
+    avoid_highways: boolean
+    avoid_ferries: boolean
+    traffic_mode: 'traffic_unaware' | 'traffic_aware' | 'traffic_aware_optimal'
+  }
 }
+
+export interface RoutingProviderCapability {
+  id: 'osrm' | 'google'; label: string; available: boolean
+  supports_route: boolean; supports_matrix: boolean; supports_waypoint_optimization: boolean
+}
+export interface RoutingProvidersResponse { providers: RoutingProviderCapability[]; default_provider: 'osrm' }

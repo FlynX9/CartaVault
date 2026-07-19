@@ -34,7 +34,7 @@ export interface MapPlace extends PreviewPlace { map_id: string; longitude: numb
 export interface MapBounds { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }
 export interface PlaceFilters { query: string; categoryIds: string[]; tagIds: string[]; statusIds: string[]; regions: string[]; hasPhotos: boolean | null; createdFrom: string | null; createdTo: string | null; updatedFrom: string | null; updatedTo: string | null; accessValues: string[]; dangerLevels: string[]; conditionValues: string[]; hasValidCoordinates: boolean | null; inTrip: boolean | null }
 export interface MapView { center: [number, number]; zoom: number }
-export interface MapFocusRequest { id: number; view: MapView }
+export type MapFocusRequest = { id: number; view: MapView; bounds?: never } | { id: number; bounds: MapBounds; maxZoom?: number; view?: never }
 export interface DraftPosition { latitude: number; longitude: number }
 export interface PlaceMutation { placeId: string; mapId: string }
 export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; filters?: PlaceFilters; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
