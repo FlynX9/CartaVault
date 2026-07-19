@@ -27,7 +27,7 @@ from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
 from app.places.models import Place
-from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceRead, PlaceUpdate
+from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceListPosition, PlaceRead, PlaceUpdate
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
@@ -210,7 +210,7 @@ def get_places(
 
     statement = (
         statement
-        .order_by(Place.created_at.desc())
+        .order_by(func.lower(Place.name), Place.id)
         .offset(offset)
         .limit(limit)
     )
@@ -382,6 +382,47 @@ def get_place_facets(
         without_coordinates=total(Place.location.is_(None)),
         in_trip=total(Place.trip_stops.any()),
         not_in_trip=total(~Place.trip_stops.any()),
+    )
+
+
+@router.get("/{place_id}/list-position", response_model=PlaceListPosition)
+def get_place_list_position(
+    place_id: UUID,
+    map_id: UUID,
+    page_size: int = Query(default=100, ge=1, le=100),
+    filters: PlaceFilters = Depends(get_place_filters),
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PlaceListPosition:
+    """Locate one accessible place in the same filtered, stable list as GET /places."""
+    require_map_role(database_session, map_id, current_user, "viewer")
+    place = database_session.get(Place, place_id)
+    if place is None or place.map_id != map_id:
+        raise HTTPException(status_code=404, detail="PLACE_NOT_ACCESSIBLE")
+
+    ranked = apply_place_filters(
+        select(
+            Place.id.label("place_id"),
+            (func.row_number().over(order_by=(func.lower(Place.name), Place.id)) - 1).label("position"),
+        ).where(Place.map_id == map_id),
+        filters,
+    ).subquery()
+    position = database_session.scalar(
+        select(ranked.c.position).where(ranked.c.place_id == place_id)
+    )
+    if position is None:
+        return PlaceListPosition(
+            place_id=place_id,
+            matches_filters=False,
+            page_size=page_size,
+        )
+    index = int(position)
+    return PlaceListPosition(
+        place_id=place_id,
+        matches_filters=True,
+        index=index,
+        page=index // page_size,
+        page_size=page_size,
     )
 
 

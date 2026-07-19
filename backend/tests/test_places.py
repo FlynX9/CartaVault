@@ -83,3 +83,36 @@ def test_place_facets_and_bulk_trip_add_are_map_scoped(integration_client: TestC
     duplicate = integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [first.json()["id"], second.json()["id"]], "trip_id": trip.json()["id"], "day_id": day_id})
     assert duplicate.status_code == 200
     assert duplicate.json()["duplicate_count"] == 2
+
+
+def test_place_list_position_uses_the_same_filtered_stable_order(integration_client: TestClient, poi_map: PoiMap) -> None:
+    token = uuid4().hex
+    created = []
+    for name in (f"{token} alpha", f"{token} bravo", f"{token} charlie"):
+        response = integration_client.post(
+            "/places",
+            json={"name": name, "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1},
+        )
+        assert response.status_code == 201
+        created.append(response.json())
+
+    position = integration_client.get(
+        f"/places/{created[1]['id']}/list-position",
+        params={"map_id": str(poi_map.id), "q": token, "page_size": 2},
+    )
+    assert position.status_code == 200
+    assert position.json() == {
+        "place_id": created[1]["id"],
+        "matches_filters": True,
+        "index": 1,
+        "page": 0,
+        "page_size": 2,
+    }
+
+    filtered_out = integration_client.get(
+        f"/places/{created[1]['id']}/list-position",
+        params={"map_id": str(poi_map.id), "q": "does-not-match", "page_size": 2},
+    )
+    assert filtered_out.status_code == 200
+    assert filtered_out.json()["matches_filters"] is False
+    assert filtered_out.json()["index"] is None

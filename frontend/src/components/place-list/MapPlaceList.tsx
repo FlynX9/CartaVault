@@ -2,7 +2,7 @@ import { CheckSquare, FileUp, Filter, Plus, Search, Trash2, X } from 'lucide-rea
 import { Link } from 'react-router-dom'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { bulkAddPlacesToTrip, bulkUpdatePlaces, getPlaceFacets, getPlaces } from '../../api/places'
+import { bulkAddPlacesToTrip, bulkUpdatePlaces, getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
 import { getCategories } from '../../api/categories'
 import { getTags } from '../../api/tags'
 import { getTrip, listTrips } from '../../api/trips'
@@ -29,19 +29,20 @@ const toggle = (values: string[], value: string) => values.includes(value) ? val
 const formatLastUpdate = (value: string | undefined) => !value ? 'Mis à jour récemment' : `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 
 export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
-  const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [hasMore, setHasMore] = useState(false); const [error, setError] = useState<string | null>(null)
+  const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [listReady, setListReady] = useState(false); const [hasMore, setHasMore] = useState(false); const [nextOffset, setNextOffset] = useState(0); const [error, setError] = useState<string | null>(null)
   const [facets, setFacets] = useState<PlaceFacets>(emptyFacets); const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]); const [tags, setTags] = useState<Array<{ id: string; name: string }>>([])
   const [filtersOpen, setFiltersOpen] = useState(false); const [selectionMode, setSelectionMode] = useState(false); const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); const [bulkBusy, setBulkBusy] = useState(false); const [bulkError, setBulkError] = useState<string | null>(null); const [bulkNotice, setBulkNotice] = useState<string | null>(null)
   const [bulkStatusId, setBulkStatusId] = useState(''); const [bulkCategoryId, setBulkCategoryId] = useState(''); const [bulkTagId, setBulkTagId] = useState(''); const [trips, setTrips] = useState<Trip[]>([]); const [tripId, setTripId] = useState(''); const [dayId, setDayId] = useState(''); const [importing, setImporting] = useState(false)
-  const refs = useRef(new Map<string, HTMLButtonElement>()); const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
+  const refs = useRef(new Map<string, HTMLButtonElement>()); const placesRef = useRef<PlaceDetails[]>([]); const selectionRequest = useRef(0); const selectionController = useRef<AbortController | null>(null); const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
   const update = (partial: Partial<PlaceFilters>) => onFiltersChange(normalizePlaceFilters({ ...filters, ...partial }))
 
   useEffect(() => { setMarkerFilter({ query: filters.query, categoryId: filters.categoryIds[0] ?? '', statusId: filters.statusIds[0] ?? null, tagId: filters.tagIds[0] ?? '' }) }, [filters, setMarkerFilter])
-  useEffect(() => { setSelectedIds(new Set()); setPlaces([]); setFacets(emptyFacets); setBulkNotice(null) }, [poiMap?.id])
+  useEffect(() => { placesRef.current = places }, [places])
+  useEffect(() => { selectionController.current?.abort(); setSelectedIds(new Set()); setPlaces([]); setFacets(emptyFacets); setNextOffset(0); setListReady(false); setBulkNotice(null) }, [poiMap?.id])
   useEffect(() => {
     if (!poiMap) return
     const controller = new AbortController(); setLoading(true); setError(null)
-    void Promise.all([getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: 0 }, controller.signal), getPlaceFacets(poiMap.id, filters, controller.signal), getCategories(controller.signal, undefined, poiMap.id), getTags(controller.signal, undefined, poiMap.id)]).then(([page, nextFacets, nextCategories, nextTags]) => { if (!controller.signal.aborted) { setPlaces(page); setHasMore(page.length === PAGE_SIZE); setFacets(nextFacets); setCategories(nextCategories); setTags(nextTags) } }).catch((caught: unknown) => { if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    void Promise.all([getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: 0 }, controller.signal), getPlaceFacets(poiMap.id, filters, controller.signal), getCategories(controller.signal, undefined, poiMap.id), getTags(controller.signal, undefined, poiMap.id)]).then(([page, nextFacets, nextCategories, nextTags]) => { if (!controller.signal.aborted) { setPlaces(page); setNextOffset(page.length); setHasMore(page.length === PAGE_SIZE); setFacets(nextFacets); setCategories(nextCategories); setTags(nextTags) } }).catch((caught: unknown) => { if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) { setListReady(true); setLoading(false) } })
     return () => controller.abort()
   }, [filters, poiMap, refreshVersion])
   useEffect(() => { if (!poiMap?.can_edit || !selectionMode) return; const controller = new AbortController(); void listTrips(poiMap.id, controller.signal).then(setTrips).catch(() => setTrips([])); return () => controller.abort() }, [poiMap?.can_edit, poiMap?.id, selectionMode])
@@ -51,8 +52,29 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const selectedTrip = trips.find((trip) => trip.id === tripId)
   const hiddenSelected = [...selectedIds].filter((id) => !visible.some((place) => place.id === id)).length
   const activeCount = countActivePlaceFilters(filters)
-  useEffect(() => { if (selectedPlaceId) refs.current.get(selectedPlaceId)?.scrollIntoView?.({ block: 'nearest' }) }, [selectedPlaceId, visible])
-  const loadMore = async () => { if (!poiMap) return; const page = await getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: places.length }); setPlaces((current) => [...current, ...page]); setHasMore(page.length === PAGE_SIZE) }
+  useEffect(() => {
+    if (!selectedPlaceId) return
+    const element = refs.current.get(selectedPlaceId)
+    if (!element) return
+    const frame = window.requestAnimationFrame(() => element.scrollIntoView?.({ block: 'nearest', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }))
+    return () => window.cancelAnimationFrame(frame)
+  }, [selectedPlaceId, visible])
+  useEffect(() => {
+    if (!listReady || !selectedPlaceId || !poiMap || placesRef.current.some((place) => place.id === selectedPlaceId)) return
+    selectionController.current?.abort()
+    const controller = new AbortController(); selectionController.current = controller
+    const requestId = ++selectionRequest.current
+    setError(null)
+    void getPlaceListPosition(selectedPlaceId, poiMap.id, filters, controller.signal).then(async (position) => {
+      if (controller.signal.aborted || requestId !== selectionRequest.current) return
+      if (!position.matches_filters || position.page === null) { setError('Ce lieu est masqué par les filtres actuels.'); return }
+      const page = await getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: position.page * PAGE_SIZE }, controller.signal)
+      if (controller.signal.aborted || requestId !== selectionRequest.current) return
+      setPlaces((current) => sortPlaces([...new Map([...current, ...page].map((place) => [place.id, place])).values()]))
+    }).catch((caught: unknown) => { if (!controller.signal.aborted && requestId === selectionRequest.current) setError(caught instanceof Error ? caught.message : 'Impossible de localiser ce lieu dans la liste.') })
+    return () => controller.abort()
+  }, [filters, listReady, poiMap, selectedPlaceId])
+  const loadMore = async () => { if (!poiMap) return; const page = await getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: nextOffset }); setPlaces((current) => sortPlaces([...new Map([...current, ...page].map((place) => [place.id, place])).values()])); setNextOffset((offset) => offset + page.length); setHasMore(page.length === PAGE_SIZE) }
   const toggleSelected = (id: string) => setSelectedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
   const togglePage = () => setSelectedIds((current) => { const ids = visible.map((place) => place.id); const next = new Set(current); const every = ids.length > 0 && ids.every((id) => next.has(id)); ids.forEach((id) => every ? next.delete(id) : next.add(id)); return next })
   const runBulk = async (action: 'set_status' | 'add_category' | 'remove_category' | 'add_tag' | 'remove_tag' | 'delete') => {

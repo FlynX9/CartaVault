@@ -151,3 +151,13 @@ class PlaceFacets(BaseModel):
     without_coordinates: int
     in_trip: int
     not_in_trip: int
+
+
+class PlaceListPosition(BaseModel):
+    """Position of an accessible place in the current filtered list."""
+
+    place_id: UUID
+    matches_filters: bool
+    index: int | None = None
+    page: int | None = None
+    page_size: int

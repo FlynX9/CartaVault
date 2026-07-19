@@ -15,6 +15,7 @@ import type {
   PlaceBulkResult,
   PlaceBulkTripResult,
   PlaceFacets,
+  PlaceListPosition,
 } from '../types/place'
 import { buildPlaceFilterSearchParams } from '../places/placeFilters'
 import { getJson, sendJson, sendWithoutResponse } from './client'
@@ -221,6 +222,27 @@ export async function getPlaceDetails(
   )
 
   return parsePlaceDetailsResponse(payload)
+}
+
+export async function getPlaceListPosition(
+  placeId: string,
+  mapId: string,
+  filters: import('../types/place').PlaceFilters,
+  signal?: AbortSignal,
+): Promise<PlaceListPosition> {
+  const params = buildPlaceFilterSearchParams(filters)
+  params.set('map_id', mapId)
+  params.set('page_size', '100')
+  const value = await getJson(`/places/${encodeURIComponent(placeId)}/list-position`, params, signal)
+  const context = 'La position du POI'
+  if (!isRecord(value)) throw new Error(`${context} est invalide.`)
+  return {
+    place_id: readUuid(value, 'place_id', context),
+    matches_filters: value.matches_filters === true,
+    index: value.index === null ? null : readNumber(value, 'index', context),
+    page: value.page === null ? null : readNumber(value, 'page', context),
+    page_size: readNumber(value, 'page_size', context),
+  }
 }
 
 export async function createPlace(

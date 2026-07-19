@@ -46,6 +46,7 @@ export interface PlaceBulkResult { selected_count: number; updated_count: number
 export interface PlaceFacetItem { id: string; name: string; count: number; icon?: string; color?: string; value?: string }
 export interface PlaceFacets { categories: PlaceFacetItem[]; tags: PlaceFacetItem[]; statuses: PlaceFacetItem[]; regions: PlaceFacetItem[]; access_values: PlaceFacetItem[]; danger_levels: PlaceFacetItem[]; condition_values: PlaceFacetItem[]; with_photos: number; without_photos: number; with_coordinates: number; without_coordinates: number; in_trip: number; not_in_trip: number }
 export interface PlaceBulkTripResult { selected_count: number; added_count: number; duplicate_count: number }
+export interface PlaceListPosition { place_id: string; matches_filters: boolean; index: number | null; page: number | null; page_size: number }
 
 interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null; custom_fields?: Record<string, unknown> }
 export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number }

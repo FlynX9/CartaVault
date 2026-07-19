@@ -178,7 +178,7 @@ function WorkspaceApp() {
 
   const handleMutation = (mutation: PlaceMutation) => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); setRemovedPlaceId(null); setRefreshVersion((value) => value + 1); if (mutation.mapId !== activeMapId) navigate(withMap('/', mutation.mapId, activeStatusId)) }
   const handleDeletePlace = (id: string) => { setPlaces((current) => current.filter((place) => place.id !== id)); setSelectedPlace((current) => current?.id === id ? null : current); setRemovedPlaceId(id); setRefreshVersion((value) => value + 1) }
-  const handleSelect = (place: PreviewPlace) => { setSelectedPlace(place); navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId)); if (place.latitude !== null && place.longitude !== null) setFocusRequest({ id: ++focusSequence.current, view: { center: [place.latitude, place.longitude], zoom: Math.max(mapView.zoom, 13) } }) }
+  const handleSelect = (place: PreviewPlace) => { setSelectedPlace(place); setWorkspacePanel('places'); navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId)); if (place.latitude !== null && place.longitude !== null) setFocusRequest({ id: ++focusSequence.current, view: { center: [place.latitude, place.longitude], zoom: Math.max(mapView.zoom, 13) } }) }
   const showTripNotice = (message: string) => { setTripNotice(message); if (tripNoticeTimer.current !== null) window.clearTimeout(tripNoticeTimer.current); tripNoticeTimer.current = window.setTimeout(() => setTripNotice(null), 2600) }
   const addPlaceToActiveTripDay = async (place: MapPlace) => {
     if (!tripPlannerOpen || activeMap?.can_edit !== true) return

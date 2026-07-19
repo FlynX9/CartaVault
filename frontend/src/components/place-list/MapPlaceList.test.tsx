@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import { getPlaces } from '../../api/places'
+import { getPlaceListPosition, getPlaces } from '../../api/places'
 import { MapPlaceList } from './MapPlaceList'
 
-vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
+vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
 vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])) }))
@@ -34,6 +34,7 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).toBeVisible()
     fireEvent.click(item)
     expect(select).toHaveBeenCalledWith(place)
+    expect(getPlaceListPosition).not.toHaveBeenCalled()
   })
 
   it('makes available POIs draggable only during trip planning', async () => {
