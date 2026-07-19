@@ -11,6 +11,8 @@ import type {
   PlaceUpdatePayload,
   PlaceTag,
   PlaceMapSummary,
+  PlaceBulkPayload,
+  PlaceBulkResult,
 } from '../types/place'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { parseMapStatusSummary, parseStatusSummary } from './statuses'
@@ -262,6 +264,18 @@ export async function deletePlace(
     'DELETE',
     signal,
   )
+}
+
+export async function bulkUpdatePlaces(payload: PlaceBulkPayload, signal?: AbortSignal): Promise<PlaceBulkResult> {
+  const value = await sendJson('/places/bulk', 'POST', payload, signal)
+  const context = "La réponse d'action groupée"
+  if (!isRecord(value)) throw new Error(`${context} est invalide.`)
+  return {
+    selected_count: readNumber(value, 'selected_count', context),
+    updated_count: readNumber(value, 'updated_count', context),
+    unchanged_count: readNumber(value, 'unchanged_count', context),
+    deleted_count: readNumber(value, 'deleted_count', context),
+  }
 }
 
 async function addAssociation(

@@ -59,6 +59,13 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     assert summary.json()["days_without_route"] == 3
     assert summary.json()["is_route_summary_complete"] is False
 
+    # A middle-day deletion also removes its obsolete overnight link and compacts ordering.
+    removed_day = integration_client.delete(f"/trip-days/{days[1]['id']}")
+    assert removed_day.status_code == 204
+    after_removal = integration_client.get(f"/trips/{trip_id}").json()
+    assert [item["day_number"] for item in after_removal["days"]] == [1, 2]
+    assert after_removal["nights"] == []
+
     viewer = User(email=f"viewer-{uuid4()}@example.test", display_name="Viewer", password_hash="x", is_active=True, is_admin=False)
     database_session.add(viewer); database_session.flush(); database_session.add(MapMembership(map_id=poi_map.id, user_id=viewer.id, role="viewer")); database_session.flush()
     app.dependency_overrides[get_current_user] = lambda: viewer

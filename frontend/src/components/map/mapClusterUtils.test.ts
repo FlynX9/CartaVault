@@ -26,4 +26,13 @@ describe('clusterMapPlaces', () => {
     const places = Array.from({ length: 5_000 }, (_, index) => place(String(index), 48 + (index % 20) * .0001, 2 + (index % 20) * .0001))
     expect(clusterMapPlaces(places, (item) => ({ x: item.longitude * 1_000, y: item.latitude * 1_000 }))).toHaveLength(1)
   })
+
+  it('returns each POI individually when clustering is disabled at the maximum zoom', () => {
+    const places = [place('a', 48, 2), place('b', 48, 2)]
+
+    const clusters = clusterMapPlaces(places, (item) => ({ x: item.longitude * 1_000, y: item.latitude * 1_000 }), false)
+
+    expect(clusters).toHaveLength(2)
+    expect(clusters.map((cluster) => cluster.places[0].id)).toEqual(['a', 'b'])
+  })
 })

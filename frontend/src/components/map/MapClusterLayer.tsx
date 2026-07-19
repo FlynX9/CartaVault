@@ -30,15 +30,18 @@ export function MapClusterLayer({ places, renderPlace }: Props) {
   const [zoom, setZoom] = useState(0)
   const map = useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
   useEffect(() => setZoom(map.getZoom()), [map])
-  const clusters = useMemo(() => clusterMapPlaces(places, (place) => map.project([place.latitude, place.longitude], zoom)), [map, places, zoom])
+  const clusters = useMemo(() => clusterMapPlaces(
+    places,
+    (place) => map.project([place.latitude, place.longitude], zoom),
+    zoom < map.getMaxZoom(),
+  ), [map, places, zoom])
 
   return <>{clusters.map((cluster) => {
     if (cluster.places.length === 1) return renderPlace(cluster.places[0])
     const position: LatLngExpression = [cluster.latitude, cluster.longitude]
     return <Marker key={`cluster:${cluster.id}`} position={position} icon={createClusterIcon(cluster.places.length)} keyboard title={`Cluster de ${cluster.places.length} lieux`} eventHandlers={{ click: () => {
       const bounds = cluster.places.map((place) => [place.latitude, place.longitude] as [number, number])
-      if (map.getZoom() >= map.getMaxZoom() - 1) map.setView(position, map.getZoom())
-      else map.fitBounds(bounds, { padding: [48, 48], maxZoom: Math.min(map.getMaxZoom(), map.getZoom() + 3) })
+      map.fitBounds(bounds, { padding: [48, 48], maxZoom: Math.min(map.getMaxZoom(), map.getZoom() + 3) })
     } }} />
   })}</>
 }

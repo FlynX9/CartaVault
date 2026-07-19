@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -81,3 +81,30 @@ class PlaceRead(BaseModel):
     tags: list[TagRead]
     created_at: datetime
     updated_at: datetime
+
+
+class PlaceBulkAction(BaseModel):
+    """Explicit, bounded atomic action for a selected page of places."""
+
+    place_ids: list[UUID] = Field(min_length=1, max_length=500)
+    action: Literal["set_status", "add_category", "remove_category", "add_tag", "remove_tag", "delete"]
+    status_id: UUID | None = None
+    category_id: UUID | None = None
+    tag_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def validate_action_target(self) -> Self:
+        required = {"set_status": "status_id", "add_category": "category_id", "remove_category": "category_id", "add_tag": "tag_id", "remove_tag": "tag_id"}
+        field_name = required.get(self.action)
+        if field_name and getattr(self, field_name) is None:
+            raise ValueError(f"{field_name} is required for {self.action}")
+        if len(set(self.place_ids)) != len(self.place_ids):
+            raise ValueError("place_ids must not contain duplicates")
+        return self
+
+
+class PlaceBulkResult(BaseModel):
+    selected_count: int
+    updated_count: int = 0
+    unchanged_count: int = 0
+    deleted_count: int = 0

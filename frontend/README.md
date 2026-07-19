@@ -308,3 +308,6 @@ La fenêtre **Compte > Préférences** permet d’activer **Rester dans le pays*
 # Performance de la carte
 
 Les POI visibles sont regroupés par une grille locale légère, sans service externe ni dépendance Leaflet supplémentaire. Les clusters excluent les marqueurs fonctionnels. Les panneaux, export KMZ, membres, sorties et administration sont chargés à la demande; Vite sépare React, Leaflet et Iconify en chunks cacheables.
+# Filtres et sélection multiple
+
+Le panneau Lieux conserve le clic de ligne pour la consultation. Le bouton de sélection active des cases indépendantes et une barre d’actions pour la page visible : changement de statut ou suppression confirmée. Les sélections ne signifient jamais « tous les résultats » ; le libellé indique explicitement la page courante.

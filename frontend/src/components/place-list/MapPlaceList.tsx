@@ -1,8 +1,8 @@
-import { FileUp, Plus, Search, X } from 'lucide-react'
+import { CheckSquare, FileUp, Plus, Search, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { getPlaces } from '../../api/places'
+import { bulkUpdatePlaces, getPlaces } from '../../api/places'
 import type { PoiMap } from '../../types/map'
 import type { PlaceDetails, PreviewPlace } from '../../types/place'
 import type { PlaceStatusSummary } from '../../types/status'
@@ -26,6 +26,7 @@ interface Props {
   onImported?: () => void
   tripPlanningActive?: boolean
   tripPlaceIds?: Set<string>
+  onBulkChanged?: () => void
 }
 
 const sortPlaces = (places: PlaceDetails[]) => [...places].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id))
@@ -39,7 +40,7 @@ function formatLastUpdate(value: string | undefined) {
   return `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 }
 
-export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set() }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -49,6 +50,11 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkStatusId, setBulkStatusId] = useState('')
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkError, setBulkError] = useState<string | null>(null)
   const refs = useRef(new Map<string, HTMLButtonElement>())
   const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
 
@@ -102,12 +108,25 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
     setTagId('')
     onStatusChange(null)
   }
+  const toggleSelected = (id: string) => setSelectedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
+  const togglePage = () => setSelectedIds((current) => { const pageIds = visible.map((place) => place.id); const everySelected = pageIds.every((id) => current.has(id)); const next = new Set(current); pageIds.forEach((id) => everySelected ? next.delete(id) : next.add(id)); return next })
+  const runBulk = async (action: 'set_status' | 'delete') => {
+    if (!poiMap || selectedIds.size === 0) return
+    if (action === 'delete' && !window.confirm(`Supprimer définitivement ${selectedIds.size} lieu(x) et leurs photos ?`)) return
+    try {
+      setBulkBusy(true); setBulkError(null)
+      await bulkUpdatePlaces({ place_ids: [...selectedIds], action, ...(action === 'set_status' ? { status_id: bulkStatusId } : {}) })
+      if (action === 'delete') setSelectedIds(new Set())
+      onBulkChanged()
+    } catch (caught) { setBulkError(caught instanceof Error ? caught.message : 'Action groupée impossible.') }
+    finally { setBulkBusy(false) }
+  }
 
   return <aside className="country-place-panel cv-workspace-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
     <header className="cv-workspace-panel__header">
       <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow place-list-kicker">Lieux</p><h2 id="map-place-list-title" className="cv-workspace-panel__title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>
       {poiMap && <p className="place-list-map-meta"><span>{formatLastUpdate(poiMap.updated_at)}</span></p>}</div>
-      <div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{visible.length} POI{visible.length > 1 ? 's' : ''}</span>}{poiMap && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" title="Importer un KMZ" onClick={() => setImporting(true)}><FileUp size={18} /></button>}{poiMap && poiMap.can_edit !== false && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id, statusId)} aria-label="Ajouter un POI" title="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div>
+      <div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{visible.length} POI{visible.length > 1 ? 's' : ''}</span>}{poiMap && <button className={`panel-icon-button${selectionMode ? ' primary' : ''}`} type="button" aria-label="Sélection multiple" title="Sélection multiple" onClick={() => { setSelectionMode((value) => !value); setSelectedIds(new Set()) }}><CheckSquare size={18} /></button>}{poiMap && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" title="Importer un KMZ" onClick={() => setImporting(true)}><FileUp size={18} /></button>}{poiMap && poiMap.can_edit !== false && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id, statusId)} aria-label="Ajouter un POI" title="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div>
     </header>
     {poiMap && <section className="place-list-controls" aria-label="Recherche et filtres des lieux">
       <label className="place-list-search"><Search aria-hidden="true" size={18} /><span className="visually-hidden">Rechercher un POI</span><input type="search" value={search} placeholder="Rechercher un POI…" onChange={(event) => setSearch(event.target.value)} /></label>
@@ -118,6 +137,8 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
         <button className="place-list-reset" type="button" onClick={resetFilters} disabled={search === '' && categoryId === '' && tagId === '' && statusId === null}>Réinitialiser</button>
       </div>
     </section>}
+    {selectionMode && <section className="place-bulk-bar" aria-label="Actions groupées"><strong>{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}</strong><button type="button" onClick={togglePage}>{visible.every((place) => selectedIds.has(place.id)) ? 'Désélectionner cette page' : `Sélectionner les ${visible.length} éléments de cette page`}</button><button type="button" onClick={() => setSelectedIds(new Set())}>Tout désélectionner</button>{poiMap?.can_edit && <><select aria-label="Nouveau statut" value={bulkStatusId} onChange={(event) => setBulkStatusId(event.target.value)}><option value="">Changer le statut…</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select><button type="button" disabled={bulkBusy || bulkStatusId === '' || selectedIds.size === 0} onClick={() => void runBulk('set_status')}>Appliquer</button><button className="place-bulk-delete" type="button" disabled={bulkBusy || selectedIds.size === 0} onClick={() => void runBulk('delete')}><Trash2 size={15} />Supprimer</button></>}</section>}
+    {bulkError && <p className="form-alert" role="alert">{bulkError}</p>}
     <div className="place-list-body cv-workspace-panel__content">
       {!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}
       {loading && <p role="status">Chargement…</p>}
@@ -125,10 +146,10 @@ export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedP
       {visible.length > 0 && <ul className="country-place-list cv-workspace-panel__list">{visible.map((place) => {
         const primaryCategory = place.categories.find((item) => item.is_primary) ?? place.categories[0]
         const inTrip = tripPlaceIds.has(place.id)
-        return <li key={place.id}><button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}${inTrip ? ' trip-added' : ''}`} onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}>
+        return <li key={place.id}><div className="place-list-row">{selectionMode && <input className="place-list-select" type="checkbox" aria-label={`Sélectionner ${place.name}`} checked={selectedIds.has(place.id)} onChange={() => toggleSelected(place.id)} />}<button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}${inTrip ? ' trip-added' : ''}`} onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}>
           <span className="place-list-category-bubble" title={primaryCategory?.name ?? 'Sans catégorie'} style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primaryCategory?.icon} size={18} showLabel={false} ariaLabel={`Catégorie ${primaryCategory?.name ?? 'non définie'}, statut ${place.status.name}`} /></span>
           <span className="place-list-item-content"><strong>{place.name}{inTrip && <small className="place-list-trip-badge">Ajouté</small>}</strong><span className="place-list-item-meta"><span>{place.status.name}</span>{primaryCategory && <><span aria-hidden="true">·</span><span>{primaryCategory.name}</span></>}</span>{place.tags.length > 0 && <span className="place-list-tags">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}</span>}</span>
-        </button></li>
+        </button></div></li>
       })}</ul>}
       {!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}
       {hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}

@@ -2743,3 +2743,11 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 .cv-map-cluster span { font-size: .78rem; font-weight: 800; }
 .cv-map-cluster small { font-size: .52rem; font-weight: 700; }
 .map-results-notice { background: rgb(13 27 42 / 92%); border-radius: var(--cv-radius-sm); bottom: 3.5rem; color: white; left: 50%; margin: 0; padding: .6rem .8rem; position: absolute; transform: translateX(-50%); z-index: var(--cv-z-map-controls); }
+.place-bulk-bar { align-items: center; background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-color-off-white)); border-block: 1px solid color-mix(in srgb, var(--cv-color-teal) 24%, transparent); display: flex; flex-wrap: wrap; gap: .45rem; padding: .65rem .9rem; }
+.place-bulk-bar strong { color: var(--cv-color-navy); font-size: .82rem; margin-right: auto; }
+.place-bulk-bar button, .place-bulk-bar select { background: white; border: 1px solid #d6dee8; border-radius: .45rem; color: var(--cv-color-slate); font: inherit; font-size: .76rem; min-height: 2rem; padding: .35rem .55rem; }
+.place-bulk-bar button:hover:not(:disabled) { border-color: var(--cv-color-teal); color: var(--cv-color-teal); }
+.place-bulk-bar .place-bulk-delete:hover:not(:disabled) { border-color: #dc2626; color: #dc2626; }
+.place-list-row { align-items: center; display: flex; gap: .45rem; }
+.place-list-row .place-list-item { flex: 1; min-width: 0; }
+.place-list-select { accent-color: var(--cv-color-teal); block-size: 1rem; flex: 0 0 auto; inline-size: 1rem; margin-left: .35rem; }

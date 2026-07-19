@@ -247,3 +247,6 @@ Dans **Compte > Préférences > Routage**, l’option **Rester dans le pays** fa
 # Performance cartographique
 
 La carte charge uniquement les POI de l’emprise visible. Les marqueurs standards sont regroupés localement dans des clusters CartaVault ; les marqueurs temporaires, le POI sélectionné et les étapes de sortie restent individuels. L’API peut fournir `total`, `returned` et `truncated` afin d’inviter à zoomer quand l’emprise est trop large.
+# Filtres et actions groupées
+
+Les filtres de lieux combinent les groupes avec **ET** et plusieurs valeurs d’un même groupe avec **OU**. Les filtres réellement disponibles sont le texte, catégories, tags, statuts, région, photos, dates, accès, danger, état, coordonnées et présence dans une sortie. Les actions groupées concernent uniquement la page explicitement sélectionnée (500 POI maximum) et sont atomiques.

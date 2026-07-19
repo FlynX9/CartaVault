@@ -303,3 +303,6 @@ Les seuils, en mètres, sont `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` (250 pa
 # Marqueurs par emprise
 
 `GET /places/map` utilise PostGIS (`ST_MakeEnvelope`, `ST_Intersects`) et charge seulement les relations nécessaires. Avec `include_meta=true`, la réponse contient `items`, `total`, `returned` et `truncated`; la limite est explicite.
+# Filtres et opérations groupées
+
+`GET /places` et `GET /places/map` partagent les filtres validés de `app.places.filtering`. `POST /places/bulk` accepte au plus 500 identifiants explicites et une action discriminée (`set_status`, catégories, tags ou suppression). Tous les POI et les objets associés sont contrôlés dans la même transaction avec le rôle éditeur requis.

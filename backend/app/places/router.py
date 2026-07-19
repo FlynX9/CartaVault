@@ -9,7 +9,7 @@ from fastapi import (
     status,
 )
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -25,8 +25,9 @@ from app.maps.models import PoiMap
 from app.maps.models import MapMembership
 from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
+from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
 from app.places.models import Place
-from app.places.schemas import PlaceCategoryRead, PlaceCreate, PlaceRead, PlaceUpdate
+from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceCategoryRead, PlaceCreate, PlaceRead, PlaceUpdate
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
@@ -147,36 +148,14 @@ def read_place(
     response_model=list[PlaceRead],
 )
 def get_places(
-    q: str | None = Query(
-        default=None,
-        min_length=1,
-        max_length=100,
-        description=(
-            "Case-insensitive search in the name and description"
-        ),
-    ),
     map_id: UUID | None = Query(
         default=None,
         description="Filter places by map UUID",
     ),
-    region: str | None = Query(
-        default=None,
-        min_length=1,
-        max_length=100,
-        description="Filter places by region",
-    ),
-    category_id: UUID | None = Query(
-        default=None,
-        description="Filter places by category UUID",
-    ),
-    tag_id: UUID | None = Query(
-        default=None,
-        description="Filter places by tag UUID",
-    ),
-    status_id: UUID | None = Query(
-        default=None,
-        description="Filter places by tracking status UUID",
-    ),
+    region: str | None = Query(default=None, min_length=1, max_length=100, deprecated=True),
+    category_id: UUID | None = Query(default=None, deprecated=True),
+    tag_id: UUID | None = Query(default=None, deprecated=True),
+    status_id: UUID | None = Query(default=None, deprecated=True),
     limit: int = Query(
         default=50,
         ge=1,
@@ -189,6 +168,7 @@ def get_places(
         description="Number of places to skip",
     ),
     map_bounds: MapBounds | None = Depends(get_map_bounds),
+    filters: PlaceFilters = Depends(get_place_filters),
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[PlaceRead]:
@@ -200,40 +180,13 @@ def get_places(
             Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
         )
 
-    if q is not None:
-        search_pattern = f"%{q.strip()}%"
-
-        statement = statement.where(
-            or_(
-                Place.name.ilike(search_pattern),
-                Place.description.ilike(search_pattern),
-            )
-        )
-
     if map_id is not None:
         statement = statement.where(Place.map_id == map_id)
-
-    if region is not None:
-        statement = statement.where(
-            func.lower(Place.region) == region.strip().lower()
-        )
-
-    if category_id is not None:
-        statement = statement.where(
-            Place.categories.any(
-                Category.id == category_id
-            )
-        )
-
-    if tag_id is not None:
-        statement = statement.where(
-            Place.tags.any(
-                Tag.id == tag_id
-            )
-        )
-
-    if status_id is not None:
-        statement = statement.where(Place.status_id == status_id)
+    statement = apply_place_filters(statement, filters)
+    if region is not None: statement = statement.where(func.lower(Place.region) == region.strip().lower())
+    if category_id is not None: statement = statement.where(Place.categories.any(Category.id == category_id))
+    if tag_id is not None: statement = statement.where(Place.tags.any(Tag.id == tag_id))
+    if status_id is not None: statement = statement.where(Place.status_id == status_id)
 
     if map_bounds is not None:
         visible_area = func.ST_MakeEnvelope(
@@ -269,6 +222,75 @@ def get_places(
         )
         for place, longitude, latitude in rows
     ]
+
+
+@router.post("/bulk", response_model=PlaceBulkResult)
+def bulk_update_places(
+    action_data: PlaceBulkAction,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PlaceBulkResult:
+    """Apply one validated action atomically to an explicit, bounded selection."""
+    places = database_session.scalars(
+        select(Place).where(Place.id.in_(action_data.place_ids)).options(
+            selectinload(Place.categories), selectinload(Place.tags),
+        )
+    ).all()
+    if len(places) != len(action_data.place_ids):
+        raise HTTPException(status_code=404, detail="BULK_PLACE_NOT_FOUND")
+
+    map_ids = {place.map_id for place in places}
+    for selected_map_id in map_ids:
+        require_map_role(database_session, selected_map_id, current_user, "editor")
+
+    target_category = None
+    target_tag = None
+    target_status = None
+    if action_data.category_id is not None:
+        target_category = database_session.get(Category, action_data.category_id)
+        if target_category is None or target_category.map_id not in map_ids:
+            raise HTTPException(status_code=409, detail="BULK_CATEGORY_FORBIDDEN")
+    if action_data.tag_id is not None:
+        target_tag = database_session.get(Tag, action_data.tag_id)
+        if target_tag is None or target_tag.map_id not in map_ids:
+            raise HTTPException(status_code=409, detail="BULK_TAG_FORBIDDEN")
+    if action_data.status_id is not None:
+        target_status = database_session.get(PlaceStatus, action_data.status_id)
+        if target_status is None or not target_status.is_active:
+            raise HTTPException(status_code=409, detail="BULK_STATUS_FORBIDDEN")
+
+    updated_count = 0
+    unchanged_count = 0
+    try:
+        for place in places:
+            if action_data.action == "delete":
+                database_session.delete(place)
+                continue
+            if action_data.action == "set_status" and target_status is not None:
+                if place.status_id == target_status.id: unchanged_count += 1
+                else: place.status_id = target_status.id; updated_count += 1
+            elif action_data.action == "add_category" and target_category is not None:
+                if target_category in place.categories: unchanged_count += 1
+                else:
+                    place.categories.append(target_category); database_session.flush()
+                    if len(place.categories) == 1:
+                        database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == target_category.id).values(is_primary=True))
+                    updated_count += 1
+            elif action_data.action == "remove_category" and target_category is not None:
+                if target_category not in place.categories: unchanged_count += 1
+                else: place.categories.remove(target_category); updated_count += 1
+            elif action_data.action == "add_tag" and target_tag is not None:
+                if target_tag in place.tags: unchanged_count += 1
+                else: place.tags.append(target_tag); updated_count += 1
+            elif action_data.action == "remove_tag" and target_tag is not None:
+                if target_tag not in place.tags: unchanged_count += 1
+                else: place.tags.remove(target_tag); updated_count += 1
+        database_session.commit()
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="BULK_ACTION_FAILED") from error
+
+    return PlaceBulkResult(selected_count=len(places), updated_count=updated_count, unchanged_count=unchanged_count, deleted_count=len(places) if action_data.action == "delete" else 0)
 
 
 @router.get(

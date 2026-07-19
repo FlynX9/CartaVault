@@ -39,6 +39,9 @@ export interface PlaceMutation { placeId: string; mapId: string }
 export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
 export interface MapPlaceResult { items: MapPlace[]; total: number; returned: number; truncated: boolean }
 export interface PlaceListQuery { mapId?: string; statusId?: string; q?: string; limit?: number; offset?: number }
+export type PlaceBulkAction = 'set_status' | 'add_category' | 'remove_category' | 'add_tag' | 'remove_tag' | 'delete'
+export interface PlaceBulkPayload { place_ids: string[]; action: PlaceBulkAction; status_id?: string; category_id?: string; tag_id?: string }
+export interface PlaceBulkResult { selected_count: number; updated_count: number; unchanged_count: number; deleted_count: number }
 
 interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null; custom_fields?: Record<string, unknown> }
 export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number }

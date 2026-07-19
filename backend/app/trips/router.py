@@ -158,7 +158,14 @@ def update_day_timing(day_id: UUID, data: TripDayTimingUpdate, session: Session 
 def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     day, access = require_day_role(session, day_id, user, "editor")
     if len(load_trip(session, access.trip.id).days) <= 1: raise HTTPException(422, "A trip must keep at least one day")
-    trip_id = day.trip_id; session.delete(day); session.flush(); normalize_day_order(load_trip(session, trip_id)); session.commit()
+    trip_id = day.trip_id
+    # Delete links first: SQLAlchemy otherwise tries to null a non-nullable FK before
+    # PostgreSQL's ON DELETE CASCADE can remove the overnight row.
+    session.execute(delete(TripNight).where((TripNight.previous_day_id == day_id) | (TripNight.next_day_id == day_id)))
+    session.delete(day)
+    session.flush()
+    normalize_day_order(load_trip(session, trip_id))
+    session.commit()
 
 
 @router.post("/trips/{trip_id}/days/reorder", response_model=TripRead)

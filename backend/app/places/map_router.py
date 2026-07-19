@@ -11,6 +11,7 @@ from app.auth.permissions import require_map_role
 from app.categories.associations import place_categories_table
 from app.database import get_db
 from app.places.filters import MapBounds, get_required_map_bounds
+from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
 from app.places.map_schemas import (
     MapCategoryRead,
     PrimaryCategoryRead,
@@ -60,6 +61,7 @@ def get_map_places(
     ),
     include_meta: bool = Query(default=False, description="Return result count and truncation metadata"),
     map_bounds: MapBounds = Depends(get_required_map_bounds),
+    filters: PlaceFilters = Depends(get_place_filters),
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[PlaceMapRead] | PlaceMapPageRead:
@@ -122,6 +124,8 @@ def get_map_places(
         statement = statement.where(
             Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
         )
+
+    statement = apply_place_filters(statement, filters)
 
     if category_id is not None:
         statement = statement.where(

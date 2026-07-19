@@ -9,7 +9,16 @@ export interface MapCluster {
 
 const CLUSTER_CELL_SIZE = 64
 
-export function clusterMapPlaces(places: MapPlace[], project: (place: MapPlace) => { x: number; y: number }): MapCluster[] {
+export function clusterMapPlaces(places: MapPlace[], project: (place: MapPlace) => { x: number; y: number }, enabled = true): MapCluster[] {
+  if (!enabled) {
+    return places.map((place) => ({
+      id: place.id,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      places: [place],
+    }))
+  }
+
   const buckets = new Map<string, MapPlace[]>()
 
   for (const place of places) {

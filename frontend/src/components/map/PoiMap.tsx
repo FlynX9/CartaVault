@@ -19,6 +19,7 @@ import type { MapMarkerFilter } from './mapMarkerFilterContext'
 import type { Trip } from '../../types/trip'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
+const MAP_MAX_ZOOM = 19
 
 interface PoiMapProps {
   places: MapPlace[]
@@ -140,6 +141,7 @@ export function PoiMap({
       center={initialView.center}
       zoom={initialView.zoom}
       minZoom={2}
+      maxZoom={MAP_MAX_ZOOM}
       maxBounds={WORLD_BOUNDS}
       maxBoundsViscosity={1}
       className="poi-map"

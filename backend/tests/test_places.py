@@ -48,3 +48,18 @@ def test_place_crud_uses_map_and_map_filters(integration_client: TestClient, poi
 def test_place_rejects_missing_map(integration_client: TestClient) -> None:
     response = integration_client.post("/places", json={"name": "Unknown map", "map_id": str(uuid4()), "latitude": 48, "longitude": 2})
     assert response.status_code == 404
+
+
+def test_bulk_place_delete_and_validated_filters(integration_client: TestClient, poi_map: PoiMap) -> None:
+    first = integration_client.post("/places", json={"name": f"Bulk alpha {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1})
+    second = integration_client.post("/places", json={"name": f"Bulk beta {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.2, "longitude": 2.2})
+    assert first.status_code == second.status_code == 201
+
+    searched = integration_client.get("/places", params={"map_id": str(poi_map.id), "q": "Bulk alpha"})
+    assert [item["id"] for item in searched.json()] == [first.json()["id"]]
+    invalid_dates = integration_client.get("/places", params={"created_from": "2026-07-20", "created_to": "2026-07-19"})
+    assert invalid_dates.status_code == 422
+
+    deleted = integration_client.post("/places/bulk", json={"place_ids": [first.json()["id"], second.json()["id"]], "action": "delete"})
+    assert deleted.status_code == 200
+    assert deleted.json() == {"selected_count": 2, "updated_count": 0, "unchanged_count": 0, "deleted_count": 2}

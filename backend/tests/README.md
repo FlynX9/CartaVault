@@ -146,3 +146,6 @@ Les tests `test_country_route_validator.py` utilisent des polygones locaux synth
 # Marqueurs cartographiques
 
 Les tests de métadonnées cartographiques (`include_meta=true`) doivent utiliser exclusivement `poi_manager_test` et vérifier compte, limite et `truncated`.
+# Filtres et actions groupées
+
+Les tests d’intégration vérifient les filtres validés et la suppression groupée atomique. Ils utilisent uniquement `poi_manager_test` et ne doivent jamais pointer vers `poi_manager`.
