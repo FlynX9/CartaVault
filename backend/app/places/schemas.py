@@ -108,3 +108,46 @@ class PlaceBulkResult(BaseModel):
     updated_count: int = 0
     unchanged_count: int = 0
     deleted_count: int = 0
+
+
+class PlaceBulkTripAction(BaseModel):
+    place_ids: list[UUID] = Field(min_length=1, max_length=500)
+    trip_id: UUID
+    day_id: UUID
+
+    @model_validator(mode="after")
+    def unique_places(self) -> Self:
+        if len(set(self.place_ids)) != len(self.place_ids):
+            raise ValueError("place_ids must not contain duplicates")
+        return self
+
+
+class PlaceBulkTripResult(BaseModel):
+    selected_count: int
+    added_count: int
+    duplicate_count: int
+
+
+class PlaceFacetItem(BaseModel):
+    id: UUID | None = None
+    name: str | None = None
+    value: str | None = None
+    icon: str | None = None
+    color: str | None = None
+    count: int
+
+
+class PlaceFacets(BaseModel):
+    categories: list[PlaceFacetItem]
+    tags: list[PlaceFacetItem]
+    statuses: list[PlaceFacetItem]
+    regions: list[PlaceFacetItem]
+    access_values: list[PlaceFacetItem]
+    danger_levels: list[PlaceFacetItem]
+    condition_values: list[PlaceFacetItem]
+    with_photos: int
+    without_photos: int
+    with_coordinates: int
+    without_coordinates: int
+    in_trip: int
+    not_in_trip: int

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from './api/client'
@@ -14,11 +14,12 @@ import { deriveMapSidebarState, getSidebarPlaceId } from './components/sidebar/s
 import { MapPage } from './pages/MapPage'
 import { InvitationPage } from './pages/InvitationPage'
 import type { PoiMap } from './types/map'
-import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView, PlaceMutation, PreviewPlace } from './types/place'
+import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView, PlaceFilters, PlaceMutation, PreviewPlace } from './types/place'
 import type { PlaceStatusSummary } from './types/status'
 import type { Trip } from './types/trip'
 import type { GeocodingResult } from './geocoding/types'
 import { readMapId, readStatusId, withMap } from './utils/map'
+import { deserializePlaceFilters, serializePlaceFilters } from './places/placeFilters'
 import { RequireAuth } from './auth/RequireAuth'
 import { useAuth } from './auth/useAuth'
 
@@ -54,6 +55,11 @@ function WorkspaceApp() {
   const location = useLocation(); const navigate = useNavigate(); const isMapWorkspace = true
   const activeMapId = readMapId(location.search)
   const activeStatusId = readStatusId(location.search)
+  const placeFilters = useMemo(() => {
+    const filters = deserializePlaceFilters(new URLSearchParams(location.search))
+    if (activeStatusId && !filters.statusIds.includes(activeStatusId)) filters.statusIds = [...filters.statusIds, activeStatusId]
+    return filters
+  }, [activeStatusId, location.search])
   const directPlaceId = location.pathname.match(/^\/places\/([^/]+)$/)?.[1] ?? null
   const selectedRoutePlaceId = directPlaceId === 'new' ? null : directPlaceId
   const [maps, setMaps] = useState<PoiMap[]>([]); const activeMap = maps.find((item) => item.id === activeMapId) ?? null
@@ -140,7 +146,7 @@ function WorkspaceApp() {
     const controller = new AbortController(); const sequence = ++requestSequence.current
     const timeout = window.setTimeout(async () => {
       setIsLoading(true); setErrorMessage(null)
-      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, limit: 2000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible.items); setErrorMessage(visible.truncated ? 'Trop de lieux sont visibles. Zoomez pour affiner l’affichage.' : null); setSelectedPlace((current) => current === null ? null : visible.items.find((item) => item.id === current.id) ?? current) } }
+      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, filters: placeFilters, limit: 2000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible.items); setErrorMessage(visible.truncated ? 'Trop de lieux sont visibles. Zoomez pour affiner l’affichage.' : null); setSelectedPlace((current) => current === null ? null : visible.items.find((item) => item.id === current.id) ?? current) } }
       catch (error) {
         if (!isAbortError(error) && sequence === requestSequence.current) {
           if (error instanceof ApiError && error.status === 404) {
@@ -155,7 +161,7 @@ function WorkspaceApp() {
       finally { if (sequence === requestSequence.current) setIsLoading(false) }
     }, REQUEST_DEBOUNCE_MS)
     return () => { window.clearTimeout(timeout); controller.abort() }
-  }, [activeMapId, activeStatusId, bounds, isMapWorkspace, loadMaps, refreshVersion])
+  }, [activeMapId, bounds, isMapWorkspace, loadMaps, placeFilters, refreshVersion])
 
   useEffect(() => {
     if (selectedRoutePlaceId === null || places.some((place) => place.id === selectedRoutePlaceId)) return
@@ -252,7 +258,7 @@ function WorkspaceApp() {
   const workspaceContent = <Suspense fallback={<aside className="cv-workspace-panel" role="status">Chargement du panneauâ€¦</aside>}>{workspacePanel === 'maps'
     ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onExport={setExportMap} onMembers={setMembersMap} onAccessChanged={() => setRefreshVersion((value) => value + 1)} onClose={() => setWorkspacePanel(null)} />
     : workspacePanel === 'places'
-    ? <MapPlaceList poiMap={activeMap} statuses={statuses} statusId={activeStatusId} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onStatusChange={(statusId) => navigate(withMap(location.pathname, activeMapId, statusId))} onPlaceSelect={handleSelect} onClose={() => { setWorkspacePanel(null); setTripPlannerOpen(false) }} onImported={() => setRefreshVersion((value) => value + 1)} onBulkChanged={() => setRefreshVersion((value) => value + 1)} tripPlanningActive={tripPlannerOpen} tripPlaceIds={new Set(activeTrip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])} />
+    ? <MapPlaceList poiMap={activeMap} statuses={statuses} filters={placeFilters} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} onFiltersChange={(filters: PlaceFilters) => { const params = serializePlaceFilters(filters); if (activeMapId) params.set('map', activeMapId); navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : '' }) }} onPlaceSelect={handleSelect} onClose={() => { setWorkspacePanel(null); setTripPlannerOpen(false) }} onImported={() => setRefreshVersion((value) => value + 1)} onBulkChanged={() => setRefreshVersion((value) => value + 1)} tripPlanningActive={tripPlannerOpen} tripPlaceIds={new Set(activeTrip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])} />
     : workspacePanel === 'categories' && activeMapId !== null ? <CategoriesWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />
       : workspacePanel === 'tags' && activeMapId !== null ? <TagsWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />
         : workspacePanel === 'statuses' ? <StatusesWorkspacePanel onClose={() => setWorkspacePanel(null)} />

@@ -63,3 +63,23 @@ def test_bulk_place_delete_and_validated_filters(integration_client: TestClient,
     deleted = integration_client.post("/places/bulk", json={"place_ids": [first.json()["id"], second.json()["id"]], "action": "delete"})
     assert deleted.status_code == 200
     assert deleted.json() == {"selected_count": 2, "updated_count": 0, "unchanged_count": 0, "deleted_count": 2}
+
+
+def test_place_facets_and_bulk_trip_add_are_map_scoped(integration_client: TestClient, poi_map: PoiMap) -> None:
+    first = integration_client.post("/places", json={"name": f"Facet one {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1, "region": "Centre"})
+    second = integration_client.post("/places", json={"name": f"Facet two {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.2, "longitude": 2.2, "region": "Centre"})
+    assert first.status_code == second.status_code == 201
+    facets = integration_client.get("/places/facets", params={"map_id": str(poi_map.id)})
+    assert facets.status_code == 200
+    assert facets.json()["with_coordinates"] >= 2
+    assert facets.json()["regions"] == [{"id": None, "name": None, "value": "Centre", "icon": None, "color": None, "count": 2}]
+
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Bulk trip"})
+    assert trip.status_code == 201
+    day_id = trip.json()["days"][0]["id"]
+    added = integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [first.json()["id"], second.json()["id"]], "trip_id": trip.json()["id"], "day_id": day_id})
+    assert added.status_code == 200
+    assert added.json() == {"selected_count": 2, "added_count": 2, "duplicate_count": 0}
+    duplicate = integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [first.json()["id"], second.json()["id"]], "trip_id": trip.json()["id"], "day_id": day_id})
+    assert duplicate.status_code == 200
+    assert duplicate.json()["duplicate_count"] == 2

@@ -13,7 +13,10 @@ import type {
   PlaceMapSummary,
   PlaceBulkPayload,
   PlaceBulkResult,
+  PlaceBulkTripResult,
+  PlaceFacets,
 } from '../types/place'
+import { buildPlaceFilterSearchParams } from '../places/placeFilters'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { parseMapStatusSummary, parseStatusSummary } from './statuses'
 import {
@@ -172,26 +175,15 @@ export async function getMapPlaces(
   query: MapPlaceQuery,
   signal: AbortSignal,
 ): Promise<MapPlaceResult> {
-  const searchParams = new URLSearchParams({
-    min_latitude: String(query.bounds.minLatitude),
-    max_latitude: String(query.bounds.maxLatitude),
-    min_longitude: String(query.bounds.minLongitude),
-    max_longitude: String(query.bounds.maxLongitude),
-  })
+  const searchParams = buildPlaceFilterSearchParams(query.filters ?? { query: '', categoryIds: [], tagIds: [], statusIds: [], regions: [], hasPhotos: null, createdFrom: null, createdTo: null, updatedFrom: null, updatedTo: null, accessValues: [], dangerLevels: [], conditionValues: [], hasValidCoordinates: null, inTrip: null })
+  searchParams.set('min_latitude', String(query.bounds.minLatitude)); searchParams.set('max_latitude', String(query.bounds.maxLatitude)); searchParams.set('min_longitude', String(query.bounds.minLongitude)); searchParams.set('max_longitude', String(query.bounds.maxLongitude))
 
-  if (query.categoryId !== undefined) {
-    searchParams.set('category_id', query.categoryId)
-  }
-
+  if (query.categoryId !== undefined) searchParams.set('category_id', query.categoryId)
+  if (query.tagId !== undefined) searchParams.set('tag_id', query.tagId)
+  if (query.statusId !== undefined) searchParams.set('status_id', query.statusId)
   if (query.mapId !== undefined) {
     searchParams.set('map_id', query.mapId)
   }
-
-  if (query.tagId !== undefined) {
-    searchParams.set('tag_id', query.tagId)
-  }
-
-  if (query.statusId !== undefined) searchParams.set('status_id', query.statusId)
 
   if (query.limit !== undefined) {
     searchParams.set('limit', String(query.limit))
@@ -207,7 +199,7 @@ export async function getPlaces(
   query: PlaceListQuery,
   signal?: AbortSignal,
 ): Promise<PlaceDetails[]> {
-  const searchParams = new URLSearchParams()
+  const searchParams = buildPlaceFilterSearchParams(query.filters ?? { query: '', categoryIds: [], tagIds: [], statusIds: [], regions: [], hasPhotos: null, createdFrom: null, createdTo: null, updatedFrom: null, updatedTo: null, accessValues: [], dangerLevels: [], conditionValues: [], hasValidCoordinates: null, inTrip: null })
 
   if (query.mapId !== undefined) searchParams.set('map_id', query.mapId)
   if (query.q !== undefined) searchParams.set('q', query.q)
@@ -276,6 +268,23 @@ export async function bulkUpdatePlaces(payload: PlaceBulkPayload, signal?: Abort
     unchanged_count: readNumber(value, 'unchanged_count', context),
     deleted_count: readNumber(value, 'deleted_count', context),
   }
+}
+
+export async function getPlaceFacets(mapId: string, filters: import('../types/place').PlaceFilters, signal?: AbortSignal): Promise<PlaceFacets> {
+  const params = buildPlaceFilterSearchParams(filters); params.set('map_id', mapId)
+  const value = await getJson('/places/facets', params, signal)
+  if (!isRecord(value)) throw new Error('Les facettes sont invalides.')
+  const list = (key: string) => readArray(value, key, 'Les facettes').map((item) => {
+    if (!isRecord(item)) throw new Error('Une facette est invalide.')
+    return { id: typeof item.id === 'string' ? item.id : '', name: typeof item.name === 'string' ? item.name : '', value: typeof item.value === 'string' ? item.value : undefined, icon: typeof item.icon === 'string' ? item.icon : undefined, color: typeof item.color === 'string' ? item.color : undefined, count: readNumber(item, 'count', 'Une facette') }
+  })
+  return { categories: list('categories'), tags: list('tags'), statuses: list('statuses'), regions: list('regions'), access_values: list('access_values'), danger_levels: list('danger_levels'), condition_values: list('condition_values'), with_photos: readNumber(value, 'with_photos', 'Les facettes'), without_photos: readNumber(value, 'without_photos', 'Les facettes'), with_coordinates: readNumber(value, 'with_coordinates', 'Les facettes'), without_coordinates: readNumber(value, 'without_coordinates', 'Les facettes'), in_trip: readNumber(value, 'in_trip', 'Les facettes'), not_in_trip: readNumber(value, 'not_in_trip', 'Les facettes') }
+}
+
+export async function bulkAddPlacesToTrip(payload: { place_ids: string[]; trip_id: string; day_id: string }, signal?: AbortSignal): Promise<PlaceBulkTripResult> {
+  const value = await sendJson('/places/bulk/add-to-trip', 'POST', payload, signal); const context = "La réponse d'ajout à une sortie"
+  if (!isRecord(value)) throw new Error(`${context} est invalide.`)
+  return { selected_count: readNumber(value, 'selected_count', context), added_count: readNumber(value, 'added_count', context), duplicate_count: readNumber(value, 'duplicate_count', context) }
 }
 
 async function addAssociation(

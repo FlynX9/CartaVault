@@ -27,11 +27,15 @@ from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
 from app.places.models import Place
-from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceCategoryRead, PlaceCreate, PlaceRead, PlaceUpdate
+from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceRead, PlaceUpdate
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
 from app.statuses.schemas import PlaceStatusSummary
+from app.tags.associations import place_tags_table
+from app.trips.models import TripDay, TripStop
+from app.trips.permissions import require_trip_editor
+from app.trips.service import stale
 
 
 router = APIRouter(
@@ -240,6 +244,8 @@ def bulk_update_places(
         raise HTTPException(status_code=404, detail="BULK_PLACE_NOT_FOUND")
 
     map_ids = {place.map_id for place in places}
+    if len(map_ids) != 1:
+        raise HTTPException(status_code=409, detail="BULK_PLACE_FORBIDDEN")
     for selected_map_id in map_ids:
         require_map_role(database_session, selected_map_id, current_user, "editor")
 
@@ -291,6 +297,92 @@ def bulk_update_places(
         raise HTTPException(status_code=500, detail="BULK_ACTION_FAILED") from error
 
     return PlaceBulkResult(selected_count=len(places), updated_count=updated_count, unchanged_count=unchanged_count, deleted_count=len(places) if action_data.action == "delete" else 0)
+
+
+@router.post("/bulk/add-to-trip", response_model=PlaceBulkTripResult)
+def bulk_add_to_trip(
+    action_data: PlaceBulkTripAction,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PlaceBulkTripResult:
+    """Append selected same-map POIs to one editable trip day atomically."""
+    places = database_session.scalars(select(Place).where(Place.id.in_(action_data.place_ids))).all()
+    if len(places) != len(action_data.place_ids):
+        raise HTTPException(status_code=404, detail="BULK_PLACE_NOT_FOUND")
+    map_ids = {place.map_id for place in places}
+    if len(map_ids) != 1:
+        raise HTTPException(status_code=409, detail="BULK_PLACE_FORBIDDEN")
+    trip_access = require_trip_editor(database_session, action_data.trip_id, current_user)
+    day = database_session.get(TripDay, action_data.day_id)
+    if day is None or day.trip_id != trip_access.trip.id:
+        raise HTTPException(status_code=409, detail="BULK_DAY_FORBIDDEN")
+    if trip_access.trip.map_id not in map_ids:
+        raise HTTPException(status_code=409, detail="BULK_TRIP_FORBIDDEN")
+    existing = set(database_session.scalars(select(TripStop.place_id).where(TripStop.trip_day_id == day.id, TripStop.place_id.in_(action_data.place_ids))).all())
+    next_order = (database_session.scalar(select(func.max(TripStop.sort_order)).where(TripStop.trip_day_id == day.id)) or -1) + 1
+    added = 0
+    try:
+        for place in places:
+            if place.id in existing:
+                continue
+            longitude = database_session.scalar(select(func.ST_X(Place.location)).where(Place.id == place.id))
+            latitude = database_session.scalar(select(func.ST_Y(Place.location)).where(Place.id == place.id))
+            if longitude is None or latitude is None:
+                raise HTTPException(status_code=409, detail="BULK_PLACE_FORBIDDEN")
+            database_session.add(TripStop(trip_day_id=day.id, place_id=place.id, stop_type="place", name=place.name, latitude=latitude, longitude=longitude, sort_order=next_order, visit_duration_minutes=30))
+            next_order += 1; added += 1
+        stale(day)
+        database_session.commit()
+    except HTTPException:
+        database_session.rollback()
+        raise
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="BULK_ACTION_FAILED") from error
+    return PlaceBulkTripResult(selected_count=len(places), added_count=added, duplicate_count=len(places) - added)
+
+
+@router.get("/facets", response_model=PlaceFacets)
+def get_place_facets(
+    map_id: UUID,
+    filters: PlaceFilters = Depends(get_place_filters),
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PlaceFacets:
+    """Return map-scoped filter counters without loading POIs into Python."""
+    require_map_role(database_session, map_id, current_user, "viewer")
+    base = apply_place_filters(select(Place.id).where(Place.map_id == map_id), filters).subquery()
+    ids = select(base.c.id)
+    def total(predicate): return int(database_session.scalar(select(func.count()).select_from(Place).where(Place.id.in_(ids), predicate)) or 0)
+    categories = [PlaceFacetItem(id=row.id, name=row.name, icon=row.icon, count=row.count) for row in database_session.execute(select(Category.id, Category.name, Category.icon, func.count(func.distinct(place_categories_table.c.place_id)).label("count")).join(place_categories_table, Category.id == place_categories_table.c.category_id).where(place_categories_table.c.place_id.in_(ids)).group_by(Category.id, Category.name, Category.icon).order_by(Category.name)).all()]
+    tags = [PlaceFacetItem(id=row.id, name=row.name, count=row.count) for row in database_session.execute(select(Tag.id, Tag.name, func.count(func.distinct(place_tags_table.c.place_id)).label("count")).join(place_tags_table, Tag.id == place_tags_table.c.tag_id).where(place_tags_table.c.place_id.in_(ids)).group_by(Tag.id, Tag.name).order_by(Tag.name)).all()]
+    statuses = [PlaceFacetItem(id=row.id, name=row.name, color=row.color, count=row.count) for row in database_session.execute(select(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color, func.count(Place.id).label("count")).join(Place, Place.status_id == PlaceStatus.id).where(Place.id.in_(ids), PlaceStatus.is_active.is_(True)).group_by(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color).order_by(PlaceStatus.sort_order, PlaceStatus.name)).all()]
+    regions = [PlaceFacetItem(value=row.value, count=row.count) for row in database_session.execute(select(Place.region.label("value"), func.count(Place.id).label("count")).where(Place.id.in_(ids), Place.region.is_not(None), Place.region != "").group_by(Place.region).order_by(Place.region)).all()]
+
+    def value_facets(column: object) -> list[PlaceFacetItem]:
+        rows = database_session.execute(
+            select(column.label("value"), func.count(Place.id).label("count"))
+            .where(Place.id.in_(ids), column.is_not(None), column != "")
+            .group_by(column)
+            .order_by(column)
+        ).all()
+        return [PlaceFacetItem(value=row.value, count=row.count) for row in rows]
+
+    return PlaceFacets(
+        categories=categories,
+        tags=tags,
+        statuses=statuses,
+        regions=regions,
+        access_values=value_facets(Place.access),
+        danger_levels=value_facets(Place.danger_level),
+        condition_values=value_facets(Place.condition),
+        with_photos=total(Place.photos.any()),
+        without_photos=total(~Place.photos.any()),
+        with_coordinates=total(Place.location.is_not(None)),
+        without_coordinates=total(Place.location.is_(None)),
+        in_trip=total(Place.trip_stops.any()),
+        not_in_trip=total(~Place.trip_stops.any()),
+    )
 
 
 @router.get(

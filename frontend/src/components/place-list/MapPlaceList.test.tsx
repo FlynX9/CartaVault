@@ -4,7 +4,10 @@ import { MemoryRouter } from 'react-router-dom'
 import { getPlaces } from '../../api/places'
 import { MapPlaceList } from './MapPlaceList'
 
-vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])) }))
+vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
+vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) }))
+vi.mock('../../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) }))
+vi.mock('../../api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])) }))
 
 describe('MapPlaceList', () => {
   it('filters by the selected map UUID', async () => {
@@ -22,9 +25,7 @@ describe('MapPlaceList', () => {
     expect(item).toHaveClass('selected')
     expect(screen.getByText('1 POI')).toBeVisible()
     expect(container.querySelector('input[type="search"]')).toBeVisible()
-    expect(container.querySelector('[aria-label="Filtrer par catégorie"]')).toBeVisible()
-    expect(container.querySelector('[aria-label="Filtrer par statut"]')).toBeVisible()
-    expect(container.querySelector('[aria-label="Filtrer par tag"]')).toBeVisible()
+    expect(container.querySelector('.place-list-filters button')).toBeVisible()
     expect(container.querySelector('.place-list-item-meta')).toHaveTextContent('À faire·Église')
     expect(container.querySelector('.place-list-tag')).toHaveTextContent('Patrimoine')
     expect(container.querySelector('.place-list-status-dot')).not.toBeInTheDocument()

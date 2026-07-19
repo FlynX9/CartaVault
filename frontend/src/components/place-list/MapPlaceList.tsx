@@ -1,158 +1,71 @@
-import { CheckSquare, FileUp, Plus, Search, Trash2, X } from 'lucide-react'
+import { CheckSquare, FileUp, Filter, Plus, Search, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { bulkUpdatePlaces, getPlaces } from '../../api/places'
+import { bulkAddPlacesToTrip, bulkUpdatePlaces, getPlaceFacets, getPlaces } from '../../api/places'
+import { getCategories } from '../../api/categories'
+import { getTags } from '../../api/tags'
+import { getTrip, listTrips } from '../../api/trips'
+import { DEFAULT_PLACE_FILTERS, countActivePlaceFilters, hasActivePlaceFilters, normalizePlaceFilters } from '../../places/placeFilters'
 import type { PoiMap } from '../../types/map'
-import type { PlaceDetails, PreviewPlace } from '../../types/place'
+import type { PlaceDetails, PlaceFacets, PlaceFilters, PreviewPlace } from '../../types/place'
 import type { PlaceStatusSummary } from '../../types/status'
+import type { Trip } from '../../types/trip'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { withMap } from '../../utils/map'
 import { MapMarkerFilterContext } from '../map/mapMarkerFilterContext'
 import { KmzImportDialog } from '../imports/KmzImportDialog'
 
 const PAGE_SIZE = 100
+const emptyFacets: PlaceFacets = { categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 }
 
 interface Props {
-  poiMap: PoiMap | null
-  statuses?: PlaceStatusSummary[]
-  statusId?: string | null
-  selectedPlaceId: string | null
-  refreshVersion: number
-  removedPlaceId: string | null
-  onStatusChange?: (statusId: string | null) => void
-  onPlaceSelect: (place: PreviewPlace) => void
-  onClose?: () => void
-  onImported?: () => void
-  tripPlanningActive?: boolean
-  tripPlaceIds?: Set<string>
-  onBulkChanged?: () => void
+  poiMap: PoiMap | null; statuses?: PlaceStatusSummary[]; filters?: PlaceFilters; selectedPlaceId: string | null; refreshVersion: number; removedPlaceId: string | null
+  onFiltersChange?: (filters: PlaceFilters) => void; onPlaceSelect: (place: PreviewPlace) => void; onClose?: () => void; onImported?: () => void; tripPlanningActive?: boolean; tripPlaceIds?: Set<string>; onBulkChanged?: () => void
 }
 
 const sortPlaces = (places: PlaceDetails[]) => [...places].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id))
+const toggle = (values: string[], value: string) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value]
+const formatLastUpdate = (value: string | undefined) => !value ? 'Mis à jour récemment' : `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 
-function formatLastUpdate(value: string | undefined) {
-  if (!value) return 'Mis à jour récemment'
-  const elapsedMinutes = Math.floor((Date.now() - new Date(value).getTime()) / 60_000)
-  if (!Number.isFinite(elapsedMinutes) || elapsedMinutes < 1) return 'Mis à jour à l’instant'
-  if (elapsedMinutes < 60) return `Mis à jour il y a ${elapsedMinutes} min`
-  if (elapsedMinutes < 1_440) return `Mis à jour il y a ${Math.floor(elapsedMinutes / 60)} h`
-  return `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
-}
+export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
+  const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [hasMore, setHasMore] = useState(false); const [error, setError] = useState<string | null>(null)
+  const [facets, setFacets] = useState<PlaceFacets>(emptyFacets); const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]); const [tags, setTags] = useState<Array<{ id: string; name: string }>>([])
+  const [filtersOpen, setFiltersOpen] = useState(false); const [selectionMode, setSelectionMode] = useState(false); const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); const [bulkBusy, setBulkBusy] = useState(false); const [bulkError, setBulkError] = useState<string | null>(null); const [bulkNotice, setBulkNotice] = useState<string | null>(null)
+  const [bulkStatusId, setBulkStatusId] = useState(''); const [bulkCategoryId, setBulkCategoryId] = useState(''); const [bulkTagId, setBulkTagId] = useState(''); const [trips, setTrips] = useState<Trip[]>([]); const [tripId, setTripId] = useState(''); const [dayId, setDayId] = useState(''); const [importing, setImporting] = useState(false)
+  const refs = useRef(new Map<string, HTMLButtonElement>()); const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
+  const update = (partial: Partial<PlaceFilters>) => onFiltersChange(normalizePlaceFilters({ ...filters, ...partial }))
 
-export function MapPlaceList({ poiMap, statuses = [], statusId = null, selectedPlaceId, refreshVersion, removedPlaceId, onStatusChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
-  const [search, setSearch] = useState('')
-  const [debounced, setDebounced] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [tagId, setTagId] = useState('')
-  const [places, setPlaces] = useState<PlaceDetails[]>([])
-  const [loading, setLoading] = useState(false)
-  const [hasMore, setHasMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [importing, setImporting] = useState(false)
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkStatusId, setBulkStatusId] = useState('')
-  const [bulkBusy, setBulkBusy] = useState(false)
-  const [bulkError, setBulkError] = useState<string | null>(null)
-  const refs = useRef(new Map<string, HTMLButtonElement>())
-  const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
-
+  useEffect(() => { setMarkerFilter({ query: filters.query, categoryId: filters.categoryIds[0] ?? '', statusId: filters.statusIds[0] ?? null, tagId: filters.tagIds[0] ?? '' }) }, [filters, setMarkerFilter])
+  useEffect(() => { setSelectedIds(new Set()); setPlaces([]); setFacets(emptyFacets); setBulkNotice(null) }, [poiMap?.id])
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebounced(search.trim()), 300)
-    return () => window.clearTimeout(timeout)
-  }, [search])
-
-  useEffect(() => {
-    setCategoryId('')
-    setTagId('')
-  }, [poiMap?.id])
-
-  useEffect(() => {
-    setMarkerFilter({ query: debounced, categoryId, statusId, tagId })
-  }, [categoryId, debounced, setMarkerFilter, statusId, tagId])
-
-  useEffect(() => {
-    if (!poiMap) {
-      setPlaces([])
-      return
-    }
-    const controller = new AbortController()
-    setLoading(true)
-    setError(null)
-    void getPlaces({ mapId: poiMap.id, statusId: statusId ?? undefined, q: debounced || undefined, limit: PAGE_SIZE, offset: 0 }, controller.signal)
-      .then((page) => { setPlaces(page); setHasMore(page.length === PAGE_SIZE) })
-      .catch((caught: unknown) => { if (!(caught instanceof Error && caught.name === 'AbortError')) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
-  }, [poiMap, statusId, debounced, refreshVersion])
-
-  const categories = useMemo(() => [...new Map(places.flatMap((place) => place.categories).map((category) => [category.id, category])).values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [places])
-  const tags = useMemo(() => [...new Map(places.flatMap((place) => place.tags).map((tag) => [tag.id, tag])).values()].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [places])
-  const visible = useMemo(() => sortPlaces(places.filter((place) => place.id !== removedPlaceId && (categoryId === '' || place.categories.some((category) => category.id === categoryId)) && (tagId === '' || place.tags.some((tag) => tag.id === tagId)))), [places, removedPlaceId, categoryId, tagId])
-
-  useEffect(() => {
-    if (selectedPlaceId) refs.current.get(selectedPlaceId)?.scrollIntoView?.({ block: 'nearest' })
-  }, [selectedPlaceId, visible])
-
-  const loadMore = async () => {
     if (!poiMap) return
-    const page = await getPlaces({ mapId: poiMap.id, statusId: statusId ?? undefined, q: debounced || undefined, limit: PAGE_SIZE, offset: places.length })
-    setPlaces((current) => [...current, ...page])
-    setHasMore(page.length === PAGE_SIZE)
-  }
+    const controller = new AbortController(); setLoading(true); setError(null)
+    void Promise.all([getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: 0 }, controller.signal), getPlaceFacets(poiMap.id, filters, controller.signal), getCategories(controller.signal, undefined, poiMap.id), getTags(controller.signal, undefined, poiMap.id)]).then(([page, nextFacets, nextCategories, nextTags]) => { if (!controller.signal.aborted) { setPlaces(page); setHasMore(page.length === PAGE_SIZE); setFacets(nextFacets); setCategories(nextCategories); setTags(nextTags) } }).catch((caught: unknown) => { if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [filters, poiMap, refreshVersion])
+  useEffect(() => { if (!poiMap?.can_edit || !selectionMode) return; const controller = new AbortController(); void listTrips(poiMap.id, controller.signal).then(setTrips).catch(() => setTrips([])); return () => controller.abort() }, [poiMap?.can_edit, poiMap?.id, selectionMode])
+  useEffect(() => { if (!tripId) { setDayId(''); return }; const controller = new AbortController(); void getTrip(tripId, controller.signal).then((trip) => setTrips((current) => current.map((item) => item.id === trip.id ? trip : item))).catch(() => undefined); return () => controller.abort() }, [tripId])
 
-  const resetFilters = () => {
-    setSearch('')
-    setCategoryId('')
-    setTagId('')
-    onStatusChange(null)
-  }
+  const visible = useMemo(() => sortPlaces(places.filter((place) => place.id !== removedPlaceId)), [places, removedPlaceId])
+  const selectedTrip = trips.find((trip) => trip.id === tripId)
+  const hiddenSelected = [...selectedIds].filter((id) => !visible.some((place) => place.id === id)).length
+  const activeCount = countActivePlaceFilters(filters)
+  useEffect(() => { if (selectedPlaceId) refs.current.get(selectedPlaceId)?.scrollIntoView?.({ block: 'nearest' }) }, [selectedPlaceId, visible])
+  const loadMore = async () => { if (!poiMap) return; const page = await getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: places.length }); setPlaces((current) => [...current, ...page]); setHasMore(page.length === PAGE_SIZE) }
   const toggleSelected = (id: string) => setSelectedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next })
-  const togglePage = () => setSelectedIds((current) => { const pageIds = visible.map((place) => place.id); const everySelected = pageIds.every((id) => current.has(id)); const next = new Set(current); pageIds.forEach((id) => everySelected ? next.delete(id) : next.add(id)); return next })
-  const runBulk = async (action: 'set_status' | 'delete') => {
+  const togglePage = () => setSelectedIds((current) => { const ids = visible.map((place) => place.id); const next = new Set(current); const every = ids.length > 0 && ids.every((id) => next.has(id)); ids.forEach((id) => every ? next.delete(id) : next.add(id)); return next })
+  const runBulk = async (action: 'set_status' | 'add_category' | 'remove_category' | 'add_tag' | 'remove_tag' | 'delete') => {
     if (!poiMap || selectedIds.size === 0) return
     if (action === 'delete' && !window.confirm(`Supprimer définitivement ${selectedIds.size} lieu(x) et leurs photos ?`)) return
-    try {
-      setBulkBusy(true); setBulkError(null)
-      await bulkUpdatePlaces({ place_ids: [...selectedIds], action, ...(action === 'set_status' ? { status_id: bulkStatusId } : {}) })
-      if (action === 'delete') setSelectedIds(new Set())
-      onBulkChanged()
-    } catch (caught) { setBulkError(caught instanceof Error ? caught.message : 'Action groupée impossible.') }
-    finally { setBulkBusy(false) }
+    try { setBulkBusy(true); setBulkError(null); setBulkNotice(null); const result = await bulkUpdatePlaces({ place_ids: [...selectedIds], action, ...(action === 'set_status' ? { status_id: bulkStatusId } : {}), ...(action.includes('category') ? { category_id: bulkCategoryId } : {}), ...(action.includes('tag') ? { tag_id: bulkTagId } : {}) }); setBulkNotice(`${result.updated_count || result.deleted_count} lieux mis à jour${result.unchanged_count ? `, ${result.unchanged_count} inchangés` : ''}.`); if (action === 'delete') setSelectedIds(new Set()); onBulkChanged() } catch (caught) { setBulkError(caught instanceof Error ? caught.message : 'Action groupée impossible.') } finally { setBulkBusy(false) }
   }
+  const addToTrip = async () => { if (!tripId || !dayId || selectedIds.size === 0) return; try { setBulkBusy(true); const result = await bulkAddPlacesToTrip({ place_ids: [...selectedIds], trip_id: tripId, day_id: dayId }); setBulkNotice(`${result.added_count} POI ajoutés à la journée${result.duplicate_count ? `, ${result.duplicate_count} déjà présents` : ''}.`) } catch (caught) { setBulkError(caught instanceof Error ? caught.message : "Impossible d'ajouter à la sortie.") } finally { setBulkBusy(false) } }
+  const boolControl = (label: string, value: boolean | null, apply: (next: boolean | null) => void) => <label>{label}<select value={value === null ? '' : String(value)} onChange={(event) => apply(event.target.value === '' ? null : event.target.value === 'true')}><option value="">Tous</option><option value="true">Oui</option><option value="false">Non</option></select></label>
+  const multiOptions = (label: string, values: Array<{ id: string; name: string; count?: number; icon?: string; color?: string }>, selected: string[], apply: (next: string[]) => void) => <details className="place-filter-group"><summary>{label}{selected.length ? ` (${selected.length})` : ''}</summary><div>{values.map((value) => <label key={value.id} className="place-filter-option"><input type="checkbox" checked={selected.includes(value.id)} onChange={() => apply(toggle(selected, value.id))} />{value.color && <i style={{ backgroundColor: value.color }} />}{value.icon && <CategoryIconPreview iconId={value.icon} size={15} showLabel={false} />}{value.name}<small>{value.count ?? 0}</small></label>)}</div></details>
 
-  return <aside className="country-place-panel cv-workspace-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
-    <header className="cv-workspace-panel__header">
-      <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow place-list-kicker">Lieux</p><h2 id="map-place-list-title" className="cv-workspace-panel__title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>
-      {poiMap && <p className="place-list-map-meta"><span>{formatLastUpdate(poiMap.updated_at)}</span></p>}</div>
-      <div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{visible.length} POI{visible.length > 1 ? 's' : ''}</span>}{poiMap && <button className={`panel-icon-button${selectionMode ? ' primary' : ''}`} type="button" aria-label="Sélection multiple" title="Sélection multiple" onClick={() => { setSelectionMode((value) => !value); setSelectedIds(new Set()) }}><CheckSquare size={18} /></button>}{poiMap && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" title="Importer un KMZ" onClick={() => setImporting(true)}><FileUp size={18} /></button>}{poiMap && poiMap.can_edit !== false && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id, statusId)} aria-label="Ajouter un POI" title="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div>
-    </header>
-    {poiMap && <section className="place-list-controls" aria-label="Recherche et filtres des lieux">
-      <label className="place-list-search"><Search aria-hidden="true" size={18} /><span className="visually-hidden">Rechercher un POI</span><input type="search" value={search} placeholder="Rechercher un POI…" onChange={(event) => setSearch(event.target.value)} /></label>
-      <div className="place-list-filters">
-        <select aria-label="Filtrer par catégorie" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">Tout</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
-        <select aria-label="Filtrer par statut" value={statusId ?? ''} onChange={(event) => onStatusChange(event.target.value || null)}><option value="">Tout</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select>
-        <select aria-label="Filtrer par tag" value={tagId} onChange={(event) => setTagId(event.target.value)}><option value="">Tout</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select>
-        <button className="place-list-reset" type="button" onClick={resetFilters} disabled={search === '' && categoryId === '' && tagId === '' && statusId === null}>Réinitialiser</button>
-      </div>
-    </section>}
-    {selectionMode && <section className="place-bulk-bar" aria-label="Actions groupées"><strong>{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}</strong><button type="button" onClick={togglePage}>{visible.every((place) => selectedIds.has(place.id)) ? 'Désélectionner cette page' : `Sélectionner les ${visible.length} éléments de cette page`}</button><button type="button" onClick={() => setSelectedIds(new Set())}>Tout désélectionner</button>{poiMap?.can_edit && <><select aria-label="Nouveau statut" value={bulkStatusId} onChange={(event) => setBulkStatusId(event.target.value)}><option value="">Changer le statut…</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select><button type="button" disabled={bulkBusy || bulkStatusId === '' || selectedIds.size === 0} onClick={() => void runBulk('set_status')}>Appliquer</button><button className="place-bulk-delete" type="button" disabled={bulkBusy || selectedIds.size === 0} onClick={() => void runBulk('delete')}><Trash2 size={15} />Supprimer</button></>}</section>}
-    {bulkError && <p className="form-alert" role="alert">{bulkError}</p>}
-    <div className="place-list-body cv-workspace-panel__content">
-      {!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}
-      {loading && <p role="status">Chargement…</p>}
-      {error && <p role="alert">{error}</p>}
-      {visible.length > 0 && <ul className="country-place-list cv-workspace-panel__list">{visible.map((place) => {
-        const primaryCategory = place.categories.find((item) => item.is_primary) ?? place.categories[0]
-        const inTrip = tripPlaceIds.has(place.id)
-        return <li key={place.id}><div className="place-list-row">{selectionMode && <input className="place-list-select" type="checkbox" aria-label={`Sélectionner ${place.name}`} checked={selectedIds.has(place.id)} onChange={() => toggleSelected(place.id)} />}<button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}${inTrip ? ' trip-added' : ''}`} onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}>
-          <span className="place-list-category-bubble" title={primaryCategory?.name ?? 'Sans catégorie'} style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primaryCategory?.icon} size={18} showLabel={false} ariaLabel={`Catégorie ${primaryCategory?.name ?? 'non définie'}, statut ${place.status.name}`} /></span>
-          <span className="place-list-item-content"><strong>{place.name}{inTrip && <small className="place-list-trip-badge">Ajouté</small>}</strong><span className="place-list-item-meta"><span>{place.status.name}</span>{primaryCategory && <><span aria-hidden="true">·</span><span>{primaryCategory.name}</span></>}</span>{place.tags.length > 0 && <span className="place-list-tags">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}</span>}</span>
-        </button></div></li>
-      })}</ul>}
-      {!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}
-      {hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}
-    </div>
-  {importing && poiMap && <KmzImportDialog poiMap={poiMap} onClose={() => setImporting(false)} onImported={onImported} />}</aside>
+  return <aside className="country-place-panel cv-workspace-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title"><header className="cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow place-list-kicker">Lieux</p><h2 id="map-place-list-title" className="cv-workspace-panel__title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>{poiMap && <p className="place-list-map-meta">{formatLastUpdate(poiMap.updated_at)}</p>}</div><div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{facets.with_coordinates + facets.without_coordinates || visible.length} POI</span>}{poiMap && <button className={`panel-icon-button${selectionMode ? ' primary' : ''}`} type="button" aria-label="Sélection multiple" onClick={() => { setSelectionMode((value) => !value); setSelectedIds(new Set()) }}><CheckSquare size={18} /></button>}{poiMap && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" onClick={() => setImporting(true)}><FileUp size={18} /></button>}{poiMap && poiMap.can_edit !== false && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id)} aria-label="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" onClick={onClose}><X size={18} /></button></div></header>
+    {poiMap && <section className="place-list-controls" aria-label="Recherche et filtres des lieux"><label className="place-list-search"><Search aria-hidden="true" size={18} /><span className="visually-hidden">Rechercher un POI</span><input type="search" value={filters.query} placeholder="Rechercher un POI…" onChange={(event) => update({ query: event.target.value })} />{filters.query && <button type="button" aria-label="Effacer la recherche" onClick={() => update({ query: '' })}><X size={15} /></button>}</label><div className="place-list-filters"><button className={hasActivePlaceFilters(filters) ? 'is-active' : ''} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}><Filter size={15} />Filtres{activeCount ? ` (${activeCount})` : ''}</button><button className="place-list-reset" type="button" onClick={() => onFiltersChange(DEFAULT_PLACE_FILTERS)} disabled={!hasActivePlaceFilters(filters)}>Réinitialiser</button></div>{filtersOpen && <div className="place-filter-drawer" role="region" aria-label="Filtres avancés">{multiOptions('Catégories', categories.map((item) => ({ ...item, count: facets.categories.find((facet) => facet.id === item.id)?.count ?? 0 })), filters.categoryIds, (categoryIds) => update({ categoryIds }))}{multiOptions('Tags', tags.map((item) => ({ ...item, count: facets.tags.find((facet) => facet.id === item.id)?.count ?? 0 })), filters.tagIds, (tagIds) => update({ tagIds }))}{multiOptions('Statuts', statuses.map((item) => ({ id: item.id, name: item.name, color: item.color, count: facets.statuses.find((facet) => facet.id === item.id)?.count ?? 0 })), filters.statusIds, (statusIds) => update({ statusIds }))}{multiOptions('Régions', facets.regions.map((item) => ({ id: item.value ?? '', name: item.value ?? '', count: item.count })), filters.regions, (regions) => update({ regions }))}<details className="place-filter-group"><summary>Photos, coordonnées et sortie</summary><div>{boolControl('Photos', filters.hasPhotos, (hasPhotos) => update({ hasPhotos }))}{boolControl('Coordonnées valides', filters.hasValidCoordinates, (hasValidCoordinates) => update({ hasValidCoordinates }))}{boolControl('Présent dans une sortie', filters.inTrip, (inTrip) => update({ inTrip }))}</div></details><details className="place-filter-group"><summary>Dates et informations</summary><div><label>Créé à partir du<input type="date" value={filters.createdFrom ?? ''} onChange={(event) => update({ createdFrom: event.target.value || null })} /></label><label>Créé jusqu’au<input type="date" value={filters.createdTo ?? ''} onChange={(event) => update({ createdTo: event.target.value || null })} /></label><label>Modifié à partir du<input type="date" value={filters.updatedFrom ?? ''} onChange={(event) => update({ updatedFrom: event.target.value || null })} /></label><label>Modifié jusqu’au<input type="date" value={filters.updatedTo ?? ''} onChange={(event) => update({ updatedTo: event.target.value || null })} /></label></div></details></div>}</section>}
+    {selectionMode && <section className="place-bulk-bar" aria-label="Actions groupées"><strong>{selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}{hiddenSelected ? `, dont ${hiddenSelected} masqués` : ''}</strong><button type="button" onClick={togglePage}>{visible.length > 0 && visible.every((place) => selectedIds.has(place.id)) ? 'Désélectionner la page' : 'Sélectionner la page'}</button><button type="button" onClick={() => setSelectedIds(new Set())}>Tout désélectionner</button>{poiMap?.can_edit && <><select aria-label="Nouveau statut" value={bulkStatusId} onChange={(event) => setBulkStatusId(event.target.value)}><option value="">Changer le statut…</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select><button type="button" disabled={bulkBusy || !bulkStatusId || !selectedIds.size} onClick={() => void runBulk('set_status')}>Appliquer</button><select aria-label="Catégorie groupée" value={bulkCategoryId} onChange={(event) => setBulkCategoryId(event.target.value)}><option value="">Catégorie…</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><button type="button" disabled={bulkBusy || !bulkCategoryId || !selectedIds.size} onClick={() => void runBulk('add_category')}>Ajouter</button><button type="button" disabled={bulkBusy || !bulkCategoryId || !selectedIds.size} onClick={() => void runBulk('remove_category')}>Retirer</button><select aria-label="Tag groupé" value={bulkTagId} onChange={(event) => setBulkTagId(event.target.value)}><option value="">Tag…</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select><button type="button" disabled={bulkBusy || !bulkTagId || !selectedIds.size} onClick={() => void runBulk('add_tag')}>Ajouter</button><button type="button" disabled={bulkBusy || !bulkTagId || !selectedIds.size} onClick={() => void runBulk('remove_tag')}>Retirer</button><select aria-label="Sortie" value={tripId} onChange={(event) => setTripId(event.target.value)}><option value="">Ajouter à une sortie…</option>{trips.filter((trip) => trip.days.length > 0).map((trip) => <option key={trip.id} value={trip.id}>{trip.name}</option>)}</select>{selectedTrip && <select aria-label="Journée" value={dayId} onChange={(event) => setDayId(event.target.value)}><option value="">Journée…</option>{selectedTrip.days.map((day) => <option key={day.id} value={day.id}>Jour {day.day_number}</option>)}</select>}<button type="button" disabled={bulkBusy || !dayId || !selectedIds.size} onClick={() => void addToTrip()}>Ajouter à la sortie</button><button className="place-bulk-delete" type="button" disabled={bulkBusy || !selectedIds.size} onClick={() => void runBulk('delete')}><Trash2 size={15} />Supprimer</button></>}</section>}
+    {bulkError && <p className="form-alert" role="alert">{bulkError}</p>}{bulkNotice && <p className="form-success" role="status">{bulkNotice}</p>}<div className="place-list-body cv-workspace-panel__content">{!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}{loading && <p role="status">Chargement…</p>}{error && <p role="alert">{error}</p>}{visible.length > 0 && <ul className="country-place-list cv-workspace-panel__list">{visible.map((place) => { const primary = place.categories.find((item) => item.is_primary) ?? place.categories[0]; const inTrip = tripPlaceIds.has(place.id); return <li key={place.id}><div className="place-list-row">{selectionMode && <input className="place-list-select" type="checkbox" aria-label={`Sélectionner ${place.name}`} checked={selectedIds.has(place.id)} onChange={() => toggleSelected(place.id)} />}<button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className={`place-list-item cv-workspace-panel__card${place.id === selectedPlaceId ? ' selected' : ''}${inTrip ? ' trip-added' : ''}`} onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}><span className="place-list-category-bubble" style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primary?.icon} size={18} showLabel={false} ariaLabel={`Catégorie ${primary?.name ?? 'non définie'}, statut ${place.status.name}`} /></span><span className="place-list-item-content"><strong>{place.name}{inTrip && <small className="place-list-trip-badge">Ajouté</small>}</strong><span className="place-list-item-meta"><span>{place.status.name}</span>{primary && <><span aria-hidden="true">·</span><span>{primary.name}</span></>}</span>{place.tags.length > 0 && <span className="place-list-tags">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}</span>}</span></button></div></li> })}</ul>}{!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}{hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}</div>{importing && poiMap && <KmzImportDialog poiMap={poiMap} onClose={() => setImporting(false)} onImported={onImported} />}</aside>
 }

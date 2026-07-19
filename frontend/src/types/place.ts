@@ -32,16 +32,20 @@ export interface PlaceDetails {
 export interface PreviewPlace { id: string; name: string; longitude: number | null; latitude: number | null; status: MapStatusSummary; categories: MapCategory[]; tags: MapTag[] }
 export interface MapPlace extends PreviewPlace { map_id: string; longitude: number; latitude: number }
 export interface MapBounds { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }
+export interface PlaceFilters { query: string; categoryIds: string[]; tagIds: string[]; statusIds: string[]; regions: string[]; hasPhotos: boolean | null; createdFrom: string | null; createdTo: string | null; updatedFrom: string | null; updatedTo: string | null; accessValues: string[]; dangerLevels: string[]; conditionValues: string[]; hasValidCoordinates: boolean | null; inTrip: boolean | null }
 export interface MapView { center: [number, number]; zoom: number }
 export interface MapFocusRequest { id: number; view: MapView }
 export interface DraftPosition { latitude: number; longitude: number }
 export interface PlaceMutation { placeId: string; mapId: string }
-export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
+export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; filters?: PlaceFilters; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
 export interface MapPlaceResult { items: MapPlace[]; total: number; returned: number; truncated: boolean }
-export interface PlaceListQuery { mapId?: string; statusId?: string; q?: string; limit?: number; offset?: number }
+export interface PlaceListQuery { mapId?: string; filters?: PlaceFilters; statusId?: string; q?: string; limit?: number; offset?: number }
 export type PlaceBulkAction = 'set_status' | 'add_category' | 'remove_category' | 'add_tag' | 'remove_tag' | 'delete'
 export interface PlaceBulkPayload { place_ids: string[]; action: PlaceBulkAction; status_id?: string; category_id?: string; tag_id?: string }
 export interface PlaceBulkResult { selected_count: number; updated_count: number; unchanged_count: number; deleted_count: number }
+export interface PlaceFacetItem { id: string; name: string; count: number; icon?: string; color?: string; value?: string }
+export interface PlaceFacets { categories: PlaceFacetItem[]; tags: PlaceFacetItem[]; statuses: PlaceFacetItem[]; regions: PlaceFacetItem[]; access_values: PlaceFacetItem[]; danger_levels: PlaceFacetItem[]; condition_values: PlaceFacetItem[]; with_photos: number; without_photos: number; with_coordinates: number; without_coordinates: number; in_trip: number; not_in_trip: number }
+export interface PlaceBulkTripResult { selected_count: number; added_count: number; duplicate_count: number }
 
 interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null; custom_fields?: Record<string, unknown> }
 export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number }

@@ -2748,6 +2748,18 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 .place-bulk-bar button, .place-bulk-bar select { background: white; border: 1px solid #d6dee8; border-radius: .45rem; color: var(--cv-color-slate); font: inherit; font-size: .76rem; min-height: 2rem; padding: .35rem .55rem; }
 .place-bulk-bar button:hover:not(:disabled) { border-color: var(--cv-color-teal); color: var(--cv-color-teal); }
 .place-bulk-bar .place-bulk-delete:hover:not(:disabled) { border-color: #dc2626; color: #dc2626; }
+.place-list-filters { align-items: center; display: flex; gap: .45rem; margin-top: .55rem; }
+.place-list-filters button { align-items: center; background: white; border: 1px solid #d6dee8; border-radius: .5rem; color: var(--cv-color-slate); display: inline-flex; font: inherit; font-size: .78rem; gap: .3rem; min-height: 2.2rem; padding: .35rem .6rem; }
+.place-list-filters button.is-active { background: color-mix(in srgb, var(--cv-color-teal) 12%, white); border-color: var(--cv-color-teal); color: var(--cv-color-teal); }
+.place-filter-drawer { background: var(--cv-color-mist); border: 1px solid #dce4ec; border-radius: var(--cv-radius-sm); display: grid; gap: .45rem; margin-top: .6rem; max-height: 48vh; overflow: auto; padding: .55rem; }
+.place-filter-group { background: white; border: 1px solid #dce4ec; border-radius: .5rem; }
+.place-filter-group summary { color: var(--cv-color-navy); cursor: pointer; font-size: .8rem; font-weight: 700; padding: .6rem .7rem; }
+.place-filter-group > div { display: grid; gap: .35rem; padding: 0 .7rem .7rem; }
+.place-filter-group label { align-items: center; color: var(--cv-color-slate); display: flex; font-size: .76rem; gap: .45rem; justify-content: flex-start; }
+.place-filter-group label small { color: var(--cv-color-gray); margin-left: auto; }
+.place-filter-group label i { border-radius: 50%; height: .65rem; width: .65rem; }
+.place-filter-group input[type="date"], .place-filter-group select { min-width: 0; }
+.place-filter-option { min-height: 1.6rem; }
 .place-list-row { align-items: center; display: flex; gap: .45rem; }
 .place-list-row .place-list-item { flex: 1; min-width: 0; }
 .place-list-select { accent-color: var(--cv-color-teal); block-size: 1rem; flex: 0 0 auto; inline-size: 1rem; margin-left: .35rem; }
