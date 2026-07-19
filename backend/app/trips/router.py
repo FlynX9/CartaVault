@@ -9,6 +9,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
+from app.auth.credential_encryption import CredentialEncryptionService
 from app.auth.models import User
 from app.auth.permissions import require_map_role
 from app.database import get_db
@@ -29,10 +30,10 @@ from app.trips.summary_service import day_summary, trip_summary
 router = APIRouter(tags=["trips"])
 
 
-def get_routing_provider(user: User = Depends(get_current_user)) -> RoutingProvider:
+def get_routing_provider(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> RoutingProvider:
     preferences = routing_preferences(user.preferences)
     try:
-        return routing_provider_registry.resolve(str(preferences["provider"]), preferences, rate_limit_key=str(user.id))
+        return routing_provider_registry.resolve(session, user, str(preferences["provider"]), preferences)
     except RoutingError as error:
         raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
 
@@ -42,8 +43,8 @@ def _routing_constraints(user: User) -> RoutingConstraints:
 
 
 @router.get("/routing/providers")
-def routing_providers(user: User = Depends(get_current_user)) -> dict[str, object]:
-    return {"providers": routing_provider_registry.capabilities(), "default_provider": "osrm"}
+def routing_providers(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
+    return {"providers": routing_provider_registry.capabilities(session, user), "default_provider": "osrm", "credential_storage_available": CredentialEncryptionService.configured()}
 
 
 def _day_constraint_summary(session: Session, user: User, day: TripDay) -> dict[str, object]:

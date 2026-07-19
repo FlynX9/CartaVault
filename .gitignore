@@ -22,8 +22,7 @@ backend/storage/
 
 # Pytest
 /.pytest_tmp*/
-backend/.pytest_tmp*/
-backend/.pytest_cache*/
+backend/.pytest_*/
 
 # Test coverage reports
 .coverage

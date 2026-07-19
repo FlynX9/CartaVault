@@ -157,7 +157,7 @@ export async function getJson(
 
 export async function sendJson(
   path: string,
-  method: 'POST' | 'PATCH' | 'PUT',
+  method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
   body: unknown,
   signal?: AbortSignal,
 ): Promise<unknown> {

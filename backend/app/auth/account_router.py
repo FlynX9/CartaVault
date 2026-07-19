@@ -11,12 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
-from app.auth.models import User, UserSession
+from app.auth.models import User, UserApiCredential, UserSession
 from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
 from app.auth.security import hash_password, normalize_email, verify_password
 from app.config import security_settings
 from app.database import get_db
-from app.config import google_routes_settings
 from app.exports.temporary_exports import remove_for_user
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 
@@ -58,8 +57,10 @@ def preferences(current: UserSession = Depends(get_current_session)) -> dict[str
 
 @router.put("/preferences")
 def update_preferences(data: AccountPreferences, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
-    if data.routing.provider == "google" and not google_routes_settings.available:
-        raise HTTPException(409, {"code": "ROUTING_PROVIDER_UNAVAILABLE", "message": "Le moteur Google Routes n’est pas configuré sur ce serveur."})
+    if data.routing.provider == "google":
+        credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_routes"))
+        if credential is None or credential.verified_at is None:
+            raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé Google Routes avant de sélectionner ce moteur."})
     current.user.preferences = data.model_dump()
     database_session.commit()
     return _preferences(current.user)
@@ -147,6 +148,7 @@ def delete_account(data: AccountDelete, response: Response, database_session: Se
     now = datetime.now(UTC).replace(tzinfo=None); old_avatar = user.avatar_filename
     database_session.execute(update(UserSession).where(UserSession.user_id == user.id).values(revoked_at=now))
     database_session.execute(delete(MapMembership).where(MapMembership.user_id == user.id))
+    database_session.execute(delete(UserApiCredential).where(UserApiCredential.user_id == user.id))
     database_session.execute(update(MapInvitation).where(MapInvitation.email == user.email, MapInvitation.accepted_at.is_(None)).values(revoked_at=now))
     user.display_name = "Utilisateur supprimé"; user.email = f"deleted-{user.id}@invalid.local"; user.is_active = False; user.is_admin = False; user.deleted_at = now; user.avatar_filename = None; user.avatar_updated_at = now
     database_session.commit(); delete_avatar(old_avatar); remove_for_user(user.id)

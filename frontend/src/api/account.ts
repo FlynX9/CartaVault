@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { AccountPreferences, AccountProfile, AccountSession } from '../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus } from '../types/account'
 
 export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
 
@@ -18,3 +18,7 @@ export async function deleteOwnAccount(current_password: string, confirmation: s
 export async function getAccountPreferences(signal?: AbortSignal): Promise<AccountPreferences> { return getJson('/account/preferences', new URLSearchParams(), signal) as Promise<AccountPreferences> }
 export async function updateAccountPreferences(preferences: AccountPreferences): Promise<AccountPreferences> { return sendJson('/account/preferences', 'PUT', preferences) as Promise<AccountPreferences> }
 export async function resetAccountPreferences(): Promise<AccountPreferences> { return sendJson('/account/preferences/reset', 'POST', {}) as Promise<AccountPreferences> }
+export async function getGoogleRoutesCredential(signal?: AbortSignal): Promise<GoogleRoutesCredentialStatus> { return getJson('/account/integrations/google-routes', new URLSearchParams(), signal) as Promise<GoogleRoutesCredentialStatus> }
+export async function storeGoogleRoutesCredential(apiKey: string): Promise<GoogleRoutesCredentialStatus> { return sendJson('/account/integrations/google-routes', 'PUT', { api_key: apiKey }) as Promise<GoogleRoutesCredentialStatus> }
+export async function verifyGoogleRoutesCredential(): Promise<GoogleRoutesCredentialStatus> { return sendJson('/account/integrations/google-routes/verify', 'POST', {}) as Promise<GoogleRoutesCredentialStatus> }
+export async function deleteGoogleRoutesCredential(currentPassword: string): Promise<GoogleRoutesCredentialDeletion> { return sendJson('/account/integrations/google-routes', 'DELETE', { current_password: currentPassword }) as Promise<GoogleRoutesCredentialDeletion> }

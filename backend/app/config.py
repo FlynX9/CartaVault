@@ -62,7 +62,6 @@ routing_settings = RoutingSettings()
 
 @dataclass(frozen=True)
 class GoogleRoutesSettings:
-    api_key: str = os.getenv("GOOGLE_MAPS_ROUTES_API_KEY", "").strip()
     base_url: str = os.getenv("GOOGLE_MAPS_ROUTES_BASE_URL", "https://routes.googleapis.com")
     timeout_seconds: int = _positive_int("GOOGLE_MAPS_ROUTES_TIMEOUT_SECONDS", 15)
     connect_timeout_seconds: int = _positive_int("GOOGLE_MAPS_ROUTES_CONNECT_TIMEOUT_SECONDS", 5)
@@ -75,9 +74,13 @@ class GoogleRoutesSettings:
         if self.routing_preference not in {"TRAFFIC_UNAWARE", "TRAFFIC_AWARE", "TRAFFIC_AWARE_OPTIMAL"}:
             raise RuntimeError("GOOGLE_MAPS_ROUTING_PREFERENCE is invalid")
 
-    @property
-    def available(self) -> bool:
-        return bool(self.api_key)
-
-
 google_routes_settings = GoogleRoutesSettings()
+legacy_google_routes_api_key_configured = bool(os.getenv("GOOGLE_MAPS_ROUTES_API_KEY", "").strip())
+
+
+@dataclass(frozen=True)
+class CredentialSettings:
+    encryption_key: str = os.getenv("CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY", "").strip()
+
+
+credential_settings = CredentialSettings()

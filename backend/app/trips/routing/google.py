@@ -75,14 +75,17 @@ class GoogleRoutesProvider(RoutingProvider):
     supports_waypoint_optimization = True
     max_intermediates = 25
 
-    def __init__(self, settings: GoogleRoutesSettings | None = None, before_request: Callable[[], None] | None = None):
+    def __init__(self, api_key: str, settings: GoogleRoutesSettings | None = None, before_request: Callable[[], None] | None = None, on_success: Callable[[], None] | None = None, on_error: Callable[[str], None] | None = None):
+        if not api_key:
+            raise RoutingError("Aucune clé Google Routes personnelle n’est configurée.", "ROUTING_PROVIDER_UNAVAILABLE")
+        self._api_key = api_key
         self.settings = settings or google_routes_settings
         self.before_request = before_request
+        self.on_success = on_success
+        self.on_error = on_error
         parts = urlsplit(self.settings.base_url)
         if parts.scheme != "https" or not parts.hostname or parts.username or parts.password or parts.query or parts.fragment:
             raise RuntimeError("GOOGLE_MAPS_ROUTES_BASE_URL must be a fixed HTTPS service URL")
-        if not self.settings.api_key:
-            raise RoutingError("Le moteur Google Routes n’est pas configuré sur ce serveur.", "ROUTING_PROVIDER_UNAVAILABLE")
 
     def calculate_route(self, coordinates: list[Coordinate], profile: str = "driving") -> RouteResult:
         return self._logged_compute(coordinates, profile, optimize=False)[0]
@@ -102,8 +105,12 @@ class GoogleRoutesProvider(RoutingProvider):
         try:
             result = self._compute(coordinates, profile, optimize=optimize)
         except RoutingError as error:
+            if self.on_error:
+                self.on_error(error.code)
             logger.warning("Google routing failed type=%s waypoints=%d code=%s elapsed_ms=%d", "optimize" if optimize else "route", len(coordinates), error.code, round((perf_counter() - started) * 1000))
             raise
+        if self.on_success:
+            self.on_success()
         logger.info("Google routing succeeded type=%s waypoints=%d elapsed_ms=%d", "optimize" if optimize else "route", len(coordinates), round((perf_counter() - started) * 1000))
         return result
 
@@ -157,7 +164,7 @@ class GoogleRoutesProvider(RoutingProvider):
         request = Request(
             f"{self.settings.base_url.rstrip('/')}/directions/v2:computeRoutes",
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
-            headers={"Content-Type": "application/json", "X-Goog-Api-Key": self.settings.api_key, "X-Goog-FieldMask": field_mask, "User-Agent": "CartaVault/1"},
+            headers={"Content-Type": "application/json", "X-Goog-Api-Key": self._api_key, "X-Goog-FieldMask": field_mask, "User-Agent": "CartaVault/1"},
             method="POST",
         )
         try:
@@ -166,8 +173,10 @@ class GoogleRoutesProvider(RoutingProvider):
                     raise RoutingError("Google Routes a refusé la requête.", "GOOGLE_ROUTES_PROVIDER_ERROR")
                 result = json.loads(response.read(8 * 1024 * 1024))
         except HTTPError as error:
+            body = error.read(64 * 1024).decode("utf-8", errors="replace") if error.fp else ""
             if error.code in {401, 403}:
-                raise RoutingError("Google Routes a refusé l’authentification du serveur.", "GOOGLE_ROUTES_AUTH_ERROR") from error
+                code, message = self._access_error(body)
+                raise RoutingError(message, code) from error
             if error.code == 429:
                 raise RoutingError("Le quota Google Routes est temporairement dépassé.", "GOOGLE_ROUTES_QUOTA_EXCEEDED") from error
             raise RoutingError("Google Routes est temporairement indisponible.", "GOOGLE_ROUTES_PROVIDER_ERROR") from error
@@ -178,6 +187,17 @@ class GoogleRoutesProvider(RoutingProvider):
         if not isinstance(result, dict):
             raise RoutingError("Google Routes a retourné une réponse invalide.", "GOOGLE_ROUTES_INVALID_RESPONSE")
         return result
+
+    @staticmethod
+    def _access_error(body: str) -> tuple[str, str]:
+        normalized = body.lower()
+        if "billing" in normalized:
+            return "GOOGLE_ROUTES_BILLING_REQUIRED", "La facturation Google Cloud n’est pas active pour cette clé."
+        if "not been used" in normalized or "not enabled" in normalized or "api has not been used" in normalized:
+            return "GOOGLE_ROUTES_API_DISABLED", "Google Routes API n’est pas activée pour cette clé."
+        if "ip" in normalized and ("restrict" in normalized or "address" in normalized):
+            return "GOOGLE_ROUTES_KEY_RESTRICTED", "Les restrictions de la clé Google Routes refusent ce serveur."
+        return "GOOGLE_ROUTES_AUTH_ERROR", "Votre clé Google Routes a été refusée. Vérifiez sa configuration ou remplacez-la."
 
     def _validate(self, coordinates: list[Coordinate], profile: str, optimize: bool) -> None:
         if profile != "driving":

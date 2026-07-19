@@ -1,11 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
-from types import SimpleNamespace
-
 import pytest
 from sqlalchemy import select
 
-from app.auth.models import User, UserSession
+from app.auth.models import User, UserApiCredential, UserSession
 
 pytestmark = pytest.mark.integration
 
@@ -83,8 +81,17 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
         headers=headers,
     )
     assert unavailable.status_code == 409
-    assert unavailable.json()["detail"]["code"] == "ROUTING_PROVIDER_UNAVAILABLE"
-    monkeypatch.setattr("app.auth.account_router.google_routes_settings", SimpleNamespace(available=True))
+    assert unavailable.json()["detail"]["code"] == "ROUTING_CREDENTIAL_NOT_VERIFIED"
+    credential = UserApiCredential(
+        user_id=auth_user.id,
+        provider="google_routes",
+        encrypted_secret="test-ciphertext",
+        encryption_version=1,
+        secret_last4="fake",
+        verified_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+    database_session.add(credential)
+    database_session.flush()
     google = integration_client.put(
         "/account/preferences",
         json={**updated.json(), "routing": {**updated.json()["routing"], "provider": "google", "avoid_tolls": True}},

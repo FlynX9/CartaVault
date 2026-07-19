@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 import app.models  # noqa: F401
 from app.auth.admin_router import router as admin_users_router
 from app.auth.account_router import router as account_router
+from app.auth.credential_router import router as credential_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
@@ -28,6 +30,10 @@ from app.places.router import router as places_router
 from app.statuses.router import router as statuses_router
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
+from app.config import legacy_google_routes_api_key_configured
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_CORS_ALLOWED_ORIGINS = (
@@ -72,6 +78,8 @@ def validate_startup_security_state(session: Session) -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if legacy_google_routes_api_key_configured:
+        logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
         try:
             with SessionLocal() as session:
@@ -98,6 +106,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(account_router)
+app.include_router(credential_router)
 app.include_router(invitations_router)
 app.include_router(admin_users_router)
 app.include_router(places_map_router)

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,6 +37,7 @@ class User(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    api_credentials: Mapped[list["UserApiCredential"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     owned_maps: Mapped[list["PoiMap"]] = relationship(back_populates="owner", foreign_keys="PoiMap.owner_id")
     memberships: Mapped[list["MapMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     created_invitations: Mapped[list["MapInvitation"]] = relationship(back_populates="created_by", foreign_keys="MapInvitation.created_by_user_id")
@@ -62,3 +63,27 @@ class UserSession(Base):
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class UserApiCredential(Base):
+    __tablename__ = "user_api_credentials"
+    __table_args__ = (
+        UniqueConstraint("user_id", "provider", name="user_api_credentials_user_provider_key"),
+        CheckConstraint("provider IN ('google_routes')", name="user_api_credentials_provider_check"),
+        CheckConstraint("encryption_version > 0", name="user_api_credentials_encryption_version_check"),
+        Index("user_api_credentials_user_id_idx", "user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    encrypted_secret: Mapped[str] = mapped_column(Text, nullable=False)
+    encryption_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    secret_last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="api_credentials")
