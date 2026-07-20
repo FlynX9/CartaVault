@@ -1,135 +1,168 @@
 # CartaVault
 
-Le bouton utilisateur CartaVault ouvre un espace Compte superposé sans démonter la carte : profil, sécurité, sessions, préférences locales et zone sensible. Le changement d’e-mail est immédiat après confirmation du mot de passe, car aucune validation par e-mail n’est encore disponible. La 2FA n’est pas proposée dans cette version.
+CartaVault est une application cartographique **open source et auto-hébergeable** permettant de centraliser des points d’intérêt, organiser des cartes privées, préparer des sorties et conserver la maîtrise de ses données.
 
-## Accès multi-utilisateur CartaVault
+Le projet associe une API **FastAPI**, une base **PostgreSQL/PostGIS** et une interface **React TypeScript** construite autour d’une carte Leaflet permanente.
 
-CartaVault utilise désormais des cartes privées et des sessions serveur. Chaque
-carte possède exactement un propriétaire et peut être partagée avec des membres
-`editor` ou `viewer`. Les administrateurs globaux peuvent gérer les utilisateurs
-et intervenir sur toutes les cartes. Il n’existe ni inscription publique, ni
-carte publique, ni envoi automatique d’e-mail pour les invitations.
+> **État du projet :** développement actif. Certaines procédures de déploiement et de migration peuvent encore évoluer avant la première version stable.
 
-Avant la première ouverture d’une instance mise à niveau, sauvegardez la base,
-appliquez la première migration de sécurité, créez le premier administrateur avec
-`python -m app.cli create-admin`, puis appliquez la migration finale. La procédure
-détaillée et les variables de sécurité figurent dans `backend/README.md`.
+## Aperçu
 
-## Photos des POI
+<p align="center">
+  <img src="docs/Screenshots/Lieux.png" alt="Gestion des lieux dans CartaVault" width="100%">
+</p>
 
-Les photos utilisent le stockage sécurisé existant. L’édition d’un POI permet
-l’upload multiple, la photo principale, l’ordre et la suppression.
+<p align="center">
+  <img src="docs/Screenshots/Sorties.png" alt="Planification des sorties dans CartaVault" width="100%">
+</p>
 
-## Import KMZ
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/Screenshots/Categories.png" alt="Gestion des catégories CartaVault">
+    </td>
+    <td width="50%">
+      <img src="docs/Screenshots/Status.png" alt="Gestion des statuts CartaVault">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Catégories et pictogrammes</strong></td>
+    <td align="center"><strong>Statuts de suivi</strong></td>
+  </tr>
+</table>
 
-Le panneau **Lieux** propose un import KMZ en deux étapes : l’archive est d’abord
-analysée, puis les points sélectionnés sont explicitement confirmés. Les
-`Placemark` de type `Point`, leurs `ExtendedData` et les images JPEG, PNG ou
-WebP embarquées sont pris en charge. Les champs non mappés sont conservés dans
-`places.custom_fields`, sans être concaténés à la description. L’archive est
-contrôlée (ZIP, taille, ratio, chemins, liens et archives imbriquées) et aucun
-HTML brut ou fichier externe n’est rendu.
+<p align="center">
+  <img src="docs/Screenshots/Profil%20Utilisateur.png" alt="Espace compte et profil utilisateur CartaVault" width="760">
+</p>
 
-L’analyse accepte jusqu’à 500 références d’images uniques. Lors de la
-confirmation, les URL identiques sont téléchargées une seule fois, les images
-sont enregistrées progressivement et une image indisponible n’annule jamais la
-création des POI. La modale affiche l’avancement détaillé de l’opération.
-Un doublon exige le même nom normalisé et exactement les mêmes coordonnées ;
-l’aperçu distingue les répétitions internes du KMZ des POI déjà présents sur
-la carte et permet, si nécessaire, de forcer tous les doublons valides.
+## Fonctionnalités principales
 
-## Statuts de suivi configurables
+### Cartes et lieux
 
-La couleur d’un marqueur provient exclusivement du statut. Son pictogramme provient de la catégorie principale du POI : une seule peut être principale, la première association est choisie automatiquement et son retrait promeut la catégorie restante au plus petit UUID. Les icônes sont des identifiants d’un catalogue fermé ; aucune URL ni aucun SVG arbitraire n’est stocké.
+- création et gestion de cartes privées associées à un pays ;
+- affichage cartographique des POI avec chargement limité à l’emprise visible ;
+- clustering local des marqueurs standards ;
+- création d’un lieu depuis la carte, la recherche géographique ou des coordonnées GPS ;
+- fiche enrichie avec description, coordonnées, catégories, tags, statut, photos et liens ;
+- champs facultatifs configurables par carte ;
+- favoris, notes avant et après visite, tri et filtres avancés ;
+- corbeille, restauration et historique d’audit ;
+- lien direct vers Google Maps lorsque les coordonnées sont disponibles.
 
-La carte comporte une légende compacte des statuts actifs, qui affiche le nom associé à chaque couleur de marqueur. Son fond est sélectionnable sans recharger Leaflet : CartaVault Light et Dark (Stadia Alidade Smooth), Satellite (Alidade Satellite) ou OpenStreetMap Standard. Le choix est local au navigateur (`cartavault.basemap`). Pour Stadia hors localhost, configurer `VITE_STADIA_MAPS_API_KEY` dans `frontend/.env` ou l'authentification par domaine; les variables `VITE_*` sont exposées au navigateur et ne doivent contenir qu'une clé restreinte.
+### Catégories, icônes, tags et statuts
 
-Chaque POI possède un statut de suivi administrable (`À faire`, `Fait`, etc.). Sa couleur hexadécimale pilote directement le marqueur et le filtre `status` de l’URL est appliqué à la carte comme à la liste. Le statut de suivi est distinct de `condition`, qui décrit l’état physique du lieu. Les pictogrammes par catégorie restent hors périmètre.
+- gestion complète des catégories, tags et statuts ;
+- catalogue local fermé de **300 icônes de catégories**, partagé entre le frontend et le backend ;
+- aucune URL, aucun SVG arbitraire et aucun appel réseau pour les pictogrammes ;
+- catégorie principale utilisée pour le pictogramme du marqueur ;
+- statut utilisé pour sa couleur ;
+- légende compacte des statuts actifs ;
+- distinction entre le statut de suivi et l’état physique du lieu.
 
-## Catalogue partagé des icônes de catégories
+### Photos
 
-`shared/category-icons.json` est la source de vérité commune au frontend et au backend. Il contient 80 identifiants Iconify qualifiés, validés au chargement côté API et résolus localement côté frontend, sans URL, SVG arbitraire ni appel réseau. Les nouvelles catégories utilisent `material-symbols:location-on-outline` par défaut et n’acceptent que les identifiants du catalogue; `material-symbols:help-outline` est le fallback.
+- ajout multiple de photos JPEG, PNG et WebP ;
+- sélection de la photo principale ;
+- réorganisation et suppression ;
+- stockage local sécurisé distinct des avatars utilisateurs.
 
-La migration Alembic `f3a7c1d9e842` convertit les 17 identifiants Lucide historiques vers ce catalogue et remplace les valeurs inconnues par le défaut Iconify. Les identifiants Iconify déjà valides sont conservés. Son downgrade est volontairement destructif pour les nouvelles icônes sans équivalent Lucide : elles deviennent `map-pin`. Il ne doit jamais être exécuté sur `poi_manager`.
+### Import et export
 
-## Pays, cartes et POI
+- import KML/KMZ en deux étapes avec prévisualisation et confirmation ;
+- prise en charge des `Placemark` de type `Point`, des `ExtendedData` et des images embarquées ;
+- contrôle des archives, chemins, tailles, liens et doublons ;
+- conservation des champs non mappés dans les champs personnalisés ;
+- export des sorties vers Google Maps, GPX et KMZ.
 
-Le domaine suit la relation normalisée `countries → poi_maps → places`. Le
-catalogue des pays alimente « Créer une carte », tandis que le sélecteur
-principal n'affiche que les cartes effectivement créées. Chaque POI appartient
-obligatoirement à une carte par `map_id`; son pays est déduit de cette carte et
-n'est plus stocké comme texte libre.
+### Préparation de sorties
 
-La V1 impose une seule carte par pays. Une carte contenant des POI ne peut pas
-être supprimée et aucune cascade destructive n'est configurée.
+- sorties composées de plusieurs journées ;
+- étapes liées à un POI ou ajoutées librement ;
+- ajout et réorganisation par glisser-déposer ;
+- hébergement entre deux journées ;
+- calcul séparé de la distance, du temps de conduite, des visites, des tampons et de la marge de sécurité ;
+- départ recommandé ou arrivée estimée ;
+- seuils personnalisables de charge journalière ;
+- optimisation d’ordre facultative, toujours soumise à validation ;
+- couleur de tracé par journée ;
+- signalement des itinéraires obsolètes ou partiels.
 
-## Interface cartographique type My Maps
+### Routage
 
-Le frontend utilise désormais un shell CartaVault : navigation compacte sombre,
-barre supérieure claire, panneau de POI latéral et carte centrale. Cette première
-étape ne modifie ni les routes, ni les appels API, ni les composants métier.
+CartaVault utilise **OSRM** par défaut et peut utiliser **Google Routes API** comme moteur alternatif.
 
-Une seconde passe visuelle harmonise les panneaux, popup et contrôles de carte
-sans changer les contrats métier ni l'API.
+- choix du moteur dans les préférences du compte ;
+- clé Google propre à chaque utilisateur ;
+- chiffrement côté serveur avec une clé maîtresse Fernet ;
+- clé utilisateur jamais renvoyée au navigateur ;
+- quotas et erreurs isolés par utilisateur ;
+- retour automatique à OSRM après suppression des identifiants Google ;
+- option « Rester dans le pays » avec contrôle de la géométrie calculée.
 
-La recherche géographique est distincte de la recherche textuelle des POI :
-elle interroge Stadia Maps seulement après une action explicite de l'utilisateur
-et accepte aussi les coordonnées GPS. Les résultats servent à recentrer la
-carte et à préremplir une création de POI sans enregistrement automatique.
+### Multi-utilisateur et permissions
 
-La carte reste visible pendant toutes les opérations. La liste fixe gauche
-affiche les POI de la carte active; un clic dans la liste ou sur un marqueur
-ouvre une infobulle enrichie ancrée au marqueur avec détails, catégories, tags,
-coordonnées et photos. Les actions modifier, supprimer, Google Maps et fermer
-sont directement disponibles dans cette fiche.
+- authentification avec sessions serveur ;
+- cartes privées ;
+- un propriétaire par carte ;
+- membres avec rôles `viewer` ou `editor` ;
+- administrateurs globaux ;
+- droits appliqués aux cartes, lieux et sorties ;
+- espace Compte pour le profil, l’avatar, la sécurité, les sessions, les préférences et la suppression ou l’anonymisation du compte.
 
-La création et l'édition utilisent le formulaire existant dans un panneau
-flottant au-dessus de la carte. Les URLs `/places/:id`, `/places/:id/edit` et
-`/places/new` restent partageables sans produire de page de consultation
-isolée. Sur mobile, la liste est escamotable et le formulaire devient un
-panneau inférieur afin de conserver la carte visible.
+Il n’existe actuellement ni inscription publique, ni carte publique, ni envoi automatique d’e-mail pour les invitations.
 
-CartaVault est un projet auto-hébergé de gestion de points d'intérêt (POI)
-géographiques. Le backend fournit une API FastAPI synchrone adossée à
-PostgreSQL/PostGIS. Une première interface React affiche les POI visibles sur
-une carte interactive Leaflet alimentée par OpenStreetMap.
+### Fonds cartographiques
 
-## Fonctionnalités actuelles
+Le fond peut être changé sans recharger la carte :
 
-- CRUD des POI avec coordonnées géographiques PostGIS ;
-- recherche textuelle, filtres par pays, région, catégorie et tag ;
-- filtrage des POI par zone géographique visible ;
-- endpoint léger `GET /places/map` pour les marqueurs cartographiques ;
-- frontend React TypeScript avec carte permanente, sélection du pays, liste synchronisée des POI, volet latéral de gestion et administration des catégories et tags ;
-- CRUD des catégories et association avec les POI ;
-- CRUD des tags et association avec les POI ;
-- métadonnées photo, upload sécurisé JPEG, PNG et WebP ;
-- téléchargement et suppression des fichiers photo ;
-- suivi du schéma avec Alembic ;
-- tests unitaires et d'intégration avec pytest.
+- CartaVault Light ;
+- CartaVault Dark ;
+- Satellite ;
+- OpenStreetMap Standard.
+
+Les fonds CartaVault utilisent Stadia Maps. Hors environnement local, configurez une clé restreinte avec `VITE_STADIA_MAPS_API_KEY` ou une authentification par domaine.
 
 ## Architecture
 
 ```text
-poi-manager/
+CartaVault/
 ├── backend/
-│   ├── app/            # API organisée par fonctionnalité
-│   ├── migrations/     # environnement et révisions Alembic
-│   ├── storage/        # stockage photo local
-│   └── tests/          # tests pytest
+│   ├── app/                 # API FastAPI organisée par fonctionnalité
+│   ├── migrations/          # migrations Alembic
+│   ├── storage/             # stockage local des fichiers
+│   └── tests/               # tests backend
 ├── database/
-│   └── init/           # initialisation SQL du conteneur PostgreSQL
-├── frontend/           # application Vite, React TypeScript et Leaflet
+│   └── init/                # initialisation PostgreSQL/PostGIS
+├── docs/
+│   └── Screenshots/         # captures d’écran du projet
+├── frontend/                # Vite, React, TypeScript et Leaflet
+├── shared/                  # ressources partagées frontend/backend
 ├── docker-compose.yml
+├── LICENSE
 └── README.md
 ```
 
-La documentation technique détaillée se trouve dans
-[`backend/README.md`](backend/README.md).
+La documentation technique détaillée du backend se trouve dans [`backend/README.md`](backend/README.md).
+
+## Stack technique
+
+- **Frontend :** React, TypeScript, Vite, Leaflet ;
+- **Backend :** FastAPI, SQLAlchemy, GeoAlchemy2 ;
+- **Base de données :** PostgreSQL et PostGIS ;
+- **Migrations :** Alembic ;
+- **Tests :** pytest et tests frontend automatisés ;
+- **Déploiement local :** Docker Compose.
 
 ## Démarrage rapide sous Windows
 
-Prérequis : Python 3.14, Docker Desktop avec Docker Compose et Git.
+### Prérequis
+
+- Git ;
+- Docker Desktop avec Docker Compose ;
+- Python 3.14 ;
+- Node.js et npm.
+
+### Base de données et backend
 
 Depuis la racine du dépôt :
 
@@ -142,22 +175,22 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Dans `.env`, remplacez la valeur d'exemple de `DATABASE_URL` par les
-identifiants configurés dans `docker-compose.yml`. Ne versionnez pas ce
-fichier.
+Renseignez ensuite les variables nécessaires dans `backend/.env`, notamment `DATABASE_URL`. Ne versionnez jamais ce fichier.
 
-Le conteneur initialise le schéma avec `database/init` lors de la création
-d'un volume vide. Sur cette base initialisée, appliquez ensuite les révisions
-Alembic et démarrez l'API depuis `backend` :
+Appliquez les migrations puis démarrez l’API :
 
 ```powershell
 python -m alembic upgrade head
 python -m uvicorn app.main:app --reload
 ```
 
-Swagger est alors disponible sur <http://127.0.0.1:8000/docs>.
+Swagger est disponible sur <http://127.0.0.1:8000/docs>.
 
-Dans un second terminal, démarrez le frontend :
+> La baseline Alembic initiale représente un schéma préexistant. Pour une base entièrement vide, utilisez la procédure Docker fournie avec le projet.
+
+### Frontend
+
+Dans un second terminal :
 
 ```powershell
 Set-Location frontend
@@ -166,99 +199,66 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Vite affiche l'URL locale, généralement <http://localhost:5173>.
+Vite affiche l’adresse locale, généralement <http://localhost:5173>.
 
-> La baseline Alembic initiale représente un schéma préexistant et ne crée
-> aucune table. `alembic upgrade head` ne suffit donc pas, à lui seul, à
-> reconstruire une base entièrement vide hors de la procédure Docker fournie.
+## Configuration de Google Routes
+
+Chaque utilisateur peut enregistrer sa propre clé Google Routes depuis son espace Compte. L’instance doit également définir une clé maîtresse de chiffrement :
+
+```text
+CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY=<clé-fernet>
+```
+
+Pour en générer une :
+
+```powershell
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Cette valeur doit être conservée dans un secret de déploiement ou un fichier `.env` non versionné. Sa perte rend les clés Google déjà enregistrées indéchiffrables.
+
+La clé Google doit être restreinte à Routes API et, lorsque cela est possible, aux adresses IP du serveur. Activez également des quotas et des alertes budgétaires dans Google Cloud.
+
+## Sécurité
+
+Avant de publier ou déployer le projet :
+
+- ne versionnez aucun fichier `.env` ;
+- ne stockez aucune clé API, aucun mot de passe ni secret Docker dans Git ;
+- sauvegardez la base avant toute migration ;
+- utilisez des clés de chiffrement et secrets distincts par environnement ;
+- configurez des restrictions sur les clés Stadia Maps et Google Routes ;
+- vérifiez également l’historique Git avant de rendre un dépôt public.
 
 ## État du projet
 
-CartaVault est actuellement en développement actif.
+CartaVault est actuellement utilisable en développement local et couvre déjà :
 
-Fonctionnalités disponibles :
-- gestion des cartes ;
-- gestion des lieux ;
-- photos ;
-- catégories et tags ;
-- import/export KMZ ;
-- utilisateurs et permissions ;
-- préparation de sorties ;
-- itinéraires OSRM ;
-- optimisation des journées.
+- les cartes et lieux ;
+- les catégories, tags, statuts et 300 icônes locales ;
+- les photos ;
+- l’import KML/KMZ ;
+- les utilisateurs, rôles et permissions ;
+- la préparation et l’optimisation des sorties ;
+- le routage OSRM et Google Routes ;
+- les filtres avancés et actions groupées ;
+- la corbeille et l’historique des lieux ;
+- l’espace Compte et les préférences utilisateur.
 
-Fonctionnalités encore en développement :
-- espace Compte complet ;
-- clustering ;
-- collections ;
-- actions groupées ;
-- déploiement de production.
+Les principaux travaux restant avant une version stable concernent notamment :
 
-Le backend couvre la gestion des POI, catégories, tags et photos. Le frontend
-conserve la carte visible, filtre les marqueurs par pays et affiche une liste
-alphabétique recherchable synchronisée avec la carte. Le pays actif est
-partageable dans l'URL et déclenche un recentrage adapté. Un volet latéral affiche l'aperçu, la fiche
-détaillée, les photos ainsi que les formulaires de création et de modification.
-Les URL directes des POI restent partageables et un lien vers Google Maps est
-proposé lorsque les coordonnées sont disponibles. Sur mobile, le volet devient
-un panneau superposé et défilable. Il est aussi possible de supprimer un POI,
-de choisir sa position sur carte et de gérer ses catégories et tags. Une section
-d'administration permet également de rechercher, créer, modifier et supprimer
-les catégories et tags, sans authentification à ce stade.
+- la finalisation du déploiement de production ;
+- l’amélioration continue de l’interface et de l’accessibilité ;
+- le renforcement de la documentation d’installation et de migration ;
+- le stockage objet optionnel pour les déploiements distribués ;
+- la préparation d’un parcours d’inscription et d’invitation adapté à une éventuelle offre SaaS.
 
-La configuration cartographique des pays est encore temporaire et limitée aux
-valeurs réellement utilisées — actuellement la France. La normalisation future
-prévoit des codes ISO, centres, zooms et limites stockés en base.
+## Contribution
 
-## Espace Compte
+Les contributions, rapports de bugs et propositions d’amélioration sont les bienvenus via les issues et pull requests GitHub.
 
-L’espace **Compte** centralise le profil, l’avatar, la sécurité, les sessions
-actives, les préférences persistées, l’administration pour les administrateurs
-et la suppression/anonymisation du compte. Les avatars sont distincts des
-photos de POI et les préférences ne contiennent aucune donnée sensible.
+Avant toute contribution importante, ouvrez de préférence une issue afin de discuter du besoin et de son intégration dans l’architecture du projet.
 
-## Feuille de route
+## Licence
 
-Ces éléments sont envisagés et ne sont pas encore disponibles :
-
-- icônes et couleurs configurables pour les catégories ;
-- clustering des marqueurs ;
-- import KML/KMZ ;
-- export KMZ ;
-- import depuis Google Maps ou une API compatible ;
-- authentification et gestion des utilisateurs ;
-- éventuel stockage objet des photos pour les déploiements distribués.
-# Catalogue CartaVault des cartes
-
-Le catalogue **Cartes** est accessible depuis la navigation latérale. Il remplace le sélecteur de la barre supérieure et présente chaque carte avec un aperçu local, son pays, les actions Ouvrir et Supprimer, ainsi que la création de carte. Ouvrir une carte met à jour `?map=<uuid>`, recentre la carte existante et affiche le panneau Lieux ; aucun aperçu distant ni image supplémentaire n'est utilisé.
-
-## Préparation de sorties
-
-L’entrée **Sorties** étend l’espace cartographique existant : les POI restent dans le panneau Lieux à gauche, la même carte Leaflet reste au centre et l’itinéraire se prépare dans un panneau à droite. Les POI sont ajoutés aux journées par glisser-déposer, sans recréer la carte ni perdre son centre, son zoom ou ses marqueurs.
-
-Une sortie peut contenir plusieurs journées, des étapes liées à des POI ou libres et un hébergement entre deux journées. L’ordre manuel reste prioritaire ; une optimisation OSRM facultative propose un nouvel ordre qui doit être explicitement accepté. Les itinéraires et synthèses sont persistés, et les exports Google Maps, GPX et KMZ sont générés côté backend. Les droits de la carte s’appliquent aussi aux sorties : lecture pour les lecteurs, édition pour les éditeurs, suppression pour le propriétaire ou l’administrateur.
-
-Les synthèses distinguent strictement la **distance de route** et le **temps de conduite** fournis par le moteur de routage des visites, du tampon entre étapes et de la marge de sécurité. CartaVault ne modélise aucune pause : la durée planifiée vaut conduite + visites + tampon + marge. Une arrivée cible calcule le départ recommandé ; un départ planifié calcule l’arrivée estimée, y compris lors d’un passage à la veille ou au lendemain. Une journée sans itinéraire ou dont l’ordre a changé n’est pas comptée comme une route à zéro : le total global est signalé comme partiel jusqu’au recalcul.
-
-Chaque voyage définit aussi trois niveaux de charge personnalisables (seuils légère/moyenne/élevée et couleurs). Les valeurs par défaut sont 4 h et 8 h. Les durées de visite se règlent avec des préréglages ou une valeur libre, sans nouvel appel au moteur de routage.
-# Routage national
-
-Dans **Compte > Préférences > Routage**, l’option **Rester dans le pays** fait contrôler la géométrie complète renvoyée par le moteur après son calcul. CartaVault ne prétend pas transmettre cette contrainte à l’OSRM public : une route qui quitte le pays est refusée et n’écrase pas une route valide. Les frontières locales actuellement embarquées sont une simplification issue de Natural Earth (domaine public), utilisée avec une tolérance par défaut de 250 m ; une sortie significative au-delà de 500 m est rejetée. Ces valeurs sont configurables avec `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` et `ROUTING_MAX_OUTSIDE_DISTANCE_METERS`.
-# Performance cartographique
-
-La carte charge uniquement les POI de l’emprise visible. Les marqueurs standards sont regroupés localement dans des clusters CartaVault ; les marqueurs temporaires, le POI sélectionné et les étapes de sortie restent individuels. L’API peut fournir `total`, `returned` et `truncated` afin d’inviter à zoomer quand l’emprise est trop large.
-# Filtres et actions groupées
-
-Les filtres de lieux combinent les groupes avec **ET** et plusieurs valeurs d’un même groupe avec **OU**. Les filtres réellement disponibles sont le texte, catégories, tags, statuts, région, photos, dates, accès, danger, état, coordonnées et présence dans une sortie. Les actions groupées concernent uniquement la page explicitement sélectionnée (500 POI maximum) et sont atomiques.
-# Routage des sorties
-
-CartaVault conserve OSRM comme moteur par défaut et peut utiliser Google Routes API comme moteur alternatif choisi dans **Compte → Préférences → Routage**. Chaque utilisateur fournit sa propre clé Google Routes, associée à son projet, sa facturation et ses quotas Google Cloud. Elle est transmise au backend, chiffrée avec la clé maîtresse de l’instance et n’est jamais renvoyée au navigateur. Aucun fallback silencieux vers OSRM n’est effectué. Les routes Google sont normalisées en GeoJSON puis soumises au même contrôle « Rester dans le pays » que les routes OSRM.
-
-L’instance doit définir `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`, une clé Fernet URL-safe Base64 de 32 octets, dans son environnement sécurisé (secret Docker/Portainer/Synology lorsque disponible). Générez-la avec `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Ne la placez jamais dans Git ou dans l’image. Sa perte rend les clés utilisateur enregistrées indéchiffrables : sauvegardez-la avec les secrets de configuration de l’instance. L’ancienne variable `GOOGLE_MAPS_ROUTES_API_KEY` est obsolète, seulement détectée pour produire un avertissement, et n’est plus utilisée pour les calculs utilisateur.
-
-Google nécessite une facturation Google Cloud active, une clé restreinte à Routes API et, idéalement, aux IP du serveur. Configurez des quotas et alertes budgétaires, puis stockez la clé dans le fichier `.env` non versionné ou un secret de déploiement. Une journée Google accepte au maximum 25 étapes intermédiaires. L’optimisation Google utilise `optimizeWaypointOrder`; OSRM conserve la matrice et l’optimiseur CartaVault existants.
-## Gestion avancée des lieux
-
-Les champs facultatifs d’un POI sont configurables par carte depuis le catalogue Cartes. Leur désactivation masque le champ dans les formulaires et les fiches sans effacer sa valeur. Les catégories peuvent marquer dynamiquement un lieu comme visité ; CartaVault conserve séparément la note d’intérêt avant visite et l’évaluation après visite.
-
-Les lieux prennent également en charge les favoris, plusieurs liens HTTP(S), les filtres et tris correspondants, ainsi qu’un historique d’audit. Une suppression place désormais le lieu dans la corbeille. La restauration conserve ses relations et la suppression définitive est bloquée tant que le lieu est référencé par une sortie.
+CartaVault est distribué sous licence MIT. Consultez le fichier [`LICENSE`](LICENSE) pour plus d’informations.
