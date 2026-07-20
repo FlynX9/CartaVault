@@ -9,20 +9,20 @@ Le projet associe une API **FastAPI**, une base **PostgreSQL/PostGIS** et une in
 ## Aperçu
 
 <p align="center">
-  <img src="docs/screenshots/lieux.webp" alt="Gestion des lieux dans CartaVault" width="100%">
+  <img src="docs/screenshots/gestion-lieux.webp" alt="Gestion des lieux dans CartaVault" width="100%">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/sorties.webp" alt="Planification des sorties dans CartaVault" width="100%">
+  <img src="docs/screenshots/gestion-sorties.webp" alt="Planification des sorties dans CartaVault" width="100%">
 </p>
 
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/screenshots/categories.webp" alt="Gestion des catégories CartaVault">
+      <img src="docs/screenshots/gestion-categories.webp" alt="Gestion des catégories CartaVault">
     </td>
     <td width="50%">
-      <img src="docs/screenshots/status.webp" alt="Gestion des statuts CartaVault">
+      <img src="docs/screenshots/gestion-status.webp" alt="Gestion des statuts CartaVault">
     </td>
   </tr>
   <tr>
@@ -164,9 +164,10 @@ La documentation technique détaillée du backend se trouve dans [`backend/READM
 
 ### Base de données et backend
 
-Depuis la racine du dépôt :
+Depuis la racine du dépôt, créez d’abord la configuration Docker Compose :
 
 ```powershell
+Copy-Item .env.example .env
 docker compose up -d postgres
 Set-Location backend
 python -m venv .venv
