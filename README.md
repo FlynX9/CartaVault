@@ -205,7 +205,13 @@ Copy-Item .env.example .env
 docker compose up -d postgres
 ```
 
-### 2. Backend
+Le script Docker initialise PostgreSQL/PostGIS et le schéma CartaVault uniquement lors de la création d’un volume neuf. Vérifiez que le conteneur est démarré avant de poursuivre :
+
+```powershell
+docker compose ps
+```
+
+### 2. Backend et premier administrateur
 
 ```powershell
 Set-Location backend
@@ -217,17 +223,26 @@ Copy-Item .env.example .env
 
 Renseignez ensuite les variables nécessaires dans `backend/.env`, notamment `DATABASE_URL`. Ne versionnez jamais ce fichier.
 
-Appliquez les migrations puis démarrez l’API :
+Pour une nouvelle installation, appliquez d’abord les migrations jusqu’à l’étape permettant la création du premier administrateur :
 
 ```powershell
+python -m alembic upgrade d8f4a2c7e910
+python -m app.cli create-admin
 python -m alembic upgrade head
+```
+
+La commande `create-admin` est interactive et masque le mot de passe. Elle crée le premier administrateur actif requis par les migrations suivantes.
+
+Démarrez ensuite l’API :
+
+```powershell
 python -m uvicorn app.main:app --reload
 ```
 
 Swagger est disponible sur <http://127.0.0.1:8000/docs>.
 
 > [!WARNING]
-> La baseline Alembic initiale représente un schéma préexistant. Pour une base entièrement vide, utilisez la procédure Docker fournie avec le projet.
+> La première révision Alembic est une baseline vide issue d’un schéma préexistant. Elle ne crée pas seule les tables sur une base vide. Le schéma initial est fourni par `database/init/001_initial_schema.sql` lors de la création d’un nouveau volume Docker. Pour une base ou un volume déjà existant, consultez la procédure de migration détaillée dans [`backend/README.md`](backend/README.md) avant d’exécuter les commandes ci-dessus.
 
 ### 3. Frontend
 
@@ -235,10 +250,12 @@ Dans un second terminal, depuis la racine du dépôt :
 
 ```powershell
 Set-Location frontend
-npm install
+npm ci
 Copy-Item .env.example .env
 npm run dev
 ```
+
+`npm ci` utilise le fichier `package-lock.json` afin d’installer exactement les versions validées par le projet. En local, laissez `VITE_API_BASE_URL` vide pour utiliser le proxy Vite vers l’API sur `127.0.0.1:8000`.
 
 Vite affiche l’adresse locale, généralement <http://localhost:5173>.
 
@@ -255,6 +272,8 @@ Pour en générer une :
 ```powershell
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
+
+Cette clé n’est pas nécessaire pour démarrer CartaVault avec OSRM. Elle devient obligatoire pour enregistrer ou utiliser des identifiants Google Routes personnels.
 
 Conservez cette valeur dans un secret de déploiement ou un fichier `.env` non versionné. Sa perte rend les clés Google déjà enregistrées indéchiffrables.
 
