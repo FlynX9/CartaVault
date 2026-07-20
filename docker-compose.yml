@@ -6,9 +6,9 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_DB: poi_manager
-      POSTGRES_USER: poi_user
-      POSTGRES_PASSWORD: poi_password
+      POSTGRES_DB: ${POSTGRES_DB:-poi_manager}
+      POSTGRES_USER: ${POSTGRES_USER:-poi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be defined}
 
     ports:
       - "5432:5432"

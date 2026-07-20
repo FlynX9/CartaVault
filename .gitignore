@@ -14,8 +14,17 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Environment
+# Environment and secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials.json
+secrets/
 
 # Runtime storage (uploaded photos and temporary KMZ exports)
 backend/storage/
