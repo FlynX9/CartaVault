@@ -20,7 +20,7 @@ describe('TripTimePlanning', () => {
     expect(screen.queryByText(/pause/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Départ planifié')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Planification horaire'))
-    expect(document.querySelector('.trip-time-settings > summary > strong')).toHaveTextContent('08:25')
+    expect(document.querySelector('.trip-time-settings > summary > strong')).not.toBeInTheDocument()
   })
 
   it('offers visit presets and custom values', () => {

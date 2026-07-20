@@ -25,8 +25,10 @@ from app.maps.models import PoiMap
 from app.maps.models import MapMembership
 from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
-from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
+from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_ordering
 from app.places.models import Place
+from app.places.fields import normalize_place_field_config
+from app.places.history import add_place_history, changed_values
 from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceListPosition, PlaceRead, PlaceUpdate
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
@@ -58,6 +60,7 @@ def build_place_read_statement():
             joinedload(Place.status),
             selectinload(Place.categories),
             selectinload(Place.tags),
+            selectinload(Place.links),
         )
     )
 
@@ -108,6 +111,7 @@ def place_to_read(
                 name=category.name,
                 description=category.description,
                 icon=category.icon,
+                marks_as_visited=category.marks_as_visited,
                 is_primary=bool(database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))),
             )
             for category in place.categories
@@ -122,6 +126,13 @@ def place_to_read(
         ],
         created_at=place.created_at,
         updated_at=place.updated_at,
+        is_favorite=place.is_favorite,
+        interest_rating=place.interest_rating,
+        visit_rating=place.visit_rating,
+        is_visited=any(category.marks_as_visited for category in place.categories),
+        deleted_at=place.deleted_at,
+        links=place.links,
+        field_config=normalize_place_field_config(place.map.place_field_config),
     )
 
 
@@ -132,7 +143,8 @@ def read_place(
     """Read one place after a create, update or relationship change."""
 
     statement = build_place_read_statement().where(
-        Place.id == place_id
+        Place.id == place_id,
+        Place.deleted_at.is_(None),
     )
 
     row = database_session.execute(statement).one()
@@ -210,7 +222,7 @@ def get_places(
 
     statement = (
         statement
-        .order_by(func.lower(Place.name), Place.id)
+        .order_by(*place_ordering(filters))
         .offset(offset)
         .limit(limit)
     )
@@ -236,7 +248,7 @@ def bulk_update_places(
 ) -> PlaceBulkResult:
     """Apply one validated action atomically to an explicit, bounded selection."""
     places = database_session.scalars(
-        select(Place).where(Place.id.in_(action_data.place_ids)).options(
+        select(Place).where(Place.id.in_(action_data.place_ids), Place.deleted_at.is_(None)).options(
             selectinload(Place.categories), selectinload(Place.tags),
         )
     ).all()
@@ -270,7 +282,9 @@ def bulk_update_places(
     try:
         for place in places:
             if action_data.action == "delete":
-                database_session.delete(place)
+                place.deleted_at = func.now()
+                place.deleted_by_user_id = current_user.id
+                add_place_history(database_session, place.id, current_user.id, "trashed", {})
                 continue
             if action_data.action == "set_status" and target_status is not None:
                 if place.status_id == target_status.id: unchanged_count += 1
@@ -403,7 +417,7 @@ def get_place_list_position(
     ranked = apply_place_filters(
         select(
             Place.id.label("place_id"),
-            (func.row_number().over(order_by=(func.lower(Place.name), Place.id)) - 1).label("position"),
+            (func.row_number().over(order_by=place_ordering(filters)) - 1).label("position"),
         ).where(Place.map_id == map_id),
         filters,
     ).subquery()
@@ -439,7 +453,8 @@ def get_place(
 
     require_place_role(database_session, place_id, current_user, "viewer")
     statement = build_place_read_statement().where(
-        Place.id == place_id
+        Place.id == place_id,
+        Place.deleted_at.is_(None),
     )
 
     row = database_session.execute(statement).one_or_none()
@@ -507,10 +522,15 @@ def create_place(
         condition=place_data.condition,
         access=place_data.access,
         danger_level=place_data.danger_level,
+        is_favorite=place_data.is_favorite,
+        interest_rating=place_data.interest_rating,
+        visit_rating=place_data.visit_rating,
     )
 
     try:
         database_session.add(place)
+        database_session.flush()
+        add_place_history(database_session, place.id, current_user.id, "created", {"name": {"old": None, "new": place.name}})
         database_session.commit()
         database_session.refresh(place)
 
@@ -543,6 +563,8 @@ def update_place(
     place = require_place_role(database_session, place_id, current_user, "editor")
 
     supplied_data = place_data.model_dump(exclude_unset=True)
+    audited_fields = {"name", "map_id", "status_id", "description", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "is_favorite", "interest_rating", "visit_rating"}
+    before = {field: getattr(place, field) for field in audited_fields}
 
     requested_map_id = supplied_data.get("map_id")
     if requested_map_id is not None:
@@ -573,7 +595,13 @@ def update_place(
             srid=4326,
         )
 
+    changes = changed_values(before, {field: getattr(place, field) for field in audited_fields})
+    if latitude is not None and longitude is not None:
+        changes["coordinates"] = {"old": None, "new": {"latitude": latitude, "longitude": longitude}}
+
     try:
+        if changes:
+            add_place_history(database_session, place.id, current_user.id, "updated", changes)
         database_session.commit()
         database_session.refresh(place)
 
@@ -600,12 +628,14 @@ def delete_place(
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    """Delete an existing place."""
+    """Move an existing place to the trash."""
 
     place = require_place_role(database_session, place_id, current_user, "editor")
 
     try:
-        database_session.delete(place)
+        place.deleted_at = func.now()
+        place.deleted_by_user_id = current_user.id
+        add_place_history(database_session, place.id, current_user.id, "trashed", {})
         database_session.commit()
 
         return Response(
@@ -661,6 +691,7 @@ def add_category_to_place(
 
     if category not in place.categories:
         place.categories.append(category)
+        add_place_history(database_session, place.id, current_user.id, "category_added", {"category_id": {"old": None, "new": str(category.id)}})
         database_session.flush()
         if database_session.scalar(select(func.count()).select_from(place_categories_table).where(place_categories_table.c.place_id == place_id)) == 1:
             database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id).values(is_primary=True))
@@ -718,6 +749,7 @@ def remove_category_from_place(
         )
 
     if category in place.categories:
+        add_place_history(database_session, place.id, current_user.id, "category_removed", {"category_id": {"old": str(category.id), "new": None}})
         was_primary = database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id))
         place.categories.remove(category)
         database_session.flush()
@@ -782,6 +814,7 @@ def add_tag_to_place(
 
     if tag not in place.tags:
         place.tags.append(tag)
+        add_place_history(database_session, place.id, current_user.id, "tag_added", {"tag_id": {"old": None, "new": str(tag.id)}})
 
     try:
         database_session.commit()
@@ -812,6 +845,7 @@ def set_primary_category(place_id: UUID, category_id: UUID, database_session: Se
     try:
         database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id).values(is_primary=False))
         database_session.execute(update(place_categories_table).where(place_categories_table.c.place_id == place_id, place_categories_table.c.category_id == category_id).values(is_primary=True))
+        add_place_history(database_session, place.id, current_user.id, "primary_category_changed", {"category_id": {"old": None, "new": str(category_id)}})
         database_session.commit()
         return read_place(database_session, place_id)
     except SQLAlchemyError as error:
@@ -856,6 +890,7 @@ def remove_tag_from_place(
 
     if tag in place.tags:
         place.tags.remove(tag)
+        add_place_history(database_session, place.id, current_user.id, "tag_removed", {"tag_id": {"old": str(tag.id), "new": None}})
 
     try:
         database_session.commit()

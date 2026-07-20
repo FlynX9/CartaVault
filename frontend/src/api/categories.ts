@@ -15,6 +15,7 @@ export function parseCategory(value: unknown): CategoryRead {
     name: readString(value, 'name', context),
     description: readNullableString(value, 'description', context),
     icon: readString(value, 'icon', context),
+    marks_as_visited: value.marks_as_visited === true,
   }
 }
 

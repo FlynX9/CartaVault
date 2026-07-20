@@ -88,4 +88,5 @@ def test_places_use_and_filter_tracking_status(integration_client, poi_map) -> N
     ).json() == []
     assert integration_client.delete(f"/statuses/{explicit['id']}").status_code == 409
     assert integration_client.delete(f"/places/{explicit_place.json()['id']}").status_code == 204
+    assert integration_client.delete(f"/places/{explicit_place.json()['id']}/permanent").status_code == 204
     assert integration_client.delete(f"/statuses/{explicit['id']}").status_code == 204

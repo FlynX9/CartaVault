@@ -37,4 +37,14 @@ describe('PlaceForm', () => {
     expect(screen.queryByRole('option', { name: 'Importé' })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Église' })).toBeVisible()
   })
+
+  it('honors the active map field configuration without clearing stored values', () => {
+    const configuredMap = { id: 'map-id', name: 'France', country: { name: 'France' }, place_field_config: { description: false, ratings: true, favorite: true } }
+    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', description: 'Valeur conservée' }} maps={[configuredMap as never]} allowMapChange categories={[]} tags={[]} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
+
+    expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
+    expect(screen.getByText('Favori')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Envie avant visite' })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Évaluation après visite' })).toBeVisible()
+  })
 })

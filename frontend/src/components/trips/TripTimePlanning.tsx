@@ -21,7 +21,7 @@ export function DayTimingSettings({ day, summary, canEdit, busy, endsAtHotel = f
   const bufferPresets = [0, 5, 10, 15, 20, 30]
   const marginPresets = draft.safety_margin_type === 'fixed' ? [0, 15, 30, 45, 60] : [0, 5, 10, 15, 20]
   return <details className="trip-time-settings">
-    <summary><span id={`day-${day.id}-planning-title`}>Planification horaire</span><strong>{formatClock(summary?.recommended_start_time ?? null, summary?.recommended_start_day_offset ?? null)}</strong><ChevronDown className="trip-panel-chevron" size={15} /></summary>
+    <summary><span id={`day-${day.id}-planning-title`}>Planification horaire</span><ChevronDown className="trip-panel-chevron" size={15} /></summary>
     <div className="trip-time-settings__body" aria-labelledby={`day-${day.id}-planning-title`}>
     <div className="trip-time-settings__grid">
       <label>{endsAtHotel ? 'Arrivée souhaitée à l’hôtel' : 'Heure cible de fin de journée'}<input aria-label={endsAtHotel ? 'Arrivée souhaitée à l’hôtel' : 'Heure cible de fin de journée'} type="time" value={draft.target_arrival_time ?? ''} disabled={!canEdit || busy} onChange={(event) => update('target_arrival_time', event.target.value || null)} /><small>CartaVault utilisera cette heure pour proposer une heure de départ.</small></label>
@@ -29,7 +29,6 @@ export function DayTimingSettings({ day, summary, canEdit, busy, endsAtHotel = f
       <label>Marge de sécurité<span className="trip-time-settings__combined"><select aria-label="Type de marge" value={draft.safety_margin_type} disabled={!canEdit || busy} onChange={(event) => update('safety_margin_type', event.target.value as TripDayTimingPayload['safety_margin_type'])}><option value="fixed">Minutes</option><option value="percentage">Pourcentage</option></select><select aria-label="Valeur de la marge" value={marginPresets.includes(draft.safety_margin_value) ? draft.safety_margin_value : 'custom'} disabled={!canEdit || busy} onChange={(event) => { if (event.target.value !== 'custom') update('safety_margin_value', Number(event.target.value)) }}>{marginPresets.map((value) => <option key={value} value={value}>{value}{draft.safety_margin_type === 'percentage' ? ' %' : ' min'}</option>)}<option value="custom">Personnalisée</option></select></span>{!marginPresets.includes(draft.safety_margin_value) && <input aria-label="Marge personnalisée" type="number" min="0" max={draft.safety_margin_type === 'percentage' ? 100 : 720} value={draft.safety_margin_value} disabled={!canEdit || busy} onChange={(event) => update('safety_margin_value', Number(event.target.value))} />}</label>
     </div>
     {summary && <div className="trip-time-settings__results" aria-live="polite">
-      <span>Départ recommandé <strong>{formatClock(summary.recommended_start_time, summary.recommended_start_day_offset)}</strong></span>
       <span>Arrivée estimée <strong>{formatClock(summary.estimated_arrival_time, summary.estimated_arrival_day_offset)}</strong></span>
       <span>Écart <strong>{formatScheduleDelta(summary.schedule_delta_minutes)}</strong></span>
     </div>}

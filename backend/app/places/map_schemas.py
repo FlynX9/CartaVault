@@ -45,6 +45,10 @@ class PlaceMapRead(BaseModel):
     primary_category: PrimaryCategoryRead | None
     categories: list[MapCategoryRead]
     tags: list[MapTagRead]
+    is_favorite: bool
+    is_visited: bool
+    interest_rating: int | None
+    visit_rating: int | None
 
 
 class PlaceMapPageRead(BaseModel):

@@ -4,6 +4,7 @@ export interface CategoryRead {
   name: string
   description: string | null
   icon?: string
+  marks_as_visited?: boolean
 }
 
 export interface CategoryCreatePayload {
@@ -11,12 +12,14 @@ export interface CategoryCreatePayload {
   name: string
   description?: string | null
   icon?: string
+  marks_as_visited?: boolean
 }
 
 export interface CategoryUpdatePayload {
   name?: string
   description?: string | null
   icon?: string
+  marks_as_visited?: boolean
 }
 
 export interface TagRead {

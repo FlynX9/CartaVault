@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.countries.schemas import CountrySummary
 from app.auth.schemas import UserRead
+from app.places.fields import CONFIGURABLE_PLACE_FIELDS, normalize_place_field_config
 
 
 class MapCreate(BaseModel):
@@ -68,6 +69,19 @@ class MapRead(BaseModel):
     can_transfer_ownership: bool
     can_import: bool
     can_export: bool
+    place_field_config: dict[str, bool]
+
+
+class MapPlaceFieldConfig(BaseModel):
+    fields: dict[str, bool]
+
+    @model_validator(mode="after")
+    def validate_fields(self) -> Self:
+        unknown = set(self.fields) - set(CONFIGURABLE_PLACE_FIELDS)
+        if unknown:
+            raise ValueError(f"Unknown configurable place fields: {', '.join(sorted(unknown))}")
+        self.fields = normalize_place_field_config(self.fields)
+        return self
 
 
 class MapSummary(BaseModel):

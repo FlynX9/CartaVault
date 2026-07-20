@@ -2,7 +2,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 
-export interface ManagedEntity { id: string; name: string; description?: string | null; icon?: string }
+export interface ManagedEntity { id: string; name: string; description?: string | null; icon?: string; marks_as_visited?: boolean }
 interface EntityListProps { entities: ManagedEntity[]; emptyMessage: string; onEdit: (entity: ManagedEntity) => void; onDelete: (entity: ManagedEntity) => void; variant?: 'page' | 'panel'; readOnly?: boolean }
 
 export function EntityList({ entities, emptyMessage, onEdit, onDelete, variant = 'page', readOnly = false }: EntityListProps) {

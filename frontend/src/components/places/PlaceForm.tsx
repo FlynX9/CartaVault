@@ -32,6 +32,7 @@ interface PlaceFormProps {
 
 const GENERAL_FIELDS = [
   ['name', 'Nom', 255],
+  ['region', 'Région', 100],
 ] as const
 
 const PRACTICAL_FIELDS = [
@@ -78,7 +79,7 @@ export function PlaceForm({
     setValues((current) => ({ ...current, latitude: String(draftPosition.latitude), longitude: String(draftPosition.longitude) }))
   }, [draftPosition])
 
-  const setValue = (field: keyof PlaceFormValues, value: string | string[]) => {
+  const setValue = (field: keyof PlaceFormValues, value: string | string[] | boolean) => {
     setValues((current) => {
       const next = { ...current, [field]: value }
       if (field === 'latitude' || field === 'longitude') {
@@ -107,6 +108,8 @@ export function PlaceForm({
   const latitude = values.latitude.trim() === '' ? null : Number(values.latitude)
   const longitude = values.longitude.trim() === '' ? null : Number(values.longitude)
   const selectedStatus = statuses.find((item) => item.id === values.statusId)
+  const selectedMap = maps.find((item) => item.id === values.mapId)
+  const fieldEnabled = (field: string) => selectedMap?.place_field_config?.[field] !== false
   const selectedCategory = categories.find((item) => item.id === values.categoryIds[0])
   const selectableStatuses = statuses.filter((item) => item.slug !== 'importe')
   const selectableCategories = categories.filter((item) => item.name !== 'Importé')
@@ -132,7 +135,7 @@ export function PlaceForm({
             <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={statusMenuOpen} onClick={() => setStatusMenuOpen((open) => !open)}><i className="status-dot" style={{ backgroundColor: selectedStatus?.color ?? 'transparent' }} aria-hidden="true" /><span>{selectedStatus?.name ?? 'Choisir un statut'}</span><ChevronDown aria-hidden="true" size={18} /></button>{statusMenuOpen && <div className="status-picker-options" role="listbox" aria-label="Statut de suivi">{selectableStatuses.map((placeStatus) => <button key={placeStatus.id} type="button" role="option" aria-selected={placeStatus.id === values.statusId} onClick={() => { setValue('statusId', placeStatus.id); setStatusMenuOpen(false) }}><i className="status-dot" style={{ backgroundColor: placeStatus.color }} aria-hidden="true" />{placeStatus.name}{placeStatus.is_active ? '' : ' (inactif)'}</button>)}</div>}</div>
             {errors.statusId && <small className="field-error">{errors.statusId}</small>}
           </label>
-          {GENERAL_FIELDS.map(([field, label, maxLength]) => (
+          {GENERAL_FIELDS.filter(([field]) => field === 'name' || fieldEnabled(field)).map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}{field === 'name' ? ' *' : ''}</span>
               <input
@@ -144,10 +147,12 @@ export function PlaceForm({
               {errors[field] && <small className="field-error">{errors[field]}</small>}
             </label>
           ))}
-          <label className="form-field form-field-wide general-description">
+          {fieldEnabled('description') && <label className="form-field form-field-wide general-description">
             <span>Description</span>
             <textarea value={values.description} rows={5} onChange={(event) => setValue('description', event.target.value)} />
-          </label>
+          </label>}
+          {fieldEnabled('favorite') && <label className="form-field favorite-field"><span>Favori</span><input type="checkbox" checked={values.isFavorite} onChange={(event) => setValue('isFavorite', event.target.checked)} /></label>}
+          {fieldEnabled('ratings') && <div className="form-field form-field-wide place-rating-fields"><span>Notation</span><label>Envie avant visite<select value={values.interestRating} onChange={(event) => setValue('interestRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label><label>Évaluation après visite<select value={values.visitRating} onChange={(event) => setValue('visitRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label></div>}
           <label className="form-field category-field">
             <span>Catégorie</span>
             <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)}>{selectedCategory ? <CategoryIconPreview iconId={selectedCategory.icon} size={17} showLabel={false} /> : <span className="category-picker-placeholder" />}<span>{selectedCategory?.name ?? 'Aucune catégorie'}</span><ChevronDown aria-hidden="true" size={18} /></button>{categoryMenuOpen && <div className="status-picker-options category-picker-options" role="listbox" aria-label="Catégorie">{selectableCategories.map((category) => <button key={category.id} type="button" role="option" aria-selected={category.id === selectedCategory?.id} onClick={() => { selectAssociation('categoryIds', category.id); setCategoryMenuOpen(false) }}><CategoryIconPreview iconId={category.icon} size={17} showLabel={false} />{category.name}</button>)}</div>}</div>
@@ -182,7 +187,7 @@ export function PlaceForm({
       <details className="form-section form-section-collapsible">
         <summary><span>État</span><ChevronDown aria-hidden="true" size={18} /></summary>
         <div className="form-grid">
-          {PRACTICAL_FIELDS.filter(([field]) => field !== 'access').map(([field, label, maxLength]) => (
+          {PRACTICAL_FIELDS.filter(([field]) => field !== 'access' && fieldEnabled(field)).map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}</span>
               <input value={values[field]} maxLength={maxLength} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
@@ -195,7 +200,7 @@ export function PlaceForm({
       <details className="form-section form-section-collapsible">
         <summary><span>Accès</span><ChevronDown aria-hidden="true" size={18} /></summary>
         <div className="form-grid">
-          {PRACTICAL_FIELDS.filter(([field]) => field === 'access').map(([field, label, maxLength]) => (
+          {PRACTICAL_FIELDS.filter(([field]) => field === 'access' && fieldEnabled(field)).map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}</span>
               <input value={values[field]} maxLength={maxLength} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
@@ -208,7 +213,7 @@ export function PlaceForm({
       <details className="form-section form-section-collapsible">
         <summary><span>Chronologie</span><ChevronDown aria-hidden="true" size={18} /></summary>
         <div className="form-grid">
-          {CHRONOLOGY_FIELDS.map(([field, label, maxLength]) => (
+          {CHRONOLOGY_FIELDS.filter(([field]) => fieldEnabled(field)).map(([field, label, maxLength]) => (
             <label className="form-field" key={field}>
               <span>{label}</span>
               <input

@@ -2,10 +2,11 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime, time
+from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException, Query, status
-from sqlalchemy import Select, or_
+from sqlalchemy import Select, case, func, or_
 
 from app.categories.models import Category
 from app.countries.models import Country
@@ -31,6 +32,11 @@ class PlaceFilters:
     condition_values: tuple[str, ...]
     has_valid_coordinates: bool | None
     in_trip: bool | None
+    is_favorite: bool | None
+    is_visited: bool | None
+    rating_min: int | None
+    sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"]
+    sort_direction: Literal["asc", "desc"]
 
 
 def get_place_filters(
@@ -49,6 +55,11 @@ def get_place_filters(
     condition_values: list[str] = Query(default=[], max_length=50),
     has_valid_coordinates: bool | None = Query(default=None),
     in_trip: bool | None = Query(default=None),
+    is_favorite: bool | None = Query(default=None),
+    is_visited: bool | None = Query(default=None),
+    rating_min: int | None = Query(default=None, ge=1, le=5),
+    sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"] = Query(default="name"),
+    sort_direction: Literal["asc", "desc"] = Query(default="asc"),
 ) -> PlaceFilters:
     """Parse query parameters once; same-group values are ORed by SQL."""
     if created_from and created_to and created_from > created_to:
@@ -63,11 +74,14 @@ def get_place_filters(
         updated_from=updated_from, updated_to=updated_to, access_values=normalise(access_values),
         danger_levels=normalise(danger_levels), condition_values=normalise(condition_values),
         has_valid_coordinates=has_valid_coordinates, in_trip=in_trip,
+        is_favorite=is_favorite, is_visited=is_visited, rating_min=rating_min,
+        sort_by=sort_by, sort_direction=sort_direction,
     )
 
 
 def apply_place_filters(statement: Select[tuple[Place]], filters: PlaceFilters) -> Select[tuple[Place]]:
     """Apply AND across filter groups and OR within a group without raw SQL."""
+    statement = statement.where(Place.deleted_at.is_(None))
     if filters.query:
         pattern = f"%{filters.query}%"
         statement = statement.where(or_(
@@ -89,4 +103,20 @@ def apply_place_filters(statement: Select[tuple[Place]], filters: PlaceFilters) 
     if filters.condition_values: statement = statement.where(Place.condition.in_(filters.condition_values))
     if filters.has_valid_coordinates is not None: statement = statement.where(Place.location.is_not(None) if filters.has_valid_coordinates else Place.location.is_(None))
     if filters.in_trip is not None: statement = statement.where(Place.trip_stops.any() if filters.in_trip else ~Place.trip_stops.any())
+    visited_expression = Place.categories.any(Category.marks_as_visited.is_(True))
+    if filters.is_favorite is not None: statement = statement.where(Place.is_favorite.is_(filters.is_favorite))
+    if filters.is_visited is not None: statement = statement.where(visited_expression if filters.is_visited else ~visited_expression)
+    if filters.rating_min is not None:
+        statement = statement.where(case((visited_expression, Place.visit_rating), else_=Place.interest_rating) >= filters.rating_min)
     return statement
+
+
+def place_ordering(filters: PlaceFilters):
+    visited_expression = Place.categories.any(Category.marks_as_visited.is_(True))
+    columns = {
+        "name": func.lower(Place.name), "created_at": Place.created_at, "updated_at": Place.updated_at,
+        "interest_rating": Place.interest_rating, "visit_rating": Place.visit_rating,
+        "favorite": Place.is_favorite, "relevant_rating": case((visited_expression, Place.visit_rating), else_=Place.interest_rating),
+    }
+    column = columns[filters.sort_by]
+    return (column.desc().nulls_last() if filters.sort_direction == "desc" else column.asc().nulls_last(), Place.id)

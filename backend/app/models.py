@@ -10,7 +10,7 @@ from app.categories.models import Category
 from app.countries.models import Country
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 from app.photos.models import Photo
-from app.places.models import Place
+from app.places.models import Place, PlaceHistory, PlaceLink
 from app.statuses.models import PlaceStatus
 from app.tags.associations import place_tags_table
 from app.tags.models import Tag
@@ -23,6 +23,8 @@ __all__ = (
     "MapMembership",
     "Photo",
     "Place",
+    "PlaceHistory",
+    "PlaceLink",
     "PlaceStatus",
     "PoiMap",
     "Tag",

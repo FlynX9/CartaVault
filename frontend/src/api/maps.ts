@@ -24,7 +24,13 @@ export function parseMap(value: unknown): PoiMap {
     can_edit: readBoolean(value, 'can_edit', context), can_delete: readBoolean(value, 'can_delete', context),
     can_manage_members: readBoolean(value, 'can_manage_members', context), can_transfer_ownership: readBoolean(value, 'can_transfer_ownership', context),
     can_import: readBoolean(value, 'can_import', context), can_export: readBoolean(value, 'can_export', context),
+    place_field_config: isRecord(value.place_field_config) ? Object.fromEntries(Object.entries(value.place_field_config).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')) : {},
   }
+}
+
+export async function updateMapPlaceFields(mapId: string, fields: Record<string, boolean>): Promise<Record<string, boolean>> {
+  const value = await sendJson(`/maps/${encodeURIComponent(mapId)}/place-fields`, 'PUT', { fields })
+  return isRecord(value) && isRecord(value.fields) ? Object.fromEntries(Object.entries(value.fields).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')) : {}
 }
 
 export async function getMaps(signal?: AbortSignal): Promise<PoiMap[]> {

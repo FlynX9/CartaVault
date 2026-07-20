@@ -44,6 +44,7 @@ export interface PoiMap {
   can_transfer_ownership?: boolean
   can_import?: boolean
   can_export?: boolean
+  place_field_config?: Record<string, boolean>
 }
 
 export interface MapCreatePayload {

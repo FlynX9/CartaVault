@@ -26,6 +26,7 @@ from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
 from app.photos.router import router as photos_router
 from app.places.map_router import router as places_map_router
+from app.places.advanced_router import router as places_advanced_router
 from app.places.router import router as places_router
 from app.statuses.router import router as statuses_router
 from app.tags.router import router as tags_router
@@ -110,6 +111,7 @@ app.include_router(credential_router)
 app.include_router(invitations_router)
 app.include_router(admin_users_router)
 app.include_router(places_map_router)
+app.include_router(places_advanced_router)
 app.include_router(places_router)
 app.include_router(categories_router)
 app.include_router(countries_router)

@@ -319,3 +319,10 @@ Les endpoints authentifiés `GET`, `PUT`, `DELETE /account/integrations/google-r
 `GET /routing/providers` expose uniquement disponibilité et capacités. `trip_days.route_provider` mémorise le moteur réellement utilisé ; les anciennes géométries sont marquées OSRM par la migration `b2e7c4a9d531`.
 
 Les appels Google sont limités par utilisateur et ne sont pas rejoués automatiquement : cette absence de retry évite de multiplier des requêtes facturées. L’interface bloque une opération en cours et les codes `GOOGLE_ROUTES_TIMEOUT`, `GOOGLE_ROUTES_QUOTA_EXCEEDED`, `GOOGLE_ROUTING_RATE_LIMITED` et `GOOGLE_WAYPOINT_LIMIT_EXCEEDED` restent explicites.
+## Champs avancés et cycle de vie des POI
+
+La révision `d2f7a9c4e610` ajoute la configuration JSONB par carte, le marqueur de catégorie visitée, les favoris, les notes, la corbeille, les liens externes et l’historique. La révision `e3a8c1d5f720` ajoute les index de tri des notes.
+
+`is_visited` est calculé depuis les catégories dont `marks_as_visited=true` et n’est jamais stocké sur `places`. Les suppressions ordinaires renseignent `deleted_at`; les requêtes liste/carte excluent automatiquement ces lignes. La purge est refusée lorsqu’un arrêt ou une nuit de sortie référence encore le POI.
+
+Les liens sont limités à 20 par lieu et n’acceptent que des URL HTTP(S) possédant un hôte. L’historique conserve les changements structurés et les métadonnées utiles, jamais les fichiers photo binaires.

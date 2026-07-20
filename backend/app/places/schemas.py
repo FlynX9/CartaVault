@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Literal, Self
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.categories.schemas import CategoryRead
 
@@ -27,6 +28,9 @@ class PlaceCreate(BaseModel):
     condition: str | None = Field(default=None, max_length=50)
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
+    is_favorite: bool = False
+    interest_rating: int | None = Field(default=None, ge=1, le=5)
+    visit_rating: int | None = Field(default=None, ge=1, le=5)
 
 
 class PlaceUpdate(BaseModel):
@@ -42,6 +46,9 @@ class PlaceUpdate(BaseModel):
     condition: str | None = Field(default=None, max_length=50)
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
+    is_favorite: bool | None = None
+    interest_rating: int | None = Field(default=None, ge=1, le=5)
+    visit_rating: int | None = Field(default=None, ge=1, le=5)
 
     @model_validator(mode="after")
     def validate_partial_update(self) -> Self:
@@ -58,7 +65,71 @@ class PlaceUpdate(BaseModel):
             raise ValueError("Latitude and longitude must be provided together")
         if latitude_supplied and (self.latitude is None or self.longitude is None):
             raise ValueError("Latitude and longitude cannot be null")
+        if "is_favorite" in supplied and self.is_favorite is None:
+            raise ValueError("is_favorite cannot be null")
         return self
+
+
+class PlaceLinkCreate(BaseModel):
+    url: str = Field(min_length=8, max_length=2048)
+    label: str | None = Field(default=None, max_length=120)
+    sort_order: int = Field(default=0, ge=0, le=32767)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        normalized = value.strip()
+        parsed = urlsplit(normalized)
+        if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc or any(character.isspace() for character in normalized):
+            raise ValueError("Only HTTP and HTTPS URLs are allowed")
+        return normalized
+
+
+class PlaceLinkUpdate(BaseModel):
+    url: str | None = Field(default=None, min_length=8, max_length=2048)
+    label: str | None = Field(default=None, max_length=120)
+    sort_order: int | None = Field(default=None, ge=0, le=32767)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        parsed = urlsplit(normalized)
+        if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc or any(character.isspace() for character in normalized):
+            raise ValueError("Only HTTP and HTTPS URLs are allowed")
+        return normalized
+
+    @model_validator(mode="after")
+    def reject_required_nulls(self) -> "PlaceLinkUpdate":
+        supplied = self.model_fields_set
+        if "url" in supplied and self.url is None:
+            raise ValueError("url cannot be null")
+        if "sort_order" in supplied and self.sort_order is None:
+            raise ValueError("sort_order cannot be null")
+        return self
+
+
+class PlaceLinkRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    url: str
+    label: str | None
+    sort_order: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlaceHistoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID | None
+    action: str
+    changes: dict
+    created_at: datetime
 
 
 class PlaceRead(BaseModel):
@@ -81,6 +152,13 @@ class PlaceRead(BaseModel):
     tags: list[TagRead]
     created_at: datetime
     updated_at: datetime
+    is_favorite: bool
+    interest_rating: int | None
+    visit_rating: int | None
+    is_visited: bool
+    deleted_at: datetime | None
+    links: list[PlaceLinkRead]
+    field_config: dict[str, bool]
 
 
 class PlaceBulkAction(BaseModel):

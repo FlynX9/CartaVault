@@ -14,6 +14,7 @@ export interface EntityManagementConfig {
   pluralLabel: string
   supportsDescription: boolean
   supportsIcon?: boolean
+  supportsVisited?: boolean
   load: (signal: AbortSignal, q?: string) => Promise<ManagedEntity[]>
   save: (entity: ManagedEntity | null, values: EntityFormValues) => Promise<ManagedEntity>
   remove: (id: string) => Promise<void>
@@ -105,7 +106,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
       : <label className="admin-search"><span>Rechercher dans les {config.pluralLabel.toLowerCase()}</span><input type="search" maxLength={100} value={queryInput} onChange={(event) => setQueryInput(event.target.value)} /></label>}
     {error && <div className="form-alert" role="alert">{error}</div>}
     {success && <p className="admin-success" role="status">{success}</p>}
-    {!readOnly && editing !== undefined && <EntityForm key={editing?.id ?? 'new'} title={editing === null ? `Créer ${config.singularLabel}` : `Modifier ${editing.name}`} initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : DEFAULT_CATEGORY_ICON_ID }} supportsDescription={config.supportsDescription} supportsIcon={config.supportsIcon} isSubmitting={isSubmitting} fieldErrors={fieldErrors} onCancel={() => setEditing(undefined)} onSubmit={submit} />}
+    {!readOnly && editing !== undefined && <EntityForm key={editing?.id ?? 'new'} title={editing === null ? `Créer ${config.singularLabel}` : `Modifier ${editing.name}`} initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : DEFAULT_CATEGORY_ICON_ID, marksAsVisited: 'marks_as_visited' in (editing ?? {}) ? editing?.marks_as_visited === true : false }} supportsDescription={config.supportsDescription} supportsIcon={config.supportsIcon} supportsVisited={config.supportsVisited} isSubmitting={isSubmitting} fieldErrors={fieldErrors} onCancel={() => setEditing(undefined)} onSubmit={submit} />}
     {!readOnly && deleting && <DeleteConfirmation entityName={deleting.name} isDeleting={isDeleting} onCancel={() => setDeleting(null)} onConfirm={() => void confirmDelete()} />}
     {!isPanel && <div className="admin-list-heading"><h3>Liste</h3><span aria-live="polite">{entities.length} résultat{entities.length > 1 ? 's' : ''}</span></div>}
     {isLoading ? <p role="status">Chargement…</p> : <EntityList variant={variant} entities={entities} emptyMessage={`Aucun élément dans les ${config.pluralLabel.toLowerCase()}.`} onEdit={setEditing} onDelete={setDeleting} readOnly={readOnly} />}

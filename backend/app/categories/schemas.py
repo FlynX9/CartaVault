@@ -20,6 +20,7 @@ class CategoryCreate(BaseModel):
 
     description: str | None = None
     icon: str = DEFAULT_CATEGORY_ICON_ID
+    marks_as_visited: bool = False
 
     @field_validator("icon")
     @classmethod
@@ -41,6 +42,7 @@ class CategoryUpdate(BaseModel):
 
     description: str | None = None
     icon: str | None = None
+    marks_as_visited: bool | None = None
 
     @model_validator(mode="after")
     def validate_name(self) -> Self:
@@ -50,6 +52,8 @@ class CategoryUpdate(BaseModel):
             raise ValueError("The category name cannot be null")
         if "icon" in self.model_fields_set and self.icon is None:
             raise ValueError("The category icon cannot be null")
+        if "marks_as_visited" in self.model_fields_set and self.marks_as_visited is None:
+            raise ValueError("marks_as_visited cannot be null")
 
         return self
 
@@ -72,3 +76,4 @@ class CategoryRead(BaseModel):
     name: str
     description: str | None
     icon: str
+    marks_as_visited: bool

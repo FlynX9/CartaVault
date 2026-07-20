@@ -14,4 +14,11 @@ describe('place filters', () => {
   it('drops invalid date ranges rather than issuing an invalid request', () => {
     expect(deserializePlaceFilters(new URLSearchParams('created_from=2026-05-01&created_to=2026-01-01')).createdTo).toBeNull()
   })
+
+  it('round-trips favorites, visits, ratings and a stable sort', () => {
+    const params = serializePlaceFilters({ ...DEFAULT_PLACE_FILTERS, isFavorite: true, isVisited: false, ratingMin: 4, sortBy: 'relevant_rating', sortDirection: 'desc' })
+    expect(params.toString()).toBe('favorite=true&visited=false&rating_min=4&sort=relevant_rating&direction=desc')
+    expect(deserializePlaceFilters(params)).toMatchObject({ isFavorite: true, isVisited: false, ratingMin: 4, sortBy: 'relevant_rating', sortDirection: 'desc' })
+    expect(buildPlaceFilterSearchParams(deserializePlaceFilters(params)).toString()).toContain('rating_min=4')
+  })
 })

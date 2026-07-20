@@ -19,10 +19,11 @@ from app.countries.schemas import CountrySummary
 from app.database import get_db
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 from app.maps.schemas import (
-    InvitationCreate, InvitationRead, MapCreate, MapRead, MapUpdate,
+    InvitationCreate, InvitationRead, MapCreate, MapPlaceFieldConfig, MapRead, MapUpdate,
     MembershipRead, MembershipUpdate, TransferOwnership,
 )
 from app.places.models import Place
+from app.places.fields import normalize_place_field_config
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 
@@ -47,6 +48,7 @@ def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
         current_user_role=access.role, can_edit=can_edit, can_delete=access.can_delete,
         can_manage_members=can_manage, can_transfer_ownership=can_manage,
         can_import=can_edit, can_export=True,
+        place_field_config=normalize_place_field_config(poi_map.place_field_config),
     )
 
 
@@ -113,6 +115,20 @@ def update_map(map_id: UUID, map_data: MapUpdate, database_session: Session = De
     except SQLAlchemyError as error:
         database_session.rollback()
         raise HTTPException(status_code=500, detail="Unable to update the map") from error
+
+
+@router.get("/{map_id}/place-fields", response_model=MapPlaceFieldConfig)
+def get_place_field_config(map_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> MapPlaceFieldConfig:
+    access = require_map_role(database_session, map_id, current_user, "viewer")
+    return MapPlaceFieldConfig(fields=normalize_place_field_config(access.map.place_field_config))
+
+
+@router.put("/{map_id}/place-fields", response_model=MapPlaceFieldConfig)
+def update_place_field_config(map_id: UUID, data: MapPlaceFieldConfig, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> MapPlaceFieldConfig:
+    access = require_map_role(database_session, map_id, current_user, "editor")
+    access.map.place_field_config = data.fields
+    database_session.commit()
+    return MapPlaceFieldConfig(fields=normalize_place_field_config(access.map.place_field_config))
 
 
 @router.delete("/{map_id}", status_code=204)

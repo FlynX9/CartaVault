@@ -86,11 +86,15 @@ def get_map_places(
                 Place.id,
                 Place.name,
                 Place.map_id,
+                Place.is_favorite,
+                Place.interest_rating,
+                Place.visit_rating,
             ),
             selectinload(Place.categories).load_only(
                 Category.id,
                 Category.name,
                 Category.icon,
+                Category.marks_as_visited,
             ),
             selectinload(Place.tags).load_only(
                 Tag.id,
@@ -183,6 +187,10 @@ def get_map_places(
                 )
                 for tag in place.tags
             ],
+            is_favorite=place.is_favorite,
+            is_visited=any(category.marks_as_visited for category in place.categories),
+            interest_rating=place.interest_rating,
+            visit_rating=place.visit_rating,
         )
         for place, longitude, latitude in rows
     ]

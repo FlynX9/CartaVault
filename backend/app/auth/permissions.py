@@ -56,9 +56,16 @@ def require_map_role(database_session: Session, map_id: UUID, user: User, minimu
     return access
 
 
-def require_place_role(database_session: Session, place_id: UUID, user: User, minimum: str) -> Place:
+def require_place_role(
+    database_session: Session,
+    place_id: UUID,
+    user: User,
+    minimum: str,
+    *,
+    include_deleted: bool = False,
+) -> Place:
     place = database_session.get(Place, place_id)
-    if place is None:
+    if place is None or (place.deleted_at is not None and not include_deleted):
         raise HTTPException(status_code=404, detail="Place not found")
     require_map_role(database_session, place.map_id, user, minimum)
     return place

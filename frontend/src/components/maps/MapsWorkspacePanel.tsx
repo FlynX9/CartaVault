@@ -1,7 +1,7 @@
-import { Check, Download, LockKeyhole, Map, Plus, Search, Share2, Trash2, Users, X } from 'lucide-react'
+import { Check, Download, LockKeyhole, Map, Plus, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations } from '../../api/maps'
+import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from '../../api/maps'
 import { NOTIFICATIONS_CHANGED_EVENT, notifyNotificationsChanged } from '../notifications/events'
 import type { PendingMapInvitation, PoiMap } from '../../types/map'
 import { CreateMapDialog } from './CreateMapDialog'
@@ -28,6 +28,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   const [invitations, setInvitations] = useState<PendingMapInvitation[]>([])
   const [invitationError, setInvitationError] = useState<string | null>(null)
   const [busyInvitationId, setBusyInvitationId] = useState<string | null>(null)
+  const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null)
   const createButton = useRef<HTMLButtonElement>(null)
 
   const loadInvitations = useCallback(() => {
@@ -93,10 +94,20 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
         {filteredMaps.map((poiMap) => <li className={poiMap.id === activeMapId ? 'active' : ''} key={poiMap.id}>
           <div className="maps-catalog__preview" aria-label={`Aperçu de ${poiMap.name}`} role="img"><Map size={28} /><span>{poiMap.country.iso_alpha2}</span></div>
           <div className="maps-catalog__details"><span className={`maps-catalog__privacy${poiMap.is_shared ? ' shared' : ''}`} aria-label={poiMap.is_shared ? 'Carte partagée' : 'Carte privée'} title={poiMap.is_shared ? 'Carte partagée' : 'Carte privée'}>{poiMap.is_shared ? <Share2 size={15} /> : <LockKeyhole size={15} />}</span><strong>{poiMap.name}</strong><span>{poiMap.country.name}</span><em>{poiMap.current_user_role === 'owner' ? 'Propriétaire' : poiMap.current_user_role === 'editor' ? 'Éditeur' : poiMap.current_user_role === 'viewer' ? 'Lecteur' : 'Administrateur'}</em>{poiMap.id === activeMapId && <b>Ouverte</b>}</div>
-          <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={`Ouvrir ${poiMap.name}`} onClick={() => onOpen(poiMap.id)}>Ouvrir</button>{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={`Exporter la carte ${poiMap.name}`} title={`Exporter ${poiMap.name}`} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={`Gérer les membres de ${poiMap.name}`} title="Membres" onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={`Supprimer ${poiMap.name}`} title={`Supprimer ${poiMap.name}`} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
+          <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={`Ouvrir ${poiMap.name}`} onClick={() => onOpen(poiMap.id)}>Ouvrir</button>{poiMap.can_edit && <button type="button" className="panel-icon-button" aria-label={`Configurer les champs de ${poiMap.name}`} title="Champs des POI" onClick={() => setSettingsMap(poiMap)}><Settings2 size={16} /></button>}{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={`Exporter la carte ${poiMap.name}`} title={`Exporter ${poiMap.name}`} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={`Gérer les membres de ${poiMap.name}`} title="Membres" onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={`Supprimer ${poiMap.name}`} title={`Supprimer ${poiMap.name}`} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
         </li>)}
       </ul>
     </div>
     {creating && <CreateMapDialog onClose={closeCreateDialog} onCreated={(poiMap) => { closeCreateDialog(); onCreated(poiMap) }} />}
+    {settingsMap && <PlaceFieldSettingsDialog poiMap={settingsMap} onClose={() => setSettingsMap(null)} onSaved={onAccessChanged} />}
   </aside>
+}
+
+const FIELD_LABELS: Record<string, string> = { description: 'Description', region: 'Région', construction_date: 'Date de construction', abandonment_date: 'Date d’abandon', condition: 'État de conservation', access: 'Accès', danger_level: 'Niveau de danger', links: 'Liens externes', ratings: 'Notations', favorite: 'Favori' }
+
+function PlaceFieldSettingsDialog({ poiMap, onClose, onSaved }: { poiMap: PoiMap; onClose: () => void; onSaved: () => void }) {
+  const [fields, setFields] = useState<Record<string, boolean>>(() => Object.fromEntries(Object.keys(FIELD_LABELS).map((key) => [key, poiMap.place_field_config?.[key] !== false])))
+  const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null)
+  const save = async () => { try { setBusy(true); setError(null); await updateMapPlaceFields(poiMap.id, fields); onSaved(); onClose() } catch (caught) { setError(caught instanceof Error ? caught.message : 'Configuration impossible.') } finally { setBusy(false) } }
+  return <div className="cv-overlay" role="presentation"><section className="cv-modal map-place-fields-dialog" role="dialog" aria-modal="true" aria-labelledby="map-place-fields-title"><header><div><p className="cv-workspace-panel__eyebrow">Paramètres de la carte</p><h2 id="map-place-fields-title">Champs des POI</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button></header><p>Désactiver un champ le masque sans supprimer les valeurs existantes.</p>{error && <p className="form-alert" role="alert">{error}</p>}<div className="map-place-fields-grid">{Object.entries(FIELD_LABELS).map(([key, label]) => <label key={key}><input type="checkbox" checked={fields[key] !== false} onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.checked }))} />{label}</label>)}</div><footer className="dialog-actions"><button className="secondary-button" type="button" onClick={onClose}>Annuler</button><button className="primary-button" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Enregistrement…' : 'Enregistrer'}</button></footer></section></div>
 }

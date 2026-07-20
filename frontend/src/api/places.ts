@@ -16,8 +16,10 @@ import type {
   PlaceBulkTripResult,
   PlaceFacets,
   PlaceListPosition,
+  PlaceHistoryEvent,
+  PlaceLink,
 } from '../types/place'
-import { buildPlaceFilterSearchParams } from '../places/placeFilters'
+import { buildPlaceFilterSearchParams, DEFAULT_PLACE_FILTERS } from '../places/placeFilters'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { parseMapStatusSummary, parseStatusSummary } from './statuses'
 import {
@@ -63,6 +65,7 @@ function parsePlaceCategory(value: unknown): PlaceCategory {
     description: readNullableString(value, 'description', context),
     icon: readString(value, 'icon', context),
     is_primary: value.is_primary === true,
+    marks_as_visited: value.marks_as_visited === true,
   }
 }
 
@@ -103,6 +106,10 @@ function parseMapPlace(value: unknown): MapPlace {
     tags: readArray(value, 'tags', context).map((tag) =>
       parseNamedEntity(tag, 'le tag'),
     ),
+    is_favorite: value.is_favorite === true,
+    is_visited: value.is_visited === true,
+    interest_rating: typeof value.interest_rating === 'number' ? readNumber(value, 'interest_rating', context) : null,
+    visit_rating: typeof value.visit_rating === 'number' ? readNumber(value, 'visit_rating', context) : null,
   }
 }
 
@@ -161,6 +168,16 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     tags: readArray(payload, 'tags', context).map(parsePlaceTag),
     created_at: readDateTime(payload, 'created_at', context),
     updated_at: readDateTime(payload, 'updated_at', context),
+    is_favorite: payload.is_favorite === true,
+    interest_rating: typeof payload.interest_rating === 'number' ? readNumber(payload, 'interest_rating', context) : null,
+    visit_rating: typeof payload.visit_rating === 'number' ? readNumber(payload, 'visit_rating', context) : null,
+    is_visited: payload.is_visited === true,
+    deleted_at: typeof payload.deleted_at === 'string' ? payload.deleted_at : null,
+    links: (Array.isArray(payload.links) ? payload.links : []).map((value) => {
+      if (!isRecord(value)) throw new Error('Un lien du POI est invalide.')
+      return { id: readUuid(value, 'id', context), url: readString(value, 'url', context), label: readNullableString(value, 'label', context), sort_order: readNumber(value, 'sort_order', context), created_at: readDateTime(value, 'created_at', context), updated_at: readDateTime(value, 'updated_at', context) }
+    }),
+    field_config: isRecord(payload.field_config) ? Object.fromEntries(Object.entries(payload.field_config).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')) : {},
   }
 }
 
@@ -176,7 +193,7 @@ export async function getMapPlaces(
   query: MapPlaceQuery,
   signal: AbortSignal,
 ): Promise<MapPlaceResult> {
-  const searchParams = buildPlaceFilterSearchParams(query.filters ?? { query: '', categoryIds: [], tagIds: [], statusIds: [], regions: [], hasPhotos: null, createdFrom: null, createdTo: null, updatedFrom: null, updatedTo: null, accessValues: [], dangerLevels: [], conditionValues: [], hasValidCoordinates: null, inTrip: null })
+  const searchParams = buildPlaceFilterSearchParams(query.filters ?? DEFAULT_PLACE_FILTERS)
   searchParams.set('min_latitude', String(query.bounds.minLatitude)); searchParams.set('max_latitude', String(query.bounds.maxLatitude)); searchParams.set('min_longitude', String(query.bounds.minLongitude)); searchParams.set('max_longitude', String(query.bounds.maxLongitude))
 
   if (query.categoryId !== undefined) searchParams.set('category_id', query.categoryId)
@@ -200,7 +217,7 @@ export async function getPlaces(
   query: PlaceListQuery,
   signal?: AbortSignal,
 ): Promise<PlaceDetails[]> {
-  const searchParams = buildPlaceFilterSearchParams(query.filters ?? { query: '', categoryIds: [], tagIds: [], statusIds: [], regions: [], hasPhotos: null, createdFrom: null, createdTo: null, updatedFrom: null, updatedTo: null, accessValues: [], dangerLevels: [], conditionValues: [], hasValidCoordinates: null, inTrip: null })
+  const searchParams = buildPlaceFilterSearchParams(query.filters ?? DEFAULT_PLACE_FILTERS)
 
   if (query.mapId !== undefined) searchParams.set('map_id', query.mapId)
   if (query.q !== undefined) searchParams.set('q', query.q)
@@ -278,6 +295,30 @@ export async function deletePlace(
     'DELETE',
     signal,
   )
+}
+
+export async function restorePlace(placeId: string): Promise<PlaceDetails> {
+  return parsePlaceDetailsResponse(await sendJson(`/places/${encodeURIComponent(placeId)}/restore`, 'POST', {}))
+}
+
+export async function permanentlyDeletePlace(placeId: string): Promise<void> {
+  await sendWithoutResponse(`/places/${encodeURIComponent(placeId)}/permanent`, 'DELETE')
+}
+
+export async function getTrashedPlaces(mapId: string, signal?: AbortSignal): Promise<PlaceDetails[]> {
+  return parsePlacesResponse(await getJson('/places/trash', new URLSearchParams({ map_id: mapId }), signal))
+}
+
+export async function createPlaceLink(placeId: string, data: { url: string; label?: string | null; sort_order?: number }): Promise<PlaceLink> {
+  return sendJson(`/places/${encodeURIComponent(placeId)}/links`, 'POST', data) as Promise<PlaceLink>
+}
+
+export async function deletePlaceLink(placeId: string, linkId: string): Promise<void> {
+  await sendWithoutResponse(`/places/${encodeURIComponent(placeId)}/links/${encodeURIComponent(linkId)}`, 'DELETE')
+}
+
+export async function getPlaceHistory(placeId: string, signal?: AbortSignal): Promise<PlaceHistoryEvent[]> {
+  return getJson(`/places/${encodeURIComponent(placeId)}/history`, new URLSearchParams(), signal) as Promise<PlaceHistoryEvent[]>
 }
 
 export async function bulkUpdatePlaces(payload: PlaceBulkPayload, signal?: AbortSignal): Promise<PlaceBulkResult> {

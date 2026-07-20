@@ -54,7 +54,7 @@ describe('TripPlannerPanel', () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true, can_delete: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     expect(await screen.findByText('Résumé du voyage')).toBeVisible()
-    expect(screen.getByText('Paramètres du voyage')).toBeVisible()
+    expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
     expect(screen.getByText('Trajets')).toBeVisible()
     const addDay = screen.getByRole('button', { name: 'Ajouter une journée' })
     expect(addDay).toBeVisible()
@@ -68,7 +68,8 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('button', { name: 'Démarrer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminer' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Paramètres du voyage'))
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres du voyage' }))
+    expect(screen.getByText('Paramètres du voyage')).toBeVisible()
     expect(screen.getAllByText('Charge des journées')).toHaveLength(2)
     expect(screen.getByLabelText('Nom du voyage')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Dupliquer le voyage' })).toBeVisible()
@@ -105,7 +106,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripSummary).mockResolvedValue({ ...emptySummary, route_providers: ['google'], route_provider_labels: ['Google Routes'], country_constraint_enabled: true, constraint_country_code: 'GEO', constraint_country_name: 'Géorgie' })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Géorgie', country: { name: 'Géorgie' }, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    fireEvent.click(await screen.findByText('Paramètres du voyage'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres du voyage' }))
     expect(screen.getAllByText('Google Routes')).toHaveLength(1)
     expect(screen.getAllByText('Itinéraire limité à la Géorgie')).toHaveLength(1)
     expect(within(screen.getByLabelText('Paramètres de routage')).getByText('Moteur')).toBeVisible()
@@ -208,6 +209,8 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTrip).mockResolvedValue(twoDays)
     vi.mocked(getPlaceDetails).mockResolvedValue({ id: 'hotel-poi', name: 'Hôtel POI', latitude: 50, longitude: 4, map: { id: 'map-1', name: 'Belgique', country: {} } } as never)
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    expect(await screen.findByText('N1')).toBeVisible()
+    expect(container.querySelector('.trip-timeline-night-badge .lucide-moon')).toBeInTheDocument()
     fireEvent.drop(container.querySelector('.trip-panel-night:not(.trip-panel-departure)')!, { dataTransfer: { getData: () => 'place:hotel-poi' } })
     expect(await screen.findByRole('dialog', { name: 'Ajouter un hébergement' })).toBeVisible()
     expect(await screen.findByText('Hôtel POI')).toBeVisible()
@@ -288,12 +291,26 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={routed} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     fireEvent.click(await screen.findByText('Résumé du voyage'))
-    fireEvent.click(screen.getByText('Bilan de la journée'))
     expect(await screen.findByLabelText('Distance totale de route : 184,3 km')).toBeVisible()
     expect(screen.getByLabelText('Temps total de conduite : 3 h 42')).toBeVisible()
-    expect(screen.getAllByLabelText('Visites : 5 h 30')).toHaveLength(2)
+    expect(screen.getAllByLabelText('Visites : 5 h 30')).toHaveLength(1)
     expect(screen.getByLabelText('Durée totale estimée : 9 h 12')).toBeVisible()
-    expect(screen.getByLabelText('Total : 9 h 12')).toBeVisible()
+    expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('184,3 km')
+    expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('3 h 42')
+    expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('9 h 12')
+    expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
+  })
+
+  it('groups day planning and color settings and shows the recommended time on the preceding anchor', async () => {
+    vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, recommended_start_time: '08:25:00', recommended_start_day_offset: 0 })
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Départ recommandé : 08:25')).toBeVisible()
+    expect(container.querySelector('.trip-panel-day-number .lucide-sun')).toBeInTheDocument()
+    expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Paramètres du jour'))
+    expect(screen.getByText('Planification horaire')).toBeVisible()
+    expect(screen.getByText('Couleur du jour')).toBeVisible()
   })
 
   it('marks stale routes as unavailable and the global summary as partial', async () => {

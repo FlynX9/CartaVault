@@ -21,6 +21,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_photo_role, require_place_role
 from app.photos.models import Photo
+from app.places.history import add_place_history
 from app.photos.schemas import PhotoCreate, PhotoRead, PhotoReorder, PhotoUpdate
 from app.photos.storage import (
     InvalidPhotoPathError,
@@ -117,6 +118,7 @@ def create_place_photo(
     photo_data: PhotoCreate,
     database_session: Session = Depends(get_db),
     _: Place = Depends(require_place_editor),
+    current_user: User = Depends(get_current_user),
 ) -> PhotoRead:
     """Create photo metadata associated with one place."""
 
@@ -140,6 +142,8 @@ def create_place_photo(
 
     try:
         database_session.add(photo)
+        database_session.flush()
+        add_place_history(database_session, place_id, current_user.id, "photo_added", {"photo": {"old": None, "new": {"id": str(photo.id), "original_name": photo.original_name}}})
         database_session.commit()
         database_session.refresh(photo)
 
@@ -193,6 +197,7 @@ def upload_place_photo(
     taken_at: date | None = Form(default=None),
     database_session: Session = Depends(get_db),
     _: Place = Depends(require_place_editor),
+    current_user: User = Depends(get_current_user),
 ) -> PhotoRead:
     """Store an image and create its associated database metadata."""
 
@@ -244,6 +249,7 @@ def upload_place_photo(
     try:
         database_session.add(photo)
         database_session.flush()
+        add_place_history(database_session, place_id, current_user.id, "photo_added", {"photo": {"old": None, "new": {"id": str(photo.id), "original_name": photo.original_name}}})
         database_session.commit()
     except SQLAlchemyError as error:
         database_session.rollback()
@@ -461,6 +467,7 @@ def delete_photo(
     photo_id: UUID,
     database_session: Session = Depends(get_db),
     _: Photo = Depends(require_photo_editor),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """Delete only the photo metadata row."""
 
@@ -502,6 +509,8 @@ def delete_photo(
     try:
         database_session.delete(photo)
         database_session.flush()
+        if stored_place_id is not None:
+            add_place_history(database_session, stored_place_id, current_user.id, "photo_removed", {"photo": {"old": {"id": str(photo_id), "original_name": photo.original_name}, "new": None}})
         remaining = database_session.scalars(select(Photo).where(Photo.place_id == stored_place_id).order_by(Photo.sort_order, Photo.id)).all() if stored_place_id is not None else []
         for position, remaining_photo in enumerate(remaining):
             remaining_photo.sort_order = position

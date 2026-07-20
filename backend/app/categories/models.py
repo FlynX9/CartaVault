@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, String, Text, text
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,3 +53,4 @@ class Category(Base):
         nullable=False,
         server_default=text("'material-symbols:location-on-outline'"),
     )
+    marks_as_visited: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))

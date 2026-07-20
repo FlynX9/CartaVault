@@ -5,6 +5,7 @@ export interface EntityFormValues {
   name: string
   description: string
   icon?: string
+  marksAsVisited?: boolean
 }
 
 interface EntityFormProps {
@@ -12,6 +13,7 @@ interface EntityFormProps {
   initialValues: EntityFormValues
   supportsDescription: boolean
   supportsIcon?: boolean
+  supportsVisited?: boolean
   isSubmitting: boolean
   fieldErrors: Partial<Record<keyof EntityFormValues, string>>
   onCancel: () => void
@@ -23,6 +25,7 @@ export function EntityForm({
   initialValues,
   supportsDescription,
   supportsIcon = false,
+  supportsVisited = false,
   isSubmitting,
   fieldErrors,
   onCancel,
@@ -81,6 +84,7 @@ export function EntityForm({
         </label>
       )}
       {supportsIcon && <CategoryIconField value={values.icon} onChange={(icon) => setValues((current) => ({ ...current, icon }))} />}
+      {supportsVisited && <label className="checkbox-field"><input type="checkbox" checked={values.marksAsVisited === true} onChange={(event) => setValues((current) => ({ ...current, marksAsVisited: event.target.checked }))} /><span>Cette catégorie marque le lieu comme visité</span></label>}
       <div className="admin-form-actions">
         <button className="primary-button" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}
