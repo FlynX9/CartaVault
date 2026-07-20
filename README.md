@@ -9,20 +9,20 @@ Le projet associe une API **FastAPI**, une base **PostgreSQL/PostGIS** et une in
 ## Aperçu
 
 <p align="center">
-  <img src="docs/Screenshots/Lieux.png" alt="Gestion des lieux dans CartaVault" width="100%">
+  <img src="docs/screenshots/Lieux.webp" alt="Gestion des lieux dans CartaVault" width="100%">
 </p>
 
 <p align="center">
-  <img src="docs/Screenshots/Sorties.png" alt="Planification des sorties dans CartaVault" width="100%">
+  <img src="docs/screenshots/Sorties.webp" alt="Planification des sorties dans CartaVault" width="100%">
 </p>
 
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/Screenshots/Categories.png" alt="Gestion des catégories CartaVault">
+      <img src="docs/screenshots/Categories.webp" alt="Gestion des catégories CartaVault">
     </td>
     <td width="50%">
-      <img src="docs/Screenshots/Status.png" alt="Gestion des statuts CartaVault">
+      <img src="docs/screenshots/Status.webp" alt="Gestion des statuts CartaVault">
     </td>
   </tr>
   <tr>
@@ -32,7 +32,7 @@ Le projet associe une API **FastAPI**, une base **PostgreSQL/PostGIS** et une in
 </table>
 
 <p align="center">
-  <img src="docs/Screenshots/Profil%20Utilisateur.png" alt="Espace compte et profil utilisateur CartaVault" width="760">
+  <img src="docs/screenshots/Profil-Utilisateur.webp" alt="Espace compte et profil utilisateur CartaVault" width="760">
 </p>
 
 ## Fonctionnalités principales
@@ -134,7 +134,7 @@ CartaVault/
 ├── database/
 │   └── init/                # initialisation PostgreSQL/PostGIS
 ├── docs/
-│   └── Screenshots/         # captures d’écran du projet
+│   └── screenshots/         # captures d’écran du projet
 ├── frontend/                # Vite, React, TypeScript et Leaflet
 ├── shared/                  # ressources partagées frontend/backend
 ├── docker-compose.yml
