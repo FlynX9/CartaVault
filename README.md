@@ -1,5 +1,13 @@
 # CartaVault
 
+<p align="center">
+  <img src="https://img.shields.io/badge/licence-MIT-blue" alt="Licence MIT">
+  <img src="https://img.shields.io/badge/Python-3.14-blue" alt="Python 3.14">
+  <img src="https://img.shields.io/badge/React-TypeScript-61dafb" alt="React TypeScript">
+  <img src="https://img.shields.io/badge/PostgreSQL-PostGIS-336791" alt="PostgreSQL PostGIS">
+  <img src="https://img.shields.io/badge/statut-d%C3%A9veloppement%20actif-orange" alt="Statut : développement actif">
+</p>
+
 CartaVault est une application cartographique **open source et auto-hébergeable** permettant de centraliser des points d’intérêt, organiser des cartes privées, préparer des sorties et conserver la maîtrise de ses données.
 
 Le projet associe une API **FastAPI**, une base **PostgreSQL/PostGIS** et une interface **React TypeScript** construite autour d’une carte Leaflet permanente.
