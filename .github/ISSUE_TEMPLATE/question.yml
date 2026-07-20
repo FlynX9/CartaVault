@@ -1,0 +1,29 @@
+name: Question ou proposition
+description: Poser une question sur le projet ou soumettre une proposition générale
+title: "[Question] "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: subject
+    attributes:
+      label: Sujet
+      description: Décrivez votre question ou votre proposition.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexte
+      description: Précisez ce que vous avez déjà essayé ou consulté.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Confidentialité
+      options:
+        - label: Cette demande ne contient aucun secret, jeton, mot de passe ou donnée personnelle.
+          required: true

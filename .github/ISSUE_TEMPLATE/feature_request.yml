@@ -1,0 +1,79 @@
+name: Demande de fonctionnalité
+description: Proposer une amélioration ou une nouvelle fonctionnalité
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de décrire le besoin avant de détailler la solution technique.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème ou besoin
+      description: Quel problème concret cette fonctionnalité doit-elle résoudre ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+      description: Décrivez le comportement souhaité du point de vue utilisateur.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+      description: Existe-t-il une solution de contournement ou une autre approche ?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Zone concernée
+      options:
+        - Cartes et lieux
+        - Catégories, tags et statuts
+        - Photos
+        - Import / export
+        - Sorties et routage
+        - Utilisateurs et permissions
+        - Administration
+        - Déploiement
+        - Documentation
+        - Autre
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critères d’acceptation
+      description: Listez les résultats vérifiables attendus.
+      placeholder: |
+        - [ ] …
+        - [ ] …
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexte complémentaire
+      description: Maquettes, exemples, captures ou liens utiles.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Vérifications
+      options:
+        - label: J’ai vérifié qu’une issue similaire n’existe pas déjà.
+          required: true
