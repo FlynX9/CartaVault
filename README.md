@@ -307,3 +307,5 @@ Avant toute contribution importante, ouvrez de préférence une issue afin de di
 ## Licence
 
 CartaVault est distribué sous licence MIT. Consultez le fichier [`LICENSE`](LICENSE) pour plus d’informations.
+
+Made In Vosges
