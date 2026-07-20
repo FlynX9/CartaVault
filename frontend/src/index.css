@@ -1325,14 +1325,53 @@ button {
 .trip-planner-panel .trip-panel-arrival::after { display: none; }
 .trip-planner-panel .trip-panel-departure::after { background: var(--cv-color-teal); border: 0; }
 
-.trip-planner-panel .trip-panel-day-number {
+/* .trip-planner-panel .trip-panel-day-number {
   grid-template-rows: 12px 12px;
   align-content: center;
   gap: 0;
 }
 .trip-planner-panel .trip-panel-day-number > svg { color: #fff; stroke-width: 2.2; }
-.trip-planner-panel .trip-panel-day-number > b { color: #fff; font-size: 0.61rem; font-weight: 850; line-height: 1; }
+.trip-planner-panel .trip-panel-day-number > b { color: #fff; font-size: 0.61rem; font-weight: 850; line-height: 1; } */
 
+.trip-planner-panel .trip-panel-day-number {
+  position: absolute;
+  z-index: 2;
+  top: 5px;
+  left: -2.55rem;
+
+  display: grid;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+
+  grid-template-rows: 14px 12px;
+  align-content: center;
+  justify-items: center;
+  gap: 0;
+
+  color: #fff;
+  background: var(--trip-day-color, var(--cv-color-teal));
+  border: 3px solid #f7f9fb;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgb(13 27 42 / 12%);
+}
+
+.trip-planner-panel .trip-panel-day-number > svg {
+  width: 14px;
+  height: 14px;
+  color: #fff;
+  stroke-width: 2.2;
+}
+
+.trip-planner-panel .trip-panel-day-number > b {
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 850;
+  line-height: 1;
+}
+.trip-planner-panel .trip-panel-day {
+  position: relative;
+}
 .trip-planner-panel .trip-panel-night::before { display: none; }
 .trip-timeline-night-badge,
 .trip-timeline-anchor-badge {
@@ -2638,7 +2677,10 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 .trip-panel-night { background: rgb(15 166 138 / 9%); border-color: rgb(15 166 138 / 24%); }
 .trip-panel-day > summary { background: transparent; border-color: transparent; }
 .trip-panel-day { border-left: 3px solid var(--trip-day-color, var(--cv-color-teal)); }
-.trip-panel-day > summary > span:first-child { background: var(--trip-day-color, var(--cv-color-teal)); }
+/* .trip-panel-day > summary > span:first-child { background: var(--trip-day-color, var(--cv-color-teal)); } */
+.trip-panel-day > summary > .trip-panel-day-number {
+  background: var(--trip-day-color, var(--cv-color-teal));
+}
 .trip-day-color-picker { display: flex; align-items: center; justify-content: space-between; gap: .45rem; padding: .35rem .45rem; color: var(--cv-color-gray); background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 8%, white); border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 28%, transparent); border-radius: .4rem; font-size: .6rem; font-weight: 700; }
 .trip-day-color-picker input { width: 1.65rem; height: 1.35rem; padding: .1rem; background: white; border: 1px solid rgb(43 62 89 / 15%); border-radius: .3rem; cursor: pointer; }
 .trip-day-color-picker input:disabled { cursor: not-allowed; opacity: .55; }
@@ -3684,4 +3726,60 @@ body {
   .trip-planner-panel .trip-panel-night > .trip-night-kind,
   .trip-night-metrics { display: none !important; }
   .trip-anchor-recommended { grid-column: 2; justify-self: start; }
+}
+
+/* Final override: align trip day markers with departure/night markers. */
+.trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number {
+  position: absolute !important;
+  z-index: 2 !important;
+  top: 5px !important;
+  left: -2.55rem !important;
+
+  display: grid !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+
+  grid-template-rows: 14px 12px !important;
+  align-content: center !important;
+  justify-content: center !important;
+  justify-items: center !important;
+  gap: 0 !important;
+
+  color: #fff !important;
+  background: var(--trip-day-color, var(--cv-color-teal)) !important;
+  border: 3px solid #f7f9fb !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 2px 5px rgb(13 27 42 / 12%) !important;
+}
+
+.trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number > svg {
+  display: block !important;
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  margin: 0 !important;
+  color: #fff !important;
+  stroke-width: 2.2;
+}
+
+.trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number > b {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #fff !important;
+  font-size: 0.6rem !important;
+  font-weight: 850 !important;
+  line-height: 1 !important;
+}
+
+.trip-planner-panel .trip-panel-day {
+  position: relative;
 }
