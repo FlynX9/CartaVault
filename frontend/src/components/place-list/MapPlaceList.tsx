@@ -45,11 +45,47 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   useEffect(() => { if (tripPlanningActive) setImporting(false) }, [tripPlanningActive])
   useEffect(() => { selectionController.current?.abort(); setSelectedIds(new Set()); setPlaces([]); setFacets(emptyFacets); setNextOffset(0); setListReady(false); setBulkNotice(null) }, [poiMap?.id])
   useEffect(() => {
-    if (!poiMap) return
-    const controller = new AbortController(); setLoading(true); setError(null)
-    void Promise.all([getPlaces({ mapId: poiMap.id, filters, limit: PAGE_SIZE, offset: 0 }, controller.signal), getPlaceFacets(poiMap.id, filters, controller.signal), getCategories(controller.signal, undefined, poiMap.id), getTags(controller.signal, undefined, poiMap.id)]).then(([page, nextFacets, nextCategories, nextTags]) => { if (!controller.signal.aborted) { setPlaces(page); setNextOffset(page.length); setHasMore(page.length === PAGE_SIZE); setFacets(nextFacets); setCategories(nextCategories); setTags(nextTags) } }).catch((caught: unknown) => { if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) { setListReady(true); setLoading(false) } })
+    const mapId = poiMap?.id
+    if (!mapId) return
+
+    const controller = new AbortController()
+    setLoading(true)
+    setError(null)
+
+    void getPlaces({ mapId, filters, limit: PAGE_SIZE, offset: 0 }, controller.signal)
+      .then((page) => {
+        if (controller.signal.aborted) return
+        setPlaces(page)
+        setNextOffset(page.length)
+        setHasMore(page.length === PAGE_SIZE)
+      })
+      .catch((caught: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(caught instanceof Error ? caught.message : 'Chargement impossible.')
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setListReady(true)
+          setLoading(false)
+        }
+      })
+
+    // Les facettes et les catalogues enrichissent le panneau, mais ne doivent
+    // jamais empêcher l'affichage de la liste lorsque l'un de ces appels est lent.
+    void Promise.allSettled([
+      getPlaceFacets(mapId, filters, controller.signal),
+      getCategories(controller.signal, undefined, mapId),
+      getTags(controller.signal, undefined, mapId),
+    ]).then(([facetsResult, categoriesResult, tagsResult]) => {
+      if (controller.signal.aborted) return
+      if (facetsResult.status === 'fulfilled') setFacets(facetsResult.value)
+      if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value)
+      if (tagsResult.status === 'fulfilled') setTags(tagsResult.value)
+    })
+
     return () => controller.abort()
-  }, [filters, poiMap, refreshVersion])
+  }, [filters, poiMap?.id, refreshVersion])
   useEffect(() => { if (!poiMap?.can_edit || !selectionMode) return; const controller = new AbortController(); void listTrips(poiMap.id, controller.signal).then(setTrips).catch(() => setTrips([])); return () => controller.abort() }, [poiMap?.can_edit, poiMap?.id, selectionMode])
   useEffect(() => { if (!tripId) { setDayId(''); return }; const controller = new AbortController(); void getTrip(tripId, controller.signal).then((trip) => setTrips((current) => current.map((item) => item.id === trip.id ? trip : item))).catch(() => undefined); return () => controller.abort() }, [tripId])
 

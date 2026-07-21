@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import { getPlaceListPosition, getPlaces } from '../../api/places'
+import { getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
 import { MapPlaceList } from './MapPlaceList'
 
 vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
@@ -15,6 +15,31 @@ describe('MapPlaceList', () => {
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))
     expect(screen.getByText('Lieux')).toBeVisible()
     expect(screen.getByText(/France/)).toBeVisible()
+  })
+
+  it('does not restart POI loading when the active map reference changes', async () => {
+    vi.mocked(getPlaces).mockClear()
+    vi.mocked(getPlaces).mockResolvedValue([])
+    const poiMap = { id: 'map-id', name: 'France' }
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={poiMap as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await waitFor(() => expect(getPlaces).toHaveBeenCalledTimes(1))
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ ...poiMap } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.queryByText('Chargementâ€¦')).not.toBeInTheDocument())
+    expect(getPlaces).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders POIs while facets are still loading', async () => {
+    const place = { id: 'place-id', name: 'Disponible', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Ã€ faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    vi.mocked(getPlaceFacets).mockImplementationOnce(() => new Promise(() => undefined))
+
+    const { unmount } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByRole('button', { name: /^Disponible/ })).toBeVisible()
+    expect(screen.queryByText('Chargementâ€¦')).not.toBeInTheDocument()
+    unmount()
   })
 
   it('renders map information and filters alongside each POI', async () => {
