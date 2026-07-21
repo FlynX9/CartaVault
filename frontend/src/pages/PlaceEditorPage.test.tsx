@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import { getCategories } from '../api/categories'
 import { createPlace, getPlaceDetails, updatePlace } from '../api/places'
 import type { PlaceFormValues } from '../types/place'
 import { PlaceEditorPage } from './PlaceEditorPage'
@@ -10,6 +11,17 @@ const COUNTRY = { id: 'country', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'Fra
 const PLACE = { id: 'place-id', name: 'POI', map_id: 'map-a', map: { id: 'map-a', name: 'A', country: COUNTRY }, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, description: null, region: null, construction_date: null, abandonment_date: null, condition: null, access: null, danger_level: null, latitude: 48, longitude: 2, categories: [], tags: [], created_at: '2026-01-01', updated_at: '2026-01-01' }
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 describe('PlaceEditorPage maps', () => {
+  it('opens an edit form while category loading is still pending', async () => {
+    vi.mocked(getPlaceDetails).mockResolvedValue(PLACE)
+    vi.mocked(getCategories).mockImplementationOnce(() => new Promise(() => undefined))
+
+    const { unmount } = render(<MemoryRouter><PlaceEditorPage mode="edit" placeId="place-id" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByTestId('initial-map')).toHaveTextContent('map-a')
+    expect(screen.queryByText('Chargement du formulaire…')).not.toBeInTheDocument()
+    unmount()
+  })
+
   it('creates with the active map', async () => { vi.mocked(createPlace).mockResolvedValue(PLACE); render(<MemoryRouter><PlaceEditorPage mode="create" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>); expect(await screen.findByTestId('initial-map')).toHaveTextContent('map-a'); fireEvent.click(screen.getByText('Envoyer')); await waitFor(() => expect(createPlace).toHaveBeenCalledWith(expect.objectContaining({ map_id: 'map-a' }))) })
   it('moves an existing POI using a minimal map_id PATCH', async () => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(updatePlace).mockResolvedValue({ ...PLACE, map_id: 'map-b' }); render(<MemoryRouter><PlaceEditorPage mode="edit" placeId="place-id" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>); fireEvent.click(await screen.findByText('Déplacer')); await waitFor(() => expect(updatePlace).toHaveBeenCalledWith('place-id', { map_id: 'map-b' })) })
 })
