@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDeparture, addTripStop, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDay, updateTripDeparture } from '../../api/trips'
+import { addTripDeparture, addTripStop, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDay, updateTripDeparture } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -39,6 +39,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(moveTripStop).mockResolvedValue(trip)
     vi.mocked(calculateTripDayRoute).mockResolvedValue(trip.days[0])
     vi.mocked(confirmTripOptimization).mockResolvedValue(trip.days[0])
+    vi.mocked(exportTripGpx).mockResolvedValue({ export_id: 'export-1', file_name: 'voyage.gpx', download_url: '/trips/exports/export-1', expires_at: '' })
   })
 
   it('renders as the right workspace panel and not as a modal', async () => {
@@ -70,8 +71,16 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('Arrivée')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Démarrer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Optimiser le voyage' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres du voyage' }))
+    const selector = screen.getByLabelText('Voyage actif').closest<HTMLElement>('.trip-panel-selector')!
+    const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })
+    const settingsButton = within(selector).getByRole('button', { name: 'Afficher les paramètres du voyage' })
+    const exportButton = within(selector).getByLabelText('Exporter la sortie')
+    expect(createButton.compareDocumentPosition(settingsButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(settingsButton.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(settingsButton)
     expect(screen.getByText('Paramètres du voyage')).toBeVisible()
     expect(screen.getAllByText('Charge des journées')).toHaveLength(2)
     expect(screen.getByLabelText('Nom du voyage')).toBeVisible()
@@ -81,7 +90,27 @@ describe('TripPlannerPanel', () => {
     expect(settings).not.toBeNull()
     expect(within(settings!).queryByText('Options du voyage')).not.toBeInTheDocument()
     expect(within(settings!).getAllByRole('button', { name: 'Enregistrer' })).toHaveLength(1)
-    expect(within(settings!).getByLabelText('Télécharger')).toBeVisible()
+    expect(within(settings!).queryByLabelText('Télécharger')).not.toBeInTheDocument()
+    expect(settings?.querySelector('.trip-panel-chevron')).not.toBeInTheDocument()
+    const summary = screen.getByText('Résumé du voyage').closest('.trip-summary-shell')!
+    expect(settings!.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Masquer les paramètres du voyage'))
+    expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+  })
+
+  it('exports GPX from the compact export menu', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByLabelText('Exporter la sortie'))
+    expect(screen.getByRole('menu', { name: 'Options d’export' })).toBeVisible()
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Exporter en GPX' }))
+
+    await waitFor(() => expect(exportTripGpx).toHaveBeenCalledWith('trip-1'))
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('/trips/exports/export-1'), '_blank', 'noopener,noreferrer')
+    open.mockRestore()
   })
 
   it('switches from the full planner to the compact trip summary from the header', async () => {
