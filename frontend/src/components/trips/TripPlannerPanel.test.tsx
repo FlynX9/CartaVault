@@ -44,6 +44,9 @@ describe('TripPlannerPanel', () => {
   it('renders as the right workspace panel and not as a modal', async () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={null} activeDayId={null} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('map-sidebar', 'trip-planner-panel')
+    const header = screen.getByRole('button', { name: 'Fermer le panneau Sortie' }).closest('header')
+    expect(header).toHaveClass('trip-panel-header', 'cv-workspace-panel__header')
+    expect(header?.querySelector('.cv-workspace-panel__title')).toBeInTheDocument()
     expect(container.querySelector('.trip-planner-overlay')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Créer une sortie' }))
