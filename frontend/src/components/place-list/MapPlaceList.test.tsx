@@ -10,7 +10,10 @@ vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.reso
 vi.mock('../../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])) }))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('MapPlaceList', () => {
   it('collapses to a summary row and restores the full places panel', async () => {
@@ -139,5 +142,28 @@ describe('MapPlaceList', () => {
     expect(await screen.findByRole('button', { name: /^Current result/ })).toBeVisible()
     await act(async () => resolveOldRequest([oldPlace]))
     expect(screen.queryByRole('button', { name: /^Old result/ })).not.toBeInTheDocument()
+  })
+
+  it('loads the next page automatically when the end sentinel becomes visible', async () => {
+    let intersectionCallback: IntersectionObserverCallback | null = null
+    class IntersectionObserverMock {
+      constructor(callback: IntersectionObserverCallback) { intersectionCallback = callback }
+      observe = vi.fn()
+      disconnect = vi.fn()
+    }
+    vi.stubGlobal('IntersectionObserver', IntersectionObserverMock)
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
+    const nextPlace = { id: 'place-101', name: 'Place 101', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockReset().mockResolvedValueOnce(firstPage).mockResolvedValueOnce([nextPlace])
+
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(container.querySelector('.place-list-load-sentinel')).not.toBeNull())
+
+    await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
+
+    expect(await screen.findByRole('button', { name: /^Place 101/ })).toBeVisible()
+    expect(getPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ mapId: 'map-id', offset: 100, limit: 100 }), expect.any(AbortSignal))
+    expect(container.querySelector('.place-list-load-sentinel')).toBeNull()
   })
 })

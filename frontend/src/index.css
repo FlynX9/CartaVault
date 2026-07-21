@@ -2622,6 +2622,14 @@ button {
   .map-editor-panel .place-form-submit { bottom: 0.7rem; }
 }
 
+.place-list-load-sentinel { width: 100%; height: 1px; }
+.place-list-loading-more {
+  margin: .35rem 0 .7rem;
+  color: var(--cv-color-gray);
+  font-size: .7rem;
+  text-align: center;
+}
+
 @container poi-editor (max-width: 32rem) {
   .editor-page .form-section-heading > p { display: none; }
   .editor-page .form-grid { grid-template-columns: minmax(0, 1fr); }
