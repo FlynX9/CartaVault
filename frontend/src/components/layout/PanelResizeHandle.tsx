@@ -13,7 +13,7 @@ const KEYBOARD_STEP = 24
 function panelBounds(workspace: HTMLElement): { min: number; max: number } {
   return {
     min: MIN_PANEL_WIDTH,
-    max: Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, workspace.clientWidth - 96)),
+    max: Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, workspace.clientWidth - 320)),
   }
 }
 

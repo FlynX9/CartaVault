@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
@@ -10,7 +10,26 @@ vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.reso
 vi.mock('../../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])) }))
 
+afterEach(cleanup)
+
 describe('MapPlaceList', () => {
+  it('collapses to a summary row and restores the full places panel', async () => {
+    const onCollapsedChange = vi.fn()
+    const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn(), onCollapsedChange }
+    const { container, rerender } = render(<MemoryRouter><MapPlaceList {...props} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire le panneau Lieux' }))
+    expect(onCollapsedChange).toHaveBeenCalledWith(true)
+
+    rerender(<MemoryRouter><MapPlaceList {...props} collapsed /></MemoryRouter>)
+    expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-collapsed')
+    expect(screen.getByText('Lieux')).toBeVisible()
+    expect(screen.getByText('0 lieux')).toBeVisible()
+    expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-collapsed')
+    fireEvent.click(screen.getByRole('button', { name: 'Déployer le panneau Lieux' }))
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
+  })
+
   it('filters by the selected map UUID', async () => {
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))

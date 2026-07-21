@@ -1,4 +1,4 @@
-import { ArchiveRestore, ArrowDownAZ, CalendarPlus, CheckSquare, FileUp, Heart, LayoutList, List, MapPinned, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ArchiveRestore, ArrowDownAZ, CalendarPlus, CheckSquare, FileUp, Heart, LayoutList, List, MapPinned, Minus, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -23,7 +23,7 @@ const emptyFacets: PlaceFacets = { categories: [], tags: [], statuses: [], regio
 
 interface Props {
   poiMap: PoiMap | null; statuses?: PlaceStatusSummary[]; filters?: PlaceFilters; selectedPlaceId: string | null; refreshVersion: number; removedPlaceId: string | null
-  onFiltersChange?: (filters: PlaceFilters) => void; onPlaceSelect: (place: PreviewPlace) => void; onClose?: () => void; onImported?: () => void; tripPlanningActive?: boolean; tripPlaceIds?: Set<string>; onBulkChanged?: () => void
+  onFiltersChange?: (filters: PlaceFilters) => void; onPlaceSelect: (place: PreviewPlace) => void; onClose?: () => void; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onImported?: () => void; tripPlanningActive?: boolean; tripPlaceIds?: Set<string>; onBulkChanged?: () => void
 }
 
 const sortPlaces = (places: PlaceDetails[]) => places
@@ -32,7 +32,7 @@ const formatLastUpdate = (value: string | undefined) => !value ? 'Mis à jour r�
 const formatLocation = (place: PlaceDetails) => place.region || (place.latitude !== null && place.longitude !== null ? `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}` : 'Coordonnées non renseignées')
 const formatRating = (place: PlaceDetails) => place.interest_rating ?? place.visit_rating
 
-export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
   const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [listReady, setListReady] = useState(false); const [hasMore, setHasMore] = useState(false); const [nextOffset, setNextOffset] = useState(0); const [error, setError] = useState<string | null>(null); const [listRequestVersion, setListRequestVersion] = useState(0)
   const [facets, setFacets] = useState<PlaceFacets>(emptyFacets); const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]); const [tags, setTags] = useState<Array<{ id: string; name: string }>>([])
   const [filtersOpen, setFiltersOpen] = useState(false); const [selectionMode, setSelectionMode] = useState(false); const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); const [bulkBusy, setBulkBusy] = useState(false); const [bulkError, setBulkError] = useState<string | null>(null); const [bulkNotice, setBulkNotice] = useState<string | null>(null)
@@ -167,16 +167,16 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const multiOptions = (label: string, values: Array<{ id: string; name: string; count?: number; icon?: string; color?: string }>, selected: string[], apply: (next: string[]) => void) => <details className="place-filter-group"><summary>{label}{selected.length ? ` (${selected.length})` : ''}</summary><div>{values.map((value) => <label key={value.id} className="place-filter-option"><input type="checkbox" checked={selected.includes(value.id)} onChange={() => apply(toggle(selected, value.id))} />{value.color && <i style={{ backgroundColor: value.color }} />}{value.icon && <CategoryIconPreview iconId={value.icon} size={15} showLabel={false} />}{value.name}<small>{value.count ?? 0}</small></label>)}</div></details>
 
   return (
-    <aside className="country-place-panel cv-workspace-panel places-redesign-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
+    <aside className={`country-place-panel cv-workspace-panel places-redesign-panel${collapsed ? ' is-collapsed' : ''}`} id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
       <header className="places-redesign-header">
         <div>
           <div className="places-redesign-title-row"><h2 id="map-place-list-title">Lieux</h2>{poiMap && <span className="places-redesign-count">{facets.with_coordinates + facets.without_coordinates || visible.length} lieux</span>}</div>
-          {poiMap && <p>{poiMap.country?.name ?? poiMap.name} · {formatLastUpdate(poiMap.updated_at)}</p>}
+          {!collapsed && poiMap && <p>{poiMap.country?.name ?? poiMap.name} · {formatLastUpdate(poiMap.updated_at)}</p>}
         </div>
         <div className="places-redesign-header-actions">
-          {poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" onClick={() => setImporting(true)}><FileUp size={17} /></button>}
-          {poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create" to={withMap('/places/new', poiMap.id)}><Plus size={18} />Nouveau lieu</Link>}
-          <button className="panel-icon-button" type="button" aria-label="Fermer le panneau" onClick={onClose}><X size={18} /></button>
+          {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" onClick={() => setImporting(true)}><FileUp size={17} /></button>}
+          {!collapsed && poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create" to={withMap('/places/new', poiMap.id)}><Plus size={18} />Nouveau lieu</Link>}
+          <button className="panel-icon-button places-collapse-toggle" type="button" aria-label={collapsed ? 'Déployer le panneau Lieux' : 'Réduire le panneau Lieux'} aria-expanded={!collapsed} onClick={() => onCollapsedChange(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button>
         </div>
       </header>
       {poiMap && <section className="places-redesign-controls" aria-label="Recherche et filtres des lieux">

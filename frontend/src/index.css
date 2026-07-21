@@ -4357,3 +4357,138 @@ body.cv-panel-resizing {
     max-width: 100%;
   }
 }
+
+/* Keep map controls clear of the actual, user-defined panel width. */
+.map-workspace.place-list-open .geographic-search {
+  left: calc(var(--cv-left-panel-width, 430px) + 2rem);
+  width: min(31rem, calc(100% - var(--cv-left-panel-width, 430px) - 3rem));
+  transition: left 180ms ease, width 180ms ease;
+}
+
+.map-workspace.place-list-open .status-legend {
+  left: calc(var(--cv-left-panel-width, 430px) + 1.25rem);
+  transition: left 180ms ease;
+}
+
+/* The Lieux panel collapses to its identity row instead of disappearing. */
+.map-workspace .places-redesign-panel.is-collapsed {
+  bottom: auto;
+  width: 208px;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  container-type: normal;
+}
+
+.places-redesign-panel.is-collapsed > :not(.places-redesign-header) { display: none; }
+.places-redesign-panel.is-collapsed .places-redesign-header {
+  min-height: 3.5rem;
+  gap: .45rem;
+  padding: .5rem .55rem .5rem .75rem;
+  border-bottom: 0;
+}
+.places-redesign-panel.is-collapsed .places-redesign-header > div:first-child { min-width: 0; }
+.places-redesign-panel.is-collapsed .places-redesign-title-row { gap: .42rem; }
+.places-redesign-panel.is-collapsed .places-redesign-header h2 { font-size: 1rem; }
+.places-redesign-panel.is-collapsed .places-redesign-count { white-space: nowrap; }
+.places-redesign-panel.is-collapsed .places-collapse-toggle {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-basis: 2.25rem;
+}
+
+.map-workspace:has(.places-redesign-panel.is-collapsed) .cv-panel-resize-handle--left { display: none; }
+.map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search {
+  left: 13.8rem;
+  width: min(31rem, calc(100% - 14.8rem));
+}
+.map-workspace:has(.places-redesign-panel.is-collapsed) .status-legend { left: 13.05rem; }
+
+@media (max-width: 760px) {
+  .map-workspace .places-redesign-panel.is-collapsed {
+    top: .7rem;
+    right: .7rem;
+    bottom: auto;
+    left: .7rem;
+    width: calc(100% - 1.4rem);
+    border-radius: .75rem;
+  }
+  .map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search {
+    top: 4.9rem;
+    left: .7rem;
+    width: calc(100% - 1.4rem);
+  }
+  .map-workspace:has(.places-redesign-panel.is-collapsed) .status-legend { left: .7rem; }
+}
+
+/* Compact map search: same rhythm as the collapsed Lieux row. */
+.map-workspace .geographic-search {
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - 3rem));
+  top: .8rem;
+  width: 3.5rem;
+  min-width: 3.5rem;
+  max-width: var(--cv-geographic-search-expanded-width);
+  transition: left 180ms ease, width 180ms ease;
+}
+
+.map-workspace.place-list-open .geographic-search {
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-left-panel-width, 430px) - 3.25rem));
+  top: .8rem;
+  width: 3.5rem;
+}
+
+.map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search:hover,
+.map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search:focus-within,
+.map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search.is-pinned-open {
+  width: var(--cv-geographic-search-expanded-width);
+}
+
+.map-workspace .geographic-search:hover,
+.map-workspace .geographic-search:focus-within,
+.map-workspace .geographic-search.is-pinned-open {
+  width: var(--cv-geographic-search-expanded-width);
+}
+
+.map-workspace .geographic-search form,
+.map-workspace .geographic-search form > button {
+  min-height: 3.5rem;
+  height: 3.5rem;
+}
+
+.map-workspace .geographic-search form > button {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.map-workspace .geographic-search form > label {
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.map-workspace .geographic-search:hover form > label,
+.map-workspace .geographic-search:focus-within form > label,
+.map-workspace .geographic-search.is-pinned-open form > label {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search {
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - 15.4rem));
+  top: .8rem;
+  left: 14.45rem;
+  width: 3.5rem;
+}
+
+@media (max-width: 760px) {
+  .map-workspace .geographic-search,
+  .map-workspace.place-list-open .geographic-search,
+  .map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search {
+    --cv-geographic-search-expanded-width: calc(100% - 1.4rem);
+  }
+}
