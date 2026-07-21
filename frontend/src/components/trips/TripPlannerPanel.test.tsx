@@ -426,6 +426,29 @@ describe('TripPlannerPanel', () => {
     await waitFor(() => expect(updateTripDeparture).toHaveBeenCalledWith('departure-1', expect.objectContaining({ name: 'Ancien départ', latitude: 48, longitude: 2 })))
   })
 
+  it('keeps trip anchors editable without destructive actions or night route metrics', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const anchoredTrip = {
+      ...trip,
+      days: [trip.days[0], secondDay],
+      departure: { id: 'departure-1', trip_id: trip.id, place_id: null, name: 'Maison', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
+      arrival: { id: 'arrival-1', trip_id: trip.id, place_id: null, name: 'Retour maison', latitude: 48, longitude: 2, address: null, notes: null },
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, name: 'Hôtel', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: '20:00:00', check_out_time: '08:00:00' }],
+    } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([anchoredTrip])
+    vi.mocked(getTrip).mockResolvedValue(anchoredTrip)
+
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={anchoredTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('button', { name: 'Modifier le point de départ' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Modifier le point d’arrivée' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Modifier l’hébergement' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Supprimer le point de départ' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Utiliser le point de départ comme arrivée' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Supprimer l’hébergement' })).not.toBeInTheDocument()
+    expect(container.querySelector('.trip-night-metrics')).not.toBeInTheDocument()
+  })
+
   it('presents the free location action as a ghost stop entry', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Belgique', country: { iso_alpha2: 'BE' }, effective_center_latitude: 50.5, effective_center_longitude: 4.5, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('button', { name: /Lieu libre/ })).toHaveClass('trip-panel-free-stop')
