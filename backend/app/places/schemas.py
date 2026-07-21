@@ -159,6 +159,7 @@ class PlaceRead(BaseModel):
     deleted_at: datetime | None
     links: list[PlaceLinkRead]
     field_config: dict[str, bool]
+    primary_photo_id: UUID | None = None
 
 
 class PlaceBulkAction(BaseModel):

@@ -8,9 +8,9 @@ export function readStatusId(search: string): string | null {
   return value || null
 }
 
-export function withMap(pathname: string, mapId: string | null, statusId: string | null = null): string {
+export function withMap(pathname: string, mapId: string | null | undefined, statusId: string | null = null): string {
   const params = new URLSearchParams()
-  if (mapId !== null) params.set('map', mapId)
+  if (mapId) params.set('map', mapId)
   if (statusId !== null) params.set('status', statusId)
   const query = params.toString()
   return query ? `${pathname}?${query}` : pathname

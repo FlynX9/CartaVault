@@ -36,6 +36,7 @@ export interface PlaceDetails {
   deleted_at?: string | null
   links?: PlaceLink[]
   field_config?: Record<string, boolean>
+  primary_photo_id?: string | null
 }
 
 export interface PreviewPlace { id: string; name: string; longitude: number | null; latitude: number | null; status: MapStatusSummary; categories: MapCategory[]; tags: MapTag[]; is_favorite?: boolean; is_visited?: boolean; interest_rating?: number | null; visit_rating?: number | null }

@@ -60,6 +60,7 @@ def build_place_read_statement():
             joinedload(Place.status),
             selectinload(Place.categories),
             selectinload(Place.tags),
+            selectinload(Place.photos),
             selectinload(Place.links),
         )
     )
@@ -133,6 +134,7 @@ def place_to_read(
         deleted_at=place.deleted_at,
         links=place.links,
         field_config=normalize_place_field_config(place.map.place_field_config),
+        primary_photo_id=next((photo.id for photo in place.photos if photo.is_primary), place.photos[0].id if place.photos else None),
     )
 
 

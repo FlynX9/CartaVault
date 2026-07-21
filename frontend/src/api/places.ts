@@ -178,6 +178,7 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
       return { id: readUuid(value, 'id', context), url: readString(value, 'url', context), label: readNullableString(value, 'label', context), sort_order: readNumber(value, 'sort_order', context), created_at: readDateTime(value, 'created_at', context), updated_at: readDateTime(value, 'updated_at', context) }
     }),
     field_config: isRecord(payload.field_config) ? Object.fromEntries(Object.entries(payload.field_config).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')) : {},
+    primary_photo_id: typeof payload.primary_photo_id === 'string' ? readUuid(payload, 'primary_photo_id', context) : null,
   }
 }
 
