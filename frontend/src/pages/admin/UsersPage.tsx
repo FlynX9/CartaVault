@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { KeyRound, Pencil, Plus, ShieldCheck, UserRoundCheck, UserRoundX } from 'lucide-react'
+import { Check, KeyRound, Mail, Pencil, Plus, ShieldCheck, UserRoundCheck, UserRoundX, X } from 'lucide-react'
 
+import { getEmailSettings, getRegistrationRequests, reviewRegistration, saveEmailSettings, type EmailSettingsStatus, type RegistrationRequest } from '../../api/registration'
 import { createUser, getUsers, resetUserPassword, updateUser, type AdminUser, type UpdateUserPayload } from '../../api/users'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
@@ -14,8 +15,10 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [usersRefresh, setUsersRefresh] = useState(0)
 
   const load = useCallback(() => {
+    void usersRefresh
     const controller = new AbortController()
     setLoading(true); setError(null)
     void getUsers(query.trim() || undefined, controller.signal)
@@ -23,7 +26,7 @@ export function UsersPage() {
       .catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Impossible de charger les utilisateurs.'))
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [query])
+  }, [query, usersRefresh])
 
   useEffect(() => {
     const timeout = window.setTimeout(load, 250)
@@ -49,6 +52,8 @@ export function UsersPage() {
     <WorkspaceSearchField value={query} onChange={setQuery} placeholder="Rechercher un utilisateur" />
     {error && <div className="form-alert cv-panel-message" role="alert">{error}</div>}
     {success && <p className="admin-success cv-panel-message" role="status">{success}</p>}
+    <RegistrationRequestsPanel onApproved={() => setUsersRefresh((value) => value + 1)} />
+    <ResendSettingsPanel />
     {creating && <CreateUserForm onCancel={() => setCreating(false)} onCreated={(user) => { setUsers((current) => [...current, user]); setCreating(false); setSuccess(`${user.display_name} a bien été créé.`) }} onError={setError} />}
     {editing && <EditUserForm user={editing} onCancel={() => setEditing(null)} onSubmit={(payload) => void saveUser(editing, payload)} />}
     {resetting && <ResetPasswordForm user={resetting} onCancel={() => setResetting(null)} onDone={() => { setResetting(null); setSuccess(`Le mot de passe de ${resetting.display_name} a été réinitialisé.`) }} onError={setError} />}
@@ -57,6 +62,90 @@ export function UsersPage() {
       : users.length === 0
         ? <p className="admin-empty cv-panel-state">Aucun utilisateur trouvé.</p>
         : <ul className="admin-entity-list cv-panel-users-list cv-workspace-panel__list">{users.map((user) => <UserCard key={user.id} user={user} onEdit={() => { setEditing(user); setCreating(false); setResetting(null) }} onReset={() => { setResetting(user); setCreating(false); setEditing(null) }} />)}</ul>}
+  </section>
+}
+
+function RegistrationRequestsPanel({ onApproved }: { onApproved: () => void }) {
+  const [requests, setRequests] = useState<RegistrationRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getRegistrationRequests(controller.signal)
+      .then(setRequests)
+      .catch((caught: unknown) => setMessage(caught instanceof Error ? caught.message : 'Impossible de charger les demandes.'))
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [])
+
+  const decide = async (request: RegistrationRequest, decision: 'approve' | 'reject') => {
+    setBusyId(request.id)
+    setMessage(null)
+    try {
+      const reviewed = await reviewRegistration(request.id, decision)
+      setRequests((current) => current.map((item) => item.id === reviewed.id ? reviewed : item))
+      setMessage(decision === 'approve' ? `Le compte de ${request.email} est maintenant actif.` : `La demande de ${request.email} a été refusée.`)
+      if (decision === 'approve') onApproved()
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Décision impossible.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const pending = requests.filter((request) => request.status === 'pending')
+  return <section className="cv-admin-section" aria-labelledby="registration-requests-title">
+    <header><div><span className="cv-workspace-panel__eyebrow">Inscriptions</span><h3 id="registration-requests-title">Demandes en attente</h3></div><span className="cv-admin-section__count">{pending.length}</span></header>
+    {message && <p className="cv-admin-section__message" role="status">{message}</p>}
+    {loading ? <p className="cv-panel-state">Chargement…</p> : pending.length === 0 ? <p className="cv-admin-section__empty">Aucune demande en attente.</p> : <ul className="cv-registration-list">{pending.map((request) => <li key={request.id}>
+      <span className="cv-registration-list__icon" aria-hidden="true"><Mail size={17} /></span>
+      <div><strong>{request.email}</strong><small>Demandée le {new Date(request.created_at).toLocaleDateString('fr-FR')}</small></div>
+      <div className="cv-registration-list__actions">
+        <button className="panel-icon-button primary" type="button" aria-label={`Accepter ${request.email}`} title="Accepter" disabled={busyId === request.id} onClick={() => void decide(request, 'approve')}><Check size={16} /></button>
+        <button className="panel-icon-button danger" type="button" aria-label={`Refuser ${request.email}`} title="Refuser" disabled={busyId === request.id} onClick={() => void decide(request, 'reject')}><X size={16} /></button>
+      </div>
+    </li>)}</ul>}
+  </section>
+}
+
+function ResendSettingsPanel() {
+  const [status, setStatus] = useState<EmailSettingsStatus | null>(null)
+  const [apiKey, setApiKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getEmailSettings(controller.signal).then(setStatus).catch((caught: unknown) => setMessage(caught instanceof Error ? caught.message : 'Configuration email indisponible.'))
+    return () => controller.abort()
+  }, [])
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setBusy(true)
+    setMessage(null)
+    try {
+      const saved = await saveEmailSettings(apiKey)
+      setStatus(saved)
+      setApiKey('')
+      setMessage('La clé Resend a été enregistrée de manière chiffrée.')
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Enregistrement impossible.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <section className="cv-admin-section" aria-labelledby="resend-settings-title">
+    <header><div><span className="cv-workspace-panel__eyebrow">Messagerie</span><h3 id="resend-settings-title">Envoi des emails</h3></div><span className={`cv-admin-section__status ${status?.configured ? 'configured' : ''}`}>{status?.configured ? `Resend ••••${status.last4}` : 'Non configuré'}</span></header>
+    <p className="cv-admin-section__description">La clé est chiffrée avant stockage et n’est jamais renvoyée par l’API.</p>
+    <form className="cv-resend-form" onSubmit={(event) => void submit(event)}>
+      <label><span>Clé API Resend</span><input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="re_••••••••" autoComplete="off" required /></label>
+      <button className="primary-button" type="submit" disabled={busy || !apiKey.trim()}>{busy ? 'Enregistrement…' : status?.configured ? 'Remplacer la clé' : 'Enregistrer la clé'}</button>
+    </form>
+    {message && <p className="cv-admin-section__message" role="status">{message}</p>}
   </section>
 }
 

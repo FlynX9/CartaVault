@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.config import security_settings
 
@@ -143,3 +143,44 @@ class PasswordReset(BaseModel):
 class LoginRequest(EmailModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=1024)
+
+
+class RegistrationCreate(EmailModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=security_settings.password_min_length, max_length=1024)
+    confirmation: str = Field(min_length=security_settings.password_min_length, max_length=1024)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> Self:
+        if self.password != self.confirmation:
+            raise ValueError("Password confirmation does not match")
+        return self
+
+
+class PasswordResetRequest(EmailModel):
+    email: str = Field(min_length=3, max_length=320)
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=32, max_length=512)
+    password: str = Field(min_length=security_settings.password_min_length, max_length=1024)
+    confirmation: str = Field(min_length=security_settings.password_min_length, max_length=1024)
+
+    @model_validator(mode="after")
+    def passwords_match(self) -> Self:
+        if self.password != self.confirmation:
+            raise ValueError("Password confirmation does not match")
+        return self
+
+
+class RegistrationRequestRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: str
+    display_name: str
+    status: Literal["pending", "approved", "rejected"]
+    created_at: datetime
+    reviewed_at: datetime | None
+    notification_sent_at: datetime | None
+    notification_error_code: str | None

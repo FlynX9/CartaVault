@@ -10,6 +10,8 @@ cookie avec `credentials: "include"` et ajoute automatiquement le token CSRF aux
 écritures. Une session expirée réinitialise l’état utilisateur et revient à la
 connexion sans boucle de requêtes.
 
+Les routes publiques `/register`, `/forgot-password` et `/reset-password` complètent la connexion. Une inscription reste en attente jusqu’à la décision d’un administrateur. Le panneau Utilisateurs présente les demandes et permet de saisir la clé Resend, qui n’est jamais conservée dans le navigateur ni relue en clair. La réponse d’oubli de mot de passe reste identique, que l’adresse existe ou non.
+
 Le catalogue affiche le rôle courant et adapte les actions aux permissions
 renvoyées par l’API. Un lecteur consulte et exporte ; un éditeur gère le contenu
 et importe ; un propriétaire gère aussi les membres, invitations, suppression et

@@ -1,0 +1,4 @@
+CartaVault — Nouvelle demande d’inscription
+
+$applicant_email souhaite rejoindre CartaVault.
+Vérifiez cette demande dans le panneau Administration : $app_url

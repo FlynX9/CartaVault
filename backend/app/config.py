@@ -84,3 +84,17 @@ class CredentialSettings:
 
 
 credential_settings = CredentialSettings()
+
+
+@dataclass(frozen=True)
+class EmailSettings:
+    provider: str = os.getenv("EMAIL_PROVIDER", "resend").strip().lower()
+    from_name: str = os.getenv("EMAIL_FROM_NAME", "CartaVault").strip()
+    from_address: str = os.getenv("EMAIL_FROM_ADDRESS", "no-reply@cartavault.fr").strip()
+    reply_to: str = os.getenv("EMAIL_REPLY_TO", "contact@cartavault.fr").strip()
+    frontend_public_url: str = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:5173").strip().rstrip("/")
+    password_reset_token_ttl_minutes: int = _positive_int("PASSWORD_RESET_TOKEN_TTL_MINUTES", 30)
+    timeout_seconds: int = _positive_int("EMAIL_PROVIDER_TIMEOUT_SECONDS", 10)
+
+
+email_settings = EmailSettings()

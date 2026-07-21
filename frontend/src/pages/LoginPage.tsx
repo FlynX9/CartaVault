@@ -14,7 +14,7 @@ export function LoginPage() {
     finally { setSubmitting(false) }
   }
   return <main className="login-page"><section className="login-card" aria-labelledby="login-title">
-    <img src="/cartavault-icon.svg" alt="" className="login-card__logo" />
+    <img src="/cartavault-icon.png" alt="" className="login-card__logo" />
     <p className="cv-workspace-panel__eyebrow">Espace privé</p><h1 id="login-title">Connexion à CartaVault</h1>
     <p>Accédez aux cartes qui vous appartiennent ou qui sont partagées avec vous.</p>
     <form onSubmit={(event) => void submit(event)}>
@@ -23,5 +23,6 @@ export function LoginPage() {
       {error && <p className="form-alert" role="alert">{error}</p>}
       <button className="primary-button" type="submit" disabled={submitting}>{submitting ? 'Connexion…' : 'Connexion'}</button>
     </form>
+    <nav className="auth-links" aria-label="Aide à la connexion"><a href="/forgot-password">Mot de passe oublié ?</a><a href="/register">Créer un compte</a></nav>
   </section></main>
 }

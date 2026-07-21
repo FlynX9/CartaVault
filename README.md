@@ -141,7 +141,7 @@ CartaVault uses **OSRM** by default and can use the **Google Routes API** as an 
 - an Account area for profile details, avatar, security, sessions, preferences, and account deletion or anonymization.
 
 > [!NOTE]
-> Public registration, public maps, and automatic invitation emails are not currently available.
+> Public registration requires administrator approval. Registration and password-reset emails use the Resend key configured in Administration; public maps and automatic map-invitation emails are not currently available.
 
 ### Map layers
 

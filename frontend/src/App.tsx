@@ -23,6 +23,8 @@ import { deserializePlaceFilters, serializePlaceFilters } from './places/placeFi
 import { getTripMapBounds } from './components/trips/tripMapBounds'
 import { RequireAuth } from './auth/RequireAuth'
 import { useAuth } from './auth/useAuth'
+import { RegisterPage } from './pages/RegisterPage'
+import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages'
 
 const MapsWorkspacePanel = lazy(async () => ({ default: (await import('./components/maps/MapsWorkspacePanel')).MapsWorkspacePanel }))
 const MapMembersDialog = lazy(async () => ({ default: (await import('./components/maps/MapMembersDialog')).MapMembersDialog }))
@@ -280,6 +282,9 @@ function WorkspaceApp() {
 function App() {
   const location = useLocation()
   if (location.pathname.startsWith('/invitations/')) return <Routes><Route path="/invitations/:token" element={<InvitationPage />} /></Routes>
+  if (location.pathname === '/register') return <RegisterPage />
+  if (location.pathname === '/forgot-password') return <ForgotPasswordPage />
+  if (location.pathname === '/reset-password') return <ResetPasswordPage />
   return <RequireAuth><WorkspaceApp /></RequireAuth>
 }
 

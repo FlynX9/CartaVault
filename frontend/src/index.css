@@ -3162,6 +3162,27 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 .cv-user-card .panel-icon-button { width: 2.15rem; height: 2.15rem; flex-basis: 2.15rem; }
 .cv-user-flags { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; }
 .cv-user-flags .checkbox-field { min-width: 0; padding: 0.4rem 0.5rem; background: var(--cv-color-mist); border-radius: 0.5rem; font-size: 0.75rem; }
+.cv-admin-section { display: grid; gap: 0.65rem; margin: 0 var(--cv-panel-padding-x) var(--cv-panel-section-gap); padding: var(--cv-panel-card-padding); background: var(--cv-color-off-white); border: 1px solid rgb(43 62 89 / 11%); border-radius: var(--cv-panel-card-radius); box-shadow: 0 1px 2px rgb(13 27 42 / 4%); }
+.cv-admin-section > header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.cv-admin-section > header h3 { margin: 0.08rem 0 0; color: var(--cv-color-navy); font-size: 0.9rem; }
+.cv-admin-section__count, .cv-admin-section__status { flex: 0 0 auto; padding: 0.25rem 0.48rem; color: var(--cv-color-slate); background: var(--cv-color-mist); border-radius: 999px; font-size: 0.66rem; font-weight: 700; }
+.cv-admin-section__status.configured { color: #087f6b; background: rgb(15 166 138 / 12%); }
+.cv-admin-section__description, .cv-admin-section__message, .cv-admin-section__empty { margin: 0; color: var(--cv-color-gray); font-size: 0.72rem; line-height: 1.45; }
+.cv-admin-section__message { color: var(--cv-color-slate); }
+.cv-registration-list { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.cv-registration-list > li { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: 0.55rem; padding: 0.55rem; background: var(--cv-color-mist); border-radius: 0.6rem; }
+.cv-registration-list__icon { display: grid; width: 2rem; height: 2rem; place-items: center; color: var(--cv-color-teal); background: rgb(15 166 138 / 10%); border-radius: 50%; }
+.cv-registration-list strong, .cv-registration-list small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-registration-list strong { color: var(--cv-color-navy); font-size: 0.76rem; }
+.cv-registration-list small { margin-top: 0.12rem; color: var(--cv-color-gray); font-size: 0.65rem; }
+.cv-registration-list__actions { display: flex; gap: 0.3rem; }
+.cv-registration-list__actions .panel-icon-button { width: 2rem; height: 2rem; flex-basis: 2rem; }
+.cv-registration-list__actions .panel-icon-button.danger { color: #b42318; background: #fff; border-color: rgb(180 35 24 / 20%); }
+.cv-resend-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.5rem; }
+.cv-resend-form label { display: grid; gap: 0.28rem; min-width: 0; color: var(--cv-color-slate); font-size: 0.7rem; font-weight: 700; }
+.cv-resend-form input { box-sizing: border-box; width: 100%; min-width: 0; height: 2.35rem; padding: 0.45rem 0.6rem; color: var(--cv-color-navy); background: white; border: 1px solid rgb(43 62 89 / 18%); border-radius: 0.5rem; font: inherit; }
+.cv-resend-form .primary-button { width: auto; min-height: 2.35rem; padding: 0.45rem 0.7rem; white-space: nowrap; font-size: 0.72rem; }
+@media (max-width: 420px) { .cv-resend-form { grid-template-columns: 1fr; }.cv-registration-list > li { grid-template-columns: 2rem minmax(0, 1fr); }.cv-registration-list__actions { grid-column: 2; } }
 @media (max-width: 420px) { .cv-user-card { grid-template-columns: 2.2rem minmax(0, 1fr); }.cv-user-card .entity-actions { grid-column: 2; }.cv-user-flags { grid-template-columns: 1fr; } }
 .kmz-import-state p {
   margin: .8rem 0 .2rem;

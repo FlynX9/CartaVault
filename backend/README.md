@@ -1,6 +1,12 @@
 # Backend de CartaVault
 
-Le routeur `/account` gère le profil personnel, le changement d’e-mail et de mot de passe, les sessions actives, les avatars et la suppression contrôlée. Les avatars JPEG/PNG/WebP sont décodés avec Pillow, recadrés au centre en 256×256 WebP, débarrassés des métadonnées et stockés sous `AVATAR_STORAGE_PATH` (5 Mio et 4096 px maximum). La suppression refuse les propriétaires de cartes et le dernier administrateur actif, puis révoque les sessions et anonymise le compte. Aucun e-mail de validation ni mécanisme 2FA n’est disponible actuellement.
+Le routeur `/account` gère le profil personnel, le changement d’e-mail et de mot de passe, les sessions actives, les avatars et la suppression contrôlée. Les avatars JPEG/PNG/WebP sont décodés avec Pillow, recadrés au centre en 256×256 WebP, débarrassés des métadonnées et stockés sous `AVATAR_STORAGE_PATH` (5 Mio et 4096 px maximum). La suppression refuse les propriétaires de cartes et le dernier administrateur actif, puis révoque les sessions et anonymise le compte.
+
+## Inscriptions et emails
+
+`POST /auth/register` enregistre une demande en attente sans créer de ligne `users`. Un administrateur accepte ou refuse la demande depuis `/admin/registration-requests`; l’utilisateur n’est créé et activé qu’au moment de l’acceptation. La réinitialisation de mot de passe renvoie toujours une réponse générique, utilise un jeton à usage unique stocké uniquement sous forme de hash et révoque les sessions après confirmation.
+
+La clé Resend est saisie depuis le panneau Administration et chiffrée avec `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; l’API ne renvoie que son suffixe. Les paramètres non secrets sont `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES` et `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Chaque fonction d’envoi possède une version HTML CartaVault et une version texte versionnées sous `app/emails/templates/`.
 
 ## Authentification, rôles et sécurité
 

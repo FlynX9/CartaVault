@@ -16,6 +16,8 @@ from app.auth.credential_router import router as credential_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
+from app.auth.public_router import router as public_auth_router
+from app.auth.registration_admin_router import router as registration_admin_router
 from app.categories.router import router as categories_router
 from app.countries.router import router as countries_router
 from app.database import SessionLocal
@@ -106,10 +108,12 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(public_auth_router)
 app.include_router(account_router)
 app.include_router(credential_router)
 app.include_router(invitations_router)
 app.include_router(admin_users_router)
+app.include_router(registration_admin_router)
 app.include_router(places_map_router)
 app.include_router(places_advanced_router)
 app.include_router(places_router)
