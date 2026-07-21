@@ -108,6 +108,10 @@ Le fichier `.env` local est ignoré par Git. La variable disponible est :
 ```dotenv
 VITE_API_BASE_URL=
 VITE_STADIA_MAPS_API_KEY=
+VITE_BASEMAP_LIGHT_ENABLED=true
+VITE_BASEMAP_DARK_ENABLED=true
+VITE_BASEMAP_SATELLITE_ENABLED=true
+VITE_BASEMAP_OSM_ENABLED=true
 ```
 
 Laisser `VITE_API_BASE_URL` vide en développement utilise `/api`. Le proxy Vite
@@ -121,15 +125,32 @@ un déploiement sans reverse proxy `/api`. Elle est normalisée par
 ## Fonds cartographiques
 
 La carte principale propose CartaVault Light (Stadia Alidade Smooth), CartaVault
-Dark (Alidade Smooth Dark), Satellite (Alidade Satellite) et OpenStreetMap
-Standard. Le choix est conservé localement sous `cartavault.basemap`; il ne
-modifie ni l'URL, ni le centre, ni le zoom, ni les POI affichés.
+Dark (Alidade Smooth Dark), Satellite (Stadia Alidade Satellite) et OpenStreetMap
+Standard. Chaque entrée peut être masquée des sélecteurs avec la variable
+`VITE_BASEMAP_*_ENABLED` correspondante, sans modification du code. Le choix
+explicite est associé au compte ; `cartavault.basemap` sert de repli local si
+les préférences distantes sont indisponibles. Sans choix explicite, CartaVault
+utilise le fond clair ou sombre cohérent avec le thème. Un changement de fond
+ne recrée pas la carte et conserve centre, zoom, marqueurs, tracés et outils.
 
 `VITE_STADIA_MAPS_API_KEY` est facultative en local sur `localhost`. Hors
 local, utilisez une clé ou l'authentification par domaine configurée dans
 Stadia Maps. Les variables `VITE_*` sont publiques dans le navigateur : ne
-placez jamais de secret non restreint dans ce fichier. En cas d'indisponibilité
-de Stadia, le contrôle permet de basculer explicitement vers OpenStreetMap.
+placez jamais de secret non restreint dans ce fichier. Pour une offre SaaS,
+préférez l'authentification Stadia par domaine ou une clé publique strictement
+restreinte ; une installation auto-hébergée peut désactiver les sources Stadia.
+
+Les URL utilisées sont `tiles.stadiamaps.com/tiles/alidade_smooth`,
+`alidade_smooth_dark` et `alidade_satellite`, ainsi que
+`{s}.tile.openstreetmap.org` pour le repli. Les attributions Stadia Maps,
+OpenMapTiles, OpenStreetMap et, pour le satellite, CNES/Airbus/PlanetObserver
+sont toujours rendues par Leaflet. Les quotas et licences restent ceux des
+fournisseurs : vérifiez-les avant un déploiement public.
+
+Après trois erreurs de tuiles successives sur un fond, CartaVault bascule une
+seule fois vers OpenStreetMap et affiche un message discret. Une erreur OSM ne
+provoque jamais une boucle de basculement. Ce repli de session ne remplace pas
+le choix explicite conservé dans le compte.
 
 ## Shell CartaVault
 

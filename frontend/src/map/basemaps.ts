@@ -16,10 +16,18 @@ export interface BasemapDefinition {
   attribution: string
   url: string
   maxZoom: number
+  enabled: boolean
   requiresStadiaAuthentication: boolean
 }
 
 export const DEFAULT_BASEMAP_ID: BasemapId = 'cartavault-light'
+
+export interface BasemapAvailability {
+  'cartavault-light': boolean
+  'cartavault-dark': boolean
+  satellite: boolean
+  osm: boolean
+}
 
 const stadiaAttribution = '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
 
@@ -34,8 +42,22 @@ function addApiKey(url: string, apiKey: string | undefined): string {
     : `${url}?api_key=${encodeURIComponent(normalizedApiKey)}`
 }
 
+function enabled(value: string | undefined, fallback = true): boolean {
+  if (value === undefined || value.trim() === '') return fallback
+  return !['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase())
+}
+
+function configuredAvailability(): BasemapAvailability {
+  return {
+    'cartavault-light': enabled(import.meta.env.VITE_BASEMAP_LIGHT_ENABLED),
+    'cartavault-dark': enabled(import.meta.env.VITE_BASEMAP_DARK_ENABLED),
+    satellite: enabled(import.meta.env.VITE_BASEMAP_SATELLITE_ENABLED),
+    osm: enabled(import.meta.env.VITE_BASEMAP_OSM_ENABLED),
+  }
+}
+
 /** Builds the fixed, reviewed tile sources without ever serializing an absent key. */
-export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY): readonly BasemapDefinition[] {
+export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY, availability = configuredAvailability()): readonly BasemapDefinition[] {
   return [
     {
       id: 'cartavault-light',
@@ -44,6 +66,7 @@ export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY
       url: addApiKey('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', apiKey),
       attribution: stadiaAttribution,
       maxZoom: 20,
+      enabled: availability['cartavault-light'],
       requiresStadiaAuthentication: true,
     },
     {
@@ -53,6 +76,7 @@ export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY
       url: addApiKey('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', apiKey),
       attribution: stadiaAttribution,
       maxZoom: 20,
+      enabled: availability['cartavault-dark'],
       requiresStadiaAuthentication: true,
     },
     {
@@ -62,6 +86,7 @@ export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY
       url: addApiKey('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg', apiKey),
       attribution: satelliteAttribution,
       maxZoom: 20,
+      enabled: availability.satellite,
       requiresStadiaAuthentication: true,
     },
     {
@@ -71,12 +96,14 @@ export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       attribution: osmAttribution,
       maxZoom: 19,
+      enabled: availability.osm,
       requiresStadiaAuthentication: false,
     },
   ]
 }
 
 export const BASEMAPS = createBasemaps()
+export const AVAILABLE_BASEMAPS = BASEMAPS.filter((basemap) => basemap.enabled)
 
 export function getBasemap(id: BasemapId): BasemapDefinition {
   return BASEMAPS.find((basemap) => basemap.id === id) ?? BASEMAPS[0]
@@ -88,6 +115,21 @@ export function parseBasemapId(value: unknown): BasemapId | null {
     : null
 }
 
+export function isBasemapAvailable(id: BasemapId): boolean {
+  return getBasemap(id).enabled
+}
+
+export function getThemeDefaultBasemapId(prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true): BasemapId {
+  const themed: BasemapId = prefersDark ? 'cartavault-dark' : 'cartavault-light'
+  if (isBasemapAvailable(themed)) return themed
+  return AVAILABLE_BASEMAPS[0]?.id ?? 'osm'
+}
+
+export function resolveAvailableBasemapId(value: unknown, prefersDark?: boolean): BasemapId {
+  const parsed = parseBasemapId(value)
+  return parsed && isBasemapAvailable(parsed) ? parsed : getThemeDefaultBasemapId(prefersDark)
+}
+
 function getStorage(): Storage | null {
   try {
     return typeof window === 'undefined' ? null : window.localStorage
@@ -96,12 +138,17 @@ function getStorage(): Storage | null {
   }
 }
 
-export function loadBasemapPreference(storage: Storage | null = getStorage()): BasemapId {
+export function loadStoredBasemapPreference(storage: Storage | null = getStorage()): BasemapId | null {
   try {
-    return parseBasemapId(storage?.getItem(BASEMAP_PREFERENCE_KEY)) ?? DEFAULT_BASEMAP_ID
+    const parsed = parseBasemapId(storage?.getItem(BASEMAP_PREFERENCE_KEY))
+    return parsed && isBasemapAvailable(parsed) ? parsed : null
   } catch {
-    return DEFAULT_BASEMAP_ID
+    return null
   }
+}
+
+export function loadBasemapPreference(storage: Storage | null = getStorage()): BasemapId {
+  return loadStoredBasemapPreference(storage) ?? getThemeDefaultBasemapId()
 }
 
 export function saveBasemapPreference(id: BasemapId, storage: Storage | null = getStorage()): boolean {

@@ -4,7 +4,7 @@ import { getBasemap, type BasemapId } from '../../map/basemaps'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
-  onTileError: () => void
+  onTileError: (id: BasemapId) => void
 }
 
 /** The map keeps a single active tile layer; changing its key never recreates MapContainer. */
@@ -18,7 +18,7 @@ export function BasemapLayer({ basemapId, onTileError }: BasemapLayerProps) {
       attribution={basemap.attribution}
       maxZoom={basemap.maxZoom}
       detectRetina
-      eventHandlers={{ tileerror: onTileError }}
+      eventHandlers={{ tileerror: () => onTileError(basemap.id) }}
     />
   )
 }

@@ -1,14 +1,14 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
-import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences } from '../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
 import { GeographicSearch } from '../components/geocoding/GeographicSearch'
 import { MapContextMenu } from '../components/map/MapContextMenu'
 import type { MapContextMenuState } from '../components/map/mapContextMenuUtils'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { EMPTY_MAP_MARKER_FILTER, MapMarkerFilterContext, type MapMarkerFilter } from '../components/map/mapMarkerFilterContext'
-import { getBasemap, loadBasemapPreference, parseBasemapId, saveBasemapPreference, type BasemapId } from '../map/basemaps'
+import { getBasemap, getThemeDefaultBasemapId, loadStoredBasemapPreference, resolveAvailableBasemapId, saveBasemapPreference, type BasemapId } from '../map/basemaps'
 import type { AccountPreferences } from '../types/account'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
@@ -18,6 +18,7 @@ import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
+const TILE_ERROR_FALLBACK_THRESHOLD = 3
 
 function loadPanelWidth(key: string, fallback: number): number {
   try {
@@ -107,8 +108,13 @@ export function MapPage({
   tripNotice = null,
   onTripCoordinateAdd,
 }: MapPageProps) {
-  const [basemapId, setBasemapId] = useState(loadBasemapPreference)
-  const [basemapError, setBasemapError] = useState(false)
+  const initialBasemapRef = useRef(loadStoredBasemapPreference() ?? getThemeDefaultBasemapId())
+  const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
+  const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
+  const accountPreferencesRef = useRef<AccountPreferences | null>(null)
+  const explicitBasemapSelectionRef = useRef<BasemapId | null>(null)
+  const tileFailuresRef = useRef(new Map<BasemapId, number>())
+  const failedBasemapsRef = useRef(new Set<BasemapId>())
   const [localSearchResult, setLocalSearchResult] = useState<GeocodingResult | null>(null)
   const [contextMenu, setContextMenu] = useState<MapContextMenuState | null>(null)
   const [contextNotice, setContextNotice] = useState<string | null>(null)
@@ -120,25 +126,65 @@ export function MapPage({
   useEffect(() => {
     let current = true
     void getAccountPreferences().then((preferences) => {
-      const preferred = parseBasemapId(preferences.preferred_basemap)
-      if (current && preferred) setBasemapId(preferred)
+      if (!current) return
+      accountPreferencesRef.current = preferences
+      const explicitSelection = explicitBasemapSelectionRef.current
+      if (explicitSelection !== null) {
+        if (preferences.preferred_basemap !== explicitSelection) {
+          const updated = { ...preferences, preferred_basemap: explicitSelection }
+          accountPreferencesRef.current = updated
+          void updateAccountPreferences(updated).then((saved) => { accountPreferencesRef.current = saved }).catch(() => undefined)
+        }
+        return
+      }
+      if (failedBasemapsRef.current.size > 0) return
+      const preferred = resolveAvailableBasemapId(preferences.preferred_basemap)
+      setBasemapId(preferred)
+      saveBasemapPreference(preferred)
     }).catch(() => undefined)
     const onPreferencesUpdated = (event: Event) => {
-      const preferred = parseBasemapId((event as CustomEvent<AccountPreferences>).detail.preferred_basemap)
-      if (preferred) setBasemapId(preferred)
+      const preferences = (event as CustomEvent<AccountPreferences>).detail
+      accountPreferencesRef.current = preferences
+      const preferred = resolveAvailableBasemapId(preferences.preferred_basemap)
+      setBasemapId(preferred)
+      saveBasemapPreference(preferred)
+      setBasemapNotice(null)
     }
     window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated)
     return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
   }, [])
 
   const selectBasemap = (id: BasemapId) => {
-    setBasemapId(id)
-    setBasemapError(false)
-    saveBasemapPreference(id)
+    const selected = resolveAvailableBasemapId(id)
+    explicitBasemapSelectionRef.current = selected
+    setBasemapId(selected)
+    setBasemapNotice(null)
+    tileFailuresRef.current.clear()
+    failedBasemapsRef.current.clear()
+    saveBasemapPreference(selected)
+    const currentPreferences = accountPreferencesRef.current
+    if (currentPreferences !== null && currentPreferences.preferred_basemap !== selected) {
+      const updated = { ...currentPreferences, preferred_basemap: selected }
+      accountPreferencesRef.current = updated
+      void updateAccountPreferences(updated).then((saved) => {
+        accountPreferencesRef.current = saved
+      }).catch(() => undefined)
+    }
   }
 
-  const handleBasemapTileError = () => {
-    if (getBasemap(basemapId).requiresStadiaAuthentication) setBasemapError(true)
+  const handleBasemapTileError = (sourceId: BasemapId) => {
+    if (sourceId !== basemapId || failedBasemapsRef.current.has(sourceId)) return
+    const failures = (tileFailuresRef.current.get(sourceId) ?? 0) + 1
+    tileFailuresRef.current.set(sourceId, failures)
+    if (failures < TILE_ERROR_FALLBACK_THRESHOLD) return
+    failedBasemapsRef.current.add(sourceId)
+    if (sourceId === 'osm') {
+      setBasemapNotice('OpenStreetMap est temporairement indisponible. La carte sera réessayée automatiquement.')
+      return
+    }
+    setBasemapId('osm')
+    saveBasemapPreference('osm')
+    setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. OpenStreetMap a été activé automatiquement.`)
   }
 
   return (
@@ -183,12 +229,7 @@ export function MapPage({
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />
 
-        {basemapError && (
-          <div className="basemap-error" role="alert">
-            <span>Le fond Stadia Maps est indisponible. Vérifiez la configuration ou utilisez OpenStreetMap.</span>
-            <button type="button" onClick={() => selectBasemap('osm')}>Utiliser OSM</button>
-          </div>
-        )}
+        {basemapNotice && <div className="basemap-error" role="status">{basemapNotice}</div>}
 
         {isLoading && (
           <div className="status-banner loading-status" role="status">

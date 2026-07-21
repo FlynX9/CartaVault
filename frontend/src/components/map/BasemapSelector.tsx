@@ -1,6 +1,6 @@
 import { useState, type FocusEvent } from 'react'
 
-import { BASEMAPS, type BasemapId } from '../../map/basemaps'
+import { AVAILABLE_BASEMAPS, getBasemap, type BasemapId } from '../../map/basemaps'
 
 interface BasemapSelectorProps {
   activeBasemapId: BasemapId
@@ -9,7 +9,10 @@ interface BasemapSelectorProps {
 
 export function BasemapSelector({ activeBasemapId, onBasemapChange }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
-  const visibleBasemaps = expanded ? BASEMAPS : BASEMAPS.filter((basemap) => basemap.id === activeBasemapId)
+  const activeBasemap = getBasemap(activeBasemapId)
+  const visibleBasemaps = expanded
+    ? [activeBasemap, ...AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== activeBasemapId)]
+    : [activeBasemap]
   const selectBasemap = (id: BasemapId) => {
     onBasemapChange(id)
     setExpanded(false)

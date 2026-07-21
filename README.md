@@ -152,7 +152,7 @@ The map layer can be changed without reloading the map:
 - Satellite;
 - OpenStreetMap Standard.
 
-CartaVault layers use Stadia Maps. Outside a local environment, configure a restricted key with `VITE_STADIA_MAPS_API_KEY` or use domain-based authentication.
+CartaVault layers use Stadia Maps. Outside a local environment, configure a restricted public key with `VITE_STADIA_MAPS_API_KEY` or use domain-based authentication. Individual providers can be hidden with `VITE_BASEMAP_LIGHT_ENABLED`, `VITE_BASEMAP_DARK_ENABLED`, `VITE_BASEMAP_SATELLITE_ENABLED`, and `VITE_BASEMAP_OSM_ENABLED`. After repeated provider errors, the UI performs a controlled, non-looping OpenStreetMap fallback while preserving the explicit account preference. See `frontend/README.md` for provider URLs, attribution, licensing, SaaS and self-hosted guidance.
 
 ## Architecture and technical stack
 
