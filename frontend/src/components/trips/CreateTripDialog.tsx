@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { CalendarDays, Route, X } from 'lucide-react'
 
 import type { TripCreatePayload } from '../../api/trips'
+import { useModalFocus } from '../../hooks/useModalFocus'
 
 interface Props {
   mapName: string
@@ -12,15 +13,11 @@ interface Props {
 
 export function CreateTripDialog({ mapName, onClose, onCreate }: Props) {
   const nameInput = useRef<HTMLInputElement>(null)
+  const dialog = useRef<HTMLElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    nameInput.current?.focus()
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !busy) onClose() }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [busy, onClose])
+  useModalFocus({ dialogRef: dialog, initialFocusRef: nameInput, onEscape: busy ? undefined : onClose })
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -46,7 +43,7 @@ export function CreateTripDialog({ mapName, onClose, onCreate }: Props) {
   }
 
   return createPortal(<div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
-    <section className="create-trip-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-title">
+    <section ref={dialog} className="create-trip-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-title">
       <form onSubmit={(event) => void submit(event)}>
         <header><div><p className="cv-workspace-panel__eyebrow">Nouvelle sortie</p><h2 id="create-trip-title">Préparer une sortie</h2><span>Carte : {mapName}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
         <div className="create-trip-dialog__body">

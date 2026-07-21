@@ -3685,7 +3685,9 @@ body {
 .trip-night-metrics { display: flex !important; grid-auto-flow: column; align-items: center; gap: 0.3rem; }
 .trip-night-metrics > span { display: inline-flex; min-height: 25px; align-items: center; gap: 0.2rem; padding: 0.2rem 0.48rem; color: #fff; background: var(--cv-color-navy); border-radius: 6px; font-size: 0.59rem; font-weight: 720; white-space: nowrap; }
 .trip-planner-panel .trip-panel-day.is-active { border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 42%, #dfe7ec); }
-.trip-planner-panel .trip-panel-departure, .trip-planner-panel .trip-panel-arrival { background: color-mix(in srgb, var(--cv-color-teal) 7%, white); border-color: color-mix(in srgb, var(--cv-color-teal) 24%, white); }
+.trip-planner-panel .trip-panel-departure { --trip-anchor-color: var(--cv-color-teal); background: color-mix(in srgb, var(--trip-anchor-color) 7%, white); border-color: color-mix(in srgb, var(--trip-anchor-color) 30%, white); }
+.trip-planner-panel .trip-panel-arrival { --trip-anchor-color: var(--cv-color-slate); background: color-mix(in srgb, var(--trip-anchor-color) 7%, white); border-color: color-mix(in srgb, var(--trip-anchor-color) 30%, white); }
+.trip-planner-panel .trip-panel-departure .trip-timeline-anchor-badge, .trip-planner-panel .trip-panel-arrival .trip-timeline-anchor-badge { background: var(--trip-anchor-color); }
 .trip-planner-panel .trip-panel-add-day-ghost { min-height: 52px; margin: 0 0 0.8rem; background: rgb(255 255 255 / 75%); border-radius: 10px; }
 .trip-planner-panel .trip-panel-route-actions { gap: 0.4rem; }
 .trip-planner-panel .trip-panel-route-actions button { min-height: 30px; padding: 0.32rem 0.6rem; border-radius: 7px; font-size: 0.64rem; }
@@ -3796,4 +3798,10 @@ body {
 
 .trip-planner-panel .trip-panel-day {
   position: relative;
+}
+/* Shared keyboard focus: visible on every native interactive control without
+   turning container panels or map overlays into focus rings. */
+:where(button, a[href], input, select, textarea):focus-visible {
+  outline: 2px solid rgb(15 166 138 / 68%);
+  outline-offset: 2px;
 }

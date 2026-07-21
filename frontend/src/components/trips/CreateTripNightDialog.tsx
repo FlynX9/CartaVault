@@ -8,6 +8,7 @@ import { formatCoordinates } from '../../geocoding/coordinates'
 import { geocodingService } from '../../geocoding/geocodingService'
 import type { GeocodingResult } from '../../geocoding/types'
 import type { PlaceDetails } from '../../types/place'
+import { useModalFocus } from '../../hooks/useModalFocus'
 
 interface CommonProps {
   mapName?: string
@@ -65,6 +66,7 @@ export function CreateTripNightDialog(props: Props) {
   const isStop = props.kind === 'stop'
   const isEditing = props.mode === 'edit'
   const input = useRef<HTMLInputElement>(null)
+  const dialog = useRef<HTMLElement>(null)
   const searchController = useRef<AbortController | null>(null)
   const placeController = useRef<AbortController | null>(null)
   const [query, setQuery] = useState('')
@@ -74,6 +76,7 @@ export function CreateTripNightDialog(props: Props) {
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  useModalFocus({ dialogRef: dialog, initialFocusRef: input, onEscape: busy ? undefined : onClose })
 
   const selectPlace = useCallback(async (placeId: string) => {
     placeController.current?.abort(); const controller = new AbortController(); placeController.current = controller
@@ -88,11 +91,8 @@ export function CreateTripNightDialog(props: Props) {
   }, [])
 
   useEffect(() => {
-    input.current?.focus()
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !busy) onClose() }
-    document.addEventListener('keydown', onKeyDown)
-    return () => { document.removeEventListener('keydown', onKeyDown); searchController.current?.abort(); placeController.current?.abort() }
-  }, [busy, onClose])
+    return () => { searchController.current?.abort(); placeController.current?.abort() }
+  }, [])
   useEffect(() => { if (initialPlaceId) void selectPlace(initialPlaceId) }, [initialPlaceId, selectPlace])
 
   const search = async () => {
@@ -161,7 +161,7 @@ export function CreateTripNightDialog(props: Props) {
     : selectedResult ? formatCoordinates(selectedResult.latitude, selectedResult.longitude) : null
 
   return createPortal(<div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
-    <section className="create-trip-night-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-night-title">
+    <section ref={dialog} className="create-trip-night-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-night-title">
       <form onSubmit={(event) => void submit(event)}>
         <header><div><p className="cv-workspace-panel__eyebrow">{isStop ? 'Étape libre' : isDeparture ? 'Départ' : isArrival ? 'Arrivée' : 'Étape de nuit'}</p><h2 id="create-trip-night-title">{isStop ? 'Ajouter un lieu libre' : isEditing ? (isDeparture ? 'Modifier le point de départ' : isArrival ? 'Modifier le point d’arrivée' : 'Modifier l’hébergement') : (isDeparture ? 'Ajouter le point de départ' : isArrival ? 'Ajouter le point d’arrivée' : 'Ajouter un hébergement')}</h2><span>{mapName ? `Sortie sur la carte ${mapName}` : isStop ? 'Nouvelle étape de la journée' : isDeparture ? 'Point de départ du premier jour' : isArrival ? 'Destination du dernier jour' : 'Hébergement entre deux journées'}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
         <div className="create-trip-night-dialog__body">

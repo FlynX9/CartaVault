@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Copy, Crown, MailPlus, Trash2, UserRound, X } from 'lucide-react'
 
 import { createMapInvitation, getMapInvitations, getMapMembers, removeMapMember, revokeMapInvitation, transferMapOwnership, updateMapMember } from '../../api/maps'
 import type { MapInvitation, MapMember, PoiMap } from '../../types/map'
+import { useModalFocus } from '../../hooks/useModalFocus'
 
 interface MapMembersDialogProps {
   poiMap: PoiMap
@@ -11,11 +12,14 @@ interface MapMembersDialogProps {
 }
 
 export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDialogProps) {
+  const dialog = useRef<HTMLElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
   const [members, setMembers] = useState<MapMember[]>([])
   const [invitations, setInvitations] = useState<MapInvitation[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastLink, setLastLink] = useState<string | null>(null)
+  useModalFocus({ dialogRef: dialog, initialFocusRef: closeButton, onEscape: onClose })
 
   const load = useCallback(() => {
     const controller = new AbortController()
@@ -38,10 +42,10 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
   const pendingInvitations = invitations.filter((item) => item.accepted_at === null && item.revoked_at === null)
 
   return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <section className="map-members-dialog" role="dialog" aria-modal="true" aria-labelledby="members-title">
+    <section ref={dialog} className="map-members-dialog" role="dialog" aria-modal="true" aria-labelledby="members-title">
       <header className="map-members-dialog__header">
         <div><p className="cv-workspace-panel__eyebrow">Partage privé</p><h2 id="members-title">Accès à {poiMap.name}</h2><span>Gérez les membres et invitez de nouveaux collaborateurs.</span></div>
-        <button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button>
+        <button ref={closeButton} className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button>
       </header>
       <div className="map-members-dialog__body">
         {error && <div className="form-alert" role="alert">{error}</div>}
