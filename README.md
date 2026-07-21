@@ -1,217 +1,220 @@
 # CartaVault
 
+**English** | [Français](README.fr.md)
+
 <p align="center">
-  <img src="https://img.shields.io/badge/licence-MIT-blue" alt="Licence MIT">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
   <img src="https://img.shields.io/badge/Python-3.14-blue" alt="Python 3.14">
-  <img src="https://img.shields.io/badge/React-TypeScript-61dafb" alt="React et TypeScript">
-  <img src="https://img.shields.io/badge/PostgreSQL-PostGIS-336791" alt="PostgreSQL et PostGIS">
-  <img src="https://img.shields.io/badge/statut-d%C3%A9veloppement%20actif-orange" alt="Statut : développement actif">
+  <img src="https://img.shields.io/badge/React-TypeScript-61dafb" alt="React and TypeScript">
+  <img src="https://img.shields.io/badge/PostgreSQL-PostGIS-336791" alt="PostgreSQL and PostGIS">
+  <img src="https://img.shields.io/badge/status-active%20development-orange" alt="Status: active development">
 </p>
 
-**CartaVault** est une application cartographique open source et auto-hébergeable pour centraliser des points d’intérêt, organiser des cartes privées et préparer des sorties, tout en conservant la maîtrise de ses données.
+**CartaVault** is an open-source, self-hosted mapping application designed to centralize points of interest, organize private maps, and plan structured outings while keeping full control of your data.
 
-Elle repose sur une API **FastAPI**, une base **PostgreSQL/PostGIS** et une interface **React TypeScript** articulée autour d’une carte Leaflet permanente.
+It combines a **FastAPI** backend, a **PostgreSQL/PostGIS** database, and a **React TypeScript** interface built around a persistent Leaflet map.
 
 > [!IMPORTANT]
-> CartaVault est en développement actif. L’application est déjà utilisable localement, mais les procédures de déploiement, de migration et certaines interfaces peuvent encore évoluer avant la première version stable.
+> CartaVault is under active development. The application can already be used locally, but deployment and migration procedures, as well as some interfaces, may still change before the first stable release.
 
-## Sommaire
+## Table of contents
 
-- [Aperçu](#aperçu)
-- [Fonctionnalités](#fonctionnalités)
-- [Architecture et stack technique](#architecture-et-stack-technique)
-- [Démarrage rapide sous Windows](#démarrage-rapide-sous-windows)
-- [Configuration de Google Routes](#configuration-de-google-routes)
-- [Sécurité](#sécurité)
-- [État du projet](#état-du-projet)
-- [Contribution](#contribution)
-- [Licence](#licence)
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture and technical stack](#architecture-and-technical-stack)
+- [Quick start on Windows](#quick-start-on-windows)
+- [Google Routes configuration](#google-routes-configuration)
+- [Security](#security)
+- [Project status](#project-status)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Aperçu
+## Overview
 
-### Gestion des lieux
-
-<p align="center">
-  <img src="docs/screenshots/gestion-lieux.webp" alt="Gestion des lieux dans CartaVault" width="100%">
-</p>
-
-### Préparation des sorties
+### Place management
 
 <p align="center">
-  <img src="docs/screenshots/gestion-sorties.webp" alt="Planification des sorties dans CartaVault" width="100%">
+  <img src="docs/screenshots/gestion-lieux.webp" alt="Place management in CartaVault" width="100%">
 </p>
 
-### Organisation et personnalisation
+### Outing planning
+
+<p align="center">
+  <img src="docs/screenshots/gestion-sorties.webp" alt="Outing planning in CartaVault" width="100%">
+</p>
+
+### Organization and customization
 
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/screenshots/gestion-categories.webp" alt="Gestion des catégories CartaVault">
+      <img src="docs/screenshots/gestion-categories.webp" alt="CartaVault category management">
     </td>
     <td width="50%">
-      <img src="docs/screenshots/gestion-status.webp" alt="Gestion des statuts CartaVault">
+      <img src="docs/screenshots/gestion-status.webp" alt="CartaVault status management">
     </td>
   </tr>
   <tr>
-    <td align="center"><strong>Catégories et pictogrammes</strong></td>
-    <td align="center"><strong>Statuts de suivi</strong></td>
+    <td align="center"><strong>Categories and icons</strong></td>
+    <td align="center"><strong>Tracking statuses</strong></td>
   </tr>
 </table>
 
-### Compte utilisateur
+### User account
 
 <p align="center">
-  <img src="docs/screenshots/profil-utilisateur.webp" alt="Espace compte et profil utilisateur CartaVault" width="760">
+  <img src="docs/screenshots/profil-utilisateur.webp" alt="CartaVault user account and profile area" width="760">
 </p>
 
-## Fonctionnalités
+## Features
 
-### Cartes et lieux
+### Maps and places
 
-- cartes privées associées à un pays ;
-- affichage des POI avec chargement limité à l’emprise visible ;
-- clustering local des marqueurs standards ;
-- création d’un lieu depuis la carte, une recherche géographique ou des coordonnées GPS ;
-- fiche enrichie : description, coordonnées, catégories, tags, statut, photos et liens ;
-- champs facultatifs configurables par carte ;
-- favoris, notes avant et après visite, tri et filtres avancés ;
-- actions groupées, corbeille, restauration et historique d’audit ;
-- lien direct vers Google Maps lorsque les coordonnées sont disponibles.
+- private maps associated with a country;
+- POI display with loading restricted to the visible map bounds;
+- local clustering of standard markers;
+- place creation from the map, geographic search, or GPS coordinates;
+- detailed place records with descriptions, coordinates, categories, tags, status, photos, and links;
+- optional fields configurable per map;
+- favorites, pre-visit and post-visit ratings, sorting, and advanced filters;
+- bulk actions, trash, restore, and audit history;
+- direct Google Maps links when coordinates are available.
 
-### Catégories, icônes, tags et statuts
+### Categories, icons, tags, and statuses
 
-- gestion complète des catégories, tags et statuts ;
-- catalogue local fermé de **300 icônes**, partagé entre le frontend et le backend ;
-- aucune URL, aucun SVG arbitraire et aucun appel réseau pour les pictogrammes ;
-- catégorie principale utilisée pour l’icône du marqueur ;
-- statut utilisé pour sa couleur ;
-- légende compacte des statuts actifs ;
-- distinction entre le statut de suivi et l’état physique du lieu.
+- full management of categories, tags, and statuses;
+- a closed local catalog of **300 icons**, shared between the frontend and backend;
+- no user-provided URLs, arbitrary SVG files, or network calls for icons;
+- the primary category determines the marker icon;
+- the status determines its color;
+- compact legend for active statuses;
+- clear separation between tracking status and the physical condition of a place.
 
 ### Photos
 
-- ajout multiple de fichiers JPEG, PNG et WebP ;
-- sélection de la photo principale ;
-- réorganisation et suppression ;
-- stockage local sécurisé, distinct de celui des avatars utilisateurs.
+- multiple JPEG, PNG, and WebP uploads;
+- main photo selection;
+- reordering and deletion;
+- secure local storage, separate from user avatar storage.
 
-### Import et export
+### Import and export
 
-- import KML/KMZ en deux étapes avec prévisualisation et confirmation ;
-- prise en charge des `Placemark` de type `Point`, des `ExtendedData` et des images embarquées ;
-- contrôle des archives, chemins, tailles, liens et doublons ;
-- conservation des champs non mappés dans les champs personnalisés ;
-- export des sorties vers Google Maps, GPX et KMZ.
+- two-step KML/KMZ import with preview and confirmation;
+- support for `Point` `Placemark` elements, `ExtendedData`, and embedded images;
+- validation of archives, paths, sizes, links, and duplicates;
+- preservation of unmapped fields in custom fields;
+- outing export to Google Maps, GPX, and KMZ.
 
-### Préparation des sorties
+### Outing planning
 
-- sorties composées de plusieurs journées ;
-- étapes liées à un POI ou ajoutées librement ;
-- ajout et réorganisation par glisser-déposer ;
-- hébergement entre deux journées ;
-- calcul séparé de la distance, du temps de conduite, des visites, des tampons et de la marge de sécurité ;
-- départ recommandé ou arrivée estimée ;
-- seuils personnalisables de charge journalière ;
-- optimisation facultative de l’ordre, toujours soumise à validation ;
-- couleur de tracé par journée ;
-- signalement des itinéraires obsolètes ou partiels.
+- outings split across multiple days;
+- steps linked to a POI or added freely;
+- drag-and-drop addition and reordering;
+- accommodation between two days;
+- separate calculations for distance, driving time, visits, buffers, and safety margin;
+- recommended departure time or estimated arrival time;
+- customizable daily workload thresholds;
+- optional route-order optimization, always subject to user validation;
+- one route color per day;
+- warnings for outdated or partial routes.
 
-### Routage
+### Routing
 
-CartaVault utilise **OSRM** par défaut et peut utiliser **Google Routes API** comme moteur alternatif.
+CartaVault uses **OSRM** by default and can use the **Google Routes API** as an alternative routing engine.
 
-- moteur choisi dans les préférences du compte ;
-- clé Google propre à chaque utilisateur ;
-- chiffrement côté serveur avec une clé maîtresse Fernet ;
-- clé utilisateur jamais renvoyée au navigateur ;
-- quotas et erreurs isolés par utilisateur ;
-- retour automatique à OSRM après suppression des identifiants Google ;
-- option « Rester dans le pays » avec contrôle de la géométrie calculée.
+- routing engine selected in account preferences;
+- one Google API key per user;
+- server-side encryption using a Fernet master key;
+- user API keys are never returned to the browser;
+- quotas and errors are isolated per user;
+- automatic fallback to OSRM after Google credentials are removed;
+- a “Stay within the country” option with validation of the calculated geometry.
 
-### Multi-utilisateur et permissions
+### Multi-user support and permissions
 
-- authentification avec sessions serveur ;
-- cartes privées par défaut ;
-- un propriétaire par carte ;
-- membres avec rôles `viewer` ou `editor` ;
-- administrateurs globaux ;
-- droits appliqués aux cartes, lieux et sorties ;
-- espace Compte pour le profil, l’avatar, la sécurité, les sessions, les préférences et la suppression ou l’anonymisation du compte.
+- authentication with server-side sessions;
+- private maps by default;
+- one owner per map;
+- members with `viewer` or `editor` roles;
+- global administrators;
+- permissions applied consistently to maps, places, and outings;
+- an Account area for profile details, avatar, security, sessions, preferences, and account deletion or anonymization.
 
 > [!NOTE]
-> Il n’existe actuellement ni inscription publique, ni carte publique, ni envoi automatique d’e-mail pour les invitations.
+> Public registration, public maps, and automatic invitation emails are not currently available.
 
-### Fonds cartographiques
+### Map layers
 
-Le fond peut être changé sans recharger la carte :
+The map layer can be changed without reloading the map:
 
-- CartaVault Light ;
-- CartaVault Dark ;
-- Satellite ;
+- CartaVault Light;
+- CartaVault Dark;
+- Satellite;
 - OpenStreetMap Standard.
 
-Les fonds CartaVault utilisent Stadia Maps. Hors environnement local, configurez une clé restreinte avec `VITE_STADIA_MAPS_API_KEY` ou une authentification par domaine.
+CartaVault layers use Stadia Maps. Outside a local environment, configure a restricted key with `VITE_STADIA_MAPS_API_KEY` or use domain-based authentication.
 
-## Architecture et stack technique
+## Architecture and technical stack
 
-### Organisation du dépôt
+### Repository structure
 
 ```text
 CartaVault/
 ├── backend/
-│   ├── app/                 # API FastAPI organisée par fonctionnalité
-│   ├── migrations/          # migrations Alembic
-│   ├── storage/             # stockage local des fichiers
-│   └── tests/               # tests backend
+│   ├── app/                 # feature-oriented FastAPI API
+│   ├── migrations/          # Alembic migrations
+│   ├── storage/             # local file storage
+│   └── tests/               # backend tests
 ├── database/
-│   └── init/                # initialisation PostgreSQL/PostGIS
+│   └── init/                # PostgreSQL/PostGIS initialization
 ├── docs/
-│   └── screenshots/         # captures d’écran du projet
-├── frontend/                # Vite, React, TypeScript et Leaflet
-├── shared/                  # ressources partagées frontend/backend
+│   └── screenshots/         # project screenshots
+├── frontend/                # Vite, React, TypeScript, and Leaflet
+├── shared/                  # shared frontend/backend resources
 ├── docker-compose.yml
 ├── LICENSE
+├── README.fr.md
 └── README.md
 ```
 
-La documentation détaillée du backend se trouve dans [`backend/README.md`](backend/README.md).
+Detailed backend documentation is available in [`backend/README.md`](backend/README.md).
 
 ### Stack
 
-| Domaine | Technologies |
+| Area | Technologies |
 |---|---|
 | Frontend | React, TypeScript, Vite, Leaflet |
 | Backend | FastAPI, SQLAlchemy, GeoAlchemy2 |
-| Base de données | PostgreSQL, PostGIS |
+| Database | PostgreSQL, PostGIS |
 | Migrations | Alembic |
-| Tests | pytest et tests frontend automatisés |
-| Déploiement local | Docker Compose |
+| Tests | pytest and automated frontend tests |
+| Local deployment | Docker Compose |
 
-## Démarrage rapide sous Windows
+## Quick start on Windows
 
-### Prérequis
+### Requirements
 
-- Git ;
-- Docker Desktop avec Docker Compose ;
-- Python 3.14 ;
-- Node.js et npm.
+- Git;
+- Docker Desktop with Docker Compose;
+- Python 3.14;
+- Node.js and npm.
 
-### 1. Base de données
+### 1. Database
 
-Depuis la racine du dépôt :
+From the repository root:
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up -d postgres
 ```
 
-Le script Docker initialise PostgreSQL/PostGIS et le schéma CartaVault uniquement lors de la création d’un volume neuf. Vérifiez que le conteneur est démarré avant de poursuivre :
+The Docker initialization script sets up PostgreSQL/PostGIS and the CartaVault schema only when a new volume is created. Make sure the container is running before continuing:
 
 ```powershell
 docker compose ps
 ```
 
-### 2. Backend et premier administrateur
+### 2. Backend and first administrator
 
 ```powershell
 Set-Location backend
@@ -221,9 +224,9 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Renseignez ensuite les variables nécessaires dans `backend/.env`, notamment `DATABASE_URL`. Ne versionnez jamais ce fichier.
+Then configure the required variables in `backend/.env`, especially `DATABASE_URL`. Never commit this file.
 
-Pour une nouvelle installation, appliquez d’abord les migrations jusqu’à l’étape permettant la création du premier administrateur :
+For a new installation, first apply migrations up to the revision that allows creation of the initial administrator:
 
 ```powershell
 python -m alembic upgrade d8f4a2c7e910
@@ -231,22 +234,22 @@ python -m app.cli create-admin
 python -m alembic upgrade head
 ```
 
-La commande `create-admin` est interactive et masque le mot de passe. Elle crée le premier administrateur actif requis par les migrations suivantes.
+The `create-admin` command is interactive and hides the password. It creates the first active administrator required by later migrations.
 
-Démarrez ensuite l’API :
+Then start the API:
 
 ```powershell
 python -m uvicorn app.main:app --reload
 ```
 
-Swagger est disponible sur <http://127.0.0.1:8000/docs>.
+Swagger is available at <http://127.0.0.1:8000/docs>.
 
 > [!WARNING]
-> La première révision Alembic est une baseline vide issue d’un schéma préexistant. Elle ne crée pas seule les tables sur une base vide. Le schéma initial est fourni par `database/init/001_initial_schema.sql` lors de la création d’un nouveau volume Docker. Pour une base ou un volume déjà existant, consultez la procédure de migration détaillée dans [`backend/README.md`](backend/README.md) avant d’exécuter les commandes ci-dessus.
+> The first Alembic revision is an empty baseline derived from a pre-existing schema. By itself, it does not create tables in an empty database. The initial schema is provided by `database/init/001_initial_schema.sql` when a new Docker volume is created. For an existing database or volume, read the detailed migration procedure in [`backend/README.md`](backend/README.md) before running the commands above.
 
 ### 3. Frontend
 
-Dans un second terminal, depuis la racine du dépôt :
+In a second terminal, from the repository root:
 
 ```powershell
 Set-Location frontend
@@ -255,76 +258,76 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-`npm ci` utilise le fichier `package-lock.json` afin d’installer exactement les versions validées par le projet. En local, laissez `VITE_API_BASE_URL` vide pour utiliser le proxy Vite vers l’API sur `127.0.0.1:8000`.
+`npm ci` uses `package-lock.json` to install the exact dependency versions validated by the project. For local development, leave `VITE_API_BASE_URL` empty to use the Vite proxy to the API at `127.0.0.1:8000`.
 
-Vite affiche l’adresse locale, généralement <http://localhost:5173>.
+Vite displays the local address, usually <http://localhost:5173>.
 
-## Configuration de Google Routes
+## Google Routes configuration
 
-Chaque utilisateur peut enregistrer sa propre clé Google Routes depuis son espace Compte. L’instance doit également définir une clé maîtresse de chiffrement :
+Each user can store their own Google Routes key from the Account area. The instance must also define a master encryption key:
 
 ```text
-CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY=<clé-fernet>
+CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY=<fernet-key>
 ```
 
-Pour en générer une :
+Generate one with:
 
 ```powershell
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-Cette clé n’est pas nécessaire pour démarrer CartaVault avec OSRM. Elle devient obligatoire pour enregistrer ou utiliser des identifiants Google Routes personnels.
+This key is not required to start CartaVault with OSRM. It becomes mandatory when storing or using personal Google Routes credentials.
 
-Conservez cette valeur dans un secret de déploiement ou un fichier `.env` non versionné. Sa perte rend les clés Google déjà enregistrées indéchiffrables.
+Store this value in a deployment secret or an untracked `.env` file. Losing it makes previously stored Google keys impossible to decrypt.
 
-La clé Google doit être restreinte à Routes API et, lorsque cela est possible, aux adresses IP du serveur. Activez également des quotas et des alertes budgétaires dans Google Cloud.
+Restrict the Google key to the Routes API and, whenever possible, to the server IP addresses. Also configure quotas and budget alerts in Google Cloud.
 
-## Sécurité
+## Security
 
-Avant de publier ou déployer le projet :
+Before publishing or deploying the project:
 
-- ne versionnez aucun fichier `.env` ;
-- ne stockez aucune clé API, aucun mot de passe ni secret Docker dans Git ;
-- sauvegardez la base avant toute migration ;
-- utilisez des clés de chiffrement et secrets distincts par environnement ;
-- configurez des restrictions sur les clés Stadia Maps et Google Routes ;
-- vérifiez l’historique Git avant de rendre un dépôt public.
+- never commit `.env` files;
+- never store API keys, passwords, or Docker secrets in Git;
+- back up the database before running migrations;
+- use separate encryption keys and secrets for each environment;
+- configure restrictions for Stadia Maps and Google Routes keys;
+- review the Git history before making a repository public.
 
-## État du projet
+## Project status
 
-### Déjà disponible
+### Already available
 
-- cartes et lieux ;
-- catégories, tags, statuts et 300 icônes locales ;
-- photos ;
-- import KML/KMZ ;
-- utilisateurs, rôles et permissions ;
-- préparation et optimisation des sorties ;
-- routage OSRM et Google Routes ;
-- filtres avancés et actions groupées ;
-- corbeille et historique des lieux ;
-- espace Compte et préférences utilisateur.
+- maps and places;
+- categories, tags, statuses, and 300 local icons;
+- photos;
+- KML/KMZ import;
+- users, roles, and permissions;
+- outing planning and optimization;
+- OSRM and Google Routes routing;
+- advanced filters and bulk actions;
+- place trash and history;
+- Account area and user preferences.
 
-### Avant une version stable
+### Before a stable release
 
-Les principaux travaux restants concernent notamment :
+The main remaining work includes:
 
-- la finalisation du déploiement de production ;
-- l’amélioration continue de l’interface et de l’accessibilité ;
-- le renforcement de la documentation d’installation et de migration ;
-- le stockage objet optionnel pour les déploiements distribués ;
-- un parcours d’inscription et d’invitation adapté à une éventuelle offre SaaS.
+- finalizing production deployment;
+- continuously improving the interface and accessibility;
+- strengthening installation and migration documentation;
+- optional object storage for distributed deployments;
+- registration and invitation flows suitable for a potential SaaS offering.
 
-Le suivi détaillé des évolutions est disponible dans les [issues GitHub](../../issues).
+Detailed progress is tracked in the [GitHub issues](../../issues).
 
-## Contribution
+## Contributing
 
-Les contributions, rapports de bugs et propositions d’amélioration sont les bienvenus via les issues et pull requests GitHub.
+Contributions, bug reports, and improvement proposals are welcome through GitHub issues and pull requests.
 
-Avant toute contribution importante, ouvrez de préférence une issue afin de discuter du besoin et de son intégration dans l’architecture du projet.
+Before starting a significant contribution, please open an issue to discuss the need and how it should fit into the project architecture.
 
-## Licence
+## License
 
-CartaVault est distribué sous licence MIT. Consultez le fichier [`LICENSE`](LICENSE) pour plus d’informations.
+CartaVault is distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
 
-Made In Vosges
+Made in Vosges
