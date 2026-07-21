@@ -2236,6 +2236,372 @@ button {
 .status-marker.muted { opacity: 0.32; filter: grayscale(0.72); }
 @media (max-width: 760px) { .map-sidebar .sidebar-content { padding-bottom: 5.5rem; }.map-sidebar .place-form-submit { right: 50%; bottom: calc(58px + 0.75rem); transform: translateX(50%); } }
 
+/* POI editor: shared CartaVault form language. */
+.map-editor-panel .sidebar-content {
+  background: var(--cv-color-mist);
+  container-name: poi-editor;
+  container-type: inline-size;
+}
+
+.map-editor-panel .editor-page {
+  display: grid;
+  gap: 0;
+  min-height: 100%;
+  padding: 1rem;
+  background: var(--cv-color-mist);
+}
+
+.map-editor-panel .editor-header {
+  padding: 0.2rem 0.15rem 1rem;
+}
+
+.map-editor-panel .editor-header .details-kicker {
+  margin: 0 0 0.3rem;
+  color: var(--cv-color-teal);
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.map-editor-panel .editor-header h2 {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--cv-color-navy);
+  font-size: 1.35rem;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-editor-panel .place-form {
+  gap: 0.8rem;
+  padding-bottom: 0.6rem;
+}
+
+.map-editor-panel .form-section,
+.map-editor-panel .photo-uploader {
+  gap: 0.8rem;
+  padding: 0.95rem;
+  background: var(--cv-color-off-white);
+  border: 1px solid rgb(43 62 89 / 12%);
+  border-radius: var(--cv-radius-md);
+  box-shadow: 0 1px 0 rgb(13 27 42 / 2%);
+}
+
+.map-editor-panel .form-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid rgb(43 62 89 / 10%);
+}
+
+.map-editor-panel .form-section-heading > div {
+  min-width: 0;
+}
+
+.map-editor-panel .form-section-eyebrow {
+  margin: 0 0 0.18rem;
+  color: var(--cv-color-teal);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.map-editor-panel .form-section-heading h3 {
+  margin: 0;
+  color: var(--cv-color-navy);
+  font-size: 0.98rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.map-editor-panel .form-section-heading > p {
+  margin: 0;
+  color: var(--cv-color-gray);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.map-editor-panel .form-grid,
+.map-editor-panel .coordinate-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.map-editor-panel .form-field {
+  min-width: 0;
+  gap: 0.32rem;
+  color: var(--cv-color-navy);
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.map-editor-panel .form-field > span,
+.map-editor-panel .place-rating-fields > span {
+  color: var(--cv-color-slate);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.map-editor-panel .form-field input,
+.map-editor-panel .form-field textarea,
+.map-editor-panel .form-field select,
+.map-editor-panel .status-picker-trigger {
+  box-sizing: border-box;
+  min-height: 2.45rem;
+  color: var(--cv-color-navy);
+  background: #fff;
+  border: 1px solid rgb(43 62 89 / 18%);
+  border-radius: 0.55rem;
+  box-shadow: inset 0 1px 0 rgb(13 27 42 / 1%);
+  font-size: 0.82rem;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.map-editor-panel .form-field input:hover,
+.map-editor-panel .form-field textarea:hover,
+.map-editor-panel .form-field select:hover,
+.map-editor-panel .status-picker-trigger:hover {
+  border-color: rgb(43 62 89 / 32%);
+}
+
+.map-editor-panel .form-field input:focus,
+.map-editor-panel .form-field textarea:focus,
+.map-editor-panel .form-field select:focus,
+.map-editor-panel .status-picker-trigger:focus-visible {
+  border-color: var(--cv-color-teal);
+  box-shadow: 0 0 0 3px rgb(15 166 138 / 13%);
+  outline: 0;
+}
+
+.map-editor-panel .form-field textarea {
+  min-height: 6rem;
+  line-height: 1.45;
+}
+
+.map-editor-panel .form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.map-editor-panel .general-description {
+  margin-top: 0.1rem;
+}
+
+.map-editor-panel .favorite-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.45rem;
+  padding: 0 0.7rem;
+  background: #fff;
+  border: 1px solid rgb(43 62 89 / 18%);
+  border-radius: 0.55rem;
+}
+
+.map-editor-panel .favorite-field input {
+  width: 1rem;
+  min-height: auto;
+  accent-color: var(--cv-color-teal);
+}
+
+.map-editor-panel .place-rating-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.75rem;
+  background: rgb(43 62 89 / 4%);
+  border: 1px solid rgb(43 62 89 / 9%);
+  border-radius: 0.6rem;
+}
+
+.map-editor-panel .place-rating-fields > span {
+  grid-column: 1 / -1;
+}
+
+.map-editor-panel .place-rating-fields label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--cv-color-slate);
+  font-size: 0.71rem;
+  font-weight: 700;
+}
+
+.map-editor-panel .place-rating-fields label select,
+.map-editor-panel .place-rating-fields label:first-of-type select,
+.map-editor-panel .place-rating-fields label:last-of-type select {
+  color: var(--cv-color-navy);
+  background: #fff;
+  border-color: rgb(43 62 89 / 18%);
+}
+
+.map-editor-panel .status-picker-options {
+  z-index: var(--cv-z-panel);
+  max-height: 15rem;
+  overflow: auto;
+  padding: 0.3rem;
+  border-color: rgb(43 62 89 / 16%);
+  border-radius: 0.6rem;
+  box-shadow: var(--cv-shadow-md);
+}
+
+.map-editor-panel .status-picker-options input {
+  width: 100%;
+  min-height: 2rem;
+  margin-bottom: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  color: var(--cv-color-navy);
+  border: 1px solid rgb(43 62 89 / 16%);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.map-editor-panel .status-picker-options button {
+  min-height: 2.25rem;
+  border-radius: 0.4rem;
+  font-size: 0.79rem;
+}
+
+.map-editor-panel .selected-tag-list {
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.map-editor-panel .selected-tag-list > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.24rem 0.36rem 0.24rem 0.5rem;
+  color: var(--cv-color-slate);
+  background: rgb(15 166 138 / 9%);
+  border: 1px solid rgb(15 166 138 / 14%);
+  border-radius: 0.35rem;
+  font-size: 0.71rem;
+  font-weight: 650;
+}
+
+.map-editor-panel .selected-tag-list button {
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  color: var(--cv-color-slate);
+  background: transparent;
+  border: 0;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  place-items: center;
+}
+
+.map-editor-panel .form-hint,
+.map-editor-panel .draft-position-status {
+  margin: 0;
+  color: var(--cv-color-gray);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.map-editor-panel .draft-position-status {
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgb(43 62 89 / 16%);
+}
+
+.map-editor-panel .form-section-collapsible {
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-editor-panel .form-section-collapsible summary {
+  min-height: 3rem;
+  padding: 0.8rem 0.9rem;
+  color: var(--cv-color-navy);
+  background: #fff;
+  font-size: 0.88rem;
+  font-weight: 740;
+}
+
+.map-editor-panel .form-section-collapsible[open] summary {
+  background: rgb(15 166 138 / 5%);
+  border-bottom: 1px solid rgb(15 166 138 / 14%);
+}
+
+.map-editor-panel .form-section-collapsible > .form-grid {
+  padding: 0.85rem;
+}
+
+.map-editor-panel .photo-uploader,
+.map-editor-panel .photo-manager .photo-uploader {
+  background: #fff;
+}
+
+.map-editor-panel .photo-uploader-heading h3 {
+  color: var(--cv-color-navy);
+  font-size: 0.95rem;
+}
+
+.map-editor-panel .photo-uploader-heading .form-hint {
+  max-width: 15rem;
+}
+
+.map-editor-panel .photo-upload-button {
+  flex-basis: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.55rem;
+  box-shadow: 0 2px 5px rgb(13 27 42 / 10%);
+}
+
+.map-editor-panel .photo-manager-grid {
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+}
+
+.map-editor-panel .place-form-submit {
+  position: sticky;
+  z-index: var(--cv-z-panel);
+  right: auto;
+  bottom: 0.65rem;
+  justify-self: center;
+  margin-top: 0.15rem;
+  padding: 0.38rem;
+  background: rgb(250 250 248 / 94%);
+  border: 1px solid rgb(43 62 89 / 13%);
+  border-radius: 0.7rem;
+  box-shadow: var(--cv-shadow-md);
+  backdrop-filter: blur(8px);
+  transform: none;
+}
+
+.map-editor-panel .place-form-submit .primary-button {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  box-shadow: none;
+  font-size: 0.79rem;
+}
+
+@media (max-width: 760px) {
+  .map-editor-panel .editor-page { padding: 0.8rem; }
+  .map-editor-panel .form-section-heading > p { display: none; }
+  .map-editor-panel .form-grid,
+  .map-editor-panel .coordinate-grid,
+  .map-editor-panel .place-rating-fields { grid-template-columns: 1fr; }
+  .map-editor-panel .place-rating-fields > span { grid-column: auto; }
+  .map-editor-panel .place-form-submit { bottom: 0.7rem; }
+}
+
+@container poi-editor (max-width: 32rem) {
+  .editor-page .form-section-heading > p { display: none; }
+  .editor-page .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .editor-page .form-grid .form-field,
+  .editor-page .form-grid .form-field-wide { grid-column: 1; }
+  .editor-page .place-rating-fields { grid-template-columns: minmax(0, 1fr); }
+  .editor-page .place-rating-fields > span { grid-column: 1; }
+}
+
 @media (max-width: 560px) { .create-map-dialog.cv-modal { width: calc(100vw - 1rem); }.create-map-dialog header { padding-inline: 1rem; }.create-map-dialog .form-field, .create-map-dialog .country-results, .create-map-dialog .dialog-actions, .create-map-dialog .form-alert { margin-right: 1rem; margin-left: 1rem; } }
 /* Multi-user access surfaces */
 .user-account-menu { position: relative; }

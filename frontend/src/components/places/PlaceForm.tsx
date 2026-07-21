@@ -119,8 +119,14 @@ export function PlaceForm({
     <form className="place-form" onSubmit={handleSubmit} noValidate>
       {globalError && <div className="form-alert" role="alert">{globalError}</div>}
 
-      <section className="form-section">
-        <h3>Informations générales</h3>
+      <section className="form-section form-section--general">
+        <div className="form-section-heading">
+          <div>
+            <p className="form-section-eyebrow">Le lieu</p>
+            <h3>Informations générales</h3>
+          </div>
+          <p>Identité, classement et suivi</p>
+        </div>
         <div className="form-grid">
           <label className="form-field">
             <span>Carte *</span>
@@ -167,8 +173,13 @@ export function PlaceForm({
         </div>
       </section>
 
-      <section className="form-section">
-        <h3>Localisation</h3>
+      <section className="form-section form-section--location">
+        <div className="form-section-heading">
+          <div>
+            <p className="form-section-eyebrow">Position</p>
+            <h3>Localisation</h3>
+          </div>
+        </div>
         <p className="form-hint">Déplacez le marqueur sur la carte principale ou saisissez les coordonnées.</p>
         <div className="coordinate-grid">
           {(['latitude', 'longitude'] as const).map((field) => (
