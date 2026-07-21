@@ -73,6 +73,32 @@ body,
   margin: 0;
 }
 
+/*
+ * CartaVault uses a deliberately compact desktop density. Keeping this at
+ * the application shell mirrors an 80% browser zoom for every workspace
+ * surface (navigation, panels, map controls and dialogs) without letting
+ * individual components drift to different scales. The compensating size
+ * keeps the transformed shell flush with the viewport.
+ */
+@media (min-width: 761px) {
+  body {
+    overflow: hidden;
+  }
+
+  #root {
+    width: 125%;
+    height: 125%;
+    transform: scale(0.8);
+    transform-origin: top left;
+  }
+
+  /* The navigation has an explicit viewport height. Compensate it too so
+     it still reaches the visual bottom after the shell is scaled. */
+  .cv-main-navigation {
+    height: 156.25dvh;
+  }
+}
+
 button {
   font: inherit;
 }
@@ -3867,6 +3893,15 @@ body {
 .place-rating-fields label:first-of-type select { border-color: color-mix(in srgb, var(--cv-color-gold) 45%, #d8e0e8); }
 .place-rating-fields label:last-of-type select { border-color: color-mix(in srgb, var(--cv-color-teal) 45%, #d8e0e8); }
 @media (max-width: 520px) { .place-rating-fields { grid-template-columns: 1fr; } .place-rating-fields > span { grid-column: auto; } }
+
+/* Keep the navigation flush with the viewport after the compact shell scale.
+   This must remain in the final visual layer because older navigation rules
+   define their own 100dvh height. */
+@media (min-width: 761px) {
+  .cv-main-navigation {
+    height: 125dvh;
+  }
+}
 
 /* POI card: compact map-first composition. */
 .place-map-popup {
