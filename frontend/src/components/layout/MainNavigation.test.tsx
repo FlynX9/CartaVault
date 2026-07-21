@@ -49,7 +49,12 @@ describe('MainNavigation', () => {
 
   it('marks only Sorties active while trip planning extends the Places workspace', () => {
     render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
-    expect(screen.getByRole('button', { name: 'Préparation de sortie' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'false')
+    const places = screen.getByRole('button', { name: 'Lieux' })
+    const trips = screen.getByRole('button', { name: 'Préparation de sortie' })
+    const categories = screen.getByRole('button', { name: 'Catégories' })
+    expect(trips).toHaveAttribute('aria-pressed', 'true')
+    expect(places).toHaveAttribute('aria-pressed', 'false')
+    expect(places.compareDocumentPosition(trips) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(trips.compareDocumentPosition(categories) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
