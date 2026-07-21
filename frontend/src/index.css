@@ -1409,6 +1409,7 @@ button {
 }
 .trip-timeline-night-badge > svg { stroke-width: 2.2; }
 .trip-timeline-night-badge > b { font-size: 0.6rem; font-weight: 850; line-height: 1; }
+.trip-timeline-night-badge { background: linear-gradient(to bottom, var(--trip-night-previous-color, var(--cv-color-teal)), var(--trip-night-next-color, var(--cv-color-teal))); }
 .trip-timeline-anchor-badge { top: 5px; color: #fff; background: var(--cv-color-teal); }
 .trip-timeline-arrival-badge { background: var(--cv-color-navy); }
 .trip-planner-panel .trip-panel-night > .trip-night-kind {

@@ -207,13 +207,16 @@ describe('TripPlannerPanel', () => {
   })
 
   it('opens the night modal prefilled when a POI is dropped between two days', async () => {
-    const twoDays = { ...trip, days: [...trip.days, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }] }
+    const twoDays = { ...trip, days: [{ ...trip.days[0], color: '#e11d48' }, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563eb' }] }
     vi.mocked(listTrips).mockResolvedValue([twoDays])
     vi.mocked(getTrip).mockResolvedValue(twoDays)
     vi.mocked(getPlaceDetails).mockResolvedValue({ id: 'hotel-poi', name: 'Hôtel POI', latitude: 50, longitude: 4, map: { id: 'map-1', name: 'Belgique', country: {} } } as never)
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(await screen.findByText('N1')).toBeVisible()
-    expect(container.querySelector('.trip-timeline-night-badge .lucide-moon')).toBeInTheDocument()
+    const nightBadge = container.querySelector<HTMLElement>('.trip-timeline-night-badge')
+    expect(nightBadge?.querySelector('.lucide-moon')).toBeInTheDocument()
+    expect(nightBadge?.style.getPropertyValue('--trip-night-previous-color')).toBe('#e11d48')
+    expect(nightBadge?.style.getPropertyValue('--trip-night-next-color')).toBe('#2563eb')
     fireEvent.drop(container.querySelector('.trip-panel-night:not(.trip-panel-departure)')!, { dataTransfer: { getData: () => 'place:hotel-poi' } })
     expect(await screen.findByRole('dialog', { name: 'Ajouter un hébergement' })).toBeVisible()
     expect(await screen.findByText('Hôtel POI')).toBeVisible()
