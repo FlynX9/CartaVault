@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDeparture, addTripStop, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDeparture } from '../../api/trips'
+import { addTripDeparture, addTripStop, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDay, updateTripDeparture } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -317,6 +317,26 @@ describe('TripPlannerPanel', () => {
     fireEvent.click(screen.getByText('Paramètres du jour'))
     expect(screen.getByText('Planification horaire')).toBeVisible()
     expect(screen.getByText('Couleur du jour')).toBeVisible()
+  })
+
+  it('keeps a day color as a draft until it is explicitly applied', async () => {
+    vi.mocked(updateTripDay).mockResolvedValue({ ...trip.days[0], color: '#2563EB' } as never)
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const settingsSummary = await waitFor(() => {
+      const element = container.querySelector('.trip-day-settings > summary')
+      expect(element).not.toBeNull()
+      return element as HTMLElement
+    })
+    fireEvent.click(settingsSummary)
+    const picker = screen.getByLabelText('Couleur du jour 1')
+    fireEvent.change(picker, { target: { value: '#2563eb' } })
+
+    expect(updateTripDay).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Appliquer la couleur' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Appliquer la couleur' }))
+    await waitFor(() => expect(updateTripDay).toHaveBeenCalledWith('day-1', { color: '#2563EB' }))
   })
 
   it('marks stale routes as unavailable and the global summary as partial', async () => {

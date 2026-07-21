@@ -2698,9 +2698,14 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 .trip-panel-day > summary > .trip-panel-day-number {
   background: var(--trip-day-color, var(--cv-color-teal));
 }
-.trip-day-color-picker { display: flex; align-items: center; justify-content: space-between; gap: .45rem; padding: .35rem .45rem; color: var(--cv-color-gray); background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 8%, white); border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 28%, transparent); border-radius: .4rem; font-size: .6rem; font-weight: 700; }
+.trip-day-color-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .45rem; padding: .35rem .45rem; color: var(--cv-color-gray); background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 8%, white); border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 28%, transparent); border-radius: .4rem; font-size: .6rem; font-weight: 700; }
+.trip-day-color-picker > label { min-width: 0; }
 .trip-day-color-picker input { width: 1.65rem; height: 1.35rem; padding: .1rem; background: white; border: 1px solid rgb(43 62 89 / 15%); border-radius: .3rem; cursor: pointer; }
 .trip-day-color-picker input:disabled { cursor: not-allowed; opacity: .55; }
+.trip-day-color-picker__actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: .35rem; }
+.trip-day-color-picker__actions button { min-height: 1.7rem; padding: .2rem .45rem; border: 1px solid rgb(43 62 89 / 16%); border-radius: .35rem; color: var(--cv-color-slate); background: white; font: inherit; font-weight: 750; cursor: pointer; }
+.trip-day-color-picker__actions button.primary { border-color: var(--cv-color-teal); color: white; background: var(--cv-color-teal); }
+.trip-day-color-picker__actions button:disabled { cursor: not-allowed; opacity: .55; }
 
 .trip-day-planning-summary > summary > strong { color: var(--cv-color-slate); }
 .trip-day-planning-summary > summary { grid-template-columns: minmax(0, 1fr) auto auto; }
