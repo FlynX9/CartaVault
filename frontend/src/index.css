@@ -4115,7 +4115,13 @@ body {
 .trip-planner-panel .trip-panel-departure { --trip-anchor-color: var(--cv-color-teal); background: color-mix(in srgb, var(--trip-anchor-color) 7%, white); border-color: color-mix(in srgb, var(--trip-anchor-color) 30%, white); }
 .trip-planner-panel .trip-panel-arrival { --trip-anchor-color: var(--cv-color-slate); background: color-mix(in srgb, var(--trip-anchor-color) 7%, white); border-color: color-mix(in srgb, var(--trip-anchor-color) 30%, white); }
 .trip-planner-panel .trip-panel-departure .trip-timeline-anchor-badge, .trip-planner-panel .trip-panel-arrival .trip-timeline-anchor-badge { background: var(--trip-anchor-color); }
-.trip-planner-panel .trip-panel-add-day-ghost { min-height: 52px; margin: 0 0 0.8rem; background: rgb(255 255 255 / 75%); border-radius: 10px; }
+.trip-planner-panel .trip-panel-insert-day { display: flex; min-height: 1.55rem; align-items: center; margin: -0.35rem 0 0.45rem; }
+.trip-planner-panel .trip-panel-insert-day > button { display: grid; width: 100%; min-height: 1.55rem; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); align-items: center; padding: 0; background: transparent; border: 0; cursor: pointer; opacity: 0; transition: opacity 140ms ease; }
+.trip-planner-panel .trip-panel-insert-day:hover > button,
+.trip-planner-panel .trip-panel-insert-day:focus-within > button { opacity: 1; }
+.trip-planner-panel .trip-panel-insert-day > button > span { height: 1px; background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 55%, #dfe7ec); }
+.trip-planner-panel .trip-panel-insert-day > button > i { display: grid; width: 24px; height: 24px; color: var(--trip-day-color, var(--cv-color-teal)); background: #fff; border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, #dfe7ec); border-radius: 50%; place-self: center; place-items: center; box-shadow: 0 2px 6px rgb(13 27 42 / 8%); }
+@media (hover: none) { .trip-planner-panel .trip-panel-insert-day > button { opacity: 0.55; } }
 .trip-planner-panel .trip-panel-route-actions { gap: 0.4rem; }
 .trip-planner-panel .trip-panel-route-actions button { min-height: 30px; padding: 0.32rem 0.6rem; border-radius: 7px; font-size: 0.64rem; }
 .trip-planner-panel .trip-day-color-picker { padding: 0.4rem 0.5rem; border-radius: 7px; font-size: 0.62rem; }

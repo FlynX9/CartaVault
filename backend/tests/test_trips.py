@@ -88,6 +88,32 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
         app.dependency_overrides[get_current_user] = lambda: auth_user
 
 
+def test_inserting_a_day_reindexes_following_days_and_preserves_overnight_order(integration_client, poi_map) -> None:
+    created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Insertion de journée"}).json()
+    trip_id = created["id"]
+    first = created["days"][0]
+    second = integration_client.post(f"/trips/{trip_id}/days", json={"title": "Jour final"}).json()
+    night = integration_client.post(
+        f"/trips/{trip_id}/nights",
+        json={"previous_day_id": first["id"], "next_day_id": second["id"], "name": "Nuit existante", "latitude": 48.4, "longitude": 6.6},
+    )
+    assert night.status_code == 201
+
+    inserted = integration_client.post(f"/trips/{trip_id}/days", json={"after_day_id": first["id"], "title": "Jour inséré"})
+
+    assert inserted.status_code == 201
+    loaded = integration_client.get(f"/trips/{trip_id}").json()
+    assert [item["id"] for item in loaded["days"]] == [first["id"], inserted.json()["id"], second["id"]]
+    assert [item["day_number"] for item in loaded["days"]] == [1, 2, 3]
+    assert [item["sort_order"] for item in loaded["days"]] == [0, 1, 2]
+    assert [(item["previous_day_id"], item["next_day_id"]) for item in loaded["nights"]] == [(inserted.json()["id"], second["id"])]
+
+    before_invalid = loaded
+    invalid = integration_client.post(f"/trips/{trip_id}/days", json={"after_day_id": str(uuid4())})
+    assert invalid.status_code == 422
+    assert integration_client.get(f"/trips/{trip_id}").json()["days"] == before_invalid["days"]
+
+
 def test_removing_a_middle_stop_compacts_the_day_order(integration_client, poi_map) -> None:
     trip = integration_client.post(
         f"/maps/{poi_map.id}/trips",

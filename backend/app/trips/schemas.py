@@ -59,7 +59,7 @@ class TripLoadSettings(BaseModel):
         return self
 
 
-class DayCreate(BaseModel):
+class DayFields(BaseModel):
     date: DateValue | None = None
     title: str | None = Field(default=None, max_length=160)
     color: str | None = Field(default=None, pattern=HEX_COLOR_PATTERN)
@@ -69,7 +69,11 @@ class DayCreate(BaseModel):
     max_total_duration_minutes: int | None = Field(default=None, gt=0, le=1440)
 
 
-class DayUpdate(DayCreate):
+class DayCreate(DayFields):
+    after_day_id: UUID | None = None
+
+
+class DayUpdate(DayFields):
     pass
 
 

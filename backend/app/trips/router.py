@@ -138,9 +138,20 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
 
 @router.post("/trips/{trip_id}/days", response_model=DayRead, status_code=201)
 def add_day(trip_id: UUID, data: DayCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id); index = len(trip.days)
-    values = data.model_dump(exclude={"color"})
-    day = TripDay(trip_id=trip.id, day_number=index + 1, sort_order=index, color=data.color or next_day_color(trip.days), **values); session.add(day); session.commit(); return DayRead.model_validate(day)
+    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id); ordered = sorted(trip.days, key=lambda item: item.sort_order)
+    if data.after_day_id is None:
+        insertion = len(ordered); previous = ordered[-1] if ordered else None
+    else:
+        previous = next((item for item in ordered if item.id == data.after_day_id), None)
+        if previous is None: raise HTTPException(422, "The insertion day must belong to the trip")
+        insertion = ordered.index(previous) + 1
+    for item in ordered: item.sort_order += 10_000; item.day_number += 10_000
+    session.flush()
+    for index, item in enumerate(ordered): item.sort_order = index if index < insertion else index + 1; item.day_number = item.sort_order + 1
+    values = data.model_dump(exclude={"after_day_id", "color"})
+    day = TripDay(trip_id=trip.id, day_number=insertion + 1, sort_order=insertion, color=data.color or next_day_color(trip.days), **values); session.add(day); session.flush()
+    if previous is not None and previous.next_night is not None: previous.next_night.previous_day = day
+    session.commit(); return DayRead.model_validate(day)
 
 
 @router.patch("/trip-days/{day_id}", response_model=DayRead)
