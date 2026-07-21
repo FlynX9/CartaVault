@@ -2659,8 +2659,8 @@ button {
 .user-account-menu__dropdown > header small { margin-top: 0.12rem; color: var(--cv-color-gray); font-size: 0.72rem; }
 .user-account-menu__dropdown > header p { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.35rem; margin: 0.1rem 0 0; color: var(--cv-color-slate); font-size: 0.75rem; }
 .user-account-menu__links { display: grid; padding: 0.4rem; }
-.user-account-menu__links button, .user-account-menu__dropdown footer button { display: flex; align-items: center; width: 100%; min-height: 2.55rem; gap: 0.65rem; padding: 0.55rem 0.7rem; color: var(--cv-color-slate); background: transparent; border: 0; border-radius: 0.5rem; cursor: pointer; font: inherit; font-size: 0.82rem; text-align: left; }
-.user-account-menu__links button:hover { color: var(--cv-color-navy); background: var(--cv-color-mist); }
+.user-account-menu__links button, .user-account-menu__links a, .user-account-menu__dropdown footer button { display: flex; align-items: center; width: 100%; min-height: 2.55rem; gap: 0.65rem; padding: 0.55rem 0.7rem; color: var(--cv-color-slate); background: transparent; border: 0; border-radius: 0.5rem; cursor: pointer; font: inherit; font-size: 0.82rem; text-align: left; text-decoration: none; }
+.user-account-menu__links button:hover, .user-account-menu__links a:hover { color: var(--cv-color-navy); background: var(--cv-color-mist); }
 .user-account-menu__dropdown footer { padding: 0.4rem; border-top: 1px solid rgb(43 62 89 / 10%); }
 .user-account-menu__dropdown footer button { color: #c53030; }
 .user-account-menu__dropdown footer button:hover { background: #fff1f0; }
