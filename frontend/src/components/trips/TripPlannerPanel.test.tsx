@@ -76,10 +76,13 @@ describe('TripPlannerPanel', () => {
 
     const selector = screen.getByLabelText('Voyage actif').closest<HTMLElement>('.trip-panel-selector')!
     const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })
+    const duplicateButton = within(selector).getByRole('button', { name: 'Dupliquer cette sortie' })
     const settingsButton = within(selector).getByRole('button', { name: 'Afficher les paramètres du voyage' })
     const exportButton = within(selector).getByLabelText('Exporter la sortie')
-    expect(createButton.compareDocumentPosition(settingsButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(createButton.compareDocumentPosition(duplicateButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(duplicateButton.compareDocumentPosition(settingsButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(settingsButton.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Fermer le panneau Sortie' }).closest('header')).not.toContainElement(duplicateButton)
 
     fireEvent.click(settingsButton)
     expect(screen.getByText('Paramètres du voyage')).toBeVisible()
@@ -346,6 +349,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('184,3 km')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('3 h 42')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('9 h 12')
+    expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Modérée')
     expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
   })
 
@@ -353,7 +357,9 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, recommended_start_time: '08:25:00', recommended_start_day_offset: 0 })
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    expect(await screen.findByLabelText('Départ recommandé : 08:25')).toBeVisible()
+    const recommendedDeparture = await screen.findByLabelText('Départ recommandé : 08:25')
+    expect(recommendedDeparture).toBeVisible()
+    expect(recommendedDeparture).toHaveTextContent('Départ conseillé')
     expect(container.querySelector('.trip-panel-day-number .lucide-sun')).toBeInTheDocument()
     expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Paramètres du jour'))

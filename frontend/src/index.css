@@ -1461,6 +1461,7 @@ button {
   white-space: nowrap;
 }
 .trip-planner-panel .trip-anchor-recommended strong { font-size: 0.63rem; font-weight: 820; text-transform: none; }
+.trip-planner-panel .trip-anchor-recommended > span { color: var(--cv-color-slate); font-size: 0.56rem; font-weight: 650; }
 
 .trip-day-settings {
   order: 1;
@@ -4083,6 +4084,7 @@ body {
 .trip-planner-panel .trip-panel-day-heading small { color: var(--cv-color-gray); font-size: 0.58rem; }
 .trip-day-header-metrics { display: flex; align-items: center; gap: 0.35rem; }
 .trip-day-header-metrics > span { display: inline-flex; min-height: 25px; align-items: center; gap: 0.22rem; padding: 0.2rem 0.48rem; color: var(--trip-day-color, var(--cv-color-teal)); background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 9%, white); border-radius: 999px; font-size: 0.62rem; font-weight: 760; white-space: nowrap; }
+.trip-day-header-metrics > .trip-day-load-label { color: var(--trip-load-color, var(--cv-color-slate)); background: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 12%, white); border: 1px solid color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 24%, white); }
 .trip-planner-panel .trip-panel-day-actions { display: flex; gap: 0.18rem; }
 .trip-planner-panel .trip-panel-day-actions button { width: 25px; min-width: 25px; height: 25px; min-height: 25px; border-radius: 6px; }
 .trip-planner-panel .trip-panel-day-content { gap: 0.5rem; padding: 0.5rem; border-top-color: #e9eef1; }

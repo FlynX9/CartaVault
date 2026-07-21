@@ -97,4 +97,18 @@ describe('MapPage', () => {
     expect(window.localStorage.getItem('cartavault:right-panel-width')).toBe('664')
     expect(screen.getByTestId('poi-map')).toBe(map)
   })
+
+  it('keeps geographic search in full preparation mode and hides it in trip-only view', () => {
+    const props = {
+      places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false,
+      errorMessage: null, sidebarOpen: true, placeListOpen: true, statuses: [], sidebar: null, placeList: null,
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+      trip: { id: 'trip-1', days: [] } as never,
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...props} tripViewOnly={false} /></MemoryRouter>)
+    expect(screen.getByLabelText('Recherche géographique')).toBeVisible()
+
+    rerender(<MemoryRouter><MapPage {...props} tripViewOnly /></MemoryRouter>)
+    expect(screen.queryByLabelText('Recherche géographique')).not.toBeInTheDocument()
+  })
 })

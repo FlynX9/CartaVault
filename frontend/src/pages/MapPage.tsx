@@ -179,7 +179,7 @@ export function MapPage({
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
         {mapNotice && <p className="map-results-notice" role="status">{mapNotice}</p>}
-        <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
+        {!tripViewOnly && <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />}
         <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
         <StatusLegend statuses={statuses} />
 
