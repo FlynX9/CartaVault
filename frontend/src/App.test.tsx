@@ -56,16 +56,16 @@ describe('map URL workspace', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Préparation de sortie' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    expect(await screen.findByRole('searchbox', { name: 'Rechercher un POI' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Vue du voyage' }))
     expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
-    expect(screen.queryByRole('searchbox', { name: 'Rechercher un POI' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('searchbox', { name: 'Rechercher un lieu' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
     fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    expect(await screen.findByRole('searchbox', { name: 'Rechercher un POI' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu' })).toBeVisible()
   })
 
   it('reports refusal when deleting a map from the maps panel', async () => {

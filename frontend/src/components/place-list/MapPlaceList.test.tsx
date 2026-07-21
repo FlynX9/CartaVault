@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
+import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
 import { MapPlaceList } from './MapPlaceList'
 
 vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
@@ -84,5 +85,40 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.places-place-card')).toHaveClass('has-selection')
     expect(screen.getByRole('checkbox', { name: 'Sélectionner Sélection' })).toBeVisible()
     expect(screen.getByRole('region', { name: 'Actions groupées' })).toBeVisible()
+  })
+  it('starts a fresh request after the places panel is closed and reopened', async () => {
+    const place = { id: 'place-after-reopen', name: 'Visible after reopen', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockReset()
+    vi.mocked(getPlaces)
+      .mockImplementationOnce((_query, signal) => new Promise((_resolve, reject) => signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))))
+      .mockResolvedValueOnce([place])
+
+    const firstPanel = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(getPlaces).toHaveBeenCalledTimes(1))
+    firstPanel.unmount()
+
+    const secondPanel = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    expect(await screen.findByRole('button', { name: /^Visible after reopen/ })).toBeVisible()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(getPlaces).toHaveBeenCalledTimes(2)
+    secondPanel.unmount()
+  })
+
+  it('ignores a late response from a superseded list request', async () => {
+    const oldPlace = { id: 'old-place', name: 'Old result', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    const currentPlace = { id: 'current-place', name: 'Current result', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    let resolveOldRequest: (places: never[]) => void = () => undefined
+    vi.mocked(getPlaces).mockReset()
+    vi.mocked(getPlaces)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveOldRequest = resolve }))
+      .mockResolvedValueOnce([currentPlace])
+
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={DEFAULT_PLACE_FILTERS} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(getPlaces).toHaveBeenCalledTimes(1))
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={{ ...DEFAULT_PLACE_FILTERS, query: 'current' }} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByRole('button', { name: /^Current result/ })).toBeVisible()
+    await act(async () => resolveOldRequest([oldPlace]))
+    expect(screen.queryByRole('button', { name: /^Old result/ })).not.toBeInTheDocument()
   })
 })

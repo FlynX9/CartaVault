@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences } from '../api/account'
@@ -14,6 +14,23 @@ import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } fro
 import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
 import type { Trip } from '../types/trip'
+import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
+
+const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
+const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
+
+function loadPanelWidth(key: string, fallback: number): number {
+  try {
+    const value = Number(window.localStorage.getItem(key))
+    return Number.isFinite(value) && value >= 320 && value <= 720 ? value : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function savePanelWidth(key: string, width: number): void {
+  try { window.localStorage.setItem(key, String(Math.round(width))) } catch { /* Storage may be unavailable in private contexts. */ }
+}
 
 interface MapPageProps {
   places: MapPlace[]
@@ -23,6 +40,7 @@ interface MapPageProps {
   errorMessage: string | null
   mapNotice?: string | null
   sidebarOpen: boolean
+  sidebarResizable?: boolean
   placeListOpen: boolean
   statuses: PlaceStatusSummary[]
   canEdit?: boolean
@@ -60,6 +78,7 @@ export function MapPage({
   errorMessage,
   mapNotice = null,
   sidebarOpen,
+  sidebarResizable = false,
   placeListOpen,
   statuses,
   canEdit = true,
@@ -94,6 +113,8 @@ export function MapPage({
   const [contextMenu, setContextMenu] = useState<MapContextMenuState | null>(null)
   const [contextNotice, setContextNotice] = useState<string | null>(null)
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640))
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
 
   useEffect(() => {
@@ -123,8 +144,10 @@ export function MapPage({
   return (
     <section
       className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}`}
+      style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
       <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
+      {placeListOpen && <PanelResizeHandle side="left" width={leftPanelWidth} onResize={(width) => { setLeftPanelWidth(width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, width) }} />}
       <div className="map-layout" aria-label="Carte des points d'intérêt">
         <PoiMap
           places={places}
@@ -183,6 +206,7 @@ export function MapPage({
 
       </div>
       {sidebar}
+      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={(width) => { setRightPanelWidth(width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width) }} />}
     </section>
   )
 }

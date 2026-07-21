@@ -17,7 +17,10 @@ vi.mock('../components/map/PoiMap', () => ({
   ),
 }))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  window.localStorage.clear()
+})
 
 describe('MapPage', () => {
   it('keeps the map and sidebar in the same responsive workspace', () => {
@@ -56,5 +59,42 @@ describe('MapPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser OSM' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'osm')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('resizes both workspace panels without remounting the map', () => {
+    render(
+      <MemoryRouter>
+        <MapPage
+          places={[]}
+          selectedPlaceId={null}
+          initialView={{ center: [48.17, 6.45], zoom: 13 }}
+          isLoading={false}
+          errorMessage={null}
+          sidebarOpen
+          sidebarResizable
+          placeListOpen
+          statuses={[]}
+          sidebar={<aside aria-label="Sorties">Sorties</aside>}
+          placeList={<aside aria-label="Lieux">Lieux</aside>}
+          focusRequest={null}
+          onBoundsChange={vi.fn()}
+          onViewChange={vi.fn()}
+          onPlaceSelect={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    const workspace = screen.getByTestId('poi-map').closest('.map-workspace') as HTMLElement
+    Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1400 })
+    const map = screen.getByTestId('poi-map')
+
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau de navigation' }), { key: 'ArrowRight' })
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' }), { key: 'ArrowLeft' })
+
+    expect(workspace.style.getPropertyValue('--cv-left-panel-width')).toBe('454px')
+    expect(workspace.style.getPropertyValue('--cv-right-panel-width')).toBe('664px')
+    expect(window.localStorage.getItem('cartavault:left-panel-width')).toBe('454')
+    expect(window.localStorage.getItem('cartavault:right-panel-width')).toBe('664')
+    expect(screen.getByTestId('poi-map')).toBe(map)
   })
 })

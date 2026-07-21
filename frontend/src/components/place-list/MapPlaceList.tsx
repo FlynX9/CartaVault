@@ -18,6 +18,7 @@ import { KmzImportDialog } from '../imports/KmzImportDialog'
 import { getPhotoFileUrl } from '../../api/photos'
 
 const PAGE_SIZE = 100
+const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000
 const emptyFacets: PlaceFacets = { categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 }
 
 interface Props {
@@ -32,12 +33,12 @@ const formatLocation = (place: PlaceDetails) => place.region || (place.latitude 
 const formatRating = (place: PlaceDetails) => place.interest_rating ?? place.visit_rating
 
 export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onClose = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
-  const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [listReady, setListReady] = useState(false); const [hasMore, setHasMore] = useState(false); const [nextOffset, setNextOffset] = useState(0); const [error, setError] = useState<string | null>(null)
+  const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [listReady, setListReady] = useState(false); const [hasMore, setHasMore] = useState(false); const [nextOffset, setNextOffset] = useState(0); const [error, setError] = useState<string | null>(null); const [listRequestVersion, setListRequestVersion] = useState(0)
   const [facets, setFacets] = useState<PlaceFacets>(emptyFacets); const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]); const [tags, setTags] = useState<Array<{ id: string; name: string }>>([])
   const [filtersOpen, setFiltersOpen] = useState(false); const [selectionMode, setSelectionMode] = useState(false); const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); const [bulkBusy, setBulkBusy] = useState(false); const [bulkError, setBulkError] = useState<string | null>(null); const [bulkNotice, setBulkNotice] = useState<string | null>(null)
   const [bulkStatusId, setBulkStatusId] = useState(''); const [bulkCategoryId, setBulkCategoryId] = useState(''); const [bulkTagId, setBulkTagId] = useState(''); const [trips, setTrips] = useState<Trip[]>([]); const [tripId, setTripId] = useState(''); const [dayId, setDayId] = useState(''); const [importing, setImporting] = useState(false)
   const [trash, setTrash] = useState<PlaceDetails[] | null>(null); const [trashBusy, setTrashBusy] = useState(false); const [displayMode, setDisplayMode] = useState<'compact' | 'expanded'>('expanded'); const [bulkEditorOpen, setBulkEditorOpen] = useState(false)
-  const refs = useRef(new Map<string, HTMLButtonElement>()); const placesRef = useRef<PlaceDetails[]>([]); const selectionRequest = useRef(0); const selectionController = useRef<AbortController | null>(null); const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
+  const refs = useRef(new Map<string, HTMLButtonElement>()); const placesRef = useRef<PlaceDetails[]>([]); const listRequest = useRef(0); const listController = useRef<AbortController | null>(null); const selectionRequest = useRef(0); const selectionController = useRef<AbortController | null>(null); const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
   const update = (partial: Partial<PlaceFilters>) => onFiltersChange(normalizePlaceFilters({ ...filters, ...partial }))
 
   useEffect(() => { setMarkerFilter({ query: filters.query, categoryId: filters.categoryIds[0] ?? '', statusId: filters.statusIds[0] ?? null, tagId: filters.tagIds[0] ?? '' }) }, [filters, setMarkerFilter])
@@ -46,46 +47,70 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   useEffect(() => { selectionController.current?.abort(); setSelectedIds(new Set()); setPlaces([]); setFacets(emptyFacets); setNextOffset(0); setListReady(false); setBulkNotice(null) }, [poiMap?.id])
   useEffect(() => {
     const mapId = poiMap?.id
-    if (!mapId) return
+    listController.current?.abort()
+    if (!mapId) {
+      listController.current = null
+      setLoading(false)
+      setListReady(false)
+      return
+    }
 
-    const controller = new AbortController()
+    const requestId = ++listRequest.current
+    const listAbortController = new AbortController()
+    const auxiliaryController = new AbortController()
+    listController.current = listAbortController
+    let timedOut = false
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true
+      listAbortController.abort()
+    }, PLACE_LIST_REQUEST_TIMEOUT_MS)
     setLoading(true)
     setError(null)
 
-    void getPlaces({ mapId, filters, limit: PAGE_SIZE, offset: 0 }, controller.signal)
+    void getPlaces({ mapId, filters, limit: PAGE_SIZE, offset: 0 }, listAbortController.signal)
       .then((page) => {
-        if (controller.signal.aborted) return
+        if (listAbortController.signal.aborted || requestId !== listRequest.current) return
         setPlaces(page)
         setNextOffset(page.length)
         setHasMore(page.length === PAGE_SIZE)
       })
       .catch((caught: unknown) => {
-        if (!controller.signal.aborted) {
+        if (requestId !== listRequest.current) return
+        if (timedOut) {
+          setError('Le chargement des lieux a expiré. Vous pouvez le relancer.')
+        } else if (!listAbortController.signal.aborted) {
           setError(caught instanceof Error ? caught.message : 'Chargement impossible.')
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
-          setListReady(true)
-          setLoading(false)
-        }
+        window.clearTimeout(timeoutId)
+        if (requestId !== listRequest.current) return
+        if (listController.current === listAbortController) listController.current = null
+        setListReady(true)
+        setLoading(false)
       })
 
     // Les facettes et les catalogues enrichissent le panneau, mais ne doivent
     // jamais empêcher l'affichage de la liste lorsque l'un de ces appels est lent.
     void Promise.allSettled([
-      getPlaceFacets(mapId, filters, controller.signal),
-      getCategories(controller.signal, undefined, mapId),
-      getTags(controller.signal, undefined, mapId),
+      getPlaceFacets(mapId, filters, auxiliaryController.signal),
+      getCategories(auxiliaryController.signal, undefined, mapId),
+      getTags(auxiliaryController.signal, undefined, mapId),
     ]).then(([facetsResult, categoriesResult, tagsResult]) => {
-      if (controller.signal.aborted) return
+      if (auxiliaryController.signal.aborted || requestId !== listRequest.current) return
       if (facetsResult.status === 'fulfilled') setFacets(facetsResult.value)
       if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value)
       if (tagsResult.status === 'fulfilled') setTags(tagsResult.value)
     })
 
-    return () => controller.abort()
-  }, [filters, poiMap?.id, refreshVersion])
+    return () => {
+      window.clearTimeout(timeoutId)
+      if (requestId === listRequest.current) listRequest.current += 1
+      listAbortController.abort()
+      auxiliaryController.abort()
+      if (listController.current === listAbortController) listController.current = null
+    }
+  }, [filters, listRequestVersion, poiMap?.id, refreshVersion])
   useEffect(() => { if (!poiMap?.can_edit || !selectionMode) return; const controller = new AbortController(); void listTrips(poiMap.id, controller.signal).then(setTrips).catch(() => setTrips([])); return () => controller.abort() }, [poiMap?.can_edit, poiMap?.id, selectionMode])
   useEffect(() => { if (!tripId) { setDayId(''); return }; const controller = new AbortController(); void getTrip(tripId, controller.signal).then((trip) => setTrips((current) => current.map((item) => item.id === trip.id ? trip : item))).catch(() => undefined); return () => controller.abort() }, [tripId])
 
@@ -173,7 +198,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
         {bulkEditorOpen && poiMap?.can_edit && <div className="places-bulk-editor"><select aria-label="Nouveau statut" value={bulkStatusId} onChange={(event) => setBulkStatusId(event.target.value)}><option value="">Changer le statut…</option>{statuses.map((status) => <option key={status.id} value={status.id}>{status.name}</option>)}</select><button type="button" disabled={bulkBusy || !bulkStatusId} onClick={() => void runBulk('set_status')}>Appliquer</button><select aria-label="Catégorie groupée" value={bulkCategoryId} onChange={(event) => setBulkCategoryId(event.target.value)}><option value="">Catégorie…</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select><button type="button" disabled={bulkBusy || !bulkCategoryId} onClick={() => void runBulk('add_category')}>Ajouter</button><button type="button" disabled={bulkBusy || !bulkCategoryId} onClick={() => void runBulk('remove_category')}>Retirer</button><select aria-label="Tag groupé" value={bulkTagId} onChange={(event) => setBulkTagId(event.target.value)}><option value="">Tag…</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select><button type="button" disabled={bulkBusy || !bulkTagId} onClick={() => void runBulk('add_tag')}>Ajouter</button><button type="button" disabled={bulkBusy || !bulkTagId} onClick={() => void runBulk('remove_tag')}>Retirer</button><select aria-label="Sortie" value={tripId} onChange={(event) => setTripId(event.target.value)}><option value="">Ajouter à une sortie…</option>{trips.filter((trip) => trip.days.length > 0).map((trip) => <option key={trip.id} value={trip.id}>{trip.name}</option>)}</select>{selectedTrip && <select aria-label="Journée" value={dayId} onChange={(event) => setDayId(event.target.value)}><option value="">Journée…</option>{selectedTrip.days.map((day) => <option key={day.id} value={day.id}>Jour {day.day_number}</option>)}</select>}<button type="button" disabled={bulkBusy || !dayId} onClick={() => void addToTrip()}>Ajouter</button></div>}
       </section>}
       {bulkError && <p className="form-alert" role="alert">{bulkError}</p>}{bulkNotice && <p className="form-success" role="status">{bulkNotice}</p>}
-      <div className="place-list-body cv-workspace-panel__content">{!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}{loading && <p role="status">Chargement…</p>}{error && <p role="alert">{error}</p>}{visible.length > 0 && <ul className={`country-place-list cv-workspace-panel__list places-redesign-list ${displayMode}`}>{visible.map((place) => { const primary = place.categories.find((item) => item.is_primary) ?? place.categories[0]; const inTrip = tripPlaceIds.has(place.id); const isSelected = place.id === selectedPlaceId; return <li key={place.id} className={isSelected ? 'selected' : undefined}><article className={`places-place-card${isSelected ? ' selected' : ''}${inTrip ? ' trip-added' : ''}${selectionMode ? ' has-selection' : ''}`}>{selectionMode && <input className="place-list-select" type="checkbox" aria-label={`Sélectionner ${place.name}`} checked={selectedIds.has(place.id)} onChange={() => toggleSelected(place.id)} />}<button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className="places-place-main" onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}>{displayMode === 'expanded' && <span className="places-place-photo">{place.primary_photo_id ? <img src={getPhotoFileUrl(place.primary_photo_id)} alt="" /> : <span className="place-list-category-bubble" style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primary?.icon} size={22} showLabel={false} /></span>}</span>}{displayMode === 'compact' && <span className="place-list-category-bubble" style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primary?.icon} size={18} showLabel={false} /></span>}<span className="places-place-copy"><strong title={place.name}>{place.name}{inTrip && <small className="place-list-trip-badge">Ajouté</small>}</strong>{displayMode === 'expanded' ? <><span className="places-place-location">{formatLocation(place)}</span>{primary && <span className="places-place-category"><CategoryIconPreview iconId={primary.icon} size={14} showLabel={false} />{primary.name}</span>}<span className="places-place-bottom">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}<span className="places-place-rating">★ {formatRating(place) ?? '—'}</span></span></> : <span className="place-list-item-meta"><span>{place.status.name}</span>{primary && <><span aria-hidden="true">·</span><span>{primary.name}</span></>}</span>}</span></button>{displayMode === 'expanded' && <aside className="places-place-actions" aria-label={`Actions pour ${place.name}`}><button className={place.is_favorite ? 'favorite active' : 'favorite'} type="button" aria-label={place.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'} onClick={() => void toggleFavorite(place)}><Heart size={20} fill={place.is_favorite ? 'currentColor' : 'none'} /></button><div>{poiMap?.can_edit !== false && <Link to={withMap(`/places/${place.id}/edit`, poiMap?.id)} aria-label={`Éditer ${place.name}`} onClick={(event) => event.stopPropagation()}><Pencil size={16} /></Link>}<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ''},${place.longitude ?? ''}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`} onClick={(event) => event.stopPropagation()}><MapPinned size={16} /></a>{poiMap?.can_edit !== false && <button type="button" aria-label={`Supprimer ${place.name}`} onClick={() => void removePlace(place)}><Trash2 size={16} /></button>}</div></aside>}</article></li> })}</ul>}{!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}{hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}</div>{!tripPlanningActive && importing && poiMap && <KmzImportDialog poiMap={poiMap} onClose={() => setImporting(false)} onImported={onImported} />}</aside>
+      <div className="place-list-body cv-workspace-panel__content">{!poiMap && <p className="place-list-message">Sélectionnez une carte pour afficher ses POI.</p>}{loading && <p role="status">Chargement…</p>}{error && <p role="alert" className="place-list-load-error">{error}<button type="button" onClick={() => setListRequestVersion((value) => value + 1)}>Réessayer</button></p>}{visible.length > 0 && <ul className={`country-place-list cv-workspace-panel__list places-redesign-list ${displayMode}`}>{visible.map((place) => { const primary = place.categories.find((item) => item.is_primary) ?? place.categories[0]; const inTrip = tripPlaceIds.has(place.id); const isSelected = place.id === selectedPlaceId; return <li key={place.id} className={isSelected ? 'selected' : undefined}><article className={`places-place-card${isSelected ? ' selected' : ''}${inTrip ? ' trip-added' : ''}${selectionMode ? ' has-selection' : ''}`}>{selectionMode && <input className="place-list-select" type="checkbox" aria-label={`Sélectionner ${place.name}`} checked={selectedIds.has(place.id)} onChange={() => toggleSelected(place.id)} />}<button ref={(node) => { if (node) refs.current.set(place.id, node); else refs.current.delete(place.id) }} type="button" draggable={tripPlanningActive && !inTrip} className="places-place-main" onDragStart={(event) => { if (tripPlanningActive && !inTrip) event.dataTransfer.setData('text/plain', `place:${place.id}`) }} onClick={() => onPlaceSelect(place)}>{displayMode === 'expanded' && <span className="places-place-photo">{place.primary_photo_id ? <img src={getPhotoFileUrl(place.primary_photo_id)} alt="" /> : <span className="place-list-category-bubble" style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primary?.icon} size={22} showLabel={false} /></span>}</span>}{displayMode === 'compact' && <span className="place-list-category-bubble" style={{ backgroundColor: place.status.color, borderColor: place.status.color }}><CategoryIconPreview iconId={primary?.icon} size={18} showLabel={false} /></span>}<span className="places-place-copy"><strong title={place.name}>{place.name}{inTrip && <small className="place-list-trip-badge">Ajouté</small>}</strong>{displayMode === 'expanded' ? <><span className="places-place-location">{formatLocation(place)}</span>{primary && <span className="places-place-category"><CategoryIconPreview iconId={primary.icon} size={14} showLabel={false} />{primary.name}</span>}<span className="places-place-bottom">{place.tags.map((tag) => <span className="place-list-tag" key={tag.id}>{tag.name}</span>)}<span className="places-place-rating">★ {formatRating(place) ?? '—'}</span></span></> : <span className="place-list-item-meta"><span>{place.status.name}</span>{primary && <><span aria-hidden="true">·</span><span>{primary.name}</span></>}</span>}</span></button>{displayMode === 'expanded' && <aside className="places-place-actions" aria-label={`Actions pour ${place.name}`}><button className={place.is_favorite ? 'favorite active' : 'favorite'} type="button" aria-label={place.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'} onClick={() => void toggleFavorite(place)}><Heart size={20} fill={place.is_favorite ? 'currentColor' : 'none'} /></button><div>{poiMap?.can_edit !== false && <Link to={withMap(`/places/${place.id}/edit`, poiMap?.id)} aria-label={`Éditer ${place.name}`} onClick={(event) => event.stopPropagation()}><Pencil size={16} /></Link>}<a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ''},${place.longitude ?? ''}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`} onClick={(event) => event.stopPropagation()}><MapPinned size={16} /></a>{poiMap?.can_edit !== false && <button type="button" aria-label={`Supprimer ${place.name}`} onClick={() => void removePlace(place)}><Trash2 size={16} /></button>}</div></aside>}</article></li> })}</ul>}{!loading && poiMap && visible.length === 0 && <p className="place-list-message">Aucun POI ne correspond aux filtres.</p>}{hasMore && <button className="place-list-more" type="button" onClick={() => void loadMore()}>Charger plus</button>}</div>{!tripPlanningActive && importing && poiMap && <KmzImportDialog poiMap={poiMap} onClose={() => setImporting(false)} onImported={onImported} />}</aside>
   )
   /*
   return <aside className="country-place-panel cv-workspace-panel" id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title"><header className="cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow place-list-kicker">Lieux</p><h2 id="map-place-list-title" className="cv-workspace-panel__title">{poiMap?.country?.name ?? poiMap?.name ?? 'Points d’intérêt'}</h2>{poiMap && <p className="place-list-map-meta">{formatLastUpdate(poiMap.updated_at)}</p>}</div><div className="cv-workspace-panel__header-actions">{poiMap && <span className="cv-workspace-panel__count">{facets.with_coordinates + facets.without_coordinates || visible.length} POI</span>}{poiMap && <button className={`panel-icon-button${selectionMode ? ' primary' : ''}`} type="button" aria-label="Sélection multiple" onClick={() => { setSelectionMode((value) => !value); setSelectedIds(new Set()) }}><CheckSquare size={18} /></button>}{poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" onClick={() => setImporting(true)}><FileUp size={18} /></button>}{poiMap && poiMap.can_edit !== false && <Link className="panel-icon-button primary" to={withMap('/places/new', poiMap.id)} aria-label="Ajouter un POI"><Plus size={18} /></Link>}<button className="panel-icon-button" type="button" aria-label="Fermer le panneau" onClick={onClose}><X size={18} /></button></div></header>

@@ -26,5 +26,22 @@ export function MapResizeWatcher({ layoutKey }: MapResizeWatcherProps) {
     }
   }, [map])
 
+  useEffect(() => {
+    const mapWithContainer = map as typeof map & { getContainer?: () => HTMLElement }
+    const container = mapWithContainer.getContainer?.()
+    if (!container || typeof ResizeObserver === 'undefined') return
+
+    let timeout: number | undefined
+    const observer = new ResizeObserver(() => {
+      window.clearTimeout(timeout)
+      timeout = window.setTimeout(() => map.invalidateSize({ pan: false }), 120)
+    })
+    observer.observe(container)
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(timeout)
+    }
+  }, [map])
+
   return null
 }
