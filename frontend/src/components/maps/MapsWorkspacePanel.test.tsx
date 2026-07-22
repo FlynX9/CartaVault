@@ -23,6 +23,7 @@ describe('MapsWorkspacePanel', () => {
     expect(screen.getByText('France historique')).toBeVisible()
     const preview = screen.getByRole('img', { name: 'Drapeau France, aperçu de France historique' })
     expect(preview).toBeVisible()
+    expect(preview.closest('.maps-catalog__summary')).toBeVisible()
     expect(preview.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/fr.svg')
     expect(screen.getByText('Ouverte')).toBeVisible()
     expect(screen.getByLabelText('Carte privée')).toBeVisible()
