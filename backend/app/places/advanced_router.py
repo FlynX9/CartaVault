@@ -14,6 +14,8 @@ from app.places.history import add_place_history
 from app.places.models import Place, PlaceHistory, PlaceLink
 from app.places.router import place_to_read, build_place_read_statement
 from app.places.schemas import PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinkUpdate, PlaceRead
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 
 router = APIRouter(prefix="/places", tags=["places advanced"])
 MAX_LINKS_PER_PLACE = 20
@@ -64,6 +66,7 @@ def get_place_links(place_id: UUID, database_session: Session = Depends(get_db),
 @router.post("/{place_id}/links", response_model=PlaceLinkRead, status_code=201)
 def create_place_link(place_id: UUID, data: PlaceLinkCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> PlaceLinkRead:
     place = require_place_role(database_session, place_id, current_user, "editor")
+    QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.LINKS_PER_PLACE_MAX, scope_id=place_id)
     if database_session.scalar(select(func.count()).select_from(PlaceLink).where(PlaceLink.place_id == place_id)) >= MAX_LINKS_PER_PLACE:
         raise HTTPException(status_code=409, detail=f"A place cannot have more than {MAX_LINKS_PER_PLACE} links")
     link = PlaceLink(place_id=place_id, **data.model_dump())

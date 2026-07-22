@@ -15,6 +15,8 @@ from app.auth.schemas import RegistrationRequestRead
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
+from app.quotas.schemas import RegistrationApproval
+from app.quotas.service import QuotaService
 
 
 router = APIRouter(prefix="/admin", tags=["administration"], dependencies=[Depends(require_admin)])
@@ -26,7 +28,7 @@ def list_registration_requests(database_session: Session = Depends(get_db)) -> l
 
 
 @router.post("/registration-requests/{request_id}/approve", response_model=RegistrationRequestRead)
-def approve_registration(request_id: UUID, database_session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> RegistrationRequest:
+def approve_registration(request_id: UUID, payload: RegistrationApproval | None = None, database_session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> RegistrationRequest:
     request = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.id == request_id).with_for_update())
     if request is None:
         raise HTTPException(404, "Demande d’inscription introuvable.")
@@ -35,7 +37,8 @@ def approve_registration(request_id: UUID, database_session: Session = Depends(g
     if database_session.scalar(select(User.id).where(User.email == request.email)) is not None:
         raise HTTPException(409, "Un compte utilise déjà cette adresse email.")
     now = datetime.now(UTC).replace(tzinfo=None)
-    user = User(email=request.email, display_name=request.display_name, password_hash=request.password_hash, is_admin=False, is_active=True)
+    profile = QuotaService(database_session).resolve_profile(payload.quota_profile_id if payload else None, lock=True)
+    user = User(email=request.email, display_name=request.display_name, password_hash=request.password_hash, is_admin=False, is_active=True, quota_profile_id=profile.id)
     request.status = "approved"; request.reviewed_at = now; request.reviewed_by_user_id = admin.id
     try:
         database_session.add(user)

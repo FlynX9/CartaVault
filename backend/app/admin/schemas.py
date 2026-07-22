@@ -7,9 +7,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-QuotaKey = Literal["maps", "places", "photo_storage_bytes", "photo_file_bytes", "members_per_map"]
-
-
 class AdminUserRead(BaseModel):
     id: UUID
     email: str
@@ -21,6 +18,8 @@ class AdminUserRead(BaseModel):
     last_login_at: datetime | None
     owned_map_count: int
     shared_map_count: int
+    quota_profile_id: UUID
+    quota_profile_name: str
 
 
 class AdminUserPage(BaseModel):
@@ -60,42 +59,6 @@ class CredentialValue(BaseModel):
     value: str = Field(min_length=3, max_length=512)
 
 
-class QuotaLimits(BaseModel):
-    maps: int | None = Field(default=None, ge=1)
-    places: int | None = Field(default=None, ge=1)
-    photo_storage_bytes: int | None = Field(default=None, ge=1)
-    photo_file_bytes: int | None = Field(default=None, ge=1)
-    members_per_map: int | None = Field(default=None, ge=1)
-
-
-class QuotaUsage(BaseModel):
-    maps: int
-    places: int
-    photos: int
-    photo_storage_bytes: int | None
-    memberships: int
-    imports: int | None = None
-    exports: int | None = None
-    route_calculations: int | None = None
-    google_routes_requests: int | None = None
-
-
-class UserQuotaRead(BaseModel):
-    user_id: UUID
-    display_name: str
-    email: str
-    limits: QuotaLimits
-    overrides: QuotaLimits
-    usage: QuotaUsage
-
-
-class QuotaOverview(BaseModel):
-    global_limits: QuotaLimits
-    aggregate_usage: QuotaUsage
-    users: list[UserQuotaRead]
-    unavailable_metrics: list[str]
-
-
 class ServiceHealth(BaseModel):
     status: Literal["ok", "warning", "unavailable"]
     detail: str
@@ -123,4 +86,3 @@ class InstanceHealth(BaseModel):
     email: ServiceHealth
     recent_errors: ServiceHealth
     counts: InstanceCounts
-

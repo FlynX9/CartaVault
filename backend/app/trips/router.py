@@ -26,6 +26,8 @@ from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, Ar
 from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, stale, resolve_constraint_country
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 
 router = APIRouter(tags=["trips"])
 
@@ -83,8 +85,12 @@ def list_trips(map_id: UUID, session: Session = Depends(get_db), user: User = De
 
 @router.post("/maps/{map_id}/trips", response_model=TripRead, status_code=201)
 def create_trip(map_id: UUID, data: TripCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    require_map_role(session, map_id, user, "editor")
+    access = require_map_role(session, map_id, user, "editor")
+    quotas = QuotaService(session)
+    quotas.ensure_can_create(user.id, QuotaKey.TRIPS_PER_MAP_MAX, scope_id=map_id)
+    quotas.ensure_can_create(access.map.owner_id, QuotaKey.TRIPS_TOTAL_MAX)
     trip = Trip(map_id=map_id, created_by_user_id=user.id, **data.model_dump()); session.add(trip); session.flush()
+    quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id)
     session.add(TripDay(trip_id=trip.id, day_number=1, sort_order=0, color=DAY_COLOR_PALETTE[0])); session.commit()
     return _trip_read(session, trip.id)
 
@@ -124,11 +130,19 @@ def archive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User =
 @router.post("/trips/{trip_id}/duplicate", response_model=TripRead, status_code=201)
 def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     source = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    quotas = QuotaService(session)
+    quotas.ensure_can_create(user.id, QuotaKey.TRIPS_PER_MAP_MAX, scope_id=source.map_id)
+    owner_id = session.scalar(select(PoiMap.owner_id).where(PoiMap.id == source.map_id))
+    if owner_id is None:
+        raise HTTPException(404, "Map not found")
+    quotas.ensure_can_create(owner_id, QuotaKey.TRIPS_TOTAL_MAX)
     copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile, low_load_max_minutes=source.low_load_max_minutes, medium_load_max_minutes=source.medium_load_max_minutes, low_load_color=source.low_load_color, medium_load_color=source.medium_load_color, high_load_color=source.high_load_color)
     session.add(copy); session.flush(); days: dict[UUID, TripDay] = {}
+    quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=copy.id, increment=len(source.days))
     for item in source.days:
         day = TripDay(trip_id=copy.id, day_number=item.day_number, date=item.date, title=item.title, color=item.color, notes=item.notes, planned_start_time=item.planned_start_time, planned_end_time=item.planned_end_time, target_arrival_time=item.target_arrival_time, default_stop_buffer_minutes=item.default_stop_buffer_minutes, safety_margin_type=item.safety_margin_type, safety_margin_value=item.safety_margin_value, max_total_duration_minutes=item.max_total_duration_minutes, sort_order=item.sort_order)
         session.add(day); session.flush(); days[item.id] = day
+        quotas.ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day.id, increment=len(item.stops))
         for stop in item.stops: session.add(TripStop(trip_day_id=day.id, place_id=stop.place_id, stop_type=stop.stop_type, name=stop.name, latitude=stop.latitude, longitude=stop.longitude, address=stop.address, sort_order=stop.sort_order, visit_duration_minutes=stop.visit_duration_minutes, notes=stop.notes, is_required=stop.is_required, is_locked=stop.is_locked, visit_status="planned"))
     for night in source.nights: session.add(TripNight(trip_id=copy.id, previous_day_id=days[night.previous_day_id].id, next_day_id=days[night.next_day_id].id, place_id=night.place_id, name=night.name, latitude=night.latitude, longitude=night.longitude, address=night.address, notes=night.notes, check_in_time=night.check_in_time, check_out_time=night.check_out_time))
     if source.departure: session.add(TripDeparture(trip_id=copy.id, place_id=source.departure.place_id, name=source.departure.name, latitude=source.departure.latitude, longitude=source.departure.longitude, address=source.departure.address, notes=source.departure.notes, departure_time=source.departure.departure_time))
@@ -139,6 +153,7 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
 @router.post("/trips/{trip_id}/days", response_model=DayRead, status_code=201)
 def add_day(trip_id: UUID, data: DayCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id); ordered = sorted(trip.days, key=lambda item: item.sort_order)
+    QuotaService(session).ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id)
     if data.after_day_id is None:
         insertion = len(ordered); previous = ordered[-1] if ordered else None
     else:
@@ -201,11 +216,14 @@ def reorder_days(trip_id: UUID, data: IdOrder, session: Session = Depends(get_db
 @router.post("/trip-days/{day_id}/duplicate", response_model=DayRead, status_code=201)
 def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     source, _ = require_day_role(session, day_id, user, "editor"); trip = load_trip(session, source.trip_id)
+    quotas = QuotaService(session)
+    quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id)
     for day in trip.days: day.sort_order += 10_000; day.day_number += 10_000
     session.flush(); ordered = sorted(trip.days, key=lambda item: item.sort_order); insertion = ordered.index(source) + 1
     for index, item in enumerate(ordered): item.sort_order = index if index < insertion else index + 1; item.day_number = item.sort_order + 1
     copy = TripDay(trip_id=trip.id, day_number=insertion + 1, sort_order=insertion, date=source.date, title=f"{source.title or f'Jour {source.day_number}'} — copie", color=next_day_color(trip.days), notes=source.notes, planned_start_time=source.planned_start_time, planned_end_time=source.planned_end_time, target_arrival_time=source.target_arrival_time, default_stop_buffer_minutes=source.default_stop_buffer_minutes, safety_margin_type=source.safety_margin_type, safety_margin_value=source.safety_margin_value, max_total_duration_minutes=source.max_total_duration_minutes)
     session.add(copy); session.flush()
+    quotas.ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=copy.id, increment=len(source.stops))
     if source.next_night is not None: source.next_night.previous_day = copy
     for stop in source.stops: session.add(TripStop(trip_day_id=copy.id, place_id=stop.place_id, stop_type=stop.stop_type, name=stop.name, latitude=stop.latitude, longitude=stop.longitude, address=stop.address, sort_order=stop.sort_order, visit_duration_minutes=stop.visit_duration_minutes, notes=stop.notes, is_required=stop.is_required, is_locked=stop.is_locked))
     session.commit(); return DayRead.model_validate(copy)
@@ -214,6 +232,7 @@ def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User =
 @router.post("/trip-days/{day_id}/stops", response_model=StopRead, status_code=201)
 def add_stop(day_id: UUID, data: StopCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     day, access = require_day_role(session, day_id, user, "editor"); values = data.model_dump()
+    QuotaService(session).ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day_id)
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, stop_type="place")
     stop = TripStop(trip_day_id=day.id, sort_order=len(day.stops), **values); session.add(stop); stale(day); session.commit(); return StopRead.model_validate(stop)

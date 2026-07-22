@@ -20,7 +20,8 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_photo_role, require_place_role
-from app.admin.quota_service import effective_limits, require_available, usage_for_user
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 from app.photos.models import Photo
 from app.places.history import add_place_history
 from app.photos.schemas import PhotoCreate, PhotoRead, PhotoReorder, PhotoUpdate
@@ -130,6 +131,9 @@ def create_place_photo(
             detail=f"Place with id {place_id} was not found",
         )
 
+    quotas = QuotaService(database_session)
+    quotas.ensure_can_create(current_user.id, QuotaKey.PHOTOS_PER_PLACE_MAX, scope_id=place_id)
+    quotas.ensure_can_create(place.map.owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
     next_order = database_session.scalar(select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place_id))
     photo = Photo(
         place_id=place_id,
@@ -209,23 +213,12 @@ def upload_place_photo(
             detail=f"Place with id {place_id} was not found",
         )
 
-    owner = place.map.owner
-    limits = effective_limits(database_session, owner)
+    quotas = QuotaService(database_session)
+    quotas.ensure_can_create(current_user.id, QuotaKey.PHOTOS_PER_PLACE_MAX, scope_id=place_id)
+    quotas.ensure_can_create(place.map.owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
     upload_size = file.size
-    if upload_size is not None and limits.photo_file_bytes is not None and upload_size > limits.photo_file_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail={"code": "QUOTA_PHOTO_FILE_EXCEEDED", "message": "La taille maximale autorisée pour une photo est dépassée."},
-        )
-    storage_usage = usage_for_user(database_session, owner).photo_storage_bytes
-    if upload_size is not None and storage_usage is not None:
-        require_available(
-            storage_usage + upload_size - 1,
-            limits.photo_storage_bytes,
-            "QUOTA_PHOTO_STORAGE_EXCEEDED",
-            "stockage photo",
-        )
-
+    if upload_size is not None:
+        quotas.ensure_can_create(place.map.owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=upload_size)
     photo_id = uuid4()
 
     try:

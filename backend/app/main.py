@@ -29,6 +29,7 @@ from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
 from app.photos.router import router as photos_router
+from app.quotas.router import router as quotas_router
 from app.places.map_router import router as places_map_router
 from app.places.advanced_router import router as places_advanced_router
 from app.places.router import router as places_router
@@ -117,6 +118,7 @@ app.include_router(invitations_router)
 app.include_router(admin_users_router)
 app.include_router(registration_admin_router)
 app.include_router(admin_console_router)
+app.include_router(quotas_router)
 app.include_router(instance_status_router)
 app.include_router(places_map_router)
 app.include_router(places_advanced_router)

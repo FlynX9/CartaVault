@@ -9,12 +9,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.admin.quota_service import global_limits, quota_for_user, save_global_limits, save_user_overrides, usage_for_user
 from app.admin.schemas import (
     AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue,
-    QuotaLimits, QuotaOverview, UserQuotaRead,
 )
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
@@ -31,11 +29,13 @@ def _user_read(session: Session, user: User) -> AdminUserRead:
     owned = session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id)) or 0
     shared = session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.user_id == user.id, MapMembership.role != "owner")) or 0
     state = "deleted" if user.deleted_at else "active" if user.is_active else "inactive"
+    profile = user.quota_profile
     return AdminUserRead(
         id=user.id, email=user.email, display_name=user.display_name,
         role="admin" if user.is_admin else "user", state=state,
         created_at=user.created_at, updated_at=user.updated_at, last_login_at=user.last_login_at,
         owned_map_count=owned, shared_map_count=shared,
+        quota_profile_id=user.quota_profile_id, quota_profile_name=profile.name,
     )
 
 
@@ -62,7 +62,7 @@ def list_users(
         filters.append(User.deleted_at.is_not(None))
     total = session.scalar(select(func.count()).select_from(User).where(*filters)) or 0
     users = session.scalars(
-        select(User).where(*filters).order_by(func.lower(User.email), User.id).offset((page - 1) * page_size).limit(page_size)
+        select(User).options(joinedload(User.quota_profile)).where(*filters).order_by(func.lower(User.email), User.id).offset((page - 1) * page_size).limit(page_size)
     ).all()
     return AdminUserPage(items=[_user_read(session, item) for item in users], total=total, page=page, page_size=page_size, pages=max(1, ceil(total / page_size)))
 
@@ -171,30 +171,3 @@ def delete_resend(session: Session = Depends(get_db)) -> None:
     credential = session.get(SystemCredential, "resend")
     if credential is not None:
         session.delete(credential); session.commit()
-
-
-@router.get("/quotas", response_model=QuotaOverview)
-def quota_overview(session: Session = Depends(get_db)) -> QuotaOverview:
-    users = session.scalars(select(User).where(User.deleted_at.is_(None)).order_by(func.lower(User.email))).all()
-    entries = [quota_for_user(session, user) for user in users]
-    aggregate = {
-        "maps": sum(item.usage.maps for item in entries), "places": sum(item.usage.places for item in entries),
-        "photos": sum(item.usage.photos for item in entries),
-        "photo_storage_bytes": None if any(item.usage.photo_storage_bytes is None for item in entries) else sum(item.usage.photo_storage_bytes or 0 for item in entries),
-        "memberships": sum(item.usage.memberships for item in entries),
-    }
-    return QuotaOverview(global_limits=global_limits(session), aggregate_usage=aggregate, users=entries, unavailable_metrics=["imports", "exports", "route_calculations", "google_routes_requests"])
-
-
-@router.put("/quotas", response_model=QuotaLimits)
-def update_global_quotas(payload: QuotaLimits, session: Session = Depends(get_db)) -> QuotaLimits:
-    return save_global_limits(session, payload)
-
-
-@router.patch("/quotas/users/{user_id}", response_model=UserQuotaRead)
-def update_user_quotas(user_id: UUID, payload: QuotaLimits, session: Session = Depends(get_db)) -> UserQuotaRead:
-    user = session.get(User, user_id)
-    if user is None or user.deleted_at is not None:
-        raise HTTPException(404, "Utilisateur introuvable.")
-    save_user_overrides(session, user, payload)
-    return quota_for_user(session, user)

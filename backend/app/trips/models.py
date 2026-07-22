@@ -65,6 +65,10 @@ class TripDay(Base):
         CheckConstraint("safety_margin_type IN ('fixed','percentage')", name="trip_days_margin_type_check"),
         CheckConstraint("(safety_margin_type = 'fixed' AND safety_margin_value BETWEEN 0 AND 720) OR (safety_margin_type = 'percentage' AND safety_margin_value BETWEEN 0 AND 100)", name="trip_days_margin_value_check"),
         CheckConstraint("color ~ '^#[0-9A-Fa-f]{6}$'", name="trip_days_color_check"),
+        CheckConstraint(
+            "route_provider IS NULL OR route_provider IN ('osrm','google')",
+            name="trip_days_route_provider_check",
+        ),
         Index("trip_days_trip_id_idx", "trip_id"),
     )
 

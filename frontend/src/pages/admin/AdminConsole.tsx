@@ -4,17 +4,18 @@ import { Activity, Check, ChevronLeft, ChevronRight, Gauge, KeyRound, RefreshCw,
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import {
-  deleteResendCredential, getAdminCredentials, getAdminQuotas, getAdminUsers,
-  saveAdminQuotas, saveResendCredential, saveUserQuota, updateAdminUser, verifyResendCredential,
+  assignUserQuotaProfile, deleteResendCredential, getAdminCredentials, getAdminUsers, getQuotaProfiles,
+  saveResendCredential, updateAdminUser, verifyResendCredential,
 } from '../../api/adminConsole'
 import { getRegistrationRequests, reviewRegistration, type RegistrationRequest } from '../../api/registration'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { InstanceStatusPage } from '../../features/admin/instance-status/InstanceStatusPage'
-import type { AdminRole, AdminUser, AdminUserPage, AdminUserState, CredentialStatus, QuotaLimits, QuotaOverview, UserQuota } from '../../types/adminConsole'
+import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage'
+import type { AdminRole, AdminUser, AdminUserPage, AdminUserState, CredentialStatus, QuotaProfile } from '../../types/adminConsole'
 
 const sections = [
   ['users', Users, 'Utilisateurs'], ['credentials', KeyRound, 'Clés API'],
-  ['quotas', Gauge, 'Quotas et usages'], ['instance', Activity, 'État de l’instance'],
+  ['quotas', Gauge, 'Quotas'], ['instance', Activity, 'État de l’instance'],
 ] as const
 
 export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
@@ -51,7 +52,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
         <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
         <Route path="/admin/users" element={<AdminUsersSection />} />
         <Route path="/admin/credentials" element={<AdminCredentialsSection />} />
-        <Route path="/admin/quotas" element={<AdminQuotasSection />} />
+        <Route path="/admin/quotas" element={<QuotaProfilesPage />} />
         <Route path="/admin/instance" element={<InstanceStatusPage />} />
         <Route path="*" element={<Navigate to="/admin/users" replace />} />
       </Routes></div>
@@ -68,11 +69,18 @@ function AdminUsersSection() {
   const [q, setQ] = useState(''); const [role, setRole] = useState<AdminRole | ''>(''); const [state, setState] = useState<AdminUserState | ''>('')
   const [page, setPage] = useState(1); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null)
   const [requests, setRequests] = useState<RegistrationRequest[]>([])
+  const [profiles, setProfiles] = useState<QuotaProfile[]>([])
+  const [approvalProfiles, setApprovalProfiles] = useState<Record<string, string>>({})
   const { confirm, confirmationDialog } = useConfirmDialog()
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true); setError(null)
-    void Promise.all([getAdminUsers({ q: q.trim(), role, state, page }, signal), getRegistrationRequests(signal)])
-      .then(([users, registrations]) => { if (!signal?.aborted) { setResult(users); setRequests(registrations) } })
+    void Promise.all([getAdminUsers({ q: q.trim(), role, state, page }, signal), getRegistrationRequests(signal), getQuotaProfiles(signal)])
+      .then(([users, registrations, nextProfiles]) => {
+        if (signal?.aborted) return
+        setResult(users); setRequests(registrations); setProfiles(nextProfiles)
+        const defaultId = nextProfiles.find((profile) => profile.is_default)?.id
+        if (defaultId) setApprovalProfiles((current) => Object.fromEntries(registrations.map((request) => [request.id, current[request.id] ?? defaultId])))
+      })
       .catch((reason: unknown) => { if (!signal?.aborted) setError(reason instanceof Error ? reason.message : 'Chargement impossible.') })
       .finally(() => { if (!signal?.aborted) setLoading(false) })
   }, [page, q, role, state])
@@ -83,17 +91,35 @@ function AdminUsersSection() {
     try { await updateAdminUser(item.id, payload); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Modification impossible.') }
   }
   const decide = async (item: RegistrationRequest, decision: 'approve' | 'reject') => {
-    try { await reviewRegistration(item.id, decision); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Décision impossible.') }
+    try { await reviewRegistration(item.id, decision, approvalProfiles[item.id]); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Décision impossible.') }
+  }
+  const assignProfile = async (item: AdminUser, profileId: string) => {
+    const profile = profiles.find((candidate) => candidate.id === profileId)
+    if (!profile || profile.id === item.quota_profile_id) return
+    const mapLimit = profile.limits.maps_max
+    const overMapLimit = mapLimit !== null && item.owned_map_count > mapLimit
+    const accepted = await confirm({
+      title: 'Changer le profil de quotas',
+      message: overMapLimit
+        ? `${item.display_name} possède ${item.owned_map_count} cartes pour une limite de ${mapLimit}. Les données existantes seront conservées, mais toute nouvelle création sera bloquée jusqu’au retour sous la limite.`
+        : `Remplacer ${item.quota_profile_name} par ${profile.name} pour ${item.display_name} ? Les données existantes ne seront jamais supprimées.`,
+      confirmLabel: 'Affecter',
+    })
+    if (!accepted) return
+    try {
+      await assignUserQuotaProfile(item.id, profileId)
+      setResult((current) => current ? { ...current, items: current.items.map((user) => user.id === item.id ? { ...user, quota_profile_id: profileId, quota_profile_name: profile.name } : user) } : current)
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Affectation impossible.') }
   }
   const pending = requests.filter((item) => item.status === 'pending')
   return <section>
     <SectionHeading eyebrow="Accès" title="Utilisateurs" description="Comptes, rôles et état d’accès à CartaVault." />
     <div className="admin-console__filters"><label>Recherche<input type="search" value={q} placeholder="Nom ou adresse email" onChange={(event) => { setQ(event.target.value); setPage(1) }} /></label><label>Rôle<select value={role} onChange={(event) => { setRole(event.target.value as AdminRole | ''); setPage(1) }}><option value="">Tous</option><option value="admin">Administrateurs</option><option value="user">Utilisateurs</option></select></label><label>État<select value={state} onChange={(event) => { setState(event.target.value as AdminUserState | ''); setPage(1) }}><option value="">Tous</option><option value="active">Actifs</option><option value="inactive">Inactifs</option><option value="deleted">Supprimés</option></select></label></div>
     {error && <div className="form-alert" role="alert">{error}</div>}
-    {pending.length > 0 && <section className="admin-console__card"><h3>Demandes d’inscription <span>{pending.length}</span></h3><ul className="admin-console__rows">{pending.map((item) => <li key={item.id}><div><strong>{item.display_name}</strong><small>{item.email}</small></div><div className="admin-console__actions"><button aria-label={`Accepter ${item.email}`} onClick={() => void decide(item, 'approve')}><Check size={16} /></button><button className="danger" aria-label={`Refuser ${item.email}`} onClick={() => void decide(item, 'reject')}><X size={16} /></button></div></li>)}</ul></section>}
+    {pending.length > 0 && <section className="admin-console__card"><h3>Demandes d’inscription <span>{pending.length}</span></h3><ul className="admin-console__rows">{pending.map((item) => <li key={item.id}><div><strong>{item.display_name}</strong><small>{item.email}</small></div><label className="admin-console__profile-select">Profil de quotas<select aria-label={`Profil de quotas pour ${item.email}`} value={approvalProfiles[item.id] ?? ''} onChange={(event) => setApprovalProfiles({ ...approvalProfiles, [item.id]: event.target.value })}>{profiles.filter((profile) => profile.is_active).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}{profile.is_default ? ' — par défaut' : ''}</option>)}</select></label><div className="admin-console__actions"><button aria-label={`Accepter ${item.email}`} onClick={() => void decide(item, 'approve')}><Check size={16} /></button><button className="danger" aria-label={`Refuser ${item.email}`} onClick={() => void decide(item, 'reject')}><X size={16} /></button></div></li>)}</ul></section>}
     <section className="admin-console__card"><h3>Comptes <span>{result?.total ?? 0}</span></h3>{loading ? <p role="status">Chargement…</p> : result?.items.length === 0 ? <p>Aucun utilisateur trouvé.</p> : <ul className="admin-console__user-grid">{result?.items.map((item) => <li key={item.id}>
       <div className="admin-console__avatar">{item.display_name.charAt(0).toUpperCase()}</div><div><strong>{item.display_name}</strong><small>{item.email}</small><p>{item.owned_map_count} carte(s) · {item.shared_map_count} partage(s) · dernière connexion {item.last_login_at ? new Date(item.last_login_at).toLocaleDateString('fr-FR') : 'jamais'}</p></div>
-      <div className="admin-console__badges"><span className={item.role}>{item.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span><span className={item.state}>{item.state === 'active' ? 'Actif' : item.state === 'inactive' ? 'Inactif' : 'Supprimé'}</span></div>
+      <div className="admin-console__badges"><span className={item.role}>{item.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span><span className={item.state}>{item.state === 'active' ? 'Actif' : item.state === 'inactive' ? 'Inactif' : 'Supprimé'}</span><label className="admin-console__profile-select">Quotas<select aria-label={`Profil de quotas de ${item.email}`} value={item.quota_profile_id} onChange={(event) => void assignProfile(item, event.target.value)}>{profiles.filter((profile) => profile.is_active || profile.id === item.quota_profile_id).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label></div>
       {item.state !== 'deleted' && <div className="admin-console__user-actions"><button onClick={() => void change(item, { role: item.role === 'admin' ? 'user' : 'admin' }, 'Modifier le rôle')}>{item.role === 'admin' ? 'Rétrograder' : 'Promouvoir'}</button><button className={item.state === 'active' ? 'danger' : ''} onClick={() => void change(item, { is_active: item.state !== 'active' }, item.state === 'active' ? 'Désactiver le compte' : 'Activer le compte')}>{item.state === 'active' ? 'Désactiver' : 'Activer'}</button></div>}
     </li>)}</ul>}
     {result && <footer className="admin-console__pagination"><button disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={16} />Précédent</button><span>Page {result.page} sur {result.pages}</span><button disabled={page >= result.pages} onClick={() => setPage((value) => value + 1)}>Suivant<ChevronRight size={16} /></button></footer>}</section>{confirmationDialog}
@@ -119,7 +145,7 @@ function AdminCredentialsSection() {
   </section>
 }
 
-function AdminQuotasSection() {
+/* Legacy quota overview removed: usage now belongs to Instance Status.
   const [overview, setOverview] = useState<QuotaOverview | null>(null); const [draft, setDraft] = useState<QuotaLimits | null>(null); const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<UserQuota | null>(null); const [overrideDraft, setOverrideDraft] = useState<QuotaLimits | null>(null)
   const load = useCallback((signal?: AbortSignal) => {
@@ -139,8 +165,6 @@ function AdminQuotasSection() {
   </>}</section>
 }
 
-const quotaFields: [keyof QuotaLimits, string, string][] = [['maps', 'Cartes par utilisateur', ''], ['places', 'Lieux par utilisateur', ''], ['photo_storage_bytes', 'Stockage photo', 'octets'], ['photo_file_bytes', 'Taille maximale par fichier', 'octets'], ['members_per_map', 'Membres par carte', '']]
+*/
 function sourceLabel(value: CredentialStatus['source']) { return ({ database: 'Base chiffrée', environment: 'Variable d’environnement', deployment: 'Secret de déploiement', none: 'Non configuré' })[value] }
 function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('fr-FR') : 'Jamais' }
-function bytes(value: number | null) { if (value === null) return 'Indisponible'; if (value < 1024) return `${value} o`; if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} Kio`; if (value < 1024 ** 3) return `${(value / 1024 ** 2).toFixed(1)} Mio`; return `${(value / 1024 ** 3).toFixed(1)} Gio` }
-function limitText(value: number | null, byteValue = false) { return value === null ? '' : ` / ${byteValue ? bytes(value) : value}` }

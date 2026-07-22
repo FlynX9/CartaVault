@@ -21,6 +21,7 @@ def _self_read(user: User, csrf_token: str) -> UserSelfRead:
         id=user.id, email=user.email, display_name=user.display_name,
         is_admin=user.is_admin, is_active=user.is_active, created_at=user.created_at,
         updated_at=user.updated_at, last_login_at=user.last_login_at, csrf_token=csrf_token,
+        quota_profile_id=user.quota_profile_id,
         avatar_url=f"/account/avatar?v={user.avatar_updated_at.isoformat()}" if user.avatar_filename else None,
     )
 

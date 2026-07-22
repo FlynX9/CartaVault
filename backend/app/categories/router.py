@@ -11,6 +11,8 @@ from app.auth.permissions import require_category_role, require_map_role
 from app.categories.models import Category
 from app.categories.schemas import CategoryCreate, CategoryRead, CategoryUpdate
 from app.database import get_db
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -36,6 +38,7 @@ def get_category(category_id: UUID, database_session: Session = Depends(get_db),
 @router.post("", response_model=CategoryRead, status_code=201)
 def create_category(data: CategoryCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> CategoryRead:
     require_map_role(database_session, data.map_id, current_user, "editor")
+    QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.CATEGORIES_PER_MAP_MAX, scope_id=data.map_id)
     category = Category(map_id=data.map_id, name=data.name.strip(), description=data.description, icon=data.icon, marks_as_visited=data.marks_as_visited)
     try:
         database_session.add(category)

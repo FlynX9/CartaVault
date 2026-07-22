@@ -1,5 +1,5 @@
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, InstanceHealth, QuotaLimits, QuotaOverview, UserQuota } from '../types/adminConsole'
+import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
 
 const empty = () => new URLSearchParams()
 
@@ -18,8 +18,15 @@ export function getAdminCredentials(signal?: AbortSignal) { return getJson('/adm
 export function saveResendCredential(value: string) { return sendJson('/admin/console/credentials/resend', 'PUT', { value }) as Promise<CredentialStatus> }
 export function verifyResendCredential() { return sendJson('/admin/console/credentials/resend/verify', 'POST', {}) as Promise<CredentialStatus> }
 export function deleteResendCredential() { return sendWithoutResponse('/admin/console/credentials/resend', 'DELETE') }
-export function getAdminQuotas(signal?: AbortSignal) { return getJson('/admin/console/quotas', empty(), signal) as Promise<QuotaOverview> }
-export function saveAdminQuotas(payload: QuotaLimits) { return sendJson('/admin/console/quotas', 'PUT', payload) as Promise<QuotaLimits> }
-export function saveUserQuota(userId: string, payload: QuotaLimits) { return sendJson(`/admin/console/quotas/users/${encodeURIComponent(userId)}`, 'PATCH', payload) as Promise<UserQuota> }
+export function getQuotaProfiles(signal?: AbortSignal) { return getJson('/admin/quota-profiles', empty(), signal) as Promise<QuotaProfile[]> }
+export function getQuotaRegistry(signal?: AbortSignal) { return getJson('/admin/quota-registry', empty(), signal) as Promise<QuotaRegistryItem[]> }
+export function createQuotaProfile(payload: { name: string; description: string | null; is_active: boolean; limits: QuotaLimits }) { return sendJson('/admin/quota-profiles', 'POST', payload) as Promise<QuotaProfile> }
+export function updateQuotaProfile(id: string, payload: Partial<{ name: string; description: string | null; is_active: boolean; limits: QuotaLimits }>) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<QuotaProfile> }
+export function duplicateQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/duplicate`, 'POST', {}) as Promise<QuotaProfile> }
+export function setDefaultQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/set-default`, 'POST', {}) as Promise<QuotaProfile> }
+export function archiveQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/archive`, 'POST', {}) as Promise<QuotaProfile> }
+export function deleteQuotaProfile(id: string) { return sendWithoutResponse(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'DELETE') }
+export function assignUserQuotaProfile(userId: string, profileId: string) { return sendJson(`/admin/users/${encodeURIComponent(userId)}/quota-profile`, 'PUT', { quota_profile_id: profileId }) as Promise<EffectiveQuota> }
+export function getUserQuotas(userId: string, signal?: AbortSignal) { return getJson(`/admin/users/${encodeURIComponent(userId)}/quotas`, empty(), signal) as Promise<EffectiveQuota> }
 export function getInstanceHealth(signal?: AbortSignal) { return getJson('/admin/console/instance', empty(), signal) as Promise<InstanceHealth> }
 export function refreshInstanceHealth() { return sendJson('/admin/console/instance/refresh', 'POST', {}) as Promise<InstanceHealth> }

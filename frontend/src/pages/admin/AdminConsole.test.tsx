@@ -4,11 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { getAdminCredentials, getAdminUsers, getInstanceHealth, refreshInstanceHealth, updateAdminUser } from '../../api/adminConsole'
+import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser } from '../../api/adminConsole'
 
 vi.mock('../../api/adminConsole', () => ({
-  deleteResendCredential: vi.fn(), getAdminCredentials: vi.fn(), getAdminQuotas: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), refreshInstanceHealth: vi.fn(),
-  saveAdminQuotas: vi.fn(), saveResendCredential: vi.fn(), saveUserQuota: vi.fn(), updateAdminUser: vi.fn(), verifyResendCredential: vi.fn(),
+  archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
+  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
+  saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
@@ -16,6 +17,8 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: '
 beforeEach(() => {
   vi.mocked(getAdminUsers).mockResolvedValue({ items: [], total: 0, page: 1, page_size: 25, pages: 1 })
   vi.mocked(getAdminCredentials).mockResolvedValue([])
+  vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
+  vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)
 })
@@ -63,6 +66,7 @@ describe('AdminConsole', () => {
       id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
       role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
       last_login_at: null, owned_map_count: 0, shared_map_count: 0,
+      quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
     }
     vi.mocked(getAdminUsers).mockResolvedValue({ items: [target], total: 1, page: 1, page_size: 25, pages: 1 })
 
@@ -72,6 +76,25 @@ describe('AdminConsole', () => {
     expect(screen.getByRole('alertdialog', { name: 'Modifier le rôle' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmer' }))
     await waitFor(() => expect(updateAdminUser).toHaveBeenCalledWith(target.id, { role: 'admin' }))
+  })
+
+  it('warns before assigning a profile that is below current map usage', async () => {
+    const target = {
+      id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
+      role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
+      last_login_at: null, owned_map_count: 7, shared_map_count: 0,
+      quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
+    }
+    const restricted = { ...unlimitedProfile, id: '22222222-2222-4222-8222-222222222222', name: 'Standard', is_default: false, is_system: false, assigned_users_count: 0, limits: { ...unlimitedProfile.limits, maps_max: 5 } }
+    vi.mocked(getAdminUsers).mockResolvedValue({ items: [target], total: 1, page: 1, page_size: 25, pages: 1 })
+    vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile, restricted])
+
+    render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
+    fireEvent.change(await screen.findByLabelText(`Profil de quotas de ${target.email}`), { target: { value: restricted.id } })
+
+    expect(screen.getByText(/possède 7 cartes pour une limite de 5/)).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Affecter' }))
+    await waitFor(() => expect(assignUserQuotaProfile).toHaveBeenCalledWith(target.id, restricted.id))
   })
 
   it('renders normalized instance diagnostics and refreshes them explicitly', async () => {
@@ -84,7 +107,35 @@ describe('AdminConsole', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Actualiser' }))
     await waitFor(() => expect(refreshInstanceHealth).toHaveBeenCalledOnce())
   })
+
+  it('renders quota profiles without duplicating instance usage metrics', async () => {
+    vi.mocked(getQuotaRegistry).mockResolvedValue([
+      { key: 'maps_max', scope: 'user', unit: 'count', label: 'Cartes', description: 'Nombre de cartes possédées', minimum: 0, maximum: 2147483647, enforced: true },
+    ])
+
+    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+
+    expect(await screen.findByRole('heading', { name: 'Quotas' })).toBeVisible()
+    expect(screen.getByText('Unlimited')).toBeVisible()
+    expect(screen.getAllByText('Par défaut').length).toBeGreaterThan(0)
+    expect(screen.getByText('Système')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Nouveau profil' })).toBeVisible()
+    expect(screen.queryByText('Usages par utilisateur')).not.toBeInTheDocument()
+  })
 })
+
+const unlimitedProfile = {
+  id: '00000000-0000-0000-0000-000000000001', name: 'Unlimited', description: null,
+  is_default: true, is_system: true, is_active: true, assigned_users_count: 1,
+  created_at: '2026-07-22T12:00:00Z', updated_at: '2026-07-22T12:00:00Z',
+  limits: {
+    maps_max: null, trips_total_max: null, storage_bytes_max: null, photos_total_max: null,
+    memberships_total_max: null, pending_invitations_max: null, places_per_map_max: null,
+    tags_per_map_max: null, categories_per_map_max: null, statuses_per_map_max: null,
+    trips_per_map_max: null, members_per_map_max: null, pending_invitations_per_map_max: null,
+    photos_per_place_max: null, links_per_place_max: null, days_per_trip_max: null, steps_per_day_max: null,
+  },
+}
 
 const diagnosticBase = { status: 'operational' as const, checked_at: '2026-07-22T12:00:00Z', error_code: null }
 const instanceHealth = {

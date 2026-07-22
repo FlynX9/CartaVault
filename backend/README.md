@@ -362,4 +362,38 @@ migration.
 Les liens sont limités à 20 par lieu et n’acceptent que des URL HTTP(S) possédant un hôte. L’historique conserve les changements structurés et les métadonnées utiles, jamais les fichiers photo binaires.
 # Console d’administration
 
-Les endpoints protégés `/admin/console/*` fournissent la pagination des utilisateurs, l’état masqué des credentials, les quotas globaux/individuels et un diagnostic isolé des services. La migration `e7a4c1d9b620` ajoute les réglages d’instance et les métadonnées de vérification des credentials. Les quotas bloquent uniquement de nouvelles écritures et ne suppriment jamais les données existantes.
+Les endpoints protégés `/admin/console/*` fournissent la pagination des utilisateurs, l’état masqué des credentials et un diagnostic isolé des services. La migration `e7a4c1d9b620` ajoute les réglages d’instance et les métadonnées de vérification des credentials.
+
+## Profils de quotas
+
+La révision `f1e6a4c8d920` remplace les anciennes limites globales et exceptions
+JSON par des profils réutilisables. Chaque utilisateur référence exactement un
+profil. Le profil système `Unlimited` est créé avec des limites `NULL`, reste
+actif et ne peut être ni restreint, ni archivé, ni supprimé. `NULL` signifie
+illimité, `0` interdit une nouvelle création et un entier positif fixe le
+maximum. Un profil plus restrictif ne supprime jamais les données existantes.
+
+Les endpoints administrateur `/admin/quota-profiles`,
+`/admin/users/{user_id}/quota-profile` et `/admin/users/{user_id}/quotas`
+gèrent le cycle de vie, l'affectation et les limites effectives. L'approbation
+d'une inscription accepte un profil actif facultatif et résout sinon le profil
+par défaut dans la transaction.
+
+| Quota | Portée | Comptage | Capacité libérée |
+| --- | --- | --- | --- |
+| Cartes | utilisateur | cartes possédées, jamais les cartes seulement partagées | suppression définitive ou transfert |
+| Lieux | carte | lieux actifs et placés dans la corbeille | purge définitive |
+| Photos | utilisateur/lieu | lignes photo persistées | suppression de la photo |
+| Stockage | utilisateur | taille réelle des fichiers photo existants | suppression physique réussie |
+| Membres | carte | propriétaire et membres actifs | retrait d'une adhésion |
+| Invitations | utilisateur/carte | invitations actives non expirées | acceptation, révocation ou expiration |
+| Sorties, jours, étapes | utilisateur/carte/objet | objets persistés | suppression de l'objet |
+
+`app.quotas.registry` est le registre unique des clés et portées.
+`QuotaService.ensure_can_create` verrouille la ligne du propriétaire avant de
+mesurer l'usage et d'autoriser l'écriture. Les créations groupées et imports
+fournissent leur incrément complet. Une limite atteinte produit un HTTP 409
+avec un code stable `quota.<resource>.limit_reached`, l'usage, la limite et
+l'incrément demandé. Pour ajouter une limite : déclarer sa clé dans le registre,
+sa colonne nullable et sa contrainte, son agrégat dans le service, puis appeler
+le service dans chaque chemin de création concerné.

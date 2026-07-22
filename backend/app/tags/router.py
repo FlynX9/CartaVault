@@ -11,6 +11,8 @@ from app.auth.permissions import require_map_role, require_tag_role
 from app.database import get_db
 from app.tags.models import Tag
 from app.tags.schemas import TagCreate, TagRead, TagUpdate
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 
@@ -36,6 +38,7 @@ def get_tag(tag_id: UUID, database_session: Session = Depends(get_db), current_u
 @router.post("", response_model=TagRead, status_code=201)
 def create_tag(data: TagCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> TagRead:
     require_map_role(database_session, data.map_id, current_user, "editor")
+    QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.TAGS_PER_MAP_MAX, scope_id=data.map_id)
     tag = Tag(map_id=data.map_id, name=data.name)
     try:
         database_session.add(tag)

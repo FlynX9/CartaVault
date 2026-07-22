@@ -34,6 +34,8 @@ from app.imports.remote_images import RemoteImageError, download_remote_image
 from app.places.models import Place
 from app.statuses.models import PlaceStatus
 from app.statuses.router import slugify_status_name
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 
 
 IMPORT_TTL = timedelta(minutes=15)
@@ -151,6 +153,32 @@ def confirm_import(
     if invalid:
         raise HTTPException(status_code=422, detail=f"Selected KMZ items are not importable: {invalid}")
 
+    new_items = [
+        item for item in selected
+        if item.source_index in forced_indexes or (
+            item.duplicate_place_id is None
+            and _find_existing_duplicate(database_session, map_id, item) is None
+        )
+    ]
+    quotas = QuotaService(database_session)
+    owner_id = database_session.scalar(select(PoiMap.owner_id).where(PoiMap.id == map_id))
+    if owner_id is None:
+        raise HTTPException(status_code=404, detail="Map not found")
+    quotas.ensure_can_create(cached.user_id, QuotaKey.PLACES_PER_MAP_MAX, scope_id=map_id, increment=len(new_items))
+    if database_session.scalar(select(Category.id).where(Category.map_id == map_id, func.lower(Category.name) == "importé")) is None:
+        quotas.ensure_can_create(cached.user_id, QuotaKey.CATEGORIES_PER_MAP_MAX, scope_id=map_id)
+    if database_session.scalar(select(PlaceStatus.id).where(PlaceStatus.map_id == map_id, PlaceStatus.slug == "importe")) is None:
+        quotas.ensure_can_create(cached.user_id, QuotaKey.STATUSES_PER_MAP_MAX, scope_id=map_id)
+    image_increment = sum(
+        sum(image.source_type == "embedded" or (download_remote_images and image.source_type == "remote_supported") for image in item.images)
+        for item in new_items
+    )
+    if image_increment:
+        quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_TOTAL_MAX, increment=image_increment)
+    embedded_bytes = sum(image.size or 0 for item in new_items for image in item.images if image.source_type == "embedded")
+    if embedded_bytes:
+        quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=embedded_bytes)
+
     stored_files: list[tuple[str, UUID, UUID]] = []
     created_ids: list[UUID] = []
     embedded_images_added = 0
@@ -211,6 +239,12 @@ def confirm_import(
             )
             database_session.add(place)
             database_session.flush()
+            place_image_increment = sum(
+                image.source_type == "embedded" or (download_remote_images and image.source_type == "remote_supported")
+                for image in item.images
+            )
+            if place_image_increment:
+                quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_PER_PLACE_MAX, scope_id=place.id, increment=place_image_increment)
             database_session.execute(place_categories_table.insert().values(place_id=place.id, category_id=category.id, is_primary=True))
             image_assignments.append((place, item.images))
             created_ids.append(place.id)

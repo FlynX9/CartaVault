@@ -18,6 +18,7 @@ from app.countries.catalog import load_country_catalog
 from app.countries.models import Country
 from app.maps.models import MapMembership, PoiMap
 from app.main import app
+from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
 from app.statuses.service import create_default_statuses
 
 
@@ -110,6 +111,11 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
 
         Base.metadata.create_all(engine)
         with engine.begin() as connection:
+            if connection.execute(QuotaProfile.__table__.select().where(QuotaProfile.id == UNLIMITED_PROFILE_ID)).first() is None:
+                connection.execute(QuotaProfile.__table__.insert().values(
+                    id=UNLIMITED_PROFILE_ID, name="Unlimited", description="System test fallback profile",
+                    is_default=True, is_system=True, is_active=True,
+                ))
             existing_countries = connection.scalar(
                 text("SELECT count(*) FROM countries")
             )

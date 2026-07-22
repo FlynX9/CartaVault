@@ -163,3 +163,13 @@ les rôles owner/editor/viewer/utilisateur extérieur. Le cycle ciblé de la
 migration `d6f1a3b8c902` vérifie le downgrade vers `a4f9c2e7d631`, la
 disparition des colonnes et index, puis le backfill et le schéma après retour à
 la tête.
+
+## Profils de quotas
+
+`test_quota_profiles.py` couvre l'autorisation administrateur, le cycle de vie,
+les valeurs illimitées et zéro, l'unicité insensible à la casse, l'unicité du
+profil par défaut, les protections du profil système, l'affectation et le
+blocage transactionnel d'une création. Les tests d'intégration doivent charger
+`backend/.env`, afficher uniquement le nom de base via `make_url` et refuser
+toute cible autre que `poi_manager_test`. Le cycle attendu est `upgrade head`,
+`downgrade -1`, `upgrade head`, puis `alembic check`.

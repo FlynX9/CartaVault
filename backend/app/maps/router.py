@@ -13,7 +13,8 @@ from app.auth.models import User
 from app.auth.permissions import MapAccess, get_map_access, require_map_role
 from app.auth.schemas import UserRead
 from app.auth.security import generate_token, hash_token, normalize_email
-from app.admin.quota_service import effective_limits, require_available, usage_for_user
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 from app.config import security_settings
 from app.countries.models import Country
 from app.countries.schemas import CountrySummary
@@ -79,8 +80,8 @@ def get_map(map_id: UUID, database_session: Session = Depends(get_db), current_u
 
 @router.post("", response_model=MapRead, status_code=201)
 def create_map(map_data: MapCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> MapRead:
-    limits = effective_limits(database_session, current_user)
-    require_available(usage_for_user(database_session, current_user).maps, limits.maps, "QUOTA_MAPS_EXCEEDED", "cartes")
+    quotas = QuotaService(database_session)
+    quotas.ensure_can_create(current_user.id, QuotaKey.MAPS_MAX)
     country = database_session.get(Country, map_data.country_id)
     if country is None:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -93,6 +94,7 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
     try:
         database_session.add(poi_map)
         database_session.flush()
+        quotas.ensure_can_create(current_user.id, QuotaKey.STATUSES_PER_MAP_MAX, scope_id=poi_map.id, increment=5)
         database_session.add(MapMembership(map_id=poi_map.id, user_id=current_user.id, role="owner"))
         create_default_statuses(database_session, poi_map.id)
         database_session.commit()
@@ -204,6 +206,7 @@ def transfer_ownership(map_id: UUID, data: TransferOwnership, database_session: 
         raise HTTPException(status_code=409, detail="The new owner must already be a map member")
     if old_owner is None or old_owner.role != "owner":
         raise HTTPException(status_code=409, detail="Current ownership is inconsistent")
+    QuotaService(database_session).ensure_can_create(new_owner.user_id, QuotaKey.MAPS_MAX)
     old_owner.role = "editor"
     database_session.flush()
     new_owner.role = "owner"
@@ -217,10 +220,9 @@ def transfer_ownership(map_id: UUID, data: TransferOwnership, database_session: 
 @router.post("/{map_id}/invitations", response_model=InvitationRead, status_code=201)
 def create_invitation(map_id: UUID, data: InvitationCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> InvitationRead:
     access = require_map_role(database_session, map_id, current_user, "owner")
-    limits = effective_limits(database_session, access.map.owner)
-    member_count = database_session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.map_id == map_id)) or 0
-    pending_count = database_session.scalar(select(func.count()).select_from(MapInvitation).where(MapInvitation.map_id == map_id, MapInvitation.accepted_at.is_(None), MapInvitation.revoked_at.is_(None))) or 0
-    require_available(member_count + pending_count, limits.members_per_map, "QUOTA_MEMBERS_EXCEEDED", "membres par carte")
+    quotas = QuotaService(database_session)
+    quotas.ensure_can_create(access.map.owner_id, QuotaKey.PENDING_INVITATIONS_PER_MAP_MAX, scope_id=map_id)
+    quotas.ensure_can_create(access.map.owner_id, QuotaKey.PENDING_INVITATIONS_MAX)
     email = normalize_email(data.email)
     if access.map.owner.email == email:
         raise HTTPException(status_code=409, detail="The map owner cannot be invited")

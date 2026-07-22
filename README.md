@@ -318,6 +318,7 @@ Favorites), while advanced filters expose the real statuses of the active map.
 - advanced filters and bulk actions;
 - place trash and history;
 - Account area and user preferences.
+- reusable per-user quota profiles with administrator assignment and backend enforcement;
 
 ### Before a stable release
 

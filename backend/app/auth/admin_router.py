@@ -12,6 +12,7 @@ from app.auth.models import User, UserSession
 from app.auth.schemas import PasswordReset, UserAdminCreate, UserAdminUpdate, UserRead
 from app.auth.security import hash_password, normalize_email
 from app.database import get_db
+from app.quotas.service import QuotaService
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"], dependencies=[Depends(require_admin)])
 
@@ -35,9 +36,11 @@ def list_users(q: str | None = Query(default=None, max_length=320), database_ses
 
 @router.post("", response_model=UserRead, status_code=201)
 def create_user(data: UserAdminCreate, database_session: Session = Depends(get_db)) -> UserRead:
+    profile = QuotaService(database_session).resolve_profile(data.quota_profile_id)
     user = User(
         email=normalize_email(str(data.email)), display_name=data.display_name.strip(),
         password_hash=hash_password(data.password), is_admin=data.is_admin, is_active=data.is_active,
+        quota_profile_id=profile.id,
     )
     try:
         database_session.add(user)

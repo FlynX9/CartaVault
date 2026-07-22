@@ -6,6 +6,7 @@ export interface AdminUser {
   id: string; email: string; display_name: string; role: AdminRole; state: AdminUserState
   created_at: string; updated_at: string; last_login_at: string | null
   owned_map_count: number; shared_map_count: number
+  quota_profile_id: string; quota_profile_name: string
 }
 export interface AdminUserPage { items: AdminUser[]; total: number; page: number; page_size: number; pages: number }
 
@@ -17,15 +18,26 @@ export interface CredentialStatus {
 }
 
 export interface QuotaLimits {
-  maps: number | null; places: number | null; photo_storage_bytes: number | null
-  photo_file_bytes: number | null; members_per_map: number | null
+  maps_max: number | null; trips_total_max: number | null; storage_bytes_max: number | null
+  photos_total_max: number | null; memberships_total_max: number | null; pending_invitations_max: number | null
+  places_per_map_max: number | null; tags_per_map_max: number | null; categories_per_map_max: number | null
+  statuses_per_map_max: number | null; trips_per_map_max: number | null; members_per_map_max: number | null
+  pending_invitations_per_map_max: number | null; photos_per_place_max: number | null
+  links_per_place_max: number | null; days_per_trip_max: number | null; steps_per_day_max: number | null
 }
-export interface QuotaUsage {
-  maps: number; places: number; photos: number; photo_storage_bytes: number | null; memberships: number
-  imports: number | null; exports: number | null; route_calculations: number | null; google_routes_requests: number | null
+export type QuotaKey = keyof QuotaLimits
+export interface QuotaProfile {
+  id: string; name: string; description: string | null; is_default: boolean; is_system: boolean; is_active: boolean
+  limits: QuotaLimits; assigned_users_count: number; created_at: string; updated_at: string
 }
-export interface UserQuota { user_id: string; display_name: string; email: string; limits: QuotaLimits; overrides: QuotaLimits; usage: QuotaUsage }
-export interface QuotaOverview { global_limits: QuotaLimits; aggregate_usage: QuotaUsage; users: UserQuota[]; unavailable_metrics: string[] }
+export interface EffectiveQuota {
+  user_id: string; profile: Pick<QuotaProfile, 'id' | 'name' | 'is_default' | 'is_system' | 'is_active' | 'limits'>
+  quotas: Array<{ key: QuotaKey; scope: 'user' | 'map' | 'place' | 'trip' | 'day'; limit: number | null; usage: number | null; remaining: number | null; unlimited: boolean; over_limit: boolean; enforced: boolean }>
+}
+export interface QuotaRegistryItem {
+  key: QuotaKey; scope: 'user' | 'map' | 'place' | 'trip' | 'day'; unit: 'count' | 'bytes'
+  label: string; description: string; minimum: number; maximum: number; enforced: boolean
+}
 
 export type InstanceStatusValue = 'operational' | 'degraded' | 'unavailable' | 'misconfigured' | 'unknown'
 export type SecuritySeverity = 'info' | 'warning' | 'high' | 'critical'

@@ -15,6 +15,7 @@ from app.auth.security import hash_password, normalize_email
 from app.config import security_settings
 from app.database import SessionLocal
 from app.maps.models import MapMembership, PoiMap
+from app.quotas.models import UNLIMITED_PROFILE_ID
 
 
 def create_admin(email: str | None = None, name: str | None = None, password: str | None = None) -> int:
@@ -29,7 +30,7 @@ def create_admin(email: str | None = None, name: str | None = None, password: st
             if session.scalar(select(User).where(User.email == email)) is not None:
                 print("A user with this email already exists.", file=sys.stderr)
                 return 1
-            user = User(email=email, display_name=name, password_hash=hash_password(password), is_admin=True, is_active=True)
+            user = User(email=email, display_name=name, password_hash=hash_password(password), is_admin=True, is_active=True, quota_profile_id=UNLIMITED_PROFILE_ID)
             session.add(user)
             session.flush()
             orphan_maps = session.scalars(select(PoiMap).where(PoiMap.owner_id.is_(None))).all()

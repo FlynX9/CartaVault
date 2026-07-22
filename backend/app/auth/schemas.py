@@ -19,6 +19,7 @@ class UserRead(BaseModel):
     updated_at: datetime
     last_login_at: datetime | None
     avatar_url: str | None = None
+    quota_profile_id: UUID
 
 
 class UserSelfRead(UserRead):
@@ -41,6 +42,7 @@ class UserAdminCreate(EmailModel):
     password: str = Field(min_length=security_settings.password_min_length, max_length=1024)
     is_admin: bool = False
     is_active: bool = True
+    quota_profile_id: UUID | None = None
 
 
 class UserAdminUpdate(BaseModel):

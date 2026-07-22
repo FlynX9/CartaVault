@@ -15,6 +15,8 @@ from app.auth.security import generate_token, hash_password, hash_token, normali
 from app.config import security_settings
 from app.database import get_db
 from app.maps.models import MapInvitation, MapMembership
+from app.quotas.service import QuotaService
+from app.quotas.registry import QuotaKey
 from app.maps.schemas import InvitationAccept, InvitationPublicRead, PendingInvitationRead
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
@@ -50,6 +52,8 @@ def _accept_for_user(database_session: Session, invitation: MapInvitation, user:
         )
     )
     if membership is None:
+        QuotaService(database_session).ensure_can_create(user.id, QuotaKey.MEMBERS_PER_MAP_MAX, scope_id=invitation.map_id)
+        QuotaService(database_session).ensure_can_create(user.id, QuotaKey.MEMBERSHIPS_TOTAL_MAX)
         database_session.add(MapMembership(map_id=invitation.map_id, user_id=user.id, role=invitation.role))
     elif membership.role != "owner":
         membership.role = invitation.role
@@ -150,6 +154,7 @@ def accept_invitation(token: str, data: InvitationAccept, request: Request, resp
         user = User(
             email=normalize_email(invitation.email), display_name=data.display_name.strip(),
             password_hash=hash_password(data.password), is_admin=False, is_active=True,
+            quota_profile_id=QuotaService(database_session).default_profile().id,
         )
         database_session.add(user)
         database_session.flush()

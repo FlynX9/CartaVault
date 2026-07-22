@@ -14,6 +14,8 @@ from app.database import get_db
 from app.places.models import Place
 from app.statuses.models import PlaceStatus
 from app.statuses.schemas import PlaceStatusCreate, PlaceStatusRead, PlaceStatusUpdate
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 
 
 router = APIRouter(prefix="/statuses", tags=["statuses"])
@@ -108,6 +110,7 @@ def create_status(
     current_user: User = Depends(get_current_user),
 ) -> PlaceStatusRead:
     require_map_role(database_session, status_data.map_id, current_user, "editor")
+    QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.STATUSES_PER_MAP_MAX, scope_id=status_data.map_id)
     place_status = PlaceStatus(
         map_id=status_data.map_id,
         name=status_data.name,

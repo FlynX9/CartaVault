@@ -13,6 +13,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.maps.models import MapInvitation, MapMembership, PoiMap
     from app.trips.models import Trip
+    from app.quotas.models import QuotaProfile
 
 
 class User(Base):
@@ -20,6 +21,7 @@ class User(Base):
     __table_args__ = (
         UniqueConstraint("email", name="users_email_key"),
         Index("ix_users_email", "email", unique=True),
+        Index("users_quota_profile_id_idx", "quota_profile_id"),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -35,6 +37,12 @@ class User(Base):
     avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     preferences: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    quota_profile_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("quota_profiles.id", ondelete="RESTRICT"),
+        nullable=False,
+        server_default=text("'00000000-0000-0000-0000-000000000001'::uuid"),
+    )
 
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     api_credentials: Mapped[list["UserApiCredential"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -42,6 +50,7 @@ class User(Base):
     memberships: Mapped[list["MapMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     created_invitations: Mapped[list["MapInvitation"]] = relationship(back_populates="created_by", foreign_keys="MapInvitation.created_by_user_id")
     created_trips: Mapped[list["Trip"]] = relationship(back_populates="created_by")
+    quota_profile: Mapped["QuotaProfile"] = relationship(back_populates="users")
 
 
 class UserSession(Base):

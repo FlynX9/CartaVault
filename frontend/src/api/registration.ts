@@ -18,8 +18,8 @@ export async function confirmPasswordReset(token: string, password: string, conf
 export async function getRegistrationRequests(signal?: AbortSignal): Promise<RegistrationRequest[]> {
   return getJson('/admin/registration-requests', new URLSearchParams(), signal) as Promise<RegistrationRequest[]>
 }
-export async function reviewRegistration(id: string, decision: 'approve' | 'reject'): Promise<RegistrationRequest> {
-  return sendJson(`/admin/registration-requests/${encodeURIComponent(id)}/${decision}`, 'POST', {}) as Promise<RegistrationRequest>
+export async function reviewRegistration(id: string, decision: 'approve' | 'reject', quotaProfileId?: string): Promise<RegistrationRequest> {
+  return sendJson(`/admin/registration-requests/${encodeURIComponent(id)}/${decision}`, 'POST', decision === 'approve' ? { quota_profile_id: quotaProfileId ?? null } : {}) as Promise<RegistrationRequest>
 }
 export async function getEmailSettings(signal?: AbortSignal): Promise<EmailSettingsStatus> {
   return getJson('/admin/email-settings', new URLSearchParams(), signal) as Promise<EmailSettingsStatus>

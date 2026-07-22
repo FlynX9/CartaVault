@@ -75,20 +75,22 @@ def test_admin_credentials_never_expose_secrets(integration_client, database_ses
     assert "value" not in encryption
 
 
-def test_admin_quotas_report_usage_and_do_not_delete_data(integration_client, poi_map, database_session) -> None:
+def test_admin_quota_profile_enforces_limit_without_deleting_data(integration_client, poi_map, database_session, auth_user) -> None:
     before_maps = database_session.query(type(poi_map)).count()
 
-    saved = integration_client.put("/admin/console/quotas", json={"maps": 1, "places": 25, "photo_storage_bytes": None, "photo_file_bytes": 1024, "members_per_map": 3})
-    overview = integration_client.get("/admin/console/quotas")
+    created = integration_client.post("/admin/quota-profiles", json={
+        "name": f"One map {uuid4()}", "description": "Test profile", "is_active": True,
+        "limits": {"maps_max": 1},
+    })
+    assert created.status_code == 201
+    profile_id = created.json()["id"]
+    assigned = integration_client.put(f"/admin/users/{auth_user.id}/quota-profile", json={"quota_profile_id": profile_id})
     blocked = integration_client.post("/maps", json={"country_id": str(poi_map.country_id), "name": "Quota blocked"})
 
-    assert saved.status_code == 200
-    assert overview.status_code == 200
-    assert overview.json()["global_limits"]["maps"] == 1
-    assert overview.json()["aggregate_usage"]["maps"] >= 1
+    assert assigned.status_code == 200
+    assert assigned.json()["profile"]["id"] == profile_id
     assert blocked.status_code == 409
-    assert blocked.json()["detail"]["code"] == "QUOTA_MAPS_EXCEEDED"
-    assert "google_routes_requests" in overview.json()["unavailable_metrics"]
+    assert blocked.json()["detail"]["code"] == "quota.maps.limit_reached"
     assert database_session.query(type(poi_map)).count() == before_maps
 
 

@@ -20,7 +20,8 @@ from app.categories.schemas import CategoryRead
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_map_role, require_place_role
-from app.admin.quota_service import effective_limits, require_available, usage_for_user
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 from app.database import get_db
 from app.countries.schemas import CountrySummary
 from app.maps.models import PoiMap
@@ -339,6 +340,10 @@ def bulk_add_to_trip(
     if trip_access.trip.map_id not in map_ids:
         raise HTTPException(status_code=409, detail="BULK_TRIP_FORBIDDEN")
     existing = set(database_session.scalars(select(TripStop.place_id).where(TripStop.trip_day_id == day.id, TripStop.place_id.in_(action_data.place_ids))).all())
+    QuotaService(database_session).ensure_can_create(
+        current_user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day.id,
+        increment=len(action_data.place_ids) - len(existing),
+    )
     next_order = (database_session.scalar(select(func.max(TripStop.sort_order)).where(TripStop.trip_day_id == day.id)) or -1) + 1
     added = 0
     try:
@@ -507,10 +512,7 @@ def create_place(
     """Create a new point of interest."""
 
     access = require_map_role(database_session, place_data.map_id, current_user, "editor")
-    owner = database_session.get(User, access.map.owner_id)
-    if owner is not None:
-        limits = effective_limits(database_session, owner)
-        require_available(usage_for_user(database_session, owner).places, limits.places, "QUOTA_PLACES_EXCEEDED", "lieux")
+    QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.PLACES_PER_MAP_MAX, scope_id=place_data.map_id)
 
     if place_data.status_id is None:
         place_status = database_session.scalar(

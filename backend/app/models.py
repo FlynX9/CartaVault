@@ -6,6 +6,7 @@ load the FastAPI routers, notably the administration CLI and Alembic.
 
 from app.auth.models import AuthActionToken, RegistrationRequest, SystemCredential, User, UserApiCredential, UserSession
 from app.admin.models import SystemSetting
+from app.quotas.models import QuotaProfile
 from app.categories.associations import place_categories_table
 from app.categories.models import Category
 from app.countries.models import Country
@@ -34,6 +35,7 @@ __all__ = (
     "RegistrationRequest",
     "SystemCredential",
     "SystemSetting",
+    "QuotaProfile",
     "UserApiCredential",
     "UserSession",
     "Trip",
