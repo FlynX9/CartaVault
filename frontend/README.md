@@ -1,5 +1,7 @@
 # Frontend cartographique de CartaVault
 
+La section **Administration → État de l’instance** affiche la santé globale, les services, l’usage, la sécurité, la maintenance, les sauvegardes connues et les erreurs contrôlées. Les états sont accompagnés d’un libellé et d’une icône, y compris sur mobile. Voir [`../docs/instance-status.md`](../docs/instance-status.md).
+
 Le bouton utilisateur ouvre une grande modale Compte au-dessus du workspace, sans remonter Leaflet. Elle regroupe Profil, Sécurité, Sessions actives, Préférences et Zone sensible. Pour un administrateur, l’entrée Administration du sous-menu utilisateur ouvre séparément la console protégée `/admin`. Les préférences restent associées au compte ; l’avatar utilise les initiales comme fallback.
 
 ## Authentification et partage privé

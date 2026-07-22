@@ -24,6 +24,7 @@ from app.countries.router import router as countries_router
 from app.database import SessionLocal
 from app.exports.router import router as exports_router
 from app.imports.router import router as imports_router
+from app.instance_status.router import router as instance_status_router
 from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
@@ -116,6 +117,7 @@ app.include_router(invitations_router)
 app.include_router(admin_users_router)
 app.include_router(registration_admin_router)
 app.include_router(admin_console_router)
+app.include_router(instance_status_router)
 app.include_router(places_map_router)
 app.include_router(places_advanced_router)
 app.include_router(places_router)

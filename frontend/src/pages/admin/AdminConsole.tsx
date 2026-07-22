@@ -4,12 +4,13 @@ import { Activity, Check, ChevronLeft, ChevronRight, Gauge, KeyRound, RefreshCw,
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import {
-  deleteResendCredential, getAdminCredentials, getAdminQuotas, getAdminUsers, getInstanceHealth,
+  deleteResendCredential, getAdminCredentials, getAdminQuotas, getAdminUsers,
   saveAdminQuotas, saveResendCredential, saveUserQuota, updateAdminUser, verifyResendCredential,
 } from '../../api/adminConsole'
 import { getRegistrationRequests, reviewRegistration, type RegistrationRequest } from '../../api/registration'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
-import type { AdminRole, AdminUser, AdminUserPage, AdminUserState, CredentialStatus, InstanceHealth, QuotaLimits, QuotaOverview, ServiceHealth, UserQuota } from '../../types/adminConsole'
+import { InstanceStatusPage } from '../../features/admin/instance-status/InstanceStatusPage'
+import type { AdminRole, AdminUser, AdminUserPage, AdminUserState, CredentialStatus, QuotaLimits, QuotaOverview, UserQuota } from '../../types/adminConsole'
 
 const sections = [
   ['users', Users, 'Utilisateurs'], ['credentials', KeyRound, 'Clés API'],
@@ -51,7 +52,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
         <Route path="/admin/users" element={<AdminUsersSection />} />
         <Route path="/admin/credentials" element={<AdminCredentialsSection />} />
         <Route path="/admin/quotas" element={<AdminQuotasSection />} />
-        <Route path="/admin/instance" element={<AdminInstanceSection />} />
+        <Route path="/admin/instance" element={<InstanceStatusPage />} />
         <Route path="*" element={<Navigate to="/admin/users" replace />} />
       </Routes></div>
     </section>
@@ -138,24 +139,6 @@ function AdminQuotasSection() {
   </>}</section>
 }
 
-function AdminInstanceSection() {
-  const [health, setHealth] = useState<InstanceHealth | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null)
-  const load = useCallback((signal?: AbortSignal) => {
-    setLoading(true); setError(null)
-    void getInstanceHealth(signal)
-      .then((result) => { if (!signal?.aborted) setHealth(result) })
-      .catch((reason: unknown) => { if (!signal?.aborted) setError(reason instanceof Error ? reason.message : 'Diagnostic impossible.') })
-      .finally(() => { if (!signal?.aborted) setLoading(false) })
-  }, [])
-  useEffect(() => { const controller = new AbortController(); load(controller.signal); return () => controller.abort() }, [load])
-  return <section><SectionHeading eyebrow="Supervision" title="État de l’instance" description="Diagnostic ponctuel, isolé et sans exposition de secrets." action={<button className="admin-console__refresh" disabled={loading} onClick={() => load()}><RefreshCw size={16} />Actualiser</button>} />{error && <div className="form-alert" role="alert">{error}</div>}{loading && !health ? <p role="status">Diagnostic en cours…</p> : health && <>
-    <section className="admin-console__metrics">{Object.entries(health.counts).map(([key, value]) => <article key={key}><span>{{ users: 'Utilisateurs', maps: 'Cartes', places: 'Lieux', photos: 'Photos' }[key]}</span><strong>{value}</strong></article>)}</section>
-    <div className="admin-console__health-grid"><HealthCard label="Application" item={{ status: 'ok', detail: `Version ${health.application_version}`, version: null }} /><HealthCard label="Base de données" item={health.database} /><HealthCard label="PostGIS" item={health.postgis} /><HealthCard label="Stockage" item={health.storage} /><HealthCard label="Chiffrement" item={health.credential_encryption} /><HealthCard label="OSRM" item={health.osrm} /><HealthCard label="Emails" item={health.email} /><HealthCard label="Erreurs récentes" item={health.recent_errors} /></div>
-    <section className="admin-console__card"><h3>Informations techniques sûres</h3><dl className="admin-console__details"><dt>Révision Alembic</dt><dd>{health.database_revision ?? 'Indisponible'}</dd><dt>Espace disque libre</dt><dd>{bytes(health.disk_free_bytes)} sur {bytes(health.disk_total_bytes)}</dd><dt>Dernière vérification</dt><dd>{new Date(health.checked_at).toLocaleString('fr-FR')}</dd></dl></section>
-  </>}</section>
-}
-
-function HealthCard({ label, item }: { label: string; item: ServiceHealth }) { return <article className="admin-console__card admin-console__health"><span className={item.status}>{item.status === 'ok' ? 'Opérationnel' : item.status === 'warning' ? 'Attention' : 'Indisponible'}</span><h3>{label}</h3><p>{item.detail}</p>{item.version && <small>{item.version}</small>}</article> }
 const quotaFields: [keyof QuotaLimits, string, string][] = [['maps', 'Cartes par utilisateur', ''], ['places', 'Lieux par utilisateur', ''], ['photo_storage_bytes', 'Stockage photo', 'octets'], ['photo_file_bytes', 'Taille maximale par fichier', 'octets'], ['members_per_map', 'Membres par carte', '']]
 function sourceLabel(value: CredentialStatus['source']) { return ({ database: 'Base chiffrée', environment: 'Variable d’environnement', deployment: 'Secret de déploiement', none: 'Non configuré' })[value] }
 function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('fr-FR') : 'Jamais' }

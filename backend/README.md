@@ -1,5 +1,7 @@
 # Backend de CartaVault
 
+Le module `app/instance_status` expose des diagnostics administrateur mis en cache via `GET /admin/console/instance` et un rafraîchissement forcé via `POST /admin/console/instance/refresh`. Il n’effectue aucun appel Google Routes ou Resend facturable et n’expose aucun secret. Voir [`../docs/instance-status.md`](../docs/instance-status.md).
+
 Le routeur `/account` gère le profil personnel, le changement d’e-mail et de mot de passe, les sessions actives, les avatars et la suppression contrôlée. Les avatars JPEG/PNG/WebP sont décodés avec Pillow, recadrés au centre en 256×256 WebP, débarrassés des métadonnées et stockés sous `AVATAR_STORAGE_PATH` (5 Mio et 4096 px maximum). La suppression refuse les propriétaires de cartes et le dernier administrateur actif, puis révoque les sessions et anonymise le compte.
 
 ## Inscriptions et emails

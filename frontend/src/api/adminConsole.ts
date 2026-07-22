@@ -22,3 +22,4 @@ export function getAdminQuotas(signal?: AbortSignal) { return getJson('/admin/co
 export function saveAdminQuotas(payload: QuotaLimits) { return sendJson('/admin/console/quotas', 'PUT', payload) as Promise<QuotaLimits> }
 export function saveUserQuota(userId: string, payload: QuotaLimits) { return sendJson(`/admin/console/quotas/users/${encodeURIComponent(userId)}`, 'PATCH', payload) as Promise<UserQuota> }
 export function getInstanceHealth(signal?: AbortSignal) { return getJson('/admin/console/instance', empty(), signal) as Promise<InstanceHealth> }
+export function refreshInstanceHealth() { return sendJson('/admin/console/instance/refresh', 'POST', {}) as Promise<InstanceHealth> }

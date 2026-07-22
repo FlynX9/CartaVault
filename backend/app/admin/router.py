@@ -1,34 +1,27 @@
 from __future__ import annotations
 
-import json
-import os
-import shutil
 from datetime import UTC, datetime
 from math import ceil
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select, text, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.admin.quota_service import global_limits, quota_for_user, save_global_limits, save_user_overrides, usage_for_user
 from app.admin.schemas import (
     AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue,
-    InstanceCounts, InstanceHealth, QuotaLimits, QuotaOverview, ServiceHealth, UserQuotaRead,
+    QuotaLimits, QuotaOverview, UserQuotaRead,
 )
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.models import SystemCredential, User, UserApiCredential, UserSession
-from app.config import credential_settings, email_settings, routing_settings
+from app.config import credential_settings, email_settings
 from app.database import get_db
 from app.maps.models import MapMembership, PoiMap
-from app.photos.models import Photo
-from app.photos.storage import get_photo_storage_root
-from app.places.models import Place
 
 
 router = APIRouter(prefix="/admin/console", tags=["admin-console"], dependencies=[Depends(require_admin)])
@@ -205,43 +198,3 @@ def update_user_quotas(user_id: UUID, payload: QuotaLimits, session: Session = D
         raise HTTPException(404, "Utilisateur introuvable.")
     save_user_overrides(session, user, payload)
     return quota_for_user(session, user)
-
-
-def _safe_service(action, unavailable: str) -> ServiceHealth:
-    try:
-        return action()
-    except Exception:  # Each diagnostic is deliberately isolated.
-        return ServiceHealth(status="unavailable", detail=unavailable)
-
-
-@router.get("/instance", response_model=InstanceHealth)
-def instance_health(session: Session = Depends(get_db)) -> InstanceHealth:
-    database = _safe_service(lambda: ServiceHealth(status="ok", detail="PostgreSQL répond.", version=session.scalar(text("SELECT version()"))), "PostgreSQL est indisponible.")
-    postgis = _safe_service(lambda: ServiceHealth(status="ok", detail="PostGIS répond.", version=session.scalar(text("SELECT PostGIS_Version()"))), "PostGIS est indisponible.")
-    revision = _safe_service(lambda: ServiceHealth(status="ok", detail="Révision Alembic active.", version=session.scalar(text("SELECT version_num FROM alembic_version"))), "Révision Alembic indisponible.")
-    root = _safe_service(lambda: ServiceHealth(status="ok", detail="Stockage accessible." if get_photo_storage_root().exists() else "Stockage prêt, dossier non créé."), "Stockage inaccessible.")
-    disk_total = disk_free = None
-    try:
-        disk = shutil.disk_usage(get_photo_storage_root().parent); disk_total = disk.total; disk_free = disk.free
-    except OSError:
-        pass
-    def check_osrm() -> ServiceHealth:
-        request = Request(f"{routing_settings.base_url.rstrip('/')}/route/v1/{routing_settings.profile}/2.3522,48.8566;2.3530,48.8570?overview=false", headers={"User-Agent": "CartaVault-health/1.0"})
-        with urlopen(request, timeout=min(routing_settings.timeout_seconds, 3)) as response:  # noqa: S310 - configured routing provider
-            payload = json.load(response)
-        return ServiceHealth(status="ok" if payload.get("code") == "Ok" else "warning", detail="OSRM répond." if payload.get("code") == "Ok" else "OSRM a répondu avec un état inattendu.")
-    osrm = _safe_service(check_osrm, "OSRM ne répond pas actuellement.")
-    resend = session.get(SystemCredential, "resend")
-    counts = InstanceCounts(
-        users=session.scalar(select(func.count()).select_from(User).where(User.deleted_at.is_(None))) or 0,
-        maps=session.scalar(select(func.count()).select_from(PoiMap)) or 0,
-        places=session.scalar(select(func.count()).select_from(Place).where(Place.deleted_at.is_(None))) or 0,
-        photos=session.scalar(select(func.count()).select_from(Photo)) or 0,
-    )
-    return InstanceHealth(
-        application_version=os.getenv("CARTAVAULT_VERSION", "0.1.0"), checked_at=datetime.now(UTC), database_revision=revision.version,
-        database=database, postgis=postgis, storage=root, disk_total_bytes=disk_total, disk_free_bytes=disk_free,
-        credential_encryption=ServiceHealth(status="ok" if credential_settings.encryption_key else "warning", detail="Clé de chiffrement configurée." if credential_settings.encryption_key else "Clé de chiffrement absente."),
-        osrm=osrm, email=ServiceHealth(status="ok" if resend else "warning", detail="Resend configuré." if resend else "Aucun fournisseur email configuré."),
-        recent_errors=ServiceHealth(status="warning", detail="Aucun mécanisme persistant d’erreurs contrôlées n’est disponible."), counts=counts,
-    )

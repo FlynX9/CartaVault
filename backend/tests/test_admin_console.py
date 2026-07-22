@@ -3,7 +3,9 @@ from uuid import uuid4
 
 import pytest
 
+from app.auth.dependencies import get_current_user
 from app.auth.models import SystemCredential, User
+from app.main import app
 
 
 pytestmark = pytest.mark.integration
@@ -91,14 +93,36 @@ def test_admin_quotas_report_usage_and_do_not_delete_data(integration_client, po
 
 
 def test_instance_diagnostics_isolate_service_failure_and_hide_sensitive_values(integration_client, monkeypatch) -> None:
-    monkeypatch.setattr("app.admin.router.urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("secret-host")))
+    monkeypatch.setattr("app.instance_status.service.urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(URLError("secret-host")))
 
     response = integration_client.get("/admin/console/instance")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["database"]["status"] == "ok"
-    assert payload["postgis"]["status"] == "ok"
-    assert payload["osrm"]["status"] == "unavailable"
+    assert payload["components"]["database"]["status"] == "operational"
+    assert payload["components"]["database"]["postgis_available"] is True
+    assert payload["components"]["routing"]["status"] == "degraded"
+    assert payload["components"]["routing"]["last_error_code"] == "OSRM_UNAVAILABLE"
     assert "secret-host" not in response.text
     assert "DATABASE_URL" not in response.text
+    assert "encrypted_secret" not in response.text
+
+
+def test_instance_diagnostics_reject_standard_user(integration_client, database_session, auth_user) -> None:
+    auth_user.is_admin = False
+    database_session.flush()
+
+    response = integration_client.get("/admin/console/instance")
+
+    assert response.status_code == 403
+
+
+def test_instance_diagnostics_requires_authentication(integration_client, auth_user) -> None:
+    app.dependency_overrides.pop(get_current_user, None)
+
+    try:
+        response = integration_client.get("/admin/console/instance")
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: auth_user
+
+    assert response.status_code == 401

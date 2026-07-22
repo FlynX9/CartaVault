@@ -1,5 +1,7 @@
 # CartaVault
 
+La console d’administration comprend une page **État de l’instance** réservée aux administrateurs. Elle agrège des diagnostics non sensibles sur les services, l’usage, la sécurité et la maintenance. Voir [la documentation Instance Status](docs/instance-status.md).
+
 **English** | [Français](README.fr.md)
 
 <p align="center">
