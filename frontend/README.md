@@ -346,3 +346,22 @@ La clé personnelle n’est enregistrée ni dans l’URL, ni dans `localStorage`
 - La fiche propose le favori, les deux notations, les liens externes sécurisés et l’historique.
 - La corbeille est accessible dans les filtres avancés pour les éditeurs ; elle permet la restauration ou une purge explicitement confirmée.
 - Un viewer conserve un accès en lecture aux valeurs et à l’historique, sans action de modification.
+
+## Statuts et filtres de visite
+
+La barre principale du panneau Lieux est volontairement stable : **Tous**,
+**Non visités**, **Visités** et **Favoris**. Elle n’encode aucun nom de statut
+personnalisé. Les deux états de visite proviennent de
+`status.functional_state`; Favoris est une dimension indépendante et peut être
+combinée avec eux.
+
+Le panneau de filtres avancés liste les statuts réels de la carte, leur couleur
+et leurs compteurs. Plusieurs statuts sont combinés par `OR`; catégories, tags,
+état fonctionnel et favoris se combinent par `AND`. La liste et la carte
+emploient le même sérialiseur de paramètres, ce qui conserve la synchronisation
+avec la pagination et les paramètres d’URL.
+
+La gestion des statuts demande « Non visité » ou « Visité » à la création et à
+la modification. Lorsqu’un changement reclasse des lieux existants, CartaVault
+affiche leur nombre avant confirmation. Les viewers voient les statuts et les
+filtres sans recevoir d’action de modification.

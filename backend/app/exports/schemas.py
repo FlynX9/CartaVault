@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-DEFAULT_FIELDS = ["description", "status", "primary_category", "categories", "tags", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "created_at", "updated_at"]
+DEFAULT_FIELDS = ["description", "status", "status_functional_state", "primary_category", "categories", "tags", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "created_at", "updated_at"]
 
 
 class KmzExportOptions(BaseModel):

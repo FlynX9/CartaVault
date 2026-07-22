@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { createKmzExport, downloadKmzExport, type KmzExportCreated } from '../../api/exports'
 import type { PoiMap } from '../../types/map'
 
-const FIELDS = ['description', 'status', 'primary_category', 'categories', 'tags', 'region', 'construction_date', 'abandonment_date', 'condition', 'access', 'danger_level', 'created_at', 'updated_at']
+const FIELDS = ['description', 'status', 'status_functional_state', 'primary_category', 'categories', 'tags', 'region', 'construction_date', 'abandonment_date', 'condition', 'access', 'danger_level', 'created_at', 'updated_at']
 
 export function KmzExportDialog({ poiMap, onClose }: { poiMap: PoiMap; onClose: () => void }) {
   const [includeImages, setIncludeImages] = useState(true)

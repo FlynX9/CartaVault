@@ -90,6 +90,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
             "description": place.description, "region": place.region, "construction_date": place.construction_date,
             "abandonment_date": place.abandonment_date, "condition": place.condition, "access": place.access,
             "danger_level": place.danger_level, "status": place.status.name if place.status else None,
+            "status_functional_state": place.status.functional_state if place.status else None,
             "primary_category": primary_category.name if primary_category else None,
             "categories": [category.name for category in place.categories], "tags": [tag.name for tag in place.tags],
             "created_at": place.created_at.isoformat(), "updated_at": place.updated_at.isoformat(),

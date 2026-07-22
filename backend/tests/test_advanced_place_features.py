@@ -12,18 +12,16 @@ pytestmark = pytest.mark.integration
 
 
 def test_favorite_ratings_visited_filters_links_and_history(integration_client, poi_map) -> None:
-    category_response = integration_client.post(
-        "/categories",
-        json={"map_id": str(poi_map.id), "name": "Visité", "marks_as_visited": True},
-    )
-    assert category_response.status_code == 201
-    category = category_response.json()
+    statuses = integration_client.get("/statuses", params={"map_id": str(poi_map.id)}).json()
+    visited_status = next(item for item in statuses if item["functional_state"] == "visited")
+    non_visited_status = next(item for item in statuses if item["functional_state"] == "non_visited")
 
     place_response = integration_client.post(
         "/places",
         json={
             "map_id": str(poi_map.id),
             "name": "Favori visité",
+            "status_id": visited_status["id"],
             "latitude": 48.1,
             "longitude": 2.1,
             "is_favorite": True,
@@ -33,7 +31,17 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
     )
     assert place_response.status_code == 201
     place_id = place_response.json()["id"]
-    assert integration_client.post(f"/places/{place_id}/categories/{category['id']}").status_code == 200
+    non_visited_place = integration_client.post(
+        "/places",
+        json={
+            "map_id": str(poi_map.id),
+            "name": "Favori non visité",
+            "status_id": non_visited_status["id"],
+            "latitude": 48.15,
+            "longitude": 2.15,
+            "is_favorite": True,
+        },
+    ).json()
 
     details = integration_client.get(f"/places/{place_id}")
     assert details.status_code == 200
@@ -44,7 +52,7 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
 
     filtered = integration_client.get(
         "/places",
-        params={"map_id": str(poi_map.id), "is_favorite": True, "is_visited": True, "rating_min": 4},
+        params={"map_id": str(poi_map.id), "is_favorite": True, "functional_state": "visited", "rating_min": 4},
     )
     assert filtered.status_code == 200
     assert [item["id"] for item in filtered.json()] == [place_id]
@@ -58,11 +66,35 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
             "min_longitude": 1,
             "max_longitude": 3,
             "is_favorite": True,
-            "is_visited": True,
+            "functional_state": "visited",
         },
     )
     assert map_filtered.status_code == 200
     assert map_filtered.json()[0]["id"] == place_id
+
+    combined = integration_client.get(
+        "/places",
+        params={"map_id": str(poi_map.id), "is_favorite": True, "functional_state": "non_visited"},
+    )
+    assert [item["id"] for item in combined.json()] == [non_visited_place["id"]]
+
+    multiple_statuses = integration_client.get(
+        "/places",
+        params=[
+            ("map_id", str(poi_map.id)),
+            ("is_favorite", "true"),
+            ("status_ids", visited_status["id"]),
+            ("status_ids", non_visited_status["id"]),
+        ],
+    )
+    assert {item["id"] for item in multiple_statuses.json()} == {place_id, non_visited_place["id"]}
+
+    facets = integration_client.get("/places/facets", params={"map_id": str(poi_map.id)})
+    assert facets.status_code == 200
+    assert facets.json()["total"] == 2
+    assert facets.json()["visited"] == 1
+    assert facets.json()["non_visited"] == 1
+    assert facets.json()["favorites"] == 2
 
     invalid_link = integration_client.post(
         f"/places/{place_id}/links", json={"url": "javascript:alert(1)"}
@@ -77,7 +109,7 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
 
     history = integration_client.get(f"/places/{place_id}/history")
     assert history.status_code == 200
-    assert {event["action"] for event in history.json()} >= {"created", "category_added", "link_added"}
+    assert {event["action"] for event in history.json()} >= {"created", "link_added"}
 
 
 def test_map_field_configuration_and_trash_lifecycle(integration_client, poi_map) -> None:

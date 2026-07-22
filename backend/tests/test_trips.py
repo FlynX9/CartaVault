@@ -149,10 +149,12 @@ def test_removing_a_middle_stop_compacts_the_day_order(integration_client, poi_m
 
 
 def test_trip_rejects_place_from_another_map(integration_client, database_session, poi_map, auth_user, france_country) -> None:
+    from app.statuses.service import create_default_statuses
+
     other_country = database_session.scalar(select(Country).where(Country.id != france_country.id).order_by(Country.iso_alpha2))
     assert other_country is not None
     other = PoiMap(name=f"Other {uuid4()}", country_id=other_country.id, owner_id=auth_user.id, is_private=True)
-    database_session.add(other); database_session.flush(); database_session.add(MapMembership(map_id=other.id, user_id=auth_user.id, role="owner")); database_session.flush()
+    database_session.add(other); database_session.flush(); database_session.add(MapMembership(map_id=other.id, user_id=auth_user.id, role="owner")); create_default_statuses(database_session, other.id); database_session.flush()
     place = integration_client.post("/places", json={"name": "Other", "map_id": str(other.id), "latitude": 47, "longitude": 5}).json()
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Protected"}).json()
     day = trip["days"][0]

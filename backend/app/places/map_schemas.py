@@ -1,4 +1,5 @@
 from uuid import UUID
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -25,6 +26,7 @@ class MapStatusRead(BaseModel):
     name: str
     slug: str
     color: str
+    functional_state: Literal["non_visited", "visited"]
 
 
 class PrimaryCategoryRead(BaseModel):

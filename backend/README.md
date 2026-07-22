@@ -329,6 +329,32 @@ Les appels Google sont limités par utilisateur et ne sont pas rejoués automati
 
 La révision `d2f7a9c4e610` ajoute la configuration JSONB par carte, le marqueur de catégorie visitée, les favoris, les notes, la corbeille, les liens externes et l’historique. La révision `e3a8c1d5f720` ajoute les index de tri des notes.
 
-`is_visited` est calculé depuis les catégories dont `marks_as_visited=true` et n’est jamais stocké sur `places`. Les suppressions ordinaires renseignent `deleted_at`; les requêtes liste/carte excluent automatiquement ces lignes. La purge est refusée lorsqu’un arrêt ou une nuit de sortie référence encore le POI.
+`is_visited` est une projection de compatibilité calculée exclusivement depuis
+`place.status.functional_state`; il n’est jamais stocké sur `places`. Les
+catégories et leur nom n’interviennent plus dans ce classement. Les suppressions
+ordinaires renseignent `deleted_at`; les requêtes liste/carte excluent
+automatiquement ces lignes. La purge est refusée lorsqu’un arrêt ou une nuit de
+sortie référence encore le POI.
+
+## Statuts de suivi et état fonctionnel
+
+Les statuts sont propres à chaque carte et restent renommables, recolorables et
+réordonnables. Chaque statut porte obligatoirement `functional_state`, limité à
+`non_visited` ou `visited`. La création d’une carte initialise « À faire »,
+« À vérifier », « Visité » et « À refaire » avec leur classement fonctionnel.
+
+`GET /places` et `GET /places/map` partagent les paramètres
+`functional_state`, `status_ids` et `is_favorite`. Les groupes différents sont
+combinés par `AND`, plusieurs `status_ids` par `OR`. `GET /places/facets`
+retourne les compteurs fonctionnels et les compteurs des statuts actifs dans le
+périmètre accessible. Un changement d’état fonctionnel reclasse immédiatement
+les POI liés; la réponse du CRUD expose `places_count` pour permettre une
+confirmation explicite dans l’interface.
+
+La migration `d6f1a3b8c902` rattache les anciens statuts aux cartes. Son
+backfill explicite classe Visité, Fait, À refaire et Inaccessible comme visités,
+À faire et À vérifier comme non visités; toute valeur inconnue devient
+prudemment `non_visited`. Cette correspondance n’est utilisée que pendant la
+migration.
 
 Les liens sont limités à 20 par lieu et n’acceptent que des URL HTTP(S) possédant un hôte. L’historique conserve les changements structurés et les métadonnées utiles, jamais les fichiers photo binaires.

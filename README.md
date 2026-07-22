@@ -295,6 +295,15 @@ Before publishing or deploying the project:
 
 ## Project status
 
+### Custom statuses and visit filters
+
+Statuses are scoped to each map and remain fully customizable. Every status is
+classified as either `non_visited` or `visited`; this functional state, rather
+than a status or category name, drives visit filters, counters, ratings and map
+results. New maps receive four editable defaults: À faire, À vérifier, Visité
+and À refaire. The main Places filters stay stable (All, Not visited, Visited,
+Favorites), while advanced filters expose the real statuses of the active map.
+
 ### Already available
 
 - maps and places;

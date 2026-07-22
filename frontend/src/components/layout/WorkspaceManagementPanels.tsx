@@ -22,8 +22,8 @@ export function TagsWorkspacePanel({ mapId, canEdit = true, onClose = () => unde
   return <WorkspaceManagementPanel id="workspace-tags-panel" label="Gestion des tags" onClose={onClose}><EntityManagementPage config={tagsConfig(mapId)} variant="panel" readOnly={!canEdit} /></WorkspaceManagementPanel>
 }
 
-export function StatusesWorkspacePanel({ onClose = () => undefined }: { onClose?: () => void }) {
-  return <WorkspaceManagementPanel id="workspace-statuses-panel" label="Gestion des statuts" onClose={onClose}><StatusesPanel variant="panel" /></WorkspaceManagementPanel>
+export function StatusesWorkspacePanel({ mapId, canEdit = true, onClose = () => undefined }: ScopedPanelProps) {
+  return <WorkspaceManagementPanel id="workspace-statuses-panel" label="Gestion des statuts" onClose={onClose}><StatusesPanel variant="panel" mapId={mapId} canEdit={canEdit} /></WorkspaceManagementPanel>
 }
 
 export function UsersWorkspacePanel({ onClose = () => undefined }: { onClose?: () => void }) {

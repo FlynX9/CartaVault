@@ -94,7 +94,6 @@ def get_map_places(
                 Category.id,
                 Category.name,
                 Category.icon,
-                Category.marks_as_visited,
             ),
             selectinload(Place.tags).load_only(
                 Tag.id,
@@ -102,10 +101,12 @@ def get_map_places(
             ),
             selectinload(Place.status).load_only(
                 PlaceStatus.id,
+                PlaceStatus.map_id,
                 PlaceStatus.name,
                 PlaceStatus.slug,
                 PlaceStatus.color,
                 PlaceStatus.is_active,
+                PlaceStatus.functional_state,
             ),
         )
         .where(
@@ -177,6 +178,7 @@ def get_map_places(
                 name=place.status.name,
                 slug=place.status.slug,
                 color=place.status.color,
+                functional_state=place.status.functional_state,
             ),
             primary_category=next((PrimaryCategoryRead(id=category.id, name=category.name, icon=category.icon) for category in place.categories if primary_categories.get((place.id, category.id), False)), None),
             categories=[MapCategoryRead(id=category.id, name=category.name, icon=category.icon, is_primary=primary_categories.get((place.id, category.id), False)) for category in place.categories],
@@ -188,7 +190,7 @@ def get_map_places(
                 for tag in place.tags
             ],
             is_favorite=place.is_favorite,
-            is_visited=any(category.marks_as_visited for category in place.categories),
+            is_visited=place.status.functional_state == "visited",
             interest_rating=place.interest_rating,
             visit_rating=place.visit_rating,
         )

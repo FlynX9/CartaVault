@@ -1,3 +1,4 @@
+from dataclasses import replace
 from uuid import UUID
 
 from fastapi import (
@@ -90,10 +91,12 @@ def place_to_read(
         ),
         status=PlaceStatusSummary(
             id=place.status.id,
+            map_id=place.status.map_id,
             name=place.status.name,
             slug=place.status.slug,
             color=place.status.color,
             is_active=place.status.is_active,
+            functional_state=place.status.functional_state,
         ),
         description=place.description,
         region=place.region,
@@ -130,7 +133,7 @@ def place_to_read(
         is_favorite=place.is_favorite,
         interest_rating=place.interest_rating,
         visit_rating=place.visit_rating,
-        is_visited=any(category.marks_as_visited for category in place.categories),
+        is_visited=place.status.functional_state == "visited",
         deleted_at=place.deleted_at,
         links=place.links,
         field_config=normalize_place_field_config(place.map.place_field_config),
@@ -276,7 +279,7 @@ def bulk_update_places(
             raise HTTPException(status_code=409, detail="BULK_TAG_FORBIDDEN")
     if action_data.status_id is not None:
         target_status = database_session.get(PlaceStatus, action_data.status_id)
-        if target_status is None or not target_status.is_active:
+        if target_status is None or target_status.map_id not in map_ids or not target_status.is_active:
             raise HTTPException(status_code=409, detail="BULK_STATUS_FORBIDDEN")
 
     updated_count = 0
@@ -384,7 +387,20 @@ def get_place_facets(
         ).all()
         return [PlaceFacetItem(value=row.value, count=row.count) for row in rows]
 
+    quick_base = apply_place_filters(
+        select(Place.id).where(Place.map_id == map_id),
+        replace(filters, functional_state=None, is_favorite=None),
+    ).subquery()
+    quick_ids = select(quick_base.c.id)
+    quick_total = lambda predicate: int(
+        database_session.scalar(select(func.count()).select_from(Place).where(Place.id.in_(quick_ids), predicate)) or 0
+    )
+
     return PlaceFacets(
+        total=quick_total(True),
+        non_visited=quick_total(Place.status.has(PlaceStatus.functional_state == "non_visited")),
+        visited=quick_total(Place.status.has(PlaceStatus.functional_state == "visited")),
+        favorites=quick_total(Place.is_favorite.is_(True)),
         categories=categories,
         tags=tags,
         statuses=statuses,
@@ -493,7 +509,10 @@ def create_place(
 
     if place_data.status_id is None:
         place_status = database_session.scalar(
-            select(PlaceStatus).where(PlaceStatus.is_default.is_(True))
+            select(PlaceStatus).where(
+                PlaceStatus.map_id == place_data.map_id,
+                PlaceStatus.is_default.is_(True),
+            )
         )
         if place_status is None:
             raise HTTPException(status_code=409, detail="No default place status is configured")
@@ -504,6 +523,8 @@ def create_place(
                 status_code=404,
                 detail=f"Status with id {place_data.status_id} was not found",
             )
+        if place_status.map_id != place_data.map_id:
+            raise HTTPException(status_code=409, detail="The status belongs to another map")
         if not place_status.is_active:
             raise HTTPException(status_code=409, detail="An inactive status cannot be selected")
 
@@ -582,6 +603,9 @@ def update_place(
                 status_code=404,
                 detail=f"Status with id {requested_status_id} was not found",
             )
+        target_map_id = requested_map_id or place.map_id
+        if requested_status.map_id != target_map_id:
+            raise HTTPException(status_code=409, detail="The status belongs to another map")
         if not requested_status.is_active:
             raise HTTPException(status_code=409, detail="An inactive status cannot be selected")
 

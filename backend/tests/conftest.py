@@ -18,7 +18,7 @@ from app.countries.catalog import load_country_catalog
 from app.countries.models import Country
 from app.maps.models import MapMembership, PoiMap
 from app.main import app
-from app.statuses.models import PlaceStatus
+from app.statuses.service import create_default_statuses
 
 
 MISSING_TEST_DATABASE_REASON = (
@@ -118,21 +118,6 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
                     Country.__table__.insert(),
                     [dict(country) for country in load_country_catalog()],
                 )
-            existing_statuses = connection.scalar(
-                text("SELECT count(*) FROM place_statuses")
-            )
-            if existing_statuses == 0:
-                connection.execute(
-                    PlaceStatus.__table__.insert(),
-                    [{
-                        "name": "À faire",
-                        "slug": "a-faire",
-                        "color": "#2563EB",
-                        "sort_order": 10,
-                        "is_default": True,
-                        "is_active": True,
-                    }],
-                )
         yield engine
     finally:
         engine.dispose()
@@ -188,6 +173,7 @@ def poi_map(database_session: Session, france_country: Country, auth_user: User)
     database_session.add(result)
     database_session.flush()
     database_session.add(MapMembership(map_id=result.id, user_id=auth_user.id, role="owner"))
+    create_default_statuses(database_session, result.id)
     database_session.flush()
     return result
 

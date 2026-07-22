@@ -2,6 +2,12 @@ import type { MapStatusSummary, PlaceStatus, PlaceStatusCreatePayload, PlaceStat
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { isRecord, readBoolean, readDateTime, readNumber, readString, readUuid } from './validation'
 
+const readFunctionalState = (value: Record<string, unknown>, context: string) => {
+  const state = readString(value, 'functional_state', context)
+  if (state !== 'non_visited' && state !== 'visited') throw new Error(`${context} contient un état fonctionnel invalide.`)
+  return state
+}
+
 export function parseStatusSummary(value: unknown): PlaceStatusSummary {
   const context = 'Le statut de suivi renvoyé par l’API'
   if (!isRecord(value)) throw new Error(`${context} est invalide.`)
@@ -9,10 +15,12 @@ export function parseStatusSummary(value: unknown): PlaceStatusSummary {
   if (!/^#[0-9A-F]{6}$/.test(color)) throw new Error(`${context} contient une couleur invalide.`)
   return {
     id: readUuid(value, 'id', context),
+    map_id: readUuid(value, 'map_id', context),
     name: readString(value, 'name', context),
     slug: readString(value, 'slug', context),
     color,
     is_active: readBoolean(value, 'is_active', context),
+    functional_state: readFunctionalState(value, context),
   }
 }
 
@@ -26,6 +34,7 @@ export function parseMapStatusSummary(value: unknown): MapStatusSummary {
     name: readString(value, 'name', context),
     slug: readString(value, 'slug', context),
     color,
+    functional_state: readFunctionalState(value, context),
   }
 }
 
@@ -41,8 +50,9 @@ export function parseStatus(value: unknown): PlaceStatus {
   }
 }
 
-export async function getStatuses(signal?: AbortSignal, options: { q?: string; activeOnly?: boolean } = {}): Promise<PlaceStatus[]> {
+export async function getStatuses(mapId: string, signal?: AbortSignal, options: { q?: string; activeOnly?: boolean } = {}): Promise<PlaceStatus[]> {
   const params = new URLSearchParams()
+  params.set('map_id', mapId)
   if (options.q?.trim()) params.set('q', options.q.trim())
   if (options.activeOnly) params.set('active_only', 'true')
   const payload = await getJson('/statuses', params, signal)

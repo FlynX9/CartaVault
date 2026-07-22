@@ -7,8 +7,8 @@ afterEach(cleanup)
 
 describe('StatusLegend', () => {
   const statuses = [
-    { id: 'todo', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true },
-    { id: 'done', name: 'Fait', slug: 'fait', color: '#16A34A', is_active: true },
+    { id: 'todo', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const },
+    { id: 'done', map_id: 'map-id', name: 'Fait', slug: 'fait', color: '#16A34A', is_active: true, functional_state: 'visited' as const },
   ]
 
   it('collapses to a compact legend control and expands again', () => {

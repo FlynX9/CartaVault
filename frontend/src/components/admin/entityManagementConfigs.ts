@@ -12,16 +12,15 @@ function normalizeDescription(value: string): string | null {
 }
 
 export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
-  singularLabel: 'une catégorie', pluralLabel: 'Catégories', supportsDescription: true, supportsIcon: true, supportsVisited: true,
+  singularLabel: 'une catégorie', pluralLabel: 'Catégories', supportsDescription: true, supportsIcon: true,
   load: (signal, q) => mapId ? getCategories(signal, q, mapId) : getCategories(signal, q),
   save: async (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim(); const description = normalizeDescription(values.description); const icon = values.icon ?? DEFAULT_CATEGORY_ICON_ID
-    if (entity === null) return createCategory({ ...(mapId ? { map_id: mapId } : {}), name, description, ...(icon === DEFAULT_CATEGORY_ICON_ID ? {} : { icon }), ...(values.marksAsVisited ? { marks_as_visited: true } : {}) })
+    if (entity === null) return createCategory({ ...(mapId ? { map_id: mapId } : {}), name, description, ...(icon === DEFAULT_CATEGORY_ICON_ID ? {} : { icon }) })
     const payload: CategoryUpdatePayload = {}
     if (name !== entity.name) payload.name = name
     if (description !== (entity.description ?? null)) payload.description = description
     if (entity.icon !== undefined && icon !== entity.icon) payload.icon = icon
-    if (values.marksAsVisited !== (entity.marks_as_visited === true)) payload.marks_as_visited = values.marksAsVisited === true
     return Object.keys(payload).length === 0 ? entity : updateCategory(entity.id, payload)
   },
   remove: deleteCategory,

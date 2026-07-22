@@ -179,7 +179,7 @@ def confirm_import(
     report_progress("Préparation de l’import")
     try:
         category = _get_or_create_import_category(database_session, map_id)
-        place_status = _get_or_create_import_status(database_session)
+        place_status = _get_or_create_import_status(database_session, map_id)
         for item in selected:
             duplicate_exists = (
                 item.duplicate_place_id is not None
@@ -317,12 +317,16 @@ def _get_or_create_import_category(database_session: Session, map_id: UUID) -> C
     return category
 
 
-def _get_or_create_import_status(database_session: Session) -> PlaceStatus:
-    database_session.execute(select(func.pg_advisory_xact_lock(func.hashtext("cartavault:import-status"))))
-    place_status = database_session.scalar(select(PlaceStatus).where(PlaceStatus.slug == "importe").with_for_update())
+def _get_or_create_import_status(database_session: Session, map_id: UUID) -> PlaceStatus:
+    database_session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"cartavault:import-status:{map_id}"))))
+    place_status = database_session.scalar(
+        select(PlaceStatus).where(PlaceStatus.map_id == map_id, PlaceStatus.slug == "importe").with_for_update()
+    )
     if place_status is None:
-        max_order = database_session.scalar(select(func.coalesce(func.max(PlaceStatus.sort_order), 0)))
-        place_status = PlaceStatus(name="Importé", slug=slugify_status_name("Importé"), color="#64707A", sort_order=max_order + 10, is_default=False, is_active=True)
+        max_order = database_session.scalar(
+            select(func.coalesce(func.max(PlaceStatus.sort_order), 0)).where(PlaceStatus.map_id == map_id)
+        )
+        place_status = PlaceStatus(map_id=map_id, name="Importé", slug=slugify_status_name("Importé"), color="#64707A", functional_state="non_visited", sort_order=max_order + 10, is_default=False, is_active=True)
         database_session.add(place_status)
         database_session.flush()
     return place_status

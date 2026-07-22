@@ -17,7 +17,7 @@ vi.mock('../../api/registration', () => ({ getRegistrationRequests: vi.fn(), rev
 beforeEach(() => {
   vi.mocked(getCategories).mockResolvedValue([{ id: 'category-id', name: 'Patrimoine', description: 'Ancien bâti', icon: 'mdi:castle' }])
   vi.mocked(getTags).mockResolvedValue([{ id: 'tag-id', name: 'Historique' }])
-  vi.mocked(getStatuses).mockResolvedValue([{ id: 'status-id', name: 'À voir', slug: 'a-voir', color: '#2563EB', sort_order: 10, is_default: false, is_active: true, places_count: 2, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' }])
+  vi.mocked(getStatuses).mockResolvedValue([{ id: 'status-id', map_id: 'map-id', name: 'À voir', slug: 'a-voir', color: '#2563EB', functional_state: 'non_visited', sort_order: 10, is_default: false, is_active: true, places_count: 2, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' }])
   vi.mocked(getUsers).mockResolvedValue([{ id: 'user-id', email: 'admin@example.test', display_name: 'Marie Admin', is_admin: true, is_active: true, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', last_login_at: null }])
   vi.mocked(getRegistrationRequests).mockResolvedValue([{ id: 'request-id', email: 'candidate@example.test', display_name: 'candidate', status: 'pending', created_at: '2026-07-21T00:00:00Z', reviewed_at: null, notification_sent_at: null, notification_error_code: null }])
   vi.mocked(getEmailSettings).mockResolvedValue({ configured: true, last4: '1234' })
@@ -45,7 +45,7 @@ describe('workspace management panels', () => {
   })
 
   it('renders statuses with compact metadata and icon-only actions', async () => {
-    render(<StatusesWorkspacePanel />)
+    render(<StatusesWorkspacePanel mapId="map-id" />)
     expect(await screen.findByText('À voir')).toBeVisible()
     expect(screen.getByPlaceholderText('Rechercher un statut')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Créer un statut' })).toBeVisible()

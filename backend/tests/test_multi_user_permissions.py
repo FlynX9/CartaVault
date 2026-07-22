@@ -8,6 +8,7 @@ from app.auth.models import User
 from app.exports.temporary_exports import get as get_temporary_export
 from app.main import app
 from app.maps.models import MapInvitation, MapMembership, PoiMap
+from app.statuses.service import create_default_statuses
 
 
 pytestmark = pytest.mark.integration
@@ -22,7 +23,9 @@ def _user(database_session, label: str) -> User:
 def _map(database_session, country, owner: User, name: str) -> PoiMap:
     poi_map = PoiMap(name=name, country_id=country.id, owner_id=owner.id, is_private=True)
     database_session.add(poi_map); database_session.flush()
-    database_session.add(MapMembership(map_id=poi_map.id, user_id=owner.id, role="owner")); database_session.flush()
+    database_session.add(MapMembership(map_id=poi_map.id, user_id=owner.id, role="owner"))
+    create_default_statuses(database_session, poi_map.id)
+    database_session.flush()
     return poi_map
 
 

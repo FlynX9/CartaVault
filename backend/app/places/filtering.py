@@ -13,6 +13,7 @@ from app.countries.models import Country
 from app.maps.models import PoiMap
 from app.places.models import Place
 from app.tags.models import Tag
+from app.statuses.models import PlaceStatus
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ class PlaceFilters:
     has_valid_coordinates: bool | None
     in_trip: bool | None
     is_favorite: bool | None
-    is_visited: bool | None
+    functional_state: Literal["non_visited", "visited"] | None
     rating_min: int | None
     sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"]
     sort_direction: Literal["asc", "desc"]
@@ -57,6 +58,7 @@ def get_place_filters(
     in_trip: bool | None = Query(default=None),
     is_favorite: bool | None = Query(default=None),
     is_visited: bool | None = Query(default=None),
+    functional_state: Literal["non_visited", "visited"] | None = Query(default=None),
     rating_min: int | None = Query(default=None, ge=1, le=5),
     sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"] = Query(default="name"),
     sort_direction: Literal["asc", "desc"] = Query(default="asc"),
@@ -67,6 +69,11 @@ def get_place_filters(
     if updated_from and updated_to and updated_from > updated_to:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="updated_from must not be after updated_to")
     normalise = lambda values: tuple(dict.fromkeys(value.strip() for value in values if value.strip()))
+    if functional_state is not None and is_visited is not None:
+        legacy_state = "visited" if is_visited else "non_visited"
+        if functional_state != legacy_state:
+            raise HTTPException(status_code=422, detail="functional_state conflicts with is_visited")
+    resolved_functional_state = functional_state or ("visited" if is_visited else "non_visited" if is_visited is False else None)
     return PlaceFilters(
         query=q.strip() if q else None,
         category_ids=tuple(dict.fromkeys(category_ids)), tag_ids=tuple(dict.fromkeys(tag_ids)), status_ids=tuple(dict.fromkeys(status_ids)),
@@ -74,7 +81,7 @@ def get_place_filters(
         updated_from=updated_from, updated_to=updated_to, access_values=normalise(access_values),
         danger_levels=normalise(danger_levels), condition_values=normalise(condition_values),
         has_valid_coordinates=has_valid_coordinates, in_trip=in_trip,
-        is_favorite=is_favorite, is_visited=is_visited, rating_min=rating_min,
+        is_favorite=is_favorite, functional_state=resolved_functional_state, rating_min=rating_min,
         sort_by=sort_by, sort_direction=sort_direction,
     )
 
@@ -103,16 +110,17 @@ def apply_place_filters(statement: Select[tuple[Place]], filters: PlaceFilters) 
     if filters.condition_values: statement = statement.where(Place.condition.in_(filters.condition_values))
     if filters.has_valid_coordinates is not None: statement = statement.where(Place.location.is_not(None) if filters.has_valid_coordinates else Place.location.is_(None))
     if filters.in_trip is not None: statement = statement.where(Place.trip_stops.any() if filters.in_trip else ~Place.trip_stops.any())
-    visited_expression = Place.categories.any(Category.marks_as_visited.is_(True))
+    visited_expression = Place.status.has(PlaceStatus.functional_state == "visited")
     if filters.is_favorite is not None: statement = statement.where(Place.is_favorite.is_(filters.is_favorite))
-    if filters.is_visited is not None: statement = statement.where(visited_expression if filters.is_visited else ~visited_expression)
+    if filters.functional_state is not None:
+        statement = statement.where(Place.status.has(PlaceStatus.functional_state == filters.functional_state))
     if filters.rating_min is not None:
         statement = statement.where(case((visited_expression, Place.visit_rating), else_=Place.interest_rating) >= filters.rating_min)
     return statement
 
 
 def place_ordering(filters: PlaceFilters):
-    visited_expression = Place.categories.any(Category.marks_as_visited.is_(True))
+    visited_expression = Place.status.has(PlaceStatus.functional_state == "visited")
     columns = {
         "name": func.lower(Place.name), "created_at": Place.created_at, "updated_at": Place.updated_at,
         "interest_rating": Place.interest_rating, "visit_rating": Place.visit_rating,

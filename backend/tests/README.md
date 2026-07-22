@@ -155,3 +155,11 @@ Les tests de credentials couvrent le chiffrement Fernet, l’intégrité, la mau
 
 Les tests Google utilisent exclusivement des réponses HTTP simulées : aucune clé et aucun appel facturé ne sont nécessaires. Ils couvrent le field mask, les options, le décodage de polyline, les durées, les erreurs et la limite de 25 intermédiaires. Les tests d’intégration de persistance et de migration doivent utiliser uniquement `TEST_DATABASE_URL` pointant vers `poi_manager_test`.
 Les scénarios d’intégration avancés couvrent la configuration des champs, les favoris, les deux notes, le statut visité dérivé, les filtres partagés liste/carte, les liens HTTP(S), l’historique et le cycle corbeille/restauration/purge. Les cycles Alembic doivent toujours être exécutés avec `TEST_DATABASE_URL` après vérification que le nom de base contient `test` et n’est pas `poi_manager`.
+
+Les tests de statuts couvrent également les quatre valeurs initiales d’une
+nouvelle carte, la validation de `functional_state`, le reclassement immédiat,
+les combinaisons favoris/état/statuts, les facettes, l’isolation entre cartes et
+les rôles owner/editor/viewer/utilisateur extérieur. Le cycle ciblé de la
+migration `d6f1a3b8c902` vérifie le downgrade vers `a4f9c2e7d631`, la
+disparition des colonnes et index, puis le backfill et le schéma après retour à
+la tête.

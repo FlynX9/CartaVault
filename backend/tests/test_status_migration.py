@@ -1,7 +1,6 @@
 import pytest
 from alembic import command
 from alembic.config import Config
-from alembic.runtime.migration import MigrationContext
 from sqlalchemy import inspect, text
 
 
@@ -9,20 +8,17 @@ pytestmark = pytest.mark.integration
 
 MIGRATION_MAP_ID = "20000000-0000-4000-8000-000000000001"
 MIGRATION_PLACE_ID = "30000000-0000-4000-8000-000000000001"
-SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
-HEAD_REVISION = "f8d2c4a6b910"
-
-
-def _upgrade_to_head_with_test_admin(config: Config, engine) -> None:
-    with engine.connect() as connection:
-        if MigrationContext.configure(connection).get_current_revision() == HEAD_REVISION:
-            return
-    command.upgrade(config, SECURITY_SCHEMA_REVISION)
-    with engine.begin() as connection:
-        admin_id = connection.scalar(text("INSERT INTO users (email, display_name, password_hash, is_admin, is_active) VALUES ('status-cycle@example.test', 'Status cycle', 'test-only-hash', true, true) ON CONFLICT (email) DO UPDATE SET is_admin=true, is_active=true RETURNING id"))
-        connection.execute(text("UPDATE poi_maps SET owner_id=:admin_id WHERE owner_id IS NULL"), {"admin_id": admin_id})
-        connection.execute(text("INSERT INTO map_memberships (map_id, user_id, role) SELECT id, :admin_id, 'owner' FROM poi_maps ON CONFLICT (map_id, user_id) DO UPDATE SET role='owner'"), {"admin_id": admin_id})
-    command.upgrade(config, "head")
+MIGRATION_STATUS_ID = "10000000-0000-4000-8000-000000000099"
+MIGRATION_STATUS_ROWS = (
+    (MIGRATION_STATUS_ID, "À faire", "a-faire", True),
+    ("10000000-0000-4000-8000-000000000098", "Fait", "fait", False),
+    ("10000000-0000-4000-8000-000000000097", "À vérifier", "a-verifier", False),
+    ("10000000-0000-4000-8000-000000000096", "À refaire", "a-refaire", False),
+    ("10000000-0000-4000-8000-000000000095", "Inaccessible", "inaccessible", False),
+    ("10000000-0000-4000-8000-000000000094", "Personnalisé", "personnalise", False),
+)
+PREVIOUS_REVISION = "a4f9c2e7d631"
+HEAD_REVISION = "d6f1a3b8c902"
 
 
 def test_status_migration_downgrade_upgrade_cycle(
@@ -36,11 +32,8 @@ def test_status_migration_downgrade_upgrade_cycle(
     config = Config("alembic.ini")
 
     with test_engine.begin() as connection:
-        owner_id = connection.scalar(text("SELECT id FROM users WHERE is_admin AND is_active ORDER BY created_at LIMIT 1"))
+        owner_id = connection.scalar(text("INSERT INTO users (email, display_name, password_hash, is_admin, is_active) VALUES ('status-cycle@example.test', 'Status cycle', 'test-only-hash', true, true) ON CONFLICT (email) DO UPDATE SET is_admin=true, is_active=true RETURNING id"))
         country_id = connection.scalar(text("SELECT c.id FROM countries c WHERE NOT EXISTS (SELECT 1 FROM poi_maps m WHERE m.country_id = c.id) ORDER BY c.id LIMIT 1"))
-        default_status_id = connection.scalar(
-            text("SELECT id FROM place_statuses WHERE is_default")
-        )
         connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
         connection.execute(text("DELETE FROM poi_maps WHERE id = :id"), {"id": MIGRATION_MAP_ID})
         connection.execute(
@@ -49,25 +42,58 @@ def test_status_migration_downgrade_upgrade_cycle(
         )
         connection.execute(text("INSERT INTO map_memberships (map_id, user_id, role) VALUES (:map_id, :owner_id, 'owner')"), {"map_id": MIGRATION_MAP_ID, "owner_id": owner_id})
         connection.execute(
+            text("INSERT INTO place_statuses (id, map_id, name, slug, color, functional_state, sort_order, is_default, is_active) VALUES (:id, :map_id, :name, :slug, '#2563EB', 'non_visited', :sort_order, :is_default, true)"),
+            [
+                {"id": status_id, "map_id": MIGRATION_MAP_ID, "name": name, "slug": slug, "sort_order": index * 10, "is_default": is_default}
+                for index, (status_id, name, slug, is_default) in enumerate(MIGRATION_STATUS_ROWS, 1)
+            ],
+        )
+        connection.execute(
             text("INSERT INTO places (id, name, map_id, status_id) VALUES (:id, 'Migration test', :map_id, :status_id)"),
-            {"id": MIGRATION_PLACE_ID, "map_id": MIGRATION_MAP_ID, "status_id": default_status_id},
+            {"id": MIGRATION_PLACE_ID, "map_id": MIGRATION_MAP_ID, "status_id": MIGRATION_STATUS_ID},
         )
 
-    command.downgrade(config, "6f2d8a4c91b0")
-    assert "place_statuses" not in inspect(test_engine).get_table_names()
-    assert "status_id" not in {
-        column["name"] for column in inspect(test_engine).get_columns("places")
-    }
+    try:
+        command.downgrade(config, PREVIOUS_REVISION)
+        previous_columns = {column["name"] for column in inspect(test_engine).get_columns("place_statuses")}
+        assert "map_id" not in previous_columns
+        assert "functional_state" not in previous_columns
+        previous_indexes = {index["name"] for index in inspect(test_engine).get_indexes("place_statuses")}
+        assert "place_statuses_map_slug_key" not in previous_indexes
+        with test_engine.connect() as connection:
+            assert connection.scalar(text("SELECT count(*) FROM place_statuses")) == len(MIGRATION_STATUS_ROWS)
+            assert str(connection.scalar(
+                text("SELECT status_id FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID}
+            )) == MIGRATION_STATUS_ID
 
-    _upgrade_to_head_with_test_admin(config, test_engine)
-    assert "place_statuses" in inspect(test_engine).get_table_names()
-    with test_engine.connect() as connection:
-        assert connection.scalar(text("SELECT count(*) FROM place_statuses")) == 5
-        assert connection.scalar(text("SELECT count(*) FROM places WHERE status_id IS NULL")) == 0
-        assert connection.scalar(
-            text("SELECT ps.is_default FROM places p JOIN place_statuses ps ON ps.id = p.status_id WHERE p.id = :id"),
-            {"id": MIGRATION_PLACE_ID},
-        ) is True
-    with test_engine.begin() as connection:
-        connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
-        connection.execute(text("DELETE FROM poi_maps WHERE id = :id"), {"id": MIGRATION_MAP_ID})
+        command.upgrade(config, HEAD_REVISION)
+        status_columns = {column["name"]: column for column in inspect(test_engine).get_columns("place_statuses")}
+        assert status_columns["map_id"]["nullable"] is False
+        assert status_columns["functional_state"]["nullable"] is False
+        status_indexes = {index["name"] for index in inspect(test_engine).get_indexes("place_statuses")}
+        assert {
+            "place_statuses_map_slug_key",
+            "place_statuses_one_default_idx",
+            "place_statuses_map_functional_state_idx",
+        } <= status_indexes
+        with test_engine.connect() as connection:
+            assert connection.scalar(text("SELECT count(*) FROM place_statuses")) == len(MIGRATION_STATUS_ROWS)
+            assert connection.scalar(text("SELECT count(*) FROM place_statuses WHERE map_id IS NULL OR functional_state IS NULL")) == 0
+            assert dict(connection.execute(text("SELECT slug, functional_state FROM place_statuses")).all()) == {
+                "a-faire": "non_visited",
+                "fait": "visited",
+                "a-verifier": "non_visited",
+                "a-refaire": "visited",
+                "inaccessible": "visited",
+                "personnalise": "non_visited",
+            }
+            assert connection.scalar(text("SELECT count(*) FROM places WHERE status_id IS NULL")) == 0
+            assert connection.scalar(
+                text("SELECT ps.map_id = p.map_id FROM places p JOIN place_statuses ps ON ps.id = p.status_id WHERE p.id = :id"),
+                {"id": MIGRATION_PLACE_ID},
+            ) is True
+    finally:
+        command.upgrade(config, HEAD_REVISION)
+        with test_engine.begin() as connection:
+            connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
+            connection.execute(text("DELETE FROM poi_maps WHERE id = :id"), {"id": MIGRATION_MAP_ID})

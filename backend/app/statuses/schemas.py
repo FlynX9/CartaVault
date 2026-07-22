@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Self
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -19,7 +19,9 @@ def normalize_color(value: str) -> str:
 
 
 class PlaceStatusCreate(BaseModel):
+    map_id: UUID
     name: str = Field(min_length=1, max_length=100)
+    functional_state: Literal["non_visited", "visited"]
     color: str
     sort_order: int = Field(default=0, ge=0)
     is_default: bool = False
@@ -51,6 +53,7 @@ class PlaceStatusUpdate(BaseModel):
     sort_order: int | None = Field(default=None, ge=0)
     is_default: bool | None = None
     is_active: bool | None = None
+    functional_state: Literal["non_visited", "visited"] | None = None
 
     @field_validator("name")
     @classmethod
@@ -77,10 +80,12 @@ class PlaceStatusUpdate(BaseModel):
 
 class PlaceStatusSummary(BaseModel):
     id: UUID
+    map_id: UUID
     name: str
     slug: str
     color: str
     is_active: bool
+    functional_state: Literal["non_visited", "visited"]
 
 
 class PlaceStatusRead(PlaceStatusSummary):

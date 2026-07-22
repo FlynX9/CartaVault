@@ -548,7 +548,7 @@ def apply_place_statuses(trip_id: UUID, data: ApplyPlaceStatuses, session: Sessi
             status_id = data.mappings.get(stop.visit_status)
             if stop.place_id and status_id:
                 status = session.get(PlaceStatus, status_id)
-                if status is None: raise HTTPException(422, "Unknown place status")
+                if status is None or status.map_id != trip.map_id: raise HTTPException(422, "Unknown place status")
                 proposals.append({"stop_id": stop.id, "place_id": stop.place_id, "visit_status": stop.visit_status, "status_id": status_id})
                 if data.confirm: session.get(Place, stop.place_id).status_id = status_id
     if data.confirm: session.commit()

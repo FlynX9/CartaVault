@@ -1,9 +1,11 @@
 export interface PlaceStatusSummary {
   id: string
+  map_id: string
   name: string
   slug: string
   color: string
   is_active: boolean
+  functional_state: 'non_visited' | 'visited'
 }
 
 export interface MapStatusSummary {
@@ -11,6 +13,7 @@ export interface MapStatusSummary {
   name: string
   slug: string
   color: string
+  functional_state: 'non_visited' | 'visited'
 }
 
 export interface PlaceStatus extends PlaceStatusSummary {
@@ -22,11 +25,13 @@ export interface PlaceStatus extends PlaceStatusSummary {
 }
 
 export interface PlaceStatusCreatePayload {
+  map_id: string
   name: string
+  functional_state: 'non_visited' | 'visited'
   color: string
   sort_order: number
   is_default: boolean
   is_active: boolean
 }
 
-export type PlaceStatusUpdatePayload = Partial<PlaceStatusCreatePayload>
+export type PlaceStatusUpdatePayload = Partial<Omit<PlaceStatusCreatePayload, 'map_id'>>

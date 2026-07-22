@@ -9,7 +9,7 @@ const place = (id: string, latitude: number, longitude: number): MapPlace => ({
   name: id,
   latitude,
   longitude,
-  status: { id: '00000000-0000-4000-8000-000000000002', name: 'À faire', slug: 'a-faire', color: '#0FA68A' },
+  status: { id: '00000000-0000-4000-8000-000000000002', name: 'À faire', slug: 'a-faire', color: '#0FA68A', functional_state: 'non_visited' },
   categories: [],
   tags: [],
 })

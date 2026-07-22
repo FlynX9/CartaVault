@@ -26,46 +26,49 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
   useEffect(() => { if (mode !== 'edit' || initialValues === null) return; const latitude = Number(initialValues.latitude); const longitude = Number(initialValues.longitude); if (Number.isFinite(latitude) && Number.isFinite(longitude)) onDraftPositionChange({ latitude, longitude }) }, [initialValues, mode, onDraftPositionChange])
   useEffect(() => {
     const controller = new AbortController()
-    const placeRequest = mode === 'edit'
-      ? placeId
-        ? getPlaceDetails(placeId, controller.signal)
-        : Promise.reject(new Error('Identifiant absent.'))
-      : Promise.resolve(null)
-
     setLoading(true)
     setError(null)
     setNotFound(false)
 
-    void Promise.all([getStatuses(controller.signal, { activeOnly: true }), placeRequest])
-      .then(([loadedStatuses, place]) => {
-        if (controller.signal.aborted) return
-        const selectableStatuses: PlaceStatusSummary[] = [...loadedStatuses]
-        if (place && !place.status.is_active && !selectableStatuses.some((item) => item.id === place.status.id)) {
-          selectableStatuses.push(place.status)
-        }
-        setStatuses(selectableStatuses)
-        setInitialValues(place
-          ? placeDetailsToFormValues(place)
-          : { ...EMPTY_PLACE_FORM_VALUES, mapId: activeMapId ?? '', statusId: loadedStatuses.find((item) => item.is_default)?.id ?? '' })
-      })
+    void (async () => {
+      const place = mode === 'edit'
+        ? placeId
+          ? await getPlaceDetails(placeId, controller.signal)
+          : await Promise.reject(new Error('Identifiant absent.'))
+        : null
+      const catalogMapId = place?.map_id ?? activeMapId
+      const loadedStatuses = catalogMapId
+        ? await getStatuses(catalogMapId, controller.signal, { activeOnly: true })
+        : []
+
+      if (controller.signal.aborted) return
+      const selectableStatuses: PlaceStatusSummary[] = [...loadedStatuses]
+      if (place && !place.status.is_active && !selectableStatuses.some((item) => item.id === place.status.id)) {
+        selectableStatuses.push(place.status)
+      }
+      setStatuses(selectableStatuses)
+      setInitialValues(place
+        ? placeDetailsToFormValues(place)
+        : { ...EMPTY_PLACE_FORM_VALUES, mapId: activeMapId ?? '', statusId: loadedStatuses.find((item) => item.is_default)?.id ?? '' })
+      setLoading(false)
+
+      // Les associations enrichissent le formulaire sans bloquer son affichage.
+      const [categoriesResult, tagsResult] = await Promise.allSettled([
+        getCategories(controller.signal, undefined, catalogMapId ?? undefined),
+        getTags(controller.signal, undefined, catalogMapId ?? undefined),
+      ])
+      if (controller.signal.aborted) return
+      if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value)
+      if (tagsResult.status === 'fulfilled') setTags(tagsResult.value)
+    })()
       .catch((caught: unknown) => {
+        if (controller.signal.aborted) return
         if (caught instanceof ApiError && caught.status === 404) setNotFound(true)
         else if (!(caught instanceof Error && caught.name === 'AbortError')) setError(caught instanceof Error ? caught.message : 'Préparation impossible.')
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
-
-    // Les associations enrichissent le formulaire, mais leur chargement ne doit
-    // pas empêcher l'édition d'un POI lorsque l'un des catalogues est lent.
-    void Promise.allSettled([
-      getCategories(controller.signal, undefined, activeMapId ?? undefined),
-      getTags(controller.signal, undefined, activeMapId ?? undefined),
-    ]).then(([categoriesResult, tagsResult]) => {
-      if (controller.signal.aborted) return
-      if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value)
-      if (tagsResult.status === 'fulfilled') setTags(tagsResult.value)
-    })
 
     return () => controller.abort()
   }, [activeMapId, mode, placeId])

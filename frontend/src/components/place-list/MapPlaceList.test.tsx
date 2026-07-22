@@ -5,7 +5,7 @@ import { getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/place
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
 import { MapPlaceList } from './MapPlaceList'
 
-vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
+vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ total: 42, non_visited: 31, visited: 11, favorites: 6, categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
 vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])) }))
@@ -16,6 +16,21 @@ afterEach(() => {
 })
 
 describe('MapPlaceList', () => {
+  it('shows only stable functional quick filters with dynamic counters', async () => {
+    const onFiltersChange = vi.fn()
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={{ ...DEFAULT_PLACE_FILTERS, functionalState: 'non_visited' }} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByRole('button', { name: /Tous42/ })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Non visités31/ })).toHaveClass('active')
+    expect(screen.getByRole('button', { name: /Visités11/ })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Favoris6/ })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /À faire/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /À vérifier/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Favoris6/ }))
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ functionalState: 'non_visited', isFavorite: true }))
+  })
+
   it('collapses to a summary row and restores the full places panel', async () => {
     const onCollapsedChange = vi.fn()
     const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn(), onCollapsedChange }
@@ -54,7 +69,7 @@ describe('MapPlaceList', () => {
   })
 
   it('renders POIs while facets are still loading', async () => {
-    const place = { id: 'place-id', name: 'Disponible', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Ã€ faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    const place = { id: 'place-id', name: 'Disponible', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
     vi.mocked(getPlaceFacets).mockImplementationOnce(() => new Promise(() => undefined))
 

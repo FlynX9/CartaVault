@@ -217,6 +217,10 @@ class PlaceFacetItem(BaseModel):
 
 
 class PlaceFacets(BaseModel):
+    total: int
+    non_visited: int
+    visited: int
+    favorites: int
     categories: list[PlaceFacetItem]
     tags: list[PlaceFacetItem]
     statuses: list[PlaceFacetItem]

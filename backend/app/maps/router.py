@@ -24,6 +24,7 @@ from app.maps.schemas import (
 )
 from app.places.models import Place
 from app.places.fields import normalize_place_field_config
+from app.statuses.service import create_default_statuses
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 
@@ -90,6 +91,7 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
         database_session.add(poi_map)
         database_session.flush()
         database_session.add(MapMembership(map_id=poi_map.id, user_id=current_user.id, role="owner"))
+        create_default_statuses(database_session, poi_map.id)
         database_session.commit()
         result = read_map(database_session, poi_map.id)
         assert result is not None

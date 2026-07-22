@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Index,
+    ForeignKey,
     Integer,
     String,
     func,
@@ -19,7 +21,13 @@ from app.database import Base
 
 
 if TYPE_CHECKING:
+    from app.maps.models import PoiMap
     from app.places.models import Place
+
+
+class StatusFunctionalState(StrEnum):
+    NON_VISITED = "non_visited"
+    VISITED = "visited"
 
 
 class PlaceStatus(Base):
@@ -40,12 +48,18 @@ class PlaceStatus(Base):
             "color ~ '^#[0-9A-F]{6}$'",
             name="place_statuses_color_format",
         ),
+        CheckConstraint(
+            "functional_state IN ('non_visited', 'visited')",
+            name="place_statuses_functional_state_check",
+        ),
         Index(
             "place_statuses_one_default_idx",
-            "is_default",
+            "map_id",
             unique=True,
             postgresql_where=text("is_default"),
         ),
+        Index("place_statuses_map_functional_state_idx", "map_id", "functional_state"),
+        Index("place_statuses_map_slug_key", "map_id", "slug", unique=True),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -53,8 +67,14 @@ class PlaceStatus(Base):
         primary_key=True,
         server_default=text("gen_random_uuid()"),
     )
+    map_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("poi_maps.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False)
+    functional_state: Mapped[str] = mapped_column(String(16), nullable=False)
     color: Mapped[str] = mapped_column(String(7), nullable=False)
     sort_order: Mapped[int] = mapped_column(
         Integer,
@@ -83,4 +103,5 @@ class PlaceStatus(Base):
         onupdate=func.now(),
     )
 
+    map: Mapped["PoiMap"] = relationship(back_populates="statuses")
     places: Mapped[list["Place"]] = relationship(back_populates="status")

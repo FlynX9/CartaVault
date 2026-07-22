@@ -12,7 +12,7 @@ const place: MapPlace = {
   name: 'Manufacture',
   latitude: 48,
   longitude: 2,
-  status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB' },
+  status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', functional_state: 'non_visited' },
   categories: [],
   tags: [],
 }

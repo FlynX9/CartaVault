@@ -39,7 +39,7 @@ describe('MapPage', () => {
           errorMessage={null}
           sidebarOpen
           placeListOpen
-          statuses={[{ id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }]}
+          statuses={[{ id: 'status-id', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }]}
           sidebar={<aside aria-label="Volet de test">Contenu</aside>}
           placeList={<aside aria-label="Liste de test">Liste</aside>}
           focusRequest={null}
