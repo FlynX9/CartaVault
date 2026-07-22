@@ -172,9 +172,9 @@ export function MapPage({
     }
   }
 
-  const handleBasemapTileError = (sourceId: BasemapId) => {
+  const handleBasemapTileError = (sourceId: BasemapId, fatal = false) => {
     if (sourceId !== basemapId || failedBasemapsRef.current.has(sourceId)) return
-    const failures = (tileFailuresRef.current.get(sourceId) ?? 0) + 1
+    const failures = fatal ? TILE_ERROR_FALLBACK_THRESHOLD : (tileFailuresRef.current.get(sourceId) ?? 0) + 1
     tileFailuresRef.current.set(sourceId, failures)
     if (failures < TILE_ERROR_FALLBACK_THRESHOLD) return
     failedBasemapsRef.current.add(sourceId)

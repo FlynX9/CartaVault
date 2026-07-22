@@ -18,10 +18,10 @@ describe('BasemapLayer', () => {
     expect(layer.getAttribute('data-attribution')).toContain('CNES')
   })
 
-  it('identifies the failing source to the fallback controller', () => {
+  it('identifies a failing raster source to the fallback controller', () => {
     const onTileError = vi.fn()
-    render(<BasemapLayer basemapId="cartavault-dark" onTileError={onTileError} />)
+    render(<BasemapLayer basemapId="osm" onTileError={onTileError} />)
     fireEvent.click(screen.getByTestId('tile-layer'))
-    expect(onTileError).toHaveBeenCalledWith('cartavault-dark')
+    expect(onTileError).toHaveBeenCalledWith('osm')
   })
 })

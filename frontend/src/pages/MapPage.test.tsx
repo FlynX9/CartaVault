@@ -127,7 +127,7 @@ describe('MapPage', () => {
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48.17, 6.45], zoom: 13 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
     fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault Dark' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' }))
     expect(window.localStorage.getItem('cartavault.basemap')).toBe('cartavault-dark')
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'cartavault-dark' })))
   })

@@ -152,7 +152,7 @@ The map layer can be changed without reloading the map:
 - Satellite;
 - OpenStreetMap Standard.
 
-CartaVault layers use Stadia Maps. Outside a local environment, configure a restricted public key with `VITE_STADIA_MAPS_API_KEY` or use domain-based authentication. Individual providers can be hidden with `VITE_BASEMAP_LIGHT_ENABLED`, `VITE_BASEMAP_DARK_ENABLED`, `VITE_BASEMAP_SATELLITE_ENABLED`, and `VITE_BASEMAP_OSM_ENABLED`. After repeated provider errors, the UI performs a controlled, non-looping OpenStreetMap fallback while preserving the explicit account preference. See `frontend/README.md` for provider URLs, attribution, licensing, SaaS and self-hosted guidance.
+CartaVault Light and Dark are locally hosted MapLibre styles backed by OpenFreeMap vector tiles and rendered inside the existing Leaflet map. They require no account or API key. The satellite source remains independently configurable and OpenStreetMap Standard remains the controlled raster fallback. Individual providers can be hidden with `VITE_BASEMAP_LIGHT_ENABLED`, `VITE_BASEMAP_DARK_ENABLED`, `VITE_BASEMAP_SATELLITE_ENABLED`, and `VITE_BASEMAP_OSM_ENABLED`. See `frontend/README.md` for provider URLs, attribution, public-instance limitations, and the self-hosted OpenFreeMap or PMTiles migration path.
 
 ## Architecture and technical stack
 

@@ -9,16 +9,29 @@ export const BASEMAP_IDS = [
 
 export type BasemapId = (typeof BASEMAP_IDS)[number]
 
-export interface BasemapDefinition {
+interface BasemapCommonDefinition {
   id: BasemapId
   label: string
   shortLabel: string
   attribution: string
-  url: string
   maxZoom: number
   enabled: boolean
   requiresStadiaAuthentication: boolean
 }
+
+export interface VectorBasemapDefinition extends BasemapCommonDefinition {
+  kind: 'vector'
+  styleUrl: string
+  tileJsonUrl: string
+  glyphsUrl: string
+}
+
+export interface RasterBasemapDefinition extends BasemapCommonDefinition {
+  kind: 'raster'
+  url: string
+}
+
+export type BasemapDefinition = VectorBasemapDefinition | RasterBasemapDefinition
 
 export const DEFAULT_BASEMAP_ID: BasemapId = 'cartavault-light'
 
@@ -29,17 +42,38 @@ export interface BasemapAvailability {
   osm: boolean
 }
 
+export interface BasemapUrls {
+  lightStyle: string
+  darkStyle: string
+  openFreeMapTileJson: string
+  openFreeMapGlyphs: string
+  satellite: string
+  osm: string
+}
+
+const DEFAULT_BASEMAP_URLS: BasemapUrls = {
+  lightStyle: '/map-styles/cartavault-light.json',
+  darkStyle: '/map-styles/cartavault-dark.json',
+  openFreeMapTileJson: 'https://tiles.openfreemap.org/planet',
+  openFreeMapGlyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  satellite: 'https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg',
+  osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+}
+
+const openFreeMapAttribution = '<a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
 const stadiaAttribution = '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
-
 const satelliteAttribution = '&copy; CNES, Distribution Airbus DS, &copy; Airbus DS, &copy; PlanetObserver (Contains Copernicus Data) | ' + stadiaAttribution
-
 const osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
 
-function addApiKey(url: string, apiKey: string | undefined): string {
+function addStadiaApiKey(url: string, apiKey: string | undefined): string {
   const normalizedApiKey = apiKey?.trim()
-  return normalizedApiKey === undefined || normalizedApiKey === ''
+  return normalizedApiKey === undefined || normalizedApiKey === '' || !url.includes('stadiamaps.com')
     ? url
     : `${url}?api_key=${encodeURIComponent(normalizedApiKey)}`
+}
+
+function configuredUrl(value: string | undefined, fallback: string): string {
+  return value?.trim() || fallback
 }
 
 function enabled(value: string | undefined, fallback = true): boolean {
@@ -56,44 +90,63 @@ function configuredAvailability(): BasemapAvailability {
   }
 }
 
-/** Builds the fixed, reviewed tile sources without ever serializing an absent key. */
-export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY, availability = configuredAvailability()): readonly BasemapDefinition[] {
+function configuredUrls(): BasemapUrls {
+  return {
+    lightStyle: configuredUrl(import.meta.env.VITE_BASEMAP_LIGHT_STYLE_URL, DEFAULT_BASEMAP_URLS.lightStyle),
+    darkStyle: configuredUrl(import.meta.env.VITE_BASEMAP_DARK_STYLE_URL, DEFAULT_BASEMAP_URLS.darkStyle),
+    openFreeMapTileJson: configuredUrl(import.meta.env.VITE_OPENFREEMAP_TILEJSON_URL, DEFAULT_BASEMAP_URLS.openFreeMapTileJson),
+    openFreeMapGlyphs: configuredUrl(import.meta.env.VITE_OPENFREEMAP_GLYPHS_URL, DEFAULT_BASEMAP_URLS.openFreeMapGlyphs),
+    satellite: configuredUrl(import.meta.env.VITE_BASEMAP_SATELLITE_URL, DEFAULT_BASEMAP_URLS.satellite),
+    osm: configuredUrl(import.meta.env.VITE_BASEMAP_OSM_URL, DEFAULT_BASEMAP_URLS.osm),
+  }
+}
+
+/** Builds reviewed sources. Vector CartaVault themes never receive a provider key. */
+export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY, availability = configuredAvailability(), urls = configuredUrls()): readonly BasemapDefinition[] {
   return [
     {
+      kind: 'vector',
       id: 'cartavault-light',
-      label: 'CartaVault Light',
+      label: 'CartaVault clair',
       shortLabel: 'Clair',
-      url: addApiKey('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', apiKey),
-      attribution: stadiaAttribution,
+      styleUrl: urls.lightStyle,
+      tileJsonUrl: urls.openFreeMapTileJson,
+      glyphsUrl: urls.openFreeMapGlyphs,
+      attribution: openFreeMapAttribution,
       maxZoom: 20,
       enabled: availability['cartavault-light'],
-      requiresStadiaAuthentication: true,
+      requiresStadiaAuthentication: false,
     },
     {
+      kind: 'vector',
       id: 'cartavault-dark',
-      label: 'CartaVault Dark',
+      label: 'CartaVault sombre',
       shortLabel: 'Sombre',
-      url: addApiKey('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', apiKey),
-      attribution: stadiaAttribution,
+      styleUrl: urls.darkStyle,
+      tileJsonUrl: urls.openFreeMapTileJson,
+      glyphsUrl: urls.openFreeMapGlyphs,
+      attribution: openFreeMapAttribution,
       maxZoom: 20,
       enabled: availability['cartavault-dark'],
-      requiresStadiaAuthentication: true,
+      requiresStadiaAuthentication: false,
     },
     {
+      kind: 'raster',
       id: 'satellite',
       label: 'Satellite',
       shortLabel: 'Satellite',
-      url: addApiKey('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg', apiKey),
+      url: addStadiaApiKey(urls.satellite, apiKey),
       attribution: satelliteAttribution,
       maxZoom: 20,
       enabled: availability.satellite,
-      requiresStadiaAuthentication: true,
+      requiresStadiaAuthentication: urls.satellite.includes('stadiamaps.com'),
     },
     {
+      kind: 'raster',
       id: 'osm',
       label: 'OpenStreetMap Standard',
       shortLabel: 'OSM',
-      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      url: urls.osm,
       attribution: osmAttribution,
       maxZoom: 19,
       enabled: availability.osm,

@@ -9,13 +9,13 @@ describe('BasemapSelector', () => {
   it('shows only the active basemap until the control is hovered', () => {
     render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} />)
     const selector = screen.getByRole('group', { name: 'Fond cartographique' })
-    const active = screen.getByRole('button', { name: 'Utiliser le fond CartaVault Light' })
+    const active = screen.getByRole('button', { name: 'Utiliser le fond CartaVault clair' })
     expect(active).toHaveAttribute('aria-pressed', 'true')
     expect(active).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault Dark' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).not.toBeInTheDocument()
 
     fireEvent.mouseEnter(selector)
-    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault Dark' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Utiliser le fond Satellite' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Utiliser le fond OpenStreetMap Standard' })).toBeVisible()
 
@@ -27,11 +27,11 @@ describe('BasemapSelector', () => {
     const onBasemapChange = vi.fn()
     render(<BasemapSelector activeBasemapId="osm" onBasemapChange={onBasemapChange} />)
     fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    const dark = screen.getByRole('button', { name: 'Utiliser le fond CartaVault Dark' })
+    const dark = screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })
     fireEvent.click(dark)
     expect(onBasemapChange).toHaveBeenCalledWith('cartavault-dark')
     expect(onBasemapChange).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault Dark' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).not.toBeInTheDocument()
   })
 
   it('expands on keyboard focus and supports keyboard selection', () => {

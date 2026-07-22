@@ -33,7 +33,7 @@ interface PoiMapProps {
   popupContent: ReactNode
   onPopupClose: () => void
   basemapId: BasemapId
-  onBasemapTileError: (id: BasemapId) => void
+  onBasemapTileError: (id: BasemapId, fatal?: boolean) => void
   temporarySearchResult?: GeocodingResult | null
   onMapContextMenuOpen?: (state: MapContextMenuState) => void
   onMapContextMenuClose?: () => void

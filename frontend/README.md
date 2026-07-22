@@ -124,28 +124,39 @@ un déploiement sans reverse proxy `/api`. Elle est normalisée par
 
 ## Fonds cartographiques
 
-La carte principale propose CartaVault Light (Stadia Alidade Smooth), CartaVault
-Dark (Alidade Smooth Dark), Satellite (Stadia Alidade Satellite) et OpenStreetMap
-Standard. Chaque entrée peut être masquée des sélecteurs avec la variable
+La carte principale propose CartaVault clair et sombre (styles vectoriels locaux
+dérivés d'OpenFreeMap Positron), Satellite (source raster historique) et
+OpenStreetMap Standard. Chaque entrée peut être masquée des sélecteurs avec la variable
 `VITE_BASEMAP_*_ENABLED` correspondante, sans modification du code. Le choix
 explicite est associé au compte ; `cartavault.basemap` sert de repli local si
 les préférences distantes sont indisponibles. Sans choix explicite, CartaVault
 utilise le fond clair ou sombre cohérent avec le thème. Un changement de fond
 ne recrée pas la carte et conserve centre, zoom, marqueurs, tracés et outils.
 
-`VITE_STADIA_MAPS_API_KEY` est facultative en local sur `localhost`. Hors
-local, utilisez une clé ou l'authentification par domaine configurée dans
-Stadia Maps. Les variables `VITE_*` sont publiques dans le navigateur : ne
-placez jamais de secret non restreint dans ce fichier. Pour une offre SaaS,
-préférez l'authentification Stadia par domaine ou une clé publique strictement
-restreinte ; une installation auto-hébergée peut désactiver les sources Stadia.
+Le POC conserve Leaflet et rend uniquement le fond vectoriel avec MapLibre via
+`@maplibre/maplibre-gl-leaflet`. Cette option est plus adaptée qu'un raster pour
+masquer les commerces et équipements secondaires et maintenir deux thèmes sans
+filtre CSS. Les styles revus sont servis localement depuis `public/map-styles` ;
+les tuiles vectorielles et glyphes proviennent par défaut de l'instance publique
+OpenFreeMap, sans compte ni clé API. Les marqueurs, clusters, popups et tracés
+CartaVault restent des couches Leaflet au-dessus du fond.
 
-Les URL utilisées sont `tiles.stadiamaps.com/tiles/alidade_smooth`,
-`alidade_smooth_dark` et `alidade_satellite`, ainsi que
-`{s}.tile.openstreetmap.org` pour le repli. Les attributions Stadia Maps,
-OpenMapTiles, OpenStreetMap et, pour le satellite, CNES/Airbus/PlanetObserver
-sont toujours rendues par Leaflet. Les quotas et licences restent ceux des
-fournisseurs : vérifiez-les avant un déploiement public.
+Les URL sont configurables avec `VITE_BASEMAP_LIGHT_STYLE_URL`,
+`VITE_BASEMAP_DARK_STYLE_URL`, `VITE_OPENFREEMAP_TILEJSON_URL` et
+`VITE_OPENFREEMAP_GLYPHS_URL`. `VITE_BASEMAP_OSM_URL` contrôle le secours raster
+OpenStreetMap Standard. La couche satellite historique reste indépendante via
+`VITE_BASEMAP_SATELLITE_URL` et peut encore nécessiter
+`VITE_STADIA_MAPS_API_KEY` si elle pointe vers Stadia. Les variables `VITE_*`
+sont publiques : ne jamais y placer un secret non restreint.
+
+L'attribution « OpenFreeMap © OpenMapTiles Data from OpenStreetMap » reste
+visible. L'instance publique OpenFreeMap n'annonce ni quota ni facturation, mais
+ne fournit pas de SLA. Avant une exploitation nécessitant une garantie de
+service, le même style local pourra pointer vers une instance OpenFreeMap
+auto-hébergée. Une évolution PMTiles demandera un protocole/source MapLibre
+adapté, sans migration des marqueurs Leaflet. Le pont Leaflet/MapLibre ne prend
+pas en charge rotation, inclinaison et pitch et est moins performant qu'une
+carte MapLibre autonome ; ces fonctions ne sont pas requises par ce POC.
 
 Après trois erreurs de tuiles successives sur un fond, CartaVault bascule une
 seule fois vers OpenStreetMap et affiche un message discret. Une erreur OSM ne
