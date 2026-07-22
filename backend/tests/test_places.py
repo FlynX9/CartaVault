@@ -50,6 +50,38 @@ def test_place_rejects_missing_map(integration_client: TestClient) -> None:
     assert response.status_code == 404
 
 
+def test_place_status_update_is_audited_as_json(integration_client: TestClient, poi_map: PoiMap) -> None:
+    statuses = integration_client.get("/statuses", params={"map_id": str(poi_map.id)}).json()
+    initial_status, target_status = statuses[:2]
+    created = integration_client.post(
+        "/places",
+        json={
+            "name": f"Status audit {uuid4().hex}",
+            "map_id": str(poi_map.id),
+            "status_id": initial_status["id"],
+            "latitude": 48.5,
+            "longitude": 2.5,
+        },
+    )
+    assert created.status_code == 201
+
+    updated = integration_client.patch(
+        f"/places/{created.json()['id']}",
+        json={"status_id": target_status["id"]},
+    )
+
+    assert updated.status_code == 200
+    assert updated.json()["status"]["id"] == target_status["id"]
+    history = integration_client.get(f"/places/{created.json()['id']}/history")
+    assert history.status_code == 200
+    status_change = next(
+        event["changes"]["status_id"]
+        for event in history.json()
+        if "status_id" in event["changes"]
+    )
+    assert status_change == {"old": initial_status["id"], "new": target_status["id"]}
+
+
 def test_bulk_place_delete_and_validated_filters(integration_client: TestClient, poi_map: PoiMap) -> None:
     first = integration_client.post("/places", json={"name": f"Bulk alpha {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1})
     second = integration_client.post("/places", json={"name": f"Bulk beta {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.2, "longitude": 2.2})
