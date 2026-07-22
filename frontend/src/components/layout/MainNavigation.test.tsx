@@ -21,7 +21,7 @@ describe('MainNavigation', () => {
     expect(onPanelChange).toHaveBeenCalledWith(null)
   })
 
-  it('uses workspace buttons for content, statuses and user administration', () => {
+  it('uses workspace buttons for content and statuses without duplicating administration', () => {
     const onPanelChange = vi.fn()
     const onOpenTrips = vi.fn()
     render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={onPanelChange} onOpenTrips={onOpenTrips} isAdmin /><Location /></MemoryRouter>)
@@ -29,14 +29,13 @@ describe('MainNavigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
     fireEvent.click(screen.getByRole('button', { name: 'Tags' }))
     fireEvent.click(screen.getByRole('button', { name: 'Statuts' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Administration' }))
     fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
 
     expect(onPanelChange).toHaveBeenNthCalledWith(1, 'categories')
     expect(onPanelChange).toHaveBeenNthCalledWith(2, 'tags')
     expect(onPanelChange).toHaveBeenNthCalledWith(3, 'statuses')
-    expect(onPanelChange).toHaveBeenNthCalledWith(4, 'admin')
     expect(onOpenTrips).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent('/')
   })
 

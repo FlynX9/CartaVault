@@ -13,6 +13,7 @@ from app.auth.models import User
 from app.auth.permissions import MapAccess, get_map_access, require_map_role
 from app.auth.schemas import UserRead
 from app.auth.security import generate_token, hash_token, normalize_email
+from app.admin.quota_service import effective_limits, require_available, usage_for_user
 from app.config import security_settings
 from app.countries.models import Country
 from app.countries.schemas import CountrySummary
@@ -78,6 +79,8 @@ def get_map(map_id: UUID, database_session: Session = Depends(get_db), current_u
 
 @router.post("", response_model=MapRead, status_code=201)
 def create_map(map_data: MapCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> MapRead:
+    limits = effective_limits(database_session, current_user)
+    require_available(usage_for_user(database_session, current_user).maps, limits.maps, "QUOTA_MAPS_EXCEEDED", "cartes")
     country = database_session.get(Country, map_data.country_id)
     if country is None:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -214,6 +217,10 @@ def transfer_ownership(map_id: UUID, data: TransferOwnership, database_session: 
 @router.post("/{map_id}/invitations", response_model=InvitationRead, status_code=201)
 def create_invitation(map_id: UUID, data: InvitationCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> InvitationRead:
     access = require_map_role(database_session, map_id, current_user, "owner")
+    limits = effective_limits(database_session, access.map.owner)
+    member_count = database_session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.map_id == map_id)) or 0
+    pending_count = database_session.scalar(select(func.count()).select_from(MapInvitation).where(MapInvitation.map_id == map_id, MapInvitation.accepted_at.is_(None), MapInvitation.revoked_at.is_(None))) or 0
+    require_available(member_count + pending_count, limits.members_per_map, "QUOTA_MEMBERS_EXCEEDED", "membres par carte")
     email = normalize_email(data.email)
     if access.map.owner.email == email:
         raise HTTPException(status_code=409, detail="The map owner cannot be invited")

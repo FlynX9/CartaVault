@@ -9,11 +9,11 @@ import { useAuth } from '../../auth/useAuth'
 import type { AccountPreferences, AccountProfile, AccountSession, GoogleRoutesCredentialStatus } from '../../types/account'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 
-type Section = 'profile' | 'avatar' | 'security' | 'sessions' | 'preferences' | 'admin' | 'danger'
+type Section = 'profile' | 'avatar' | 'security' | 'sessions' | 'preferences' | 'danger'
 
 const emptyPreferences: AccountPreferences = { preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
 
-export function AccountModal({ onClose, onOpenAdmin, trigger }: { onClose: () => void; onOpenAdmin: () => void; trigger: HTMLElement | null }) {
+export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpenAdmin?: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
   const [section, setSection] = useState<Section>('profile')
   const [profile, setProfile] = useState<AccountProfile | null>(null)
@@ -84,7 +84,6 @@ export function AccountModal({ onClose, onOpenAdmin, trigger }: { onClose: () =>
         </header>
         <nav className="account-modal__nav" aria-label="Gestion du compte">
           {([[ 'profile', UserRound, 'Profil' ], [ 'avatar', Camera, 'Avatar' ], [ 'security', ShieldCheck, 'Sécurité' ], [ 'sessions', MonitorSmartphone, 'Sessions' ], [ 'preferences', Settings2, 'Préférences' ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
-          {user?.is_admin && <button type="button" onClick={() => selectSection('admin')} aria-current={section === 'admin' ? 'page' : undefined}><Shield size={17} />Administration</button>}
           <button className="danger" type="button" onClick={() => selectSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />Zone sensible</button>
         </nav>
         <main className="account-modal__content">
@@ -94,7 +93,6 @@ export function AccountModal({ onClose, onOpenAdmin, trigger }: { onClose: () =>
           {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
           {section === 'preferences' && <><PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} /><CredentialPreferencesPanel preferences={preferences} setPreferences={setPreferences} /></>}
-          {section === 'admin' && <><AccountHeading title="Administration" description="La gestion globale des utilisateurs reste séparée de votre compte personnel." /><button className="account-button account-button--primary" type="button" onClick={() => { onClose(); onOpenAdmin() }}>Ouvrir l’administration</button></>}
           {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
         </main>
       </section>

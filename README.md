@@ -340,3 +340,6 @@ Before starting a significant contribution, please open an issue to discuss the 
 CartaVault is distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
 
 Made in Vosges
+# Administration
+
+La console centrale CartaVault est disponible sur `/admin` uniquement pour les administrateurs. Elle regroupe la gestion paginée des utilisateurs, les credentials globaux sûrs, les quotas et le diagnostic de l’instance. Les clés personnelles restent dans le compte utilisateur et les secrets d’infrastructure ne sont jamais exposés. Voir [l’audit des paramètres](docs/administration-audit.md).

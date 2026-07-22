@@ -42,13 +42,22 @@ describe('map URL workspace', () => {
     expect(screen.getByRole('heading', { name: 'Créer une carte' })).toBeVisible()
   })
 
-  it('opens administration over the persistent map instead of navigating to a page', async () => {
+  it('opens administration as a routed modal over the persistent map', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: 'Administration' }))
-    expect(await screen.findByRole('heading', { name: 'Utilisateurs' })).toBeVisible()
+    fireEvent.click(await screen.findByRole('button', { name: 'Menu utilisateur de Admin' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Administration' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/admin/users'))
+    expect(await screen.findByRole('dialog', { name: 'Administration' })).toBeVisible()
     expect(screen.getByTestId('workspace')).toBeVisible()
-    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
-    expect(screen.getByRole('button', { name: 'Administration' })).toHaveAttribute('aria-pressed', 'true')
+    const mapCallsBeforeSectionChange = vi.mocked(getMaps).mock.calls.length
+    fireEvent.click(screen.getByRole('link', { name: 'Clés API' }))
+    expect(await screen.findByRole('heading', { name: 'Clés API' })).toBeVisible()
+    expect(getMaps).toHaveBeenCalledTimes(mapCallsBeforeSectionChange)
+    fireEvent.click(screen.getByRole('link', { name: 'Quotas et usages' }))
+    expect(await screen.findByRole('heading', { name: 'Quotas et usages' })).toBeVisible()
+    expect(getMaps).toHaveBeenCalledTimes(mapCallsBeforeSectionChange)
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer l’administration' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`))
   })
 
   it('always opens Sorties with the complete Places and Preparation workspace', async () => {

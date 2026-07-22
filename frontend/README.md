@@ -1,6 +1,6 @@
 # Frontend cartographique de CartaVault
 
-Le bouton utilisateur ouvre une grande modale Compte au-dessus du workspace, sans remonter Leaflet. Elle regroupe Profil, Sécurité, Sessions actives, Préférences, Administration pour les administrateurs et Zone sensible. Les préférences restent locales au navigateur ; l’avatar utilise les initiales comme fallback.
+Le bouton utilisateur ouvre une grande modale Compte au-dessus du workspace, sans remonter Leaflet. Elle regroupe Profil, Sécurité, Sessions actives, Préférences et Zone sensible. Pour un administrateur, l’entrée Administration du sous-menu utilisateur ouvre séparément la console protégée `/admin`. Les préférences restent associées au compte ; l’avatar utilise les initiales comme fallback.
 
 ## Authentification et partage privé
 
@@ -376,3 +376,6 @@ La gestion des statuts demande « Non visité » ou « Visité » à la créatio
 la modification. Lorsqu’un changement reclasse des lieux existants, CartaVault
 affiche leur nombre avant confirmation. Les viewers voient les statuts et les
 filtres sans recevoir d’action de modification.
+# Console d’administration
+
+La route protégée `/admin` ouvre une grande modale claire au-dessus du workspace cartographique persistant, avec navigation Utilisateurs, Clés API, Quotas et usages, et État de l’instance. L’entrée n’apparaît que dans le sous-menu utilisateur d’un administrateur ; elle a été retirée de la navigation latérale et du panneau Compte. La modale est responsive, navigable au clavier, fermable avec Échap et conserve le thème clair CartaVault tant qu’aucun véritable sélecteur de thème applicatif n’est disponible.

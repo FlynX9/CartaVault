@@ -18,7 +18,7 @@ MIGRATION_STATUS_ROWS = (
     ("10000000-0000-4000-8000-000000000094", "Personnalisé", "personnalise", False),
 )
 PREVIOUS_REVISION = "a4f9c2e7d631"
-HEAD_REVISION = "d6f1a3b8c902"
+MIGRATION_REVISION = "d6f1a3b8c902"
 
 
 def test_status_migration_downgrade_upgrade_cycle(
@@ -66,7 +66,7 @@ def test_status_migration_downgrade_upgrade_cycle(
                 text("SELECT status_id FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID}
             )) == MIGRATION_STATUS_ID
 
-        command.upgrade(config, HEAD_REVISION)
+        command.upgrade(config, MIGRATION_REVISION)
         status_columns = {column["name"]: column for column in inspect(test_engine).get_columns("place_statuses")}
         assert status_columns["map_id"]["nullable"] is False
         assert status_columns["functional_state"]["nullable"] is False
@@ -93,7 +93,10 @@ def test_status_migration_downgrade_upgrade_cycle(
                 {"id": MIGRATION_PLACE_ID},
             ) is True
     finally:
-        command.upgrade(config, HEAD_REVISION)
+        # Always restore the shared integration database to the real current
+        # head.  Keeping the historical migration revision here used to leave
+        # tables introduced later in the chain absent for following tests.
+        command.upgrade(config, "head")
         with test_engine.begin() as connection:
             connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
             connection.execute(text("DELETE FROM poi_maps WHERE id = :id"), {"id": MIGRATION_MAP_ID})

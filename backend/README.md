@@ -358,3 +358,6 @@ prudemment `non_visited`. Cette correspondance n’est utilisée que pendant la
 migration.
 
 Les liens sont limités à 20 par lieu et n’acceptent que des URL HTTP(S) possédant un hôte. L’historique conserve les changements structurés et les métadonnées utiles, jamais les fichiers photo binaires.
+# Console d’administration
+
+Les endpoints protégés `/admin/console/*` fournissent la pagination des utilisateurs, l’état masqué des credentials, les quotas globaux/individuels et un diagnostic isolé des services. La migration `e7a4c1d9b620` ajoute les réglages d’instance et les métadonnées de vérification des credentials. Les quotas bloquent uniquement de nouvelles écritures et ne suppriment jamais les données existantes.

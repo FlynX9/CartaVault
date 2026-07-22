@@ -20,6 +20,7 @@ from app.categories.schemas import CategoryRead
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_map_role, require_place_role
+from app.admin.quota_service import effective_limits, require_available, usage_for_user
 from app.database import get_db
 from app.countries.schemas import CountrySummary
 from app.maps.models import PoiMap
@@ -505,7 +506,11 @@ def create_place(
 ) -> PlaceRead:
     """Create a new point of interest."""
 
-    require_map_role(database_session, place_data.map_id, current_user, "editor")
+    access = require_map_role(database_session, place_data.map_id, current_user, "editor")
+    owner = database_session.get(User, access.map.owner_id)
+    if owner is not None:
+        limits = effective_limits(database_session, owner)
+        require_available(usage_for_user(database_session, owner).places, limits.places, "QUOTA_PLACES_EXCEEDED", "lieux")
 
     if place_data.status_id is None:
         place_status = database_session.scalar(

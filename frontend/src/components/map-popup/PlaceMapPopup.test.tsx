@@ -50,7 +50,7 @@ describe('PlaceMapPopup', () => {
     expect(await screen.findByText('Aucune photo')).toBeVisible(); expect(screen.getByText('Ancienne usine')).toBeVisible()
     vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO])
     rerender(<PlaceMapPopup placeId="another-id" onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
-    fireEvent.error(await screen.findByRole('img', { name: 'Façade' })); expect(screen.getByText('Image indisponible')).toBeVisible()
+    fireEvent.error(await screen.findByRole('img', { name: 'Façade' })); expect(await screen.findByText('Image indisponible')).toBeVisible()
     vi.mocked(getPlacePhotos).mockRejectedValue(new Error('offline'))
     rerender(<PlaceMapPopup placeId="third-id" onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     expect(await screen.findByText('Photos indisponibles')).toBeVisible(); expect(screen.getByRole('heading', { name: 'Manufacture' })).toBeVisible()

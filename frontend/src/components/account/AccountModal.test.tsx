@@ -27,7 +27,8 @@ describe('AccountModal', () => {
   it('renders account sections separately from administration', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     expect(await screen.findByRole('heading', { name: 'Profil' })).toBeVisible()
-    for (const label of ['Profil', 'Avatar', 'Sécurité', 'Sessions', 'Préférences', 'Administration', 'Zone sensible']) expect(screen.getByRole('button', { name: label })).toBeVisible()
+    for (const label of ['Profil', 'Avatar', 'Sécurité', 'Sessions', 'Préférences', 'Zone sensible']) expect(screen.getByRole('button', { name: label })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Avatar' }))
     expect(screen.getByRole('heading', { name: 'Avatar' })).toBeVisible()
   })
