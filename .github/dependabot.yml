@@ -13,11 +13,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Temporarily excluded versions can be listed here with a short reason.
+    # Temporarily excluded versions (supported fields: dependency-name,
+    # versions, update-types). Use a YAML comment for the tracking issue.
     # ignore:
+    #   # Tracked in issue #N — remove when unblocked.
     #   - dependency-name: "example"
     #     versions: [">=2.0.0"]
-    #     reason: "Breaking API change; track in issue #N"
 
   # Backend (pip)
   - package-ecosystem: "pip"
@@ -46,8 +47,8 @@ updates:
         patterns:
           - "*"
 
-  # Docker base images (compose / Dockerfiles at repo root)
-  - package-ecosystem: "docker"
+  # Docker Compose images at repo root (postgis/postgis in docker-compose.yml)
+  - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
       interval: "monthly"
