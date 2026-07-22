@@ -3765,8 +3765,16 @@ body {
 
 .maps-catalog li.active {
   background: rgb(15 166 138 / 6%);
-  border-color: rgb(15 166 138 / 42%);
-  box-shadow: inset 3px 0 0 var(--cv-color-teal), 0 1px 2px rgb(13 27 42 / 4%);
+  border-color: var(--cv-color-teal);
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.maps-catalog__actions .secondary-button:disabled {
+  color: rgb(100 112 122 / 62%);
+  background: rgb(242 245 248 / 78%);
+  border-color: rgb(43 62 89 / 10%);
+  cursor: default;
 }
 
 .maps-catalog__preview { height: 6.75rem; }
