@@ -2105,14 +2105,19 @@ button {
 .cv-panel-status-list li,
 .place-list-item { border-radius: 0.7rem; box-shadow: 0 1px 2px rgb(13 27 42 / 4%); }
 
-/* Compact contextual actions, visually aligned with the CartaVault panels. */
-.map-context-menu { display: grid; width: min(15rem, calc(100% - 1rem)); gap: 0.2rem; padding: 0.45rem; color: var(--cv-color-navy); background: rgb(250 250 248 / 98%); border: 1px solid rgb(43 62 89 / 16%); border-radius: 0.75rem; box-shadow: 0 10px 28px rgb(13 27 42 / 18%); }
-.map-context-menu strong { padding: 0.35rem 0.45rem 0.45rem; color: var(--cv-color-slate); border-bottom: 1px solid rgb(43 62 89 / 10%); font-size: 0.72rem; font-variant-numeric: tabular-nums; font-weight: 700; }
-.map-context-menu button, .map-context-menu a { display: flex; min-height: 2.45rem; align-items: center; gap: 0.55rem; padding: 0.5rem 0.6rem; color: var(--cv-color-slate); background: transparent; border: 1px solid transparent; border-radius: 0.55rem; font-size: 0.82rem; font-weight: 600; text-decoration: none; }
-.map-context-menu .map-context-menu__primary { color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); }
+/* CartaVault contextual actions. */
+.map-context-menu { display: grid; width: min(18rem, calc(100% - 1rem)); gap: 0.2rem; padding: 0.6rem; overflow: hidden auto; color: var(--cv-color-navy); background: rgb(250 250 248 / 98%); border: 1px solid rgb(43 62 89 / 14%); border-radius: 0.95rem; box-shadow: 0 12px 32px rgb(13 27 42 / 18%); }
+.map-context-menu__header { display: grid; grid-template-columns: 2.45rem minmax(0, 1fr) 2.25rem; align-items: center; gap: 0.65rem; padding: 0 0 0.35rem; }
+.map-context-menu .map-context-menu__header strong { min-width: 0; padding: 0; overflow: hidden; color: var(--cv-color-navy); border: 0; font-size: 0.86rem; font-variant-numeric: tabular-nums; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.map-context-menu__location-icon { display: grid; width: 2.45rem; height: 2.45rem; color: var(--cv-color-teal); background: rgb(15 166 138 / 11%); border-radius: 0.75rem; place-items: center; }
+.map-context-menu button, .map-context-menu a { display: flex; min-height: 2.55rem; align-items: center; gap: 0.65rem; padding: 0.55rem 0.7rem; color: var(--cv-color-slate); background: transparent; border: 1px solid transparent; border-radius: 0.6rem; font-size: 0.79rem; font-weight: 650; text-decoration: none; }
+.map-context-menu .map-context-menu__close { width: 2.25rem; min-height: 2.25rem; justify-content: center; padding: 0; color: var(--cv-color-slate); border-radius: 0.55rem; }
+.map-context-menu .map-context-menu__primary { justify-content: flex-start; min-height: 2.8rem; margin-bottom: 0.15rem; color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); font-size: 0.83rem; }
 .map-context-menu button:not(.map-context-menu__primary):hover, .map-context-menu a:hover, .map-context-menu button:not(.map-context-menu__primary):focus-visible, .map-context-menu a:focus-visible { color: var(--cv-color-navy); background: var(--cv-color-mist); border-color: rgb(43 62 89 / 10%); outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 0; }
 .map-context-menu .map-context-menu__primary:hover, .map-context-menu .map-context-menu__primary:focus-visible { background: #0b8f77; border-color: #0b8f77; outline: 2px solid rgb(15 166 138 / 22%); outline-offset: 0; }
-.map-context-menu__trip { display: grid; }.map-context-menu__trip > button > svg:last-child { margin-left: auto; transition: transform .15s ease; }.map-context-menu__trip > button > svg:last-child.expanded { transform: rotate(90deg); }.map-context-menu__days { display: grid; gap: .15rem; margin: .1rem 0 .2rem 1.45rem; padding: .2rem; background: var(--cv-color-mist); border-left: 2px solid rgb(15 166 138 / 35%); border-radius: .35rem; }.map-context-menu__days button { min-height: 2rem; padding: .35rem .5rem; font-size: .72rem; }
+.map-context-menu .map-context-menu__google { margin: 0.2rem -0.6rem -0.6rem; padding: 0.75rem 1.3rem; border-width: 1px 0 0; border-color: rgb(43 62 89 / 10%); border-radius: 0; }
+.map-context-menu__external { margin-left: auto; }
+.map-context-menu__trip { display: grid; }.map-context-menu__trip > button { width: 100%; }.map-context-menu__trip > button > svg:last-child { margin-left: auto; transition: transform .15s ease; }.map-context-menu__trip > button > svg:last-child.expanded { transform: rotate(90deg); }.map-context-menu__days { display: grid; gap: .15rem; margin: .1rem 0 .2rem 1.45rem; padding: .2rem; background: var(--cv-color-mist); border-left: 2px solid rgb(15 166 138 / 35%); border-radius: .35rem; }.map-context-menu__days button { min-height: 2rem; padding: .35rem .5rem; font-size: .72rem; }
 
 /* The map is the canvas; workspace panels float above it instead of consuming its width. */
 .map-workspace,

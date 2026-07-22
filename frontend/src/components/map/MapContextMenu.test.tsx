@@ -9,10 +9,14 @@ describe('MapContextMenu', () => {
     expect(buildGoogleMapsUrl(48.8566, 2.3522)).toBe('https://www.google.com/maps/search/?api=1&query=48.8566%2C2.3522')
   })
   it('renders safe actions at the Leaflet container position', () => {
-    render(<MapContextMenu state={{ latitude: 48, longitude: 2, containerX: 10, containerY: 20 }} onClose={vi.fn()} onCreate={vi.fn()} onCopy={vi.fn()} />)
+    const close = vi.fn()
+    render(<MapContextMenu state={{ latitude: 48, longitude: 2, containerX: 10, containerY: 20 }} onClose={close} onCreate={vi.fn()} onCopy={vi.fn()} />)
     expect(screen.getByRole('menu')).toBeVisible()
+    expect(screen.getByText('48.000000, 2.000000')).toBeVisible()
     expect(screen.getByRole('menuitem', { name: 'Ouvrir dans Google Maps' })).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.queryByRole('menuitem', { name: 'Fermer' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer le menu' }))
+    expect(close).toHaveBeenCalledOnce()
   })
 
   it('adds the clicked coordinates to a selected trip day through a submenu', () => {
