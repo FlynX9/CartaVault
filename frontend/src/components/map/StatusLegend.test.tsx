@@ -11,18 +11,22 @@ describe('StatusLegend', () => {
     { id: 'done', map_id: 'map-id', name: 'Fait', slug: 'fait', color: '#16A34A', is_active: true, functional_state: 'visited' as const },
   ]
 
-  it('collapses to a compact legend control and expands again', () => {
+  it('stays compact by default and expands on hover or keyboard focus', () => {
     render(<StatusLegend statuses={statuses} />)
 
-    expect(screen.getByLabelText('Légende des statuts')).toHaveTextContent('À faire')
-    fireEvent.click(screen.getByRole('button', { name: 'Réduire la légende des statuts' }))
+    const legend = screen.getByLabelText('Légende des statuts')
+    expect(legend).toHaveClass('status-legend--collapsed')
+    expect(screen.getByRole('list', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
 
-    expect(screen.getByLabelText('Légende des statuts')).toHaveClass('status-legend--collapsed')
-    expect(screen.queryByText('À faire')).not.toBeInTheDocument()
-    expect(screen.getByText('Légende')).toBeVisible()
+    fireEvent.mouseEnter(legend)
+    expect(legend).toHaveClass('status-legend--expanded')
+    expect(screen.getByRole('list')).toHaveAttribute('aria-hidden', 'false')
+    expect(legend).toHaveTextContent('À faire')
+    expect(legend).toHaveTextContent('Fait')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Afficher la légende des statuts' }))
-    expect(screen.getByText('À faire')).toBeVisible()
-    expect(screen.getByText('Fait')).toBeVisible()
+    fireEvent.mouseLeave(legend)
+    expect(legend).toHaveClass('status-legend--collapsed')
+    fireEvent.focus(screen.getByRole('button', { name: 'Afficher la légende des statuts' }))
+    expect(legend).toHaveClass('status-legend--expanded')
   })
 })

@@ -9,29 +9,24 @@ interface StatusLegendProps {
 
 /** Compact map overlay describing the colors currently used by markers. */
 export function StatusLegend({ statuses }: StatusLegendProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   if (statuses.length === 0) return null
 
-  if (collapsed) {
-    return (
-      <aside className="status-legend status-legend--collapsed" aria-label="Légende des statuts">
-        <button type="button" aria-expanded="false" aria-label="Afficher la légende des statuts" onClick={() => setCollapsed(false)}>
-          <ListFilter size={15} aria-hidden="true" />
-          <span>Légende</span>
-          <ChevronUp size={14} aria-hidden="true" />
-        </button>
-      </aside>
-    )
-  }
-
   return (
-    <aside className="status-legend" aria-label="Légende des statuts">
-      <button className="status-legend__toggle" type="button" aria-expanded="true" aria-label="Réduire la légende des statuts" onClick={() => setCollapsed(true)}>
+    <aside
+      className={`status-legend ${expanded ? 'status-legend--expanded' : 'status-legend--collapsed'}`}
+      aria-label="Légende des statuts"
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
+      onFocus={() => setExpanded(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false) }}
+    >
+      <button className="status-legend__toggle" type="button" aria-expanded={expanded} aria-label={`${expanded ? 'Réduire' : 'Afficher'} la légende des statuts`} onClick={() => setExpanded(true)}>
         <span><ListFilter size={15} aria-hidden="true" />Légende</span>
-        <ChevronDown size={15} aria-hidden="true" />
+        {expanded ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
       </button>
-      <ul>
+      <ul aria-hidden={!expanded}>
         {statuses.map((status) => (
           <li key={status.id}>
             <span className="status-dot" style={{ backgroundColor: status.color }} aria-hidden="true" />
