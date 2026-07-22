@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deletePlace, getPlaceDetails } from '../../api/places'
 import { getPlacePhotos } from '../../api/photos'
@@ -65,13 +65,14 @@ describe('PlaceMapPopup', () => {
 
   it('provides accessible edit, Google Maps, close and confirmed delete actions', async () => {
     const edit = vi.fn(); const close = vi.fn(); const deleted = vi.fn()
-    vi.stubGlobal('confirm', vi.fn(() => true))
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={edit} onDeleted={deleted} onClose={close} />)
     await screen.findByRole('heading', { name: 'Manufacture' })
     fireEvent.click(screen.getByRole('button', { name: 'Modifier le POI' })); expect(edit).toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Ouvrir dans Google Maps' })).toHaveAttribute('href', 'https://www.google.com/maps/search/?api=1&query=48.17%2C6.45')
     fireEvent.click(screen.getByRole('button', { name: 'Fermer la fiche' })); expect(close).toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Supprimer le POI' })); await waitFor(() => expect(deleted).toHaveBeenCalledWith(PLACE_ID)); expect(deletePlace).toHaveBeenCalledWith(PLACE_ID)
-    expect(window.confirm).toHaveBeenCalledWith('Supprimer « Manufacture » ?')
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer le POI' }))
+    const dialog = screen.getByRole('alertdialog', { name: 'Supprimer ce lieu ?' })
+    expect(within(dialog).getByText('« Manufacture » sera placé dans la corbeille.')).toBeVisible()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Supprimer' })); await waitFor(() => expect(deleted).toHaveBeenCalledWith(PLACE_ID)); expect(deletePlace).toHaveBeenCalledWith(PLACE_ID)
   })
 })

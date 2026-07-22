@@ -25,6 +25,7 @@ import { RequireAuth } from './auth/RequireAuth'
 import { useAuth } from './auth/useAuth'
 import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages'
+import { useConfirmDialog } from './components/common/useConfirmDialog'
 
 const MapsWorkspacePanel = lazy(async () => ({ default: (await import('./components/maps/MapsWorkspacePanel')).MapsWorkspacePanel }))
 const MapMembersDialog = lazy(async () => ({ default: (await import('./components/maps/MapMembersDialog')).MapMembersDialog }))
@@ -54,6 +55,7 @@ const mapAccessFingerprint = (maps: PoiMap[]) => maps.map((item) => [
 ].join(':')).join('|')
 
 function WorkspaceApp() {
+  const { confirm, confirmationDialog } = useConfirmDialog()
   const { user } = useAuth()
   const location = useLocation(); const navigate = useNavigate(); const isMapWorkspace = true
   const activeMapId = readMapId(location.search)
@@ -216,7 +218,7 @@ function WorkspaceApp() {
     }
   }
   const deleteWorkspaceMap = async (poiMap: PoiMap) => {
-    if (!window.confirm(`Supprimer « ${poiMap.name} » ?`)) return
+    if (!await confirm({ title: 'Supprimer cette carte ?', message: `La carte « ${poiMap.name} » et son contenu ne seront plus accessibles. Cette action est irréversible.` })) return
     try {
       await deleteMap(poiMap.id)
       const remaining = maps.filter((item) => item.id !== poiMap.id)
@@ -276,7 +278,7 @@ function WorkspaceApp() {
     <Routes>
       <Route path="*" element={<MapPage places={places} canEdit={activeMap?.can_edit === true} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen || tripPlannerOpen} sidebarResizable={tripPlannerOpen} placeListOpen={workspacePanel !== null} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} draftPosition={draftPosition} draftPlaceId={sidebarState.mode === 'edit' ? sidebarState.placeId : null} onDraftPositionChange={setDraftPosition} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setCoordinatePrefill(null); setDraftPosition({ latitude: result.latitude, longitude: result.longitude }); setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} onCreateFromCoordinates={(latitude, longitude) => { setCoordinatePrefill({ latitude, longitude }); setDraftPosition({ latitude, longitude }); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={workspaceContent} sidebar={rightSidebar} trip={activeTrip} tripViewOnly={tripViewOnly} hiddenTripDayIds={hiddenTripDayIds} activeTripDayId={activeTripDayId} onTripPlaceAdd={tripPlannerOpen ? (place) => void addPlaceToActiveTripDay(place) : undefined} onTripCoordinateAdd={tripPlannerOpen && activeMap?.can_edit === true ? (dayId, latitude, longitude) => void addCoordinatesToTripDay(dayId, latitude, longitude) : undefined} tripNotice={tripNotice} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
     </Routes>
-  </div>{exportMap && <Suspense fallback={null}><KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} /></Suspense>}{membersMap && <Suspense fallback={null}><MapMembersDialog poiMap={membersMap} onClose={() => setMembersMap(null)} onMapUpdated={(updated) => setMaps((current) => current.map((item) => item.id === updated.id ? updated : item))} /></Suspense>}</main>
+  </div>{exportMap && <Suspense fallback={null}><KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} /></Suspense>}{membersMap && <Suspense fallback={null}><MapMembersDialog poiMap={membersMap} onClose={() => setMembersMap(null)} onMapUpdated={(updated) => setMaps((current) => current.map((item) => item.id === updated.id ? updated : item))} /></Suspense>}{confirmationDialog}</main>
 }
 
 function App() {

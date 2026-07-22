@@ -3,6 +3,7 @@ import { Eye, EyeOff, KeyRound, RefreshCw, Trash2 } from 'lucide-react'
 
 import { deleteGoogleRoutesCredential, storeGoogleRoutesCredential, verifyGoogleRoutesCredential } from '../../api/account'
 import type { GoogleRoutesCredentialStatus } from '../../types/account'
+import { useConfirmDialog } from '../common/useConfirmDialog'
 
 interface GoogleRoutesCredentialPanelProps {
   status: GoogleRoutesCredentialStatus
@@ -11,6 +12,7 @@ interface GoogleRoutesCredentialPanelProps {
 }
 
 export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChanged }: GoogleRoutesCredentialPanelProps) {
+  const { confirm, confirmationDialog } = useConfirmDialog()
   const [editing, setEditing] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [apiKey, setApiKey] = useState('')
@@ -45,7 +47,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
 
   const remove = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!window.confirm('Supprimer votre clé Google Routes ? Les itinéraires enregistrés seront conservés et les prochains calculs utiliseront OSRM.')) return
+    if (!await confirm({ title: 'Supprimer la clé Google Routes ?', message: 'Les itinéraires enregistrés seront conservés. Les prochains calculs utiliseront OSRM.' })) return
     setBusy(true); setError(null); setMessage(null)
     try {
       const result = await deleteGoogleRoutesCredential(deletePassword)
@@ -77,7 +79,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
     {status.configured && !editing && <div className="account-credential__actions"><button className="account-button account-button--secondary" type="button" disabled={busy} onClick={() => setEditing(true)}>Remplacer</button><button className="account-button account-button--secondary" type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={15} />Vérifier</button><button className="account-button account-button--danger-quiet" type="button" disabled={busy} onClick={() => setConfirmingDelete((value) => !value)}><Trash2 size={15} />Supprimer</button></div>}
     {status.configured && <small>La vérification effectue un appel à Google Routes API.</small>}
     {confirmingDelete && <form className="account-credential__delete" onSubmit={remove}><label>Mot de passe actuel<input type="password" value={deletePassword} required autoComplete="current-password" onChange={(event) => setDeletePassword(event.target.value)} /></label><button className="account-button account-button--danger" type="submit" disabled={busy}>Confirmer la suppression</button></form>}
-    {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
+    {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}{confirmationDialog}
   </section>
 }
 

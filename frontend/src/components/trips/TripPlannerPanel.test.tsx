@@ -294,6 +294,7 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStop} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer l’étape' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
 
     await waitFor(() => expect(deleteTripStop).toHaveBeenCalledWith('stop-1'))
     await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1', expect.any(AbortSignal)))

@@ -10,6 +10,7 @@ import { buildGoogleMapsUrl } from '../../utils/googleMaps'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { PlacePopupActions } from './PlacePopupActions'
 import { PlacePopupGallery } from './PlacePopupGallery'
+import { useConfirmDialog } from '../common/useConfirmDialog'
 
 interface Props { placeId: string; canEdit?: boolean; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
 
@@ -23,6 +24,7 @@ function formatDate(value: string): string {
 }
 
 export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onClose }: Props) {
+  const { confirm, confirmationDialog } = useConfirmDialog()
   const [place, setPlace] = useState<PlaceDetails | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
   const [detailsLoading, setDetailsLoading] = useState(true)
@@ -65,7 +67,7 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
   const primaryCategory = place.categories.find((item) => item.is_primary)
   const displayLocation = formatLocation(reverseLocation, place.region)
   const rating = place.interest_rating ?? place.visit_rating
-  const remove = async () => { if (!window.confirm(`Supprimer « ${place.name} » ?`)) return; setDeleting(true); try { await deletePlace(place.id); onDeleted(place.id) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Suppression impossible.'); setDeleting(false) } }
+  const remove = async () => { if (!await confirm({ title: 'Supprimer ce lieu ?', message: `« ${place.name} » sera placé dans la corbeille.` })) return; setDeleting(true); try { await deletePlace(place.id); onDeleted(place.id) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Suppression impossible.'); setDeleting(false) } }
   const toggleFavorite = async () => { try { setPlace(await updatePlace(place.id, { is_favorite: !(place.is_favorite === true) })) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Modification du favori impossible.') } }
 
   return <article className="place-map-popup" aria-labelledby={`popup-title-${place.id}`}>
@@ -97,5 +99,6 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
       <p><b>Ajouté le</b><span>{formatDate(place.created_at)}</span></p>
     </div>
     <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} canEdit={canEdit} showClose={false} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
+    {confirmationDialog}
   </article>
 }

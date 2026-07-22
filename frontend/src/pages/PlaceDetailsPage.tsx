@@ -8,12 +8,14 @@ import type { Photo } from '../types/photo'
 import type { PlaceDetails } from '../types/place'
 import { buildGoogleMapsUrl } from '../utils/googleMaps'
 import { withMap } from '../utils/map'
+import { useConfirmDialog } from '../components/common/useConfirmDialog'
 
 interface Props { placeId?: string; embedded?: boolean; activeMapId?: string | null; onPlaceDeleted?: (placeId: string) => void }
 const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
 const formatDate = (value: string) => new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(value))
 
 export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, activeMapId = null, onPlaceDeleted }: Props) {
+  const { confirm, confirmationDialog } = useConfirmDialog()
   const { placeId: routePlaceId } = useParams<{ placeId: string }>(); const placeId = providedPlaceId ?? routePlaceId; const navigate = useNavigate()
   const [place, setPlace] = useState<PlaceDetails | null>(null); const [photos, setPhotos] = useState<Photo[]>([]); const [loading, setLoading] = useState(true); const [photosLoading, setPhotosLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [photosError, setPhotosError] = useState<string | null>(null); const [notFound, setNotFound] = useState(false); const [deleteError, setDeleteError] = useState<string | null>(null)
   useEffect(() => { if (!placeId) { setError('Identifiant absent.'); setLoading(false); return }; const controller = new AbortController(); void getPlaceDetails(placeId, controller.signal).then(setPlace).catch((caught: unknown) => { if (caught instanceof ApiError && caught.status === 404) setNotFound(true); else if (!isAbortError(caught)) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) }); setPhotosLoading(true); setPhotosError(null); void getPlacePhotos(placeId, controller.signal).then(setPhotos).catch((caught: unknown) => { if (!isAbortError(caught)) { setPhotos([]); setPhotosError(caught instanceof Error ? caught.message : 'Photos indisponibles.') } }).finally(() => { if (!controller.signal.aborted) setPhotosLoading(false) }); return () => controller.abort() }, [placeId])
@@ -21,7 +23,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, a
   if (notFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withMap('/', activeMapId)}>← Retour à la carte</Link></section>
   if (!place) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher ce POI</h2><p>{error}</p></section>
   const externalUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
-  const remove = async () => { if (!placeId || !window.confirm(`Supprimer « ${place.name} » ?`)) return; try { await deletePlace(placeId); onPlaceDeleted?.(placeId); navigate(withMap('/', activeMapId)) } catch (caught) { setDeleteError(caught instanceof Error ? caught.message : 'Suppression impossible.') } }
+  const remove = async () => { if (!placeId || !await confirm({ title: 'Supprimer ce lieu ?', message: `« ${place.name} » sera placé dans la corbeille.` })) return; try { await deletePlace(placeId); onPlaceDeleted?.(placeId); navigate(withMap('/', activeMapId)) } catch (caught) { setDeleteError(caught instanceof Error ? caught.message : 'Suppression impossible.') } }
   return <article className={`details-page${embedded ? ' embedded' : ''}`}>
     <div className="details-toolbar">{!embedded && <Link className="back-link" to={withMap('/', activeMapId)}>← Retour à la carte</Link>}<div className="details-actions"><Link className="secondary-button" to={withMap(`/places/${place.id}/edit`, activeMapId)}>Modifier</Link><button className="danger-button" type="button" onClick={() => void remove()}>Supprimer</button></div></div>
     {deleteError && <div className="form-alert" role="alert">{deleteError}</div>}
@@ -32,6 +34,6 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, a
       {(place.condition || place.access || place.danger_level) && <section className="details-section"><h3>Informations pratiques</h3><dl className="details-list">{place.condition && <div className="detail-item"><dt>État</dt><dd>{place.condition}</dd></div>}{place.access && <div className="detail-item"><dt>Accès</dt><dd>{place.access}</dd></div>}{place.danger_level && <div className="detail-item"><dt>Danger</dt><dd>{place.danger_level}</dd></div>}</dl></section>}
       {(place.construction_date || place.abandonment_date) && <section className="details-section"><h3>Chronologie</h3><dl className="details-list">{place.construction_date && <div className="detail-item"><dt>Construction</dt><dd>{place.construction_date}</dd></div>}{place.abandonment_date && <div className="detail-item"><dt>Abandon</dt><dd>{place.abandonment_date}</dd></div>}</dl></section>}
       <section className="details-section photos-section"><h3>Photos</h3><PhotoGallery placeName={place.name} photos={photos} isLoading={photosLoading} errorMessage={photosError} /></section>
-    </div><aside className="details-metadata"><span>Créé le {formatDate(place.created_at)}</span><span>Mis à jour le {formatDate(place.updated_at)}</span></aside></div>
+    </div><aside className="details-metadata"><span>Créé le {formatDate(place.created_at)}</span><span>Mis à jour le {formatDate(place.updated_at)}</span></aside></div>{confirmationDialog}
   </article>
 }

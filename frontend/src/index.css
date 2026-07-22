@@ -3903,6 +3903,25 @@ body {
 .map-members-dialog .invitation-form .primary-button { min-height: 2.3rem; padding: 0.4rem 0.7rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: 0.5rem; font-size: 0.75rem; }
 .map-members-dialog .members-list li { background: var(--cv-color-off-white); border-color: var(--cv-border-subtle); }
 
+.confirmation-overlay { z-index: calc(var(--cv-z-modal) + 20); }
+.confirmation-dialog.cv-modal { display: flex; width: min(27rem, calc(100vw - 2rem)); padding: 0; overflow: hidden; flex-direction: column; color: var(--cv-color-navy); background: var(--cv-color-off-white); border: 1px solid var(--cv-border-subtle); border-radius: 0.9rem; box-shadow: var(--cv-shadow-float); }
+.confirmation-dialog > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; padding: 0.85rem 0.9rem 0.75rem; border-bottom: 1px solid var(--cv-border-subtle); }
+.confirmation-dialog > header h2,
+.confirmation-dialog > header p { margin: 0; }
+.confirmation-dialog > header h2 { margin-top: 0.08rem; font-size: 0.92rem; letter-spacing: -0.01em; }
+.confirmation-dialog > header .cv-workspace-panel__eyebrow { color: #b42318; font-size: 0.55rem; }
+.confirmation-dialog__icon { display: grid; width: 2rem; height: 2rem; place-items: center; color: #b42318; background: #fff0ee; border-radius: 0.55rem; }
+.confirmation-dialog > header .panel-icon-button { width: 2rem; height: 2rem; flex-basis: 2rem; color: var(--cv-color-slate); background: white; border-color: var(--cv-border-strong); border-radius: 0.55rem; }
+.confirmation-dialog > p { margin: 0; padding: 0.85rem 0.9rem; color: var(--cv-color-slate); background: var(--cv-color-mist); font-size: 0.72rem; line-height: 1.45; }
+.confirmation-dialog > footer { display: flex; justify-content: flex-end; gap: 0.4rem; padding: 0.65rem 0.9rem; border-top: 1px solid var(--cv-border-subtle); }
+.confirmation-dialog > footer button { min-height: 2.05rem; padding: 0.34rem 0.65rem; border: 1px solid var(--cv-border-strong); border-radius: 0.5rem; font-size: 0.68rem; font-weight: 700; }
+.confirmation-dialog > footer .secondary-button { color: var(--cv-color-slate); background: white; }
+.confirmation-dialog > footer .secondary-button:hover,
+.confirmation-dialog > footer .secondary-button:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); }
+.confirmation-dialog > footer .danger-button { color: white; background: #c4322b; border-color: #c4322b; }
+.confirmation-dialog > footer .danger-button:hover,
+.confirmation-dialog > footer .danger-button:focus-visible { background: #a92722; border-color: #a92722; outline: 2px solid rgb(196 50 43 / 18%); outline-offset: 1px; }
+
 @media (max-width: 600px) {
   .map-action-dialog.cv-modal { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
   .map-action-dialog .map-place-fields-grid { grid-template-columns: 1fr; }

@@ -4,6 +4,7 @@ import { Copy, Crown, MailPlus, Trash2, UserRound, X } from 'lucide-react'
 import { createMapInvitation, getMapInvitations, getMapMembers, removeMapMember, revokeMapInvitation, transferMapOwnership, updateMapMember } from '../../api/maps'
 import type { MapInvitation, MapMember, PoiMap } from '../../types/map'
 import { useModalFocus } from '../../hooks/useModalFocus'
+import { useConfirmDialog } from '../common/useConfirmDialog'
 
 interface MapMembersDialogProps {
   poiMap: PoiMap
@@ -12,6 +13,7 @@ interface MapMembersDialogProps {
 }
 
 export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDialogProps) {
+  const { confirm, confirmationDialog } = useConfirmDialog()
   const dialog = useRef<HTMLElement>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
   const [members, setMembers] = useState<MapMember[]>([])
@@ -76,7 +78,7 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
                   void updateMapMember(poiMap.id, membership.user.id, role).then((updated) => setMembers((current) => current.map((item) => item.user.id === updated.user.id ? updated : item))).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Modification impossible.'))
                 }}><option value="editor">Éditeur</option><option value="viewer">Lecteur</option></select>
                 {poiMap.can_transfer_ownership && <button className="panel-icon-button" type="button" aria-label={`Transférer à ${membership.user.display_name}`} title="Transférer la propriété" onClick={() => { if (window.confirm(`Transférer la propriété à ${membership.user.email} ?`)) void transferMapOwnership(poiMap.id, membership.user.id).then(onMapUpdated).then(onClose).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Transfert impossible.')) }}><Crown size={15} /></button>}
-                <button className="panel-icon-button danger" type="button" aria-label={`Retirer ${membership.user.display_name}`} title="Retirer le membre" onClick={() => { if (window.confirm(`Retirer ${membership.user.email} de la carte ?`)) void removeMapMember(poiMap.id, membership.user.id).then(() => setMembers((current) => current.filter((item) => item.user.id !== membership.user.id))).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Retrait impossible.')) }}><Trash2 size={15} /></button>
+                <button className="panel-icon-button danger" type="button" aria-label={`Retirer ${membership.user.display_name}`} title="Retirer le membre" onClick={() => void confirm({ title: 'Retirer ce membre ?', message: `${membership.user.email} perdra immédiatement son accès à la carte « ${poiMap.name} ».`, confirmLabel: 'Retirer' }).then((confirmed) => { if (confirmed) void removeMapMember(poiMap.id, membership.user.id).then(() => setMembers((current) => current.filter((item) => item.user.id !== membership.user.id))).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Retrait impossible.')) })}><Trash2 size={15} /></button>
               </div>}
             </li>)}</ul>
           </section>
@@ -91,6 +93,7 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
           </section>
         </>}
       </div>
+      {confirmationDialog}
     </section>
   </div>
 }

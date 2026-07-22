@@ -70,10 +70,10 @@ describe('map URL workspace', () => {
 
   it('reports refusal when deleting a map from the maps panel', async () => {
     vi.mocked(deleteMap).mockRejectedValue(new ApiError(409, 'Conflict'))
-    vi.stubGlobal('confirm', vi.fn(() => true))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Cartes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer Carte France' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Cette carte contient des POI')
   })
 
