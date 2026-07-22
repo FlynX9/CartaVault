@@ -3794,6 +3794,122 @@ body {
 .maps-catalog__summary .maps-catalog__flag { width: 2.85rem; height: 1.9rem; }
 .maps-catalog__summary + .maps-catalog__actions { padding-top: 0.45rem; }
 
+/* Map actions share one compact CartaVault dialog language. */
+.map-action-dialog.cv-modal {
+  display: flex;
+  width: min(38rem, calc(100vw - 2rem));
+  max-height: min(88dvh, 44rem);
+  padding: 0;
+  overflow: hidden;
+  flex-direction: column;
+  color: var(--cv-color-navy);
+  background: var(--cv-color-off-white);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: 1rem;
+  box-shadow: var(--cv-shadow-float);
+}
+
+.map-action-dialog__header {
+  display: flex;
+  min-height: 5.25rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem 0.9rem;
+  background: var(--cv-color-off-white);
+  border-bottom: 1px solid var(--cv-border-subtle);
+}
+
+.map-action-dialog__header h2,
+.map-action-dialog__header p { margin: 0; }
+.map-action-dialog__header h2 { margin-top: 0.12rem; font-size: 1.12rem; line-height: 1.25; letter-spacing: -0.015em; }
+.map-action-dialog__header > div > span { display: block; margin-top: 0.25rem; color: var(--cv-color-gray); font-size: 0.74rem; }
+.map-action-dialog__header .panel-icon-button { width: 2.35rem; height: 2.35rem; flex: 0 0 2.35rem; color: var(--cv-color-slate); background: white; border-color: var(--cv-border-strong); border-radius: 0.65rem; }
+.map-action-dialog__header .panel-icon-button:hover,
+.map-action-dialog__header .panel-icon-button:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); }
+
+.map-action-dialog__body {
+  display: grid;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  overflow-y: auto;
+  background: var(--cv-color-mist);
+}
+
+.map-action-dialog__notice { margin: 0; padding: 0.65rem 0.75rem; color: var(--cv-color-slate); background: rgb(15 166 138 / 7%); border: 1px solid rgb(15 166 138 / 18%); border-radius: 0.6rem; font-size: 0.74rem; line-height: 1.4; }
+.map-action-dialog__section { padding: 0.8rem; background: white; border: 1px solid var(--cv-border-subtle); border-radius: 0.7rem; }
+.map-action-dialog__section h3 { margin: 0; color: var(--cv-color-navy); font-size: 0.86rem; }
+.map-action-dialog__section p { margin: 0.15rem 0 0; color: var(--cv-color-gray); font-size: 0.72rem; }
+.map-action-dialog__section-icon { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; color: var(--cv-color-teal); background: rgb(15 166 138 / 10%); border-radius: 0.55rem; }
+
+.map-action-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--cv-color-off-white);
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.map-action-dialog__footer button { display: inline-flex; min-height: 2.3rem; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.42rem 0.75rem; border: 1px solid var(--cv-border-strong); border-radius: 0.55rem; font-size: 0.75rem; font-weight: 700; }
+.map-action-dialog__footer .secondary-button { color: var(--cv-color-slate); background: white; }
+.map-action-dialog__footer .primary-button { color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); }
+.map-action-dialog__footer .secondary-button:hover,
+.map-action-dialog__footer .secondary-button:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); }
+.map-action-dialog__footer .primary-button:hover,
+.map-action-dialog__footer .primary-button:focus-visible { background: #0b8f77; border-color: #0b8f77; }
+
+.map-action-dialog .map-place-fields-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0; }
+.map-action-dialog .map-place-fields-grid label { display: flex; min-height: 2.65rem; align-items: center; justify-content: space-between; gap: 0.65rem; padding: 0.55rem 0.65rem; color: var(--cv-color-navy); background: white; border: 1px solid var(--cv-border-subtle); border-radius: 0.55rem; font-size: 0.75rem; font-weight: 650; cursor: pointer; }
+.map-action-dialog .map-place-fields-grid label:hover { border-color: rgb(15 166 138 / 38%); }
+.map-action-dialog .map-place-fields-grid input,
+.kmz-export-options input { width: 1rem; height: 1rem; flex: 0 0 auto; margin: 0; accent-color: var(--cv-color-teal); }
+
+.kmz-export-dialog.cv-modal { width: min(30rem, calc(100vw - 2rem)); }
+.kmz-export-dialog .map-action-dialog__header { min-height: 4.4rem; padding: 0.8rem 0.9rem 0.7rem; }
+.kmz-export-dialog .map-action-dialog__header h2 { margin-top: 0.08rem; font-size: 0.96rem; }
+.kmz-export-dialog .map-action-dialog__header > div > span { margin-top: 0.18rem; font-size: 0.66rem; }
+.kmz-export-dialog .cv-workspace-panel__eyebrow { font-size: 0.56rem; }
+.kmz-export-dialog .map-action-dialog__header .panel-icon-button { width: 2rem; height: 2rem; flex-basis: 2rem; border-radius: 0.55rem; }
+.kmz-export-dialog .map-action-dialog__header .panel-icon-button svg { width: 0.9rem; height: 0.9rem; }
+.kmz-export-dialog .map-action-dialog__body { gap: 0.6rem; padding: 0.7rem; }
+.kmz-export-dialog .map-action-dialog__notice { padding: 0.5rem 0.6rem; border-radius: 0.5rem; font-size: 0.65rem; }
+.kmz-export-dialog .map-action-dialog__section { padding: 0.65rem; border-radius: 0.6rem; }
+.kmz-export-dialog .map-action-dialog__section h3 { font-size: 0.74rem; }
+.kmz-export-options { display: grid; gap: 0.5rem; }
+.kmz-export-options > h3 { margin-bottom: 0.1rem; }
+.kmz-export-options label { display: flex; min-height: 2.65rem; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.42rem 0.55rem; background: var(--cv-color-mist); border: 1px solid transparent; border-radius: 0.5rem; cursor: pointer; }
+.kmz-export-options label:hover { background: white; border-color: rgb(15 166 138 / 30%); }
+.kmz-export-options label > span { display: grid; min-width: 0; gap: 0.12rem; }
+.kmz-export-options strong { color: var(--cv-color-navy); font-size: 0.68rem; }
+.kmz-export-options small { color: var(--cv-color-gray); font-size: 0.6rem; line-height: 1.3; }
+.kmz-export-dialog .kmz-export-options input { width: 0.9rem; height: 0.9rem; }
+.kmz-export-dialog .map-action-dialog__footer { gap: 0.4rem; padding: 0.58rem 0.7rem; }
+.kmz-export-dialog .map-action-dialog__footer button { min-height: 2rem; gap: 0.3rem; padding: 0.32rem 0.58rem; border-radius: 0.48rem; font-size: 0.67rem; }
+.kmz-export-dialog .map-action-dialog__footer button svg { width: 0.85rem; height: 0.85rem; }
+.kmz-export-result { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.65rem; }
+.kmz-export-result .kmz-import-warning { grid-column: 1 / -1; margin: 0.25rem 0 0; }
+
+.map-members-dialog.map-action-dialog { width: min(38rem, calc(100vw - 2rem)); }
+.map-members-dialog .map-members-dialog__body { gap: 0.75rem; padding: 0.9rem; background: var(--cv-color-mist); }
+.map-members-dialog .map-members-section { padding: 0.75rem; background: white; border-color: var(--cv-border-subtle); border-radius: 0.7rem; }
+.map-members-dialog .invitation-form { margin-top: 0; }
+.map-members-dialog .invitation-form input,
+.map-members-dialog .invitation-form select,
+.map-members-dialog .invitation-link input { min-height: 2.3rem; padding: 0.4rem 0.55rem; border-color: var(--cv-border-strong); border-radius: 0.5rem; font-size: 0.75rem; }
+.map-members-dialog .invitation-form input:focus,
+.map-members-dialog .invitation-form select:focus { border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 14%); outline-offset: 0; }
+.map-members-dialog .invitation-form .primary-button { min-height: 2.3rem; padding: 0.4rem 0.7rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: 0.5rem; font-size: 0.75rem; }
+.map-members-dialog .members-list li { background: var(--cv-color-off-white); border-color: var(--cv-border-subtle); }
+
+@media (max-width: 600px) {
+  .map-action-dialog.cv-modal { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
+  .map-action-dialog .map-place-fields-grid { grid-template-columns: 1fr; }
+  .map-action-dialog__header { padding-inline: 0.9rem; }
+  .map-action-dialog__footer { position: sticky; bottom: 0; }
+}
+
 .leaflet-popup-content {
   width: min(28rem, calc(100vw - 2rem)) !important;
 }

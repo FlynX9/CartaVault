@@ -41,9 +41,9 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
 
   const pendingInvitations = invitations.filter((item) => item.accepted_at === null && item.revoked_at === null)
 
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <section ref={dialog} className="map-members-dialog" role="dialog" aria-modal="true" aria-labelledby="members-title">
-      <header className="map-members-dialog__header">
+  return <div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <section ref={dialog} className="cv-modal map-action-dialog map-members-dialog" role="dialog" aria-modal="true" aria-labelledby="members-title">
+      <header className="map-action-dialog__header map-members-dialog__header">
         <div><p className="cv-workspace-panel__eyebrow">Partage privé</p><h2 id="members-title">Accès à {poiMap.name}</h2><span>Gérez les membres et invitez de nouveaux collaborateurs.</span></div>
         <button ref={closeButton} className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button>
       </header>
