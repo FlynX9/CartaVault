@@ -3778,6 +3778,17 @@ body {
 }
 
 .maps-catalog__preview { height: 6.75rem; }
+.maps-catalog__preview .maps-catalog__flag {
+  display: block;
+  width: 3.25rem;
+  height: 2.2rem;
+  object-fit: cover;
+  border: 1px solid rgb(13 27 42 / 10%);
+  border-radius: 0.25rem;
+  filter: drop-shadow(0 2px 3px rgb(13 27 42 / 14%));
+}
+.maps-catalog__preview .maps-catalog__flag-fallback { color: var(--cv-color-teal); }
+.maps-catalog__preview .maps-catalog__country-code { color: var(--cv-color-slate); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.14em; }
 
 .leaflet-popup-content {
   width: min(28rem, calc(100vw - 2rem)) !important;
