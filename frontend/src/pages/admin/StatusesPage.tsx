@@ -169,14 +169,32 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
             <label className="form-field status-form-name"><span>Nom *</span><input required maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
             <fieldset className="form-field status-functional-state">
               <legend>État de visite *</legend>
-              <label><input type="radio" name="functional-state" value="non_visited" checked={form.functional_state === 'non_visited'} onChange={() => setForm({ ...form, functional_state: 'non_visited' })} /> Non visité</label>
-              <label><input type="radio" name="functional-state" value="visited" checked={form.functional_state === 'visited'} onChange={() => setForm({ ...form, functional_state: 'visited' })} /> Visité</label>
+              <div className="status-functional-options">
+                <label><input type="radio" name="functional-state" value="non_visited" checked={form.functional_state === 'non_visited'} onChange={() => setForm({ ...form, functional_state: 'non_visited' })} /> Non visité</label>
+                <label><input type="radio" name="functional-state" value="visited" checked={form.functional_state === 'visited'} onChange={() => setForm({ ...form, functional_state: 'visited' })} /> Visité</label>
+              </div>
               <small>Cet état permet à CartaVault de regrouper les lieux dans les filtres « Visités » et « Non visités ». Il reste indépendant du nom du statut.</small>
             </fieldset>
-            <label className="form-field"><span>Couleur</span><input className="cv-status-color-input" aria-label="Couleur" type="color" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value.toUpperCase() })} /></label>
-            <label className="form-field"><span>Ordre</span><input type="number" min="0" required value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: event.target.value })} /></label>
-            <label className="checkbox-field"><input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><span>Actif</span></label>
-            <label className="checkbox-field"><input type="checkbox" checked={form.is_default} onChange={(event) => setForm({ ...form, is_default: event.target.checked })} /><span>Statut par défaut</span></label>
+            <fieldset className="form-field status-settings">
+              <legend>Paramètres du statut</legend>
+              <div className="status-settings-fields">
+                <label className="form-field status-color-field">
+                  <span>Couleur</span>
+                  <span className="cv-status-color-swatch" style={{ backgroundColor: form.color }}>
+                    <input className="cv-status-color-input" aria-label="Couleur" type="color" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value.toUpperCase() })} />
+                  </span>
+                </label>
+                <label className="form-field status-order-field"><span>Ordre d’affichage</span><input type="number" min="0" required value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: event.target.value })} /></label>
+              </div>
+              <div className="status-checkbox-help">
+                <label className="checkbox-field"><input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><strong>Actif</strong></label>
+                <small>Un statut inactif reste associé aux lieux existants, mais ne peut plus être choisi pour de nouveaux lieux.</small>
+              </div>
+              <div className="status-checkbox-help">
+                <label className="checkbox-field"><input type="checkbox" checked={form.is_default} onChange={(event) => setForm({ ...form, is_default: event.target.checked })} /><strong>Statut par défaut</strong></label>
+                <small>Ce statut est automatiquement proposé lors de la création d’un nouveau lieu.</small>
+              </div>
+            </fieldset>
           </div>
           <div className="admin-form-actions"><button className="primary-button" type="submit">Enregistrer</button>{(editing || isPanel) && <button className="secondary-button" type="button" onClick={reset}>Annuler</button>}</div>
         </form>

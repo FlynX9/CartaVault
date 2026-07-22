@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createStatus, deleteStatus, getStatuses, updateStatus } from '../../api/statuses'
@@ -39,7 +39,7 @@ describe('StatusesPage', () => {
     fireEvent.change(screen.getByLabelText('Nom *'), { target: { value: 'À revoir' } })
     expect(screen.queryByLabelText('Couleur hexadécimale')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Couleur'), { target: { value: '#abcdef' } })
-    fireEvent.change(screen.getByLabelText('Ordre'), { target: { value: '25' } })
+    fireEvent.change(screen.getByLabelText('Ordre d’affichage'), { target: { value: '25' } })
     fireEvent.click(screen.getByRole('radio', { name: 'Visité' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(createStatus).toHaveBeenCalledWith(expect.objectContaining({ name: 'À revoir', color: '#ABCDEF', sort_order: 25, functional_state: 'visited', map_id: 'map-id' })))
@@ -51,6 +51,14 @@ describe('StatusesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Modifier À faire' }))
 
     expect(screen.getByText(/regrouper les lieux dans les filtres/)).toBeVisible()
+    const settings = screen.getByRole('group', { name: 'Paramètres du statut' })
+    expect(settings).toBeVisible()
+    expect(within(settings).getByLabelText('Couleur')).toBeEnabled()
+    expect(within(settings).getByLabelText('Ordre d’affichage')).toBeVisible()
+    expect(within(settings).getByRole('checkbox', { name: 'Actif' })).toBeVisible()
+    expect(within(settings).getByRole('checkbox', { name: 'Statut par défaut' })).toBeVisible()
+    expect(screen.getByText(/Un statut inactif reste associé/)).toBeVisible()
+    expect(screen.getByText(/automatiquement proposé lors de la création/)).toBeVisible()
     fireEvent.click(screen.getByRole('radio', { name: 'Visité' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     expect(await screen.findByText(/modifiera le classement fonctionnel de 2 lieux/)).toBeVisible()
