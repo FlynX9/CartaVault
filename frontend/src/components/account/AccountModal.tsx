@@ -99,7 +99,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'avatar' && <><AccountHeading title="Avatar" description="Une image carrée, traitée et stockée séparément de vos photos de lieux." /><div className="account-avatar-editor"><div className="account-avatar large">{avatar ? <img src={avatar} alt="Aperçu de l’avatar" /> : initials}</div><div><label className="account-button account-button--secondary"><Upload size={15} />Importer une image<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')}><Trash2 size={15} />Supprimer</button>}<small>JPEG, PNG ou WebP · 5 Mio maximum.</small></div></div></>}
           {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
-          {section === 'preferences' && <><PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} /><CredentialPreferencesPanel preferences={preferences} setPreferences={setPreferences} /></>}
+          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
           {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
         </main>
       </section>
@@ -117,44 +117,51 @@ function SessionsSection({ sessions, run, reload }: { sessions: AccountSession[]
 
 function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
   const { setLocale, t } = useI18n()
-  const [googleAvailable, setGoogleAvailable] = useState(false)
+  const [credentialStatus, setCredentialStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
+  const [storageAvailable, setStorageAvailable] = useState(false)
+  const [routingError, setRoutingError] = useState<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
-    const loadProviders = () => { void getRoutingProviders(controller.signal).then((result) => setGoogleAvailable(result.providers.some((item) => item.id === 'google' && item.available))).catch(() => setGoogleAvailable(false)) }
-    loadProviders(); window.addEventListener('cartavault:routing-credential-updated', loadProviders)
-    return () => { controller.abort(); window.removeEventListener('cartavault:routing-credential-updated', loadProviders) }
+    void Promise.all([getRoutingProviders(controller.signal), getGoogleRoutesCredential(controller.signal)])
+      .then(([providers, credential]) => { setStorageAvailable(providers.credential_storage_available); setCredentialStatus(credential) })
+      .catch(() => { setStorageAvailable(false); setCredentialStatus({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }) })
+    return () => controller.abort()
   }, [])
   const update = <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => setPreferences({ ...preferences, [key]: value })
   const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
   const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
   const googleSelected = preferences.routing.provider === 'google'
-  return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><form className="account-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved')) }}>
+  const handleCredentialChange = async (next: GoogleRoutesCredentialStatus, providerReset?: boolean) => {
+    setCredentialStatus(next)
+    const providers = await getRoutingProviders()
+    setStorageAvailable(providers.credential_storage_available)
+    if (providerReset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } })
+  }
+  return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><form className="account-form" onSubmit={(event) => {
+    event.preventDefault()
+    setRoutingError(null)
+    if (googleSelected && !credentialStatus.verified) {
+      setRoutingError(t('account.preferences.googleCredentialRequired'))
+      return
+    }
+    void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved'))
+  }}>
     <label><span id="account-language-label">{t('common.language')}</span><select aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select><small>{t('account.preferences.languageHelp')}</small></label>
     <label>{t('account.preferences.basemap')}<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label>
     <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select></label>
     <label>{t('account.preferences.startup')}<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select></label>
     <label>{t('account.preferences.timezone')}<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label>
     <fieldset className="account-routing-preferences"><legend>{t('account.preferences.routing')}</legend>
-      <label>{t('account.preferences.engine')}<select value={preferences.routing.provider} onChange={(event) => updateRouting('provider', event.target.value as AccountPreferences['routing']['provider'])}><option value="osrm">OSRM</option><option value="google" disabled={!googleAvailable}>Google Routes</option></select></label>
-      <small>{googleAvailable ? t('account.preferences.osrmAvailable') : t('account.preferences.googleUnavailable')}</small>
+      <label>{t('account.preferences.engine')}<select value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select></label>
+      <small>{storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')}</small>
+      {routingError && <div className="form-alert" role="alert">{routingError}</div>}
       <label className="checkbox-field"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} />{t('account.preferences.stayInCountry')}</label>
       {googleSelected && <div className="account-routing-options"><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} />{t('account.preferences.avoidTolls')}</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} />{t('account.preferences.avoidHighways')}</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} />{t('account.preferences.avoidFerries')}</label><label>{t('account.preferences.traffic')}<select value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></label></div>}
       <small>{t('account.preferences.countryNotice')}</small>
     </fieldset>
     <button className="account-button account-button--primary" type="submit">{t('common.save')}</button>
     <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
-  </form></>
-}
-
-function CredentialPreferencesPanel({ preferences, setPreferences }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void }) {
-  const [status, setStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
-  const [storageAvailable, setStorageAvailable] = useState(false)
-  useEffect(() => {
-    const controller = new AbortController()
-    void Promise.all([getGoogleRoutesCredential(controller.signal), getRoutingProviders(controller.signal)]).then(([credential, providers]) => { setStatus(credential); setStorageAvailable(providers.credential_storage_available) }).catch(() => setStorageAvailable(false))
-    return () => controller.abort()
-  }, [])
-  return <GoogleRoutesCredentialPanel status={status} storageAvailable={storageAvailable} onChanged={async (next, providerReset) => { setStatus(next); const providers = await getRoutingProviders(); setStorageAvailable(providers.credential_storage_available); if (providerReset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } }); window.dispatchEvent(new Event('cartavault:routing-credential-updated')) }} />
+  </form>{googleSelected && <GoogleRoutesCredentialPanel status={credentialStatus} storageAvailable={storageAvailable} onChanged={handleCredentialChange} />}</>
 }
 
 function DangerSection({ profile, run }: { profile: AccountProfile; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
