@@ -12,6 +12,7 @@ import type { PoiMap } from '../../types/map'
 import type { PlaceStatusSummary } from '../../types/status'
 import type { DraftPosition } from '../../types/place'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
+import { getTagColorStyle } from '../../tags/tagColors'
 
 interface PlaceFormProps {
   initialValues: PlaceFormValues
@@ -167,7 +168,7 @@ export function PlaceForm({
           <label className="form-field tag-field">
             <span>Tags</span>
             <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={tagMenuOpen} onClick={() => setTagMenuOpen((open) => !open)}><span className="status-picker-spacer" /><span>{values.tagIds.length ? `${values.tagIds.length} tag${values.tagIds.length > 1 ? 's' : ''} sélectionné${values.tagIds.length > 1 ? 's' : ''}` : 'Ajouter des tags'}</span><ChevronDown aria-hidden="true" size={18} /></button>{tagMenuOpen && <div className="status-picker-options tag-picker-options" role="listbox" aria-label="Tags"><input type="search" autoFocus placeholder="Rechercher un tag" value={tagQuery} onChange={(event) => setTagQuery(event.target.value)} />{visibleTags.map((tag) => <button key={tag.id} type="button" role="option" aria-selected={values.tagIds.includes(tag.id)} onClick={() => toggleTag(tag.id)}>{tag.name}</button>)}</div>}</div>
-            {values.tagIds.length > 0 && <div className="selected-tag-list" aria-label="Tags sélectionnés">{values.tagIds.map((tagId) => { const tag = tags.find((item) => item.id === tagId); return tag ? <span key={tag.id}>{tag.name}<button type="button" aria-label={`Retirer ${tag.name}`} onClick={() => toggleTag(tag.id)}><X aria-hidden="true" size={13} /></button></span> : null })}</div>}
+            {values.tagIds.length > 0 && <div className="selected-tag-list" aria-label="Tags sélectionnés">{values.tagIds.map((tagId) => { const tag = tags.find((item) => item.id === tagId); return tag ? <span key={tag.id} style={getTagColorStyle(tag.color)}>{tag.name}<button type="button" aria-label={`Retirer ${tag.name}`} onClick={() => toggleTag(tag.id)}><X aria-hidden="true" size={13} /></button></span> : null })}</div>}
             {tags.length === 0 && <small className="form-hint">Aucun tag disponible.</small>}
           </label>
         </div>

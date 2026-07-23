@@ -26,13 +26,16 @@ export interface TagRead {
   id: string
   map_id?: string
   name: string
+  color: string
 }
 
 export interface TagCreatePayload {
   map_id?: string
   name: string
+  color?: string
 }
 
 export interface TagUpdatePayload {
   name?: string
+  color?: string
 }

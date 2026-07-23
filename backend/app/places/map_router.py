@@ -98,6 +98,7 @@ def get_map_places(
             selectinload(Place.tags).load_only(
                 Tag.id,
                 Tag.name,
+                Tag.color,
             ),
             selectinload(Place.status).load_only(
                 PlaceStatus.id,
@@ -186,6 +187,7 @@ def get_map_places(
                 MapTagRead(
                     id=tag.id,
                     name=tag.name,
+                    color=tag.color,
                 )
                 for tag in place.tags
             ],

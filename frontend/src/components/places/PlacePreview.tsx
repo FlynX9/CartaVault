@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { PreviewPlace } from '../../types/place'
 import { withMap } from '../../utils/map'
 import { buildGoogleMapsUrl } from '../../utils/googleMaps'
+import { getTagColorStyle } from '../../tags/tagColors'
 
 interface PlacePreviewProps {
   place: PreviewPlace
@@ -60,7 +61,7 @@ export function PlacePreview({ place, activeMapId = null, onClose, embedded = fa
         {place.tags.length > 0 ? (
           <ul className="chip-list">
             {place.tags.map((tag) => (
-              <li className="chip tag" key={tag.id}>
+              <li className="chip tag" key={tag.id} style={getTagColorStyle(tag.color)}>
                 {tag.name}
               </li>
             ))}

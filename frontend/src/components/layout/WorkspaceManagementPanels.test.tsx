@@ -12,7 +12,7 @@ vi.mock('../../api/statuses', () => ({ getStatuses: vi.fn(), createStatus: vi.fn
 
 beforeEach(() => {
   vi.mocked(getCategories).mockResolvedValue([{ id: 'category-id', name: 'Patrimoine', description: 'Ancien bâti', icon: 'mdi:castle' }])
-  vi.mocked(getTags).mockResolvedValue([{ id: 'tag-id', name: 'Historique' }])
+  vi.mocked(getTags).mockResolvedValue([{ id: 'tag-id', name: 'Historique', color: '#0FA68A' }])
   vi.mocked(getStatuses).mockResolvedValue([{ id: 'status-id', map_id: 'map-id', name: 'À voir', slug: 'a-voir', color: '#2563EB', functional_state: 'non_visited', sort_order: 10, is_default: false, is_active: true, places_count: 2, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' }])
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })

@@ -5,6 +5,7 @@ import type { CategoryUpdatePayload } from '../../types/admin'
 import type { EntityManagementConfig } from '../../pages/admin/EntityManagementPage'
 import type { EntityFormValues } from './EntityForm'
 import type { ManagedEntity } from './EntityList'
+import { DEFAULT_TAG_COLOR, normalizeTagColor } from '../../tags/tagColors'
 
 function normalizeDescription(value: string): string | null {
   const description = value.trim()
@@ -27,11 +28,17 @@ export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
 })
 
 export const tagsConfig = (mapId?: string): EntityManagementConfig => ({
-  singularLabel: 'un tag', pluralLabel: 'Tags', supportsDescription: false,
+  singularLabel: 'un tag', pluralLabel: 'Tags', supportsDescription: false, supportsColor: true,
   load: (signal, q) => mapId ? getTags(signal, q, mapId) : getTags(signal, q),
   save: (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim()
-    return entity === null ? createTag({ ...(mapId ? { map_id: mapId } : {}), name }) : name === entity.name ? Promise.resolve(entity) : updateTag(entity.id, { name })
+    const color = normalizeTagColor(values.color ?? DEFAULT_TAG_COLOR)
+    if (entity === null) return createTag({ ...(mapId ? { map_id: mapId } : {}), name, color })
+    const payload = {
+      ...(name !== entity.name ? { name } : {}),
+      ...(color !== normalizeTagColor(entity.color) ? { color } : {}),
+    }
+    return Object.keys(payload).length === 0 ? Promise.resolve(entity) : updateTag(entity.id, payload)
   },
   remove: deleteTag,
 })

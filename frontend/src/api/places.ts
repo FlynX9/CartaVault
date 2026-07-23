@@ -22,6 +22,7 @@ import type {
 import { buildPlaceFilterSearchParams, DEFAULT_PLACE_FILTERS } from '../places/placeFilters'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { parseMapStatusSummary, parseStatusSummary } from './statuses'
+import { normalizeTagColor } from '../tags/tagColors'
 import {
   isRecord,
   readArray,
@@ -70,7 +71,15 @@ function parsePlaceCategory(value: unknown): PlaceCategory {
 }
 
 function parsePlaceTag(value: unknown): PlaceTag {
-  return parseNamedEntity(value, 'le tag')
+  const tag = parseNamedEntity(value, 'le tag')
+  if (!isRecord(value)) throw new Error("Le tag du POI est invalide.")
+  return { ...tag, color: normalizeTagColor(readString(value, 'color', 'Le tag du POI')) }
+}
+
+function parseMapTag(value: unknown): MapTag {
+  const tag = parseNamedEntity(value, 'le tag')
+  if (!isRecord(value)) throw new Error("Le tag cartographique est invalide.")
+  return { ...tag, color: normalizeTagColor(readString(value, 'color', 'Le tag cartographique')) }
 }
 
 function parsePlaceMap(value: unknown): PlaceMapSummary {
@@ -103,9 +112,7 @@ function parseMapPlace(value: unknown): MapPlace {
     latitude: readNumber(value, 'latitude', context),
     status: parseMapStatusSummary(value.status),
     categories: readArray(value, 'categories', context).map(parseMapCategory),
-    tags: readArray(value, 'tags', context).map((tag) =>
-      parseNamedEntity(tag, 'le tag'),
-    ),
+    tags: readArray(value, 'tags', context).map(parseMapTag),
     is_favorite: value.is_favorite === true,
     is_visited: value.is_visited === true,
     interest_rating: typeof value.interest_rating === 'number' ? readNumber(value, 'interest_rating', context) : null,

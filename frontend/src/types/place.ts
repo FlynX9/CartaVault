@@ -2,9 +2,9 @@ import type { CountrySummary } from './map'
 import type { MapStatusSummary, PlaceStatusSummary } from './status'
 
 export interface MapCategory { id: string; name: string; icon?: string; is_primary?: boolean }
-export interface MapTag { id: string; name: string }
+export interface MapTag { id: string; name: string; color?: string }
 export interface PlaceCategory { id: string; name: string; description: string | null; icon?: string; is_primary?: boolean; marks_as_visited?: boolean }
-export interface PlaceTag { id: string; name: string }
+export interface PlaceTag { id: string; name: string; color?: string }
 export interface PlaceMapSummary { id: string; name: string; country: CountrySummary }
 export interface PlaceLink { id: string; url: string; label: string | null; sort_order: number; created_at: string; updated_at: string }
 export interface PlaceHistoryEvent { id: string; user_id: string | null; action: string; changes: Record<string, unknown>; created_at: string }

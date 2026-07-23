@@ -12,7 +12,7 @@ vi.mock('../../api/tags', () => ({
   deleteTag: vi.fn(),
 }))
 
-const TAG = { id: '22222222-2222-4222-8222-222222222222', name: 'Brique' }
+const TAG = { id: '22222222-2222-4222-8222-222222222222', name: 'Brique', color: '#0FA68A' }
 
 beforeEach(() => {
   vi.mocked(getTags).mockResolvedValue([TAG])
@@ -43,8 +43,9 @@ describe('TagsPage', () => {
     render(<TagsPage />)
     await screen.findByText('Brique')
     fireEvent.change(openTagForm(), { target: { value: '  Rouille ' } })
+    fireEvent.change(screen.getByLabelText('Couleur du tag'), { target: { value: '#336699' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(createTag).toHaveBeenCalledWith({ name: 'Rouille' }))
+    await waitFor(() => expect(createTag).toHaveBeenCalledWith({ name: 'Rouille', color: '#336699' }))
   })
 
   it('shows a clear duplicate-name conflict', async () => {
@@ -57,12 +58,13 @@ describe('TagsPage', () => {
   })
 
   it('modifies a tag', async () => {
-    vi.mocked(updateTag).mockResolvedValue({ ...TAG, name: 'Pierre' })
+    vi.mocked(updateTag).mockResolvedValue({ ...TAG, name: 'Pierre', color: '#ABCDEF' })
     render(<TagsPage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Modifier Brique' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Nom *' }), { target: { value: 'Pierre' } })
+    fireEvent.change(screen.getByLabelText('Couleur du tag'), { target: { value: '#abcdef' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(updateTag).toHaveBeenCalledWith(TAG.id, { name: 'Pierre' }))
+    await waitFor(() => expect(updateTag).toHaveBeenCalledWith(TAG.id, { name: 'Pierre', color: '#ABCDEF' }))
   })
 
   it('deletes a tag after explicit confirmation', async () => {

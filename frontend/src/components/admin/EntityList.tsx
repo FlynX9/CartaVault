@@ -2,10 +2,56 @@ import { Pencil, Trash2 } from 'lucide-react'
 
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 
-export interface ManagedEntity { id: string; name: string; description?: string | null; icon?: string; marks_as_visited?: boolean }
-interface EntityListProps { entities: ManagedEntity[]; emptyMessage: string; onEdit: (entity: ManagedEntity) => void; onDelete: (entity: ManagedEntity) => void; variant?: 'page' | 'panel'; readOnly?: boolean }
+export interface ManagedEntity {
+  id: string
+  name: string
+  description?: string | null
+  icon?: string
+  marks_as_visited?: boolean
+  color?: string
+}
+
+interface EntityListProps {
+  entities: ManagedEntity[]
+  emptyMessage: string
+  onEdit: (entity: ManagedEntity) => void
+  onDelete: (entity: ManagedEntity) => void
+  variant?: 'page' | 'panel'
+  readOnly?: boolean
+}
 
 export function EntityList({ entities, emptyMessage, onEdit, onDelete, variant = 'page', readOnly = false }: EntityListProps) {
   if (entities.length === 0) return <p className="admin-empty">{emptyMessage}</p>
-  return <ul className={`admin-entity-list${variant === 'panel' ? ' cv-panel-entity-list' : ''}`}>{entities.map((entity) => <li key={entity.id}>{variant === 'panel' && entity.icon && <CategoryIconPreview iconId={entity.icon} size={18} showLabel={false} />}<div className="entity-summary"><strong>{entity.name}</strong>{'description' in entity && entity.description && <p>{entity.description}</p>}</div>{!readOnly && <div className="entity-actions">{variant === 'panel' ? <><button className="panel-icon-button" type="button" aria-label={`Modifier ${entity.name}`} title={`Modifier ${entity.name}`} onClick={() => onEdit(entity)}><Pencil size={16} /></button><button className="panel-icon-button danger" type="button" aria-label={`Supprimer ${entity.name}`} title={`Supprimer ${entity.name}`} onClick={() => onDelete(entity)}><Trash2 size={16} /></button></> : <><button className="secondary-button" type="button" onClick={() => onEdit(entity)}>Modifier {entity.name}</button><button className="danger-button" type="button" onClick={() => onDelete(entity)}>Supprimer {entity.name}</button></>}</div>}</li>)}</ul>
+
+  return (
+    <ul className={`admin-entity-list${variant === 'panel' ? ' cv-panel-entity-list' : ''}`}>
+      {entities.map((entity) => (
+        <li key={entity.id}>
+          {variant === 'panel' && entity.icon && <CategoryIconPreview iconId={entity.icon} size={18} showLabel={false} />}
+          {variant === 'panel' && entity.color && (
+            <span className="entity-list-color" style={{ backgroundColor: entity.color }} aria-label={`Couleur ${entity.color}`} />
+          )}
+          <div className="entity-summary">
+            <strong>{entity.name}</strong>
+            {'description' in entity && entity.description && <p>{entity.description}</p>}
+          </div>
+          {!readOnly && (
+            <div className="entity-actions">
+              {variant === 'panel' ? (
+                <>
+                  <button className="panel-icon-button" type="button" aria-label={`Modifier ${entity.name}`} title={`Modifier ${entity.name}`} onClick={() => onEdit(entity)}><Pencil size={16} /></button>
+                  <button className="panel-icon-button danger" type="button" aria-label={`Supprimer ${entity.name}`} title={`Supprimer ${entity.name}`} onClick={() => onDelete(entity)}><Trash2 size={16} /></button>
+                </>
+              ) : (
+                <>
+                  <button className="secondary-button" type="button" onClick={() => onEdit(entity)}>Modifier {entity.name}</button>
+                  <button className="danger-button" type="button" onClick={() => onDelete(entity)}>Supprimer {entity.name}</button>
+                </>
+              )}
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
 }

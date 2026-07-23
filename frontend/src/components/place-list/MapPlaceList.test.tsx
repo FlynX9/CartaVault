@@ -82,7 +82,7 @@ describe('MapPlaceList', () => {
   })
 
   it('renders map information and filters alongside each POI', async () => {
-    const place = { id: 'place-id', name: 'Manufacture', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [{ id: 'category-id', name: 'Église', icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Patrimoine' }] } as never
+    const place = { id: 'place-id', name: 'Manufacture', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [{ id: 'category-id', name: 'Église', icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Patrimoine', color: '#336699' }] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
     const select = vi.fn()
     const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId="place-id" refreshVersion={0} removedPlaceId={null} onPlaceSelect={select} /></MemoryRouter>)
@@ -93,6 +93,7 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.places-advanced-filter')).toBeVisible()
     expect(container.querySelector('.places-place-category')).toHaveTextContent('Église')
     expect(container.querySelector('.place-list-tag')).toHaveTextContent('Patrimoine')
+    expect(container.querySelector('.place-list-tag')).toHaveStyle({ backgroundColor: '#336699', color: '#FFFFFF' })
     expect(container.querySelector('.place-list-category-bubble')).toHaveStyle({ backgroundColor: '#2563EB', borderColor: '#2563EB' })
     expect(container.querySelector('.place-list-category-bubble [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
     expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).toBeVisible()

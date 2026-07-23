@@ -9,6 +9,7 @@ import type { PlaceDetails } from '../types/place'
 import { buildGoogleMapsUrl } from '../utils/googleMaps'
 import { withMap } from '../utils/map'
 import { useConfirmDialog } from '../components/common/useConfirmDialog'
+import { getTagColorStyle } from '../tags/tagColors'
 
 interface Props { placeId?: string; embedded?: boolean; activeMapId?: string | null; onPlaceDeleted?: (placeId: string) => void }
 const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
@@ -30,7 +31,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, a
     <header className="details-hero"><p className="details-kicker">Point d’intérêt</p><h2>{place.name}</h2>{place.description && <p>{place.description}</p>}{place.latitude !== null && place.longitude !== null && <p>{place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}</p>}{externalUrl && <a className="external-map-link" href={externalUrl} target="_blank" rel="noopener noreferrer">Ouvrir dans Google Maps</a>}</header>
     <div className="details-content"><div className="details-main-column">
       <section className="details-section"><h3>Localisation</h3><dl className="details-list"><div className="detail-item"><dt>Carte</dt><dd>{place.map.name}</dd></div><div className="detail-item"><dt>Pays</dt><dd>{place.map.country.name}</dd></div>{place.region && <div className="detail-item"><dt>Région</dt><dd>{place.region}</dd></div>}</dl></section>
-      {(place.categories.length > 0 || place.tags.length > 0) && <section className="details-section"><h3>Classement</h3><ul className="chip-list">{place.categories.map((item) => <li className="chip" key={item.id}>{item.name}</li>)}{place.tags.map((item) => <li className="chip tag" key={item.id}>{item.name}</li>)}</ul></section>}
+      {(place.categories.length > 0 || place.tags.length > 0) && <section className="details-section"><h3>Classement</h3><ul className="chip-list">{place.categories.map((item) => <li className="chip" key={item.id}>{item.name}</li>)}{place.tags.map((item) => <li className="chip tag" key={item.id} style={getTagColorStyle(item.color)}>{item.name}</li>)}</ul></section>}
       {(place.condition || place.access || place.danger_level) && <section className="details-section"><h3>Informations pratiques</h3><dl className="details-list">{place.condition && <div className="detail-item"><dt>État</dt><dd>{place.condition}</dd></div>}{place.access && <div className="detail-item"><dt>Accès</dt><dd>{place.access}</dd></div>}{place.danger_level && <div className="detail-item"><dt>Danger</dt><dd>{place.danger_level}</dd></div>}</dl></section>}
       {(place.construction_date || place.abandonment_date) && <section className="details-section"><h3>Chronologie</h3><dl className="details-list">{place.construction_date && <div className="detail-item"><dt>Construction</dt><dd>{place.construction_date}</dd></div>}{place.abandonment_date && <div className="detail-item"><dt>Abandon</dt><dd>{place.abandonment_date}</dd></div>}</dl></section>}
       <section className="details-section photos-section"><h3>Photos</h3><PhotoGallery placeName={place.name} photos={photos} isLoading={photosLoading} errorMessage={photosError} /></section>

@@ -127,6 +127,7 @@ def place_to_read(
                 id=tag.id,
                 map_id=tag.map_id,
                 name=tag.name,
+                color=tag.color,
             )
             for tag in place.tags
         ],
@@ -380,7 +381,7 @@ def get_place_facets(
     ids = select(base.c.id)
     def total(predicate): return int(database_session.scalar(select(func.count()).select_from(Place).where(Place.id.in_(ids), predicate)) or 0)
     categories = [PlaceFacetItem(id=row.id, name=row.name, icon=row.icon, count=row.count) for row in database_session.execute(select(Category.id, Category.name, Category.icon, func.count(func.distinct(place_categories_table.c.place_id)).label("count")).join(place_categories_table, Category.id == place_categories_table.c.category_id).where(place_categories_table.c.place_id.in_(ids)).group_by(Category.id, Category.name, Category.icon).order_by(Category.name)).all()]
-    tags = [PlaceFacetItem(id=row.id, name=row.name, count=row.count) for row in database_session.execute(select(Tag.id, Tag.name, func.count(func.distinct(place_tags_table.c.place_id)).label("count")).join(place_tags_table, Tag.id == place_tags_table.c.tag_id).where(place_tags_table.c.place_id.in_(ids)).group_by(Tag.id, Tag.name).order_by(Tag.name)).all()]
+    tags = [PlaceFacetItem(id=row.id, name=row.name, color=row.color, count=row.count) for row in database_session.execute(select(Tag.id, Tag.name, Tag.color, func.count(func.distinct(place_tags_table.c.place_id)).label("count")).join(place_tags_table, Tag.id == place_tags_table.c.tag_id).where(place_tags_table.c.place_id.in_(ids)).group_by(Tag.id, Tag.name, Tag.color).order_by(Tag.name)).all()]
     statuses = [PlaceFacetItem(id=row.id, name=row.name, color=row.color, count=row.count) for row in database_session.execute(select(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color, func.count(Place.id).label("count")).join(Place, Place.status_id == PlaceStatus.id).where(Place.id.in_(ids), PlaceStatus.is_active.is_(True)).group_by(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color).order_by(PlaceStatus.sort_order, PlaceStatus.name)).all()]
     regions = [PlaceFacetItem(value=row.value, count=row.count) for row in database_session.execute(select(Place.region.label("value"), func.count(Place.id).label("count")).where(Place.id.in_(ids), Place.region.is_not(None), Place.region != "").group_by(Place.region).order_by(Place.region)).all()]
 

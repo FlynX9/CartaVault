@@ -39,7 +39,7 @@ def get_tag(tag_id: UUID, database_session: Session = Depends(get_db), current_u
 def create_tag(data: TagCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> TagRead:
     require_map_role(database_session, data.map_id, current_user, "editor")
     QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.TAGS_PER_MAP_MAX, scope_id=data.map_id)
-    tag = Tag(map_id=data.map_id, name=data.name)
+    tag = Tag(map_id=data.map_id, name=data.name, color=data.color)
     try:
         database_session.add(tag)
         database_session.commit()

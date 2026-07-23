@@ -11,6 +11,7 @@ import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { PlacePopupActions } from './PlacePopupActions'
 import { PlacePopupGallery } from './PlacePopupGallery'
 import { useConfirmDialog } from '../common/useConfirmDialog'
+import { getTagColorStyle } from '../../tags/tagColors'
 
 interface Props { placeId: string; canEdit?: boolean; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
 
@@ -82,7 +83,7 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
           </div>
         </div>
         <p className="popup-primary-category">{primaryCategory ? <><CategoryIconPreview iconId={primaryCategory.icon} size={16} showLabel={false} />{primaryCategory.name}</> : 'Catégorie non renseignée'}</p>
-        <section className="popup-overview-tag-section" aria-label="Tags"><span>Tags</span><ul className="popup-chips popup-overview-tags">{place.tags.length > 0 ? place.tags.slice(0, 3).map((item) => <li className="tag" key={item.id}>{item.name}</li>) : <li className="popup-empty-chip">Aucun tag</li>}{place.tags.length > 3 && <li className="tag popup-tag-more">+{place.tags.length - 3}</li>}</ul></section>
+        <section className="popup-overview-tag-section" aria-label="Tags"><span>Tags</span><ul className="popup-chips popup-overview-tags">{place.tags.length > 0 ? place.tags.slice(0, 3).map((item) => <li className="tag" key={item.id} style={getTagColorStyle(item.color)}>{item.name}</li>) : <li className="popup-empty-chip">Aucun tag</li>}{place.tags.length > 3 && <li className="tag popup-tag-more">+{place.tags.length - 3}</li>}</ul></section>
         {fieldEnabled('ratings') && <p className="popup-rating" aria-label={rating !== null && rating !== undefined ? `Note ${rating} sur 5` : 'Aucune note'}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={17} fill={rating !== null && rating !== undefined && star <= Math.round(rating) ? 'currentColor' : 'none'} />)}<strong>{rating !== null && rating !== undefined ? rating.toFixed(1) : 'Non noté'}</strong></p>}
       </div>
     </section>

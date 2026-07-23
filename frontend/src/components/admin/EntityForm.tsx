@@ -6,6 +6,7 @@ export interface EntityFormValues {
   description: string
   icon?: string
   marksAsVisited?: boolean
+  color?: string
 }
 
 interface EntityFormProps {
@@ -14,6 +15,7 @@ interface EntityFormProps {
   supportsDescription: boolean
   supportsIcon?: boolean
   supportsVisited?: boolean
+  supportsColor?: boolean
   isSubmitting: boolean
   fieldErrors: Partial<Record<keyof EntityFormValues, string>>
   onCancel: () => void
@@ -26,6 +28,7 @@ export function EntityForm({
   supportsDescription,
   supportsIcon = false,
   supportsVisited = false,
+  supportsColor = false,
   isSubmitting,
   fieldErrors,
   onCancel,
@@ -84,6 +87,20 @@ export function EntityForm({
         </label>
       )}
       {supportsIcon && <CategoryIconField value={values.icon} onChange={(icon) => setValues((current) => ({ ...current, icon }))} />}
+      {supportsColor && (
+        <label className="form-field status-color-field">
+          <span>Couleur</span>
+          <span className="cv-status-color-swatch" style={{ backgroundColor: values.color }}>
+            <input
+              className="cv-status-color-input"
+              type="color"
+              value={values.color}
+              aria-label="Couleur du tag"
+              onChange={(event) => setValues((current) => ({ ...current, color: event.target.value.toUpperCase() }))}
+            />
+          </span>
+        </label>
+      )}
       {supportsVisited && <label className="checkbox-field"><input type="checkbox" checked={values.marksAsVisited === true} onChange={(event) => setValues((current) => ({ ...current, marksAsVisited: event.target.checked }))} /><span>Cette catégorie marque le lieu comme visité</span></label>}
       <div className="admin-form-actions">
         <button className="primary-button" type="submit" disabled={isSubmitting}>

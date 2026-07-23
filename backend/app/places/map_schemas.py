@@ -17,6 +17,7 @@ class MapTagRead(BaseModel):
 
     id: UUID
     name: str
+    color: str
 
 
 class MapStatusRead(BaseModel):
