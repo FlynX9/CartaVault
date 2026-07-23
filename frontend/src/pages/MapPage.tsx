@@ -9,6 +9,7 @@ import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { EMPTY_MAP_MARKER_FILTER, MapMarkerFilterContext, type MapMarkerFilter } from '../components/map/mapMarkerFilterContext'
 import { getBasemap, getThemeDefaultBasemapId, loadStoredBasemapPreference, resolveAvailableBasemapId, saveBasemapPreference, type BasemapId } from '../map/basemaps'
+import { applyDisplayDensity, saveDisplayDensity } from '../theme/displayDensity'
 import type { AccountPreferences } from '../types/account'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
@@ -140,6 +141,8 @@ export function MapPage({
     void getAccountPreferences().then((preferences) => {
       if (!current) return
       accountPreferencesRef.current = preferences
+      applyDisplayDensity(preferences.density)
+      saveDisplayDensity(preferences.density, window.localStorage)
       const explicitSelection = explicitBasemapSelectionRef.current
       if (explicitSelection !== null) {
         if (preferences.preferred_basemap !== explicitSelection) {
@@ -157,6 +160,8 @@ export function MapPage({
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
       accountPreferencesRef.current = preferences
+      applyDisplayDensity(preferences.density)
+      saveDisplayDensity(preferences.density, window.localStorage)
       const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)

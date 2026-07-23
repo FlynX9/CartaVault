@@ -71,10 +71,10 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
 
     updated = integration_client.put(
         "/account/preferences",
-        json={"language": "en", "preferred_basemap": "satellite", "density": "compact", "startup_panel": "places", "timezone": "Europe/Paris", "routing": {"stay_in_country": True}},
+        json={"language": "en", "preferred_basemap": "satellite", "density": "spacious", "startup_panel": "places", "timezone": "Europe/Paris", "routing": {"stay_in_country": True}},
         headers=headers,
     )
-    assert updated.status_code == 200 and updated.json()["density"] == "compact"
+    assert updated.status_code == 200 and updated.json()["density"] == "spacious"
     assert updated.json()["language"] == "en"
     assert updated.json()["routing"]["provider"] == "osrm"
     unavailable = integration_client.put(
@@ -104,5 +104,5 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert google.json()["routing"]["avoid_tolls"] is True
     assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
     reset = integration_client.post("/account/preferences/reset", headers=headers)
-    assert reset.status_code == 200 and reset.json()["density"] == "comfortable"
+    assert reset.status_code == 200 and reset.json()["density"] == "compact"
     assert reset.json()["language"] == "fr"

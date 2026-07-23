@@ -124,7 +124,7 @@ class RoutingPreferences(BaseModel):
 class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
     preferred_basemap: Literal["cartavault-light", "cartavault-dark", "satellite", "osm"] = "cartavault-light"
-    density: Literal["comfortable", "compact"] = "comfortable"
+    density: Literal["compact", "comfortable", "spacious"] = "compact"
     startup_panel: Literal["maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
     routing: RoutingPreferences = Field(default_factory=RoutingPreferences)

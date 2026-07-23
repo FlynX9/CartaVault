@@ -24,6 +24,9 @@
   --cv-z-modal-overlay: 1400;
   --cv-z-modal: 1500;
   --cv-z-toast: 1600;
+  --cv-display-scale: 0.8;
+  --cv-display-shell-size: 125%;
+  --cv-display-navigation-height: 156.25dvh;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -52,6 +55,18 @@ html[data-theme='dark'] {
   --cv-border-strong: rgb(198 213 222 / 25%);
   --cv-shadow-sm: 0 3px 14px rgb(0 0 0 / 34%);
   --cv-shadow-md: 0 18px 48px rgb(0 0 0 / 48%);
+}
+
+html[data-density='comfortable'] {
+  --cv-display-scale: 0.9;
+  --cv-display-shell-size: 111.111112%;
+  --cv-display-navigation-height: 123.45679dvh;
+}
+
+html[data-density='spacious'] {
+  --cv-display-scale: 1;
+  --cv-display-shell-size: 100%;
+  --cv-display-navigation-height: 100dvh;
 }
 
 .cv-overlay {
@@ -96,11 +111,9 @@ body,
 }
 
 /*
- * CartaVault uses a deliberately compact desktop density. Keeping this at
- * the application shell mirrors an 80% browser zoom for every workspace
- * surface (navigation, panels, map controls and dialogs) without letting
- * individual components drift to different scales. The compensating size
- * keeps the transformed shell flush with the viewport.
+ * CartaVault applies display density at the application shell so navigation,
+ * panels, map controls, and dialogs always use the same visual scale. The
+ * compensating size keeps the transformed shell flush with the viewport.
  */
 @media (min-width: 761px) {
   body {
@@ -108,16 +121,16 @@ body,
   }
 
   #root {
-    width: 125%;
-    height: 125%;
-    transform: scale(0.8);
+    width: var(--cv-display-shell-size);
+    height: var(--cv-display-shell-size);
+    transform: scale(var(--cv-display-scale));
     transform-origin: top left;
   }
 
   /* The navigation has an explicit viewport height. Compensate it too so
      it still reaches the visual bottom after the shell is scaled. */
   .cv-main-navigation {
-    height: 156.25dvh;
+    height: var(--cv-display-navigation-height);
   }
 }
 

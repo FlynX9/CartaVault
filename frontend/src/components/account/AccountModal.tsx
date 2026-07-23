@@ -7,12 +7,13 @@ import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
 import { useAuth } from '../../auth/useAuth'
 import { useI18n } from '../../i18n/useI18n'
+import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
 import type { AccountPreferences, AccountProfile, AccountSession, GoogleRoutesCredentialStatus } from '../../types/account'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 
 type Section = 'profile' | 'avatar' | 'security' | 'sessions' | 'preferences' | 'danger'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
 
 export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpenAdmin?: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
@@ -130,7 +131,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
   return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><form className="account-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved')) }}>
     <label><span id="account-language-label">{t('common.language')}</span><select aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select><small>{t('account.preferences.languageHelp')}</small></label>
     <label>{t('account.preferences.basemap')}<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label>
-    <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="compact">{t('account.preferences.compact')}</option></select></label>
+    <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select></label>
     <label>{t('account.preferences.startup')}<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select></label>
     <label>{t('account.preferences.timezone')}<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label>
     <fieldset className="account-routing-preferences"><legend>{t('account.preferences.routing')}</legend>
