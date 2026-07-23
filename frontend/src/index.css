@@ -5130,9 +5130,14 @@ body.cv-panel-resizing {
   height: 3.5rem;
 }
 
+.map-workspace .geographic-search form {
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .map-workspace .geographic-search form > button {
-  width: 3.5rem;
-  min-width: 3.5rem;
+  width: calc(3.5rem - 2px);
+  min-width: calc(3.5rem - 2px);
   padding: 0;
   display: grid;
   place-items: center;
@@ -5903,6 +5908,28 @@ html[data-theme='dark'] :is(input, select, textarea):focus {
   border-color: var(--cv-color-teal);
   outline-color: rgb(37 198 170 / 32%);
 }
+
+/*
+ * Composite search controls draw their frame on the outer container.
+ * Keep the nested input frameless in dark mode so its clipped border does
+ * not break the continuous outline of the control.
+ */
+html[data-theme='dark'] :is(
+  .workspace-search-field,
+  .place-list-search,
+  .geographic-search
+) input,
+html[data-theme='dark'] :is(
+  .workspace-search-field,
+  .place-list-search,
+  .geographic-search
+) input:focus {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: 0;
+}
+
 html[data-theme='dark'] input[type='checkbox'],
 html[data-theme='dark'] input[type='radio'] { accent-color: var(--cv-color-teal); }
 
