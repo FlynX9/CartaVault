@@ -67,7 +67,9 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
   const fieldEnabled = (field: string) => place.field_config?.[field] !== false
   const primaryCategory = place.categories.find((item) => item.is_primary)
   const displayLocation = formatLocation(reverseLocation, place.region)
-  const rating = place.interest_rating ?? place.visit_rating
+  const isVisited = place.status.functional_state === 'visited'
+  const rating = isVisited ? place.visit_rating : place.interest_rating
+  const ratingLabel = isVisited ? 'Évaluation après visite' : 'Envie avant visite'
   const remove = async () => { if (!await confirm({ title: 'Supprimer ce lieu ?', message: `« ${place.name} » sera placé dans la corbeille.` })) return; setDeleting(true); try { await deletePlace(place.id); onDeleted(place.id) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Suppression impossible.'); setDeleting(false) } }
   const toggleFavorite = async () => { try { setPlace(await updatePlace(place.id, { is_favorite: !(place.is_favorite === true) })) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Modification du favori impossible.') } }
 
@@ -84,7 +86,7 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
         </div>
         <p className="popup-primary-category">{primaryCategory ? <><CategoryIconPreview iconId={primaryCategory.icon} size={16} showLabel={false} />{primaryCategory.name}</> : 'Catégorie non renseignée'}</p>
         <section className="popup-overview-tag-section" aria-label="Tags"><span>Tags</span><ul className="popup-chips popup-overview-tags">{place.tags.length > 0 ? place.tags.slice(0, 3).map((item) => <li className="tag" key={item.id} style={getTagColorStyle(item.color)}>{item.name}</li>) : <li className="popup-empty-chip">Aucun tag</li>}{place.tags.length > 3 && <li className="tag popup-tag-more">+{place.tags.length - 3}</li>}</ul></section>
-        {fieldEnabled('ratings') && <p className="popup-rating" aria-label={rating !== null && rating !== undefined ? `Note ${rating} sur 5` : 'Aucune note'}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={17} fill={rating !== null && rating !== undefined && star <= Math.round(rating) ? 'currentColor' : 'none'} />)}<strong>{rating !== null && rating !== undefined ? rating.toFixed(1) : 'Non noté'}</strong></p>}
+        {fieldEnabled('ratings') && <p className="popup-rating" aria-label={rating !== null && rating !== undefined ? `${ratingLabel} : ${rating} sur 5` : `${ratingLabel} : aucune note`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={17} fill={rating !== null && rating !== undefined && star <= Math.round(rating) ? 'currentColor' : 'none'} />)}<strong>{rating !== null && rating !== undefined ? rating.toFixed(1) : 'Non noté'}</strong></p>}
       </div>
     </section>
     {detailsError && <p className="inline-error" role="alert">{detailsError}</p>}

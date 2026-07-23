@@ -10,7 +10,7 @@ vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOrigina
 vi.mock('../../geocoding/geocodingService', () => ({ geocodingService: { reverse: vi.fn() } }))
 const PLACE_ID = '11111111-1111-4111-8111-111111111111'
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', map_id: MAP_ID, name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null, icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Brique' }], custom_fields: { gx_media_links: 'technical-data' }, created_at: '2026-01-01', updated_at: '2026-01-01' }
+const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', map_id: MAP_ID, name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null, icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Brique' }], custom_fields: { gx_media_links: 'technical-data' }, interest_rating: null, visit_rating: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
 const PHOTO = { id: '22222222-2222-4222-8222-222222222222', place_id: PLACE_ID, filename: 'photo.jpg', original_name: null, path: 'must-not-be-used.jpg', description: 'Façade', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
 
 beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(deletePlace).mockResolvedValue(); vi.mocked(geocodingService.reverse).mockResolvedValue([]) })
@@ -35,6 +35,26 @@ describe('PlaceMapPopup', () => {
     await screen.findByRole('heading', { name: 'Manufacture' })
     expect(screen.getByText('Industrie')).toBeVisible()
     expect(container.querySelector('.popup-primary-category [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
+  })
+
+  it('shows only the rating that matches the status visit classification', async () => {
+    vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, interest_rating: 4, visit_rating: 2 })
+    const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    expect(await screen.findByLabelText('Envie avant visite : 4 sur 5')).toBeVisible()
+    expect(screen.queryByLabelText(/Évaluation après visite/)).not.toBeInTheDocument()
+    expect(screen.getByText('4.0')).toBeVisible()
+
+    vi.mocked(getPlaceDetails).mockResolvedValue({
+      ...PLACE,
+      status: { ...PLACE.status, name: 'Visité', slug: 'visite', functional_state: 'visited' },
+      interest_rating: 4,
+      visit_rating: 2,
+    })
+    rerender(<PlaceMapPopup placeId="visited-place" onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Évaluation après visite : 2 sur 5')).toBeVisible()
+    expect(screen.queryByLabelText(/Envie avant visite/)).not.toBeInTheDocument()
+    expect(screen.getByText('2.0')).toBeVisible()
   })
 
   it('opens the popup photo in the full-screen viewer and preserves the POI card after closing it', async () => {

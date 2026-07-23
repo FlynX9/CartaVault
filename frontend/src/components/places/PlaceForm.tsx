@@ -109,6 +109,7 @@ export function PlaceForm({
   const latitude = values.latitude.trim() === '' ? null : Number(values.latitude)
   const longitude = values.longitude.trim() === '' ? null : Number(values.longitude)
   const selectedStatus = statuses.find((item) => item.id === values.statusId)
+  const ratingField = selectedStatus?.functional_state === 'visited' ? 'visit' : selectedStatus?.functional_state === 'non_visited' ? 'interest' : null
   const selectedMap = maps.find((item) => item.id === values.mapId)
   const fieldEnabled = (field: string) => selectedMap?.place_field_config?.[field] !== false
   const selectedCategory = categories.find((item) => item.id === values.categoryIds[0])
@@ -159,7 +160,11 @@ export function PlaceForm({
             <textarea value={values.description} rows={5} onChange={(event) => setValue('description', event.target.value)} />
           </label>}
           {fieldEnabled('favorite') && <label className="form-field favorite-field"><span>Favori</span><input type="checkbox" checked={values.isFavorite} onChange={(event) => setValue('isFavorite', event.target.checked)} /></label>}
-          {fieldEnabled('ratings') && <div className="form-field form-field-wide place-rating-fields"><span>Notation</span><label>Envie avant visite<select value={values.interestRating} onChange={(event) => setValue('interestRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label><label>Évaluation après visite<select value={values.visitRating} onChange={(event) => setValue('visitRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label></div>}
+          {fieldEnabled('ratings') && ratingField && <div className="form-field form-field-wide place-rating-fields">
+            <span>Notation</span>
+            {ratingField === 'interest' && <label>Envie avant visite<select value={values.interestRating} onChange={(event) => setValue('interestRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label>}
+            {ratingField === 'visit' && <label>Évaluation après visite<select value={values.visitRating} onChange={(event) => setValue('visitRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label>}
+          </div>}
           <label className="form-field category-field">
             <span>Catégorie</span>
             <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)}>{selectedCategory ? <CategoryIconPreview iconId={selectedCategory.icon} size={17} showLabel={false} /> : <span className="category-picker-placeholder" />}<span>{selectedCategory?.name ?? 'Aucune catégorie'}</span><ChevronDown aria-hidden="true" size={18} /></button>{categoryMenuOpen && <div className="status-picker-options category-picker-options" role="listbox" aria-label="Catégorie">{selectableCategories.map((category) => <button key={category.id} type="button" role="option" aria-selected={category.id === selectedCategory?.id} onClick={() => { selectAssociation('categoryIds', category.id); setCategoryMenuOpen(false) }}><CategoryIconPreview iconId={category.icon} size={17} showLabel={false} />{category.name}</button>)}</div>}</div>

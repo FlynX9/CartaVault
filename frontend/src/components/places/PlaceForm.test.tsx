@@ -40,11 +40,21 @@ describe('PlaceForm', () => {
 
   it('honors the active map field configuration without clearing stored values', () => {
     const configuredMap = { id: 'map-id', name: 'France', country: { name: 'France' }, place_field_config: { description: false, ratings: true, favorite: true } }
-    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', description: 'Valeur conservée' }} maps={[configuredMap as never]} allowMapChange categories={[]} tags={[]} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
+    const statuses = [
+      { id: 'todo', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const },
+      { id: 'done', map_id: 'map-id', name: 'Visité', slug: 'visite', color: '#0FA68A', is_active: true, functional_state: 'visited' as const },
+    ]
+    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', statusId: 'todo', description: 'Valeur conservée' }} maps={[configuredMap as never]} allowMapChange categories={[]} tags={[]} statuses={statuses} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
 
     expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
     expect(screen.getByText('Favori')).toBeVisible()
     expect(screen.getByRole('combobox', { name: 'Envie avant visite' })).toBeVisible()
+    expect(screen.queryByRole('combobox', { name: 'Évaluation après visite' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('À faire'))
+    fireEvent.click(screen.getByRole('option', { name: 'Visité' }))
+
+    expect(screen.queryByRole('combobox', { name: 'Envie avant visite' })).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Évaluation après visite' })).toBeVisible()
   })
 })
