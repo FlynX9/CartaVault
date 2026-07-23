@@ -97,6 +97,7 @@ It combines a **FastAPI** backend, a **PostgreSQL/PostGIS** database, and a **Re
 - multiple JPEG, PNG, and WebP uploads;
 - main photo selection;
 - reordering and deletion;
+- accessible full-screen POI gallery with keyboard, swipe, loading, and per-image error handling;
 - secure local storage, separate from user avatar storage.
 
 ### Import and export

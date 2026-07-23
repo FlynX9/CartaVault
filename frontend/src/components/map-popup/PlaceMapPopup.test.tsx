@@ -37,6 +37,20 @@ describe('PlaceMapPopup', () => {
     expect(container.querySelector('.popup-primary-category [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
   })
 
+  it('opens the popup photo in the full-screen viewer and preserves the POI card after closing it', async () => {
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+
+    fireEvent.click(screen.getByRole('button', { name: /Façade/ }))
+    const viewer = screen.getByRole('dialog', { name: 'Manufacture' })
+    expect(viewer).toBeVisible()
+    expect(within(viewer).getByRole('img', { name: 'Façade' })).toHaveAttribute('src', expect.stringContaining(`/photos/${PHOTO.id}/file`))
+
+    fireEvent.click(within(viewer).getByRole('button', { name: /Fermer la visionneuse|Close photo viewer/ }))
+    expect(screen.queryByRole('dialog', { name: 'Manufacture' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Manufacture' })).toBeVisible()
+  })
+
   it('uses reverse geocoding to display the city and postal code from GPS coordinates', async () => {
     vi.mocked(geocodingService.reverse).mockResolvedValue([{ id: 'reverse:1', name: 'Rougemont-le-Château', formattedAddress: 'Rougemont-le-Château, 90110', latitude: 48.17, longitude: 6.45, locality: 'Rougemont-le-Château', postalCode: '90110', source: 'stadia' }])
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)

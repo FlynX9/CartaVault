@@ -35,6 +35,16 @@ chargés uniquement depuis l’endpoint de fichier officiel. La médiathèque
 centrale utilise son endpoint de miniatures WebP protégé afin de ne pas charger
 les originaux dans sa grille.
 
+Les photos d’un lieu peuvent être ouvertes dans une visionneuse plein écran
+depuis la popup cartographique, la fiche détaillée et l’éditeur. La photo
+principale est toujours placée en premier, tandis qu’un clic sur une photo
+secondaire conserve sa position. Les flèches, `Origine`, `Fin` et `Échap`
+fonctionnent au clavier ; un balayage horizontal est disponible sur écran
+tactile. Le focus reste dans la visionneuse puis revient au déclencheur à la
+fermeture. Seule l’image courante est affichée et les deux voisines sont
+préchargées. Les fichiers continuent d’être servis par les endpoints protégés
+existants ; aucune URL de stockage brute n’est exposée.
+
 ## Import KMZ
 
 Avec une carte active, le bouton d’import du panneau **Lieux** ouvre un assistant

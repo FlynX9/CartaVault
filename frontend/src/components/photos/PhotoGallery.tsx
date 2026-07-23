@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { Maximize2 } from 'lucide-react'
 
 import { getPhotoFileUrl } from '../../api/photos'
 import type { Photo } from '../../types/photo'
+import { PhotoViewer } from './PhotoViewer'
+import { photoViewerMessages } from './photoViewerI18n'
 
 interface PhotoGalleryProps {
   placeName: string
@@ -23,6 +26,8 @@ export function PhotoGallery({
   errorMessage,
 }: PhotoGalleryProps) {
   const [failedPhotoIds, setFailedPhotoIds] = useState<Set<string>>(new Set())
+  const [viewerPhotoId, setViewerPhotoId] = useState<string | null>(null)
+  const t = photoViewerMessages()
 
   if (isLoading) {
     return <p role="status">Chargement des photos…</p>
@@ -54,18 +59,21 @@ export function PhotoGallery({
                 Image indisponible
               </div>
             ) : (
-              <img
-                src={getPhotoFileUrl(photo.id)}
-                alt={alternativeText}
-                loading="lazy"
-                onError={() => {
-                  setFailedPhotoIds((currentIds) => {
-                    const nextIds = new Set(currentIds)
-                    nextIds.add(photo.id)
-                    return nextIds
-                  })
-                }}
-              />
+              <button className="photo-card__open" type="button" aria-label={`${t.view} — ${alternativeText}`} onClick={() => setViewerPhotoId(photo.id)}>
+                <img
+                  src={getPhotoFileUrl(photo.id)}
+                  alt={alternativeText}
+                  loading="lazy"
+                  onError={() => {
+                    setFailedPhotoIds((currentIds) => {
+                      const nextIds = new Set(currentIds)
+                      nextIds.add(photo.id)
+                      return nextIds
+                    })
+                  }}
+                />
+                <span><Maximize2 aria-hidden="true" size={16} />{t.view}</span>
+              </button>
             )}
             <figcaption>
               {photo.description !== null && <p>{photo.description}</p>}
@@ -81,6 +89,7 @@ export function PhotoGallery({
           </figure>
         )
       })}
+      {viewerPhotoId && <PhotoViewer photos={photos} placeName={placeName} initialPhotoId={viewerPhotoId} onClose={() => setViewerPhotoId(null)} />}
     </div>
   )
 }
