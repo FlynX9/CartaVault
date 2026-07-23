@@ -16,6 +16,13 @@ const place: MapPlace = {
   categories: [],
   tags: [],
 }
+const nearbyPlace: MapPlace = {
+  ...place,
+  id: 'nearby-place-id',
+  name: 'Atelier voisin',
+  latitude: 48.00001,
+  longitude: 2.00001,
+}
 
 afterEach(cleanup)
 
@@ -50,6 +57,53 @@ function MapHarness({ initiallySelected = false, markerFilter, onTripPlaceAdd }:
 }
 
 describe('PoiMap Leaflet popup lifecycle', () => {
+  it('keeps the selected POI outside its cluster so its popup can stay mounted', async () => {
+    render(
+      <PoiMap
+        places={[place, nearbyPlace]}
+        selectedPlaceId={place.id}
+        initialView={{ center: [48, 2], zoom: 13 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={vi.fn()}
+        focusRequest={null}
+        layoutKey="selected-cluster"
+        popupContent={<p>Détails enrichis</p>}
+        onPopupClose={vi.fn()}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTitle('Manufacture')).toBeVisible()
+    expect(await screen.findByTitle('Atelier voisin')).toBeVisible()
+    expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
+    expect(await screen.findByText('Détails enrichis')).toBeVisible()
+  })
+
+  it('renders every POI independently at the configured maximum zoom', async () => {
+    render(
+      <PoiMap
+        places={[place, nearbyPlace]}
+        selectedPlaceId={null}
+        initialView={{ center: [48, 2], zoom: 19 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={vi.fn()}
+        focusRequest={null}
+        layoutKey="maximum-zoom"
+        popupContent={null}
+        onPopupClose={vi.fn()}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTitle('Manufacture')).toBeVisible()
+    expect(await screen.findByTitle('Atelier voisin')).toBeVisible()
+    expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
+  })
+
   it('opens the enriched popup on the first real marker click', async () => {
     render(<MapHarness />)
 

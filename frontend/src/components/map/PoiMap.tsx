@@ -162,7 +162,7 @@ export function PoiMap({
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
-      <MapClusterLayer places={standardPlaces} renderPlace={renderPlace} />
+      <MapClusterLayer places={standardPlaces} renderPlace={renderPlace} selectedPlaceId={selectedPlaceId} disableClusteringAtZoom={MAP_MAX_ZOOM} />
       {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} showAllDays={tripViewOnly} hiddenDayIds={hiddenTripDayIds} />}
     </MapContainer>
   )
