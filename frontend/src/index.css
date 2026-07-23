@@ -2512,30 +2512,50 @@ button {
 
 /* Map creation follows the same compact, layered CartaVault dialog language. */
 .create-map-dialog.cv-modal {
-  width: min(34rem, calc(100vw - 2rem));
-  max-height: min(86dvh, 42rem);
+  width: min(31rem, calc(100vw - 2rem));
+  max-height: min(88dvh, 40rem);
   padding: 0;
   overflow: hidden;
   border: 1px solid rgb(43 62 89 / 14%);
-  border-radius: 1rem;
-  box-shadow: 0 18px 52px rgb(13 27 42 / 28%);
+  border-radius: 1.15rem;
+  box-shadow: 0 1.5rem 4rem rgb(13 27 42 / 24%);
 }
 
-.create-map-dialog form { display: grid; gap: 0.85rem; padding-bottom: 1rem; }
-.create-map-dialog header { min-height: 5.25rem; padding: 1.15rem 1.2rem 0.95rem; border-bottom: 1px solid rgb(43 62 89 / 10%); }
-.create-map-dialog header h2 { margin: 0; color: var(--cv-color-navy); font-size: 1.25rem; letter-spacing: -0.02em; }
-.create-map-dialog header button { display: grid; width: 2.35rem; height: 2.35rem; padding: 0; color: var(--cv-color-slate); background: white; border: 1px solid rgb(43 62 89 / 16%); border-radius: 0.65rem; cursor: pointer; font-size: 1.25rem; line-height: 1; place-items: center; }
+.create-map-dialog form { display: grid; gap: 0.75rem; }
+.create-map-dialog header { min-height: 4.7rem; padding: 1rem 1.1rem 0.9rem; border-bottom: 1px solid rgb(43 62 89 / 10%); }
+.create-map-dialog__header { display: grid; grid-template-columns: 2.35rem minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; }
+.create-map-dialog__header-icon { display: grid; width: 2.35rem; height: 2.35rem; place-items: center; color: var(--cv-color-teal); background: rgb(15 166 138 / 10%); border-radius: 0.7rem; }
+.create-map-dialog__header-icon svg { width: 1.2rem; height: 1.2rem; }
+.create-map-dialog__header > div { display: grid; gap: 0.08rem; min-width: 0; }
+.create-map-dialog__header > div > span { color: var(--cv-color-teal); font-size: 0.54rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.create-map-dialog header h2 { margin: 0; color: var(--cv-color-navy); font-size: 0.98rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.create-map-dialog__header p { margin: 0.12rem 0 0; overflow: hidden; color: var(--cv-color-gray); font-size: 0.68rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.create-map-dialog header button { display: grid; width: 2.2rem; height: 2.2rem; padding: 0; color: var(--cv-color-slate); background: white; border: 1px solid rgb(43 62 89 / 16%); border-radius: 0.65rem; cursor: pointer; line-height: 1; place-items: center; }
+.create-map-dialog header button svg { width: 1rem; height: 1rem; }
 .create-map-dialog header button:hover, .create-map-dialog header button:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 0; }
-.create-map-dialog .form-field, .create-map-dialog .country-results, .create-map-dialog .dialog-actions, .create-map-dialog .form-alert { margin-right: 1.2rem; margin-left: 1.2rem; }
-.create-map-dialog .form-field { display: grid; gap: 0.35rem; color: var(--cv-color-navy); font-size: 0.8rem; font-weight: 700; }
-.create-map-dialog .form-field input { width: 100%; min-height: 2.65rem; padding: 0.55rem 0.7rem; color: var(--cv-color-navy); background: white; border: 1px solid rgb(43 62 89 / 18%); border-radius: 0.65rem; font: inherit; font-weight: 400; }
+.create-map-dialog .form-field, .create-map-dialog .country-results, .create-map-dialog .form-alert { margin-right: 1.1rem; margin-left: 1.1rem; }
+.create-map-dialog .form-field { display: grid; gap: 0.32rem; color: var(--cv-color-navy); font-size: 0.72rem; font-weight: 700; }
+.create-map-dialog .form-field input { width: 100%; min-height: 2.5rem; padding: 0.5rem 0.7rem; color: var(--cv-color-navy); background: white; border: 1px solid rgb(43 62 89 / 18%); border-radius: 0.65rem; font: inherit; font-size: 0.78rem; font-weight: 400; }
 .create-map-dialog .form-field input:focus { border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 0; }
-.create-map-dialog .country-results { max-height: 13.5rem; margin-top: -0.15rem; margin-bottom: 0.15rem; padding: 0.2rem; gap: 0.25rem; background: var(--cv-color-mist); border: 1px solid rgb(43 62 89 / 10%); border-radius: 0.7rem; }
-.create-map-dialog .country-results button { min-height: 2.65rem; align-items: center; padding: 0.55rem 0.65rem; color: var(--cv-color-navy); background: var(--cv-color-off-white); border: 1px solid transparent; border-radius: 0.5rem; cursor: pointer; font: inherit; }
-.create-map-dialog .country-results button strong { font-size: 0.84rem; }.create-map-dialog .country-results button span { color: var(--cv-color-gray); font-size: 0.76rem; }
+.create-map-dialog__input { position: relative; display: flex; align-items: center; }
+.create-map-dialog__input > svg { position: absolute; z-index: 1; left: 0.75rem; width: 0.95rem; height: 0.95rem; color: var(--cv-color-gray); pointer-events: none; }
+.create-map-dialog .create-map-dialog__input input { padding-left: 2.25rem; }
+.create-map-dialog .country-results { max-height: 12rem; margin-top: -0.1rem; margin-bottom: 0.1rem; padding: 0.25rem; gap: 0.2rem; background: var(--cv-color-mist); border: 1px solid rgb(43 62 89 / 10%); border-radius: 0.75rem; }
+.create-map-dialog .country-results button { display: grid; min-height: 2.65rem; grid-template-columns: 2.35rem minmax(0, 1fr) 1.5rem; align-items: center; gap: 0.65rem; padding: 0.38rem 0.55rem; color: var(--cv-color-navy); background: var(--cv-color-off-white); border: 1px solid transparent; border-radius: 0.55rem; cursor: pointer; font: inherit; text-align: left; }
+.country-results__flag { display: grid; width: 2.35rem; height: 1.6rem; overflow: hidden; place-items: center; background: rgb(43 62 89 / 5%); border: 1px solid rgb(43 62 89 / 9%); border-radius: 0.32rem; }
+.country-results__flag img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.country-flag-fallback,
+.country-results__flag .country-flag-fallback { color: var(--cv-color-teal); }
+.country-results__identity { display: grid; min-width: 0; gap: 0.04rem; }
+.create-map-dialog .country-results button strong { overflow: hidden; font-size: 0.78rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.create-map-dialog .country-results button small { color: var(--cv-color-gray); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em; }
+.country-results__selection { display: grid; width: 1.4rem; height: 1.4rem; place-items: center; color: transparent; border-radius: 50%; }
+.country-results__selection svg { width: 0.82rem; height: 0.82rem; stroke-width: 3; }
+.country-results button.selected .country-results__selection { color: white; background: var(--cv-color-teal); }
+.country-results__message { margin: 0; padding: 1.25rem 0.75rem; color: var(--cv-color-gray); font-size: 0.75rem; text-align: center; }
 .create-map-dialog .country-results button:hover, .create-map-dialog .country-results button:focus-visible { background: white; border-color: rgb(15 166 138 / 36%); outline: 0; }
 .create-map-dialog .country-results button.selected { color: var(--cv-color-navy); background: rgb(15 166 138 / 11%); border-color: rgb(15 166 138 / 50%); outline: 0; }
-.create-map-dialog .dialog-actions { justify-content: flex-end; margin-top: 0.15rem; }.create-map-dialog .dialog-actions > button { min-height: 2.3rem; padding: 0.42rem 0.75rem; border-radius: 0.55rem; font-size: 0.8rem; font-weight: 700; }.create-map-dialog .dialog-actions > button:first-child { color: var(--cv-color-slate); background: white; border: 1px solid rgb(43 62 89 / 16%); }.create-map-dialog .dialog-actions > button:first-child:hover, .create-map-dialog .dialog-actions > button:first-child:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 0; }
+.create-map-dialog .dialog-actions { justify-content: flex-end; margin-top: 0.15rem; padding: 0.85rem 1.1rem 1rem; background: color-mix(in srgb, var(--cv-color-mist) 60%, transparent); border-top: 1px solid rgb(43 62 89 / 9%); }.create-map-dialog .dialog-actions > button { display: inline-flex; min-height: 2.35rem; align-items: center; justify-content: center; gap: 0.42rem; padding: 0.42rem 0.78rem; border-radius: 0.58rem; font-size: 0.75rem; font-weight: 700; }.create-map-dialog .dialog-actions > button svg { width: 0.95rem; height: 0.95rem; }.create-map-dialog .dialog-actions > button:first-child { color: var(--cv-color-slate); background: white; border: 1px solid rgb(43 62 89 / 16%); }.create-map-dialog .dialog-actions > button:first-child:hover, .create-map-dialog .dialog-actions > button:first-child:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 0; }
 .create-map-dialog .dialog-actions .primary-button { color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); }.create-map-dialog .dialog-actions .primary-button:hover, .create-map-dialog .dialog-actions .primary-button:focus-visible { background: #0b8f77; border-color: #0b8f77; }
 
 /* Places intentionally shares the exact header scale used by the other workspace panels. */
@@ -2974,7 +2994,15 @@ button {
   .editor-page .place-rating-fields > span { grid-column: 1; }
 }
 
-@media (max-width: 560px) { .create-map-dialog.cv-modal { width: calc(100vw - 1rem); }.create-map-dialog header { padding-inline: 1rem; }.create-map-dialog .form-field, .create-map-dialog .country-results, .create-map-dialog .dialog-actions, .create-map-dialog .form-alert { margin-right: 1rem; margin-left: 1rem; } }
+@media (max-width: 560px) {
+  .create-map-dialog.cv-modal { width: calc(100vw - 1rem); }
+  .create-map-dialog header { padding-inline: 1rem; }
+  .create-map-dialog .form-field,
+  .create-map-dialog .country-results,
+  .create-map-dialog .form-alert { margin-right: 1rem; margin-left: 1rem; }
+  .create-map-dialog__header p { display: none; }
+  .create-map-dialog .dialog-actions { padding-inline: 1rem; }
+}
 /* Multi-user access surfaces */
 .user-account-menu { position: relative; }
 .user-account-menu__trigger { display: flex; align-items: center; min-height: 2.75rem; gap: 0.55rem; padding: 0.2rem 0.4rem 0.2rem 0.2rem; color: var(--cv-color-navy); background: transparent; border: 0; border-radius: 0.65rem; cursor: pointer; font: inherit; }

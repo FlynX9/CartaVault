@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from '../../api/maps'
 import { NOTIFICATIONS_CHANGED_EVENT, notifyNotificationsChanged } from '../notifications/events'
 import type { PendingMapInvitation, PoiMap } from '../../types/map'
+import { CountryFlag } from './CountryFlag'
 import { CreateMapDialog } from './CreateMapDialog'
 
 interface MapsWorkspacePanelProps {
@@ -21,13 +22,6 @@ interface MapsWorkspacePanelProps {
 }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
-
-function CountryFlag({ countryCode }: { countryCode: string }) {
-  const [failed, setFailed] = useState(false)
-  const normalizedCode = countryCode.trim().toLowerCase()
-  if (failed || !/^[a-z]{2}$/.test(normalizedCode)) return <Map className="maps-catalog__flag-fallback" size={30} aria-hidden="true" />
-  return <img className="maps-catalog__flag" src={`https://flagcdn.com/${normalizedCode}.svg`} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
-}
 
 export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, onClose }: MapsWorkspacePanelProps) {
   const [creating, setCreating] = useState(false)
@@ -100,7 +94,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
         </li>)}
         {filteredMaps.map((poiMap) => <li className={poiMap.id === activeMapId ? 'active' : ''} key={poiMap.id}>
           <div className="maps-catalog__summary">
-            <div className="maps-catalog__preview" aria-label={`Drapeau ${poiMap.country.name}, aperçu de ${poiMap.name}`} role="img"><CountryFlag countryCode={poiMap.country.iso_alpha2} /></div>
+            <div className="maps-catalog__preview" aria-label={`Drapeau ${poiMap.country.name}, aperçu de ${poiMap.name}`} role="img"><CountryFlag countryCode={poiMap.country.iso_alpha2} className="maps-catalog__flag" /></div>
             <div className="maps-catalog__details"><span className={`maps-catalog__privacy${poiMap.is_shared ? ' shared' : ''}`} aria-label={poiMap.is_shared ? 'Carte partagée' : 'Carte privée'} title={poiMap.is_shared ? 'Carte partagée' : 'Carte privée'}>{poiMap.is_shared ? <Share2 size={15} /> : <LockKeyhole size={15} />}</span><strong>{poiMap.name}</strong><span>{poiMap.country.name}</span><em>{poiMap.current_user_role === 'owner' ? 'Propriétaire' : poiMap.current_user_role === 'editor' ? 'Éditeur' : poiMap.current_user_role === 'viewer' ? 'Lecteur' : 'Administrateur'}</em>{poiMap.id === activeMapId && <b>Ouverte</b>}</div>
           </div>
           <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={`Ouvrir ${poiMap.name}`} disabled={poiMap.id === activeMapId} onClick={() => onOpen(poiMap.id)}>Ouvrir</button>{poiMap.can_edit && <button type="button" className="panel-icon-button" aria-label={`Configurer les champs de ${poiMap.name}`} title="Champs des POI" onClick={() => setSettingsMap(poiMap)}><Settings2 size={16} /></button>}{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={`Exporter la carte ${poiMap.name}`} title={`Exporter ${poiMap.name}`} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={`Gérer les membres de ${poiMap.name}`} title="Membres" onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={`Supprimer ${poiMap.name}`} title={`Supprimer ${poiMap.name}`} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
