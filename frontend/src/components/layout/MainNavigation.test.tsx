@@ -30,7 +30,7 @@ describe('MainNavigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Médias' }))
     fireEvent.click(screen.getByRole('button', { name: 'Tags' }))
     fireEvent.click(screen.getByRole('button', { name: 'Statuts' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
 
     expect(onPanelChange).toHaveBeenNthCalledWith(1, 'categories')
     expect(onPanelChange).toHaveBeenNthCalledWith(2, 'media')
@@ -51,7 +51,7 @@ describe('MainNavigation', () => {
   it('marks only Sorties active while trip planning extends the Places workspace', () => {
     render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
     const places = screen.getByRole('button', { name: 'Lieux' })
-    const trips = screen.getByRole('button', { name: 'Préparation de sortie' })
+    const trips = screen.getByRole('button', { name: 'Sorties' })
     const categories = screen.getByRole('button', { name: 'Catégories' })
     expect(trips).toHaveAttribute('aria-pressed', 'true')
     expect(places).toHaveAttribute('aria-pressed', 'false')

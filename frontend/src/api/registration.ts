@@ -6,11 +6,11 @@ export interface RegistrationRequest {
 }
 export interface EmailSettingsStatus { configured: boolean; last4: string | null }
 
-export async function register(email: string, password: string, confirmation: string): Promise<{ status: string; message: string }> {
-  return sendJson('/auth/register', 'POST', { email, password, confirmation }) as Promise<{ status: string; message: string }>
+export async function register(email: string, password: string, confirmation: string, locale: 'fr' | 'en' = 'fr'): Promise<{ status: string; message: string }> {
+  return sendJson('/auth/register', 'POST', { email, password, confirmation, locale }) as Promise<{ status: string; message: string }>
 }
-export async function requestPasswordReset(email: string): Promise<{ message: string }> {
-  return sendJson('/auth/password-reset/request', 'POST', { email }) as Promise<{ message: string }>
+export async function requestPasswordReset(email: string, locale: 'fr' | 'en' = 'fr'): Promise<{ message: string }> {
+  return sendJson('/auth/password-reset/request', 'POST', { email, locale }) as Promise<{ message: string }>
 }
 export async function confirmPasswordReset(token: string, password: string, confirmation: string): Promise<void> {
   await sendBodyWithoutResponse('/auth/password-reset/confirm', 'POST', { token, password, confirmation })

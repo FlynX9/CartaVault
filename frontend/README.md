@@ -120,6 +120,7 @@ Le fichier `.env` local est ignoré par Git. La variable disponible est :
 
 ```dotenv
 VITE_API_BASE_URL=
+VITE_DEFAULT_LANGUAGE=fr
 VITE_STADIA_MAPS_API_KEY=
 VITE_BASEMAP_LIGHT_ENABLED=true
 VITE_BASEMAP_DARK_ENABLED=true
@@ -218,6 +219,20 @@ Stadia sont biaisés par le centre et le pays de la carte active, sans empêcher
 une recherche mondiale. La clé `VITE_STADIA_MAPS_API_KEY` reste optionnelle
 pour l'authentification par domaine, n'est jamais stockée localement et est
 visible au navigateur comme toute variable `VITE_*`.
+
+## Localisation
+
+CartaVault propose une interface française et anglaise. Le choix se fait dans
+**Compte → Préférences → Langue**, s’applique immédiatement, puis est enregistré
+dans les préférences du compte pour être retrouvé sur les autres appareils.
+Avant connexion, l’ordre de résolution est : choix local, langue du navigateur,
+`VITE_DEFAULT_LANGUAGE`, puis français. L’attribut `lang` du document et les
+formats de dates/nombres suivent la langue active.
+
+Les messages sont organisés par domaine sous `src/i18n/locales/{fr,en}`. Toute
+nouvelle clé doit être ajoutée aux deux catalogues ; le test de parité échoue si
+une traduction manque. L’inscription et la demande de réinitialisation envoient
+également la langue active au backend afin de sélectionner le bon email.
 
 Le résultat sélectionné ajoute un marqueur temporaire doré, conserve les POI
 existants et permet d'ouvrir la création d'un POI avec nom et coordonnées

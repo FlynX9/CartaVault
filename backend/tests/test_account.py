@@ -60,6 +60,7 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     headers = {"X-CSRF-Token": csrf}
     defaults = integration_client.get("/account/preferences")
     assert defaults.status_code == 200
+    assert defaults.json()["language"] == "fr"
     assert defaults.json()["preferred_basemap"] == "cartavault-light"
     assert defaults.json()["routing"]["provider"] == "osrm"
     assert defaults.json()["routing"]["traffic_mode"] == "traffic_unaware"
@@ -70,10 +71,11 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
 
     updated = integration_client.put(
         "/account/preferences",
-        json={"preferred_basemap": "satellite", "density": "compact", "startup_panel": "places", "timezone": "Europe/Paris", "routing": {"stay_in_country": True}},
+        json={"language": "en", "preferred_basemap": "satellite", "density": "compact", "startup_panel": "places", "timezone": "Europe/Paris", "routing": {"stay_in_country": True}},
         headers=headers,
     )
     assert updated.status_code == 200 and updated.json()["density"] == "compact"
+    assert updated.json()["language"] == "en"
     assert updated.json()["routing"]["provider"] == "osrm"
     unavailable = integration_client.put(
         "/account/preferences",
@@ -103,3 +105,4 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
     reset = integration_client.post("/account/preferences/reset", headers=headers)
     assert reset.status_code == 200 and reset.json()["density"] == "comfortable"
+    assert reset.json()["language"] == "fr"

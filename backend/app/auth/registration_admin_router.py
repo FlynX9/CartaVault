@@ -38,7 +38,7 @@ def approve_registration(request_id: UUID, payload: RegistrationApproval | None 
         raise HTTPException(409, "Un compte utilise déjà cette adresse email.")
     now = datetime.now(UTC).replace(tzinfo=None)
     profile = QuotaService(database_session).resolve_profile(payload.quota_profile_id if payload else None, lock=True)
-    user = User(email=request.email, display_name=request.display_name, password_hash=request.password_hash, is_admin=False, is_active=True, quota_profile_id=profile.id)
+    user = User(email=request.email, display_name=request.display_name, password_hash=request.password_hash, is_admin=False, is_active=True, quota_profile_id=profile.id, preferences={"language": request.locale})
     request.status = "approved"; request.reviewed_at = now; request.reviewed_by_user_id = admin.id
     try:
         database_session.add(user)
@@ -47,7 +47,7 @@ def approve_registration(request_id: UUID, payload: RegistrationApproval | None 
         database_session.rollback()
         raise HTTPException(409, "Un compte utilise déjà cette adresse email.") from error
     try:
-        EmailService(provider_from_database(database_session)).notify_registration_approved(user.email, user.display_name)
+        EmailService(provider_from_database(database_session)).notify_registration_approved(user.email, user.display_name, request.locale)
         request.notification_sent_at = datetime.now(UTC).replace(tzinfo=None); request.notification_error_code = None
     except EmailDeliveryError as error:
         request.notification_error_code = error.code

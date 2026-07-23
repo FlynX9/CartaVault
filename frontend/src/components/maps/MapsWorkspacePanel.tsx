@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from '../../api/maps'
 import { NOTIFICATIONS_CHANGED_EVENT, notifyNotificationsChanged } from '../notifications/events'
+import { useI18n } from '../../i18n/useI18n'
 import type { PendingMapInvitation, PoiMap } from '../../types/map'
 import { CountryFlag } from './CountryFlag'
 import { CreateMapDialog } from './CreateMapDialog'
@@ -24,6 +25,7 @@ interface MapsWorkspacePanelProps {
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
 
 export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, onClose }: MapsWorkspacePanelProps) {
+  const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
   const [invitations, setInvitations] = useState<PendingMapInvitation[]>([])
@@ -39,11 +41,11 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
       setInvitationError(null)
     }).catch((caught: unknown) => {
       if (!(caught instanceof Error && caught.name === 'AbortError')) {
-        setInvitationError(caught instanceof Error ? caught.message : 'Impossible de charger les invitations.')
+        setInvitationError(caught instanceof Error ? caught.message : t('maps.invitation.loadError'))
       }
     })
     return () => controller.abort()
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const abort = loadInvitations()
@@ -72,32 +74,32 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
       notifyNotificationsChanged()
       if (decision === 'accept') onAccessChanged()
     } catch (caught) {
-      setInvitationError(caught instanceof Error ? caught.message : 'Impossible de traiter cette invitation.')
+      setInvitationError(caught instanceof Error ? caught.message : t('maps.invitation.actionError'))
     } finally {
       setBusyInvitationId(null)
     }
   }
 
   return <aside id="workspace-maps-panel" className="country-place-panel workspace-management-panel cv-workspace-panel maps-workspace-panel" aria-labelledby="workspace-maps-title" tabIndex={-1}>
-    <header className="cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Cartographie</p><h2 id="workspace-maps-title" className="cv-workspace-panel__title">Cartes</h2></div><div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{totalCount} carte{totalCount > 1 ? 's' : ''}</span><button ref={createButton} className="panel-icon-button primary" type="button" aria-label="Créer une carte" title="Créer une carte" onClick={() => setCreating(true)}><Plus size={18} /></button><button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}><X size={18} /></button></div></header>
+    <header className="cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">{t('maps.eyebrow')}</p><h2 id="workspace-maps-title" className="cv-workspace-panel__title">{t('maps.title')}</h2></div><div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{t('maps.count', { count: totalCount })}</span><button ref={createButton} className="panel-icon-button primary" type="button" aria-label={t('maps.create')} title={t('maps.create')} onClick={() => setCreating(true)}><Plus size={18} /></button><button className="panel-icon-button" type="button" aria-label={t('maps.closePanel')} title={t('common.close')} onClick={onClose}><X size={18} /></button></div></header>
     <div className="maps-workspace-panel__content">
-      <label className="workspace-search-field"><Search aria-hidden="true" size={17} /><span className="visually-hidden">Rechercher une carte</span><input type="search" placeholder="Rechercher une carte" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      <label className="workspace-search-field"><Search aria-hidden="true" size={17} /><span className="visually-hidden">{t('maps.search')}</span><input type="search" placeholder={t('maps.search')} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
       {(errorMessage || invitationError) && <p className="form-alert" role="alert">{errorMessage ?? invitationError}</p>}
-      {isLoading && <p className="maps-panel-state" role="status">Chargement des cartes…</p>}
-      {!isLoading && totalCount === 0 && <div className="maps-panel-empty"><p>Aucune carte créée.</p><button type="button" className="primary-button" onClick={() => setCreating(true)}>Créer une carte</button></div>}
-      {!isLoading && totalCount > 0 && filteredMaps.length === 0 && filteredInvitations.length === 0 && <p className="place-list-message">Aucune carte ne correspond à la recherche.</p>}
-      <ul className="maps-catalog" aria-label="Cartes disponibles">
+      {isLoading && <p className="maps-panel-state" role="status">{t('maps.loading')}</p>}
+      {!isLoading && totalCount === 0 && <div className="maps-panel-empty"><p>{t('maps.empty')}</p><button type="button" className="primary-button" onClick={() => setCreating(true)}>{t('maps.create')}</button></div>}
+      {!isLoading && totalCount > 0 && filteredMaps.length === 0 && filteredInvitations.length === 0 && <p className="place-list-message">{t('maps.noResult')}</p>}
+      <ul className="maps-catalog" aria-label={t('maps.available')}>
         {filteredInvitations.map((invitation) => <li className="maps-catalog__invitation" key={`invitation-${invitation.id}`}>
-          <div className="maps-catalog__preview" aria-label={`Aperçu indisponible de ${invitation.map_name}`} role="img"><Map size={28} /><span>INV</span></div>
-          <div className="maps-catalog__details"><span className="maps-catalog__privacy shared" aria-label="Invitation de partage" title="Invitation de partage"><Share2 size={15} /></span><strong>{invitation.map_name}</strong><span>Partagée par {invitation.invited_by_display_name}</span><em>{invitation.role === 'editor' ? 'Accès éditeur' : 'Accès lecteur'}</em><b>Invitation en attente</b></div>
-          <div className="maps-catalog__actions maps-catalog__invitation-actions"><button type="button" className="secondary-button" disabled={busyInvitationId !== null} onClick={() => void decideInvitation(invitation, 'decline')}>Refuser</button><button type="button" className="primary-button" disabled={busyInvitationId !== null} onClick={() => void decideInvitation(invitation, 'accept')}><Check size={14} />Accepter</button></div>
+          <div className="maps-catalog__preview" aria-label={t('maps.invitation.preview', { name: invitation.map_name })} role="img"><Map size={28} /><span>INV</span></div>
+          <div className="maps-catalog__details"><span className="maps-catalog__privacy shared" aria-label={t('maps.invitation.shared')} title={t('maps.invitation.shared')}><Share2 size={15} /></span><strong>{invitation.map_name}</strong><span>{t('maps.invitation.by', { name: invitation.invited_by_display_name })}</span><em>{invitation.role === 'editor' ? t('maps.invitation.editor') : t('maps.invitation.viewer')}</em><b>{t('maps.invitation.pending')}</b></div>
+          <div className="maps-catalog__actions maps-catalog__invitation-actions"><button type="button" className="secondary-button" disabled={busyInvitationId !== null} onClick={() => void decideInvitation(invitation, 'decline')}>{t('maps.invitation.decline')}</button><button type="button" className="primary-button" disabled={busyInvitationId !== null} onClick={() => void decideInvitation(invitation, 'accept')}><Check size={14} />{t('maps.invitation.accept')}</button></div>
         </li>)}
         {filteredMaps.map((poiMap) => <li className={poiMap.id === activeMapId ? 'active' : ''} key={poiMap.id}>
           <div className="maps-catalog__summary">
-            <div className="maps-catalog__preview" aria-label={`Drapeau ${poiMap.country.name}, aperçu de ${poiMap.name}`} role="img"><CountryFlag countryCode={poiMap.country.iso_alpha2} className="maps-catalog__flag" /></div>
-            <div className="maps-catalog__details"><span className={`maps-catalog__privacy${poiMap.is_shared ? ' shared' : ''}`} aria-label={poiMap.is_shared ? 'Carte partagée' : 'Carte privée'} title={poiMap.is_shared ? 'Carte partagée' : 'Carte privée'}>{poiMap.is_shared ? <Share2 size={15} /> : <LockKeyhole size={15} />}</span><strong>{poiMap.name}</strong><span>{poiMap.country.name}</span><em>{poiMap.current_user_role === 'owner' ? 'Propriétaire' : poiMap.current_user_role === 'editor' ? 'Éditeur' : poiMap.current_user_role === 'viewer' ? 'Lecteur' : 'Administrateur'}</em>{poiMap.id === activeMapId && <b>Ouverte</b>}</div>
+            <div className="maps-catalog__preview" aria-label={t('maps.flagPreview', { country: poiMap.country.name, name: poiMap.name })} role="img"><CountryFlag countryCode={poiMap.country.iso_alpha2} className="maps-catalog__flag" /></div>
+            <div className="maps-catalog__details"><span className={`maps-catalog__privacy${poiMap.is_shared ? ' shared' : ''}`} aria-label={poiMap.is_shared ? t('maps.shared') : t('maps.private')} title={poiMap.is_shared ? t('maps.shared') : t('maps.private')}>{poiMap.is_shared ? <Share2 size={15} /> : <LockKeyhole size={15} />}</span><strong>{poiMap.name}</strong><span>{poiMap.country.name}</span><em>{t(`maps.role.${poiMap.current_user_role === 'owner' || poiMap.current_user_role === 'editor' || poiMap.current_user_role === 'viewer' ? poiMap.current_user_role : 'admin'}`)}</em>{poiMap.id === activeMapId && <b>{t('maps.opened')}</b>}</div>
           </div>
-          <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={`Ouvrir ${poiMap.name}`} disabled={poiMap.id === activeMapId} onClick={() => onOpen(poiMap.id)}>Ouvrir</button>{poiMap.can_edit && <button type="button" className="panel-icon-button" aria-label={`Configurer les champs de ${poiMap.name}`} title="Champs des POI" onClick={() => setSettingsMap(poiMap)}><Settings2 size={16} /></button>}{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={`Exporter la carte ${poiMap.name}`} title={`Exporter ${poiMap.name}`} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={`Gérer les membres de ${poiMap.name}`} title="Membres" onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={`Supprimer ${poiMap.name}`} title={`Supprimer ${poiMap.name}`} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
+          <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={t('maps.openNamed', { name: poiMap.name })} disabled={poiMap.id === activeMapId} onClick={() => onOpen(poiMap.id)}>{t('maps.open')}</button>{poiMap.can_edit && <button type="button" className="panel-icon-button" aria-label={t('maps.configureFields', { name: poiMap.name })} title={t('maps.fields')} onClick={() => setSettingsMap(poiMap)}><Settings2 size={16} /></button>}{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={t('maps.export', { name: poiMap.name })} title={t('maps.export', { name: poiMap.name })} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={t('maps.manageMembers', { name: poiMap.name })} title={t('maps.members')} onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={t('maps.deleteNamed', { name: poiMap.name })} title={t('maps.deleteNamed', { name: poiMap.name })} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
         </li>)}
       </ul>
     </div>

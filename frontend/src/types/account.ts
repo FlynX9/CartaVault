@@ -9,6 +9,7 @@ export interface AccountSession {
 }
 
 export interface AccountPreferences {
+  language: 'fr' | 'en'
   preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'
   density: 'comfortable' | 'compact'
   startup_panel: 'maps' | 'places' | 'last'

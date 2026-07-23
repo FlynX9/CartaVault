@@ -24,7 +24,7 @@ describe('authentication layout', () => {
       </ThemeContext.Provider>,
     )
 
-    expect(screen.getByRole('complementary', { name: 'CartaVault, espace privé' })).toBeVisible()
+    expect(screen.getByRole('complementary', { name: 'CartaVault, Espace privé' })).toBeVisible()
     expect(screen.getByRole('heading', { name: /Vos cartes.*Vos lieux.*Votre aventure/ })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Connexion à CartaVault' })).toBeVisible()
     expect(screen.getByLabelText('Adresse email')).toHaveAttribute('type', 'email')

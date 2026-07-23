@@ -20,7 +20,7 @@ vi.mock('../theme/useTheme', () => ({
 
 vi.mock('../api/account', () => ({
   ACCOUNT_PREFERENCES_UPDATED_EVENT: 'cartavault:preferences-updated',
-  getAccountPreferences: vi.fn().mockResolvedValue({ preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }),
+  getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }),
   updateAccountPreferences: vi.fn().mockImplementation(async (preferences) => preferences),
 }))
 

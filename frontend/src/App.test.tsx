@@ -63,18 +63,18 @@ describe('map URL workspace', () => {
   it('always opens Sorties with the complete Places and Preparation workspace', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Préparation de sortie' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Vue du voyage' }))
     expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
     expect(screen.queryByRole('searchbox', { name: 'Rechercher un lieu' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
   it('reports refusal when deleting a map from the maps panel', async () => {

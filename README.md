@@ -146,6 +146,14 @@ CartaVault uses **OSRM** by default and can use the **Google Routes API** as an 
 > [!NOTE]
 > Public registration requires administrator approval. Registration and password-reset emails use the Resend key configured in Administration; public maps and automatic map-invitation emails are not currently available.
 
+The CartaVault interface is available in French and English. Authenticated
+users select their language in **Account → Preferences**; the preference is
+stored server-side and applied without a page reload. Public authentication
+screens initially follow the saved local choice or browser language, with
+`VITE_DEFAULT_LANGUAGE=fr` as the instance fallback. Registration approval and
+password-reset emails are rendered from matching repository-hosted FR/EN
+templates.
+
 ### Map layers
 
 The map layer can be changed without reloading the map:

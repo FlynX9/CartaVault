@@ -1,0 +1,4 @@
+CartaVault — New registration request
+
+$applicant_email would like to join CartaVault.
+Review this request in the Administration panel: $app_url

@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { confirmPasswordReset, requestPasswordReset } from '../api/registration'
+import { useI18n } from '../i18n/useI18n'
 import {
   AuthCard,
   AuthInput,
@@ -12,6 +13,7 @@ import {
 } from '../components/auth/AuthLayout'
 
 export function ForgotPasswordPage() {
+  const { locale, t } = useI18n()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -21,10 +23,10 @@ export function ForgotPasswordPage() {
     setBusy(true)
     setError(null)
     try {
-      const response = await requestPasswordReset(String(new FormData(event.currentTarget).get('email')))
+      const response = await requestPasswordReset(String(new FormData(event.currentTarget).get('email')), locale)
       setMessage(response.message)
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Demande impossible.')
+      setError(caught instanceof Error ? caught.message : t('auth.reset.requestError'))
     } finally {
       setBusy(false)
     }
@@ -34,10 +36,10 @@ export function ForgotPasswordPage() {
     return (
       <AuthLayout>
         <AuthCard
-          title="Consultez votre messagerie"
-          subtitle="Votre demande de réinitialisation a bien été prise en compte."
+          title={t('auth.reset.checkEmailTitle')}
+          subtitle={t('auth.reset.checkEmailSubtitle')}
           status="success"
-          footer={<p><Link to="/">Retour à la connexion</Link></p>}
+          footer={<p><Link to="/">{t('auth.register.backToLogin')}</Link></p>}
         >
           <div className="auth-confirmation" role="status">
             <p>{message}</p>
@@ -50,17 +52,17 @@ export function ForgotPasswordPage() {
   return (
     <AuthLayout>
       <AuthCard
-        title="Mot de passe oublié ?"
-        subtitle="Recevez un lien sécurisé pour retrouver l’accès à votre compte."
-        footer={<p><Link to="/"><ArrowLeft aria-hidden="true" /> Retour à la connexion</Link></p>}
+        title={t('auth.reset.forgotTitle')}
+        subtitle={t('auth.reset.forgotSubtitle')}
+        footer={<p><Link to="/"><ArrowLeft aria-hidden="true" /> {t('auth.register.backToLogin')}</Link></p>}
       >
-        <p className="auth-card__context">Indiquez l’adresse email associée à votre compte CartaVault.</p>
+        <p className="auth-card__context">{t('auth.reset.context')}</p>
         <form className="auth-form" onSubmit={(event) => void submit(event)}>
-          <AuthInput label="Adresse email" icon={Mail} name="email" type="email" autoComplete="email" placeholder="votre@email.com" required />
+          <AuthInput label={t('auth.email')} icon={Mail} name="email" type="email" autoComplete="email" placeholder={t('auth.emailPlaceholder')} required />
           {error && <p className="auth-alert" role="alert">{error}</p>}
           <AuthSubmitButton disabled={busy}>
             <Send aria-hidden="true" />
-            {busy ? 'Envoi…' : 'Envoyer le lien'}
+            {busy ? t('auth.reset.sending') : t('auth.reset.send')}
           </AuthSubmitButton>
         </form>
       </AuthCard>
@@ -69,6 +71,7 @@ export function ForgotPasswordPage() {
 }
 
 export function ResetPasswordPage() {
+  const { t } = useI18n()
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const [done, setDone] = useState(false)
@@ -85,7 +88,7 @@ export function ResetPasswordPage() {
       setDone(true)
       window.history.replaceState({}, '', '/reset-password')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Réinitialisation impossible.')
+      setError(caught instanceof Error ? caught.message : t('auth.reset.error'))
     } finally {
       setBusy(false)
     }
@@ -95,13 +98,13 @@ export function ResetPasswordPage() {
     return (
       <AuthLayout>
         <AuthCard
-          title="Mot de passe modifié"
-          subtitle="Votre compte est de nouveau sécurisé."
+          title={t('auth.reset.doneTitle')}
+          subtitle={t('auth.reset.doneSubtitle')}
           status="success"
-          footer={<p><Link to="/">Se connecter à CartaVault</Link></p>}
+          footer={<p><Link to="/">{t('auth.reset.login')}</Link></p>}
         >
           <div className="auth-confirmation" role="status">
-            <p>Votre mot de passe a été modifié et vos anciennes sessions ont été fermées.</p>
+            <p>{t('auth.reset.doneDescription')}</p>
           </div>
         </AuthCard>
       </AuthLayout>
@@ -111,20 +114,20 @@ export function ResetPasswordPage() {
   return (
     <AuthLayout>
       <AuthCard
-        title="Créer un nouveau mot de passe"
-        subtitle="Choisissez un mot de passe unique pour protéger votre espace."
-        footer={<p><Link to="/"><ArrowLeft aria-hidden="true" /> Retour à la connexion</Link></p>}
+        title={t('auth.reset.newTitle')}
+        subtitle={t('auth.reset.newSubtitle')}
+        footer={<p><Link to="/"><ArrowLeft aria-hidden="true" /> {t('auth.register.backToLogin')}</Link></p>}
       >
         {!token ? (
-          <div className="auth-alert" role="alert">Ce lien de réinitialisation est incomplet.</div>
+          <div className="auth-alert" role="alert">{t('auth.reset.invalidLink')}</div>
         ) : (
           <form className="auth-form" onSubmit={(event) => void submit(event)}>
-            <AuthPasswordInput label="Nouveau mot de passe" name="password" autoComplete="new-password" placeholder="12 caractères minimum" required minLength={12} />
-            <AuthPasswordInput label="Confirmer le mot de passe" name="confirmation" autoComplete="new-password" placeholder="Confirmez votre mot de passe" required minLength={12} />
+            <AuthPasswordInput label={t('auth.reset.newPassword')} name="password" autoComplete="new-password" placeholder={t('auth.password.minimum', { count: 12 })} required minLength={12} />
+            <AuthPasswordInput label={t('auth.register.confirmPassword')} name="confirmation" autoComplete="new-password" placeholder={t('auth.register.confirmPlaceholder')} required minLength={12} />
             {error && <p className="auth-alert" role="alert">{error}</p>}
             <AuthSubmitButton disabled={busy}>
               <KeyRound aria-hidden="true" />
-              {busy ? 'Validation…' : 'Modifier le mot de passe'}
+              {busy ? t('auth.reset.submitting') : t('auth.reset.submit')}
             </AuthSubmitButton>
           </form>
         )}

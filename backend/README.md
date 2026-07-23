@@ -8,7 +8,7 @@ Le routeur `/account` gère le profil personnel, le changement d’e-mail et de 
 
 `POST /auth/register` enregistre une demande en attente sans créer de ligne `users`. Un administrateur accepte ou refuse la demande depuis `/admin/registration-requests`; l’utilisateur n’est créé et activé qu’au moment de l’acceptation. La réinitialisation de mot de passe renvoie toujours une réponse générique, utilise un jeton à usage unique stocké uniquement sous forme de hash et révoque les sessions après confirmation.
 
-La clé Resend est saisie depuis le panneau Administration et chiffrée avec `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; l’API ne renvoie que son suffixe. Les paramètres non secrets sont `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES` et `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Chaque fonction d’envoi possède une version HTML CartaVault et une version texte versionnées sous `app/emails/templates/`.
+La clé Resend est saisie depuis le panneau Administration et chiffrée avec `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; l’API ne renvoie que son suffixe. Les paramètres non secrets sont `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES` et `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Chaque fonction d’envoi possède des versions HTML et texte CartaVault en français et en anglais, versionnées sous `app/emails/templates/` avec les suffixes `.fr` et `.en`. La langue de la demande d’inscription est conservée jusqu’à sa validation ; les réinitialisations utilisent la préférence du compte.
 
 ## Authentification, rôles et sécurité
 

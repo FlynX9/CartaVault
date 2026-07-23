@@ -19,6 +19,7 @@ import { getPhotoFileUrl, getPlacePhotos } from '../../api/photos'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 import { PhotoViewer } from '../photos/PhotoViewer'
 import type { Photo } from '../../types/photo'
+import { useI18n } from '../../i18n/useI18n'
 
 const PAGE_SIZE = 100
 const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000
@@ -31,11 +32,11 @@ interface Props {
 
 const sortPlaces = (places: PlaceDetails[]) => places
 const toggle = (values: string[], value: string) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value]
-const formatLastUpdate = (value: string | undefined) => !value ? 'Mis à jour récemment' : `Mis à jour le ${new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(new Date(value))}`
 const formatLocation = (place: PlaceDetails) => place.region || (place.latitude !== null && place.longitude !== null ? `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}` : 'Coordonnées non renseignées')
 const formatRating = (place: PlaceDetails) => place.interest_rating ?? place.visit_rating
 
 export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
+  const { t, formatDate } = useI18n()
   const { confirm, confirmationDialog } = useConfirmDialog()
   const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [listReady, setListReady] = useState(false); const [hasMore, setHasMore] = useState(false); const [nextOffset, setNextOffset] = useState(0); const [error, setError] = useState<string | null>(null); const [listRequestVersion, setListRequestVersion] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -229,28 +230,28 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
       {photoViewer && <PhotoViewer photos={photoViewer.photos} placeName={photoViewer.placeName} initialPhotoId={photoViewer.initialPhotoId} onClose={() => setPhotoViewer(null)} />}
       <header className="places-redesign-header">
         <div>
-          <div className="places-redesign-title-row"><h2 id="map-place-list-title">Lieux</h2>{poiMap && <span className="places-redesign-count">{facets.with_coordinates + facets.without_coordinates || visible.length} lieux</span>}</div>
-          {!collapsed && poiMap && <p>{poiMap.country?.name ?? poiMap.name} · {formatLastUpdate(poiMap.updated_at)}</p>}
+          <div className="places-redesign-title-row"><h2 id="map-place-list-title">{t('places.title')}</h2>{poiMap && <span className="places-redesign-count">{t('places.count', { count: facets.with_coordinates + facets.without_coordinates || visible.length })}</span>}</div>
+          {!collapsed && poiMap && <p>{poiMap.country?.name ?? poiMap.name} · {poiMap.updated_at ? t('places.updatedAt', { date: formatDate(poiMap.updated_at, { day: 'numeric', month: 'short' }) }) : t('places.updatedRecently')}</p>}
         </div>
         <div className="places-redesign-header-actions">
-          {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label="Importer un fichier KMZ" onClick={() => setImporting(true)}><FileUp size={17} /></button>}
-          {!collapsed && poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create" to={withMap('/places/new', poiMap.id)}><Plus size={18} />Nouveau lieu</Link>}
-          <button className="panel-icon-button places-collapse-toggle" type="button" aria-label={collapsed ? 'Déployer le panneau Lieux' : 'Réduire le panneau Lieux'} aria-expanded={!collapsed} onClick={() => onCollapsedChange(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button>
+          {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label={t('places.import')} onClick={() => setImporting(true)}><FileUp size={17} /></button>}
+          {!collapsed && poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create" to={withMap('/places/new', poiMap.id)}><Plus size={18} />{t('places.new')}</Link>}
+          <button className="panel-icon-button places-collapse-toggle" type="button" aria-label={collapsed ? t('places.expandPanel') : t('places.closePanel')} aria-expanded={!collapsed} onClick={() => onCollapsedChange(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button>
         </div>
       </header>
-      {poiMap && <section className="places-redesign-controls" aria-label="Recherche et filtres des lieux">
-        <label className="place-list-search places-redesign-search"><Search aria-hidden="true" size={19} /><span className="visually-hidden">Rechercher un lieu</span><input type="search" value={filters.query} placeholder="Rechercher un lieu, une adresse…" onChange={(event) => update({ query: event.target.value })} />{filters.query && <button type="button" aria-label="Effacer la recherche" onClick={() => update({ query: '' })}><X size={15} /></button>}</label>
-        <nav className="places-quick-filters" aria-label="Filtres rapides">
-          <button type="button" className={filters.functionalState === null && filters.isFavorite !== true ? 'active' : ''} onClick={() => update({ functionalState: null, isFavorite: null })}>Tous<small>{facets.total}</small></button>
-          <button type="button" className={filters.functionalState === 'non_visited' ? 'active' : ''} onClick={() => update({ functionalState: filters.functionalState === 'non_visited' ? null : 'non_visited' })}>Non visités<small>{facets.non_visited}</small></button>
-          <button type="button" className={filters.functionalState === 'visited' ? 'active' : ''} onClick={() => update({ functionalState: filters.functionalState === 'visited' ? null : 'visited' })}>Visités<small>{facets.visited}</small></button>
-          <button type="button" className={filters.isFavorite === true ? 'active' : ''} onClick={() => update({ isFavorite: filters.isFavorite === true ? null : true })}>Favoris<small>{facets.favorites}</small></button>
+      {poiMap && <section className="places-redesign-controls" aria-label={t('places.controls')}>
+        <label className="place-list-search places-redesign-search"><Search aria-hidden="true" size={19} /><span className="visually-hidden">{t('places.search')}</span><input type="search" value={filters.query} placeholder={t('places.search')} onChange={(event) => update({ query: event.target.value })} />{filters.query && <button type="button" aria-label={t('places.clearSearch')} onClick={() => update({ query: '' })}><X size={15} /></button>}</label>
+        <nav className="places-quick-filters" aria-label={t('places.quickFilters')}>
+          <button type="button" className={filters.functionalState === null && filters.isFavorite !== true ? 'active' : ''} onClick={() => update({ functionalState: null, isFavorite: null })}>{t('places.all')}<small>{facets.total}</small></button>
+          <button type="button" className={filters.functionalState === 'non_visited' ? 'active' : ''} onClick={() => update({ functionalState: filters.functionalState === 'non_visited' ? null : 'non_visited' })}>{t('places.notVisited')}<small>{facets.non_visited}</small></button>
+          <button type="button" className={filters.functionalState === 'visited' ? 'active' : ''} onClick={() => update({ functionalState: filters.functionalState === 'visited' ? null : 'visited' })}>{t('places.visited')}<small>{facets.visited}</small></button>
+          <button type="button" className={filters.isFavorite === true ? 'active' : ''} onClick={() => update({ isFavorite: filters.isFavorite === true ? null : true })}>{t('places.favorites')}<small>{facets.favorites}</small></button>
         </nav>
         <div className="places-redesign-toolbar">
-          <div className="places-view-switcher" role="group" aria-label="Mode d’affichage"><button type="button" className={displayMode === 'compact' ? 'active' : ''} aria-pressed={displayMode === 'compact'} aria-label="Affichage compact" onClick={() => setDisplayMode('compact')}><List size={18} /></button><button type="button" className={displayMode === 'expanded' ? 'active' : ''} aria-pressed={displayMode === 'expanded'} aria-label="Affichage enrichi" onClick={() => setDisplayMode('expanded')}><LayoutList size={18} /></button></div>
-          {poiMap && <button className={`panel-icon-button places-selection-toggle${selectionMode ? ' primary' : ''}`} type="button" aria-label="Sélection multiple" aria-pressed={selectionMode} onClick={() => { setSelectionMode((value) => !value); setSelectedIds(new Set()) }}><CheckSquare size={17} /></button>}
-          <label className="places-sort-control"><ArrowDownAZ size={17} /><span className="visually-hidden">Trier les lieux</span><select value={filters.sortBy} onChange={(event) => update({ sortBy: event.target.value as PlaceFilters['sortBy'] })}><option value="name">Trier par : Nom A–Z</option><option value="created_at">Trier par : Ajout</option><option value="updated_at">Trier par : Modification</option><option value="interest_rating">Trier par : Note</option><option value="favorite">Trier par : Favoris</option></select></label>
-          <button className={`places-advanced-filter${filtersOpen ? ' active' : ''}`} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}><SlidersHorizontal size={17} />Filtres{activeCount ? ` (${activeCount})` : ''}</button>
+          <div className="places-view-switcher" role="group" aria-label={t('places.displayMode')}><button type="button" className={displayMode === 'compact' ? 'active' : ''} aria-pressed={displayMode === 'compact'} aria-label={t('places.compactView')} onClick={() => setDisplayMode('compact')}><List size={18} /></button><button type="button" className={displayMode === 'expanded' ? 'active' : ''} aria-pressed={displayMode === 'expanded'} aria-label={t('places.expandedView')} onClick={() => setDisplayMode('expanded')}><LayoutList size={18} /></button></div>
+          {poiMap && <button className={`panel-icon-button places-selection-toggle${selectionMode ? ' primary' : ''}`} type="button" aria-label={t('places.selection')} aria-pressed={selectionMode} onClick={() => { setSelectionMode((value) => !value); setSelectedIds(new Set()) }}><CheckSquare size={17} /></button>}
+          <label className="places-sort-control"><ArrowDownAZ size={17} /><span className="visually-hidden">{t('places.sortName')}</span><select value={filters.sortBy} onChange={(event) => update({ sortBy: event.target.value as PlaceFilters['sortBy'] })}><option value="name">{t('places.sortName')}</option><option value="created_at">Trier par : Ajout</option><option value="updated_at">Trier par : Modification</option><option value="interest_rating">Trier par : Note</option><option value="favorite">Trier par : Favoris</option></select></label>
+          <button className={`places-advanced-filter${filtersOpen ? ' active' : ''}`} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((value) => !value)}><SlidersHorizontal size={17} />{t('places.filters')}{activeCount ? ` (${activeCount})` : ''}</button>
         </div>
         {filtersOpen && <div className="place-filter-drawer" role="region" aria-label="Filtres avancés">{multiOptions('Catégories', categories.map((item) => ({ ...item, count: facets.categories.find((facet) => facet.id === item.id)?.count ?? 0 })), filters.categoryIds, (categoryIds) => update({ categoryIds }))}{multiOptions('Tags', tags.map((item) => ({ ...item, count: facets.tags.find((facet) => facet.id === item.id)?.count ?? 0 })), filters.tagIds, (tagIds) => update({ tagIds }))}{multiOptions('Statuts', statuses.map((item) => ({ id: item.id, name: item.name, color: item.color, count: facets.statuses.find((facet) => facet.id === item.id)?.count ?? 0 })), filters.statusIds, (statusIds) => update({ statusIds }))}{multiOptions('Régions', facets.regions.map((item) => ({ id: item.value ?? '', name: item.value ?? '', count: item.count })), filters.regions, (regions) => update({ regions }))}<details className="place-filter-group"><summary>Photos, coordonnées et sortie</summary><div>{boolControl('Photos', filters.hasPhotos, (hasPhotos) => update({ hasPhotos }))}{boolControl('Coordonnées valides', filters.hasValidCoordinates, (hasValidCoordinates) => update({ hasValidCoordinates }))}{boolControl('Présent dans une sortie', filters.inTrip, (inTrip) => update({ inTrip }))}</div></details><button className="place-list-reset" type="button" onClick={() => onFiltersChange(DEFAULT_PLACE_FILTERS)} disabled={!hasActivePlaceFilters(filters)}>Réinitialiser tous les filtres</button></div>}
       </section>}

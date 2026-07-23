@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
+import { useI18n } from '../i18n/useI18n'
 import {
   AuthCard,
   AuthInput,
@@ -24,6 +25,7 @@ function loadRememberedEmail(): string {
 
 export function LoginPage() {
   const { login } = useAuth()
+  const { t } = useI18n()
   const rememberedEmail = loadRememberedEmail()
   const [email, setEmail] = useState(rememberedEmail)
   const [password, setPassword] = useState('')
@@ -44,7 +46,7 @@ export function LoginPage() {
         // Authentication still succeeds when local storage is unavailable.
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Connexion impossible.')
+      setError(caught instanceof Error ? caught.message : t('auth.login.error'))
     } finally {
       setSubmitting(false)
     }
@@ -53,25 +55,25 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <AuthCard
-        title="Connexion à CartaVault"
-        subtitle="Accédez à votre espace personnel."
-        footer={<p>Vous n’avez pas de compte ? <Link to="/register">Créer un compte</Link></p>}
+        title={t('auth.login.title')}
+        subtitle={t('auth.login.subtitle')}
+        footer={<p>{t('auth.login.noAccount')} <Link to="/register">{t('auth.login.createAccount')}</Link></p>}
       >
         <form className="auth-form" onSubmit={(event) => void submit(event)}>
           <AuthInput
-            label="Adresse email"
+            label={t('auth.email')}
             icon={Mail}
             type="email"
             autoComplete="email"
-            placeholder="votre@email.com"
+            placeholder={t('auth.emailPlaceholder')}
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
           <AuthPasswordInput
-            label="Mot de passe"
+            label={t('auth.password')}
             autoComplete="current-password"
-            placeholder="Votre mot de passe"
+            placeholder={t('auth.passwordPlaceholder')}
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -83,14 +85,14 @@ export function LoginPage() {
                 checked={remember}
                 onChange={(event) => setRemember(event.target.checked)}
               />
-              <span>Se souvenir de moi</span>
+              <span>{t('auth.login.remember')}</span>
             </label>
-            <Link to="/forgot-password">Mot de passe oublié ?</Link>
+            <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
           </div>
           {error && <p className="auth-alert" role="alert">{error}</p>}
           <AuthSubmitButton disabled={submitting}>
             <LogIn aria-hidden="true" />
-            {submitting ? 'Connexion…' : 'Se connecter'}
+            {submitting ? t('auth.login.submitting') : t('auth.login.submit')}
           </AuthSubmitButton>
         </form>
         <AuthSecureNotice />

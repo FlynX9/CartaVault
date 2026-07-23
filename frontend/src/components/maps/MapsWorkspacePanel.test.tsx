@@ -48,7 +48,7 @@ describe('MapsWorkspacePanel', () => {
     const { rerender } = render(<MapsWorkspacePanel maps={[viewerMap]} activeMapId={null} isLoading={false} errorMessage={null} onOpen={vi.fn()} onDelete={vi.fn()} onCreated={vi.fn()} onExport={vi.fn()} onMembers={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByText('Lecteur')).toBeVisible()
     expect(screen.getByLabelText('Carte partagée')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Exporter la carte France historique' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Exporter France historique' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Supprimer France historique' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Gérer les membres de France historique' })).not.toBeInTheDocument()
     const ownerMap: PoiMap = { ...viewerMap, current_user_role: 'owner', can_delete: true, can_manage_members: true }

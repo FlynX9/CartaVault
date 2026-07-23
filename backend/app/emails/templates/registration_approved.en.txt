@@ -1,0 +1,5 @@
+CartaVault — Your access has been approved
+
+Hello $display_name,
+Your CartaVault account is now active.
+Sign in: $app_url

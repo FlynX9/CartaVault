@@ -38,7 +38,7 @@ describe('public registration and password reset pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Demander mon inscription' }))
 
     expect(await screen.findByText('Demande transmise')).toBeVisible()
-    expect(register).toHaveBeenCalledWith('new@example.test', 'a sufficiently long password', 'a sufficiently long password')
+    expect(register).toHaveBeenCalledWith('new@example.test', 'a sufficiently long password', 'a sufficiently long password', 'fr')
   })
 
   it('always displays the generic reset request response', async () => {

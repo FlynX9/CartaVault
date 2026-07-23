@@ -122,6 +122,7 @@ class RoutingPreferences(BaseModel):
 
 
 class AccountPreferences(BaseModel):
+    language: Literal["fr", "en"] = "fr"
     preferred_basemap: Literal["cartavault-light", "cartavault-dark", "satellite", "osm"] = "cartavault-light"
     density: Literal["comfortable", "compact"] = "comfortable"
     startup_panel: Literal["maps", "places", "last"] = "maps"
@@ -151,6 +152,7 @@ class RegistrationCreate(EmailModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=security_settings.password_min_length, max_length=1024)
     confirmation: str = Field(min_length=security_settings.password_min_length, max_length=1024)
+    locale: Literal["fr", "en"] = "fr"
 
     @model_validator(mode="after")
     def passwords_match(self) -> Self:
@@ -161,6 +163,7 @@ class RegistrationCreate(EmailModel):
 
 class PasswordResetRequest(EmailModel):
     email: str = Field(min_length=3, max_length=320)
+    locale: Literal["fr", "en"] = "fr"
 
 
 class PasswordResetConfirm(BaseModel):
@@ -181,6 +184,7 @@ class RegistrationRequestRead(BaseModel):
     id: UUID
     email: str
     display_name: str
+    locale: Literal["fr", "en"]
     status: Literal["pending", "approved", "rejected"]
     created_at: datetime
     reviewed_at: datetime | None

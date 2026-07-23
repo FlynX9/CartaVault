@@ -29,17 +29,21 @@ def register(data: RegistrationCreate, request: Request, database_session: Sessi
     email = normalize_email(str(data.email))
     if database_session.scalar(select(User.id).where(User.email == email)) is not None or database_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.email == email)) is not None:
         raise HTTPException(409, "Une inscription existe déjà pour cette adresse email.")
-    request = RegistrationRequest(email=email, display_name=email.split("@", 1)[0][:120], password_hash=hash_password(data.password))
+    request = RegistrationRequest(email=email, display_name=email.split("@", 1)[0][:120], password_hash=hash_password(data.password), locale=data.locale)
     try:
         database_session.add(request)
         database_session.commit()
     except IntegrityError as error:
         database_session.rollback()
         raise HTTPException(409, "Une inscription existe déjà pour cette adresse email.") from error
-    admins = list(database_session.scalars(select(User.email).where(User.is_admin.is_(True), User.is_active.is_(True))))
+    admins = list(database_session.scalars(select(User).where(User.is_admin.is_(True), User.is_active.is_(True))))
     try:
         if admins:
-            EmailService(provider_from_database(database_session)).notify_registration_admins(admins, email)
+            service = EmailService(provider_from_database(database_session))
+            for locale in ("fr", "en"):
+                recipients = [admin.email for admin in admins if (admin.preferences or {}).get("language", "fr") == locale]
+                if recipients:
+                    service.notify_registration_admins(recipients, email, locale)
             request.notification_sent_at = datetime.now(UTC).replace(tzinfo=None)
             request.notification_error_code = None
     except EmailDeliveryError as error:
@@ -61,7 +65,8 @@ def request_password_reset(data: PasswordResetRequest, request: Request, databas
         database_session.add(token)
         database_session.commit()
         try:
-            EmailService(provider_from_database(database_session)).send_password_reset(user.email, user.display_name, raw_token)
+            locale = str((user.preferences or {}).get("language") or data.locale)
+            EmailService(provider_from_database(database_session)).send_password_reset(user.email, user.display_name, raw_token, locale)
         except EmailDeliveryError as error:
             token.revoked_at = now
             database_session.commit()

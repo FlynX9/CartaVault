@@ -20,6 +20,7 @@ import {
 } from 'react'
 
 import { useTheme } from '../../theme/useTheme'
+import { useI18n } from '../../i18n/useI18n'
 
 type AuthCardProps = {
   title: string
@@ -37,33 +38,16 @@ type AuthInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
 
 type AuthPasswordInputProps = Omit<AuthInputProps, 'icon' | 'type'>
 
-const FEATURES: Array<{ icon: LucideIcon; title: string; description: string }> = [
-  {
-    icon: Map,
-    title: 'Cartes personnalisées',
-    description: 'Créez et organisez vos espaces cartographiques privés.',
-  },
-  {
-    icon: MapPin,
-    title: 'Lieux et découvertes',
-    description: 'Retrouvez vos endroits importants en un coup d’œil.',
-  },
-  {
-    icon: Route,
-    title: 'Sorties et itinéraires',
-    description: 'Préparez vos parcours et gardez le cap sur l’essentiel.',
-  },
-]
-
 export function AuthLayout({ children }: { children: ReactNode }) {
   const { resolvedTheme, toggleTheme } = useTheme()
-  const nextThemeLabel = resolvedTheme === 'dark' ? 'Activer le thème clair' : 'Activer le thème sombre'
+  const { t } = useI18n()
+  const nextThemeLabel = resolvedTheme === 'dark' ? t('auth.theme.light') : t('auth.theme.dark')
 
   return (
     <main className="auth-page">
       <div className="auth-shell">
         <AuthBrandingPanel />
-        <section className="auth-stage" aria-label="Authentification CartaVault">
+        <section className="auth-stage" aria-label={t('auth.layoutLabel')}>
           <button
             className="auth-theme-toggle"
             type="button"
@@ -81,24 +65,30 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 }
 
 export function AuthBrandingPanel() {
+  const { t } = useI18n()
+  const features: Array<{ icon: LucideIcon; title: string; description: string }> = [
+    { icon: Map, title: t('auth.feature.maps.title'), description: t('auth.feature.maps.description') },
+    { icon: MapPin, title: t('auth.feature.places.title'), description: t('auth.feature.places.description') },
+    { icon: Route, title: t('auth.feature.trips.title'), description: t('auth.feature.trips.description') },
+  ]
   return (
-    <aside className="auth-branding" aria-label="CartaVault, espace privé">
+    <aside className="auth-branding" aria-label={`CartaVault, ${t('auth.privateSpace')}`}>
       <div className="auth-branding__content">
         <header className="auth-branding__brand">
           <img src="/cartavault-logo.png" alt="" />
           <strong className="auth-branding__wordmark" aria-label="CartaVault">
             <span>Carta</span><b>Vault</b>
           </strong>
-          <span className="auth-branding__eyebrow">Espace privé</span>
+          <span className="auth-branding__eyebrow">{t('auth.privateSpace')}</span>
         </header>
 
         <div className="auth-branding__message">
-          <h2>Vos cartes.<br />Vos lieux.<br />Votre aventure.</h2>
-          <p>Accédez à vos cartes, organisez vos lieux et planifiez vos sorties en toute simplicité.</p>
+          <h2>{t('auth.heroTitle').split('\n').map((line) => <span key={line}>{line}<br /></span>)}</h2>
+          <p>{t('auth.heroDescription')}</p>
         </div>
 
         <ul className="auth-branding__features">
-          {FEATURES.map(({ icon: Icon, title, description }) => (
+          {features.map(({ icon: Icon, title, description }) => (
             <li key={title}>
               <span className="auth-branding__feature-icon"><Icon aria-hidden="true" /></span>
               <span>
@@ -111,7 +101,7 @@ export function AuthBrandingPanel() {
 
         <footer className="auth-branding__security">
           <LockKeyhole aria-hidden="true" />
-          <span><strong>Vos données sont chiffrées</strong><small>et protégées en toute sécurité.</small></span>
+          <span><strong>{t('auth.security.title')}</strong><small>{t('auth.security.description')}</small></span>
         </footer>
       </div>
     </aside>
@@ -166,6 +156,7 @@ export function AuthInput({ label, icon: Icon, hint, className = '', ...inputPro
 }
 
 export function AuthPasswordInput({ label, ...inputProps }: AuthPasswordInputProps) {
+  const { t } = useI18n()
   const id = useId()
   const [visible, setVisible] = useState(false)
   return (
@@ -177,23 +168,24 @@ export function AuthPasswordInput({ label, ...inputProps }: AuthPasswordInputPro
         <button
           className="auth-field__visibility"
           type="button"
-          aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+          aria-label={visible ? t('auth.password.hide') : t('auth.password.show')}
           aria-pressed={visible}
           onClick={() => setVisible((current) => !current)}
         >
           {visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
         </button>
       </span>
-      {inputProps.minLength && <small className="auth-field__hint">{inputProps.minLength} caractères minimum.</small>}
+      {inputProps.minLength && <small className="auth-field__hint">{t('auth.password.minimum', { count: inputProps.minLength })}</small>}
     </div>
   )
 }
 
 export function AuthSecureNotice() {
+  const { t } = useI18n()
   return (
     <div className="auth-secure-notice">
       <span><ShieldCheck aria-hidden="true" /></span>
-      <p><strong>Connexion sécurisée</strong><small>Vos informations sont protégées par un chiffrement de bout en bout.</small></p>
+      <p><strong>{t('auth.secure.title')}</strong><small>{t('auth.secure.description')}</small></p>
     </div>
   )
 }

@@ -6,15 +6,18 @@ import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
 import { useAuth } from '../../auth/useAuth'
+import { useI18n } from '../../i18n/useI18n'
 import type { AccountPreferences, AccountProfile, AccountSession, GoogleRoutesCredentialStatus } from '../../types/account'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 
 type Section = 'profile' | 'avatar' | 'security' | 'sessions' | 'preferences' | 'danger'
 
-const emptyPreferences: AccountPreferences = { preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
 
 export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpenAdmin?: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
+  const { t } = useI18n()
+  const translationRef = useRef(t)
   const [section, setSection] = useState<Section>('profile')
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [sessions, setSessions] = useState<AccountSession[]>([])
@@ -29,6 +32,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   const closeRef = useRef(onClose)
   dirtyRef.current = dirty
   closeRef.current = onClose
+  translationRef.current = t
   const avatar = accountAvatarUrl(profile?.avatar_url ?? user?.avatar_url ?? null)
   const initials = (profile?.display_name ?? user?.display_name ?? '?').trim().charAt(0).toUpperCase()
 
@@ -36,7 +40,9 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     const [nextProfile, nextSessions, nextPreferences] = await Promise.all([getAccountProfile(), getAccountSessions(), getAccountPreferences()])
     setProfile(nextProfile); setDraftName(nextProfile.display_name); setSessions(nextSessions); setPreferences(nextPreferences)
   }
-  useEffect(() => { void load().catch((reason: unknown) => setError(messageFor(reason, 'Chargement impossible.'))) }, [])
+  useEffect(() => {
+    void load().catch((reason: unknown) => setError(messageFor(reason, translationRef.current('account.loadError'))))
+  }, [])
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -44,7 +50,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        if (!dirtyRef.current || window.confirm('Abandonner les modifications non enregistrées ?')) closeRef.current()
+        if (!dirtyRef.current || window.confirm(t('account.discard'))) closeRef.current()
         return
       }
       if (event.key !== 'Tab' || !modal.current) return
@@ -56,22 +62,22 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     }
     window.addEventListener('keydown', onKeyDown)
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown); trigger?.focus() }
-  }, [trigger])
+  }, [trigger, t])
 
-  const requestClose = () => { if (!dirty || window.confirm('Abandonner les modifications non enregistrées ?')) onClose() }
-  const selectSection = (next: Section) => { if (next === section || !dirty || window.confirm('Abandonner les modifications non enregistrées ?')) setSection(next) }
+  const requestClose = () => { if (!dirty || window.confirm(t('account.discard'))) onClose() }
+  const selectSection = (next: Section) => { if (next === section || !dirty || window.confirm(t('account.discard'))) setSection(next) }
   const run = async (action: () => Promise<void>, success: string): Promise<boolean> => {
     setError(null); setMessage(null)
-    try { await action(); setMessage(success); return true } catch (reason) { setError(messageFor(reason, 'Opération impossible.')); return false }
+    try { await action(); setMessage(success); return true } catch (reason) { setError(messageFor(reason, t('account.operationError'))); return false }
   }
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!dirty) return
-    await run(async () => { await updateAccountProfile(draftName); await refresh(); await load() }, 'Profil mis à jour.')
+    await run(async () => { await updateAccountProfile(draftName); await refresh(); await load() }, t('account.profileUpdated'))
   }
   const uploadAvatar = async (file: File) => {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError('Choisissez une image JPEG, PNG ou WebP de 5 Mio maximum.'); return }
-    await run(async () => { await uploadAccountAvatar(file); await refresh(); await load() }, 'Avatar mis à jour.')
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError(t('account.avatarInvalid')); return }
+    await run(async () => { await uploadAccountAvatar(file); await refresh(); await load() }, t('account.avatarUpdated'))
   }
 
   return createPortal(
@@ -79,12 +85,12 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
       <section ref={modal} className="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title">
         <header className="account-modal__header">
           <div className="account-avatar">{avatar ? <img src={avatar} alt={`Avatar de ${profile?.display_name ?? user?.display_name}`} /> : initials}</div>
-          <div><h2 id="account-title">Mon compte</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />Administrateur</span>}</div>
-          <button ref={closeButton} className="panel-icon-button" type="button" aria-label="Fermer l’espace compte" onClick={requestClose}><X size={18} /></button>
+          <div><h2 id="account-title">{t('account.title')}</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />{t('account.admin')}</span>}</div>
+          <button ref={closeButton} className="panel-icon-button" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={18} /></button>
         </header>
-        <nav className="account-modal__nav" aria-label="Gestion du compte">
-          {([[ 'profile', UserRound, 'Profil' ], [ 'avatar', Camera, 'Avatar' ], [ 'security', ShieldCheck, 'Sécurité' ], [ 'sessions', MonitorSmartphone, 'Sessions' ], [ 'preferences', Settings2, 'Préférences' ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
-          <button className="danger" type="button" onClick={() => selectSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />Zone sensible</button>
+        <nav className="account-modal__nav" aria-label={t('account.navigation')}>
+          {([[ 'profile', UserRound, t('account.profile') ], [ 'avatar', Camera, t('account.avatar') ], [ 'security', ShieldCheck, t('account.security') ], [ 'sessions', MonitorSmartphone, t('account.sessions') ], [ 'preferences', Settings2, t('account.preferences') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
+          <button className="danger" type="button" onClick={() => selectSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />{t('account.danger')}</button>
         </nav>
         <main className="account-modal__content">
           {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
@@ -109,6 +115,7 @@ function SessionsSection({ sessions, run, reload }: { sessions: AccountSession[]
 }
 
 function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
+  const { setLocale, t } = useI18n()
   const [googleAvailable, setGoogleAvailable] = useState(false)
   useEffect(() => {
     const controller = new AbortController()
@@ -120,7 +127,22 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
   const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
   const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
   const googleSelected = preferences.routing.provider === 'google'
-  return <><AccountHeading title="Préférences" description="Ces réglages sont associés à votre compte, sur tous vos appareils." /><form className="account-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { apply(await updateAccountPreferences(preferences)) }, 'Préférences enregistrées.') }}><label>Fond cartographique préféré<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">Clair</option><option value="cartavault-dark">Sombre</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label><label>Densité d’affichage<select value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="comfortable">Confortable</option><option value="compact">Compacte</option></select></label><label>Panneau au démarrage<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">Cartes</option><option value="places">Lieux</option><option value="last">Dernière vue utilisée</option></select></label><label>Fuseau horaire<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label><fieldset className="account-routing-preferences"><legend>Routage</legend><label>Moteur de calcul<select value={preferences.routing.provider} onChange={(event) => updateRouting('provider', event.target.value as AccountPreferences['routing']['provider'])}><option value="osrm">OSRM</option><option value="google" disabled={!googleAvailable}>Google Routes</option></select></label><small>{googleAvailable ? 'OSRM reste libre ; Google Routes utilise la configuration serveur et peut être facturé.' : 'Google Routes n’est pas configuré sur ce serveur.'}</small><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} />Rester dans le pays</label>{googleSelected && <div className="account-routing-options"><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} />Éviter les péages</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} />Éviter les autoroutes</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} />Éviter les ferries</label><label>Prise en compte du trafic<select value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">Sans trafic</option><option value="traffic_aware">Trafic actuel</option><option value="traffic_aware_optimal">Trafic optimal (sans optimisation d’ordre)</option></select></label></div>}<small>CartaVault valide toujours la contrainte pays après le calcul. Aucun basculement vers OSRM n’est automatique.</small></fieldset><label>Langue<input readOnly value="Français" /></label><button className="account-button account-button--primary" type="submit">Enregistrer</button><button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, 'Préférences réinitialisées.')}>Réinitialiser les préférences</button></form></>
+  return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><form className="account-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved')) }}>
+    <label><span id="account-language-label">{t('common.language')}</span><select aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select><small>{t('account.preferences.languageHelp')}</small></label>
+    <label>{t('account.preferences.basemap')}<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label>
+    <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="compact">{t('account.preferences.compact')}</option></select></label>
+    <label>{t('account.preferences.startup')}<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select></label>
+    <label>{t('account.preferences.timezone')}<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label>
+    <fieldset className="account-routing-preferences"><legend>{t('account.preferences.routing')}</legend>
+      <label>{t('account.preferences.engine')}<select value={preferences.routing.provider} onChange={(event) => updateRouting('provider', event.target.value as AccountPreferences['routing']['provider'])}><option value="osrm">OSRM</option><option value="google" disabled={!googleAvailable}>Google Routes</option></select></label>
+      <small>{googleAvailable ? t('account.preferences.osrmAvailable') : t('account.preferences.googleUnavailable')}</small>
+      <label className="checkbox-field"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} />{t('account.preferences.stayInCountry')}</label>
+      {googleSelected && <div className="account-routing-options"><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} />{t('account.preferences.avoidTolls')}</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} />{t('account.preferences.avoidHighways')}</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} />{t('account.preferences.avoidFerries')}</label><label>{t('account.preferences.traffic')}<select value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></label></div>}
+      <small>{t('account.preferences.countryNotice')}</small>
+    </fieldset>
+    <button className="account-button account-button--primary" type="submit">{t('common.save')}</button>
+    <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
+  </form></>
 }
 
 function CredentialPreferencesPanel({ preferences, setPreferences }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void }) {
