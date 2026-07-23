@@ -48,6 +48,17 @@ describe('MainNavigation', () => {
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('delegates a repeated Places click to the panel collapse toggle', () => {
+    const onPanelChange = vi.fn()
+    const onPlacesPanelToggle = vi.fn()
+    render(<MemoryRouter><MainNavigation activePanel="places" onPanelChange={onPanelChange} onPlacesPanelToggle={onPlacesPanelToggle} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
+
+    expect(onPlacesPanelToggle).toHaveBeenCalledOnce()
+    expect(onPanelChange).not.toHaveBeenCalled()
+  })
+
   it('marks only Sorties active while trip planning extends the Places workspace', () => {
     render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
     const places = screen.getByRole('button', { name: 'Lieux' })

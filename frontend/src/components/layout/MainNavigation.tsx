@@ -7,6 +7,7 @@ export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags'
 interface Props {
   activePanel: WorkspacePanel
   onPanelChange: (panel: WorkspacePanel) => void
+  onPlacesPanelToggle?: () => void
   isAdmin?: boolean
   onOpenTrips?: () => void
   tripPlanningActive?: boolean
@@ -16,15 +17,16 @@ function navClass(active: boolean): string {
   return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
 }
 
-export function MainNavigation({ activePanel, onPanelChange, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false }: Props) {
+export function MainNavigation({ activePanel, onPanelChange, onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false }: Props) {
   const { t } = useI18n()
   const togglePanel = (panel: Exclude<WorkspacePanel, null>) => onPanelChange(activePanel === panel ? null : panel)
+  const placesActive = activePanel === 'places' && !tripPlanningActive
 
   return <nav className="main-navigation cv-main-navigation" aria-label={t('nav.main')}>
     <Link className="main-navigation-brand" to="/" aria-label="CartaVault"><img src="/cartavault-logo.png" alt="CartaVault" /></Link>
     <div className="main-navigation-links cv-main-navigation__items">
       <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={23} /><span>{t('nav.maps')}</span></button>
-      <button type="button" className={navClass(activePanel === 'places' && !tripPlanningActive)} aria-label={t('nav.places')} aria-pressed={activePanel === 'places' && !tripPlanningActive} onClick={() => togglePanel('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>
+      <button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => placesActive ? onPlacesPanelToggle() : onPanelChange('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>
       <button type="button" className={navClass(activePanel === 'media')} aria-label={t('nav.media')} aria-pressed={activePanel === 'media'} onClick={() => togglePanel('media')}><Images size={23} /><span>{t('nav.media')}</span></button>
       <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={23} /><span>{t('nav.trips')}</span></button>
       <button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>

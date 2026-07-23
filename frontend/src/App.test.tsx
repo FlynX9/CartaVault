@@ -42,6 +42,19 @@ describe('map URL workspace', () => {
     expect(screen.getByRole('heading', { name: 'Créer une carte' })).toBeVisible()
   })
 
+  it('collapses and restores the Places panel when its active navigation entry is clicked again', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+    const placesNavigation = await screen.findByRole('button', { name: 'Lieux' })
+
+    fireEvent.click(placesNavigation)
+    expect(await screen.findByRole('button', { name: 'Déployer le panneau Lieux' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Lieux' })).toBeVisible()
+
+    fireEvent.click(placesNavigation)
+    expect(await screen.findByRole('button', { name: 'Réduire le panneau Lieux' })).toBeVisible()
+    expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+  })
+
   it('opens administration as a routed modal over the persistent map', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Menu utilisateur de Admin' }))
