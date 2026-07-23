@@ -47,9 +47,10 @@ describe('MapsWorkspacePanel', () => {
   })
 
   it('adapts sensitive actions to server-provided permissions', () => {
-    const viewerMap: PoiMap = { ...map, is_shared: true, current_user_role: 'viewer', can_export: true, can_delete: false, can_manage_members: false }
+    const viewerMap: PoiMap = { ...map, is_shared: true, current_user_role: 'viewer', owner_email: 'owner@example.test', owner_display_name: 'Alice Martin', can_export: true, can_delete: false, can_manage_members: false }
     const { rerender } = render(<MapsWorkspacePanel maps={[viewerMap]} activeMapId={null} isLoading={false} errorMessage={null} onOpen={vi.fn()} onDelete={vi.fn()} onCreated={vi.fn()} onExport={vi.fn()} onMembers={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByText('Lecteur')).toBeVisible()
+    expect(screen.getByText('— owner@example.test [Alice Martin]')).toBeVisible()
     expect(screen.getByLabelText('Carte partagée')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Exporter France historique' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Supprimer France historique' })).not.toBeInTheDocument()

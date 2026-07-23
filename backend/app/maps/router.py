@@ -57,7 +57,8 @@ def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
         min_longitude=country.min_longitude if country.min_longitude is not None else min_longitude,
         max_longitude=country.max_longitude if country.max_longitude is not None else max_longitude,
         created_at=poi_map.created_at, updated_at=poi_map.updated_at,
-        owner_id=poi_map.owner_id, is_private=poi_map.is_private,
+        owner_id=poi_map.owner_id, owner_email=poi_map.owner.email,
+        owner_display_name=poi_map.owner.display_name, is_private=poi_map.is_private,
         is_shared=len(poi_map.memberships) > 1,
         current_user_role=access.role, can_edit=can_edit, can_delete=access.can_delete,
         can_manage_members=can_manage, can_transfer_ownership=can_manage,
@@ -67,12 +68,12 @@ def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
 
 
 def read_map(database_session: Session, map_id: UUID) -> PoiMap | None:
-    return database_session.scalar(select(PoiMap).options(joinedload(PoiMap.country), selectinload(PoiMap.memberships)).where(PoiMap.id == map_id))
+    return database_session.scalar(select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships)).where(PoiMap.id == map_id))
 
 
 @router.get("", response_model=list[MapRead])
 def get_maps(q: str | None = Query(default=None, min_length=1, max_length=120), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[MapRead]:
-    statement = select(PoiMap).options(joinedload(PoiMap.country), selectinload(PoiMap.memberships))
+    statement = select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships))
     if not current_user.is_admin:
         statement = statement.join(MapMembership).where(MapMembership.user_id == current_user.id)
     if q is not None:

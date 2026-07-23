@@ -35,6 +35,8 @@ export interface PoiMap {
   created_at: string
   updated_at: string
   owner_id?: string
+  owner_email?: string
+  owner_display_name?: string
   is_private?: boolean
   is_shared?: boolean
   current_user_role?: 'admin' | 'owner' | 'editor' | 'viewer'

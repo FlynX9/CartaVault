@@ -60,6 +60,8 @@ class MapRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     owner_id: UUID
+    owner_email: str
+    owner_display_name: str
     is_private: bool
     is_shared: bool
     current_user_role: str

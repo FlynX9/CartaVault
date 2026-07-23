@@ -19,7 +19,7 @@ export function parseMap(value: unknown): PoiMap {
     effective_center_latitude: readNumber(value, 'effective_center_latitude', context), effective_center_longitude: readNumber(value, 'effective_center_longitude', context), effective_default_zoom: readNumber(value, 'effective_default_zoom', context),
     min_latitude: readNullableNumber(value, 'min_latitude', context), max_latitude: readNullableNumber(value, 'max_latitude', context), min_longitude: readNullableNumber(value, 'min_longitude', context), max_longitude: readNullableNumber(value, 'max_longitude', context),
     created_at: readDateTime(value, 'created_at', context), updated_at: readDateTime(value, 'updated_at', context),
-    owner_id: readUuid(value, 'owner_id', context), is_private: readBoolean(value, 'is_private', context), is_shared: readBoolean(value, 'is_shared', context),
+    owner_id: readUuid(value, 'owner_id', context), owner_email: readString(value, 'owner_email', context), owner_display_name: readString(value, 'owner_display_name', context), is_private: readBoolean(value, 'is_private', context), is_shared: readBoolean(value, 'is_shared', context),
     current_user_role: readString(value, 'current_user_role', context) as PoiMap['current_user_role'],
     can_edit: readBoolean(value, 'can_edit', context), can_delete: readBoolean(value, 'can_delete', context),
     can_manage_members: readBoolean(value, 'can_manage_members', context), can_transfer_ownership: readBoolean(value, 'can_transfer_ownership', context),
