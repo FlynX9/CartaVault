@@ -4699,11 +4699,21 @@ body.cv-panel-resizing {
 }
 
 .map-workspace .geographic-search form > label {
+  display: flex;
+  height: 100%;
   min-width: 0;
+  align-items: center;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
   transition: opacity 120ms ease;
+}
+
+.map-workspace .geographic-search input {
+  height: 100%;
+  min-height: 0;
+  padding-block: 0;
+  line-height: 1.25;
 }
 
 .map-workspace .geographic-search:hover form > label,
