@@ -1,81 +1,81 @@
 # Changelog
 
-Toutes les modifications notables de CartaVault seront documentées dans ce fichier.
+All notable CartaVault changes are documented in this file.
 
-Le format s’inspire de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit [Semantic Versioning](https://semver.org/lang/fr/) à partir des versions `0.x`.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/) from the `0.x` releases onward.
 
-## Convention de versionnement
+## Versioning convention
 
-Tant que CartaVault n’a pas atteint la version `1.0.0` :
+Until CartaVault reaches `1.0.0`:
 
-- `0.MINOR.0` peut introduire de nouvelles fonctionnalités ou des changements incompatibles ;
-- `0.MINOR.PATCH` contient principalement des corrections, ajustements et améliorations compatibles ;
-- tout changement incompatible doit être signalé explicitement dans les notes de version ;
-- les migrations de base de données doivent être documentées dans la section concernée.
+- `0.MINOR.0` may introduce a significant feature, architecture evolution, or breaking change;
+- `0.MINOR.PATCH` primarily contains bug fixes, compatible improvements, documentation, or maintenance;
+- every breaking change must be explicitly called out in the release notes;
+- database migrations must be documented in the relevant release section.
 
 ## [Unreleased]
 
 ### Added
 
-- Aucun changement documenté pour le moment.
+- No documented changes yet.
 
 ### Changed
 
-- Aucun changement documenté pour le moment.
+- No documented changes yet.
 
 ### Deprecated
 
-- Aucun changement documenté pour le moment.
+- No documented changes yet.
 
 ### Removed
 
-- Aucun changement documenté pour le moment.
+- No documented changes yet.
 
 ### Fixed
 
-- Aucun changement documenté pour le moment.
+- No documented changes yet.
 
 ### Security
 
-- Aucun changement documenté pour le moment.
+- No documented changes yet.
 
-## [0.1.0] - À publier
+## [0.1.0] - To be released
 
-Première version publique de développement de CartaVault.
+First public development release of CartaVault.
 
 ### Added
 
-- Gestion de cartes privées associées à leurs utilisateurs.
-- Gestion des lieux avec coordonnées géographiques PostGIS.
-- Carte interactive Leaflet.
-- Création d’un lieu depuis la carte.
-- Catégories, tags et statuts.
-- Catalogue local de 300 icônes de catégories.
-- Photos associées aux lieux.
-- Import KML/KMZ.
-- Préparation de sorties et organisation par journées.
-- Calcul d’itinéraires avec OSRM.
-- Support optionnel de Google Routes avec identifiants propres à chaque utilisateur.
-- Gestion des utilisateurs, rôles et permissions.
-- Corbeille et historique.
-- Interface claire et sombre.
-- Documentation initiale du projet.
-- Modèles GitHub pour les issues et pull requests.
-- Guide de contribution.
-- Checklist de tests manuels avant publication.
+- Private maps associated with users.
+- Places with PostGIS geographic coordinates.
+- Interactive Leaflet map.
+- Place creation from the map.
+- Categories, tags, and statuses.
+- Local catalog of 300 category icons.
+- Place photos.
+- KML/KMZ import.
+- Trip planning and day organization.
+- OSRM route calculations.
+- Optional Google Routes support using per-user credentials.
+- Users, roles, and permissions.
+- Trash and audit history.
+- Light and dark interface themes.
+- Initial project documentation.
+- GitHub issue and pull request templates.
+- Contribution guide.
+- Manual pre-release test checklist.
 
 ### Changed
 
-- Le projet est présenté sous le nom CartaVault.
-- L’interface a été progressivement harmonisée avec la nouvelle identité visuelle CartaVault.
+- The project is presented under the CartaVault name.
+- The interface has progressively been aligned with the CartaVault visual identity.
 
 ### Security
 
-- Chiffrement versionné des identifiants Google Routes.
-- Aucune clé Google Routes stockée côté navigateur.
-- Suppression des identifiants lors de l’anonymisation ou de la suppression du compte.
-- Permissions appliquées sur les données appartenant aux cartes et utilisateurs.
-- Exclusion des fichiers `.env`, clés privées et secrets du dépôt.
+- Versioned encryption for Google Routes credentials.
+- No Google Routes key is stored in the browser.
+- Credentials are removed when an account is anonymized or deleted.
+- Permissions are enforced for map- and user-owned data.
+- `.env` files, private keys, and secrets are excluded from the repository.
 
 [Unreleased]: https://github.com/FlynX9/CartaVault/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/FlynX9/CartaVault/releases/tag/v0.1.0

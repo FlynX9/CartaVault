@@ -1,40 +1,33 @@
-# Backend de CartaVault
+# CartaVault backend
 
-Le module `app/instance_status` expose des diagnostics administrateur mis en cache via `GET /admin/console/instance` et un rafraîchissement forcé via `POST /admin/console/instance/refresh`. Il n’effectue aucun appel Google Routes ou Resend facturable et n’expose aucun secret. Voir [`../docs/instance-status.md`](../docs/instance-status.md).
+The backend is a synchronous FastAPI application organized by feature. It uses SQLAlchemy 2, Pydantic 2, PostgreSQL/PostGIS, and Alembic.
 
-Le routeur `/account` gère le profil personnel, le changement d’e-mail et de mot de passe, les sessions actives, les avatars et la suppression contrôlée. Les avatars JPEG/PNG/WebP sont décodés avec Pillow, recadrés au centre en 256×256 WebP, débarrassés des métadonnées et stockés sous `AVATAR_STORAGE_PATH` (5 Mio et 4096 px maximum). La suppression refuse les propriétaires de cartes et le dernier administrateur actif, puis révoque les sessions et anonymise le compte.
+The `app/instance_status` module exposes cached administrative diagnostics through `GET /admin/console/instance` and a forced refresh through `POST /admin/console/instance/refresh`. It does not perform billable Google Routes or Resend calls and does not expose secrets. See [`../docs/instance-status.md`](../docs/instance-status.md).
 
-## Inscriptions et emails
+The `/account` router manages personal profile data, email and password changes, active sessions, avatars, and controlled account deletion. JPEG/PNG/WebP avatars are decoded with Pillow, center-cropped to 256×256 WebP, stripped of metadata, and stored under `AVATAR_STORAGE_PATH` (5 MiB and 4096 px maximum). Deletion refuses map owners and the last active administrator, revokes sessions, and anonymizes the account.
 
-`POST /auth/register` enregistre une demande en attente sans créer de ligne `users`. Un administrateur accepte ou refuse la demande depuis `/admin/registration-requests`; l’utilisateur n’est créé et activé qu’au moment de l’acceptation. La réinitialisation de mot de passe renvoie toujours une réponse générique, utilise un jeton à usage unique stocké uniquement sous forme de hash et révoque les sessions après confirmation.
+## Registration and email
 
-La clé Resend est saisie depuis le panneau Administration et chiffrée avec `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; l’API ne renvoie que son suffixe. Les paramètres non secrets sont `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES` et `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Chaque fonction d’envoi possède des versions HTML et texte CartaVault en français et en anglais, versionnées sous `app/emails/templates/` avec les suffixes `.fr` et `.en`. La langue de la demande d’inscription est conservée jusqu’à sa validation ; les réinitialisations utilisent la préférence du compte.
+`POST /auth/register` stores a pending registration request without creating a `users` row. An administrator accepts or declines the request through `/admin/registration-requests`; a user is created and activated only when accepted. Password reset always returns a generic response, uses a single-use hash-only token, and revokes sessions after confirmation.
 
-## Authentification, rôles et sécurité
+The Resend key is entered from Administration and encrypted with `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; the API returns only its suffix. Non-secret settings are `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES`, and `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Each email flow has versioned CartaVault HTML and text templates under `app/emails/templates/`, with `.en` and `.fr` variants. Registration-request language is retained until approval; password resets use the account preference.
 
-L’API utilise des sessions opaques stockées dans `user_sessions`. Seules les
-empreintes SHA-256 des tokens de session, CSRF et d’invitation sont persistées.
-Le cookie de session est `HttpOnly`, `SameSite=Lax`, limité à `/`, et son attribut
-`Secure` est piloté par `CARTAVAULT_COOKIE_SECURE`. Le frontend renvoie le token
-CSRF lisible dans `X-CSRF-Token` pour toute écriture. Les mots de passe sont
-hachés avec Argon2id et ne sont jamais renvoyés par l’API.
+## Authentication, roles, and security
 
-Toutes les cartes sont privées. La matrice V1 est la suivante :
+The API uses opaque sessions stored in `user_sessions`. Only SHA-256 fingerprints of session, CSRF, and invitation tokens are persisted. The session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and its `Secure` flag is controlled by `CARTAVAULT_COOKIE_SECURE`. The frontend sends the readable CSRF token in `X-CSRF-Token` for every write. Passwords use Argon2id and are never returned by the API.
 
-- `owner` : contenu, import/export, membres, suppression et transfert ;
-- `editor` : contenu, photos, catégories/tags, import et export ;
-- `viewer` : lecture et export uniquement ;
-- administrateur global : accès et administration complets.
+All maps are private. The V1 matrix is:
 
-Une ressource privée inaccessible renvoie `404` afin de ne pas révéler son
-existence ; une action interdite sur une carte visible renvoie `403`. Les
-contrôles sont effectués côté serveur jusqu’aux ressources indirectes (POI,
-photo, catégorie, tag, preview d’import et export temporaire).
+- `owner`: content, import/export, members, deletion, and transfer;
+- `editor`: content, photos, categories/tags, import, and export;
+- `viewer`: read and export only;
+- global administrator: full access and administration.
 
-## Création du premier administrateur et mise à niveau
+An inaccessible private resource returns `404` to avoid revealing its existence; a forbidden action on a visible map returns `403`. Server-side checks cover indirect resources as well: places, photos, categories, tags, import previews, and temporary exports.
 
-Ne démarrez pas une instance existante entre les deux migrations de sécurité.
-Effectuez impérativement une sauvegarde, puis :
+## First administrator and upgrade sequence
+
+Do not start an existing instance between the security migrations. Back up first, then run:
 
 ```powershell
 python -m alembic upgrade d8f4a2c7e910
@@ -42,107 +35,41 @@ python -m app.cli create-admin
 python -m alembic upgrade head
 ```
 
-La commande interactive masque le mot de passe, crée un administrateur actif et
-attribue toutes les cartes orphelines avec leur membership `owner`. Elle refuse
-un e-mail existant. Pour un déploiement automatisé, renseignez temporairement
-`CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL`, `CARTAVAULT_BOOTSTRAP_ADMIN_NAME` et
-`CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD`, puis exécutez
-`python -m app.cli bootstrap-admin` et retirez les secrets de l’environnement.
-La migration finale refuse l’absence d’administrateur actif, les cartes
-orphelines ou toute divergence entre `maps.owner_id` et le membership owner.
+The interactive command masks the password, creates an active administrator, and assigns orphan maps with `owner` membership. It rejects an existing email. For automated deployment, temporarily set `CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL`, `CARTAVAULT_BOOTSTRAP_ADMIN_NAME`, and `CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD`, run `python -m app.cli bootstrap-admin`, then remove those secrets.
 
-Les catégories et tags historiques sont copiés pour chaque carte afin de
-préserver leur disponibilité globale antérieure, puis toutes les associations
-sont remappées. Les nouvelles contraintes et triggers interdisent les
-associations entre cartes. Le statut reste global.
+The final migration rejects a missing active administrator, orphan maps, or divergence between `maps.owner_id` and the owner membership. Historical categories and tags are copied per map to retain their previous availability and associations are remapped; new constraints and triggers reject cross-map associations. Statuses remain map-scoped.
 
-## Variables de sécurité
+## Security configuration
 
-Outre `DATABASE_URL`, configurez selon l’environnement les variables
-`CARTAVAULT_SESSION_*`, `CARTAVAULT_CSRF_COOKIE_NAME`,
-`CARTAVAULT_INVITATION_HOURS`, `CARTAVAULT_COOKIE_SECURE`,
-`CARTAVAULT_PASSWORD_MIN_LENGTH` et les trois paramètres Argon2. En production,
-activez obligatoirement `CARTAVAULT_COOKIE_SECURE=true` derrière HTTPS.
+In addition to `DATABASE_URL`, configure the environment-specific `CARTAVAULT_SESSION_*`, `CARTAVAULT_CSRF_COOKIE_NAME`, `CARTAVAULT_INVITATION_HOURS`, `CARTAVAULT_COOKIE_SECURE`, `CARTAVAULT_PASSWORD_MIN_LENGTH`, and Argon2 settings. In production, set `CARTAVAULT_COOKIE_SECURE=true` behind HTTPS.
 
-Les invitations sont valables sept jours par défaut. CartaVault génère un lien
-copiable mais n’envoie aucun e-mail. Le transfert de propriété est transactionnel :
-le nouveau propriétaire doit déjà être membre et l’ancien devient `editor`.
+Invitations are valid for seven days by default. Ownership transfer is transactional: the new owner must already be a member and the former owner becomes an `editor`.
 
-## Import KMZ
+## KMZ import
 
-`app/imports/` fournit une prévisualisation sans écriture puis une confirmation
-atomique. Le parser `defusedxml` refuse DTD et entités externes ; `doc.kml` est
-préféré, sinon le KML lexicalement premier est retenu. Les données non mappées
-sont conservées dans `places.custom_fields` et les images locales valides
-réutilisent le stockage photo sécurisé existant. Les limites configurables sont
-`KMZ_MAX_UPLOAD_SIZE` (25 Mio), `KMZ_MAX_UNCOMPRESSED_SIZE` (100 Mio),
-`KMZ_MAX_ENTRIES` (750), `KMZ_MAX_PLACEMARKS` (1000) et `KMZ_MAX_IMAGES` (500).
-Les références identiques sont dédupliquées. La confirmation progressive ne
-télécharge chaque URL distante qu’une fois et transforme les échecs d’image en
-avertissements sans annuler les POI créés.
+`app/imports/` provides a write-free preview followed by atomic confirmation. The `defusedxml` parser rejects DTDs and external entities. `doc.kml` is preferred; otherwise the lexically first KML file is used. Unmapped data is retained in `places.custom_fields`; valid local images reuse the existing secure photo storage.
 
-La migration `a91d3b6e7f24` ajoute `custom_fields JSONB NOT NULL DEFAULT '{}'`.
-Elle doit être testée et appliquée d’abord sur `cartavault_test`, jamais sur la
-base de développement `cartavault`.
+Configurable limits include `KMZ_MAX_UPLOAD_SIZE` (25 MiB), `KMZ_MAX_UNCOMPRESSED_SIZE` (100 MiB), `KMZ_MAX_ENTRIES` (750), `KMZ_MAX_PLACEMARKS` (1000), and `KMZ_MAX_IMAGES` (500). Identical references are deduplicated. Progressive confirmation downloads each remote URL once and converts image failures to warnings without cancelling created places.
 
-## Statuts des POI
+## Place statuses, categories, and icons
 
-## Catégories et pictogrammes
+Statuses are scoped to a map and include a functional visit state (`unvisited` or `visited`), an active flag, a default flag, display order, and color. A map receives editable defaults when created. Inactive statuses stay attached to existing places but cannot be selected for new writes.
 
-`shared/category-icons.json` est la source de vérité unique des pictogrammes de catégories. `app.categories.icon_catalog` le charge une seule fois au démarrage du processus, depuis un chemin calculé à partir de son propre fichier, puis valide strictement ses 300 entrées (structure, groupes, préfixes, absence de contenu URL/HTML/SVG, défaut et fallback).
+Categories and tags are map-scoped. Categories use the shared closed icon catalog in `shared/category-icons.json`; arbitrary SVG, URLs, and network icon lookup are not accepted. The primary category determines the marker icon and the status determines its color. Tags may have a configured display color.
 
-Les nouvelles écritures de `categories.icon` acceptent exclusivement des identifiants qualifiés présents dans ce catalogue, par exemple `mdi:church`. L’absence d’icône utilise `material-symbols:location-on-outline`; le fallback disponible est `material-symbols:help-outline`.
+## Country → maps → places model
 
-La migration `f3a7c1d9e842` remplace les 17 identifiants Lucide historiques par leurs équivalents Iconify, conserve les IDs Iconify déjà valides et remplace toute valeur inconnue par le défaut. Elle met aussi à jour le défaut SQL de `categories.icon` pour les installations existantes; `database/init/001_initial_schema.sql` emploie le même défaut pour les installations neuves. Son downgrade retourne les valeurs ayant un équivalent historique et transforme toute autre icône Iconify en `map-pin` : il est destructif et ne doit jamais être lancé sur `cartavault`.
+Countries come from the local catalog. Each map belongs to one country, and every place, category, tag, trip, photo, import, and export is constrained to a compatible map. Country boundaries are used for map focus and optional route-country validation.
 
-L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `cartavault_test`, jamais sur `cartavault`.
+## Prerequisites
 
-La feature `app/statuses` expose le CRUD `/statuses`. Un seul statut actif est défini par défaut et il est appliqué lorsque `status_id` est omis à la création d’un POI. Un statut inactif reste lisible sur les anciens POI mais ne peut plus être sélectionné. La suppression du défaut ou d’un statut utilisé renvoie `409`.
+- Python 3.14;
+- PostgreSQL with PostGIS and `pgcrypto`;
+- Docker Desktop is recommended for local development.
 
-`condition` reste l’état physique du site. `status_id` représente exclusivement son suivi. `GET /places` et `GET /places/map` acceptent le filtre `status_id`.
-
-## Modèle pays → cartes → POI
-
-- `GET /countries` expose le catalogue mondial avec recherche par nom ou code.
-- `/maps` fournit le CRUD des cartes; centre et zoom `null` héritent du pays.
-- `/places` et `/places/map` filtrent par `map_id`; la création l'exige et les
-  lectures détaillées embarquent seulement une synthèse carte/pays.
-- supprimer une carte non vide renvoie `409 Conflict`.
-
-Le catalogue local `app/countries/data/countries.json` est dérivé de
-[mledoze/countries](https://github.com/mledoze/countries), révision
-`09b28e3d03e6ca3fbbac996d716a50d929781e8c`, sous
-[ODbL 1.0](https://github.com/mledoze/countries/blob/09b28e3d03e6ca3fbbac996d716a50d929781e8c/LICENSE).
-Il conserve les codes ISO, le nom français (anglais en repli), le centre et un
-zoom calculé de manière déterministe. Les deux territoires Saint-Martin sont
-explicitement désambiguïsés. Aucun réseau n'est utilisé au runtime. Le seed
-Docker `database/init/002_country_catalog.sql` est généré depuis cette source
-unique avec `python scripts/generate_country_seed.py`.
-
-La migration `6f2d8a4c91b0` crée le catalogue et les cartes, rattache chaque POI,
-vérifie l'absence de `map_id` nul, puis supprime `places.country`. Une valeur
-vide, inconnue ou ambiguë interrompt la transaction. Le downgrade reconstruit
-le pays texte depuis les relations avant de supprimer les nouvelles tables.
-
-API FastAPI synchrone de CartaVault, structurée par fonctionnalité et basée
-sur SQLAlchemy 2, PostgreSQL/PostGIS, Pydantic 2 et Alembic.
-
-## Prérequis
-
-- Python 3.14 (commandes vérifiées avec Python 3.14.6) ;
-- Docker Desktop et Docker Compose pour PostgreSQL/PostGIS ;
-- Git ;
-- un environnement virtuel Python local.
-
-Le fichier `docker-compose.yml` situé à la racine utilise actuellement l'image
-`postgis/postgis:16-3.4`, le service `postgres` et le port hôte `5432`.
-
-## Installation sous Windows PowerShell
-
-Depuis la racine du dépôt :
+## Windows PowerShell installation
 
 ```powershell
-docker compose up -d postgres
 Set-Location backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -150,269 +77,83 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Adaptez ensuite `.env` à votre environnement. Ce fichier local est ignoré par
-Git et ne doit contenir aucun secret destiné au dépôt.
+Configure `DATABASE_URL` in `backend/.env`, then follow the first-administrator sequence when installing a fresh instance.
 
-## Variables d'environnement
+## Environment variables
 
-| Variable | Obligatoire | Rôle et valeur par défaut |
-| --- | --- | --- |
-| `DATABASE_URL` | Oui | URL SQLAlchemy PostgreSQL utilisée par l'API et Alembic. Exemple non secret : `postgresql+psycopg://poi_user:change_me@localhost:5432/cartavault`. Aucune valeur par défaut. |
-| `TEST_DATABASE_URL` | Non pour l'API, requise pour l'intégration | Base PostgreSQL/PostGIS dédiée aux tests. Aucune valeur par défaut ni reprise automatique de `DATABASE_URL`. |
-| `PHOTO_STORAGE_PATH` | Non | Racine du stockage photo. Valeur par défaut : `storage/photos`, résolue relativement au dossier `backend`. Un chemin absolu peut aussi être fourni. |
-| `CORS_ALLOWED_ORIGINS` | Non | Liste d'origines web séparées par des virgules. Valeur par défaut : `http://localhost:5173,http://127.0.0.1:5173`. |
+Keep `.env` files untracked. Required settings vary by feature, but commonly include `DATABASE_URL`, session and CSRF settings, `PHOTO_STORAGE_PATH`, `AVATAR_STORAGE_PATH`, `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`, frontend public URL, email settings, OSRM settings, and KMZ limits.
 
-Les variables de `.env.example` couvrent toutes les lectures d'environnement
-actuellement présentes dans le code.
+Do not put `TEST_DATABASE_URL` in production configuration. Test commands must validate it separately and use only `cartavault_test`.
 
-## Lancement et Swagger
-
-Depuis `backend`, avec l'environnement virtuel activé :
+## Run and Swagger
 
 ```powershell
 python -m uvicorn app.main:app --reload
 ```
 
-- Swagger UI : <http://127.0.0.1:8000/docs>
-- OpenAPI JSON : <http://127.0.0.1:8000/openapi.json>
-- contrôle de santé : <http://127.0.0.1:8000/>
+Swagger is available at <http://127.0.0.1:8000/docs>.
 
-Le middleware CORS autorise par défaut les deux origines Vite locales. Il
-n'autorise pas les credentials et limite explicitement les méthodes
-cross-origin à `GET`, `POST`, `PATCH`, `DELETE` et `OPTIONS`.
+## Endpoint overview
 
-## Aperçu des endpoints
+Feature routers include authentication, account, users, administration, maps, countries, places, categories, tags, statuses, photos, imports, exports, media, and trips. OpenAPI is the authoritative endpoint reference.
 
-| Groupe | Routes principales |
-| --- | --- |
-| Health | `GET /` |
-| Places | `GET /places`, `POST /places`, `GET/PATCH/DELETE /places/{place_id}` |
-| Places map | `GET /places/map` avec les quatre limites géographiques obligatoires |
-| Associations | `POST/DELETE /places/{place_id}/categories/{category_id}` et `POST/DELETE /places/{place_id}/tags/{tag_id}` |
-| Categories | `GET/POST /categories`, `GET/PATCH/DELETE /categories/{category_id}` |
-| Tags | `GET/POST /tags`, `GET/PATCH/DELETE /tags/{tag_id}` |
-| Photos | `GET/POST /places/{place_id}/photos`, `POST /places/{place_id}/photos/upload`, `GET/PATCH/DELETE /photos/{photo_id}`, `GET /photos/{photo_id}/file` |
+## Database and Alembic
 
-`GET /places` accepte notamment la recherche `q`, la pagination et les
-filtres par pays, région, catégorie, tag et zone visible. `GET /places/map`
-renvoie une représentation légère destinée aux marqueurs et exige
-`min_latitude`, `max_latitude`, `min_longitude` et `max_longitude`. Il accepte
-également le filtre facultatif `country`, comparé sans tenir compte de la
-casse, ainsi que `category_id`, `tag_id` et `limit`.
+The initial Alembic revision is a baseline for an existing schema. A fresh Docker volume is initialized through `database/init/001_initial_schema.sql`; Alembic then evolves the schema. Do not assume `alembic upgrade head` alone can recreate a historic fresh database.
 
-## Base de données et Alembic
-
-SQLAlchemy définit les modèles et fournit les sessions synchrones utilisées
-par FastAPI. GeoAlchemy2 et PostGIS gèrent les coordonnées et requêtes
-géographiques. Alembic suit les évolutions du schéma connues du projet.
-
-Commandes sûres à exécuter depuis `backend` :
+Use:
 
 ```powershell
-python -m alembic current
+python -m alembic heads
 python -m alembic check
-python -m alembic upgrade head
 ```
 
-La première révision, `9c74325a9837_baseline_existing_schema.py`, est une
-baseline vide issue d'un schéma préexistant. Elle ne crée ni table ni
-extension. Par conséquent, `python -m alembic upgrade head` met à niveau une
-base déjà préparée, mais ne reconstruit pas nécessairement tout le schéma sur
-une base vide. Le démarrage Docker initialise ce schéma avec
-`database/init/001_initial_schema.sql` uniquement lors de la création d'un
-volume neuf.
+Apply migrations to a development or production database only when authorized and after a verified backup. Test all upgrade/downgrade cycles exclusively against `cartavault_test`.
 
-## Photos
+## Photos and media
 
-Deux opérations sont distinctes :
+Photos support JPEG, PNG, and WebP uploads, ordering, primary-photo selection, derived thumbnails, captions, and controlled deletion. Storage paths are never exposed in responses. The media workspace provides permission-aware cross-map browsing and pagination.
 
-- `POST /places/{place_id}/photos` crée uniquement une ligne de métadonnées ;
-- `POST /places/{place_id}/photos/upload` valide, stocke le fichier et crée ses
-  métadonnées.
+## Account preferences
 
-L'upload accepte JPEG, PNG et WebP, vérifie le type MIME et la signature du
-fichier, et limite la taille à 20 Mio. Les fichiers sont écrits par défaut
-sous `storage/photos/{place_id}/{photo_id}.{extension}`. Les chemins stockés
-sont validés pour empêcher les sorties du répertoire de stockage.
+Account preferences include language, theme, display density, map background, routing provider, country-routing preference, and personal Google Routes credentials. Personal Google keys are Fernet-encrypted on the server, never returned in full, and are required and verified before Google Routes can be selected.
 
-La suppression de `DELETE /photos/{photo_id}` retire les métadonnées puis le
-fichier physique associé. Le stockage local convient à une instance unique ;
-un déploiement multi-instance nécessitera un stockage partagé ou objet.
+## Trips and routing
 
-## Espace Compte
+Trips contain a departure, one or more days, intermediate nights, and an arrival. Stops can reference a place or a free location. Route calculations keep distance, driving time, visit time, buffers, safety margins, and planned time distinct. Day colors, visibility toggles, ordering, optimization confirmation, and country validation are supported.
 
-Les endpoints sous `/account` opèrent uniquement sur l’utilisateur de la
-session authentifiée : profil, e-mail, mot de passe, sessions, avatar,
-préférences et suppression/anonymisation. Les avatars sont contrôlés (JPEG,
-PNG ou WebP, 5 Mio), convertis en WebP et stockés sous `storage/avatars/`,
-distinctement des photos de POI. `users.preferences` contient les réglages
-d’interface validés et non sensibles.
+OSRM is the default provider. Google Routes is optional, per-user, and requires an encrypted verified key. Route requests and responses are validated; no provider credential is exposed to the browser.
 
-## Tests
+## Testing
 
-Depuis `backend` :
+From `backend`:
 
 ```powershell
-python -m pytest
-python -m pytest -m unit
-python -m pytest -m integration
+python -m compileall app migrations tests
+python -m pytest -m unit -v
+python -m pytest -m integration -v
+python -m pytest -v
+python -m alembic heads
+python -m alembic check
+python -c "from app.main import app; print(app.title)"
 ```
 
-Les tests d'intégration exigent une base PostGIS dédiée configurée avec
-`TEST_DATABASE_URL`. Sans cette variable, ils sont explicitement ignorés et
-ne se rabattent jamais sur la base de développement.
+See [`tests/README.md`](tests/README.md) for the test-database safeguards and migration guidance.
 
-Voir [`tests/README.md`](tests/README.md) pour la création de la base de test,
-les protections, l'isolation transactionnelle et le stockage temporaire.
-
-## Sorties et routage
-
-La feature `app/trips/` gère les voyages, journées, étapes et nuits de façon persistante. Elle réutilise les rôles des cartes et centralise les contrôles d’accès afin d’éviter tout accès indirect à une sortie d’une autre carte. Les statuts de visite d’une étape sont distincts du statut métier du POI ; leur application aux POI exige une confirmation explicite.
-
-Le routage est fourni par une abstraction backend. L’implémentation actuelle utilise OSRM via `ROUTING_OSRM_BASE_URL`, avec délai d’attente et limite de points configurables. Aucune requête OSRM n’est effectuée directement par le navigateur. Les parcours calculés sont stockés dans `trip_days`, invalidés après une modification d’ordre et recalculés sur demande.
-
-Les unités persistées et retournées restent numériques : `route_distance_meters` est exprimé en mètres et `route_duration_seconds` en secondes. Les résumés dérivent aussi les kilomètres et minutes, sans inclure les visites ou les temps annexes dans ces métriques routières. Une route n’est actuelle que lorsque `route_status == "ready"` et que ses deux mesures existent. Les journées absentes ou `stale` sont exclues des sommes routières et rendent `is_route_summary_complete` faux.
-
-La planification temporelle est centralisée dans `app.trips.summary_service` et suit exclusivement la formule `conduite + visites + tampon + marge de sécurité`. Le tampon s’applique entre deux `TripStop` consécutifs ; départs et nuits ne le déclenchent pas. La marge est fixe ou calculée avec un arrondi supérieur en pourcentage. Aucune pause n’est stockée ou calculée. `target_arrival_time` produit un départ recommandé et `planned_start_time` une arrivée estimée avec décalage de jour. Les seuils et couleurs de charge sont persistés sur le voyage et modifiables par un éditeur.
-
-## Arborescence du backend
+## Backend structure
 
 ```text
 backend/
-├── app/
-│   ├── categories/     # modèle, schémas et CRUD des catégories
-│   ├── photos/         # métadonnées, upload et stockage des photos
-│   ├── places/         # POI, filtres et endpoint cartographique
-│   ├── tags/           # modèle, schémas et CRUD des tags
-│   ├── database.py     # moteur, Base et sessions SQLAlchemy
-│   └── main.py         # application FastAPI et routers
-├── migrations/
-│   ├── versions/       # révisions Alembic
-│   └── env.py
-├── storage/            # racine locale des fichiers applicatifs
-├── tests/              # suite pytest et fixtures partagées
-├── .env.example
-├── alembic.ini
-├── pytest.ini
+├── app/                 # Feature-based FastAPI modules
+├── migrations/          # Alembic revisions
+├── tests/               # Unit and integration tests
+├── storage/             # Local generated storage, never tracked
 └── requirements.txt
 ```
 
-## Limitations actuelles
+## Current limitations
 
-- la gestion des catégories et tags reste disponible via l'API uniquement ;
-- aucune authentification n'est présente ;
-- la baseline Alembic ne recrée pas seule une base vide ;
-- le stockage photo local n'est pas adapté tel quel à plusieurs instances.
-# Validation « rester dans le pays »
-
-`app.trips.routing.country_validator.CountryRouteValidator` analyse la LineString complète retournée par OSRM après densification. La donnée locale `app/countries/data/routing_boundaries.geojson` est volontairement limitée et versionnée (Natural Earth, domaine public, simplifiée). Une frontière indisponible provoque une erreur métier claire plutôt qu’une acceptation silencieuse. OSRM standard n’est pas présenté comme capable de calculer une alternative nationale ; il est seulement post-validé.
-
-Les seuils, en mètres, sont `ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS` (250 par défaut) et `ROUTING_MAX_OUTSIDE_DISTANCE_METERS` (500 par défaut). Les exports contrôlent également les routes déjà calculées quand la préférence est active ; Google Maps reçoit un avertissement car son propre moteur peut choisir un autre trajet.
-# Marqueurs par emprise
-
-`GET /places/map` utilise PostGIS (`ST_MakeEnvelope`, `ST_Intersects`) et charge seulement les relations nécessaires. Avec `include_meta=true`, la réponse contient `items`, `total`, `returned` et `truncated`; la limite est explicite.
-# Filtres et opérations groupées
-
-`GET /places` et `GET /places/map` partagent les filtres validés de `app.places.filtering`. `POST /places/bulk` accepte au plus 500 identifiants explicites et une action discriminée (`set_status`, catégories, tags ou suppression). Tous les POI et les objets associés sont contrôlés dans la même transaction avec le rôle éditeur requis.
-# Moteurs de routage
-
-`RoutingProviderRegistry` résout `osrm` ou `google` depuis `users.preferences.routing` et l’utilisateur authentifié. OSRM reste disponible sans configuration supplémentaire. Google exige une clé personnelle vérifiée, stockée chiffrée dans `user_api_credentials`, puis déchiffrée uniquement pour l’appel Compute Routes. Le provider Google est une instance courte durée : aucune clé utilisateur n’est placée dans un singleton ou une URL. Les erreurs Google sont converties en codes métier, sans réponse brute ni fallback automatique, et une route existante n’est remplacée qu’après décodage, validation et contrôle du pays.
-
-`CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` est obligatoire pour enregistrer ou utiliser des clés personnelles. Son format est une clé Fernet URL-safe Base64 de 32 octets ; générez-la avec `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Le backend peut démarrer sans elle et OSRM reste disponible, mais le stockage sécurisé est signalé indisponible. La variable n’est jamais générée automatiquement : sa perte rend tous les credentials existants indéchiffrables. Pour une future rotation, conservez l’ancienne clé, déchiffrez et rechiffrez chaque ligne atomiquement avec une nouvelle `encryption_version`, vérifiez, puis retirez l’ancienne clé.
-
-Variables non secrètes Google : `GOOGLE_MAPS_ROUTES_BASE_URL`, `GOOGLE_MAPS_ROUTES_TIMEOUT_SECONDS`, `GOOGLE_MAPS_ROUTES_CONNECT_TIMEOUT_SECONDS`, `GOOGLE_MAPS_ROUTING_PREFERENCE`, `GOOGLE_MAPS_AVOID_TOLLS`, `GOOGLE_MAPS_AVOID_HIGHWAYS`, `GOOGLE_MAPS_AVOID_FERRIES`. `GOOGLE_MAPS_ROUTES_API_KEY` est obsolète : sa présence produit seulement un avertissement et elle n’est jamais utilisée comme fallback. Dans Docker, Synology ou Portainer, injectez la clé maîtresse comme secret d’environnement, jamais dans Git ni dans l’image. Chaque utilisateur doit restreindre sa clé à Routes API et, si possible, à l’IP publique du serveur.
-
-Les endpoints authentifiés `GET`, `PUT`, `DELETE /account/integrations/google-routes` et `POST /account/integrations/google-routes/verify` exposent uniquement les métadonnées masquées. Les écritures exigent CSRF ; la suppression exige le mot de passe actuel et replace atomiquement la préférence sur OSRM. La vérification effectue un appel Google minimal avec deux coordonnées fixes et consomme donc une requête. Après authentification/quota/timeout, seul un code métier contrôlé est conservé dans `last_error_code`.
-
-`GET /routing/providers` expose uniquement disponibilité et capacités. `trip_days.route_provider` mémorise le moteur réellement utilisé ; les anciennes géométries sont marquées OSRM par la migration `b2e7c4a9d531`.
-
-Les appels Google sont limités par utilisateur et ne sont pas rejoués automatiquement : cette absence de retry évite de multiplier des requêtes facturées. L’interface bloque une opération en cours et les codes `GOOGLE_ROUTES_TIMEOUT`, `GOOGLE_ROUTES_QUOTA_EXCEEDED`, `GOOGLE_ROUTING_RATE_LIMITED` et `GOOGLE_WAYPOINT_LIMIT_EXCEEDED` restent explicites.
-## Champs avancés et cycle de vie des POI
-
-La révision `d2f7a9c4e610` ajoute la configuration JSONB par carte, le marqueur de catégorie visitée, les favoris, les notes, la corbeille, les liens externes et l’historique. La révision `e3a8c1d5f720` ajoute les index de tri des notes.
-
-`is_visited` est une projection de compatibilité calculée exclusivement depuis
-`place.status.functional_state`; il n’est jamais stocké sur `places`. Les
-catégories et leur nom n’interviennent plus dans ce classement. Les suppressions
-ordinaires renseignent `deleted_at`; les requêtes liste/carte excluent
-automatiquement ces lignes. La purge est refusée lorsqu’un arrêt ou une nuit de
-sortie référence encore le POI.
-
-## Statuts de suivi et état fonctionnel
-
-Les statuts sont propres à chaque carte et restent renommables, recolorables et
-réordonnables. Chaque statut porte obligatoirement `functional_state`, limité à
-`non_visited` ou `visited`. La création d’une carte initialise « À faire »,
-« À vérifier », « Visité » et « À refaire » avec leur classement fonctionnel.
-
-`GET /places` et `GET /places/map` partagent les paramètres
-`functional_state`, `status_ids` et `is_favorite`. Les groupes différents sont
-combinés par `AND`, plusieurs `status_ids` par `OR`. `GET /places/facets`
-retourne les compteurs fonctionnels et les compteurs des statuts actifs dans le
-périmètre accessible. Un changement d’état fonctionnel reclasse immédiatement
-les POI liés; la réponse du CRUD expose `places_count` pour permettre une
-confirmation explicite dans l’interface.
-
-La migration `d6f1a3b8c902` rattache les anciens statuts aux cartes. Son
-backfill explicite classe Visité, Fait, À refaire et Inaccessible comme visités,
-À faire et À vérifier comme non visités; toute valeur inconnue devient
-prudemment `non_visited`. Cette correspondance n’est utilisée que pendant la
-migration.
-
-Les liens sont limités à 20 par lieu et n’acceptent que des URL HTTP(S) possédant un hôte. L’historique conserve les changements structurés et les métadonnées utiles, jamais les fichiers photo binaires.
-# Console d’administration
-
-Les endpoints protégés `/admin/console/*` fournissent la pagination des utilisateurs, l’état masqué des credentials et un diagnostic isolé des services. La migration `e7a4c1d9b620` ajoute les réglages d’instance et les métadonnées de vérification des credentials.
-
-## Profils de quotas
-
-La révision `f1e6a4c8d920` remplace les anciennes limites globales et exceptions
-JSON par des profils réutilisables. Chaque utilisateur référence exactement un
-profil. Le profil système `Unlimited` est créé avec des limites `NULL`, reste
-actif et ne peut être ni restreint, ni archivé, ni supprimé. `NULL` signifie
-illimité, `0` interdit une nouvelle création et un entier positif fixe le
-maximum. Un profil plus restrictif ne supprime jamais les données existantes.
-
-Les endpoints administrateur `/admin/quota-profiles`,
-`/admin/users/{user_id}/quota-profile` et `/admin/users/{user_id}/quotas`
-gèrent le cycle de vie, l'affectation et les limites effectives. L'approbation
-d'une inscription accepte un profil actif facultatif et résout sinon le profil
-par défaut dans la transaction.
-
-| Quota | Portée | Comptage | Capacité libérée |
-| --- | --- | --- | --- |
-| Cartes | utilisateur | cartes possédées, jamais les cartes seulement partagées | suppression définitive ou transfert |
-| Lieux | carte | lieux actifs et placés dans la corbeille | purge définitive |
-| Photos | utilisateur/lieu | lignes photo persistées | suppression de la photo |
-| Stockage | utilisateur | taille réelle des fichiers photo existants | suppression physique réussie |
-| Membres | carte | propriétaire et membres actifs | retrait d'une adhésion |
-| Invitations | utilisateur/carte | invitations actives non expirées | acceptation, révocation ou expiration |
-| Sorties, jours, étapes | utilisateur/carte/objet | objets persistés | suppression de l'objet |
-
-`app.quotas.registry` est le registre unique des clés et portées.
-`QuotaService.ensure_can_create` verrouille la ligne du propriétaire avant de
-mesurer l'usage et d'autoriser l'écriture. Les créations groupées et imports
-fournissent leur incrément complet. Une limite atteinte produit un HTTP 409
-avec un code stable `quota.<resource>.limit_reached`, l'usage, la limite et
-l'incrément demandé. Pour ajouter une limite : déclarer sa clé dans le registre,
-sa colonne nullable et sa contrainte, son agrégat dans le service, puis appeler
-le service dans chaque chemin de création concerné.
-# Media API
-
-The `/media` API is a dedicated catalogue layer over existing photo storage.
-It uses ownership and `map_memberships` directly and deliberately does not use
-the global administrator bypass for private-map media.
-
-- `GET /media` — paginated search, filters, aggregates and filter options;
-- `GET /media/{id}` — safe metadata without storage paths;
-- `GET /media/{id}/thumbnail` — lazily generated, EXIF-oriented WebP preview;
-- `GET /media/{id}/download` — authorized attachment download;
-- `PATCH /media/{id}` — caption and capture-date metadata;
-- `POST /media/{id}/set-main` — atomically select the place's primary photo;
-- `DELETE /media/{id}` and `POST /media/bulk-delete` — editor/owner deletion.
-
-Technical metadata (MIME type, byte size, dimensions and uploader) is recorded
-at upload time and indexed where useful. Existing media remains visible after
-the migration; unknown dimensions are reported as a diagnostic state until the
-file is replaced or processed. Local paths and infrastructure details are never
-serialized.
+- Local filesystem storage is the default; distributed deployments may need object storage.
+- The instance-status dashboard is operational guidance, not a replacement for observability or backups.
+- Google Routes availability, limits, and pricing remain controlled by the user's Google Cloud configuration.
+- Historical baseline migrations need the documented bootstrap process for a completely new database.

@@ -1,8 +1,8 @@
 # CartaVault
 
-La console d’administration comprend une page **État de l’instance** réservée aux administrateurs. Elle agrège des diagnostics non sensibles sur les services, l’usage, la sécurité et la maintenance. Voir [la documentation Instance Status](docs/instance-status.md).
+The administration console includes an **Instance Status** page reserved for administrators. It aggregates non-sensitive diagnostics about services, usage, security, and maintenance. See the [Instance Status documentation](docs/instance-status.md).
 
-**English** | [Français](README.fr.md)
+**English**
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
@@ -322,7 +322,7 @@ Before publishing or deploying the project:
 Statuses are scoped to each map and remain fully customizable. Every status is
 classified as either `non_visited` or `visited`; this functional state, rather
 than a status or category name, drives visit filters, counters, ratings and map
-results. New maps receive four editable defaults: À faire, À vérifier, Visité
+results. New maps receive four editable defaults: To do, To review, Visited
 and À refaire. The main Places filters stay stable (All, Not visited, Visited,
 Favorites), while advanced filters expose the real statuses of the active map.
 
@@ -365,7 +365,7 @@ CartaVault is distributed under the MIT License. See [`LICENSE`](LICENSE) for de
 Made in Vosges
 # Administration
 
-La console centrale CartaVault est disponible sur `/admin` uniquement pour les administrateurs. Elle regroupe la gestion paginée des utilisateurs, les credentials globaux sûrs, les quotas et le diagnostic de l’instance. Les clés personnelles restent dans le compte utilisateur et les secrets d’infrastructure ne sont jamais exposés. Voir [l’audit des paramètres](docs/administration-audit.md).
+The central CartaVault console is available at `/admin` to administrators only. It brings together paginated user management, safe global credentials, quotas, and instance diagnostics. Personal keys remain in the user account and infrastructure secrets are never exposed. See the [settings audit](docs/administration-audit.md).
 # Media library
 
 CartaVault includes a centralized **Media** workspace for every authenticated

@@ -1,40 +1,40 @@
 # Instance Status
 
-La section **Administration → État de l’instance** fournit un diagnostic opérationnel synthétique de CartaVault. Elle est réservée aux administrateurs globaux côté interface et côté API. Elle ne remplace ni Prometheus/Grafana, ni une journalisation centralisée, ni une stratégie de sauvegarde et de restauration, ni un audit de sécurité formel.
+The **Administration → Instance Status** section provides a concise operational diagnosis for CartaVault. It is restricted to global administrators in both the UI and API. It does not replace Prometheus/Grafana, centralized logging, backup and restore procedures, or a formal security audit.
 
-## API, cache et unités
+## API, cache, and units
 
-- `GET /admin/console/instance` retourne la dernière mesure disponible.
-- `POST /admin/console/instance/refresh` force une nouvelle mesure.
-- Le cache est local au processus et dure 30 secondes. Les rafraîchissements concurrents sont sérialisés.
-- Les dates sont en UTC ISO 8601, les tailles en octets, les latences en millisecondes, les durées en secondes et les pourcentages sous forme numérique.
+- `GET /admin/console/instance` returns the latest available measurement.
+- `POST /admin/console/instance/refresh` forces a new measurement.
+- The cache is process-local, lasts 30 seconds, and serializes concurrent refreshes.
+- Dates use UTC ISO 8601; sizes use bytes; latency uses milliseconds; durations use seconds; percentages are numeric values.
 
-## États et agrégation
+## States and aggregation
 
-- `operational` : contrôle concluant sans alerte significative.
-- `degraded` : service utilisable, mais une action non critique est recommandée.
-- `unavailable` : composant obligatoire indisponible.
-- `misconfigured` : configuration requise ou sûre absente, notamment en production.
-- `unknown` : aucune source de vérité fiable.
+- `operational`: the check succeeded without a significant alert.
+- `degraded`: the service is usable, but a non-critical action is recommended.
+- `unavailable`: a required component is unavailable.
+- `misconfigured`: required or secure configuration is missing, especially in production.
+- `unknown`: no reliable source of truth is available.
 
-L’état global est `unavailable` si l’application, PostgreSQL/PostGIS ou le stockage est indisponible. Il est `misconfigured` si un composant obligatoire ou un contrôle de sécurité important l’est. Une anomalie optionnelle produit `degraded`. Une valeur inconnue n’est jamais assimilée à un succès.
+The aggregate status is `unavailable` when the application, PostgreSQL/PostGIS, or storage is unavailable. It is `misconfigured` when a required component or important security check is misconfigured. Optional anomalies result in `degraded`. Unknown data is never treated as success.
 
-## Mesures et limites connues
+## Measurements and known limits
 
-Les contrôles couvrent l’application, PostgreSQL/PostGIS, Alembic, le stockage local, les volumes fonctionnels, les sessions, HTTPS, Resend, la cartographie, OSRM, la maintenance, les sauvegardes et la configuration de sécurité.
+Checks cover the application, PostgreSQL/PostGIS, Alembic, local storage, functional volumes, sessions, HTTPS, Resend, mapping, OSRM, maintenance, backups, and security configuration.
 
-- Le stockage est sondé avec un fichier temporaire immédiatement supprimé ; aucun chemin hôte complet n’est exposé. Seuils : 70 % avertissement, 85 % élevé, 95 % critique.
-- OSRM utilise une requête légère bornée à deux secondes. Aucun appel Google Routes facturable et aucun déchiffrement de clé utilisateur n’est effectué.
-- Resend est évalué uniquement à partir des métadonnées locales. Aucun email et aucun appel fournisseur ne sont déclenchés.
-- Si TLS termine sur un proxy externe, certificat, HSTS et redirection restent `unknown` faute de preuve côté application.
-- L’application ne possède pas encore d’historique structuré des livraisons email ou erreurs. Les erreurs affichées sont les échecs des contrôles actuels, sans stack trace ni charge utile.
-- Aucun sous-système de sauvegarde, Redis ou worker n’est déclaré. Leur état reste `unknown`; aucune preuve de sauvegarde n’est fabriquée.
-- Les totaux actifs excluent les utilisateurs et lieux supprimés. Les lieux supprimés sont comptés séparément.
+- Storage is probed with a temporary file that is immediately removed; no full host path is exposed. Thresholds are 70% warning, 85% high, and 95% critical.
+- OSRM uses a lightweight request capped at two seconds. No billable Google Routes call or user-key decryption is performed.
+- Resend is assessed only from local metadata. No email and no provider call are sent.
+- If TLS terminates at an external proxy, certificate, HSTS, and redirect status remain `unknown` because the application has no proof.
+- The application does not yet maintain a structured history of email deliveries or application errors. Shown errors are current check failures only, without stack traces or payloads.
+- No backup, Redis, or worker subsystem is declared. Their state stays `unknown`; no backup evidence is fabricated.
+- Active totals exclude deleted users and places; deleted places are counted separately.
 
-## Confidentialité et extension
+## Privacy and extension
 
-La réponse ne contient ni nom ou email utilisateur, ni contenu de POI, ni jeton, ni chaîne de connexion, ni clé API ou clé de chiffrement. Les erreurs utilisent des codes stables. Un non-administrateur reçoit un refus `403`.
+The response contains no user name or email, POI content, token, connection string, API key, or encryption key. Errors use stable codes. Non-administrators receive `403`.
 
-Pour ajouter un contrôle, créer un schéma explicite, une fonction isolée, un code d’erreur stable et un rendu accessible. Toute dépendance externe doit avoir un délai maximal, ne pas être facturable lors d’une lecture passive et ne pas faire échouer les autres composants. Couvrir agrégation, isolation, redaction et rendu par des tests.
+When adding a check, create an explicit schema, an isolated function, a stable error code, and an accessible UI rendering. Every external dependency must have a maximum timeout, remain non-billable during passive reads, and not prevent other components from being checked. Cover aggregation, isolation, redaction, and rendering with tests.
 
-Les tests avec base de données doivent cibler exclusivement `cartavault_test`.
+Database tests must exclusively target `cartavault_test`.

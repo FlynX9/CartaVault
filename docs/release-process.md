@@ -1,341 +1,197 @@
-# Processus de versionnement et de publication
+# Versioning and release process
 
-Ce document décrit la stratégie de versionnement et la procédure recommandée pour publier une version de CartaVault.
+This document describes CartaVault's versioning strategy and the recommended release procedure.
 
-## Stratégie de versionnement
+## Versioning strategy
 
-CartaVault utilise Semantic Versioning sous la forme :
+CartaVault uses Semantic Versioning:
 
 ```text
 MAJOR.MINOR.PATCH
 ```
 
-Avant la version `1.0.0`, la convention retenue est la suivante :
+Before `1.0.0`, use the following convention:
 
-- `0.MINOR.0` : nouvelle fonctionnalité importante, évolution d’architecture ou changement potentiellement incompatible ;
-- `0.MINOR.PATCH` : correction de bug, amélioration compatible, documentation ou maintenance ;
-- `1.0.0` : première version considérée comme stable.
+- `0.MINOR.0`: significant feature, architecture evolution, or potentially breaking change;
+- `0.MINOR.PATCH`: bug fix, compatible improvement, documentation, or maintenance;
+- `1.0.0`: first release considered stable.
 
-Exemples :
-
-```text
-0.1.0  Première version publique de développement
-0.1.1  Correctifs sans changement majeur de comportement
-0.2.0  Nouvelle fonctionnalité importante ou évolution incompatible
-1.0.0  Première version stable
-```
-
-## Changements incompatibles
-
-Tout changement incompatible doit être signalé dans :
-
-- `CHANGELOG.md` ;
-- les notes de version GitHub ;
-- la pull request correspondante ;
-- la documentation de migration si nécessaire.
-
-Exemples de changements incompatibles :
-
-- modification d’un format d’import ou d’export ;
-- suppression ou renommage d’une variable d’environnement ;
-- changement de comportement d’une API ;
-- modification du modèle de permissions ;
-- migration de base de données non réversible ;
-- changement du format de stockage des photos ;
-- modification de la clé ou du mécanisme de chiffrement.
-
-## Préparer une version
-
-### 1. Choisir la version
-
-Déterminer le prochain numéro en fonction de la nature des changements.
-
-Exemple :
+Examples:
 
 ```text
-0.1.0 → 0.1.1 pour des correctifs
-0.1.1 → 0.2.0 pour une évolution importante
+0.1.0  First public development release
+0.1.1  Fixes without a material behavior change
+0.2.0  Significant feature or breaking evolution
+1.0.0  First stable release
 ```
 
-### 2. Mettre à jour la branche principale
+## Breaking changes
+
+Every breaking change must be called out in:
+
+- `CHANGELOG.md`;
+- the GitHub release notes;
+- the related pull request;
+- migration documentation when appropriate.
+
+Examples include changing an import/export format, removing or renaming an environment variable, changing API or permission behavior, introducing a non-reversible migration, changing photo storage, or changing encryption keys or mechanisms.
+
+## Preparing a release
+
+### 1. Choose the version
+
+Select the next version number based on the nature of the changes.
+
+```text
+0.1.0 → 0.1.1 for fixes
+0.1.1 → 0.2.0 for a significant evolution
+```
+
+### 2. Update the main branch
 
 ```bash
 git checkout master
 git pull --ff-only
 ```
 
-### 3. Créer une branche de release
+### 3. Create a release branch
 
 ```bash
 git checkout -b release/0.1.0
 ```
 
-### 4. Mettre à jour le changelog
+### 4. Update the changelog
 
-Dans `CHANGELOG.md` :
+In `CHANGELOG.md`:
 
-1. déplacer les éléments utiles de `[Unreleased]` vers une nouvelle section ;
-2. ajouter la date au format `AAAA-MM-JJ` ;
-3. remettre les rubriques `[Unreleased]` à zéro ;
-4. vérifier les liens de comparaison en bas du fichier.
-
-Exemple :
+1. move relevant entries from `[Unreleased]` to a new version section;
+2. add the date in `YYYY-MM-DD` format;
+3. reset the `[Unreleased]` sections;
+4. verify the comparison links at the end of the file.
 
 ```markdown
 ## [0.1.0] - 2026-07-20
 ```
 
-### 5. Vérifier les migrations
+### 5. Verify migrations
 
-Depuis `backend` :
+From `backend`:
 
 ```bash
 python -m alembic current
 python -m alembic check
 ```
 
-Sur une base de test propre :
+On a clean test database only:
 
 ```bash
 python -m alembic upgrade head
 ```
 
-Lorsqu’un retour arrière est pris en charge :
+When rollback is supported:
 
 ```bash
 python -m alembic downgrade -1
 python -m alembic upgrade head
 ```
 
-Ne jamais tester un downgrade destructif sur une base contenant des données importantes.
+Never test a destructive downgrade on a database containing important data.
 
-### 6. Exécuter les vérifications backend
+### 6. Run backend verification
 
 ```bash
-python -m compileall app
-pytest
+python -m compileall app migrations tests
+python -m pytest -m unit -v
+python -m pytest -m integration -v
+python -m pytest -v
+python -m alembic heads
 python -m alembic check
+python -c "from app.main import app; print(app.title)"
 ```
 
-Documenter clairement tout test non exécuté.
+Document every test that was not run.
 
-### 7. Exécuter les vérifications frontend
-
-Depuis `frontend` :
+### 7. Run frontend verification
 
 ```bash
 npm ci
+npm run verify:category-icons
 npm run lint
-npm test
+npm run test
 npm run build
 ```
 
-### 8. Exécuter la checklist manuelle
+### 8. Run the manual checklist
 
-Utiliser :
+Follow [`manual-test-checklist.md`](manual-test-checklist.md). At minimum, validate authentication, maps, places, import/export, permissions, trips, responsive behavior, light and dark themes, and the primary workflows in the supported browsers.
 
-```text
-docs/manual-test-checklist.md
-```
+### 9. Verify documentation
 
-Le résultat doit être au minimum :
+Review the root, backend, frontend, and test READMEs, deployment notes, migration notes, the changelog, and screenshots when the UI changed.
 
-```text
-Publication autorisée
-```
+### 10. Verify secrets
 
-ou :
+Before publishing, confirm that no `.env` file, credential, token, password, connection string, user data, generated upload, local storage artifact, or test cache is tracked.
 
-```text
-Publication autorisée avec réserves
-```
-
-Les réserves doivent alors être documentées dans les notes de version.
-
-### 9. Vérifier la documentation
-
-Contrôler notamment :
-
-- `README.md` ;
-- `CONTRIBUTING.md` ;
-- `SECURITY.md` ;
-- `CHANGELOG.md` ;
-- les variables d’environnement d’exemple ;
-- les instructions Docker ;
-- les procédures de migration ;
-- les captures d’écran ;
-- les liens Markdown.
-
-### 10. Vérifier les secrets
-
-Avant publication :
+## Create the release commit
 
 ```bash
 git status
-git diff --cached
-```
-
-Vérifier l’absence de :
-
-- fichiers `.env` réels ;
-- clés privées ;
-- jetons ;
-- mots de passe ;
-- sauvegardes ;
-- photos ou exports privés ;
-- données personnelles ;
-- clé `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`.
-
-## Créer le commit de release
-
-```bash
-git add CHANGELOG.md docs/release-process.md
+git diff --check
+git add CHANGELOG.md README.md backend/README.md frontend/README.md docs/
 git commit -m "chore(release): prepare v0.1.0"
 ```
 
-Pousser la branche :
+## Create the tag
 
 ```bash
-git push -u origin release/0.1.0
-```
-
-Ouvrir ensuite une pull request vers `master`.
-
-## Créer le tag
-
-Après fusion de la pull request :
-
-```bash
-git checkout master
-git pull --ff-only
 git tag -a v0.1.0 -m "CartaVault v0.1.0"
-git push origin v0.1.0
+git push origin release/0.1.0 --follow-tags
 ```
 
-Le tag doit toujours pointer vers un commit déjà présent sur la branche principale.
+## Create the GitHub release
 
-## Créer la release GitHub
+Create the release from `v0.1.0`, use the changelog as the source of truth, identify migrations and deployment requirements, and mark a pre-release clearly when it is not stable.
 
-Avec GitHub CLI :
+## Update procedure
 
-```bash
-gh release create v0.1.0 \
-  --repo FlynX9/CartaVault \
-  --title "CartaVault v0.1.0" \
-  --notes-file RELEASE_NOTES.md
-```
+1. Back up the database and persistent storage.
+2. Read the release notes and migration notes.
+3. Update the application code and dependencies.
+4. Apply migrations only after verifying the target database.
+5. Restart the backend and frontend.
+6. Validate health endpoints, login, maps, and one safe write workflow.
 
-Les notes de version doivent inclure :
+## Rollback
 
-- résumé de la version ;
-- nouvelles fonctionnalités ;
-- corrections ;
-- changements incompatibles ;
-- migrations nécessaires ;
-- nouvelles variables d’environnement ;
-- limites connues ;
-- procédure de mise à jour ;
-- procédure de retour arrière.
+### Application only
 
-Ne pas déclarer qu’un test passe s’il n’a pas réellement été exécuté.
+Redeploy the previous compatible application version and keep the database schema unchanged whenever possible.
 
-## Procédure de mise à jour
+### Database
 
-Avant toute mise à jour :
+Run Alembic downgrade only when the migration explicitly documents a safe rollback. Restore the verified backup instead when the migration is destructive or data was transformed irreversibly.
 
-1. sauvegarder PostgreSQL/PostGIS ;
-2. sauvegarder les photos et autres fichiers persistants ;
-3. sauvegarder les variables d’environnement ;
-4. sauvegarder la clé `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` ;
-5. noter la version actuellement déployée.
+### Secrets and encryption
 
-Exemple général :
+Never roll back or replace an encryption key casually. Keep the previous master key available until every encrypted value has been migrated or removed. Restore credentials from a secure backup rather than exposing them in logs or Git.
 
-```bash
-git fetch --tags
-git checkout v0.1.0
-docker compose pull
-docker compose build
-docker compose up -d
-```
+## Patch release
 
-Appliquer ensuite les migrations selon la procédure du déploiement.
+For a focused correction, branch from the supported release line, include regression coverage, run the full relevant verification suite, and publish a new patch tag such as `v0.1.1`.
 
-## Retour arrière
+## Cancel a GitHub release
 
-Le retour arrière dépend de la nature du changement.
+If a release was published by mistake, mark it as a draft or pre-release where appropriate, communicate the issue, and publish a corrective release. Do not rewrite tags that may already have been pulled by users.
 
-### Application uniquement
+## Condensed checklist
 
-Lorsqu’aucune migration incompatible n’a été appliquée :
-
-```bash
-git checkout <ancien-tag>
-docker compose build
-docker compose up -d
-```
-
-### Base de données
-
-Lorsqu’une migration a été appliquée :
-
-- utiliser `alembic downgrade` uniquement si la migration a été conçue et testée pour cela ;
-- restaurer la sauvegarde si le downgrade est risqué ou destructif ;
-- ne jamais improviser un retour arrière sur une base de production.
-
-### Secrets et chiffrement
-
-La perte de `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` rend les identifiants chiffrés illisibles.
-
-Cette clé doit être restaurée avec la même valeur lors d’un retour arrière ou d’une migration vers un autre serveur.
-
-## Version corrective
-
-Pour publier un correctif :
-
-```text
-v0.1.0 → v0.1.1
-```
-
-Procédure recommandée :
-
-```bash
-git checkout master
-git pull --ff-only
-git checkout -b fix/critical-problem
-```
-
-Après validation et fusion :
-
-```bash
-git tag -a v0.1.1 -m "CartaVault v0.1.1"
-git push origin v0.1.1
-```
-
-## Annuler une release GitHub
-
-Une release GitHub peut être supprimée si elle a été publiée par erreur, mais un tag public ne doit pas être déplacé silencieusement.
-
-Lorsqu’une version publiée contient un défaut :
-
-- conserver l’historique ;
-- publier une nouvelle version corrective ;
-- marquer éventuellement la version défectueuse comme non recommandée ;
-- expliquer clairement le problème dans les notes de version.
-
-## Checklist condensée
-
-- [ ] Version choisie
-- [ ] Branche de release créée
-- [ ] Changelog mis à jour
-- [ ] Migrations vérifiées
-- [ ] Tests backend exécutés
-- [ ] Tests frontend exécutés
-- [ ] Checklist manuelle exécutée
-- [ ] Documentation vérifiée
-- [ ] Secrets vérifiés
-- [ ] Pull request fusionnée
-- [ ] Tag annoté créé
-- [ ] Release GitHub créée
-- [ ] Procédure de mise à jour documentée
-- [ ] Procédure de retour arrière documentée
+- [ ] Version selected and changelog updated.
+- [ ] `git diff --check` passes.
+- [ ] Backend tests and Alembic checks pass on the test database.
+- [ ] Frontend lint, tests, and build pass.
+- [ ] Manual checklist completed.
+- [ ] Documentation and screenshots updated.
+- [ ] Secrets and generated artifacts excluded.
+- [ ] Backups verified before production migrations.
+- [ ] Release commit, tag, and release notes prepared.

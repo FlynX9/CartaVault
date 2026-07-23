@@ -1,697 +1,364 @@
-# Checklist de tests manuels avant publication
+# Manual pre-release test checklist
 
-Cette checklist complète les tests automatisés de CartaVault. Elle doit être exécutée avant chaque version, release candidate ou déploiement important.
+This checklist complements CartaVault automated tests. Run it before every release, release candidate, or significant deployment.
 
-Elle ne remplace pas les tests unitaires, les tests d’intégration, le lint, le build frontend ni les vérifications Alembic.
+It does not replace unit tests, integration tests, linting, frontend builds, or Alembic checks.
 
-## Informations de validation
+## Validation information
 
-- Version ou commit testé :
-- Date :
-- Testeur :
-- Environnement :
-- Système d’exploitation :
-- Navigateur :
-- Mode de déploiement :
-- Base de données utilisée :
-- Fournisseur de routage testé :
-- Résultat global : ☐ Conforme ☐ Conforme avec réserves ☐ Bloquant
+- Version or commit tested:
+- Date:
+- Tester:
+- Environment:
+- Operating system:
+- Browser:
+- Deployment mode:
+- Database used:
+- Routing provider tested:
+- Overall result: ☐ Pass ☐ Pass with reservations ☐ Blocked
 
-## Préconditions
+## Preconditions
 
-- [ ] La branche ou le commit à tester est clairement identifié.
-- [ ] Les fichiers `.env` utilisés sont adaptés à l’environnement de test.
-- [ ] Aucun secret réel n’est présent dans les journaux ou captures.
-- [ ] PostgreSQL/PostGIS est démarré et accessible.
-- [ ] Les migrations Alembic ont été appliquées.
-- [ ] Le backend démarre sans erreur.
-- [ ] Le frontend démarre sans erreur.
-- [ ] La console du navigateur ne contient pas d’erreur bloquante au chargement.
-- [ ] Un compte administrateur est disponible.
-- [ ] Un compte utilisateur standard est disponible.
-- [ ] Une base de test dédiée est utilisée.
-- [ ] Une sauvegarde existe avant tout test destructif.
+- [ ] The branch or commit under test is clearly identified.
+- [ ] `.env` files match the test environment.
+- [ ] No real secret is present in logs or screenshots.
+- [ ] PostgreSQL/PostGIS is running and reachable.
+- [ ] Required Alembic migrations are applied.
+- [ ] Backend starts without error.
+- [ ] Frontend starts without error.
+- [ ] Browser console has no blocking load error.
+- [ ] An administrator account is available.
+- [ ] A standard user, editor, and viewer are available when permissions are tested.
 
----
+# 1. Authentication and sessions
 
-# 1. Authentification et sessions
+## Login
 
-## Connexion
+- [ ] Valid credentials open the map workspace.
+- [ ] Invalid credentials show a readable error without exposing sensitive details.
+- [ ] The password visibility control works and has an accessible label.
+- [ ] Remembered email behavior is correct.
+- [ ] Login is usable in light and dark themes and on mobile.
 
-- [ ] La page de connexion s’affiche correctement.
-- [ ] Un utilisateur valide peut se connecter.
-- [ ] Un mot de passe incorrect est refusé.
-- [ ] Le message d’erreur ne révèle pas si l’adresse ou le compte existe.
-- [ ] Les champs obligatoires sont signalés.
-- [ ] Le bouton de connexion ne peut pas déclencher plusieurs soumissions simultanées.
-- [ ] Une session valide persiste après actualisation de la page.
-- [ ] Une session expirée renvoie vers l’écran de connexion.
-- [ ] Les routes privées sont inaccessibles sans authentification.
+## Logout
 
-## Déconnexion
+- [ ] Logout clears the current session.
+- [ ] Logout returns explicitly to the login page.
+- [ ] Protected routes cannot be accessed after logout.
+- [ ] Expired-session behavior returns to login safely.
 
-- [ ] La déconnexion ferme correctement la session.
-- [ ] Après déconnexion, le bouton Retour du navigateur ne redonne pas accès aux données privées.
-- [ ] Les requêtes API après déconnexion sont refusées.
-- [ ] Les données privées ne restent pas visibles dans l’interface.
+## User account
 
-## Compte utilisateur
+- [ ] Profile, avatar, password, email, sessions, preferences, and account deletion restrictions behave correctly.
+- [ ] Theme, language, density, routing, and basemap preferences persist after refresh.
+- [ ] Account dialogs remain keyboard accessible and appear above map overlays.
 
-- [ ] Le profil utilisateur s’affiche correctement.
-- [ ] Les informations modifiables peuvent être mises à jour.
-- [ ] Les validations de formulaire fonctionnent.
-- [ ] Le changement de mot de passe exige le mot de passe actuel.
-- [ ] Un mauvais mot de passe actuel est refusé.
-- [ ] Le nouveau mot de passe respecte la politique définie.
-- [ ] Les messages de succès et d’erreur sont compréhensibles.
-- [ ] Aucune donnée sensible n’apparaît dans la console du navigateur.
+# 2. Map creation and management
 
----
+## Map list
 
-# 2. Création et gestion d’une carte
+- [ ] Maps show country flag, name, country, role, ownership/share state, and available actions.
+- [ ] The currently open map has the active border and disabled **Open** action.
+- [ ] Shared maps identify their owner and cannot be opened before invitation acceptance.
 
-## Liste des cartes
+## Creation
 
-- [ ] La liste des cartes s’affiche.
-- [ ] L’état vide est correct lorsqu’aucune carte n’existe.
-- [ ] Les cartes accessibles à l’utilisateur sont visibles.
-- [ ] Les cartes auxquelles l’utilisateur n’a pas accès ne sont pas visibles.
-- [ ] Le chargement, l’état vide et les erreurs sont distincts.
-- [ ] Le tri et les filtres éventuels fonctionnent.
-- [ ] La sélection d’une carte actualise correctement le contenu.
+- [ ] Country search works and country flags are visible.
+- [ ] Required fields and duplicate validation are clear.
+- [ ] A newly created map focuses the appropriate country bounds.
 
-## Création
+## Update and deletion
 
-- [ ] Une carte peut être créée avec les champs obligatoires.
-- [ ] Le nom de la carte est validé.
-- [ ] Le pays peut être sélectionné.
-- [ ] La carte est immédiatement visible après création.
-- [ ] L’utilisateur créateur devient propriétaire ou administrateur selon la règle prévue.
-- [ ] Une erreur backend est affichée sans casser l’interface.
-- [ ] Une double soumission ne crée pas deux cartes.
+- [ ] Map settings, members, import, export, and deletion respect role permissions.
+- [ ] Every destructive operation uses a CartaVault confirmation dialog, not a browser prompt.
+- [ ] Deleting the active map selects a valid remaining map or safe empty state.
 
-## Modification
+# 3. Place creation and editing
 
-- [ ] Le nom de la carte peut être modifié.
-- [ ] Les paramètres disponibles peuvent être enregistrés.
-- [ ] Les permissions sont respectées.
-- [ ] Un utilisateur non autorisé ne peut pas modifier la carte via l’interface.
-- [ ] Un utilisateur non autorisé ne peut pas modifier la carte via l’API.
-- [ ] Les changements persistent après actualisation.
+## Create from the map
 
-## Suppression
+- [ ] Right-clicking the map opens the coordinate menu.
+- [ ] **Create a place here** uses the exact clicked coordinates.
+- [ ] Cancelling creation removes the temporary marker.
+- [ ] Copy and Google Maps actions work without blocking dialogs.
 
-- [ ] La suppression demande une confirmation explicite.
-- [ ] Une carte supprimée disparaît de la liste active.
-- [ ] Les données liées suivent le comportement prévu.
-- [ ] La suppression est refusée à un utilisateur non autorisé.
-- [ ] Une suppression échouée ne laisse pas l’interface dans un état incohérent.
+## Form
 
----
+- [ ] Required fields validate correctly.
+- [ ] Category, status, tags, photos, favorite, ratings, location, and optional fields save correctly.
+- [ ] Interest rating appears only for unvisited status; visit rating appears only for visited status.
+- [ ] Coordinates are editable and dragging the draft marker updates the form.
+- [ ] The floating save action stays usable without covering fields.
 
-# 3. Ajout et modification d’un lieu
+## Update, delete, and trash
 
-## Création depuis la carte
+- [ ] Editing updates the list, popup, map marker, facets, and filters.
+- [ ] Deletion uses a styled confirmation dialog.
+- [ ] Restore and permanent purge follow permissions and show correct feedback.
 
-- [ ] Le clic droit ouvre l’action de création d’un lieu.
-- [ ] Les coordonnées proposées correspondent à la position choisie.
-- [ ] La carte reste utilisable après ouverture et fermeture du formulaire.
-- [ ] La création peut être annulée sans donnée résiduelle.
-- [ ] Un lieu valide peut être enregistré.
-- [ ] Le nouveau marqueur apparaît immédiatement.
-- [ ] Le nouveau lieu apparaît dans la liste.
-- [ ] La carte se recentre correctement lorsque prévu.
+# 4. Categories, tags, and statuses
 
-## Création depuis un formulaire
+## Categories
 
-- [ ] Les champs obligatoires sont identifiés.
-- [ ] Le nom du lieu est validé.
-- [ ] Les coordonnées invalides sont refusées.
-- [ ] Les coordonnées hors plage sont refusées.
-- [ ] Les décimales sont correctement interprétées.
-- [ ] Les champs optionnels peuvent rester vides.
-- [ ] Les textes longs sont correctement gérés.
-- [ ] Les caractères accentués et internationaux sont conservés.
-- [ ] Les balises HTML ou contenus dangereux ne sont pas exécutés.
-
-## Modification
-
-- [ ] Un lieu peut être ouvert depuis la liste.
-- [ ] Un lieu peut être ouvert depuis son marqueur.
-- [ ] Les modifications sont enregistrées.
-- [ ] Les modifications sont visibles sans rechargement complet.
-- [ ] Les coordonnées peuvent être modifiées.
-- [ ] Le marqueur se déplace après modification des coordonnées.
-- [ ] Les catégories, tags et statuts associés sont conservés.
-- [ ] Les champs non modifiés ne sont pas perdus.
-- [ ] Un utilisateur non autorisé ne peut pas modifier le lieu.
-
-## Suppression et corbeille
-
-- [ ] La suppression demande une confirmation.
-- [ ] Le lieu n’apparaît plus dans la liste active.
-- [ ] Le marqueur disparaît de la carte active.
-- [ ] Le lieu apparaît dans la corbeille lorsque prévu.
-- [ ] Les relations associées restent cohérentes.
-- [ ] Les photos ne sont pas supprimées prématurément si une restauration est possible.
-
----
-
-# 4. Catégories, tags et statuts
-
-## Catégories
-
-- [ ] La liste des catégories s’affiche.
-- [ ] Une catégorie peut être créée.
-- [ ] Le nom est validé.
-- [ ] Une couleur peut être sélectionnée.
-- [ ] Une icône locale peut être sélectionnée.
-- [ ] La recherche d’icônes fonctionne.
-- [ ] La recherche est insensible aux accents lorsque prévu.
-- [ ] Le catalogue d’icônes reste utilisable au clavier.
-- [ ] Une catégorie peut être modifiée.
-- [ ] Une catégorie peut être supprimée selon les règles prévues.
-- [ ] Les lieux associés restent cohérents après modification.
-- [ ] Une icône invalide est refusée par le backend.
+- [ ] Create, search, edit, delete, icon selection, and primary-category behavior work.
+- [ ] Only catalog icon identifiers are accepted.
 
 ## Tags
 
-- [ ] Un tag peut être créé.
-- [ ] Un tag peut être modifié.
-- [ ] Un tag peut être supprimé.
-- [ ] Les doublons sont gérés selon la règle prévue.
-- [ ] Les tags sont correctement associés aux lieux.
-- [ ] Les filtres par tags fonctionnent.
+- [ ] Create, search, edit, delete, and tag-color configuration work.
+- [ ] Selected tags appear with their configured colors in places and popups.
 
-## Statuts
+## Statuses
 
-- [ ] Un statut peut être créé.
-- [ ] Un statut peut être modifié.
-- [ ] Un statut peut être supprimé selon les règles prévues.
-- [ ] La couleur du statut est visible.
-- [ ] Le marqueur utilise la couleur attendue.
-- [ ] Le filtre par statut fonctionne.
-- [ ] Un lieu sans statut reste correctement affiché.
+- [ ] Create, edit, active/default, functional visit state, display order, and color work.
+- [ ] Inactive statuses remain on existing places but cannot be chosen for new writes.
+- [ ] Status colors are reflected in markers, place cards, ratings, and legend.
 
----
+# 5. Photos and media
 
-# 5. Photos
+## Upload
 
-## Ajout
+- [ ] JPEG, PNG, and WebP validation works, including size and dimensions.
+- [ ] Multiple upload, primary selection, ordering, and deletion work.
 
-- [ ] Une photo valide peut être ajoutée à un lieu.
-- [ ] Plusieurs photos peuvent être ajoutées lorsque prévu.
-- [ ] Les formats autorisés sont acceptés.
-- [ ] Les formats interdits sont refusés.
-- [ ] Les fichiers trop volumineux sont refusés avec un message clair.
-- [ ] Un fichier renommé avec une fausse extension est refusé si son contenu est invalide.
-- [ ] Le nom original du fichier n’est pas utilisé de manière dangereuse.
-- [ ] Le chargement affiche une progression ou un état explicite.
-- [ ] Une erreur d’upload ne bloque pas les uploads suivants.
+## Display
 
-## Affichage
+- [ ] Place popup, editor, gallery, and media workspace use thumbnails safely.
+- [ ] The full-screen viewer is available only from an individual place, not from list thumbnails.
 
-- [ ] Les miniatures s’affichent.
-- [ ] L’image principale est correctement identifiée.
-- [ ] L’ouverture d’une image fonctionne.
-- [ ] Les proportions sont conservées.
-- [ ] Une image manquante affiche un fallback propre.
-- [ ] L’affichage fonctionne en mode sombre.
-- [ ] Les images privées ne sont pas accessibles sans autorisation.
+## Deletion
 
-## Suppression
+- [ ] Delete confirmation and storage cleanup work without leaking storage paths.
 
-- [ ] Une photo peut être supprimée.
-- [ ] Une confirmation est demandée lorsque prévu.
-- [ ] La suppression retire la photo de l’interface.
-- [ ] Le fichier associé est supprimé selon la politique prévue.
-- [ ] La suppression de l’image principale sélectionne correctement une nouvelle image ou aucun fallback.
+# 6. KML/KMZ import
 
----
+## File selection and preview
 
-# 6. Import KML/KMZ
-
-## Sélection du fichier
-
-- [ ] Un fichier KML valide est accepté.
-- [ ] Un fichier KMZ valide est accepté.
-- [ ] Un fichier d’un autre type est refusé.
-- [ ] Un fichier vide est refusé.
-- [ ] Un fichier corrompu produit une erreur compréhensible.
-- [ ] La taille maximale est appliquée.
-- [ ] Le nom du fichier ne provoque aucun comportement inattendu.
-
-## Prévisualisation
-
-- [ ] Le nombre de lieux détectés est affiché.
-- [ ] Les données reconnues sont présentées avant import lorsque prévu.
-- [ ] Les éléments non reconnus sont signalés.
-- [ ] Les coordonnées invalides sont signalées.
-- [ ] Les doublons potentiels sont signalés.
-- [ ] Les descriptions sont correctement décodées.
-- [ ] Les caractères internationaux sont conservés.
-- [ ] Les calques ou groupes sont interprétés selon la règle prévue.
+- [ ] File selection starts analysis automatically.
+- [ ] Invalid archives, paths, sizes, and XML are rejected safely.
+- [ ] Preview identifies importable placemarks, warnings, duplicates, selected items, fields, and images.
 
 ## Import
 
-- [ ] L’import crée les lieux attendus.
-- [ ] Les catégories ou tags mappés sont corrects.
-- [ ] Les descriptions sont conservées.
-- [ ] Les coordonnées sont exactes.
-- [ ] Les doublons suivent le choix utilisateur ou la règle prévue.
-- [ ] Un import partiellement invalide ne laisse pas la base dans un état incohérent.
-- [ ] Une annulation avant confirmation ne crée aucune donnée.
-- [ ] Le rapport final indique les succès, ignorés et erreurs.
+- [ ] Only supported point data and `ExtendedData` are imported.
+- [ ] Folder data, altitude data, KML styles, and `gx_media_links` are ignored.
+- [ ] Duplicate handling and force-import actions are explicit.
+- [ ] A failed remote image does not prevent valid places from importing.
+- [ ] List, map, clusters, filters, and facets refresh after import.
 
----
+# 7. Search, filters, and bulk actions
 
-# 7. Filtres, recherche et actions groupées
+## Search and filters
 
-## Recherche
+- [ ] Text search debounces, cancels stale requests, and synchronizes list and map.
+- [ ] Quick filters cover all, unvisited, visited, and favorites.
+- [ ] Advanced filters cover categories, tags, statuses, regions, photos, coordinates, dates, access, danger, condition, and trip presence where configured.
+- [ ] OR applies within a filter group and AND across groups.
+- [ ] Filter URL parameters restore correctly after refresh and browser navigation.
 
-- [ ] La recherche par nom fonctionne.
-- [ ] La recherche ne tient pas compte de la casse lorsque prévu.
-- [ ] Les accents sont gérés correctement lorsque prévu.
-- [ ] Le résultat se met à jour sans erreur.
-- [ ] L’absence de résultat affiche un état dédié.
-- [ ] Effacer la recherche restaure la liste complète.
+## Sorting and pagination
 
-## Filtres
+- [ ] Sort controls apply server-side and preserve page state.
+- [ ] More places load automatically when reaching the list end.
+- [ ] Empty, loading, timeout, abort, and error states remain understandable.
 
-- [ ] Le filtre par catégorie fonctionne.
-- [ ] Le filtre par tag fonctionne.
-- [ ] Le filtre par statut fonctionne.
-- [ ] Les filtres combinés donnent un résultat cohérent.
-- [ ] Le compteur de résultats est correct.
-- [ ] Les marqueurs visibles correspondent à la liste filtrée.
-- [ ] Réinitialiser les filtres restaure tous les lieux.
-- [ ] Les filtres restent cohérents après création ou modification d’un lieu.
+## Bulk actions
 
-## Tri
+- [ ] Selection survives filter changes for places on the same map.
+- [ ] The UI reports selected places hidden by filters.
+- [ ] Status, category, tag, trip, and delete actions show structured results.
+- [ ] Viewer users do not see modification actions.
+- [ ] Mixed-map or unauthorized selections are rejected atomically.
 
-- [ ] Le tri par nom fonctionne.
-- [ ] Le tri par date de création fonctionne.
-- [ ] L’ordre ascendant et descendant est correct.
-- [ ] Le tri reste stable lorsque plusieurs valeurs sont identiques.
+# 8. Trash and restoration
 
-## Actions groupées
+- [ ] Advanced filters reveal the trash only to permitted roles.
+- [ ] Restore returns a place to list and map state.
+- [ ] Purge requires explicit confirmation and removes the record permanently.
 
-- [ ] Plusieurs lieux peuvent être sélectionnés.
-- [ ] La sélection reste visible.
-- [ ] Une action groupée demande confirmation lorsque nécessaire.
-- [ ] Une action partiellement interdite est gérée proprement.
-- [ ] Les permissions sont vérifiées côté backend.
-- [ ] La sélection est vidée au bon moment après l’action.
-
----
-
-# 8. Corbeille et restauration
-
-- [ ] La corbeille liste uniquement les éléments supprimés accessibles.
-- [ ] La date de suppression est affichée lorsque prévue.
-- [ ] Un lieu supprimé peut être restauré.
-- [ ] Le lieu restauré réapparaît dans la bonne carte.
-- [ ] Le marqueur restauré réapparaît.
-- [ ] Les catégories, tags, statuts et photos sont restaurés selon les règles prévues.
-- [ ] Une restauration impossible produit un message clair.
-- [ ] La suppression définitive demande une confirmation renforcée.
-- [ ] Un utilisateur sans droit ne peut pas restaurer ou supprimer définitivement.
-- [ ] L’état vide de la corbeille est correct.
-
----
-
-# 9. Partage, membres et permissions
+# 9. Sharing, members, and permissions
 
 ## Invitations
 
-- [ ] Un propriétaire ou administrateur peut inviter un utilisateur.
-- [ ] Une adresse ou un utilisateur invalide est refusé.
-- [ ] Une invitation en double est gérée proprement.
-- [ ] L’invitation apparaît dans la liste.
-- [ ] Le destinataire peut accepter l’invitation.
-- [ ] Le destinataire peut refuser l’invitation.
-- [ ] Une invitation révoquée ne peut plus être acceptée.
-- [ ] Une invitation expirée est refusée lorsque cette fonctionnalité existe.
+- [ ] Existing users receive an in-app invitation notification.
+- [ ] A pending invitation is visible but cannot be opened.
+- [ ] Unknown-email sharing proposes registration without leaking account information.
 
-## Membres
+## Members
 
-- [ ] La liste des membres s’affiche.
-- [ ] Le rôle de chaque membre est visible.
-- [ ] Un rôle peut être modifié par un utilisateur autorisé.
-- [ ] Un utilisateur non autorisé ne peut pas modifier les rôles.
-- [ ] Un membre peut être retiré.
-- [ ] Le propriétaire ne peut pas être retiré de manière incohérente.
-- [ ] L’utilisateur courant ne peut pas contourner les règles de propriété.
+- [ ] Owner, editor, and viewer actions match the documented matrix.
+- [ ] Revoking access removes the map from the target user without a disruptive global reload.
 
-## Contrôle d’accès
+## Access control
 
-Tester au minimum avec un propriétaire, un éditeur et un lecteur.
+- [ ] Direct API and UI access cannot read another user's private map, place, tag, photo, import, export, or trip.
+- [ ] Errors do not expose other users' names, emails, IDs, or secrets.
 
-- [ ] Le propriétaire dispose des droits attendus.
-- [ ] L’éditeur peut effectuer uniquement les actions prévues.
-- [ ] Le lecteur ne peut pas modifier les données.
-- [ ] Les boutons interdits sont masqués ou désactivés.
-- [ ] Les appels API interdits retournent un code approprié.
-- [ ] Modifier un identifiant dans l’URL ne permet pas d’accéder à une autre carte.
-- [ ] Les photos privées respectent les mêmes permissions.
-- [ ] Les exports respectent les permissions.
-- [ ] L’historique et la corbeille respectent les permissions.
+# 10. History
 
----
+- [ ] Place history displays authorized mutations only.
+- [ ] Historic changes remain readable without exposing hidden credentials or storage paths.
 
-# 10. Historique
+# 11. Trip creation and management
 
-- [ ] Les événements importants apparaissent dans l’historique.
-- [ ] L’auteur de l’action est correctement identifié.
-- [ ] La date et l’heure sont cohérentes.
-- [ ] Les créations, modifications, suppressions et restaurations sont distinguées.
-- [ ] Les changements de membres et permissions sont tracés lorsque prévu.
-- [ ] Les données sensibles ne sont pas enregistrées dans l’historique.
-- [ ] Un utilisateur ne voit que l’historique autorisé.
-- [ ] L’état vide est correct.
-- [ ] La pagination ou le chargement progressif fonctionne si présent.
+## Trips
 
----
+- [ ] Create, rename, duplicate, export, and delete work through CartaVault dialogs.
+- [ ] A trip always has one departure, one day, and one arrival.
+- [ ] Days inserted between existing days preserve the required intermediate-night structure.
 
-# 11. Création et gestion d’une sortie
+## Days and stops
 
-## Liste des sorties
+- [ ] Drag-and-drop, add-place, free-location, reordering, remove, departure, night, and arrival editing work.
+- [ ] Hover insertion controls add a day at the requested position.
+- [ ] Day colors and visibility toggles update the matching route and markers.
 
-- [ ] La liste s’affiche.
-- [ ] L’état vide est correct.
-- [ ] Une sortie peut être créée.
-- [ ] Le nom et les dates sont validés.
-- [ ] La sortie apparaît immédiatement après création.
-- [ ] Une sortie peut être renommée.
-- [ ] Une sortie peut être supprimée avec confirmation.
+# 12. Route calculation and optimization
 
-## Journées
+## Calculation
 
-- [ ] Une journée peut être ajoutée.
-- [ ] Le numéro de journée est correct.
-- [ ] L’ordre des journées est cohérent.
-- [ ] La couleur propre à la journée est affichée.
-- [ ] Le départ de journée peut être configuré.
-- [ ] L’hébergement ou la nuit peut être configuré.
-- [ ] Les badges et la chronologie sont correctement alignés.
-- [ ] Le repli et dépli des journées fonctionne.
-- [ ] Les paramètres d’une journée sont conservés après actualisation.
+- [ ] A day route starts at the preceding departure/night and ends at the following night/arrival.
+- [ ] Distance, driving, visits, buffers, margins, and total duration are displayed separately.
+- [ ] Recommended departure has a title and uses the configured/default arrival target.
 
-## Étapes
+## Recalculation and optimization
 
-- [ ] Un POI existant peut être ajouté à une journée.
-- [ ] Une étape libre peut être créée lorsque prévu.
-- [ ] Une étape peut être déplacée dans la journée.
-- [ ] Une étape peut être déplacée vers une autre journée.
-- [ ] L’ordre des étapes est conservé.
-- [ ] Une étape peut être supprimée sans supprimer le POI source.
-- [ ] La durée de visite peut être modifiée.
-- [ ] Les pauses et marges peuvent être modifiées.
-- [ ] Les horaires estimés se recalculent correctement.
-- [ ] Les changements n’écrasent pas silencieusement des données saisies.
+- [ ] Recalculation updates the visible route and success feedback.
+- [ ] Optimization requires confirmation, refreshes order and route, and does not produce duplicates.
 
----
+## Country constraint and provider
 
-# 12. Calcul et optimisation d’un itinéraire
-
-## Calcul
-
-- [ ] Un itinéraire peut être calculé avec OSRM.
-- [ ] Le tracé apparaît sur la carte.
-- [ ] La distance totale est affichée.
-- [ ] Le temps de conduite brut est affiché.
-- [ ] Le temps avec visites, pauses et marges est distingué.
-- [ ] Le tracé correspond à l’ordre des étapes.
-- [ ] Une étape sans coordonnées est signalée.
-- [ ] Une erreur du fournisseur est présentée clairement.
-- [ ] Une route obsolète est signalée après modification des étapes.
-
-## Recalcul
-
-- [ ] Modifier l’ordre des étapes marque la route comme obsolète.
-- [ ] Ajouter une étape marque la route comme obsolète.
-- [ ] Supprimer une étape marque la route comme obsolète.
-- [ ] Modifier uniquement la durée de visite ne déclenche pas un recalcul routier inutile.
-- [ ] Le recalcul remplace correctement l’ancienne géométrie.
-- [ ] Les anciennes valeurs ne restent pas visibles après un échec.
-
-## Optimisation
-
-- [ ] L’optimisation respecte les points fixes prévus.
-- [ ] L’ordre proposé est cohérent.
-- [ ] L’utilisateur peut vérifier le résultat avant validation lorsque prévu.
-- [ ] L’optimisation ne perd aucune étape.
-- [ ] Les durées et distances sont recalculées.
-- [ ] L’annulation conserve l’ordre précédent.
-
-## Contraintes pays et fournisseur
-
-- [ ] L’option « rester dans le pays » est transmise lorsque disponible.
-- [ ] Le fallback vers OSRM fonctionne lorsque Google Routes n’est pas configuré.
-- [ ] La clé Google Routes reste masquée dans l’interface.
-- [ ] La suppression de la clé restaure le fallback attendu.
-- [ ] Une erreur Google contrôlée n’expose aucun secret.
-- [ ] Le rate limiting s’applique au bon utilisateur.
-
----
+- [ ] OSRM works without a Google key.
+- [ ] Google Routes requires a verified personal key.
+- [ ] Country constraint warnings clearly explain a route leaving the selected country.
 
 # 13. Exports
 
-## Export de sortie
+## Trip export
 
-Tester uniquement les formats actuellement disponibles.
+- [ ] GPX and KMZ export actions respect map permissions.
+- [ ] Generated files open in appropriate external tools where supported.
 
-- [ ] L’export GPX se télécharge.
-- [ ] L’export KMZ se télécharge.
-- [ ] L’export destiné à Google Maps est généré lorsque disponible.
-- [ ] Le nom du fichier est propre et prévisible.
-- [ ] Les caractères spéciaux dans le nom de la sortie sont gérés.
-- [ ] Les étapes sont dans le bon ordre.
-- [ ] Les coordonnées sont exactes.
-- [ ] Les journées sont distinguées lorsque le format le permet.
-- [ ] Les données privées non nécessaires ne sont pas incluses.
-- [ ] Un utilisateur sans permission ne peut pas exporter.
+## External verification
 
-## Vérification externe
+- [ ] KMZ archives are valid ZIP archives and open in Google Earth.
+- [ ] Exported metadata, colors, category glyphs, and place fields match the documented export scope.
 
-- [ ] Le GPX s’ouvre dans une application compatible.
-- [ ] Le KMZ s’ouvre dans Google Earth ou un outil compatible.
-- [ ] Les marqueurs sont correctement positionnés.
-- [ ] Le tracé est visible lorsque le format le prévoit.
-- [ ] Le fichier peut être réimporté sans erreur majeure lorsque cette compatibilité est attendue.
+# 14. Google Routes credentials
 
----
+- [ ] The routing preference exposes Google Routes only with a valid configuration path.
+- [ ] A personal key is mandatory and verified before Google Routes can be saved.
+- [ ] Values are never shown in full after submission, stored in browser storage, or included in URLs.
 
-# 14. Compte utilisateur et identifiants Google Routes
+# 15. Light, dark, and basemap modes
 
-- [ ] La page Compte s’affiche.
-- [ ] L’état de la clé Google Routes est affiché sans révéler la clé.
-- [ ] Une clé peut être ajoutée.
-- [ ] Une clé existante peut être remplacée.
-- [ ] La vérification de clé fonctionne.
-- [ ] Une erreur de vérification est affichée de manière contrôlée.
-- [ ] La suppression exige le mot de passe utilisateur.
-- [ ] Un mauvais mot de passe empêche la suppression.
-- [ ] Après suppression, OSRM redevient le fournisseur utilisé.
-- [ ] La clé n’apparaît pas dans le stockage local du navigateur.
-- [ ] La clé n’apparaît pas dans les logs frontend.
-- [ ] La clé n’apparaît pas dans les réponses API.
-- [ ] Les métadonnées `verified_at`, `last_used_at` et `last_error_code` évoluent correctement lorsqu’elles sont exposées.
-- [ ] Un utilisateur ne peut pas accéder à la clé d’un autre utilisateur.
-- [ ] La suppression ou anonymisation du compte supprime les identifiants associés.
+## Interface theme
 
----
+- [ ] Light, dark, and system preferences persist after refresh.
+- [ ] Panels, modals, forms, popups, loading, empty, and error states have accessible contrast.
 
-# 15. Modes clair, sombre et fonds cartographiques
+## Basemaps
 
-## Thème
+- [ ] Light, dark, satellite, and OSM backgrounds remain selectable independently of the interface theme.
+- [ ] CartaVault overlays, markers, routes, controls, and attribution remain visible on every basemap.
 
-- [ ] Le mode clair s’affiche correctement.
-- [ ] Le mode sombre s’affiche correctement.
-- [ ] Le changement de thème ne provoque pas de flash majeur.
-- [ ] Les panneaux, modales, menus et formulaires suivent le thème.
-- [ ] Les contrastes restent lisibles.
-- [ ] Les icônes restent visibles.
-- [ ] Les graphiques, tracés et marqueurs restent compréhensibles.
-- [ ] Les états de focus sont visibles dans les deux thèmes.
+# 16. Responsive behavior
 
-## Fonds de carte
+## Navigation and panels
 
-- [ ] Le fond clair se charge.
-- [ ] Le fond sombre se charge.
-- [ ] Le fond satellite se charge lorsque configuré.
-- [ ] Le fallback OSM fonctionne.
-- [ ] L’attribution cartographique reste visible.
-- [ ] Le changement de fond ne supprime pas les marqueurs.
-- [ ] Le changement de fond ne supprime pas les tracés.
-- [ ] Les erreurs de tuiles n’empêchent pas l’usage général de l’application.
+- [ ] Test 320 px, 375/390 px, 768 px, 1024 px, desktop, 4K, and 200% browser zoom.
+- [ ] Resizable panels, collapsed Places header, map search, legend, and controls do not overlap.
 
----
+## Forms, dialogs, and trips
 
-# 16. Responsive
+- [ ] Forms and dialogs scroll internally without hiding primary actions.
+- [ ] Trip planner remains readable and interactive on narrow screens.
 
-Tester au minimum aux largeurs suivantes :
+# 17. Keyboard accessibility
 
-- 360 px ;
-- 520 px ;
-- 768 px ;
-- 1024 px ;
-- écran de bureau courant.
+- [ ] Tab order is logical and focus remains visible.
+- [ ] Menus, dialogs, drawers, icon buttons, filters, and context menu work with keyboard.
+- [ ] Escape closes temporary surfaces and restores focus appropriately.
+- [ ] Controls expose meaningful accessible names and states.
 
-## Navigation et panneaux
+# 18. Loading, empty, and error states
 
-- [ ] La navigation principale reste accessible.
-- [ ] Aucun défilement horizontal global inattendu n’apparaît.
-- [ ] Les panneaux Lieux et Sorties restent utilisables.
-- [ ] Les panneaux peuvent être ouverts et fermés.
-- [ ] La carte reste accessible.
-- [ ] Les en-têtes ne débordent pas.
-- [ ] Les actions ne se chevauchent pas.
-- [ ] Les boutons tactiles ont une taille suffisante.
+- [ ] Loading states do not remain stuck after closing and reopening a panel.
+- [ ] Abort errors are not shown as server errors.
+- [ ] Empty states distinguish no data from active filters.
+- [ ] Errors provide a readable retry path without technical secrets.
 
-## Formulaires et modales
+# 19. Baseline security checks
 
-- [ ] Les formulaires sont utilisables sur petit écran.
-- [ ] Les libellés restent lisibles.
-- [ ] Les listes déroulantes restent accessibles.
-- [ ] Les modales ne dépassent pas de manière bloquante.
-- [ ] Le bouton de fermeture reste visible.
-- [ ] Le clavier virtuel ne masque pas les actions principales lorsque cela peut être testé.
+- [ ] No secret appears in UI, API responses, logs, screenshots, browser storage, or URLs.
+- [ ] CSRF-protected writes reject missing/invalid tokens.
+- [ ] File uploads and archives reject unsafe input.
+- [ ] Unauthorized or cross-map actions have no partial side effect.
 
-## Sorties
-
-- [ ] Les journées restent lisibles.
-- [ ] Les badges de chronologie restent alignés.
-- [ ] Les étapes ne se chevauchent pas.
-- [ ] Les actions de journée restent accessibles.
-- [ ] Les durées et horaires ne débordent pas.
-
----
-
-# 17. Accessibilité clavier
-
-- [ ] Toutes les actions principales sont accessibles au clavier.
-- [ ] L’ordre de tabulation est logique.
-- [ ] Le focus visible est présent.
-- [ ] Les boutons icônes ont un nom accessible.
-- [ ] Les modales piègent correctement le focus lorsque nécessaire.
-- [ ] Le focus revient sur l’élément déclencheur après fermeture.
-- [ ] La touche Échap ferme les éléments prévus.
-- [ ] Entrée et Espace activent les boutons appropriés.
-- [ ] Les menus peuvent être parcourus au clavier.
-- [ ] Les sélecteurs et listes sont utilisables sans souris.
-- [ ] Les messages d’erreur sont associés aux champs concernés.
-- [ ] `prefers-reduced-motion` est respecté pour les animations concernées.
-
----
-
-# 18. États de chargement, vides et erreurs
-
-- [ ] Les listes affichent un état de chargement identifiable.
-- [ ] Les squelettes ne provoquent pas de déplacement majeur de mise en page.
-- [ ] Les états vides sont distincts des erreurs.
-- [ ] Les états vides proposent une action pertinente lorsque possible.
-- [ ] Une erreur réseau affiche un message compréhensible.
-- [ ] Une erreur API n’affiche pas de trace technique brute à l’utilisateur.
-- [ ] Une action peut être retentée lorsque pertinent.
-- [ ] L’interface reste utilisable après une erreur.
-- [ ] Les boutons sont réactivés après un échec.
-- [ ] Une requête lente ne déclenche pas plusieurs actions identiques.
-
----
-
-# 19. Sécurité de base
-
-- [ ] Aucun fichier `.env` réel n’est suivi par Git.
-- [ ] Aucun mot de passe ou jeton n’apparaît dans le dépôt.
-- [ ] Aucun secret n’apparaît dans les réponses API.
-- [ ] Aucun secret n’apparaît dans la console du navigateur.
-- [ ] Aucun secret n’apparaît dans les logs backend.
-- [ ] Les cookies de session utilisent les attributs prévus.
-- [ ] Les routes privées refusent les utilisateurs non authentifiés.
-- [ ] Les permissions sont vérifiées côté backend.
-- [ ] Les identifiants UUID modifiés manuellement ne donnent pas accès aux données d’un autre utilisateur.
-- [ ] Les uploads refusent les types inattendus.
-- [ ] Les imports refusent les archives ou contenus invalides.
-- [ ] Les champs texte n’exécutent pas de HTML ou JavaScript injecté.
-- [ ] Les erreurs ne révèlent pas la chaîne de connexion ni les chemins internes sensibles.
-- [ ] Les suppressions sensibles demandent une confirmation adaptée.
-- [ ] Les limites de fréquence importantes fonctionnent lorsqu’elles sont prévues.
-
----
-
-# 20. Vérifications finales
+# 20. Final verification
 
 ## Frontend
 
-- [ ] `npm ci` réussit.
-- [ ] `npm run lint` réussit.
-- [ ] Les tests frontend réussissent.
-- [ ] `npm run build` réussit.
-- [ ] Aucun avertissement nouveau important n’est ignoré.
-- [ ] Aucun fichier généré inutile n’est ajouté au dépôt.
+```powershell
+Set-Location frontend
+npm run verify:category-icons
+npm run lint
+npm run test
+npm run build
+```
 
 ## Backend
 
-- [ ] `python -m compileall app` réussit.
-- [ ] Les tests backend réussissent.
-- [ ] `python -m alembic check` réussit.
-- [ ] `python -m alembic current` pointe vers la révision attendue.
-- [ ] L’application démarre sur une base neuve.
-- [ ] L’application démarre après migration d’une base existante de test.
-- [ ] Aucun avertissement critique n’est ignoré.
+```powershell
+Set-Location backend
+python -m compileall app migrations tests
+python -m pytest -m unit -v
+python -m pytest -m integration -v
+python -m pytest -v
+python -m alembic heads
+python -m alembic check
+python -c "from app.main import app; print(app.title)"
+```
 
-## Git et documentation
+## Git and documentation
 
-- [ ] Le diff final a été relu.
-- [ ] Les fichiers temporaires sont absents.
-- [ ] Les fichiers sensibles sont absents.
-- [ ] Le README reste exact.
-- [ ] Le `CONTRIBUTING.md` reste exact.
-- [ ] Les migrations et variables d’environnement nouvelles sont documentées.
-- [ ] Les captures du README existent toujours aux chemins indiqués.
-- [ ] Les liens Markdown importants fonctionnent.
-- [ ] Le changelog est mis à jour lorsque nécessaire.
+```powershell
+Set-Location ..
+git diff --check
+git status
+git diff --stat
+```
 
-## Publication
+- [ ] All project Markdown is in English.
+- [ ] Documentation matches the tested behavior.
+- [ ] No generated storage, cache, secret, or local configuration is tracked.
 
-- [ ] Les problèmes bloquants sont résolus.
-- [ ] Les problèmes non bloquants sont documentés.
-- [ ] Le numéro de version est cohérent.
-- [ ] Les notes de version sont prêtes.
-- [ ] La procédure de sauvegarde est connue.
-- [ ] La procédure de retour arrière est connue.
-- [ ] Le tag n’est créé qu’après validation finale.
-- [ ] Aucun badge de CI n’est ajouté tant que la CI publique n’est pas fiable.
+# Test-campaign result
 
----
+## Blocking defects
 
-# Résultat de la campagne
+List defects that block release.
 
-## Anomalies bloquantes
+## Non-blocking defects
 
-- 
+List accepted follow-up work and its issue reference.
 
-## Anomalies non bloquantes
+## Tests not run
 
-- 
+List every skipped check and the reason.
 
-## Tests non exécutés
+## Reservations
 
-- 
+Document provider limits, environment differences, or incomplete external validation.
 
-## Réserves
+## Decision
 
-- 
-
-## Décision
-
-- [ ] Publication autorisée
-- [ ] Publication autorisée avec réserves
-- [ ] Publication refusée
+- [ ] Approved for release
+- [ ] Approved with reservations
+- [ ] Not approved
 
 ## Validation
 
-- Nom :
-- Date :
-- Version ou commit :
+- Release owner:
+- Date:
+- Commit/tag:

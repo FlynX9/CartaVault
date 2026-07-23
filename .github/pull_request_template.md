@@ -1,56 +1,56 @@
-## Résumé
+## Summary
 
-Décrivez brièvement le changement et le problème résolu.
+Briefly describe the change and the problem it resolves.
 
 Closes #
 
-## Type de changement
+## Type of change
 
-- [ ] Correction de bug
-- [ ] Nouvelle fonctionnalité
-- [ ] Amélioration de l’interface
-- [ ] Refactorisation
+- [ ] Bug fix
+- [ ] New feature
+- [ ] User-interface improvement
+- [ ] Refactoring
 - [ ] Documentation
-- [ ] Déploiement / configuration
-- [ ] Migration de base de données
+- [ ] Deployment / configuration
+- [ ] Database migration
 
-## Vérifications effectuées
+## Verification performed
 
 ### Frontend
 
 - [ ] `npm run lint`
 - [ ] `npm test`
 - [ ] `npm run build`
-- [ ] Vérification visuelle manuelle
-- [ ] Non concerné
+- [ ] Manual visual verification
+- [ ] Not applicable
 
 ### Backend
 
 - [ ] `python -m compileall app`
 - [ ] `pytest`
 - [ ] `python -m alembic check`
-- [ ] Test manuel via Swagger
-- [ ] Non concerné
+- [ ] Manual Swagger verification
+- [ ] Not applicable
 
-## Base de données
+## Database
 
-- [ ] Aucune modification du schéma
-- [ ] Une migration Alembic est incluse
-- [ ] La migration a été testée en montée
-- [ ] La procédure de retour arrière a été vérifiée ou documentée
+- [ ] No schema change
+- [ ] An Alembic migration is included
+- [ ] The migration was tested on upgrade
+- [ ] The rollback procedure was verified or documented
 
-## Sécurité et confidentialité
+## Security and privacy
 
-- [ ] Aucun secret, mot de passe, jeton, fichier `.env` ou donnée personnelle n’a été ajouté
-- [ ] Les nouveaux endpoints appliquent les permissions nécessaires
-- [ ] Les entrées utilisateur sont validées
-- [ ] Les fichiers ou URLs utilisateur sont contrôlés
-- [ ] Non concerné
+- [ ] No secret, password, token, `.env` file, or personal data was added
+- [ ] New endpoints enforce the required permissions
+- [ ] User inputs are validated
+- [ ] User-provided files or URLs are checked
+- [ ] Not applicable
 
-## Captures d’écran
+## Screenshots
 
-Ajoutez des captures pour les changements d’interface.
+Add screenshots for user-interface changes.
 
-## Notes complémentaires
+## Additional notes
 
-Ajoutez ici les limitations, décisions techniques ou points à vérifier.
+Document limitations, technical decisions, or remaining follow-up items here.

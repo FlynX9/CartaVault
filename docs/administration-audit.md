@@ -1,59 +1,58 @@
-# Audit des paramètres d’administration
+# Administration settings audit
 
-Cet inventaire accompagne le panneau `/admin`. Il classe les réglages sans exposer de secret et évite de transformer le navigateur en éditeur de configuration de déploiement.
+This inventory accompanies the `/admin` console. It classifies settings without exposing secrets and prevents the browser from becoming a deployment-configuration editor.
 
-## 1. Administrable depuis l’interface
+## 1. Managed through the interface
 
-| Élément | Stockage | Interface |
+| Item | Storage | Interface |
 |---|---|---|
-| Comptes, rôle et activation | PostgreSQL (`users`) | Administration > Utilisateurs |
-| Demandes d’inscription | PostgreSQL | Administration > Utilisateurs |
-| Clé globale Resend | PostgreSQL, chiffrée par Fernet | Administration > Clés API ; valeur jamais relue |
-| Quotas globaux | PostgreSQL (`system_settings`) | Administration > Quotas et usages |
-| Exceptions de quota utilisateur | `users.preferences.quota_limits` | Administration > Quotas et usages |
-| Clé personnelle Google Routes | PostgreSQL, chiffrée et rattachée au compte | Compte > Préférences, jamais dans l’administration globale |
+| Accounts, roles, and activation | PostgreSQL (`users`) | Administration > Users |
+| Registration requests | PostgreSQL | Administration > Users |
+| Global Resend key | PostgreSQL, Fernet-encrypted | Administration > API keys; the value is never read back |
+| Global quotas | PostgreSQL (`system_settings`) | Administration > Quotas and usage |
+| User quota overrides | `users.preferences.quota_limits` | Administration > Quotas and usage |
+| Personal Google Routes key | PostgreSQL, encrypted and tied to the account | Account > Preferences; never in global administration |
 
-Les quotas applicables dans cette version concernent les cartes, lieux, membres, taille d’un fichier photo et stockage photo. Un dépassement bloque seulement la nouvelle écriture avec une erreur métier ; aucune donnée existante n’est supprimée.
+The quotas currently cover maps, places, members, individual photo-file size, and photo storage. Exceeding a quota blocks only the new write through a domain error; no existing data is removed.
 
-## 2. Visible en lecture seule
+## 2. Read-only information
 
-- version CartaVault (`CARTAVAULT_VERSION`) ;
-- disponibilité et version PostgreSQL/PostGIS ;
-- révision Alembic active ;
-- état du stockage photo et espace disque ;
-- état de présence de la clé maîtresse de chiffrement, sans sa valeur ;
-- disponibilité ponctuelle d’OSRM avec timeout court ;
-- état de la configuration e-mail ;
-- compteurs utilisateurs, cartes, lieux et photos ;
-- nombre de comptes disposant d’une clé Google Routes personnelle, sans valeur ni identité détaillée.
+- CartaVault version (`CARTAVAULT_VERSION`);
+- PostgreSQL/PostGIS availability and version;
+- active Alembic revision;
+- photo-storage health and disk space;
+- presence of the encryption master key, without its value;
+- short-timeout OSRM availability;
+- email configuration status;
+- user, map, place, and photo counters;
+- number of accounts with a personal Google Routes key, without exposing values or detailed identities.
 
-## 3. Strictement réservé au déploiement
+## 3. Deployment-only settings
 
-- `DATABASE_URL`, `TEST_DATABASE_URL` ;
-- `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` ;
-- paramètres cookies, CSRF, sessions, Argon2 et bootstrap administrateur ;
-- origines CORS ;
-- chemins `PHOTO_STORAGE_PATH` et `AVATAR_STORAGE_PATH` ;
-- URL, profil, timeouts et limites OSRM ;
-- URL et timeouts Google Routes ;
-- identité d’expédition e-mail et URL publique frontend ;
-- limites de sécurité KMZ ;
-- URLs/styles/fournisseurs cartographiques `VITE_*` ;
+- `DATABASE_URL`, `TEST_DATABASE_URL`;
+- `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`;
+- cookie, CSRF, session, Argon2, and bootstrap-administrator settings;
+- CORS origins;
+- `PHOTO_STORAGE_PATH` and `AVATAR_STORAGE_PATH`;
+- OSRM URL, profile, timeouts, and limits;
+- Google Routes URL and timeouts;
+- email sender identity and public frontend URL;
+- KMZ security limits;
+- map-provider, style, and `VITE_*` URLs;
 - `VITE_API_BASE_URL`.
 
-Ces valeurs ne sont ni renvoyées intégralement au frontend ni modifiables dans le navigateur. Une origine externe est uniquement signalée comme telle lorsqu’elle est pertinente.
+These values are neither returned in full to the frontend nor editable in the browser. An external origin is only identified as such when relevant.
 
-## 4. À traiter dans de futures issues
+## 4. Future work
 
-- journal d’audit administratif persistant ;
-- rate limiting centralisé des mutations administratives ;
-- métriques persistantes d’import, export, calculs d’itinéraire et consommation Google Routes ;
-- journal d’erreurs applicatif filtré et exploitable dans la page d’état ;
-- alertes de quota avant blocage et notifications ;
-- gestion globale d’autres fournisseurs de credentials ;
-- authentification à deux facteurs et politiques d’entreprise.
+- Persistent administrative audit log.
+- Centralized rate limiting for administrative mutations.
+- Persistent metrics for imports, exports, routing calculations, and Google Routes consumption.
+- Filtered and actionable application-error log in the instance-status page.
+- Quota warnings and notifications before a limit blocks a write.
+- Global management for additional credential providers.
+- Two-factor authentication and enterprise policies.
 
-## Surfaces historiques
+## Historical surfaces
 
-L’ancien panneau utilisateurs intégré au workspace cartographique n’est plus routé. Les anciens endpoints `/admin/users` sont conservés temporairement pour compatibilité, tandis que la console utilise les endpoints paginés `/admin/console/*`. Leur retrait pourra faire l’objet d’une issue de dépréciation après vérification des clients externes.
-
+The former user panel embedded in the map workspace is no longer routed. Legacy `/admin/users` endpoints are retained temporarily for compatibility, while the console uses paginated `/admin/console/*` endpoints. Their removal can be addressed by a deprecation issue after external clients have been checked.

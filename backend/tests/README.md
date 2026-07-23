@@ -1,67 +1,43 @@
-# Tests du backend CartaVault
+# CartaVault backend tests
 
-Les tests du module Sorties vérifient séparément les mesures brutes du fournisseur de routage (mètres et secondes), les visites, les tampons, les marges et la durée estimée, sans pause. Ils couvrent les passages de minuit, les départs recommandés, les arrivées estimées, les seuils/couleurs de charge, les voyages vides, les journées sans route ou obsolètes, les totaux partiels et la comparaison distance/durée de l’optimisation. `test_trip_time_planning_migration.py` exerce le cycle révision précédente → upgrade → downgrade → upgrade final exclusivement sur `cartavault_test`.
+Trip tests verify provider raw metrics (meters and seconds), visits, buffers, margins, estimated duration, midnight transitions, recommended departure, estimated arrival, day-load thresholds and colors, empty trips, stale or route-less days, partial totals, and optimization distance/duration comparisons. `test_trip_time_planning_migration.py` runs the previous-revision → upgrade → downgrade → final-upgrade cycle exclusively against `cartavault_test`.
 
-`test_account.py` vérifie le profil personnel, les changements sensibles, l’absence de secrets dans les sessions et l’anonymisation. Toutes les opérations d’intégration utilisent exclusivement `TEST_DATABASE_URL`.
+`test_account.py` covers personal profiles, sensitive changes, no secrets in sessions, and anonymization. Every integration operation uses `TEST_DATABASE_URL` exclusively.
 
-## Sécurité multi-utilisateur
+## Multi-user security
 
-La suite couvre les sessions, cookies, CSRF, comptes actifs/inactifs, protection
-du dernier administrateur, rôles par carte, invitations, transfert de propriété,
-anti-IDOR, catégories/tags par carte et isolation des imports/exports temporaires.
-Les scénarios destructifs et cycles Alembic exigent que `TEST_DATABASE_URL`
-cible exactement `cartavault_test`; le nom est affiché seul avant l’opération.
-Ils ne doivent jamais utiliser `DATABASE_URL` ni être exécutés sur `cartavault`.
+The suite covers sessions, cookies, CSRF, active/inactive accounts, last-administrator protection, map roles, invitations, ownership transfer, anti-IDOR behavior, map-scoped categories/tags, and temporary import/export isolation.
 
-Le cycle des migrations multi-utilisateur est : révision précédente →
-`d8f4a2c7e910`, bootstrap d’un administrateur de test et attribution des cartes,
-`e5b9c3d1a742`, downgrade, puis upgrade final. La base de test est restaurée à
-`head` après vérification.
+Destructive scenarios and Alembic cycles require `TEST_DATABASE_URL` to target exactly `cartavault_test`; the database name is printed alone before the operation. They must never use `DATABASE_URL` or run against `cartavault`.
 
-## Tests des statuts et migrations
+The multi-user migration cycle is previous revision → `d8f4a2c7e910` → bootstrap test administrator and map assignment → `e5b9c3d1a742` → downgrade → final upgrade. The test database is restored to `head` after verification.
 
-Les migrations des icônes de catégories et de `place_categories.is_primary` doivent être cyclées exclusivement contre `TEST_DATABASE_URL` visant `cartavault_test`. Ne lancez jamais un downgrade sur `cartavault`.
+## Status and migration tests
 
-Les tests unitaires couvrent la normalisation du slug et des couleurs. Les scénarios d’intégration couvrent le CRUD, le défaut unique, les conflits de suppression, l’affectation aux POI et le filtre cartographique. Ils nécessitent une `TEST_DATABASE_URL` dédiée.
+Category-icon and `place_categories.is_primary` migrations must be cycled only with `TEST_DATABASE_URL` targeting `cartavault_test`. Never run a downgrade against `cartavault`.
 
-Le cycle Alembic `upgrade → downgrade → upgrade` doit être exécuté uniquement sur `cartavault_test` : le downgrade supprime `places.status_id` et perd donc les associations de statut. Ne jamais lancer ce cycle sur la base de développement.
+Unit tests cover slug and color normalization. Integration scenarios cover CRUD, the single default, deletion conflicts, place assignment, and map filtering. They require a dedicated `TEST_DATABASE_URL`.
 
-## Scénarios pays et cartes
+The `upgrade → downgrade → upgrade` Alembic cycle must run only on `cartavault_test`: downgrade removes `places.status_id` and therefore loses status associations. Never run that cycle against a development database.
 
-Les intégrations couvrent le catalogue, le CRUD et les conflits des cartes,
-ainsi que la création et les filtres `map_id` des POI. Le cycle Alembic
-`upgrade → downgrade → upgrade` doit viser uniquement une base dédiée telle que
-`cartavault_test`, jamais une base de développement contenant des données.
-La migration refuse toute ancienne valeur `places.country` non reconnue et le
-contrôle final vérifie qu'aucun POI ne conserve un `map_id` nul.
+## Country and map scenarios
 
-## Types de tests
+Integration tests cover the country catalog, map CRUD and conflicts, place creation, and `map_id` filtering. Alembic cycles must target a dedicated database such as `cartavault_test`, never a development database containing data. Migrations reject unknown historic `places.country` values and verify that no place retains a null `map_id`.
 
-- le marqueur `unit` couvre le contrôle de santé, le stockage photo et les
-  validations de configuration, ainsi que le chargeur strict de
-  `shared/category-icons.json`, sans ouvrir de connexion PostgreSQL ;
-- le marqueur `integration` exerce les routes des places, tags et photos avec
-  une base PostgreSQL/PostGIS séparée.
+## Test types
 
-Les tests d’icônes de catégories vérifient aussi que les nouvelles écritures
-acceptent uniquement les identifiants qualifiés du catalogue partagé. Les
-valeurs Lucide historiques restent lisibles tant qu’une migration dédiée n’a
-pas été appliquée, mais elles ne sont plus acceptées à l’écriture.
+- the `unit` marker covers health checks, photo storage, configuration validation, and the strict `shared/category-icons.json` loader without opening PostgreSQL;
+- the `integration` marker exercises place, tag, photo, authentication, map, and trip routes with a separate PostgreSQL/PostGIS database.
 
-Le test de migration `f3a7c1d9e842` affiche d’abord uniquement le nom de la
-base visée et exige exactement `cartavault_test`. Il prépare les 17 valeurs
-Lucide, une valeur inconnue et un ID Iconify, puis exécute le cycle
-`upgrade → downgrade → upgrade`. Le downgrade est documenté comme destructif
-pour les IDs Iconify sans équivalent Lucide. Ne lancez jamais ce cycle sur
-`cartavault`.
+Category-icon tests accept only qualified identifiers from the shared catalog for new writes. Historic Lucide values remain readable until a dedicated migration is applied, but are no longer accepted for writes.
 
-Sans `TEST_DATABASE_URL`, les tests d'intégration sont ignorés avec une raison
-explicite. Ils n'utilisent jamais `DATABASE_URL` comme valeur de secours.
+The `f3a7c1d9e842` migration test first prints only the target database name and requires exactly `cartavault_test`. It prepares 17 Lucide values, one unknown value, and one Iconify ID, then runs `upgrade → downgrade → upgrade`. Its downgrade is documented as destructive for Iconify IDs without a Lucide equivalent. Never run it against `cartavault`.
 
-## Créer la base PostGIS de test
+Without `TEST_DATABASE_URL`, integration tests are skipped with an explicit reason and never fall back to `DATABASE_URL`.
 
-Le service `postgres` défini dans `docker-compose.yml` peut héberger une base
-séparée sans supprimer ni modifier `cartavault`. Depuis `backend` :
+## Create the PostGIS test database
+
+The `postgres` service defined in `docker-compose.yml` can host a separate database without deleting or modifying `cartavault`. From `backend`:
 
 ```powershell
 docker compose -f ..\docker-compose.yml up -d postgres
@@ -70,62 +46,44 @@ docker compose -f ..\docker-compose.yml exec postgres psql -U poi_user -d cartav
 docker compose -f ..\docker-compose.yml exec postgres psql -U poi_user -d cartavault_test -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
 ```
 
-La création de la base n'est nécessaire qu'une fois. Si elle existe déjà,
-exécutez uniquement les commandes d'extensions, qui sont idempotentes.
+Database creation is needed once. If it already exists, run only the idempotent extension commands.
 
-Configurez ensuite uniquement la variable de test dans le terminal courant,
-en remplaçant la valeur d'exemple du mot de passe par celle de votre
-environnement :
+Set the test-only connection in the current terminal, replacing the example password:
 
 ```powershell
 $env:TEST_DATABASE_URL="postgresql+psycopg://poi_user:change_me@localhost:5432/cartavault_test"
 ```
 
-La suite exige PostgreSQL, vérifie que PostGIS est activé et impose un nom de
-base contenant `test`. Elle refuse aussi une URL qui cible le même hôte, port
-et nom de base que `DATABASE_URL`.
+The suite requires PostgreSQL, verifies PostGIS, requires a database name containing `test`, and rejects an URL pointing to the same host, port, and database as `DATABASE_URL`.
 
-## Préparation temporaire du schéma
+## Temporary schema preparation
 
-La migration Alembic initiale est une baseline vide : `alembic upgrade head`
-ne sait donc pas construire seul une base vide. Pour cette première suite,
-la fixture de session :
+The first Alembic migration is an empty baseline, so `alembic upgrade head` cannot build the historical schema alone on a fresh database. For the current suite, the session fixture:
 
-1. valide strictement `TEST_DATABASE_URL` ;
-2. vérifie que PostGIS est installé ;
-3. charge tous les modèles via `app.main` ;
-4. appelle `Base.metadata.create_all()` dans cette base de test uniquement.
+1. strictly validates `TEST_DATABASE_URL`;
+2. verifies that PostGIS is installed;
+3. loads all models through `app.main`;
+4. calls `Base.metadata.create_all()` only in the test database.
 
-La suite ne supprime jamais les tables et n'applique aucune migration. Cette
-stratégie est temporaire jusqu'à ce que les migrations puissent reconstruire
-tout le schéma depuis une base vide.
+The suite never drops tables and does not apply migrations in its general fixture. This is temporary until migrations can reconstruct the entire schema from a fresh database.
 
-## Isolation et nettoyage
+## Isolation and cleanup
 
-Chaque test d'intégration ouvre une connexion et une transaction externes. La
-session SQLAlchemy utilise `join_transaction_mode="create_savepoint"`, ce qui
-permet aux routes d'appeler `commit()` tout en conservant le rollback final de
-la transaction externe.
+Every integration test opens an external connection and transaction. The SQLAlchemy session uses `join_transaction_mode="create_savepoint"`, which allows route code to call `commit()` while preserving the final rollback of the external transaction.
 
-Les uploads utilisent `tmp_path` via `PHOTO_STORAGE_PATH`. Aucun test n'écrit
-dans `backend/storage/photos`, et la fixture échoue si un fichier temporaire
-subsiste à la fin du test.
+Uploads use `tmp_path` through `PHOTO_STORAGE_PATH`. No test writes to `backend/storage/photos`, and the fixture fails if a temporary file remains at the end of a test.
 
-Pytest crée les fichiers de `tmp_path` sous `backend/.pytest_tmp`, qu'il
-nettoie et recrée automatiquement à chaque exécution. Les tests ne dépendent
-donc pas du dossier système `%TEMP%`. Les dossiers `.pytest_tmp` et
-`.pytest_cache` sont des artefacts locaux et ne doivent pas être versionnés.
+Pytest creates `tmp_path` files under `backend/.pytest_tmp`, which it automatically removes and recreates for every run. Tests therefore do not depend on `%TEMP%`. `.pytest_tmp` and `.pytest_cache` are local artifacts and must not be tracked.
 
-Si un arrêt brutal laisse un cache ou un dossier temporaire incohérent,
-supprimez uniquement ces artefacts depuis `backend`, puis relancez pytest :
+If an abrupt stop leaves an inconsistent cache or temporary directory, remove only these artifacts from `backend` and rerun pytest:
 
 ```powershell
 Remove-Item -Recurse -Force .pytest_tmp,.pytest_cache -ErrorAction SilentlyContinue
 ```
 
-## Commandes
+## Commands
 
-Depuis `backend` :
+From `backend`:
 
 ```powershell
 python -m pytest -m unit
@@ -133,50 +91,32 @@ python -m pytest -m integration
 python -m pytest
 ```
 
-Sans `TEST_DATABASE_URL`, les tests `unit` réussissent. Les tests marqués
-`integration` sont ignorés avec la raison explicite définie dans
-`tests/conftest.py`, y compris pendant une exécution complète. Avec une base
-dédiée correctement configurée, la suite complète exécute les 26 tests.
+Without `TEST_DATABASE_URL`, unit tests succeed and integration tests are skipped with the explicit reason defined in `tests/conftest.py`. With a correctly configured dedicated database, the complete suite runs all expected tests.
 
-> N'utilisez jamais l'URL de la base de développement comme
-> `TEST_DATABASE_URL`. La suite ne supprime ni base, ni conteneur, ni volume.
-# Routage et frontières
+> Never use the development database URL as `TEST_DATABASE_URL`. The suite does not delete databases, containers, or volumes.
 
-Les tests `test_country_route_validator.py` utilisent des polygones locaux synthétiques : ils vérifient la densification de la géométrie, la tolérance près d’une frontière et le refus d’un segment réellement extérieur, sans dépendre d’un service de cartographie externe.
-# Marqueurs cartographiques
+## Routing and borders
 
-Les tests de métadonnées cartographiques (`include_meta=true`) doivent utiliser exclusivement `cartavault_test` et vérifier compte, limite et `truncated`.
-# Filtres et actions groupées
+`test_country_route_validator.py` uses synthetic local polygons. It verifies geometry densification, tolerance near a border, and rejection of a genuinely outside segment without relying on an external mapping service.
 
-Les tests d’intégration vérifient les filtres validés et la suppression groupée atomique. Ils utilisent uniquement `cartavault_test` et ne doivent jamais pointer vers `cartavault`.
-# Tests de routage Google
+## Map markers, filters, and bulk actions
 
-Les tests de credentials couvrent le chiffrement Fernet, l’intégrité, la mauvaise clé maîtresse, la version de format, l’absence de secret dans les erreurs, le cycle API masqué, CSRF, le remplacement, la vérification mockée, la suppression et l’isolation entre utilisateurs. Les clés de tests sont explicitement factices et aucun appel Google réel n’est exécuté.
+Map metadata tests (`include_meta=true`) must use `cartavault_test` and verify account, limit, and `truncated`. Integration tests validate shared filters and atomic bulk deletion, always against `cartavault_test`.
 
-Les tests Google utilisent exclusivement des réponses HTTP simulées : aucune clé et aucun appel facturé ne sont nécessaires. Ils couvrent le field mask, les options, le décodage de polyline, les durées, les erreurs et la limite de 25 intermédiaires. Les tests d’intégration de persistance et de migration doivent utiliser uniquement `TEST_DATABASE_URL` pointant vers `cartavault_test`.
-Les scénarios d’intégration avancés couvrent la configuration des champs, les favoris, les deux notes, le statut visité dérivé, les filtres partagés liste/carte, les liens HTTP(S), l’historique et le cycle corbeille/restauration/purge. Les cycles Alembic doivent toujours être exécutés avec `TEST_DATABASE_URL` après vérification que le nom de base contient `test` et n’est pas `cartavault`.
+## Google routing tests
 
-Les tests de statuts couvrent également les quatre valeurs initiales d’une
-nouvelle carte, la validation de `functional_state`, le reclassement immédiat,
-les combinaisons favoris/état/statuts, les facettes, l’isolation entre cartes et
-les rôles owner/editor/viewer/utilisateur extérieur. Le cycle ciblé de la
-migration `d6f1a3b8c902` vérifie le downgrade vers `a4f9c2e7d631`, la
-disparition des colonnes et index, puis le backfill et le schéma après retour à
-la tête.
+Credential tests cover Fernet encryption, integrity, a wrong master key, format version, absence of secrets in errors, masked API lifecycle, CSRF, replacement, mocked verification, deletion, and user isolation. Test keys are explicitly fake; no real Google call is performed.
 
-## Profils de quotas
+Google tests use mocked HTTP responses only. They cover field masks, options, polyline decoding, durations, errors, and the 25-intermediate limit. Persistence and migration integrations must use only `TEST_DATABASE_URL` pointing at `cartavault_test`.
 
-`test_quota_profiles.py` couvre l'autorisation administrateur, le cycle de vie,
-les valeurs illimitées et zéro, l'unicité insensible à la casse, l'unicité du
-profil par défaut, les protections du profil système, l'affectation et le
-blocage transactionnel d'une création. Les tests d'intégration doivent charger
-`backend/.env`, afficher uniquement le nom de base via `make_url` et refuser
-toute cible autre que `cartavault_test`. Le cycle attendu est `upgrade head`,
-`downgrade -1`, `upgrade head`, puis `alembic check`.
-# Media coverage
+Advanced integration scenarios cover configurable fields, favorites, both ratings, derived visited status, shared list/map filters, HTTP(S) links, history, and the trash/restore/purge lifecycle. Alembic cycles must run only after `TEST_DATABASE_URL` validation confirms that the database name contains `test` and is not `cartavault`.
 
-Media integration tests verify pagination and derived thumbnails, assert that
-storage paths are not exposed, and cover owner, viewer and unrelated-admin
-access. Database tests must continue to run exclusively against the validated
-`TEST_DATABASE_URL`; generated source files and thumbnail derivatives are
-removed before the photo-storage fixture completes.
+Status tests also cover four defaults on a new map, `functional_state` validation, immediate reclassification, favorite/state/status combinations, facets, map isolation, and owner/editor/viewer/unrelated-user roles. The targeted `d6f1a3b8c902` migration cycle verifies downgrade to `a4f9c2e7d631`, removed columns and indexes, then backfill and final schema after returning to head.
+
+## Quota profiles
+
+`test_quota_profiles.py` covers administrator authorization, lifecycle, unlimited and zero values, case-insensitive uniqueness, the one default profile, system-profile protections, assignment, and transactional creation blocking. Integration tests must load `backend/.env`, print only the database name through `make_url`, and refuse every target other than `cartavault_test`. The expected cycle is `upgrade head`, `downgrade -1`, `upgrade head`, then `alembic check`.
+
+## Media coverage
+
+Media integration tests verify pagination and derived thumbnails, assert that storage paths are not exposed, and cover owner, viewer, and unrelated-admin access. Database tests must continue to run only against the validated `TEST_DATABASE_URL`; generated source files and thumbnail derivatives are removed before the photo-storage fixture completes.

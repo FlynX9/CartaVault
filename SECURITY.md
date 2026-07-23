@@ -1,19 +1,16 @@
-# Politique de sécurité
+# Security Policy
 
-## Signaler une vulnérabilité
+## Reporting a vulnerability
 
-Merci de ne pas publier de vulnérabilité de sécurité dans une issue publique.
+Please do not publish security vulnerabilities in a public issue.
 
-Signalez-la directement au mainteneur via la fonction de signalement privé
-de vulnérabilités GitHub, lorsqu’elle est disponible, ou par un canal privé
-indiqué sur le profil du mainteneur.
+Report them directly to the maintainer through GitHub's private vulnerability-reporting feature when available, or through a private channel listed on the maintainer's profile.
 
-Incluez, dans la mesure du possible :
+When possible, include:
 
-- la version ou le commit concerné ;
-- les étapes de reproduction ;
-- l’impact potentiel ;
-- une proposition de correction éventuelle.
+- the affected version or commit;
+- reproduction steps;
+- the potential impact;
+- a suggested remediation, if available.
 
-Aucun délai de réponse ou de correction ne peut être garanti tant que le
-projet est en phase de développement actif.
+No response or remediation time frame can be guaranteed while the project remains under active development.
