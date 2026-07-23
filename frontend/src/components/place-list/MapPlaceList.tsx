@@ -15,10 +15,8 @@ import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { withMap } from '../../utils/map'
 import { MapMarkerFilterContext } from '../map/mapMarkerFilterContext'
 import { KmzImportDialog } from '../imports/KmzImportDialog'
-import { getPhotoFileUrl, getPlacePhotos } from '../../api/photos'
+import { getPhotoFileUrl } from '../../api/photos'
 import { useConfirmDialog } from '../common/useConfirmDialog'
-import { PhotoViewer } from '../photos/PhotoViewer'
-import type { Photo } from '../../types/photo'
 import { useI18n } from '../../i18n/useI18n'
 import { CountryFlag } from '../maps/CountryFlag'
 import { getTagColorStyle } from '../../tags/tagColors'
@@ -56,7 +54,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const [filtersOpen, setFiltersOpen] = useState(false); const [selectionMode, setSelectionMode] = useState(false); const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()); const [bulkBusy, setBulkBusy] = useState(false); const [bulkError, setBulkError] = useState<string | null>(null); const [bulkNotice, setBulkNotice] = useState<string | null>(null)
   const [bulkStatusId, setBulkStatusId] = useState(''); const [bulkCategoryId, setBulkCategoryId] = useState(''); const [bulkTagId, setBulkTagId] = useState(''); const [trips, setTrips] = useState<Trip[]>([]); const [tripId, setTripId] = useState(''); const [dayId, setDayId] = useState(''); const [importing, setImporting] = useState(false)
   const [trash, setTrash] = useState<PlaceDetails[] | null>(null); const [trashBusy, setTrashBusy] = useState(false); const [displayMode, setDisplayMode] = useState<'compact' | 'expanded'>('expanded'); const [bulkEditorOpen, setBulkEditorOpen] = useState(false)
-  const [photoViewer, setPhotoViewer] = useState<{ photos: Photo[]; placeName: string; initialPhotoId: string } | null>(null)
   const refs = useRef(new Map<string, HTMLButtonElement>()); const placesRef = useRef<PlaceDetails[]>([]); const listRequest = useRef(0); const listController = useRef<AbortController | null>(null); const loadMoreRequest = useRef(0); const loadMoreController = useRef<AbortController | null>(null); const loadMoreSentinel = useRef<HTMLDivElement>(null); const selectionRequest = useRef(0); const selectionController = useRef<AbortController | null>(null); const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext)
   const update = (partial: Partial<PlaceFilters>) => onFiltersChange(normalizePlaceFilters({ ...filters, ...partial }))
 
@@ -225,21 +222,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
       id="map-place-list"
       tabIndex={-1}
       aria-labelledby="map-place-list-title"
-      onClickCapture={(event) => {
-        const target = event.target
-        if (!(target instanceof HTMLImageElement) || !target.closest('.places-place-photo')) return
-        const button = target.closest<HTMLButtonElement>('.places-place-main')
-        const place = visible.find((item) => refs.current.get(item.id) === button)
-        if (!place?.primary_photo_id) return
-        event.preventDefault()
-        event.stopPropagation()
-        const controller = new AbortController()
-        void getPlacePhotos(place.id, controller.signal)
-          .then((photos) => setPhotoViewer({ photos, placeName: place.name, initialPhotoId: place.primary_photo_id! }))
-          .catch((caught) => setError(caught instanceof Error ? caught.message : 'Photos indisponibles.'))
-      }}
     >
-      {photoViewer && <PhotoViewer photos={photoViewer.photos} placeName={photoViewer.placeName} initialPhotoId={photoViewer.initialPhotoId} onClose={() => setPhotoViewer(null)} />}
       <header className="places-redesign-header">
         <div>
           <div className="places-redesign-title-row"><h2 id="map-place-list-title">{t('places.title')}</h2>{poiMap && <span className="places-redesign-count">{t('places.count', { count: facets.with_coordinates + facets.without_coordinates || visible.length })}</span>}</div>

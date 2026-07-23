@@ -106,6 +106,21 @@ describe('MapPlaceList', () => {
     expect(getPlaceListPosition).not.toHaveBeenCalled()
   })
 
+  it('selects a place when its list thumbnail is clicked without opening a photo viewer', async () => {
+    const place = { id: 'photo-place', name: 'Illustré', latitude: 48, longitude: 2, primary_photo_id: 'photo-id', status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const select = vi.fn()
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={select} /></MemoryRouter>)
+
+    await screen.findByRole('button', { name: /^Illustré/ })
+    const thumbnail = container.querySelector('.places-place-photo img')
+    expect(thumbnail).not.toBeNull()
+    fireEvent.click(thumbnail as HTMLImageElement)
+
+    expect(select).toHaveBeenCalledWith(place)
+    expect(container.querySelector('.photo-viewer')).not.toBeInTheDocument()
+  })
+
   it('shows the rating relevant to the functional status in the status color', async () => {
     const visited = { id: 'visited-place', name: 'Visité', latitude: 48, longitude: 2, interest_rating: 2, visit_rating: 4.5, status: { id: 'visited-status', name: 'Visité', slug: 'visited', color: '#16A34A', is_active: true, functional_state: 'visited' }, categories: [], tags: [] } as never
     const planned = { id: 'planned-place', name: 'À visiter', latitude: 49, longitude: 3, interest_rating: 3.5, visit_rating: null, status: { id: 'planned-status', name: 'À faire', slug: 'planned', color: '#2563EB', is_active: true, functional_state: 'non_visited' }, categories: [], tags: [] } as never
