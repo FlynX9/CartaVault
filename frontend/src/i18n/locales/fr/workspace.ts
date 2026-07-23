@@ -31,6 +31,7 @@ export const workspaceFr = {
   'maps.opened': 'Ouverte',
   'maps.open': 'Ouvrir',
   'maps.openNamed': 'Ouvrir {{name}}',
+  'maps.openedNamed': '{{name}} est ouverte',
   'maps.fields': 'Champs des POI',
   'maps.configureFields': 'Configurer les champs de {{name}}',
   'maps.export': 'Exporter {{name}}',

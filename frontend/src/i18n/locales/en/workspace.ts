@@ -33,6 +33,7 @@ export const workspaceEn = {
   'maps.opened': 'Open',
   'maps.open': 'Open',
   'maps.openNamed': 'Open {{name}}',
+  'maps.openedNamed': '{{name}} is open',
   'maps.fields': 'Place fields',
   'maps.configureFields': 'Configure fields for {{name}}',
   'maps.export': 'Export {{name}}',
