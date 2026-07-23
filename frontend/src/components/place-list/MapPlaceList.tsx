@@ -20,6 +20,7 @@ import { useConfirmDialog } from '../common/useConfirmDialog'
 import { PhotoViewer } from '../photos/PhotoViewer'
 import type { Photo } from '../../types/photo'
 import { useI18n } from '../../i18n/useI18n'
+import { CountryFlag } from '../maps/CountryFlag'
 
 const PAGE_SIZE = 100
 const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000
@@ -231,7 +232,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
       <header className="places-redesign-header">
         <div>
           <div className="places-redesign-title-row"><h2 id="map-place-list-title">{t('places.title')}</h2>{poiMap && <span className="places-redesign-count">{t('places.count', { count: facets.with_coordinates + facets.without_coordinates || visible.length })}</span>}</div>
-          {!collapsed && poiMap && <p>{poiMap.country?.name ?? poiMap.name} · {poiMap.updated_at ? t('places.updatedAt', { date: formatDate(poiMap.updated_at, { day: 'numeric', month: 'short' }) }) : t('places.updatedRecently')}</p>}
+          {!collapsed && poiMap && <p className="places-redesign-map-meta"><span className="places-redesign-map-identity"><CountryFlag countryCode={poiMap.country?.iso_alpha2 ?? ''} className="places-redesign-map-flag" fallbackSize={15} /><span>{poiMap.name}</span></span><span aria-hidden="true">·</span><span>{poiMap.updated_at ? t('places.updatedAt', { date: formatDate(poiMap.updated_at, { day: 'numeric', month: 'short' }) }) : t('places.updatedRecently')}</span></p>}
         </div>
         <div className="places-redesign-header-actions">
           {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label={t('places.import')} onClick={() => setImporting(true)}><FileUp size={17} /></button>}

@@ -49,10 +49,11 @@ describe('MapPlaceList', () => {
   })
 
   it('filters by the selected map UUID', async () => {
-    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', country: { iso_alpha2: 'FR', name: 'France' } } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))
     expect(screen.getByText('Lieux')).toBeVisible()
     expect(screen.getByText(/France/)).toBeVisible()
+    expect(container.querySelector('.places-redesign-map-flag')).toHaveAttribute('src', 'https://flagcdn.com/fr.svg')
   })
 
   it('does not restart POI loading when the active map reference changes', async () => {
