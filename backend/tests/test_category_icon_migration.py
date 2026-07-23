@@ -18,7 +18,7 @@ pytestmark = pytest.mark.integration
 
 MIGRATION_REVISION = "f3a7c1d9e842"
 PARENT_REVISION = "e2a4b9d7c630"
-TEST_CATEGORY_NAMESPACE = "https://poi-manager.test/category-icon-migration/"
+TEST_CATEGORY_NAMESPACE = "https://cartavault.test/category-icon-migration/"
 UNKNOWN_ICON = "unknown-legacy-icon"
 PRESERVED_ICONIFY_ICON = "mdi:wall"
 SECURITY_SCHEMA_REVISION = "d8f4a2c7e910"
@@ -74,10 +74,10 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
     test_database_url,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Exercise the category icon migration exclusively on poi_manager_test."""
+    """Exercise the category icon migration exclusively on cartavault_test."""
 
     print(test_database_url.database)
-    assert test_database_url.database == "poi_manager_test"
+    assert test_database_url.database == "cartavault_test"
     monkeypatch.setenv(
         "DATABASE_URL",
         test_database_url.render_as_string(hide_password=False),

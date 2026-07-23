@@ -11,7 +11,7 @@ def test_rejects_database_name_without_test(
 ) -> None:
     monkeypatch.setenv(
         "DATABASE_URL",
-        "postgresql+psycopg://user:password@localhost/poi_manager",
+        "postgresql+psycopg://user:password@localhost/cartavault",
     )
 
     with pytest.raises(pytest.UsageError, match="must contain 'test'"):
@@ -24,7 +24,7 @@ def test_rejects_development_database_endpoint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = (
-        "postgresql+psycopg://user:password@localhost/poi_manager_test"
+        "postgresql+psycopg://user:password@localhost/cartavault_test"
     )
     monkeypatch.setenv("DATABASE_URL", database_url)
 
@@ -37,11 +37,11 @@ def test_accepts_dedicated_postgresql_test_database(
 ) -> None:
     monkeypatch.setenv(
         "DATABASE_URL",
-        "postgresql+psycopg://user:password@localhost/poi_manager",
+        "postgresql+psycopg://user:password@localhost/cartavault",
     )
 
     validated_url = validate_test_database_url(
-        "postgresql+psycopg://user:password@localhost/poi_manager_test"
+        "postgresql+psycopg://user:password@localhost/cartavault_test"
     )
 
-    assert validated_url.database == "poi_manager_test"
+    assert validated_url.database == "cartavault_test"

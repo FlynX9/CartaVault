@@ -15,7 +15,7 @@ PRESERVED_TABLES = ("users", "user_sessions", "trips", "trip_days")
 
 
 def test_user_api_credentials_upgrade_downgrade_upgrade_cycle(test_engine, test_database_url, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert test_database_url.database == "poi_manager_test"
+    assert test_database_url.database == "cartavault_test"
     monkeypatch.setenv("DATABASE_URL", test_database_url.render_as_string(hide_password=False))
     config = Config("alembic.ini")
     command.downgrade(config, PARENT_REVISION)

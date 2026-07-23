@@ -82,8 +82,8 @@ télécharge chaque URL distante qu’une fois et transforme les échecs d’ima
 avertissements sans annuler les POI créés.
 
 La migration `a91d3b6e7f24` ajoute `custom_fields JSONB NOT NULL DEFAULT '{}'`.
-Elle doit être testée et appliquée d’abord sur `poi_manager_test`, jamais sur la
-base de développement `poi_manager`.
+Elle doit être testée et appliquée d’abord sur `cartavault_test`, jamais sur la
+base de développement `cartavault`.
 
 ## Statuts des POI
 
@@ -93,9 +93,9 @@ base de développement `poi_manager`.
 
 Les nouvelles écritures de `categories.icon` acceptent exclusivement des identifiants qualifiés présents dans ce catalogue, par exemple `mdi:church`. L’absence d’icône utilise `material-symbols:location-on-outline`; le fallback disponible est `material-symbols:help-outline`.
 
-La migration `f3a7c1d9e842` remplace les 17 identifiants Lucide historiques par leurs équivalents Iconify, conserve les IDs Iconify déjà valides et remplace toute valeur inconnue par le défaut. Elle met aussi à jour le défaut SQL de `categories.icon` pour les installations existantes; `database/init/001_initial_schema.sql` emploie le même défaut pour les installations neuves. Son downgrade retourne les valeurs ayant un équivalent historique et transforme toute autre icône Iconify en `map-pin` : il est destructif et ne doit jamais être lancé sur `poi_manager`.
+La migration `f3a7c1d9e842` remplace les 17 identifiants Lucide historiques par leurs équivalents Iconify, conserve les IDs Iconify déjà valides et remplace toute valeur inconnue par le défaut. Elle met aussi à jour le défaut SQL de `categories.icon` pour les installations existantes; `database/init/001_initial_schema.sql` emploie le même défaut pour les installations neuves. Son downgrade retourne les valeurs ayant un équivalent historique et transforme toute autre icône Iconify en `map-pin` : il est destructif et ne doit jamais être lancé sur `cartavault`.
 
-L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `poi_manager_test`, jamais sur `poi_manager`.
+L’association `place_categories.is_primary` est l’unique source de vérité de la catégorie principale ; `PATCH /places/{place_id}/categories/{category_id}` la modifie atomiquement. Le downgrade de la migration des icônes doit uniquement être exécuté sur `cartavault_test`, jamais sur `cartavault`.
 
 La feature `app/statuses` expose le CRUD `/statuses`. Un seul statut actif est défini par défaut et il est appliqué lorsque `status_id` est omis à la création d’un POI. Un statut inactif reste lisible sur les anciens POI mais ne peut plus être sélectionné. La suppression du défaut ou d’un statut utilisé renvoie `409`.
 
@@ -157,7 +157,7 @@ Git et ne doit contenir aucun secret destiné au dépôt.
 
 | Variable | Obligatoire | Rôle et valeur par défaut |
 | --- | --- | --- |
-| `DATABASE_URL` | Oui | URL SQLAlchemy PostgreSQL utilisée par l'API et Alembic. Exemple non secret : `postgresql+psycopg://poi_user:change_me@localhost:5432/poi_manager`. Aucune valeur par défaut. |
+| `DATABASE_URL` | Oui | URL SQLAlchemy PostgreSQL utilisée par l'API et Alembic. Exemple non secret : `postgresql+psycopg://poi_user:change_me@localhost:5432/cartavault`. Aucune valeur par défaut. |
 | `TEST_DATABASE_URL` | Non pour l'API, requise pour l'intégration | Base PostgreSQL/PostGIS dédiée aux tests. Aucune valeur par défaut ni reprise automatique de `DATABASE_URL`. |
 | `PHOTO_STORAGE_PATH` | Non | Racine du stockage photo. Valeur par défaut : `storage/photos`, résolue relativement au dossier `backend`. Un chemin absolu peut aussi être fourni. |
 | `CORS_ALLOWED_ORIGINS` | Non | Liste d'origines web séparées par des virgules. Valeur par défaut : `http://localhost:5173,http://127.0.0.1:5173`. |

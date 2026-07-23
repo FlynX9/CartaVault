@@ -66,7 +66,7 @@ Première version publique de développement de CartaVault.
 
 ### Changed
 
-- Le projet initialement nommé POI Manager est désormais présenté sous le nom CartaVault.
+- Le projet est présenté sous le nom CartaVault.
 - L’interface a été progressivement harmonisée avec la nouvelle identité visuelle CartaVault.
 
 ### Security

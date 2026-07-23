@@ -14,7 +14,7 @@ ROUTING_PROVIDER_REVISION = "b2e7c4a9d531"
 
 
 def test_routing_provider_upgrade_downgrade_upgrade_cycle(test_engine, test_database_url, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert test_database_url.database == "poi_manager_test"
+    assert test_database_url.database == "cartavault_test"
     monkeypatch.setenv("DATABASE_URL", test_database_url.render_as_string(hide_password=False))
     config = Config("alembic.ini")
     user_id, map_id, membership_id, trip_id, day_id = (uuid4() for _ in range(5))

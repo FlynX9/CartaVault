@@ -37,4 +37,4 @@ La réponse ne contient ni nom ou email utilisateur, ni contenu de POI, ni jeton
 
 Pour ajouter un contrôle, créer un schéma explicite, une fonction isolée, un code d’erreur stable et un rendu accessible. Toute dépendance externe doit avoir un délai maximal, ne pas être facturable lors d’une lecture passive et ne pas faire échouer les autres composants. Couvrir agrégation, isolation, redaction et rendu par des tests.
 
-Les tests avec base de données doivent cibler exclusivement `poi_manager_test`.
+Les tests avec base de données doivent cibler exclusivement `cartavault_test`.
