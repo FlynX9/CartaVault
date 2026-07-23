@@ -48,22 +48,24 @@ describe('PlaceForm', () => {
 
     expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
     expect(screen.getByText('Favori')).toBeVisible()
-    expect(screen.getByRole('combobox', { name: 'Envie avant visite' })).toBeVisible()
-    expect(screen.queryByRole('combobox', { name: 'Évaluation après visite' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Envie avant visite' })).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Évaluation après visite' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('À faire'))
     fireEvent.click(screen.getByRole('option', { name: 'Visité' }))
 
-    expect(screen.queryByRole('combobox', { name: 'Envie avant visite' })).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Évaluation après visite' })).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Envie avant visite' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Évaluation après visite' })).toBeVisible()
   })
 
-  it('offers ratings in half-point increments', () => {
+  it('selects ratings in half-point increments with interactive stars', () => {
     render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', statusId: 'todo' }} maps={[MAP]} allowMapChange categories={[]} tags={[]} statuses={[{ id: 'todo', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }]} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
 
-    const rating = screen.getByRole('combobox', { name: 'Envie avant visite' })
-    expect(rating).toHaveTextContent('1.5 étoile')
-    expect(rating).toHaveTextContent('4.5 étoiles')
-    expect(rating).not.toHaveTextContent('1.25')
+    const thirdStar = screen.getByRole('button', { name: 'Attribuer 3 étoiles' })
+    vi.spyOn(thirdStar, 'getBoundingClientRect').mockReturnValue({ left: 0, width: 20 } as DOMRect)
+    fireEvent.pointerMove(thirdStar, { clientX: 2 })
+    fireEvent.click(thirdStar, { clientX: 2 })
+
+    expect(screen.getByText('2.5 / 5')).toBeVisible()
   })
 })

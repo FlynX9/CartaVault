@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, Star, X } from 'lucide-react'
 
 import { validatePlaceForm } from '../../forms/placeForm'
 import type {
@@ -47,8 +47,59 @@ const CHRONOLOGY_FIELDS = [
   ['abandonment_date', 'Abandon', 100],
 ] as const
 
-const RATING_OPTIONS = Array.from({ length: 9 }, (_, index) => 1 + index * 0.5)
-const formatRatingLabel = (rating: number) => `${rating.toFixed(1)} étoile${rating > 1 ? 's' : ''}`
+const RATING_STARS = [1, 2, 3, 4, 5]
+
+function ratingForPointer(event: { clientX: number; currentTarget: HTMLButtonElement }, star: number): number {
+  const bounds = event.currentTarget.getBoundingClientRect()
+  return event.clientX - bounds.left < bounds.width / 2 ? star - 0.5 : star
+}
+
+function EditableRating({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [hoveredRating, setHoveredRating] = useState<number | null>(null)
+  const currentRating = value === '' ? null : Number(value)
+  const visibleRating = hoveredRating ?? currentRating ?? 0
+  const select = (rating: number) => onChange(currentRating === rating ? '' : String(rating))
+
+  return <div className="place-rating-control" role="group" aria-label={label}>
+    <span className="place-rating-control__label">{label}</span>
+    <div className="place-rating-control__stars" onPointerLeave={() => setHoveredRating(null)}>
+      {RATING_STARS.map((star) => {
+        const fillPercentage = Math.max(0, Math.min(100, (visibleRating - (star - 1)) * 100))
+        return <button
+          key={star}
+          type="button"
+          className="place-rating-control__star"
+          aria-label={`Attribuer ${star} étoile${star > 1 ? 's' : ''}`}
+          aria-pressed={currentRating === star}
+          onPointerMove={(event) => setHoveredRating(ratingForPointer(event, star))}
+          onClick={(event) => select(ratingForPointer(event, star))}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+              event.preventDefault()
+              select(Math.max(0.5, (currentRating ?? 0.5) - 0.5))
+            }
+            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+              event.preventDefault()
+              select(Math.min(5, (currentRating ?? 0) + 0.5))
+            }
+          }}
+        >
+          <Star size={23} fill="none" aria-hidden="true" />
+          <span className="place-rating-control__star-fill" style={{ width: `${fillPercentage}%` }} aria-hidden="true"><Star size={23} fill="currentColor" /></span>
+        </button>
+      })}
+    </div>
+    <output className="place-rating-control__value" aria-live="polite">{hoveredRating !== null ? `${hoveredRating.toFixed(1)} / 5` : currentRating !== null ? `${currentRating.toFixed(1)} / 5` : 'Aucune note'}</output>
+  </div>
+}
 
 export function PlaceForm({
   initialValues,
@@ -165,8 +216,8 @@ export function PlaceForm({
           {fieldEnabled('favorite') && <label className="form-field favorite-field"><span>Favori</span><input type="checkbox" checked={values.isFavorite} onChange={(event) => setValue('isFavorite', event.target.checked)} /></label>}
           {fieldEnabled('ratings') && ratingField && <div className="form-field form-field-wide place-rating-fields">
             <span>Notation</span>
-            {ratingField === 'interest' && <label>Envie avant visite<select value={values.interestRating} onChange={(event) => setValue('interestRating', event.target.value)}><option value="">Aucune note</option>{RATING_OPTIONS.map((rating) => <option key={rating} value={rating}>{formatRatingLabel(rating)}</option>)}</select></label>}
-            {ratingField === 'visit' && <label>Évaluation après visite<select value={values.visitRating} onChange={(event) => setValue('visitRating', event.target.value)}><option value="">Aucune note</option>{RATING_OPTIONS.map((rating) => <option key={rating} value={rating}>{formatRatingLabel(rating)}</option>)}</select></label>}
+            {ratingField === 'interest' && <EditableRating label="Envie avant visite" value={values.interestRating} onChange={(rating) => setValue('interestRating', rating)} />}
+            {ratingField === 'visit' && <EditableRating label="Évaluation après visite" value={values.visitRating} onChange={(rating) => setValue('visitRating', rating)} />}
           </div>}
           <label className="form-field category-field">
             <span>Catégorie</span>

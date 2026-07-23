@@ -2815,7 +2815,7 @@ button {
 }
 
 .map-editor-panel .place-rating-fields {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
   padding: 0.75rem;
   background: rgb(43 62 89 / 4%);
@@ -2827,21 +2827,16 @@ button {
   grid-column: 1 / -1;
 }
 
-.map-editor-panel .place-rating-fields label {
-  display: grid;
-  gap: 0.3rem;
-  color: var(--cv-color-slate);
-  font-size: 0.71rem;
-  font-weight: 700;
-}
-
-.map-editor-panel .place-rating-fields label select,
-.map-editor-panel .place-rating-fields label:first-of-type select,
-.map-editor-panel .place-rating-fields label:last-of-type select {
-  color: var(--cv-color-navy);
-  background: #fff;
-  border-color: rgb(43 62 89 / 18%);
-}
+.place-rating-control { display:flex; align-items:center; gap:.55rem; min-height:2.45rem; color:var(--cv-color-slate); }
+.place-rating-control__label { flex:0 0 auto; font-size:.71rem; font-weight:700; }
+.place-rating-control__stars { display:inline-flex; align-items:center; gap:.08rem; }
+.place-rating-control__star { position:relative; display:inline-flex; width:1.55rem; height:1.55rem; align-items:center; justify-content:center; padding:0; color:color-mix(in srgb,var(--cv-color-gold) 68%,var(--cv-color-gray)); background:transparent; border:0; border-radius:.3rem; cursor:pointer; }
+.place-rating-control__star > svg { color:var(--cv-color-gray); stroke-width:1.85; }
+.place-rating-control__star-fill { position:absolute; inset:0 auto 0 0; display:flex; overflow:hidden; align-items:center; color:var(--cv-color-gold); pointer-events:none; }
+.place-rating-control__star-fill svg { flex:0 0 auto; }
+.place-rating-control__star:hover, .place-rating-control__star:focus-visible { color:var(--cv-color-gold); background:color-mix(in srgb,var(--cv-color-gold) 11%,transparent); outline:0; }
+.place-rating-control__star:focus-visible { box-shadow:0 0 0 2px color-mix(in srgb,var(--cv-color-teal) 55%,transparent); }
+.place-rating-control__value { min-width:5.5rem; color:var(--cv-color-gray); font-size:.72rem; font-weight:700; }
 
 .map-editor-panel .status-picker-options {
   z-index: var(--cv-z-panel);
