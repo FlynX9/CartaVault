@@ -15,10 +15,18 @@ import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
 import type { Trip } from '../types/trip'
 import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
+import { useTheme } from '../theme/useTheme'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
+
+function resolveThemeBasemap(value: unknown, theme: 'light' | 'dark'): BasemapId {
+  if (value === 'cartavault-light' || value === 'cartavault-dark') {
+    return resolveAvailableBasemapId(theme === 'dark' ? 'cartavault-dark' : 'cartavault-light', theme === 'dark')
+  }
+  return resolveAvailableBasemapId(value, theme === 'dark')
+}
 
 function loadPanelWidth(key: string, fallback: number): number {
   try {
@@ -108,7 +116,13 @@ export function MapPage({
   tripNotice = null,
   onTripCoordinateAdd,
 }: MapPageProps) {
-  const initialBasemapRef = useRef(loadStoredBasemapPreference() ?? getThemeDefaultBasemapId())
+  const { resolvedTheme, setPreference: setThemePreference } = useTheme()
+  const themeRef = useRef(resolvedTheme)
+  themeRef.current = resolvedTheme
+  const initialBasemapRef = useRef(resolveThemeBasemap(
+    loadStoredBasemapPreference() ?? getThemeDefaultBasemapId(resolvedTheme === 'dark'),
+    resolvedTheme,
+  ))
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
@@ -138,14 +152,14 @@ export function MapPage({
         return
       }
       if (failedBasemapsRef.current.size > 0) return
-      const preferred = resolveAvailableBasemapId(preferences.preferred_basemap)
+      const preferred = resolveThemeBasemap(preferences.preferred_basemap, themeRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
     }).catch(() => undefined)
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
       accountPreferencesRef.current = preferences
-      const preferred = resolveAvailableBasemapId(preferences.preferred_basemap)
+      const preferred = resolveThemeBasemap(preferences.preferred_basemap, themeRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
       setBasemapNotice(null)
@@ -154,8 +168,32 @@ export function MapPage({
     return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
   }, [])
 
+  useEffect(() => {
+    if (basemapId !== 'cartavault-light' && basemapId !== 'cartavault-dark') return
+    const explicitSelection = explicitBasemapSelectionRef.current
+    if (explicitSelection === basemapId) {
+      const explicitTheme = explicitSelection === 'cartavault-dark' ? 'dark' : 'light'
+      if (explicitTheme !== resolvedTheme) return
+      explicitBasemapSelectionRef.current = null
+    }
+    const themedBasemap: BasemapId = resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light'
+    if (basemapId === themedBasemap) return
+    setBasemapId(themedBasemap)
+    saveBasemapPreference(themedBasemap)
+    const currentPreferences = accountPreferencesRef.current
+    if (currentPreferences !== null && currentPreferences.preferred_basemap !== themedBasemap) {
+      const updated = { ...currentPreferences, preferred_basemap: themedBasemap }
+      accountPreferencesRef.current = updated
+      void updateAccountPreferences(updated).then((saved) => {
+        accountPreferencesRef.current = saved
+      }).catch(() => undefined)
+    }
+  }, [basemapId, resolvedTheme])
+
   const selectBasemap = (id: BasemapId) => {
     const selected = resolveAvailableBasemapId(id)
+    if (selected === 'cartavault-light') setThemePreference('light')
+    if (selected === 'cartavault-dark') setThemePreference('dark')
     explicitBasemapSelectionRef.current = selected
     setBasemapId(selected)
     setBasemapNotice(null)

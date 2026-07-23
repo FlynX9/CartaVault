@@ -4,6 +4,20 @@ import { MemoryRouter } from 'react-router-dom'
 
 import { MapPage } from './MapPage'
 
+const themeState = vi.hoisted(() => ({
+  resolvedTheme: 'light' as 'light' | 'dark',
+  setPreference: vi.fn(),
+}))
+
+vi.mock('../theme/useTheme', () => ({
+  useTheme: () => ({
+    preference: 'light',
+    resolvedTheme: themeState.resolvedTheme,
+    setPreference: themeState.setPreference,
+    toggleTheme: vi.fn(),
+  }),
+}))
+
 vi.mock('../api/account', () => ({
   ACCOUNT_PREFERENCES_UPDATED_EVENT: 'cartavault:preferences-updated',
   getAccountPreferences: vi.fn().mockResolvedValue({ preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }),
@@ -20,6 +34,7 @@ vi.mock('../components/map/PoiMap', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  themeState.resolvedTheme = 'light'
 })
 
 afterEach(() => {
@@ -132,5 +147,21 @@ describe('MapPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' }))
     expect(window.localStorage.getItem('cartavault.basemap')).toBe('cartavault-dark')
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'cartavault-dark' })))
+  })
+
+  it('keeps the CartaVault vector basemap synchronized with the visual theme', async () => {
+    const props = {
+      places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 },
+      isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [],
+      sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(),
+      onPlaceSelect: vi.fn(),
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+    expect(await screen.findByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-light')
+
+    themeState.resolvedTheme = 'dark'
+    rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark'))
   })
 })

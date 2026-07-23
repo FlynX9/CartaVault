@@ -157,6 +157,17 @@ The map layer can be changed without reloading the map:
 
 CartaVault Light and Dark are locally hosted MapLibre styles backed by OpenFreeMap vector tiles and rendered inside the existing Leaflet map. They require no account or API key. The satellite source remains independently configurable and OpenStreetMap Standard remains the controlled raster fallback. Individual providers can be hidden with `VITE_BASEMAP_LIGHT_ENABLED`, `VITE_BASEMAP_DARK_ENABLED`, `VITE_BASEMAP_SATELLITE_ENABLED`, and `VITE_BASEMAP_OSM_ENABLED`. See `frontend/README.md` for provider URLs, attribution, public-instance limitations, and the self-hosted OpenFreeMap or PMTiles migration path.
 
+### Application theme
+
+The user menu exposes CartaVault's light/dark switch. The choice is stored
+locally with a user-scoped preference, applied before React starts to prevent a
+theme flash, and restored after refresh. With no explicit choice CartaVault
+follows `prefers-color-scheme`. The application theme covers the workspace,
+place popup, Trips, administration, forms, dialogs, notifications, and
+loading/empty/error states. CartaVault's OpenFreeMap background follows the
+selected theme; Satellite and an explicitly selected OSM fallback remain
+independent.
+
 ## Architecture and technical stack
 
 ### Repository structure

@@ -1,6 +1,7 @@
 @import 'leaflet/dist/leaflet.css';
 
 :root {
+  --cv-brand-navy: #0d1b2a;
   --cv-color-navy: #0d1b2a;
   --cv-color-slate: #2b3e59;
   --cv-color-teal: #0fa68a;
@@ -30,6 +31,26 @@
   background: #edf1ec;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --cv-color-navy: #edf6f8;
+  --cv-color-slate: #c6d5de;
+  --cv-color-teal: #25c6aa;
+  --cv-color-mist: #0a151f;
+  --cv-color-off-white: #13232f;
+  --cv-color-gray: #91a4b0;
+  --cv-surface: #13232f;
+  --cv-surface-muted: #0e1c27;
+  --cv-border-subtle: rgb(198 213 222 / 14%);
+  --cv-border-strong: rgb(198 213 222 / 25%);
+  --cv-shadow-sm: 0 3px 14px rgb(0 0 0 / 34%);
+  --cv-shadow-md: 0 18px 48px rgb(0 0 0 / 48%);
 }
 
 .cv-overlay {
@@ -5531,4 +5552,623 @@ body.cv-panel-resizing {
   .media-pagination nav { grid-column: 1 / -1; grid-row: 1; }
   .media-pagination > span { justify-self: end; }
   .media-bulk-bar { flex-wrap: wrap; }
+}
+
+/* --------------------------------------------------------------------------
+   Application theme
+   --------------------------------------------------------------------------
+   The selectors below deliberately sit after the component layers. They turn
+   legacy literal light surfaces into semantic CartaVault surfaces while the
+   component CSS is progressively migrated to the same tokens.
+*/
+
+.user-theme-switch {
+  display: flex;
+  width: 100%;
+  min-height: 2.55rem;
+  align-items: center;
+  gap: .65rem;
+  padding: .55rem .7rem;
+  color: var(--cv-color-slate);
+  background: transparent;
+  border: 0;
+  border-radius: .55rem;
+  cursor: pointer;
+  font-weight: 700;
+  text-align: left;
+}
+.user-theme-switch:hover,
+.user-theme-switch:focus-visible { color: var(--cv-color-navy); background: var(--cv-color-mist); }
+.user-theme-switch > i {
+  position: relative;
+  width: 2.1rem;
+  height: 1.15rem;
+  margin-left: auto;
+  flex: 0 0 auto;
+  background: var(--cv-border-strong, rgb(43 62 89 / 22%));
+  border-radius: 999px;
+  transition: background-color 160ms ease;
+}
+.user-theme-switch > i > b {
+  position: absolute;
+  top: .15rem;
+  left: .15rem;
+  width: .85rem;
+  height: .85rem;
+  background: var(--cv-surface, #fff);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+  transition: transform 160ms ease;
+}
+.user-theme-switch[aria-checked='true'] > i { background: var(--cv-color-teal); }
+.user-theme-switch[aria-checked='true'] > i > b { transform: translateX(.95rem); }
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] #root,
+html[data-theme='dark'] .app-shell,
+html[data-theme='dark'] .app-body,
+html[data-theme='dark'] .map-workspace {
+  color: var(--cv-color-navy);
+  background: var(--cv-color-mist);
+}
+
+html[data-theme='dark'] .main-navigation,
+html[data-theme='dark'] .cv-main-navigation,
+html[data-theme='dark'] .geographic-search button,
+html[data-theme='dark'] .draft-position-marker,
+html[data-theme='dark'] .user-account-menu__avatar,
+html[data-theme='dark'] .account-avatar,
+html[data-theme='dark'] .trip-night-search > button,
+html[data-theme='dark'] .cv-map-cluster--large,
+html[data-theme='dark'] .trip-night-metrics > span,
+html[data-theme='dark'] .admin-console__header-icon,
+html[data-theme='dark'] .admin-console__avatar {
+  background-color: var(--cv-brand-navy);
+}
+
+html[data-theme='dark'] .app-header {
+  color: var(--cv-color-navy);
+  background: rgb(14 28 39 / 96%);
+  border-bottom-color: var(--cv-border-subtle);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 30%);
+}
+html[data-theme='dark'] .app-header h1,
+html[data-theme='dark'] .marker-count strong { color: var(--cv-color-navy); }
+html[data-theme='dark'] .app-eyebrow { color: var(--cv-color-gray); }
+
+html[data-theme='dark'] :is(
+  .cv-modal,
+  .create-map-dialog,
+  .country-place-panel,
+  .map-sidebar,
+  .cv-workspace-panel,
+  .maps-workspace-panel,
+  .media-workspace-panel,
+  .place-list,
+  .place-list-search,
+  .map-context-menu,
+  .status-legend,
+  .leaflet-popup-content-wrapper,
+  .user-account-menu__dropdown,
+  .notification-center__panel,
+  .notification-toast,
+  .account-modal,
+  .account-form,
+  .account-credential,
+  .admin-console,
+  .admin-console__content,
+  .map-members-dialog,
+  .map-action-dialog,
+  .confirmation-dialog,
+  .category-icon-dialog,
+  .kmz-import-dialog,
+  .kmz-export-dialog,
+  .create-trip-dialog,
+  .create-trip-night-dialog,
+  .trip-planner-panel,
+  .media-details-dialog,
+  .photo-viewer__dialog
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-color-off-white);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(
+  .cv-workspace-panel__header,
+  .sidebar-header,
+  .places-redesign-header,
+  .maps-workspace-panel__header,
+  .media-workspace-panel__header,
+  .map-members-dialog > header,
+  .map-action-dialog > header,
+  .account-modal__header,
+  .admin-console__header,
+  .trip-planner-panel > header,
+  .create-trip-dialog header,
+  .create-trip-night-dialog header,
+  .media-details-dialog > header,
+  .media-details-dialog > footer
+) {
+  background-color: var(--cv-color-off-white);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(
+  .place-list-item,
+  .places-place-card,
+  .map-card,
+  .cv-panel-entity-card,
+  .cv-panel-status-card,
+  .management-card,
+  .trip-panel-day,
+  .trip-panel-night,
+  .trip-stop-item,
+  .trip-day-stop,
+  .trip-free-stop,
+  .trip-metric-card,
+  .trip-load-settings,
+  .trip-time-settings,
+  .account-form section,
+  .account-credential,
+  .admin-console__card,
+  .admin-console__user-grid > li,
+  .media-card,
+  .media-aggregates,
+  .media-filters,
+  .media-details-layout dl div,
+  .photo-manager,
+  .form-section,
+  .status-form,
+  .entity-form
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(
+  .places-redesign-toolbar,
+  .places-selection-bar,
+  .trip-panel-selector,
+  .trip-panel-fields,
+  .trip-fields,
+  .trip-metrics,
+  .trip-day-stops,
+  .account-modal__nav,
+  .admin-console__nav,
+  .media-toolbar,
+  .media-pagination,
+  .media-details-layout > img,
+  .empty-state,
+  .loading-state,
+  .place-list-empty
+) {
+  color: var(--cv-color-slate);
+  background-color: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(
+  input:not([type='checkbox']):not([type='radio']):not([type='color']),
+  select,
+  textarea
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+  box-shadow: none;
+}
+html[data-theme='dark'] :is(input, textarea)::placeholder { color: var(--cv-color-gray); opacity: .88; }
+html[data-theme='dark'] :is(input, select, textarea):focus {
+  border-color: var(--cv-color-teal);
+  outline-color: rgb(37 198 170 / 32%);
+}
+html[data-theme='dark'] input[type='checkbox'],
+html[data-theme='dark'] input[type='radio'] { accent-color: var(--cv-color-teal); }
+
+html[data-theme='dark'] :is(
+  button:not(.primary):not(.danger):not(.places-redesign-create):not(.map-context-menu__primary),
+  .secondary-button,
+  .icon-button,
+  .header-link
+) {
+  border-color: var(--cv-border-strong);
+}
+html[data-theme='dark'] :is(
+  .secondary-button,
+  .panel-icon-button:not(.primary),
+  .account-button--secondary,
+  .account-button--danger-quiet,
+  .popup-actions button,
+  .popup-actions a,
+  .popup-heading-actions button,
+  .popup-location button,
+  .popup-coordinates button,
+  .photo-card-actions button,
+  .trip-panel-day-actions button,
+  .trip-panel-stop-actions button,
+  .trip-panel-night button,
+  .trip-panel-route-actions button,
+  .trip-panel-free summary,
+  .trip-panel-inline-actions > button,
+  .trip-day-color-picker__actions button,
+  .trip-panel-primary-actions button,
+  .trip-planner-panel .trip-panel-selector .trip-export-menu > summary,
+  .admin-console__actions button,
+  .admin-console__user-actions button,
+  .admin-console__credential-form button,
+  .admin-console__pagination button,
+  .admin-console__refresh,
+  .admin-console td button,
+  .quota-editor > header > button
+) {
+  color: var(--cv-color-slate);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] :is(
+  .workspace-search-field,
+  .place-list-search,
+  .geographic-search form,
+  .basemap-selector,
+  .status-picker-trigger,
+  .category-picker-trigger,
+  .tag-picker-trigger
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .leaflet-popup-tip { background: var(--cv-color-off-white); }
+html[data-theme='dark'] .leaflet-popup-close-button { color: var(--cv-color-slate); }
+html[data-theme='dark'] .place-map-popup,
+html[data-theme='dark'] .poi-popup {
+  color: var(--cv-color-navy);
+  background: var(--cv-color-off-white);
+}
+html[data-theme='dark'] :is(.place-map-popup, .poi-popup) :is(hr, section, footer) {
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .map-context-menu__header,
+html[data-theme='dark'] .status-legend__toggle { border-color: var(--cv-border-subtle); }
+html[data-theme='dark'] .status-legend li:hover,
+html[data-theme='dark'] .map-context-menu button:not(.map-context-menu__primary):hover,
+html[data-theme='dark'] .map-context-menu a:hover,
+html[data-theme='dark'] .user-account-menu__links button:hover,
+html[data-theme='dark'] .user-account-menu__links a:hover {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface-muted);
+}
+
+html[data-theme='dark'] :is(
+  .form-help,
+  .muted,
+  .place-list-item small,
+  .places-place-card small,
+  .trip-planner-panel small,
+  .media-card small,
+  .account-form p
+) { color: var(--cv-color-gray); }
+
+html[data-theme='dark'] :is(.form-alert, .map-error, .panel-error, .trip-panel-error) {
+  color: #ffb4ab;
+  background: rgb(105 24 31 / 45%);
+  border-color: rgb(255 180 171 / 35%);
+}
+html[data-theme='dark'] :is(.success-message, .form-success) {
+  color: #79e8c9;
+  background: rgb(9 82 66 / 42%);
+  border-color: rgb(121 232 201 / 30%);
+}
+html[data-theme='dark'] :is(.warning-message, .form-warning) {
+  color: #ffd78a;
+  background: rgb(91 62 8 / 48%);
+  border-color: rgb(255 215 138 / 30%);
+}
+
+html[data-theme='dark'] .media-card__image,
+html[data-theme='dark'] .place-list-card__image,
+html[data-theme='dark'] .place-popup-gallery,
+html[data-theme='dark'] .photo-gallery-empty { background: var(--cv-surface-muted); }
+html[data-theme='dark'] .media-bulk-bar,
+html[data-theme='dark'] .places-selection-bar {
+  color: var(--cv-color-navy);
+  background: rgb(12 73 64 / 96%);
+  border-color: rgb(37 198 170 / 30%);
+}
+
+html[data-theme='dark'] :is(
+  .trip-planner-panel .trip-panel-selector,
+  .trip-panel-primary-actions,
+  .trip-summary-shell,
+  .trip-planner-panel .trip-panel-section,
+  .trip-planner-panel .trip-panel-section.trip-panel-settings,
+  .trip-planner-panel .trip-metrics-global,
+  .trip-planner-panel .trip-panel-day,
+  .trip-planner-panel .trip-panel-night,
+  .trip-planner-panel .trip-panel-day-content > ul > li,
+  .trip-load-settings,
+  .trip-time-settings,
+  .trip-panel-exports > div,
+  .trip-optimization-comparison > div,
+  .trip-panel-add-day-ghost__plus
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-subtle);
+}
+html[data-theme='dark'] .trip-planner-panel .trip-metrics dl > div,
+html[data-theme='dark'] .trip-panel-day-content > ul > li:nth-child(even) {
+  background-color: var(--cv-surface-muted);
+}
+
+html[data-theme='dark'] :is(
+  .account-modal__nav button[aria-current='page'],
+  .account-modal__nav button:hover,
+  .admin-console__nav a:hover,
+  .admin-console__nav a.active,
+  .account-avatar-editor,
+  .account-metadata,
+  .account-sessions li,
+  .category-icon-search,
+  .category-icon-groups button,
+  .category-icon-option,
+  .category-icon-empty,
+  .status-functional-state,
+  .status-settings,
+  .maps-catalog__actions .secondary-button,
+  .maps-catalog li,
+  .maps-panel-empty
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-night::after {
+  border-left-color: #8ea4b1;
+}
+html[data-theme='dark'] .trip-timeline-arrival-badge { background: var(--cv-brand-navy); }
+html[data-theme='dark'] .basemap-selector button.active {
+  color: #fff;
+  background: var(--cv-brand-navy);
+  border-color: var(--cv-brand-navy);
+}
+
+/* High-contrast interactive controls inside the dark workspace panels. */
+html[data-theme='dark'] .places-quick-filters button:not(.active),
+html[data-theme='dark'] .places-view-switcher button,
+html[data-theme='dark'] .places-sort-control,
+html[data-theme='dark'] .places-advanced-filter:not(.active) {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .places-quick-filters button:not(.active):hover,
+html[data-theme='dark'] .places-view-switcher button:hover,
+html[data-theme='dark'] .places-advanced-filter:not(.active):hover {
+  color: var(--cv-color-navy);
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 48%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .places-quick-filters button.active {
+  color: #071712;
+  background: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+
+html[data-theme='dark'] .places-quick-filters button:not(.active) small {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface-muted);
+  border: 1px solid var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .places-quick-filters button.active small {
+  color: #071712;
+  background: rgb(7 23 18 / 15%);
+  border-color: transparent;
+}
+
+html[data-theme='dark'] .places-view-switcher {
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .places-view-switcher button + button {
+  border-left-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .places-view-switcher button.active,
+html[data-theme='dark'] .places-advanced-filter.active {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 16%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 58%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .places-sort-control select {
+  color: var(--cv-color-navy);
+  background: transparent;
+}
+
+html[data-theme='dark'] .places-place-actions > button,
+html[data-theme='dark'] .places-place-actions a,
+html[data-theme='dark'] .places-place-actions > div a,
+html[data-theme='dark'] .places-place-actions > div button,
+html[data-theme='dark'] .places-place-actions button[aria-label^='Supprimer'] {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .places-place-actions .favorite:hover {
+  color: #ff8eb2;
+  background: rgb(120 32 63 / 28%);
+  border-color: rgb(255 142 178 / 48%);
+}
+
+html[data-theme='dark'] .places-place-actions .favorite.active {
+  color: #ff8eb2;
+  background: rgb(120 32 63 / 38%);
+  border-color: rgb(255 142 178 / 52%);
+}
+
+html[data-theme='dark'] .places-place-actions a:hover {
+  color: #8dbbff;
+  background: rgb(37 99 235 / 18%);
+  border-color: rgb(141 187 255 / 45%);
+}
+
+html[data-theme='dark'] .places-place-actions button[aria-label^='Supprimer']:hover {
+  color: #fff;
+  background: #c9342b;
+  border-color: #e85b52;
+}
+
+html[data-theme='dark'] .maps-catalog__privacy {
+  color: #9bafba;
+  background: color-mix(in srgb, #9bafba 8%, var(--cv-surface));
+  border-color: color-mix(in srgb, #9bafba 24%, var(--cv-border-subtle));
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .maps-catalog__privacy.shared {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 30%, var(--cv-border-subtle));
+}
+
+html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom {
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong) !important;
+  box-shadow: 0 5px 16px rgb(0 0 0 / 34%);
+}
+
+html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong) !important;
+}
+
+html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a:hover,
+html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a:focus-visible {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 12%, var(--cv-surface));
+}
+
+html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a.leaflet-disabled {
+  color: color-mix(in srgb, var(--cv-color-gray) 62%, transparent);
+  background: var(--cv-surface-muted);
+  cursor: not-allowed;
+}
+
+html[data-theme='dark'] .trip-day-settings,
+html[data-theme='dark'] .trip-day-settings .trip-time-settings,
+html[data-theme='dark'] .trip-day-color-section {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .trip-day-settings > summary,
+html[data-theme='dark'] .trip-day-settings .trip-time-settings > summary {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+}
+
+html[data-theme='dark'] .trip-day-settings > summary:hover,
+html[data-theme='dark'] .trip-day-settings .trip-time-settings > summary:hover {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
+}
+
+html[data-theme='dark'] .trip-day-settings__body,
+html[data-theme='dark'] .trip-day-settings .trip-time-settings__body {
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .trip-day-color-section h4,
+html[data-theme='dark'] .trip-day-color-picker > label {
+  color: var(--cv-color-navy);
+}
+
+html[data-theme='dark'] :is(
+  .create-map-dialog header button,
+  .create-map-dialog .dialog-actions > button:first-child
+) {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] :is(
+  .create-map-dialog header button,
+  .create-map-dialog .dialog-actions > button:first-child
+):hover,
+html[data-theme='dark'] :is(
+  .create-map-dialog header button,
+  .create-map-dialog .dialog-actions > button:first-child
+):focus-visible {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 12%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 58%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .create-map-dialog .country-results button:hover,
+html[data-theme='dark'] .create-map-dialog .country-results button:focus-visible,
+html[data-theme='dark'] .create-map-dialog .country-results button.selected {
+  color: var(--cv-color-navy);
+  background: color-mix(in srgb, var(--cv-color-teal) 13%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 52%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] :is(
+  .primary-button,
+  .panel-icon-button.primary,
+  .places-redesign-create,
+  .photo-upload-button
+):not(:disabled) {
+  color: #061713;
+  background: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+
+html[data-theme='dark'] :is(
+  .primary-button,
+  .panel-icon-button.primary,
+  .places-redesign-create,
+  .photo-upload-button
+):not(:disabled):hover,
+html[data-theme='dark'] :is(
+  .primary-button,
+  .panel-icon-button.primary,
+  .places-redesign-create,
+  .photo-upload-button
+):not(:disabled):focus-visible {
+  color: #04110e;
+  background: #42d7be;
+  border-color: #42d7be;
+}
+
+html[data-theme='dark'] :is(
+  .primary-button,
+  .panel-icon-button.primary,
+  .secondary-button,
+  .dialog-actions button
+):disabled {
+  color: #82959f;
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-theme-switch > i,
+  .user-theme-switch > i > b { transition: none; }
 }

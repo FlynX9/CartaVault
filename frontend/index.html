@@ -9,6 +9,22 @@
     />
     <link rel="icon" type="image/png" href="/cartavault-icon.png" />
     <title>CartaVault</title>
+    <script>
+      (() => {
+        try {
+          const preference = localStorage.getItem('cartavault.theme')
+          const dark = preference === 'dark'
+            || ((preference === null || preference === 'system')
+              && matchMedia('(prefers-color-scheme: dark)').matches)
+          const theme = dark ? 'dark' : 'light'
+          document.documentElement.dataset.theme = theme
+          document.documentElement.style.colorScheme = theme
+        } catch {
+          document.documentElement.dataset.theme = 'light'
+          document.documentElement.style.colorScheme = 'light'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

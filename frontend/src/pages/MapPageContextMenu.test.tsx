@@ -3,6 +3,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { MapPage } from './MapPage'
 
+vi.mock('../theme/useTheme', () => ({
+  useTheme: () => ({
+    preference: 'light',
+    resolvedTheme: 'light',
+    setPreference: vi.fn(),
+    toggleTheme: vi.fn(),
+  }),
+}))
+
 vi.mock('../components/map/PoiMap', () => ({
   PoiMap: ({ onMapContextMenuOpen }: { onMapContextMenuOpen: (state: { latitude: number; longitude: number; containerX: number; containerY: number }) => void }) => (
     <button type="button" onClick={() => onMapContextMenuOpen({ latitude: 48.1234567, longitude: -2.7654321, containerX: 120, containerY: 240 })}>

@@ -27,6 +27,7 @@ import { useAuth } from './auth/useAuth'
 import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages'
 import { useConfirmDialog } from './components/common/useConfirmDialog'
+import { ThemeProvider } from './theme/ThemeProvider'
 
 const MapsWorkspacePanel = lazy(async () => ({ default: (await import('./components/maps/MapsWorkspacePanel')).MapsWorkspacePanel }))
 const MapMembersDialog = lazy(async () => ({ default: (await import('./components/maps/MapMembersDialog')).MapMembersDialog }))
@@ -287,7 +288,7 @@ function WorkspaceApp() {
   </div>{exportMap && <Suspense fallback={null}><KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} /></Suspense>}{membersMap && <Suspense fallback={null}><MapMembersDialog poiMap={membersMap} onClose={() => setMembersMap(null)} onMapUpdated={(updated) => setMaps((current) => current.map((item) => item.id === updated.id ? updated : item))} /></Suspense>}{adminOpen && <RequireAdmin><Suspense fallback={<div className="account-overlay"><section className="admin-console admin-console--loading" role="status">Chargement de l’administration…</section></div>}><AdminConsole onClose={closeAdmin} /></Suspense></RequireAdmin>}{confirmationDialog}</main>
 }
 
-function App() {
+function AppContent() {
   const location = useLocation()
   if (location.pathname.startsWith('/invitations/')) return <Routes><Route path="/invitations/:token" element={<InvitationPage />} /></Routes>
   if (location.pathname === '/register') return <RegisterPage />
@@ -296,4 +297,6 @@ function App() {
   return <RequireAuth><WorkspaceApp /></RequireAuth>
 }
 
-export default App
+export default function App() {
+  return <ThemeProvider><AppContent /></ThemeProvider>
+}

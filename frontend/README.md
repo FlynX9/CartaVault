@@ -135,6 +135,22 @@ navigateur, la même origine que l’interface. Le cookie de session
 un déploiement sans reverse proxy `/api`. Elle est normalisée par
 `src/config.ts` afin qu’une barre oblique finale ne produise pas de doubles `/`.
 
+## Thème de l'application
+
+Le sous-menu utilisateur contient le sélecteur clair/sombre. Le choix est
+persisté dans `localStorage` sous une clé globale utilisée au démarrage et une
+clé liée à l'utilisateur connecté. En l'absence de choix explicite, CartaVault
+suit `prefers-color-scheme`. Un script exécuté avant le chargement de React
+applique immédiatement le thème résolu afin d'éviter un flash clair.
+
+Le thème couvre le shell, les panneaux Lieux et Sorties, les écrans de gestion,
+la console d'administration, les formulaires, les modales, les notifications,
+la popup POI et les états de chargement, vides, de succès et d'erreur. Les
+couleurs métier des statuts, des marqueurs et des journées restent inchangées
+et contrastées. Le fond CartaVault OpenFreeMap bascule entre ses styles clair
+et sombre sans recréer la carte ; Satellite et un fond OSM choisi explicitement
+restent indépendants.
+
 ## Fonds cartographiques
 
 La carte principale propose CartaVault clair et sombre (styles vectoriels locaux
@@ -391,7 +407,7 @@ affiche leur nombre avant confirmation. Les viewers voient les statuts et les
 filtres sans recevoir d’action de modification.
 # Console d’administration
 
-La route protégée `/admin` ouvre une grande modale claire au-dessus du workspace cartographique persistant, avec navigation Utilisateurs, Clés API, Quotas et État de l’instance. L’entrée n’apparaît que dans le sous-menu utilisateur d’un administrateur ; elle a été retirée de la navigation latérale et du panneau Compte. La modale est responsive, navigable au clavier, fermable avec Échap et conserve le thème clair CartaVault tant qu’aucun véritable sélecteur de thème applicatif n’est disponible.
+La route protégée `/admin` ouvre une grande modale au-dessus du workspace cartographique persistant, avec navigation Utilisateurs, Clés API, Quotas et État de l’instance. L’entrée n’apparaît que dans le sous-menu utilisateur d’un administrateur ; elle a été retirée de la navigation latérale et du panneau Compte. La modale est responsive, navigable au clavier, fermable avec Échap et suit le thème CartaVault actif.
 
 ## Administration des quotas
 
