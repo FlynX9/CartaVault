@@ -13,7 +13,7 @@ function normalizeDescription(value: string): string | null {
 }
 
 export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
-  singularLabel: 'une catégorie', pluralLabel: 'Catégories', supportsDescription: true, supportsIcon: true,
+  singularLabel: 'une catégorie', pluralLabel: 'Catégories', newLabel: 'Nouvelle catégorie', supportsDescription: true, supportsIcon: true,
   load: (signal, q) => mapId ? getCategories(signal, q, mapId) : getCategories(signal, q),
   save: async (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim(); const description = normalizeDescription(values.description); const icon = values.icon ?? DEFAULT_CATEGORY_ICON_ID
@@ -28,7 +28,7 @@ export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
 })
 
 export const tagsConfig = (mapId?: string): EntityManagementConfig => ({
-  singularLabel: 'un tag', pluralLabel: 'Tags', supportsDescription: false, supportsColor: true,
+  singularLabel: 'un tag', pluralLabel: 'Tags', newLabel: 'Nouveau tag', supportsDescription: false, supportsColor: true,
   load: (signal, q) => mapId ? getTags(signal, q, mapId) : getTags(signal, q),
   save: (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim()

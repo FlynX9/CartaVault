@@ -7,6 +7,7 @@ export const workspaceEn = {
   'maps.count_one': '{{count}} map',
   'maps.count_other': '{{count}} maps',
   'maps.create': 'Create a map',
+  'maps.new': 'New map',
   'maps.closePanel': 'Close Maps panel',
   'maps.search': 'Search maps',
   'maps.loading': 'Loading maps…',

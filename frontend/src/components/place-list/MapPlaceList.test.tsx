@@ -26,6 +26,9 @@ describe('MapPlaceList', () => {
     expect(screen.getByRole('button', { name: /Favoris6/ })).toBeVisible()
     expect(screen.queryByRole('button', { name: /À faire/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /À vérifier/ })).not.toBeInTheDocument()
+    const createLink = screen.getByRole('link', { name: 'Nouveau lieu' })
+    expect(createLink).toHaveClass('panel-create-action')
+    expect(createLink).toHaveTextContent('Nouveau lieu')
 
     fireEvent.click(screen.getByRole('button', { name: /Favoris6/ }))
     expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ functionalState: 'non_visited', isFavorite: true }))

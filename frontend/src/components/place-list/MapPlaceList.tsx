@@ -237,7 +237,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
         </div>
         <div className="places-redesign-header-actions">
           {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label={t('places.import')} onClick={() => setImporting(true)}><FileUp size={17} /></button>}
-          {!collapsed && poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create" to={withMap('/places/new', poiMap.id)}><Plus size={18} />{t('places.new')}</Link>}
+          {!collapsed && poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create panel-create-action" to={withMap('/places/new', poiMap.id)} aria-label={t('places.new')} title={t('places.new')}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{t('places.new')}</span></Link>}
           <button className="panel-icon-button places-collapse-toggle" type="button" aria-label={collapsed ? t('places.expandPanel') : t('places.closePanel')} aria-expanded={!collapsed} onClick={() => onCollapsedChange(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button>
         </div>
       </header>

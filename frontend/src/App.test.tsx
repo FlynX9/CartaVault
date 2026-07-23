@@ -117,13 +117,13 @@ describe('map URL workspace', () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
     await waitFor(() => expect(getMaps).toHaveBeenCalled())
     fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
-    expect(await screen.findByRole('button', { name: 'Ouvrir Carte France' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Carte France est ouverte' })).toBeVisible()
 
     let resolveRefresh!: (maps: typeof MAP[]) => void
     vi.mocked(getMaps).mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve }))
     fireEvent.focus(window)
 
-    expect(screen.getByRole('button', { name: 'Ouvrir Carte France' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Carte France est ouverte' })).toBeVisible()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     resolveRefresh([MAP])
   })

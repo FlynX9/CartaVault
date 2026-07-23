@@ -13,6 +13,7 @@ import { DEFAULT_TAG_COLOR } from '../../tags/tagColors'
 export interface EntityManagementConfig {
   singularLabel: string
   pluralLabel: string
+  newLabel: string
   supportsDescription: boolean
   supportsIcon?: boolean
   supportsVisited?: boolean
@@ -97,7 +98,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
 
   const create = () => { if (!readOnly) { setEditing(null); setFieldErrors({}); setError(null) } }
   const isPanel = variant === 'panel'
-  const createAction = readOnly ? undefined : <button className="panel-icon-button primary" type="button" aria-label={`Créer ${config.singularLabel}`} title={`Créer ${config.singularLabel}`} onClick={create}><Plus size={18} /></button>
+  const createAction = readOnly ? undefined : <button className="panel-icon-button primary panel-create-action" type="button" aria-label={`Créer ${config.singularLabel}`} title={config.newLabel} onClick={create}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{config.newLabel}</span></button>
 
   return <section className={`admin-page${isPanel ? ' cv-management-panel' : ''}`}>
     {isPanel

@@ -141,8 +141,9 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       title="Statuts"
       count={`${statuses.length} élément${statuses.length > 1 ? 's' : ''}`}
       action={canEdit ? (
-        <button className="panel-icon-button primary" type="button" aria-label="Créer un statut" title="Créer un statut" onClick={create}>
-          <Plus size={18} />
+        <button className="panel-icon-button primary panel-create-action" type="button" aria-label="Créer un statut" title="Nouveau statut" onClick={create}>
+          <Plus size={18} aria-hidden="true" />
+          <span className="panel-create-action__label">Nouveau statut</span>
         </button>
       ) : undefined}
     />

@@ -5,6 +5,7 @@ export const workspaceFr = {
   'maps.count_one': '{{count}} carte',
   'maps.count_other': '{{count}} cartes',
   'maps.create': 'Créer une carte',
+  'maps.new': 'Nouvelle carte',
   'maps.closePanel': 'Fermer le panneau Cartes',
   'maps.search': 'Rechercher une carte',
   'maps.loading': 'Chargement des cartes…',
