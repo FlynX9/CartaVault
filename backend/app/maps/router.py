@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -20,6 +21,8 @@ from app.countries.catalog import load_country_bounds
 from app.countries.models import Country
 from app.countries.schemas import CountrySummary
 from app.database import get_db
+from app.emails.providers.base import EmailDeliveryError
+from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 from app.maps.schemas import (
     InvitationCreate, InvitationRead, MapCreate, MapPlaceFieldConfig, MapRead, MapUpdate,
@@ -30,6 +33,7 @@ from app.places.fields import normalize_place_field_config
 from app.statuses.service import create_default_statuses
 
 router = APIRouter(prefix="/maps", tags=["maps"])
+logger = logging.getLogger(__name__)
 
 
 def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
@@ -245,6 +249,22 @@ def create_invitation(map_id: UUID, data: InvitationCreate, database_session: Se
     database_session.add(invitation)
     database_session.commit()
     database_session.refresh(invitation)
+    if existing_user is None:
+        try:
+            locale = str((current_user.preferences or {}).get("language", "fr"))
+            EmailService(provider_from_database(database_session)).send_map_share_registration_invitation(
+                recipient=email,
+                inviter_email=current_user.email,
+                map_name=access.map.name,
+                locale=locale,
+            )
+        except EmailDeliveryError as error:
+            logger.warning(
+                "map_share_registration_email_failed map_id=%s recipient=%s code=%s",
+                map_id,
+                email,
+                error.code,
+            )
     return InvitationRead.model_validate(invitation, from_attributes=True).model_copy(update={"invitation_url": f"/invitations/{raw_token}"})
 
 

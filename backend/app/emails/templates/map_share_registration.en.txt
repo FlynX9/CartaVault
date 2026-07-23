@@ -1,0 +1,7 @@
+CartaVault — Sharing invitation
+
+$inviter_email would like to share the "$map_name" map with you.
+
+Create your CartaVault account with this email address. Once your registration has been approved, you will be able to accept the invitation from your workspace.
+
+Create my account: $registration_url

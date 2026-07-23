@@ -1,6 +1,6 @@
 import { Mail, Send } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { register } from '../api/registration'
 import { useI18n } from '../i18n/useI18n'
@@ -14,6 +14,7 @@ import {
 
 export function RegisterPage() {
   const { locale, t } = useI18n()
+  const [searchParams] = useSearchParams()
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -60,7 +61,7 @@ export function RegisterPage() {
       >
         <p className="auth-card__context">{t('auth.register.context')}</p>
         <form className="auth-form" onSubmit={(event) => void submit(event)}>
-          <AuthInput label={t('auth.email')} icon={Mail} name="email" type="email" autoComplete="email" placeholder={t('auth.emailPlaceholder')} required />
+          <AuthInput label={t('auth.email')} icon={Mail} name="email" type="email" autoComplete="email" placeholder={t('auth.emailPlaceholder')} defaultValue={searchParams.get('email') ?? ''} required />
           <AuthPasswordInput label={t('auth.password')} name="password" autoComplete="new-password" placeholder={t('auth.password.minimum', { count: 12 })} required minLength={12} />
           <AuthPasswordInput label={t('auth.register.confirmPassword')} name="confirmation" autoComplete="new-password" placeholder={t('auth.register.confirmPlaceholder')} required minLength={12} />
           {error && <p className="auth-alert" role="alert">{error}</p>}

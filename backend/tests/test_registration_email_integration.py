@@ -27,7 +27,62 @@ def _install_provider(monkeypatch: pytest.MonkeyPatch) -> RecordingProvider:
     provider = RecordingProvider()
     monkeypatch.setattr("app.auth.public_router.provider_from_database", lambda _session: provider)
     monkeypatch.setattr("app.auth.registration_admin_router.provider_from_database", lambda _session: provider)
+    monkeypatch.setattr("app.maps.router.provider_from_database", lambda _session: provider)
     return provider
+
+
+def test_unknown_map_invitee_receives_registration_email(
+    integration_client,
+    database_session,
+    auth_user,
+    monkeypatch,
+) -> None:
+    from app.countries.models import Country
+    from app.maps.models import MapMembership, PoiMap
+
+    provider = _install_provider(monkeypatch)
+    country = database_session.query(Country).filter_by(iso_alpha3="BEL").one()
+    poi_map = PoiMap(name="Shared with a new account", country_id=country.id, owner_id=auth_user.id, is_private=True)
+    database_session.add(poi_map)
+    database_session.flush()
+    database_session.add(MapMembership(map_id=poi_map.id, user_id=auth_user.id, role="owner"))
+    database_session.commit()
+
+    recipient = f"invitee-{uuid4()}@example.test"
+    created = integration_client.post(f"/maps/{poi_map.id}/invitations", json={"email": recipient, "role": "viewer"})
+
+    assert created.status_code == 201
+    assert len(provider.messages) == 1
+    message = provider.messages[0]
+    assert message.recipients == [recipient]
+    assert auth_user.email in message.text
+    assert poi_map.name in message.text
+    assert "/register?email=" in message.text
+
+
+def test_existing_map_invitee_uses_in_app_invitation_without_registration_email(
+    integration_client,
+    database_session,
+    auth_user,
+    monkeypatch,
+) -> None:
+    from app.countries.models import Country
+    from app.maps.models import MapMembership, PoiMap
+
+    provider = _install_provider(monkeypatch)
+    recipient = User(email=f"member-{uuid4()}@example.test", display_name="Existing member", password_hash="test-only", is_active=True)
+    database_session.add(recipient)
+    country = database_session.query(Country).filter_by(iso_alpha3="BEL").one()
+    poi_map = PoiMap(name="Shared with an existing account", country_id=country.id, owner_id=auth_user.id, is_private=True)
+    database_session.add(poi_map)
+    database_session.flush()
+    database_session.add(MapMembership(map_id=poi_map.id, user_id=auth_user.id, role="owner"))
+    database_session.commit()
+
+    created = integration_client.post(f"/maps/{poi_map.id}/invitations", json={"email": recipient.email, "role": "viewer"})
+
+    assert created.status_code == 201
+    assert provider.messages == []
 
 
 def test_registration_requires_admin_approval_before_user_creation(integration_client, database_session, monkeypatch) -> None:
