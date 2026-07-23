@@ -4490,7 +4490,7 @@ body {
 .popup-overview .popup-chips .tag { border-radius: 999px; background: #e7f4f1; color: #2b6059; }
 .popup-tag-more { background: #eef2f6 !important; color: var(--cv-color-gray) !important; }
 .popup-rating { display: inline-flex; align-items: center; gap: 0.15rem; margin: 0.65rem 0 0; color: var(--cv-color-navy); }
-.popup-rating svg { color: var(--cv-color-navy); }
+.popup-rating svg { color: inherit; }
 .popup-rating strong { margin-left: 0.4rem; color: var(--cv-color-gray); font-size: 0.84rem; }
 .popup-location { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 0 1rem; padding: 0.7rem 0; border-top: 1px solid #e5ebef; color: var(--cv-color-gray); font-size: 0.87rem; }
 .popup-location > span { display: inline-flex; min-width: 0; align-items: center; gap: 0.45rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -4555,7 +4555,7 @@ body {
 .place-map-popup .popup-overview-tag-section > span { font-size: 0.64rem; }
 .place-map-popup .popup-chips .tag, .place-map-popup .popup-empty-chip { font-size: 0.72rem; }
 .place-map-popup .popup-rating { margin: 0.1rem 0 0; }
-.place-map-popup .popup-rating svg { width: 15px; height: 15px; }
+.place-map-popup .popup-rating svg { width: 18px; height: 18px; }
 .place-map-popup .popup-rating strong { font-size: 0.76rem; }
 .place-map-popup .popup-location { min-height: 40px; margin: 0 1rem; padding: 0.55rem 0; font-size: 0.8rem; }
 .place-map-popup .popup-location button { width: 30px; height: 30px; }

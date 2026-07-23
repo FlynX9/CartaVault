@@ -40,7 +40,10 @@ describe('PlaceMapPopup', () => {
   it('shows only the rating that matches the status visit classification', async () => {
     vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, interest_rating: 4, visit_rating: 2 })
     const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
-    expect(await screen.findByLabelText('Envie avant visite : 4 sur 5')).toBeVisible()
+    const interestRating = await screen.findByLabelText('Envie avant visite : 4 sur 5')
+    expect(interestRating).toBeVisible()
+    expect(interestRating).toHaveStyle({ color: PLACE.status.color })
+    expect(interestRating.querySelector('svg')).toHaveAttribute('width', '19')
     expect(screen.queryByLabelText(/Évaluation après visite/)).not.toBeInTheDocument()
     expect(screen.getByText('4.0')).toBeVisible()
 
