@@ -1,13 +1,16 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
 import { ThemeProvider } from '../../theme/ThemeProvider'
 import { TopBar } from './TopBar'
 
 const logout = vi.fn()
 let currentUser = { id: 'user-id', email: 'admin@example.test', display_name: 'Admin', is_admin: true, avatar_url: null }
+
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: currentUser, logout }) }))
 vi.mock('../notifications/NotificationCenter', () => ({ NotificationCenter: () => <button type="button" aria-label="Notifications">Notifications</button> }))
 vi.mock('../account/AccountModal', () => ({ AccountModal: ({ onClose }: { onClose: () => void }) => <div role="dialog" aria-label="Espace compte"><button onClick={onClose}>Fermer</button></div> }))
+
 function renderTopBar(markerCount = 0) {
   return render(
     <ThemeProvider>
@@ -29,7 +32,7 @@ describe('TopBar account entry', () => {
   it('places notifications before the user menu and opens account options explicitly', () => {
     renderTopBar(2)
     const notifications = screen.getByRole('button', { name: 'Notifications' })
-    const account = screen.getByRole('button', { name: 'Menu utilisateur de Admin' })
+    const account = screen.getByRole('button', { name: /Admin$/ })
     expect(notifications.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(account)
     const options = screen.getByRole('menuitem', { name: 'Options' })
@@ -41,9 +44,9 @@ describe('TopBar account entry', () => {
     expect(api).toHaveAttribute('target', '_blank')
     expect(api).toHaveAttribute('rel', 'noopener noreferrer')
     expect(options.compareDocumentPosition(api) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.getByRole('menuitem', { name: 'Déconnexion' })).toBeVisible()
+    expect(screen.getByRole('menuitem', { name: /connexion$/i })).toBeVisible()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Options' }))
+    fireEvent.click(options)
     expect(screen.getByRole('dialog', { name: 'Espace compte' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -51,28 +54,31 @@ describe('TopBar account entry', () => {
 
   it('logs out directly from the user menu', () => {
     renderTopBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Menu utilisateur de Admin' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Déconnexion' }))
+    fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /connexion$/i }))
     expect(logout).toHaveBeenCalledOnce()
   })
 
   it('hides administration from a standard user', () => {
     currentUser = { ...currentUser, is_admin: false }
     renderTopBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Menu utilisateur de Admin' }))
+    fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
     expect(screen.queryByRole('menuitem', { name: 'Administration' })).not.toBeInTheDocument()
   })
 
-  it('switches and persists the visual theme from the user menu', () => {
+  it('places the persistent theme toggle to the right of the user and outside its menu', () => {
     localStorage.setItem('cartavault.theme', 'light')
     renderTopBar()
-    fireEvent.click(screen.getByRole('button', { name: 'Menu utilisateur de Admin' }))
-    const themeSwitch = screen.getByRole('menuitemcheckbox', { name: 'Thème sombre' })
-    expect(themeSwitch).toHaveAttribute('aria-checked', 'false')
+    const account = screen.getByRole('button', { name: /Admin$/ })
+    const themeSwitch = screen.getByRole('button', { name: /sombre$/i })
+    expect(account.compareDocumentPosition(themeSwitch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(themeSwitch).toHaveAttribute('aria-pressed', 'false')
 
     fireEvent.click(themeSwitch)
 
-    expect(themeSwitch).toHaveAttribute('aria-checked', 'true')
+    expect(themeSwitch).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(account)
+    expect(screen.queryByRole('menuitemcheckbox')).not.toBeInTheDocument()
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
     expect(localStorage.getItem('cartavault.theme')).toBe('dark')
     expect(localStorage.getItem('cartavault.theme:user-id')).toBe('dark')
