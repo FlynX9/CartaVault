@@ -4650,10 +4650,10 @@ body {
 .place-map-popup .popup-summary p { grid-template-columns: 1fr !important; grid-template-rows: auto auto; align-items: start; padding: 0 0.5rem; }
 .place-map-popup .popup-summary b { font-size: 0.64rem; }
 .place-map-popup .popup-summary span { align-items: flex-start; overflow: visible; font-size: 0.72rem; line-height: 1.28; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
-.place-map-popup .popup-summary-copy { display: inline-flex; min-width: 0; align-items: center; gap: 0.3rem; padding: 0; color: var(--cv-color-slate); background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; }
-.place-map-popup .popup-summary-copy span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.place-map-popup .popup-summary-copy svg { flex: 0 0 auto; opacity: 0; transition: opacity 150ms ease; }
-.place-map-popup .popup-summary-copy:hover svg, .place-map-popup .popup-summary-copy:focus-visible svg { opacity: 1; }
+.place-map-popup .popup-summary article .popup-summary-coordinate-row { display: flex; min-width: 0; align-items: center; gap: 0.35rem; }
+.place-map-popup .popup-summary-coordinate-row > span { min-width: 0; overflow: hidden; flex: 1 1 auto; text-overflow: ellipsis; white-space: nowrap; }
+.place-map-popup .popup-summary-copy { display: inline-grid; width: 1.55rem; min-width: 1.55rem; height: 1.55rem; min-height: 1.55rem; align-self: center; flex: 0 0 1.55rem; padding: 0; color: var(--cv-color-slate); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: 0.38rem; cursor: pointer; place-items: center; transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease; }
+.place-map-popup .popup-summary-copy:hover, .place-map-popup .popup-summary-copy:focus-visible { color: var(--cv-color-teal); background: var(--cv-surface-muted); border-color: var(--cv-color-teal); outline: 0; }
 .place-map-popup > .popup-details, .place-map-popup > .popup-links, .place-map-popup > .popup-history, .place-map-popup > .popup-imported-data { display: none; }
 .place-map-popup .popup-actions { padding: 0.7rem 1rem 0.85rem; }
 .place-map-popup .popup-actions button, .place-map-popup .popup-actions a { height: 34px; padding: 0 0.62rem; font-size: 0.74rem; }

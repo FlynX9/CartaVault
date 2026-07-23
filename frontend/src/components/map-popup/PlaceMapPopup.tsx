@@ -95,11 +95,10 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
     {detailsError && <p className="inline-error" role="alert">{detailsError}</p>}
     {displayLocation && <div className="popup-location">
       <span><MapPin size={17} aria-hidden="true" />{displayLocation}</span>
-      {coordinates && <button type="button" aria-label="Copier les coordonnées GPS" title="Copier les coordonnées" onClick={() => void navigator.clipboard?.writeText(coordinates)}><Copy size={17} aria-hidden="true" /></button>}
     </div>}
     {fieldEnabled('description') && <section className="popup-description"><h3><FileText size={17} aria-hidden="true" />Description</h3><p>{place.description || '\u00A0'}</p></section>}
     <div className="popup-summary">
-      {coordinates && <article><MapPin aria-hidden="true" /><p><b>Coordonnées</b><button className="popup-summary-copy" type="button" aria-label="Copier les coordonnées GPS" title="Copier les coordonnées" onClick={() => void navigator.clipboard?.writeText(coordinates)}><span>{coordinates}</span><Copy size={12} aria-hidden="true" /></button></p></article>}
+      {coordinates && <article aria-label="Coordonnées GPS"><MapPin aria-hidden="true" /><p><b>Coordonnées</b><span className="popup-summary-coordinate-row"><span>{coordinates}</span><button className="popup-summary-copy" type="button" aria-label="Copier les coordonnées GPS" title="Copier les coordonnées" onClick={() => void navigator.clipboard?.writeText(coordinates)}><Copy size={13} aria-hidden="true" /></button></span></p></article>}
       {fieldEnabled('access') && <article><LockKeyhole aria-hidden="true" /><p><b>Accès</b><span>{place.access || 'Non renseigné'}</span></p></article>}
       {fieldEnabled('danger_level') && <article className="popup-summary-danger"><TriangleAlert aria-hidden="true" /><p><b>Danger</b><span>{place.danger_level || 'Non renseigné'}</span></p></article>}
       <article><CalendarDays aria-hidden="true" /><p><b>Ajouté le</b><span>{formatDate(place.created_at)}</span></p></article>
