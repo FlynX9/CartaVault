@@ -106,6 +106,17 @@ describe('MapPlaceList', () => {
     expect(getPlaceListPosition).not.toHaveBeenCalled()
   })
 
+  it('shows the rating relevant to the functional status in the status color', async () => {
+    const visited = { id: 'visited-place', name: 'Visité', latitude: 48, longitude: 2, interest_rating: 2, visit_rating: 4.5, status: { id: 'visited-status', name: 'Visité', slug: 'visited', color: '#16A34A', is_active: true, functional_state: 'visited' }, categories: [], tags: [] } as never
+    const planned = { id: 'planned-place', name: 'À visiter', latitude: 49, longitude: 3, interest_rating: 3.5, visit_rating: null, status: { id: 'planned-status', name: 'À faire', slug: 'planned', color: '#2563EB', is_active: true, functional_state: 'non_visited' }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([visited, planned])
+
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByLabelText('Note 4.5')).toHaveStyle({ color: '#16A34A' })
+    expect(screen.getByLabelText('Note 3.5')).toHaveStyle({ color: '#2563EB' })
+  })
+
   it('makes available POIs draggable only during trip planning', async () => {
     const place = { id: 'place-id', name: 'Étape', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
