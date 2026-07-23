@@ -4531,8 +4531,11 @@ body {
 .leaflet-popup-content:has(.place-map-popup) { width: min(42rem, calc(100vw - 3rem)) !important; }
 .place-map-popup { width: min(42rem, calc(100vw - 3rem)); }
 .popup-overview-tag-section { display: flex; width: 100%; align-items: center; gap: 0.55rem; margin-top: 0.65rem; }
-.popup-overview-tag-section > span { flex: 0 0 auto; color: #8a96a3; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
+.popup-overview-tag-section > span, .popup-overview-status-section > span, .popup-overview-category-section > span { flex: 0 0 auto; color: #8a96a3; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
 .popup-overview-tag-section .popup-overview-tags { margin: 0; }
+.popup-overview-status-section, .popup-overview-category-section { display: flex; width: 100%; align-items: center; gap: 0.55rem; margin-top: 0.35rem; }
+.popup-overview-status-section p { display: inline-flex; align-items: center; gap: 0.38rem; margin: 0; color: var(--cv-color-slate); font-size: 0.78rem; font-weight: 650; }
+.popup-overview-category-section .popup-primary-category { margin: 0; }
 .popup-empty-chip { color: var(--cv-color-gray); font-size: 0.78rem; font-style: italic; }
 .place-map-popup .popup-summary .status-dot.neutral { background: #9da8b4; }
 @media (max-width: 560px) {
@@ -4552,7 +4555,7 @@ body {
 .place-map-popup .popup-heading-actions button { width: 30px; min-width: 30px; height: 30px; min-height: 30px; }
 .place-map-popup .popup-primary-category { margin: 0.25rem 0 0; padding: 0.28rem 0.48rem; font-size: 0.78rem; }
 .place-map-popup .popup-overview-tag-section { min-height: 23px; margin-top: 0.1rem; }
-.place-map-popup .popup-overview-tag-section > span { font-size: 0.64rem; }
+.place-map-popup .popup-overview-tag-section > span, .place-map-popup .popup-overview-status-section > span, .place-map-popup .popup-overview-category-section > span { font-size: 0.64rem; }
 .place-map-popup .popup-chips .tag, .place-map-popup .popup-empty-chip { font-size: 0.72rem; }
 .place-map-popup .popup-rating { margin: 0.1rem 0 0; }
 .place-map-popup .popup-rating svg { width: 18px; height: 18px; }

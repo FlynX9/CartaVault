@@ -78,13 +78,14 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
       <PlacePopupGallery placeName={place.name} photos={photos} isLoading={photosLoading} error={photosError} />
       <div className="popup-overview">
         <div className="popup-heading">
-          <h2 id={`popup-title-${place.id}`} ref={titleRef} tabIndex={-1} title={place.name}><span className="popup-title-marker" style={{ backgroundColor: place.status.color }}><MapPin size={18} aria-hidden="true" /></span>{place.name}</h2>
+          <h2 id={`popup-title-${place.id}`} ref={titleRef} tabIndex={-1} title={place.name}>{place.name}</h2>
           <div className="popup-heading-actions">
             {canEdit && fieldEnabled('favorite') && <button className={`popup-favorite${place.is_favorite ? ' active' : ''}`} type="button" aria-pressed={place.is_favorite === true} aria-label={place.is_favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'} onClick={() => void toggleFavorite()}><Heart size={17} fill={place.is_favorite ? 'currentColor' : 'none'} /></button>}
             <button className="popup-close" type="button" aria-label="Fermer la fiche" title="Fermer" onClick={onClose}>×</button>
           </div>
         </div>
-        <p className="popup-primary-category">{primaryCategory ? <><CategoryIconPreview iconId={primaryCategory.icon} size={16} showLabel={false} />{primaryCategory.name}</> : 'Catégorie non renseignée'}</p>
+        <section className="popup-overview-status-section" aria-label="Statut"><span>Statut</span><p><i className="status-dot" style={{ backgroundColor: place.status.color }} aria-hidden="true" />{place.status.name}</p></section>
+        <section className="popup-overview-category-section" aria-label="Catégorie"><span>Catégorie</span><p className="popup-primary-category">{primaryCategory ? <><CategoryIconPreview iconId={primaryCategory.icon} size={16} showLabel={false} />{primaryCategory.name}</> : 'Catégorie non renseignée'}</p></section>
         <section className="popup-overview-tag-section" aria-label="Tags"><span>Tags</span><ul className="popup-chips popup-overview-tags">{place.tags.length > 0 ? place.tags.slice(0, 3).map((item) => <li className="tag" key={item.id} style={getTagColorStyle(item.color)}>{item.name}</li>) : <li className="popup-empty-chip">Aucun tag</li>}{place.tags.length > 3 && <li className="tag popup-tag-more">+{place.tags.length - 3}</li>}</ul></section>
         {fieldEnabled('ratings') && <p className="popup-rating" style={{ color: place.status.color }} aria-label={rating !== null && rating !== undefined ? `${ratingLabel} : ${rating} sur 5` : `${ratingLabel} : aucune note`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={19} fill={rating !== null && rating !== undefined && star <= Math.round(rating) ? 'currentColor' : 'none'} />)}<strong>{rating !== null && rating !== undefined ? rating.toFixed(1) : 'Non noté'}</strong></p>}
       </div>

@@ -33,8 +33,14 @@ describe('PlaceMapPopup', () => {
   it('renders the primary category icon in the overview area', async () => {
     const { container } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     await screen.findByRole('heading', { name: 'Manufacture' })
-    expect(screen.getByText('Industrie')).toBeVisible()
-    expect(container.querySelector('.popup-primary-category [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
+    expect(container.querySelector('.popup-title-marker')).not.toBeInTheDocument()
+    const status = screen.getByRole('region', { name: 'Statut' })
+    expect(within(status).getByText('Statut')).toBeVisible()
+    expect(within(status).getByText('À faire')).toBeVisible()
+    const category = screen.getByRole('region', { name: 'Catégorie' })
+    expect(within(category).getByText('Catégorie')).toBeVisible()
+    expect(within(category).getByText('Industrie')).toBeVisible()
+    expect(category.querySelector('.popup-primary-category [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
   })
 
   it('shows only the rating that matches the status visit classification', async () => {
