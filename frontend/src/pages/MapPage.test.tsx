@@ -141,10 +141,15 @@ describe('MapPage', () => {
 
   it('persists an explicit selection locally and in account preferences', async () => {
     const account = await import('../api/account')
-    render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48.17, 6.45], zoom: 13 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
+    const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
     fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' }))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark')
+    expect(themeState.setPreference).not.toHaveBeenCalled()
+    rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark')
     expect(window.localStorage.getItem('cartavault.basemap')).toBe('cartavault-dark')
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'cartavault-dark' })))
   })

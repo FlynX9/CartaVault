@@ -21,10 +21,7 @@ const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
 
-function resolveThemeBasemap(value: unknown, theme: 'light' | 'dark'): BasemapId {
-  if (value === 'cartavault-light' || value === 'cartavault-dark') {
-    return resolveAvailableBasemapId(theme === 'dark' ? 'cartavault-dark' : 'cartavault-light', theme === 'dark')
-  }
+function resolvePreferredBasemap(value: unknown, theme: 'light' | 'dark'): BasemapId {
   return resolveAvailableBasemapId(value, theme === 'dark')
 }
 
@@ -116,10 +113,10 @@ export function MapPage({
   tripNotice = null,
   onTripCoordinateAdd,
 }: MapPageProps) {
-  const { resolvedTheme, setPreference: setThemePreference } = useTheme()
+  const { resolvedTheme } = useTheme()
   const themeRef = useRef(resolvedTheme)
   themeRef.current = resolvedTheme
-  const initialBasemapRef = useRef(resolveThemeBasemap(
+  const initialBasemapRef = useRef(resolvePreferredBasemap(
     loadStoredBasemapPreference() ?? getThemeDefaultBasemapId(resolvedTheme === 'dark'),
     resolvedTheme,
   ))
@@ -127,6 +124,7 @@ export function MapPage({
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
   const explicitBasemapSelectionRef = useRef<BasemapId | null>(null)
+  const previousThemeRef = useRef(resolvedTheme)
   const tileFailuresRef = useRef(new Map<BasemapId, number>())
   const failedBasemapsRef = useRef(new Set<BasemapId>())
   const [localSearchResult, setLocalSearchResult] = useState<GeocodingResult | null>(null)
@@ -152,14 +150,14 @@ export function MapPage({
         return
       }
       if (failedBasemapsRef.current.size > 0) return
-      const preferred = resolveThemeBasemap(preferences.preferred_basemap, themeRef.current)
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
     }).catch(() => undefined)
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
       accountPreferencesRef.current = preferences
-      const preferred = resolveThemeBasemap(preferences.preferred_basemap, themeRef.current)
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
       setBasemapNotice(null)
@@ -169,13 +167,10 @@ export function MapPage({
   }, [])
 
   useEffect(() => {
+    if (previousThemeRef.current === resolvedTheme) return
+    previousThemeRef.current = resolvedTheme
     if (basemapId !== 'cartavault-light' && basemapId !== 'cartavault-dark') return
-    const explicitSelection = explicitBasemapSelectionRef.current
-    if (explicitSelection === basemapId) {
-      const explicitTheme = explicitSelection === 'cartavault-dark' ? 'dark' : 'light'
-      if (explicitTheme !== resolvedTheme) return
-      explicitBasemapSelectionRef.current = null
-    }
+    explicitBasemapSelectionRef.current = null
     const themedBasemap: BasemapId = resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light'
     if (basemapId === themedBasemap) return
     setBasemapId(themedBasemap)
@@ -192,8 +187,6 @@ export function MapPage({
 
   const selectBasemap = (id: BasemapId) => {
     const selected = resolveAvailableBasemapId(id)
-    if (selected === 'cartavault-light') setThemePreference('light')
-    if (selected === 'cartavault-dark') setThemePreference('dark')
     explicitBasemapSelectionRef.current = selected
     setBasemapId(selected)
     setBasemapNotice(null)
