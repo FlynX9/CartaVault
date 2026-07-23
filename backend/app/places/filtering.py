@@ -35,7 +35,7 @@ class PlaceFilters:
     in_trip: bool | None
     is_favorite: bool | None
     functional_state: Literal["non_visited", "visited"] | None
-    rating_min: int | None
+    rating_min: float | None
     sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"]
     sort_direction: Literal["asc", "desc"]
 
@@ -59,7 +59,7 @@ def get_place_filters(
     is_favorite: bool | None = Query(default=None),
     is_visited: bool | None = Query(default=None),
     functional_state: Literal["non_visited", "visited"] | None = Query(default=None),
-    rating_min: int | None = Query(default=None, ge=1, le=5),
+    rating_min: float | None = Query(default=None, ge=1, le=5, multiple_of=0.5),
     sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"] = Query(default="name"),
     sort_direction: Literal["asc", "desc"] = Query(default="asc"),
 ) -> PlaceFilters:

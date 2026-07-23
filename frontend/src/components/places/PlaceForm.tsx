@@ -47,6 +47,9 @@ const CHRONOLOGY_FIELDS = [
   ['abandonment_date', 'Abandon', 100],
 ] as const
 
+const RATING_OPTIONS = Array.from({ length: 9 }, (_, index) => 1 + index * 0.5)
+const formatRatingLabel = (rating: number) => `${rating.toFixed(1)} étoile${rating > 1 ? 's' : ''}`
+
 export function PlaceForm({
   initialValues,
   categories,
@@ -162,8 +165,8 @@ export function PlaceForm({
           {fieldEnabled('favorite') && <label className="form-field favorite-field"><span>Favori</span><input type="checkbox" checked={values.isFavorite} onChange={(event) => setValue('isFavorite', event.target.checked)} /></label>}
           {fieldEnabled('ratings') && ratingField && <div className="form-field form-field-wide place-rating-fields">
             <span>Notation</span>
-            {ratingField === 'interest' && <label>Envie avant visite<select value={values.interestRating} onChange={(event) => setValue('interestRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label>}
-            {ratingField === 'visit' && <label>Évaluation après visite<select value={values.visitRating} onChange={(event) => setValue('visitRating', event.target.value)}><option value="">Aucune note</option>{[1, 2, 3, 4, 5].map((rating) => <option key={rating} value={rating}>{rating} étoile{rating > 1 ? 's' : ''}</option>)}</select></label>}
+            {ratingField === 'interest' && <label>Envie avant visite<select value={values.interestRating} onChange={(event) => setValue('interestRating', event.target.value)}><option value="">Aucune note</option>{RATING_OPTIONS.map((rating) => <option key={rating} value={rating}>{formatRatingLabel(rating)}</option>)}</select></label>}
+            {ratingField === 'visit' && <label>Évaluation après visite<select value={values.visitRating} onChange={(event) => setValue('visitRating', event.target.value)}><option value="">Aucune note</option>{RATING_OPTIONS.map((rating) => <option key={rating} value={rating}>{formatRatingLabel(rating)}</option>)}</select></label>}
           </div>}
           <label className="form-field category-field">
             <span>Catégorie</span>

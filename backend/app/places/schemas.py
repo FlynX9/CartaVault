@@ -29,8 +29,8 @@ class PlaceCreate(BaseModel):
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
     is_favorite: bool = False
-    interest_rating: int | None = Field(default=None, ge=1, le=5)
-    visit_rating: int | None = Field(default=None, ge=1, le=5)
+    interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
 
 
 class PlaceUpdate(BaseModel):
@@ -47,8 +47,8 @@ class PlaceUpdate(BaseModel):
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
     is_favorite: bool | None = None
-    interest_rating: int | None = Field(default=None, ge=1, le=5)
-    visit_rating: int | None = Field(default=None, ge=1, le=5)
+    interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
 
     @model_validator(mode="after")
     def validate_partial_update(self) -> Self:
@@ -153,8 +153,8 @@ class PlaceRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_favorite: bool
-    interest_rating: int | None
-    visit_rating: int | None
+    interest_rating: float | None
+    visit_rating: float | None
     is_visited: bool
     deleted_at: datetime | None
     links: list[PlaceLinkRead]

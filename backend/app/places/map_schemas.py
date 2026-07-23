@@ -50,8 +50,8 @@ class PlaceMapRead(BaseModel):
     tags: list[MapTagRead]
     is_favorite: bool
     is_visited: bool
-    interest_rating: int | None
-    visit_rating: int | None
+    interest_rating: float | None
+    visit_rating: float | None
 
 
 class PlaceMapPageRead(BaseModel):

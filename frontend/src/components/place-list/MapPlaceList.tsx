@@ -35,7 +35,10 @@ interface Props {
 const sortPlaces = (places: PlaceDetails[]) => places
 const toggle = (values: string[], value: string) => values.includes(value) ? values.filter((item) => item !== value) : [...values, value]
 const formatLocation = (place: PlaceDetails) => place.region || (place.latitude !== null && place.longitude !== null ? `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}` : 'Coordonnées non renseignées')
-const formatRating = (place: PlaceDetails) => place.interest_rating ?? place.visit_rating
+const formatRating = (place: PlaceDetails) => {
+  const rating = place.interest_rating ?? place.visit_rating
+  return rating == null ? null : rating.toFixed(1)
+}
 
 export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
   const { t, formatDate } = useI18n()

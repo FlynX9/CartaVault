@@ -24,7 +24,7 @@ export function normalizePlaceFilters(filters: PlaceFilters): PlaceFilters {
   for (const key of listKeys) normalized[key] = normalizeList(normalized[key])
   normalized.createdFrom = normalizeDate(normalized.createdFrom); normalized.createdTo = normalizeDate(normalized.createdTo)
   normalized.updatedFrom = normalizeDate(normalized.updatedFrom); normalized.updatedTo = normalizeDate(normalized.updatedTo)
-  normalized.ratingMin = normalized.ratingMin && normalized.ratingMin >= 1 && normalized.ratingMin <= 5 ? normalized.ratingMin : null
+  normalized.ratingMin = normalized.ratingMin && normalized.ratingMin >= 1 && normalized.ratingMin <= 5 && Number.isInteger(normalized.ratingMin * 2) ? normalized.ratingMin : null
   if (normalized.createdFrom && normalized.createdTo && normalized.createdFrom > normalized.createdTo) normalized.createdTo = null
   if (normalized.updatedFrom && normalized.updatedTo && normalized.updatedFrom > normalized.updatedTo) normalized.updatedTo = null
   return normalized

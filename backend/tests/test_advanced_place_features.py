@@ -25,8 +25,8 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
             "latitude": 48.1,
             "longitude": 2.1,
             "is_favorite": True,
-            "interest_rating": 5,
-            "visit_rating": 4,
+            "interest_rating": 4.5,
+            "visit_rating": 3.5,
         },
     )
     assert place_response.status_code == 201
@@ -46,16 +46,19 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
     details = integration_client.get(f"/places/{place_id}")
     assert details.status_code == 200
     assert details.json()["is_favorite"] is True
-    assert details.json()["interest_rating"] == 5
-    assert details.json()["visit_rating"] == 4
+    assert details.json()["interest_rating"] == 4.5
+    assert details.json()["visit_rating"] == 3.5
     assert details.json()["is_visited"] is True
 
     filtered = integration_client.get(
         "/places",
-        params={"map_id": str(poi_map.id), "is_favorite": True, "functional_state": "visited", "rating_min": 4},
+        params={"map_id": str(poi_map.id), "is_favorite": True, "functional_state": "visited", "rating_min": 3.5},
     )
     assert filtered.status_code == 200
     assert [item["id"] for item in filtered.json()] == [place_id]
+
+    invalid_rating = integration_client.patch(f"/places/{place_id}", json={"visit_rating": 3.25})
+    assert invalid_rating.status_code == 422
 
     map_filtered = integration_client.get(
         "/places/map",

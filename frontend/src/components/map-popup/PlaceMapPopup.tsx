@@ -24,6 +24,10 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value))
 }
 
+function ratingFillPercentage(rating: number, star: number): number {
+  return Math.max(0, Math.min(100, (rating - (star - 1)) * 100))
+}
+
 export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onClose }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const [place, setPlace] = useState<PlaceDetails | null>(null)
@@ -89,7 +93,10 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
           <section className="popup-overview-category-section" aria-label="Catégorie"><span>Catégorie</span><p className="popup-primary-category">{primaryCategory ? <><CategoryIconPreview iconId={primaryCategory.icon} size={16} showLabel={false} />{primaryCategory.name}</> : 'Non renseignée'}</p></section>
           <section className="popup-overview-tag-section" aria-label="Tags"><span>Tags</span><ul className="popup-chips popup-overview-tags">{place.tags.length > 0 ? place.tags.slice(0, 2).map((item) => <li className="tag" key={item.id} style={getTagColorStyle(item.color)}>{item.name}</li>) : <li className="popup-empty-chip">Aucun tag</li>}{place.tags.length > 2 && <li className="tag popup-tag-more">+{place.tags.length - 2}</li>}</ul></section>
         </div>
-        {fieldEnabled('ratings') && <section className="popup-overview-rating-section" aria-label="Note"><span>Note</span><p className="popup-rating" style={{ color: place.status.color }} aria-label={rating !== null && rating !== undefined ? `${ratingLabel} : ${rating} sur 5` : `${ratingLabel} : aucune note`}>{[1, 2, 3, 4, 5].map((star) => <Star key={star} size={19} fill={rating !== null && rating !== undefined && star <= Math.round(rating) ? 'currentColor' : 'none'} />)}<strong>{rating !== null && rating !== undefined ? rating.toFixed(1) : 'Non noté'}</strong></p></section>}
+        {fieldEnabled('ratings') && <section className="popup-overview-rating-section" aria-label="Note"><span>Note</span><p className="popup-rating" style={{ color: place.status.color }} aria-label={rating !== null && rating !== undefined ? `${ratingLabel} : ${rating} sur 5` : `${ratingLabel} : aucune note`}>{[1, 2, 3, 4, 5].map((star) => {
+          const fillPercentage = rating === null || rating === undefined ? 0 : ratingFillPercentage(rating, star)
+          return <span className="popup-rating-star" data-fill={fillPercentage} key={star}><Star size={19} fill="none" /><span className="popup-rating-star-fill" style={{ width: `${fillPercentage}%` }}><Star size={19} fill="currentColor" /></span></span>
+        })}<strong>{rating !== null && rating !== undefined ? rating.toFixed(1) : 'Non noté'}</strong></p></section>}
       </div>
     </section>
     {detailsError && <p className="inline-error" role="alert">{detailsError}</p>}

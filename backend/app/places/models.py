@@ -1,9 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, SmallInteger, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,8 +34,14 @@ class Place(Base):
         Index("places_map_favorite_idx", "map_id", "is_favorite"),
         Index("places_map_interest_rating_idx", "map_id", "interest_rating"),
         Index("places_map_visit_rating_idx", "map_id", "visit_rating"),
-        CheckConstraint("interest_rating IS NULL OR interest_rating BETWEEN 1 AND 5", name="places_interest_rating_range"),
-        CheckConstraint("visit_rating IS NULL OR visit_rating BETWEEN 1 AND 5", name="places_visit_rating_range"),
+        CheckConstraint(
+            "interest_rating IS NULL OR (interest_rating BETWEEN 1 AND 5 AND interest_rating * 2 = trunc(interest_rating * 2))",
+            name="places_interest_rating_range",
+        ),
+        CheckConstraint(
+            "visit_rating IS NULL OR (visit_rating BETWEEN 1 AND 5 AND visit_rating * 2 = trunc(visit_rating * 2))",
+            name="places_visit_rating_range",
+        ),
         Index(
             "places_location_idx",
             "location",
@@ -104,8 +111,8 @@ class Place(Base):
     )
 
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    interest_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
-    visit_rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    interest_rating: Mapped[Decimal | None] = mapped_column(Numeric(2, 1), nullable=True)
+    visit_rating: Mapped[Decimal | None] = mapped_column(Numeric(2, 1), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_by_user_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,

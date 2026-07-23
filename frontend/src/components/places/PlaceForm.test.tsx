@@ -57,4 +57,13 @@ describe('PlaceForm', () => {
     expect(screen.queryByRole('combobox', { name: 'Envie avant visite' })).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Évaluation après visite' })).toBeVisible()
   })
+
+  it('offers ratings in half-point increments', () => {
+    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', statusId: 'todo' }} maps={[MAP]} allowMapChange categories={[]} tags={[]} statuses={[{ id: 'todo', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }]} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
+
+    const rating = screen.getByRole('combobox', { name: 'Envie avant visite' })
+    expect(rating).toHaveTextContent('1.5 étoile')
+    expect(rating).toHaveTextContent('4.5 étoiles')
+    expect(rating).not.toHaveTextContent('1.25')
+  })
 })
