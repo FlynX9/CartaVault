@@ -221,7 +221,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
 
   return (
     <aside
-      className={`country-place-panel cv-workspace-panel places-redesign-panel${collapsed ? ' is-collapsed' : ''}`}
+      className={`country-place-panel cv-workspace-panel places-redesign-panel${collapsed ? ' is-collapsed' : ''}${tripPlanningActive ? ' is-trip-planning' : ''}`}
       id="map-place-list"
       tabIndex={-1}
       aria-labelledby="map-place-list-title"

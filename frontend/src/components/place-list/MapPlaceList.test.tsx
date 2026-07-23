@@ -123,6 +123,7 @@ describe('MapPlaceList', () => {
     const { container, rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: /^Étape/ })).toHaveAttribute('draggable', 'true')
     expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).not.toBeInTheDocument()
+    expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-trip-planning')
     rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: /^Étape/ })).toHaveAttribute('draggable', 'false')
     expect(screen.getByText('Ajouté')).toBeVisible()

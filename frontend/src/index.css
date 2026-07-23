@@ -4529,6 +4529,12 @@ body {
   }
 }
 
+/* Place editing is intentionally unavailable while assigning places to a trip. */
+.places-redesign-panel.is-trip-planning .places-place-actions a[aria-label^='Éditer'],
+.places-redesign-panel.is-trip-planning .places-place-actions button[aria-label^='Supprimer'] {
+  display: none;
+}
+
 /* POI card: compact map-first composition. */
 .place-map-popup {
   width: min(620px, calc(100vw - 40px));
