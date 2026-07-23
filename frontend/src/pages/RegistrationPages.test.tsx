@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { confirmPasswordReset, register, requestPasswordReset } from '../api/registration'
+import { ThemeContext } from '../theme/themeContext'
 import { ForgotPasswordPage, ResetPasswordPage } from './PasswordResetPages'
 import { RegisterPage } from './RegisterPage'
 
@@ -14,10 +16,22 @@ vi.mock('../api/registration', () => ({
 
 describe('public registration and password reset pages', () => {
   beforeEach(() => vi.clearAllMocks())
+  afterEach(() => cleanup())
+
+  const renderPage = (page: ReactNode, initialEntries = ['/']) => render(
+    <ThemeContext.Provider value={{
+      preference: 'light',
+      resolvedTheme: 'light',
+      setPreference: vi.fn(),
+      toggleTheme: vi.fn(),
+    }}>
+      <MemoryRouter initialEntries={initialEntries}>{page}</MemoryRouter>
+    </ThemeContext.Provider>,
+  )
 
   it('submits a registration request and explains admin approval', async () => {
     vi.mocked(register).mockResolvedValue({ status: 'pending', message: 'ok' })
-    render(<MemoryRouter><RegisterPage /></MemoryRouter>)
+    renderPage(<RegisterPage />)
     fireEvent.change(screen.getByLabelText('Adresse email'), { target: { value: 'new@example.test' } })
     fireEvent.change(screen.getByLabelText(/^Mot de passe/), { target: { value: 'a sufficiently long password' } })
     fireEvent.change(screen.getByLabelText(/^Confirmer le mot de passe$/), { target: { value: 'a sufficiently long password' } })
@@ -29,7 +43,7 @@ describe('public registration and password reset pages', () => {
 
   it('always displays the generic reset request response', async () => {
     vi.mocked(requestPasswordReset).mockResolvedValue({ message: 'Si un compte correspond à cette adresse, un email a été envoyé.' })
-    render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>)
+    renderPage(<ForgotPasswordPage />)
     fireEvent.change(screen.getByLabelText('Adresse email'), { target: { value: 'user@example.test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }))
 
@@ -38,7 +52,7 @@ describe('public registration and password reset pages', () => {
 
   it('confirms a reset token from the URL', async () => {
     vi.mocked(confirmPasswordReset).mockResolvedValue()
-    render(<MemoryRouter initialEntries={['/reset-password?token=opaque-token-value-that-is-long-enough']}><ResetPasswordPage /></MemoryRouter>)
+    renderPage(<ResetPasswordPage />, ['/reset-password?token=opaque-token-value-that-is-long-enough'])
     fireEvent.change(screen.getByLabelText(/^Nouveau mot de passe$/), { target: { value: 'a brand new long password' } })
     fireEvent.change(screen.getByLabelText(/^Confirmer le mot de passe$/), { target: { value: 'a brand new long password' } })
     fireEvent.click(screen.getByRole('button', { name: 'Modifier le mot de passe' }))

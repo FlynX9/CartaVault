@@ -1,7 +1,15 @@
+import { Mail, Send } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 
 import { register } from '../api/registration'
+import {
+  AuthCard,
+  AuthInput,
+  AuthLayout,
+  AuthPasswordInput,
+  AuthSubmitButton,
+} from '../components/auth/AuthLayout'
 
 export function RegisterPage() {
   const [done, setDone] = useState(false)
@@ -23,24 +31,43 @@ export function RegisterPage() {
     }
   }
 
-  return <main className="login-page"><section className="login-card" aria-labelledby="register-title">
-    <img src="/cartavault-icon.png" alt="" className="login-card__logo" />
-    <p className="cv-workspace-panel__eyebrow">Créer un compte</p>
-    <h1 id="register-title">Rejoindre CartaVault</h1>
-    {done ? <div className="auth-success" role="status">
-      <h2>Demande transmise</h2>
-      <p>Un administrateur doit maintenant approuver votre inscription. Vous recevrez un email dès que votre compte sera actif.</p>
-      <Link to="/">Retour à la connexion</Link>
-    </div> : <>
-      <p>Votre demande sera examinée par un administrateur avant la création du compte.</p>
-      <form onSubmit={(event) => void submit(event)}>
-        <label>Adresse email<input name="email" type="email" autoComplete="email" required /></label>
-        <label>Mot de passe<input name="password" type="password" autoComplete="new-password" required minLength={12} /><small>12 caractères minimum.</small></label>
-        <label>Confirmer le mot de passe<input name="confirmation" type="password" autoComplete="new-password" required minLength={12} /></label>
-        {error && <p className="form-alert" role="alert">{error}</p>}
-        <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Envoi…' : 'Demander mon inscription'}</button>
-      </form>
-      <p className="auth-link"><Link to="/">Déjà inscrit ? Se connecter</Link></p>
-    </>}
-  </section></main>
+  if (done) {
+    return (
+      <AuthLayout>
+        <AuthCard
+          title="Demande transmise"
+          subtitle="Votre inscription est maintenant en attente de validation."
+          status="success"
+          footer={<p>Déjà inscrit ? <Link to="/">Se connecter</Link></p>}
+        >
+          <div className="auth-confirmation" role="status">
+            <p>Un administrateur doit approuver votre demande. Vous recevrez un email dès que votre compte sera actif.</p>
+            <Link className="auth-secondary-link" to="/">Retour à la connexion</Link>
+          </div>
+        </AuthCard>
+      </AuthLayout>
+    )
+  }
+
+  return (
+    <AuthLayout>
+      <AuthCard
+        title="Créer votre compte"
+        subtitle="Rejoignez votre espace cartographique privé."
+        footer={<p>Déjà inscrit ? <Link to="/">Se connecter</Link></p>}
+      >
+        <p className="auth-card__context">Votre demande sera examinée par un administrateur avant l’activation du compte.</p>
+        <form className="auth-form" onSubmit={(event) => void submit(event)}>
+          <AuthInput label="Adresse email" icon={Mail} name="email" type="email" autoComplete="email" placeholder="votre@email.com" required />
+          <AuthPasswordInput label="Mot de passe" name="password" autoComplete="new-password" placeholder="12 caractères minimum" required minLength={12} />
+          <AuthPasswordInput label="Confirmer le mot de passe" name="confirmation" autoComplete="new-password" placeholder="Confirmez votre mot de passe" required minLength={12} />
+          {error && <p className="auth-alert" role="alert">{error}</p>}
+          <AuthSubmitButton disabled={busy}>
+            <Send aria-hidden="true" />
+            {busy ? 'Envoi…' : 'Demander mon inscription'}
+          </AuthSubmitButton>
+        </form>
+      </AuthCard>
+    </AuthLayout>
+  )
 }

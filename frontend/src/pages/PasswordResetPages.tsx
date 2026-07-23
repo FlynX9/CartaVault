@@ -1,7 +1,15 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeft, KeyRound, Mail, Send } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { confirmPasswordReset, requestPasswordReset } from '../api/registration'
+import {
+  AuthCard,
+  AuthInput,
+  AuthLayout,
+  AuthPasswordInput,
+  AuthSubmitButton,
+} from '../components/auth/AuthLayout'
 
 export function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null)
@@ -22,15 +30,42 @@ export function ForgotPasswordPage() {
     }
   }
 
-  return <AuthCard title="Mot de passe oublié">
-    <p>Indiquez votre adresse email pour recevoir un lien temporaire.</p>
-    {message ? <p className="auth-success" role="status">{message}</p> : <form onSubmit={(event) => void submit(event)}>
-      <label>Adresse email<input name="email" type="email" autoComplete="email" required /></label>
-      {error && <p className="form-alert" role="alert">{error}</p>}
-      <button className="primary-button" disabled={busy}>{busy ? 'Envoi…' : 'Envoyer le lien'}</button>
-    </form>}
-    <p className="auth-link"><Link to="/">Retour à la connexion</Link></p>
-  </AuthCard>
+  if (message) {
+    return (
+      <AuthLayout>
+        <AuthCard
+          title="Consultez votre messagerie"
+          subtitle="Votre demande de réinitialisation a bien été prise en compte."
+          status="success"
+          footer={<p><Link to="/">Retour à la connexion</Link></p>}
+        >
+          <div className="auth-confirmation" role="status">
+            <p>{message}</p>
+          </div>
+        </AuthCard>
+      </AuthLayout>
+    )
+  }
+
+  return (
+    <AuthLayout>
+      <AuthCard
+        title="Mot de passe oublié ?"
+        subtitle="Recevez un lien sécurisé pour retrouver l’accès à votre compte."
+        footer={<p><Link to="/"><ArrowLeft aria-hidden="true" /> Retour à la connexion</Link></p>}
+      >
+        <p className="auth-card__context">Indiquez l’adresse email associée à votre compte CartaVault.</p>
+        <form className="auth-form" onSubmit={(event) => void submit(event)}>
+          <AuthInput label="Adresse email" icon={Mail} name="email" type="email" autoComplete="email" placeholder="votre@email.com" required />
+          {error && <p className="auth-alert" role="alert">{error}</p>}
+          <AuthSubmitButton disabled={busy}>
+            <Send aria-hidden="true" />
+            {busy ? 'Envoi…' : 'Envoyer le lien'}
+          </AuthSubmitButton>
+        </form>
+      </AuthCard>
+    </AuthLayout>
+  )
 }
 
 export function ResetPasswordPage() {
@@ -56,24 +91,44 @@ export function ResetPasswordPage() {
     }
   }
 
-  return <AuthCard title="Nouveau mot de passe">
-    {done ? <div className="auth-success" role="status">
-      <p>Votre mot de passe a été modifié et vos anciennes sessions ont été fermées.</p>
-      <Link to="/">Se connecter</Link>
-    </div> : !token ? <p className="form-alert" role="alert">Ce lien de réinitialisation est incomplet.</p> : <form onSubmit={(event) => void submit(event)}>
-      <label>Nouveau mot de passe<input name="password" type="password" autoComplete="new-password" required minLength={12} /></label>
-      <label>Confirmer le mot de passe<input name="confirmation" type="password" autoComplete="new-password" required minLength={12} /></label>
-      {error && <p className="form-alert" role="alert">{error}</p>}
-      <button className="primary-button" disabled={busy}>{busy ? 'Validation…' : 'Modifier le mot de passe'}</button>
-    </form>}
-  </AuthCard>
-}
+  if (done) {
+    return (
+      <AuthLayout>
+        <AuthCard
+          title="Mot de passe modifié"
+          subtitle="Votre compte est de nouveau sécurisé."
+          status="success"
+          footer={<p><Link to="/">Se connecter à CartaVault</Link></p>}
+        >
+          <div className="auth-confirmation" role="status">
+            <p>Votre mot de passe a été modifié et vos anciennes sessions ont été fermées.</p>
+          </div>
+        </AuthCard>
+      </AuthLayout>
+    )
+  }
 
-function AuthCard({ title, children }: { title: string; children: ReactNode }) {
-  return <main className="login-page"><section className="login-card">
-    <img src="/cartavault-icon.png" alt="" className="login-card__logo" />
-    <p className="cv-workspace-panel__eyebrow">Sécurité</p>
-    <h1>{title}</h1>
-    {children}
-  </section></main>
+  return (
+    <AuthLayout>
+      <AuthCard
+        title="Créer un nouveau mot de passe"
+        subtitle="Choisissez un mot de passe unique pour protéger votre espace."
+        footer={<p><Link to="/"><ArrowLeft aria-hidden="true" /> Retour à la connexion</Link></p>}
+      >
+        {!token ? (
+          <div className="auth-alert" role="alert">Ce lien de réinitialisation est incomplet.</div>
+        ) : (
+          <form className="auth-form" onSubmit={(event) => void submit(event)}>
+            <AuthPasswordInput label="Nouveau mot de passe" name="password" autoComplete="new-password" placeholder="12 caractères minimum" required minLength={12} />
+            <AuthPasswordInput label="Confirmer le mot de passe" name="confirmation" autoComplete="new-password" placeholder="Confirmez votre mot de passe" required minLength={12} />
+            {error && <p className="auth-alert" role="alert">{error}</p>}
+            <AuthSubmitButton disabled={busy}>
+              <KeyRound aria-hidden="true" />
+              {busy ? 'Validation…' : 'Modifier le mot de passe'}
+            </AuthSubmitButton>
+          </form>
+        )}
+      </AuthCard>
+    </AuthLayout>
+  )
 }
