@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ThemeProvider } from '../../theme/ThemeProvider'
@@ -13,10 +14,18 @@ vi.mock('../account/AccountModal', () => ({ AccountModal: ({ onClose }: { onClos
 
 function renderTopBar(markerCount = 0) {
   return render(
-    <ThemeProvider>
-      <TopBar isMapWorkspace markerCount={markerCount} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} />
-    </ThemeProvider>,
+    <MemoryRouter initialEntries={['/workspace']}>
+      <ThemeProvider>
+        <TopBar isMapWorkspace markerCount={markerCount} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} />
+        <CurrentPath />
+      </ThemeProvider>
+    </MemoryRouter>,
   )
+}
+
+function CurrentPath() {
+  const location = useLocation()
+  return <output data-testid="current-path">{location.pathname}</output>
 }
 
 afterEach(() => {
@@ -52,11 +61,21 @@ describe('TopBar account entry', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('logs out directly from the user menu', () => {
+  it('logs out directly from the user menu and returns to the login page', async () => {
     renderTopBar()
     fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: /connexion$/i }))
     expect(logout).toHaveBeenCalledOnce()
+    expect(await screen.findByTestId('current-path')).toHaveTextContent('/login')
+  })
+
+  it('returns to the login page even when the logout request fails', async () => {
+    logout.mockRejectedValueOnce(new Error('Network error'))
+    renderTopBar()
+    fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /connexion$/i }))
+
+    expect(await screen.findByTestId('current-path')).toHaveTextContent('/login')
   })
 
   it('hides administration from a standard user', () => {

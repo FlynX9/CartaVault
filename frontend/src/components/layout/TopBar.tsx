@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Braces, ChevronDown, LogOut, Moon, Settings2, ShieldCheck, Sun } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { accountAvatarUrl } from '../../api/account'
 import { useAuth } from '../../auth/useAuth'
@@ -20,6 +21,7 @@ const API_DOCUMENTATION_URL = API_BASE_URL === '/api' ? 'http://localhost:8000/d
 
 export function TopBar({ isMapWorkspace, markerCount, onMapAccessChanged, onOpenAdmin }: TopBarProps) {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const { resolvedTheme, toggleTheme } = useTheme()
   const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -29,6 +31,16 @@ export function TopBar({ isMapWorkspace, markerCount, onMapAccessChanged, onOpen
   const initial = user?.display_name.trim().charAt(0).toLocaleUpperCase() || '?'
   const avatar = accountAvatarUrl(user?.avatar_url ?? null)
   const nextThemeLabel = resolvedTheme === 'dark' ? t('auth.theme.light') : t('auth.theme.dark')
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    try {
+      await logout()
+    } catch {
+      // The local session is cleared by AuthProvider even if the server is unavailable.
+    } finally {
+      navigate('/login', { replace: true })
+    }
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -97,7 +109,7 @@ export function TopBar({ isMapWorkspace, markerCount, onMapAccessChanged, onOpen
                     </a>
                   </div>
                   <footer>
-                    <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); void logout() }}>
+                    <button role="menuitem" type="button" onClick={() => void handleLogout()}>
                       <LogOut size={17} aria-hidden="true" />{t('topbar.logout')}
                     </button>
                   </footer>
