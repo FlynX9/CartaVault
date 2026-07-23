@@ -6135,6 +6135,12 @@ html[data-theme='dark'] .basemap-selector button.active {
   background: var(--cv-brand-navy);
   border-color: var(--cv-brand-navy);
 }
+html[data-theme='dark'] .basemap-selector button:not(.active):hover,
+html[data-theme='dark'] .basemap-selector button:not(.active):focus-visible {
+  color: var(--cv-color-navy);
+  background: color-mix(in srgb, var(--cv-color-teal) 14%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-strong));
+}
 
 /* High-contrast interactive controls inside the dark workspace panels. */
 html[data-theme='dark'] .places-quick-filters button:not(.active),
