@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import { CircleDot, MapPinned, MapPin, Route, Shapes, Tag } from 'lucide-react'
+import { CircleDot, Images, MapPinned, MapPin, Route, Shapes, Tag } from 'lucide-react'
 
-export type WorkspacePanel = 'maps' | 'places' | 'categories' | 'tags' | 'statuses' | null
+export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | null
 
 interface Props {
   activePanel: WorkspacePanel
@@ -23,6 +23,7 @@ export function MainNavigation({ activePanel, onPanelChange, isAdmin = false, on
     <div className="main-navigation-links cv-main-navigation__items">
       <button type="button" className={navClass(activePanel === 'maps')} aria-label="Cartes" aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={21} /><span>Cartes</span></button>
       <button type="button" className={navClass(activePanel === 'places' && !tripPlanningActive)} aria-label="Lieux" aria-pressed={activePanel === 'places' && !tripPlanningActive} onClick={() => togglePanel('places')}><MapPin size={21} /><span>Lieux</span></button>
+      <button type="button" className={navClass(activePanel === 'media')} aria-label="Médias" aria-pressed={activePanel === 'media'} onClick={() => togglePanel('media')}><Images size={21} /><span>Médias</span></button>
       <button type="button" className={navClass(tripPlanningActive)} aria-label="Préparation de sortie" aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={21} /><span>Sorties</span></button>
       <button type="button" className={navClass(activePanel === 'categories')} aria-label="Catégories" aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={21} /><span>Catégories</span></button>
       <button type="button" className={navClass(activePanel === 'tags')} aria-label="Tags" aria-pressed={activePanel === 'tags'} onClick={() => togglePanel('tags')}><Tag size={21} /><span>Tags</span></button>

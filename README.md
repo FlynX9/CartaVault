@@ -346,3 +346,15 @@ Made in Vosges
 # Administration
 
 La console centrale CartaVault est disponible sur `/admin` uniquement pour les administrateurs. Elle regroupe la gestion paginée des utilisateurs, les credentials globaux sûrs, les quotas et le diagnostic de l’instance. Les clés personnelles restent dans le compte utilisateur et les secrets d’infrastructure ne sont jamais exposés. Voir [l’audit des paramètres](docs/administration-audit.md).
+# Media library
+
+CartaVault includes a centralized **Media** workspace for every authenticated
+user. It only lists photos attached to maps the user owns or belongs to; global
+administration does not grant access to private map media. The library provides
+server-side pagination, search, map/format/primary/diagnostic filters, safe
+downloads, lazy WebP thumbnails, metadata editing, primary-photo selection,
+and permission-checked single or bulk deletion.
+
+The original local storage remains private. API responses never expose an
+absolute or relative storage path. Generated thumbnails are stored below the
+configured photo storage root and can be recreated at any time.

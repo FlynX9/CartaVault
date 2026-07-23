@@ -30,9 +30,10 @@ dans l’administration globale.
 ## Gestion des photos
 
 Le panneau d’édition fournit l’upload multiple JPEG, PNG et WebP (20 Mio par
-fichier), la photo principale, l’ordre et la suppression. Les images restent
-chargées uniquement depuis l’endpoint de fichier officiel ; il n’existe pas
-encore d’endpoint de miniatures.
+fichier), la photo principale, l’ordre et la suppression. Les originaux restent
+chargés uniquement depuis l’endpoint de fichier officiel. La médiathèque
+centrale utilise son endpoint de miniatures WebP protégé afin de ne pas charger
+les originaux dans sa grille.
 
 ## Import KMZ
 
@@ -392,3 +393,17 @@ convertit les Gio en octets avant l'appel API. Les actions incompatibles sont
 désactivées et expliquées. La section Utilisateurs permet l'affectation d'un
 profil actif et l'approbation d'une inscription préselectionne le profil par
 défaut courant.
+# Media workspace
+
+The **Médias / Media** entry in the main navigation opens a responsive,
+permission-aware grid spanning all maps available to the signed-in user.
+Filtering and pagination are performed by the backend. Grid images use the
+dedicated thumbnail endpoint rather than loading originals. Viewers can inspect
+and download media; editors and owners can update captions and dates, choose
+the primary photo, or delete media. Bulk deletion only includes selected items
+the current user can edit.
+
+The workspace has compact mobile layouts, keyboard-labelled actions, loading,
+empty, error, and missing-file states. Its copy is isolated in the `media`
+message module so that the French and English labels can evolve independently
+from the component.

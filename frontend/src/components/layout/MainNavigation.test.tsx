@@ -27,13 +27,15 @@ describe('MainNavigation', () => {
     render(<MemoryRouter><MainNavigation activePanel={'places' as WorkspacePanel} onPanelChange={onPanelChange} onOpenTrips={onOpenTrips} isAdmin /><Location /></MemoryRouter>)
 
     fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Médias' }))
     fireEvent.click(screen.getByRole('button', { name: 'Tags' }))
     fireEvent.click(screen.getByRole('button', { name: 'Statuts' }))
     fireEvent.click(screen.getByRole('button', { name: 'Préparation de sortie' }))
 
     expect(onPanelChange).toHaveBeenNthCalledWith(1, 'categories')
-    expect(onPanelChange).toHaveBeenNthCalledWith(2, 'tags')
-    expect(onPanelChange).toHaveBeenNthCalledWith(3, 'statuses')
+    expect(onPanelChange).toHaveBeenNthCalledWith(2, 'media')
+    expect(onPanelChange).toHaveBeenNthCalledWith(3, 'tags')
+    expect(onPanelChange).toHaveBeenNthCalledWith(4, 'statuses')
     expect(onOpenTrips).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent('/')

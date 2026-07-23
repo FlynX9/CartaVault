@@ -397,3 +397,22 @@ avec un code stable `quota.<resource>.limit_reached`, l'usage, la limite et
 l'incrément demandé. Pour ajouter une limite : déclarer sa clé dans le registre,
 sa colonne nullable et sa contrainte, son agrégat dans le service, puis appeler
 le service dans chaque chemin de création concerné.
+# Media API
+
+The `/media` API is a dedicated catalogue layer over existing photo storage.
+It uses ownership and `map_memberships` directly and deliberately does not use
+the global administrator bypass for private-map media.
+
+- `GET /media` — paginated search, filters, aggregates and filter options;
+- `GET /media/{id}` — safe metadata without storage paths;
+- `GET /media/{id}/thumbnail` — lazily generated, EXIF-oriented WebP preview;
+- `GET /media/{id}/download` — authorized attachment download;
+- `PATCH /media/{id}` — caption and capture-date metadata;
+- `POST /media/{id}/set-main` — atomically select the place's primary photo;
+- `DELETE /media/{id}` and `POST /media/bulk-delete` — editor/owner deletion.
+
+Technical metadata (MIME type, byte size, dimensions and uploader) is recorded
+at upload time and indexed where useful. Existing media remains visible after
+the migration; unknown dimensions are reported as a diagnostic state until the
+file is replaced or processed. Local paths and infrastructure details are never
+serialized.

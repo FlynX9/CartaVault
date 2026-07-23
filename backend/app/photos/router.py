@@ -143,6 +143,7 @@ def create_place_photo(
         taken_at=photo_data.taken_at,
         sort_order=next_order,
         is_primary=next_order == 0,
+        uploaded_by_user_id=current_user.id,
     )
 
     try:
@@ -255,6 +256,11 @@ def upload_place_photo(
         taken_at=taken_at,
         sort_order=next_order,
         is_primary=next_order == 0,
+        mime_type=stored_photo.media_type,
+        file_size_bytes=stored_photo.file_size_bytes,
+        width=stored_photo.width,
+        height=stored_photo.height,
+        uploaded_by_user_id=current_user.id,
     )
 
     try:

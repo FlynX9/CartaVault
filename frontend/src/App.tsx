@@ -33,6 +33,7 @@ const MapMembersDialog = lazy(async () => ({ default: (await import('./component
 const TripPlannerPanel = lazy(async () => ({ default: (await import('./components/trips/TripPlannerPanel')).TripPlannerPanel }))
 const KmzExportDialog = lazy(async () => ({ default: (await import('./components/exports/KmzExportDialog')).KmzExportDialog }))
 const MapPlaceList = lazy(async () => ({ default: (await import('./components/place-list/MapPlaceList')).MapPlaceList }))
+const MediaWorkspacePanel = lazy(async () => ({ default: (await import('./components/media/MediaWorkspacePanel')).MediaWorkspacePanel }))
 const CategoriesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).CategoriesWorkspacePanel }))
 const TagsWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).TagsWorkspacePanel }))
 const StatusesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).StatusesWorkspacePanel }))
@@ -269,6 +270,8 @@ function WorkspaceApp() {
     ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onExport={setExportMap} onMembers={setMembersMap} onAccessChanged={() => setRefreshVersion((value) => value + 1)} onClose={() => setWorkspacePanel(null)} />
     : workspacePanel === 'places'
     ? <MapPlaceList poiMap={activeMap} statuses={statuses} filters={placeFilters} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} collapsed={placesPanelCollapsed} onCollapsedChange={setPlacesPanelCollapsed} onFiltersChange={(filters: PlaceFilters) => { const params = serializePlaceFilters(filters); if (activeMapId) params.set('map', activeMapId); navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : '' }) }} onPlaceSelect={handleSelect} onImported={() => setRefreshVersion((value) => value + 1)} onBulkChanged={() => setRefreshVersion((value) => value + 1)} tripPlanningActive={tripPlannerOpen} tripPlaceIds={new Set(activeTrip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])} />
+    : workspacePanel === 'media'
+      ? <MediaWorkspacePanel onClose={() => setWorkspacePanel(null)} onOpenPlace={(media) => { setWorkspacePanel('places'); navigate(withMap(`/places/${media.place.id}`, media.map.id, null)) }} />
     : workspacePanel === 'categories' && activeMapId !== null ? <CategoriesWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />
       : workspacePanel === 'tags' && activeMapId !== null ? <TagsWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />
         : workspacePanel === 'statuses' ? <StatusesWorkspacePanel mapId={activeMapId ?? undefined} canEdit={activeMap?.can_edit === true} onClose={() => setWorkspacePanel(null)} />

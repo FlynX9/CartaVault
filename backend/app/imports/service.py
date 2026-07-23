@@ -255,7 +255,14 @@ def confirm_import(
                 if image.source_type != "embedded" or image.payload is None:
                     continue
                 try:
-                    _store_image(database_session, place, image, order, stored_files)
+                    _store_image(
+                        database_session,
+                        place,
+                        image,
+                        order,
+                        stored_files,
+                        cached.user_id,
+                    )
                     embedded_images_added += 1
                     report_progress(f"Image intégrée ajoutée à {place.name}", 1)
                 except (PhotoStorageError, OSError) as error:
@@ -293,7 +300,14 @@ def confirm_import(
                         host=image.host,
                     )
                     try:
-                        _store_image(database_session, place, downloaded_image, order, stored_files)
+                        _store_image(
+                            database_session,
+                            place,
+                            downloaded_image,
+                            order,
+                            stored_files,
+                            cached.user_id,
+                        )
                         remote_images_added += 1
                         report_progress(f"Image distante ajoutée à {place.name}", 1)
                     except (PhotoStorageError, OSError) as error:
@@ -332,13 +346,29 @@ def _store_image(
     image: ParsedImage,
     order: int,
     stored_files: list[tuple[str, UUID, UUID]],
+    uploaded_by_user_id: UUID,
 ) -> None:
     if image.payload is None:
         return
     photo_id = uuid4()
     stored = store_photo_file(BytesIO(image.payload), image.mime_type, place.id, photo_id)
     stored_files.append((stored.relative_path, place.id, photo_id))
-    database_session.add(Photo(id=photo_id, place_id=place.id, filename=stored.filename, original_name=image.original_name, path=stored.relative_path, sort_order=order, is_primary=order == 0))
+    database_session.add(
+        Photo(
+            id=photo_id,
+            place_id=place.id,
+            filename=stored.filename,
+            original_name=image.original_name,
+            path=stored.relative_path,
+            sort_order=order,
+            is_primary=order == 0,
+            mime_type=stored.media_type,
+            file_size_bytes=stored.file_size_bytes,
+            width=stored.width,
+            height=stored.height,
+            uploaded_by_user_id=uploaded_by_user_id,
+        )
+    )
 
 
 def _get_or_create_import_category(database_session: Session, map_id: UUID) -> Category:

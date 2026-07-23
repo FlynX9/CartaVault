@@ -115,10 +115,19 @@ CREATE TABLE photos (
     path TEXT,
     description TEXT,
     taken_at DATE,
+    mime_type VARCHAR(64),
+    file_size_bytes BIGINT,
+    width INTEGER,
+    height INTEGER,
+    uploaded_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     sort_order INTEGER NOT NULL DEFAULT 0,
     is_primary BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT photos_sort_order_nonnegative CHECK (sort_order >= 0)
+    CONSTRAINT photos_sort_order_nonnegative CHECK (sort_order >= 0),
+    CONSTRAINT photos_file_size_nonnegative CHECK (file_size_bytes IS NULL OR file_size_bytes >= 0),
+    CONSTRAINT photos_width_positive CHECK (width IS NULL OR width > 0),
+    CONSTRAINT photos_height_positive CHECK (height IS NULL OR height > 0)
 );
 
 CREATE UNIQUE INDEX place_categories_one_primary_idx
@@ -126,6 +135,8 @@ ON place_categories(place_id) WHERE is_primary;
 
 CREATE UNIQUE INDEX photos_place_sort_order_key ON photos(place_id, sort_order);
 CREATE UNIQUE INDEX photos_one_primary_per_place_idx ON photos(place_id) WHERE is_primary;
+CREATE INDEX photos_created_at_idx ON photos(created_at);
+CREATE INDEX photos_uploaded_by_user_id_idx ON photos(uploaded_by_user_id);
 
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -28,6 +28,7 @@ from app.instance_status.router import router as instance_status_router
 from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
+from app.media.router import router as media_router
 from app.photos.router import router as photos_router
 from app.quotas.router import router as quotas_router
 from app.places.map_router import router as places_map_router
@@ -131,6 +132,7 @@ app.include_router(exports_router)
 app.include_router(tags_router)
 app.include_router(statuses_router)
 app.include_router(photos_router)
+app.include_router(media_router)
 app.include_router(trips_router)
 
 

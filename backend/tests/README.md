@@ -173,3 +173,10 @@ blocage transactionnel d'une création. Les tests d'intégration doivent charger
 `backend/.env`, afficher uniquement le nom de base via `make_url` et refuser
 toute cible autre que `poi_manager_test`. Le cycle attendu est `upgrade head`,
 `downgrade -1`, `upgrade head`, puis `alembic check`.
+# Media coverage
+
+Media integration tests verify pagination and derived thumbnails, assert that
+storage paths are not exposed, and cover owner, viewer and unrelated-admin
+access. Database tests must continue to run exclusively against the validated
+`TEST_DATABASE_URL`; generated source files and thumbnail derivatives are
+removed before the photo-storage fixture completes.
