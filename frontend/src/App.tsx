@@ -8,6 +8,7 @@ import { getStatuses } from './api/statuses'
 import { addTripStop, getTrip } from './api/trips'
 import { TopBar } from './components/layout/TopBar'
 import { MainNavigation, type WorkspacePanel } from './components/layout/MainNavigation'
+import { buildMapOpeningFocusRequest, getMapOpeningConfigurationKey } from './components/map/mapOpeningFocus'
 import { MapSidebar } from './components/sidebar/MapSidebar'
 import { PlaceMapPopup } from './components/map-popup/PlaceMapPopup'
 import { deriveMapSidebarState, getSidebarPlaceId } from './components/sidebar/sidebarState'
@@ -47,6 +48,7 @@ const isAbortError = (error: unknown) => error instanceof Error && error.name ==
 const mapAccessFingerprint = (maps: PoiMap[]) => maps.map((item) => [
   item.id,
   item.updated_at,
+  getMapOpeningConfigurationKey(item),
   item.current_user_role,
   item.is_shared,
   item.can_edit,
@@ -147,10 +149,12 @@ function WorkspaceApp() {
   useEffect(() => { if (!activeMapId) { setStatuses([]); return }; const controller = new AbortController(); void getStatuses(activeMapId, controller.signal, { activeOnly: true }).then(setStatuses).catch((error: unknown) => { if (!isAbortError(error)) setErrorMessage(error instanceof Error ? error.message : 'Impossible de charger les statuts.') }); return () => controller.abort() }, [activeMapId, refreshVersion])
 
   useEffect(() => {
-    const configKey = activeMap === null ? null : `${activeMap.id}:${activeMap.effective_center_latitude}:${activeMap.effective_center_longitude}:${activeMap.effective_default_zoom}`
+    const configKey = activeMap === null ? null : getMapOpeningConfigurationKey(activeMap)
     if (previousMapConfig.current === configKey) return
     previousMapConfig.current = configKey; setSelectedPlace(null); setPlaces([]); setBounds(null); setRemovedPlaceId(null)
-    if (activeMap) setFocusRequest({ id: ++focusSequence.current, view: { center: [activeMap.effective_center_latitude, activeMap.effective_center_longitude], zoom: activeMap.effective_default_zoom } })
+    if (activeMap) {
+      setFocusRequest(buildMapOpeningFocusRequest(activeMap, ++focusSequence.current))
+    }
   }, [activeMapId, activeMap])
 
   useEffect(() => {

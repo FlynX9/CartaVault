@@ -3,9 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { MapFocusController } from './MapFocusController'
 
-const { map, setView } = vi.hoisted(() => {
+const { fitBounds, map, setView } = vi.hoisted(() => {
   const stableSetView = vi.fn()
-  return { map: { setView: stableSetView }, setView: stableSetView }
+  const stableFitBounds = vi.fn()
+  return {
+    fitBounds: stableFitBounds,
+    map: { fitBounds: stableFitBounds, getContainer: () => ({ closest: () => null }), setView: stableSetView },
+    setView: stableSetView,
+  }
 })
 
 vi.mock('react-leaflet', () => ({
@@ -26,5 +31,24 @@ describe('MapFocusController', () => {
 
     rerender(<MapFocusController request={request} />)
     expect(setView).toHaveBeenCalledTimes(1)
+  })
+
+  it('fits country bounds with compact padding and a controlled maximum zoom', () => {
+    render(<MapFocusController request={{
+      id: 2,
+      bounds: {
+        minLatitude: 42.5,
+        maxLatitude: 51.15,
+        minLongitude: -5,
+        maxLongitude: 9.56,
+      },
+      maxZoom: 9,
+    }} />)
+
+    expect(fitBounds).toHaveBeenCalledWith(
+      [[42.5, -5], [51.15, 9.56]],
+      { paddingTopLeft: [32, 32], paddingBottomRight: [32, 32], maxZoom: 9 },
+    )
+    expect(setView).not.toHaveBeenCalled()
   })
 })

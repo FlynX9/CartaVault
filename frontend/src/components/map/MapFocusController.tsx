@@ -13,10 +13,21 @@ export function MapFocusController({ request }: MapFocusControllerProps) {
   useEffect(() => {
     if (request !== null) {
       if (request.bounds) {
+        const workspace = map.getContainer().closest<HTMLElement>('.map-workspace')
+        const leftPanelWidth = workspace?.classList.contains('place-list-open')
+          ? workspace.querySelector<HTMLElement>('.country-place-panel')?.getBoundingClientRect().width ?? 0
+          : 0
+        const rightPanelWidth = workspace?.classList.contains('sidebar-open')
+          ? workspace.querySelector<HTMLElement>('.map-sidebar')?.getBoundingClientRect().width ?? 0
+          : 0
         map.fitBounds([
           [request.bounds.minLatitude, request.bounds.minLongitude],
           [request.bounds.maxLatitude, request.bounds.maxLongitude],
-        ], { padding: [48, 48], maxZoom: request.maxZoom ?? 15 })
+        ], {
+          paddingTopLeft: [leftPanelWidth + 32, 32],
+          paddingBottomRight: [rightPanelWidth + 32, 32],
+          maxZoom: request.maxZoom ?? 15,
+        })
       } else {
         map.setView(request.view.center, request.view.zoom)
       }

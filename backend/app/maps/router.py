@@ -16,6 +16,7 @@ from app.auth.security import generate_token, hash_token, normalize_email
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.config import security_settings
+from app.countries.catalog import load_country_bounds
 from app.countries.models import Country
 from app.countries.schemas import CountrySummary
 from app.database import get_db
@@ -33,6 +34,10 @@ router = APIRouter(prefix="/maps", tags=["maps"])
 
 def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
     country = poi_map.country
+    catalogue_bounds = load_country_bounds().get(country.iso_alpha2)
+    min_longitude, min_latitude, max_longitude, max_latitude = (
+        catalogue_bounds if catalogue_bounds is not None else (None, None, None, None)
+    )
     can_edit = access.can_edit
     can_manage = access.can_manage_members
     return MapRead(
@@ -43,8 +48,10 @@ def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
         effective_center_latitude=poi_map.center_latitude if poi_map.center_latitude is not None else country.center_latitude,
         effective_center_longitude=poi_map.center_longitude if poi_map.center_longitude is not None else country.center_longitude,
         effective_default_zoom=poi_map.default_zoom if poi_map.default_zoom is not None else country.default_zoom,
-        min_latitude=country.min_latitude, max_latitude=country.max_latitude,
-        min_longitude=country.min_longitude, max_longitude=country.max_longitude,
+        min_latitude=country.min_latitude if country.min_latitude is not None else min_latitude,
+        max_latitude=country.max_latitude if country.max_latitude is not None else max_latitude,
+        min_longitude=country.min_longitude if country.min_longitude is not None else min_longitude,
+        max_longitude=country.max_longitude if country.max_longitude is not None else max_longitude,
         created_at=poi_map.created_at, updated_at=poi_map.updated_at,
         owner_id=poi_map.owner_id, is_private=poi_map.is_private,
         is_shared=len(poi_map.memberships) > 1,
