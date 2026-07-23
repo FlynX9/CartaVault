@@ -1,4 +1,4 @@
-import { ArchiveRestore, ArrowDownAZ, CalendarPlus, CheckSquare, FileUp, Heart, LayoutList, List, MapPinned, Minus, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ArchiveRestore, ArrowDownAZ, CalendarPlus, CheckSquare, FileInput, Heart, LayoutList, List, MapPinned, Minus, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -229,7 +229,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
           {!collapsed && poiMap && <p className="places-redesign-map-meta"><span className="places-redesign-map-identity"><CountryFlag countryCode={poiMap.country?.iso_alpha2 ?? ''} className="places-redesign-map-flag" fallbackSize={15} /><span>{poiMap.name}</span></span><span aria-hidden="true">·</span><span>{poiMap.updated_at ? t('places.updatedAt', { date: formatDate(poiMap.updated_at, { day: 'numeric', month: 'short' }) }) : t('places.updatedRecently')}</span></p>}
         </div>
         <div className="places-redesign-header-actions">
-          {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label={t('places.import')} onClick={() => setImporting(true)}><FileUp size={17} /></button>}
+          {!collapsed && poiMap && !tripPlanningActive && poiMap.can_import !== false && <button className="panel-icon-button" type="button" aria-label={t('places.import')} onClick={() => setImporting(true)}><FileInput size={17} /></button>}
           {!collapsed && poiMap && poiMap.can_edit !== false && <Link className="places-redesign-create panel-create-action" to={withMap('/places/new', poiMap.id)} aria-label={t('places.new')} title={t('places.new')}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{t('places.new')}</span></Link>}
           <button className="panel-icon-button places-collapse-toggle" type="button" aria-label={collapsed ? t('places.expandPanel') : t('places.closePanel')} aria-expanded={!collapsed} onClick={() => onCollapsedChange(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button>
         </div>
