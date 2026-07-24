@@ -7381,3 +7381,191 @@ html[data-theme='dark'] .country-place-panel .places-redesign-controls .place-li
   box-shadow: none;
   outline: 0;
 }
+
+/* Complete the dark surfaces used by import, export, and map sharing dialogs. */
+html[data-theme='dark'] :is(.kmz-import-dialog, .kmz-export-dialog, .map-members-dialog) .map-action-dialog__body,
+html[data-theme='dark'] .map-members-dialog__body {
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(.kmz-import-dialog, .kmz-export-dialog, .map-members-dialog) :is(
+  .map-action-dialog__section,
+  .kmz-export-options,
+  .kmz-import-items li,
+  .kmz-import-remote-option,
+  .map-members-section,
+  .members-list li
+) {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .kmz-export-options label {
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .kmz-export-options label:hover {
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 45%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] :is(.kmz-import-dialog, .kmz-export-dialog, .map-members-dialog) :is(
+  .map-action-dialog__notice,
+  .kmz-import-summary,
+  .map-members-section__title > span,
+  .member-avatar,
+  .member-role-badge,
+  .invitation-link input
+) {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(.map-members-dialog .invitation-form input, .map-members-dialog .invitation-form select, .map-members-dialog .member-actions select) {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-strong);
+}
+
+/* Category icon field and picker must use the same dark panel surfaces. */
+html[data-theme='dark'] .category-icon-field > div {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .category-icon-field .secondary-button,
+html[data-theme='dark'] .category-icon-modal :is(.icon-modal-close, .secondary-button) {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .category-icon-modal {
+  color: var(--cv-color-navy);
+  background: var(--cv-color-off-white);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .category-icon-modal__footer {
+  background: var(--cv-color-off-white);
+  border-color: var(--cv-border-subtle);
+}
+
+/* Keep journey markers and stop counters legible without light halos. */
+html[data-theme='dark'] :is(
+  .trip-planner-panel .trip-panel-day-number,
+  .trip-timeline-night-badge,
+  .trip-timeline-anchor-badge,
+  .trip-planner-panel .trip-panel-night::before
+) {
+  border-color: var(--cv-surface-muted) !important;
+  box-shadow: 0 2px 7px rgb(0 0 0 / 34%);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content li > i {
+  color: var(--trip-day-color, var(--cv-color-teal));
+  background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 16%, var(--cv-surface-muted));
+  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 48%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .trip-day-color-picker {
+  color: var(--cv-color-navy);
+  background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 11%, var(--cv-surface-muted));
+  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 44%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .trip-day-color-picker input {
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .trip-day-color-picker__actions button:not(.primary) {
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+/* The status color itself remains distinct; only its former white halo changes. */
+html[data-theme='dark'] .status-legend .status-dot {
+  box-shadow: 0 0 0 2px var(--cv-surface), 0 0 0 3px var(--cv-border-subtle);
+}
+
+/* These rules intentionally match the final trip timeline selectors. */
+html[data-theme='dark'] .trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number {
+  border-color: var(--cv-surface-muted) !important;
+  box-shadow: 0 2px 7px rgb(0 0 0 / 38%) !important;
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > span {
+  color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 72%, white);
+  background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 16%, var(--cv-surface-muted));
+  border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 40%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day-load-label {
+  color: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 72%, white);
+  background: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 17%, var(--cv-surface-muted));
+  border-color: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 42%, var(--cv-border-strong));
+}
+
+/* Insert a free stop with the same understated affordance used between days. */
+.trip-planner-panel .trip-panel-free-stop {
+  display: grid;
+  width: 100%;
+  min-height: 1.55rem;
+  grid-template-columns: minmax(0, 1fr) 1.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  color: var(--cv-color-teal);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.trip-planner-panel .trip-panel-free-stop:hover,
+.trip-planner-panel .trip-panel-free-stop:focus-visible,
+.trip-planner-panel .trip-panel-day-content:focus-within .trip-panel-free-stop {
+  background: transparent;
+  border: 0;
+  opacity: 1;
+  outline: 0;
+}
+
+.trip-planner-panel .trip-panel-free-stop > span {
+  display: block;
+  height: 1px;
+  background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 55%, var(--cv-border-subtle));
+}
+
+.trip-planner-panel .trip-panel-free-stop > i {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  color: var(--trip-day-color, var(--cv-color-teal));
+  background: var(--cv-surface);
+  border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, var(--cv-border-strong));
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgb(13 27 42 / 8%);
+  font-style: normal;
+  place-items: center;
+}
+
+.trip-planner-panel .trip-panel-free-stop:focus-visible > i,
+.trip-planner-panel .trip-panel-free-stop:hover > i {
+  color: #fff;
+  background: var(--trip-day-color, var(--cv-color-teal));
+  border-color: var(--trip-day-color, var(--cv-color-teal));
+}
+
+@media (hover: none) {
+  .trip-planner-panel .trip-panel-free-stop { opacity: .72; }
+}
