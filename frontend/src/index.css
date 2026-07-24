@@ -7231,3 +7231,153 @@ html[data-theme='dark'] .auth-confirmation {
     transition: none;
   }
 }
+
+/*
+ * POI editor — dark theme
+ *
+ * The editor has intentionally more specific component rules than the generic
+ * form rules above. Keep its surfaces explicit here so hard-coded light
+ * backgrounds cannot leak into the dark workspace.
+ */
+html[data-theme='dark'] .map-editor-panel .editor-page {
+  background: var(--cv-surface-muted);
+}
+
+html[data-theme='dark'] .map-editor-panel :is(
+  .form-section,
+  .photo-uploader,
+  .photo-manager .photo-uploader,
+  .photo-manager-card
+) {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-subtle);
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .map-editor-panel :is(
+  .form-section-heading,
+  .draft-position-status
+) {
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .map-editor-panel :is(
+  .form-field,
+  .form-field > span,
+  .place-rating-fields > span,
+  .form-hint,
+  .draft-position-status
+) {
+  color: var(--cv-color-slate);
+}
+
+html[data-theme='dark'] .map-editor-panel :is(
+  .form-section-heading h3,
+  .form-section-collapsible summary,
+  .photo-uploader-heading h3,
+  .form-field input,
+  .form-field textarea,
+  .form-field select,
+  .status-picker-trigger,
+  .status-picker-options,
+  .status-picker-options input,
+  .status-picker-options button,
+  .favorite-field
+) {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .map-editor-panel :is(
+  .form-field input:hover,
+  .form-field textarea:hover,
+  .form-field select:hover,
+  .status-picker-trigger:hover
+) {
+  border-color: color-mix(in srgb, var(--cv-color-teal) 48%, var(--cv-border-strong));
+}
+
+html[data-theme='dark'] .map-editor-panel .place-rating-fields {
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .map-editor-panel .form-section-collapsible[open] summary {
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
+  border-bottom-color: color-mix(in srgb, var(--cv-color-teal) 28%, var(--cv-border-subtle));
+}
+
+html[data-theme='dark'] .map-editor-panel .selected-tag-list > span {
+  color: var(--cv-color-slate);
+  background: color-mix(in srgb, var(--cv-color-teal) 13%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 28%, var(--cv-border-subtle));
+}
+
+html[data-theme='dark'] .map-editor-panel .photo-manager-card .photo-card-actions button {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface-muted);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .map-editor-panel .place-form-submit {
+  background: rgb(19 35 47 / 94%);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .map-editor-panel .sidebar-header .close-button {
+  color: var(--cv-color-teal);
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .map-editor-panel .sidebar-header .close-button:hover,
+html[data-theme='dark'] .map-editor-panel .sidebar-header .close-button:focus-visible {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 12%, var(--cv-surface));
+  border-color: var(--cv-color-teal);
+}
+
+/*
+ * The redesigned Places search has several legacy .place-list-search rules.
+ * Define its geometry at the component boundary so neither nested input rules
+ * nor generic panel rules can erase individual sides of its frame.
+ */
+html[data-theme='dark'] .country-place-panel .places-redesign-controls .place-list-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  height: 2.55rem;
+  min-height: 2.55rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface-muted);
+  border: 1px solid rgb(198 213 222 / 34%);
+  border-radius: 0.65rem;
+  box-shadow: inset 0 0 0 1px rgb(198 213 222 / 4%);
+  outline: 0;
+}
+
+html[data-theme='dark'] .country-place-panel .places-redesign-controls .place-list-search:focus-within {
+  border-color: var(--cv-color-teal);
+  box-shadow: 0 0 0 2px rgb(37 198 170 / 18%), inset 0 0 0 1px rgb(37 198 170 / 12%);
+  outline: 0;
+}
+
+html[data-theme='dark'] .country-place-panel .places-redesign-controls .place-list-search input,
+html[data-theme='dark'] .country-place-panel .places-redesign-controls .place-list-search input:focus {
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  color: var(--cv-color-navy);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: 0;
+}
