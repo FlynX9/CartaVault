@@ -7,6 +7,7 @@ export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags'
 interface Props {
   activePanel: WorkspacePanel
   onPanelChange: (panel: WorkspacePanel) => void
+  onWorkspacePanelToggle?: (panel: Exclude<WorkspacePanel, null>) => void
   onPlacesPanelToggle?: () => void
   isAdmin?: boolean
   onOpenTrips?: () => void
@@ -17,9 +18,9 @@ function navClass(active: boolean): string {
   return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
 }
 
-export function MainNavigation({ activePanel, onPanelChange, onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false }: Props) {
+export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false }: Props) {
   const { t } = useI18n()
-  const togglePanel = (panel: Exclude<WorkspacePanel, null>) => onPanelChange(activePanel === panel ? null : panel)
+  const togglePanel = (panel: Exclude<WorkspacePanel, null>) => activePanel === panel ? onWorkspacePanelToggle(panel) : onPanelChange(panel)
   const placesActive = activePanel === 'places' && !tripPlanningActive
 
   return <nav className="main-navigation cv-main-navigation" aria-label={t('nav.main')}>

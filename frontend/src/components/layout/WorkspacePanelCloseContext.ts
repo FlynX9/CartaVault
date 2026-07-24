@@ -1,3 +1,8 @@
 import { createContext } from 'react'
 
-export const WorkspacePanelCloseContext = createContext<(() => void) | null>(null)
+export interface WorkspacePanelCloseControls {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}
+
+export const WorkspacePanelCloseContext = createContext<WorkspacePanelCloseControls | null>(null)

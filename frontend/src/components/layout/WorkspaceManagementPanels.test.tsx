@@ -31,6 +31,17 @@ describe('workspace management panels', () => {
     expect(screen.getByRole('button', { name: 'Supprimer Patrimoine' })).toHaveClass('panel-icon-button')
   })
 
+  it('collapses the category panel instead of removing it', async () => {
+    const onCollapsedChange = vi.fn()
+    render(<CategoriesWorkspacePanel onCollapsedChange={onCollapsedChange} />)
+
+    await screen.findByText('Patrimoine')
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire le panneau' }))
+
+    expect(onCollapsedChange).toHaveBeenCalledWith(true)
+    expect(document.getElementById('workspace-categories-panel')).toBeInTheDocument()
+  })
+
   it('renders compact tags without changing the CRUD search behavior', async () => {
     render(<TagsWorkspacePanel />)
     expect(await screen.findByText('Historique')).toBeVisible()
@@ -45,7 +56,7 @@ describe('workspace management panels', () => {
     expect(await screen.findByText('À voir')).toBeVisible()
     expect(screen.getByPlaceholderText('Rechercher un statut')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Créer un statut' })).toBeVisible()
-    expect(screen.getByText('Ordre 10')).toBeVisible()
+    expect(screen.getByText('Non visité')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Créer un statut' })).toHaveClass('panel-icon-button', 'panel-create-action')
     expect(screen.getByRole('button', { name: 'Créer un statut' })).toHaveTextContent('Nouveau statut')
     expect(screen.getByRole('button', { name: 'Modifier À voir' })).toHaveClass('panel-icon-button')

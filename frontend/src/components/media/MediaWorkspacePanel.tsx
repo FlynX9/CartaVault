@@ -9,7 +9,9 @@ import {
   Image as ImageIcon,
   List,
   MapPin,
+  Minus,
   MoreHorizontal,
+  Plus,
   Search,
   Star,
   Trash2,
@@ -130,11 +132,13 @@ function MediaDetails({ media, onClose, onChanged, onOpenPlace }: DetailsProps) 
 }
 
 interface Props {
-  onClose: () => void
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
+  onClose?: () => void
   onOpenPlace: (media: MediaItem) => void
 }
 
-export function MediaWorkspacePanel({ onClose, onOpenPlace }: Props) {
+export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onClose, onOpenPlace }: Props) {
   const t = mediaMessages()
   const { confirm, confirmationDialog } = useConfirmDialog()
   const [query, setQuery] = useState<MediaQuery>(DEFAULT_QUERY)
@@ -201,10 +205,10 @@ export function MediaWorkspacePanel({ onClose, onOpenPlace }: Props) {
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Suppression groupée impossible.') }
   }
 
-  return <aside id="workspace-media-panel" className="country-place-panel cv-workspace-panel media-workspace-panel" aria-label="Médiathèque" tabIndex={-1}>
+  return <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? ' is-collapsed' : ''}`} aria-label="Médiathèque" tabIndex={-1}>
     <header className="cv-workspace-panel__header">
       <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Bibliothèque</p><h1 className="cv-workspace-panel__title">{t.title}</h1></div>
-      <div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span><button type="button" className="panel-icon-button" aria-label="Fermer" onClick={onClose}><X size={18} /></button></div>
+      <div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span><button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button></div>
     </header>
     <div className="media-toolbar">
       <label className="media-search"><Search size={17} /><input value={query.query} onChange={(event) => change('query', event.target.value)} placeholder={t.search} /></label>

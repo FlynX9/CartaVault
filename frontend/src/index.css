@@ -2289,6 +2289,58 @@ button {
 @media (min-width: 761px) and (max-width: 1024px) { :root { --cv-workspace-sidebar-width: clamp(340px, 42vw, 420px); } }
 @media (max-width: 760px) { :root { --cv-workspace-sidebar-width: min(100vw, 100%); }.workspace-management-panel { width: 100%; min-width: 0; max-width: none; }.cv-management-panel .admin-page-header { top: -1rem; }.cv-statuses-panel .status-form-grid { grid-template-columns: 1fr; }.cv-statuses-panel .status-form-name { grid-column: auto; } }
 
+/* Every left workspace panel collapses to the same compact identity row. */
+.map-workspace .cv-workspace-panel.is-collapsed {
+  bottom: auto;
+  /* Keep enough room for "Catégories", "Statuts" and their count badge. */
+  width: 18rem;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  flex-basis: 18rem;
+  overflow: hidden;
+  container-type: normal;
+}
+
+.cv-workspace-panel.is-collapsed:not(.workspace-management-panel) > :not(.cv-workspace-panel__header, .places-redesign-header) { display: none; }
+/* Maps uses the management panel shell, but has its own direct header/content. */
+.workspace-management-panel.is-collapsed > :not(.cv-management-panel, .cv-workspace-panel__header) { display: none; }
+.workspace-management-panel.is-collapsed .cv-management-panel {
+  flex: 0 0 auto;
+  min-height: 3.5rem;
+  height: 3.5rem;
+  overflow: hidden;
+}
+.workspace-management-panel.is-collapsed .cv-management-panel > :not(.cv-workspace-panel__header) { display: none; }
+.cv-workspace-panel.is-collapsed .cv-workspace-panel__header {
+  min-height: 3.5rem;
+  padding: .5rem .55rem .5rem .75rem;
+  border-bottom: 0;
+}
+.cv-workspace-panel.is-collapsed .cv-workspace-panel__eyebrow { display: none; }
+.cv-workspace-panel.is-collapsed .cv-workspace-panel__title { margin: 0; font-size: 1rem; }
+.cv-workspace-panel.is-collapsed .cv-workspace-panel__heading { overflow: visible; }
+.cv-workspace-panel.is-collapsed .cv-workspace-panel__count { white-space: nowrap; }
+.cv-workspace-panel.is-collapsed .panel-create-action { display: none; }
+.cv-workspace-panel.is-collapsed .workspace-panel-collapse-toggle {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-basis: 2.25rem;
+}
+
+.map-workspace:has(.cv-workspace-panel.is-collapsed) .cv-panel-resize-handle--left { display: none; }
+@media (max-width: 760px) {
+  .map-workspace .cv-workspace-panel.is-collapsed {
+    top: .7rem;
+    right: .7rem;
+    bottom: auto;
+    left: .7rem;
+    width: calc(100% - 1.4rem);
+    flex-basis: auto;
+    border-radius: .75rem;
+  }
+}
+
 /* The workspace rule intentionally comes last: legacy layouts used a fixed 310px track. */
 .map-workspace.place-list-open,
 .map-workspace.place-list-open.sidebar-open {
@@ -5255,12 +5307,34 @@ body.cv-panel-resizing {
   width: 3.5rem;
 }
 
+/* Other collapsed workspace panels keep the same compact search control as
+   Lieux, with a visible gutter between their identity row and the map tools. */
+.map-workspace:has(.cv-workspace-panel.is-collapsed:not(.places-redesign-panel)) .geographic-search {
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - 21rem));
+  top: .8rem;
+  left: calc(18rem + (2 * var(--cv-canvas-padding)) + .65rem);
+  width: 3.5rem;
+}
+
+.map-workspace:has(.cv-workspace-panel.is-collapsed:not(.places-redesign-panel)) .status-legend {
+  left: calc(18rem + (2 * var(--cv-canvas-padding)) + .65rem);
+}
+
 @media (max-width: 760px) {
   .map-workspace .geographic-search,
   .map-workspace.place-list-open .geographic-search,
-  .map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search {
+  .map-workspace:has(.places-redesign-panel.is-collapsed) .geographic-search,
+  .map-workspace:has(.cv-workspace-panel.is-collapsed:not(.places-redesign-panel)) .geographic-search {
     --cv-geographic-search-expanded-width: calc(100% - 1.4rem);
   }
+
+  .map-workspace:has(.cv-workspace-panel.is-collapsed:not(.places-redesign-panel)) .geographic-search {
+    top: 4.9rem;
+    left: .7rem;
+    width: calc(100% - 1.4rem);
+  }
+
+  .map-workspace:has(.cv-workspace-panel.is-collapsed:not(.places-redesign-panel)) .status-legend { left: .7rem; }
 }
 /* Dedicated administration console */
 .admin-console {

@@ -46,6 +46,16 @@ describe('MapsWorkspacePanel', () => {
     expect(screen.getByText('Aucune carte ne correspond à la recherche.')).toBeVisible()
   })
 
+  it('collapses the map catalog instead of closing it', () => {
+    const onCollapsedChange = vi.fn()
+    render(<MapsWorkspacePanel maps={[map]} activeMapId={null} isLoading={false} errorMessage={null} onOpen={vi.fn()} onDelete={vi.fn()} onCreated={vi.fn()} collapsed onCollapsedChange={onCollapsedChange} />)
+
+    expect(document.getElementById('workspace-maps-panel')).toHaveClass('is-collapsed')
+    fireEvent.click(screen.getByRole('button', { name: 'Agrandir le panneau' }))
+
+    expect(onCollapsedChange).toHaveBeenCalledWith(false)
+  })
+
   it('adapts sensitive actions to server-provided permissions', () => {
     const viewerMap: PoiMap = { ...map, is_shared: true, current_user_role: 'viewer', owner_email: 'owner@example.test', owner_display_name: 'Alice Martin', can_export: true, can_delete: false, can_manage_members: false }
     const { rerender } = render(<MapsWorkspacePanel maps={[viewerMap]} activeMapId={null} isLoading={false} errorMessage={null} onOpen={vi.fn()} onDelete={vi.fn()} onCreated={vi.fn()} onExport={vi.fn()} onMembers={vi.fn()} onClose={vi.fn()} />)

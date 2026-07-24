@@ -1,4 +1,4 @@
-import { Check, Download, LockKeyhole, Map, Plus, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
+import { Check, Download, LockKeyhole, Map, Minus, Plus, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from '../../api/maps'
@@ -19,12 +19,14 @@ interface MapsWorkspacePanelProps {
   onExport?: (poiMap: PoiMap) => void
   onMembers?: (poiMap: PoiMap) => void
   onAccessChanged?: () => void
-  onClose: () => void
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
+  onClose?: () => void
 }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
 
-export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, onClose }: MapsWorkspacePanelProps) {
+export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose }: MapsWorkspacePanelProps) {
   const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
@@ -80,8 +82,8 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
     }
   }
 
-  return <aside id="workspace-maps-panel" className="country-place-panel workspace-management-panel cv-workspace-panel maps-workspace-panel" aria-labelledby="workspace-maps-title" tabIndex={-1}>
-    <header className="cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">{t('maps.eyebrow')}</p><h2 id="workspace-maps-title" className="cv-workspace-panel__title">{t('maps.title')}</h2></div><div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{t('maps.count', { count: totalCount })}</span><button ref={createButton} className="panel-icon-button primary panel-create-action" type="button" aria-label={t('maps.create')} title={t('maps.new')} onClick={() => setCreating(true)}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{t('maps.new')}</span></button><button className="panel-icon-button" type="button" aria-label={t('maps.closePanel')} title={t('common.close')} onClick={onClose}><X size={18} /></button></div></header>
+  return <aside id="workspace-maps-panel" className={`country-place-panel workspace-management-panel cv-workspace-panel maps-workspace-panel${collapsed ? ' is-collapsed' : ''}`} aria-labelledby="workspace-maps-title" tabIndex={-1}>
+    <header className="cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">{t('maps.eyebrow')}</p><h2 id="workspace-maps-title" className="cv-workspace-panel__title">{t('maps.title')}</h2></div><div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{t('maps.count', { count: totalCount })}</span>{!collapsed && <button ref={createButton} className="panel-icon-button primary panel-create-action" type="button" aria-label={t('maps.create')} title={t('maps.new')} onClick={() => setCreating(true)}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{t('maps.new')}</span></button>}<button className="panel-icon-button workspace-panel-collapse-toggle" type="button" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button></div></header>
     <div className="maps-workspace-panel__content">
       <label className="workspace-search-field"><Search aria-hidden="true" size={17} /><span className="visually-hidden">{t('maps.search')}</span><input type="search" placeholder={t('maps.search')} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
       {(errorMessage || invitationError) && <p className="form-alert" role="alert">{errorMessage ?? invitationError}</p>}

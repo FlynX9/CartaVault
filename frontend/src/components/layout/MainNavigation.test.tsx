@@ -59,6 +59,17 @@ describe('MainNavigation', () => {
     expect(onPanelChange).not.toHaveBeenCalled()
   })
 
+  it('delegates repeated workspace entries to the shared collapse toggle', () => {
+    const onPanelChange = vi.fn()
+    const onWorkspacePanelToggle = vi.fn()
+    render(<MemoryRouter><MainNavigation activePanel="categories" onPanelChange={onPanelChange} onWorkspacePanelToggle={onWorkspacePanelToggle} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
+
+    expect(onWorkspacePanelToggle).toHaveBeenCalledWith('categories')
+    expect(onPanelChange).not.toHaveBeenCalled()
+  })
+
   it('marks only Sorties active while trip planning extends the Places workspace', () => {
     render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
     const places = screen.getByRole('button', { name: 'Lieux' })
