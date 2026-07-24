@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from math import ceil
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -17,8 +15,11 @@ from app.admin.schemas import (
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.models import SystemCredential, User, UserApiCredential, UserSession
-from app.config import credential_settings, email_settings
+from app.config import credential_settings
 from app.database import get_db
+from app.emails.providers.base import EmailDeliveryError
+from app.emails.providers.resend import ResendEmailProvider
+from app.emails.service import EmailService
 from app.maps.models import MapMembership, PoiMap
 
 
@@ -147,35 +148,30 @@ def put_resend(payload: CredentialValue, session: Session = Depends(get_db)) -> 
 
 
 @router.post("/credentials/resend/verify", response_model=CredentialStatus)
-def verify_resend(session: Session = Depends(get_db)) -> CredentialStatus:
+def verify_resend(
+    session: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> CredentialStatus:
     credential = session.get(SystemCredential, "resend")
     if credential is None:
         raise HTTPException(404, "Aucune clé Resend n’est configurée.")
     try:
         value = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
-        request = Request(
-            "https://api.resend.com/domains",
-            headers={
-                "Authorization": f"Bearer {value}",
-                "Accept": "application/json",
-                "User-Agent": "CartaVault/1.0",
-            },
+        locale = str((admin.preferences or {}).get("language") or "fr")
+        EmailService(ResendEmailProvider(value)).send_resend_verification(
+            admin.email,
+            admin.display_name,
+            locale,
         )
-        with urlopen(request, timeout=email_settings.timeout_seconds) as response:  # noqa: S310 - fixed provider endpoint
-            if response.status >= 400:
-                raise HTTPError(request.full_url, response.status, "provider error", response.headers, None)
-    except HTTPError as error:
-        # Resend returns 401 when a valid `sending_access` key calls an
-        # account-management endpoint. Invalid API keys return 403.
-        if error.code != 401:
-            credential.verified_at = None; credential.last_error_code = "RESEND_VERIFICATION_FAILED"
-            session.commit()
-            raise HTTPException(502, "La vérification Resend a échoué.") from error
-    except (CredentialEncryptionError, URLError, TimeoutError, OSError) as error:
-        credential.verified_at = None; credential.last_error_code = "RESEND_VERIFICATION_FAILED"
+    except (CredentialEncryptionError, EmailDeliveryError) as error:
+        credential.verified_at = None
+        credential.last_error_code = getattr(error, "code", "RESEND_VERIFICATION_FAILED")
         session.commit()
-        raise HTTPException(502, "La vérification Resend a échoué.") from error
-    credential.verified_at = datetime.now(UTC).replace(tzinfo=None); credential.last_error_code = None
+        raise HTTPException(502, "L’envoi de l’email de test Resend a échoué.") from error
+    now = datetime.now(UTC).replace(tzinfo=None)
+    credential.verified_at = now
+    credential.last_used_at = now
+    credential.last_error_code = None
     session.commit()
     return next(item for item in _credential_statuses(session) if item.provider == "resend")
 

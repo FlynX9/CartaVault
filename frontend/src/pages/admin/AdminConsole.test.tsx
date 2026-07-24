@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser } from '../../api/adminConsole'
+import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
@@ -51,6 +51,34 @@ describe('AdminConsole', () => {
     await waitFor(() => expect(getAdminCredentials).toHaveBeenCalledTimes(2))
     expect(screen.queryByText('signal is aborted without reason')).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('sends a Resend test email explicitly', async () => {
+    const resend = {
+      provider: 'resend',
+      label: 'Resend',
+      scope: 'instance',
+      configured: true,
+      editable: true,
+      source: 'database',
+      masked_value: '••••test',
+      verified_at: null,
+      last_used_at: null,
+      last_error_code: null,
+      configured_user_count: null,
+    } as const
+    vi.mocked(getAdminCredentials).mockResolvedValue([resend])
+    vi.mocked(verifyResendCredential).mockResolvedValue({
+      ...resend,
+      verified_at: '2026-07-24T12:00:00Z',
+      last_used_at: '2026-07-24T12:00:00Z',
+    })
+
+    render(<MemoryRouter initialEntries={['/admin/credentials']}><AdminConsole /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un email de test' }))
+
+    await waitFor(() => expect(verifyResendCredential).toHaveBeenCalledOnce())
+    expect(await screen.findByText('Email de test envoyé à votre adresse administrateur.')).toBeVisible()
   })
 
   it('closes from the CartaVault dialog with Escape', async () => {

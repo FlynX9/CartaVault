@@ -1,10 +1,11 @@
-from urllib.error import HTTPError, URLError
+from urllib.error import URLError
 from uuid import uuid4
 
 import pytest
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import SystemCredential, User
+from app.emails.providers.base import EmailDeliveryError
 from app.main import app
 
 
@@ -75,48 +76,47 @@ def test_admin_credentials_never_expose_secrets(integration_client, database_ses
     assert "value" not in encryption
 
 
-def test_resend_verification_accepts_a_sending_only_key(integration_client, monkeypatch) -> None:
+def test_resend_verification_sends_a_test_email_to_the_admin(
+    integration_client,
+    auth_user,
+    monkeypatch,
+) -> None:
     saved = integration_client.put(
         "/admin/console/credentials/resend",
-        json={"value": "re_sending-only-test-key"},
+        json={"value": "re_test-email-key"},
     )
     assert saved.status_code == 200
 
-    def reject_domain_listing(*_args, **_kwargs):
-        raise HTTPError(
-            "https://api.resend.com/domains",
-            401,
-            "This API key is restricted to only send emails.",
-            None,
-            None,
-        )
+    messages = []
 
-    monkeypatch.setattr("app.admin.router.urlopen", reject_domain_listing)
+    def record_message(_provider, message):
+        messages.append(message)
+        return "test-email-id"
+
+    monkeypatch.setattr("app.admin.router.ResendEmailProvider.send", record_message)
 
     verified = integration_client.post("/admin/console/credentials/resend/verify")
 
     assert verified.status_code == 200
     assert verified.json()["verified_at"] is not None
+    assert verified.json()["last_used_at"] is not None
     assert verified.json()["last_error_code"] is None
+    assert len(messages) == 1
+    assert messages[0].recipients == [auth_user.email]
+    assert "CartaVault" in messages[0].subject
 
 
-def test_resend_verification_rejects_an_invalid_key(integration_client, monkeypatch) -> None:
+def test_resend_verification_reports_a_provider_failure(integration_client, monkeypatch) -> None:
     saved = integration_client.put(
         "/admin/console/credentials/resend",
         json={"value": "re_invalid-test-key"},
     )
     assert saved.status_code == 200
 
-    def reject_invalid_key(*_args, **_kwargs):
-        raise HTTPError(
-            "https://api.resend.com/domains",
-            403,
-            "API key is invalid.",
-            None,
-            None,
-        )
+    def reject_test_email(*_args, **_kwargs):
+        raise EmailDeliveryError("EMAIL_PROVIDER_REJECTED")
 
-    monkeypatch.setattr("app.admin.router.urlopen", reject_invalid_key)
+    monkeypatch.setattr("app.admin.router.ResendEmailProvider.send", reject_test_email)
 
     verified = integration_client.post("/admin/console/credentials/resend/verify")
 

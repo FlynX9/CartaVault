@@ -1,0 +1,7 @@
+CartaVault — Email configuration
+
+Hello $display_name,
+
+This email confirms that the Resend key and sender address configured in CartaVault are working correctly.
+
+No action is required.

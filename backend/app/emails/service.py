@@ -22,12 +22,14 @@ SUBJECTS = {
         "registration_approved": "Votre accès CartaVault est approuvé",
         "password_reset": "Réinitialisez votre mot de passe CartaVault",
         "map_share_registration": "Une carte CartaVault vous attend",
+        "resend_verification": "Votre configuration email CartaVault fonctionne",
     },
     "en": {
         "registration_admin": "New CartaVault registration request",
         "registration_approved": "Your CartaVault access has been approved",
         "password_reset": "Reset your CartaVault password",
         "map_share_registration": "A CartaVault map has been shared with you",
+        "resend_verification": "Your CartaVault email configuration works",
     },
 }
 
@@ -87,5 +89,18 @@ class EmailService:
                 "map_name": map_name,
                 "registration_url": registration_url,
             },
+            locale,
+        )
+
+    def send_resend_verification(
+        self,
+        recipient: str,
+        display_name: str,
+        locale: str = "fr",
+    ) -> str | None:
+        return self._send(
+            "resend_verification",
+            [recipient],
+            {"display_name": display_name},
             locale,
         )
