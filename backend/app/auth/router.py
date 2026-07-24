@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserSession
+from app.auth.rate_limit import public_auth_rate_limiter
 from app.auth.schemas import LoginRequest, PasswordChange, UserSelfRead
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email, verify_password
 from app.config import security_settings
@@ -39,7 +40,11 @@ def _set_session_cookies(response: Response, token: str, csrf_token: str, max_ag
 
 @router.post("/login", response_model=UserSelfRead)
 def login(data: LoginRequest, request: Request, response: Response, database_session: Session = Depends(get_db)) -> UserSelfRead:
-    user = database_session.scalar(select(User).where(User.email == normalize_email(str(data.email))))
+    email = normalize_email(str(data.email))
+    public_auth_rate_limiter.check(
+        f"login:{request.client.host if request.client else 'unknown'}:{email}"
+    )
+    user = database_session.scalar(select(User).where(User.email == email))
     valid, needs_rehash = verify_password(user.password_hash, data.password) if user else (False, False)
     if user is None or not valid:
         raise HTTPException(status_code=401, detail="Invalid email or password")
