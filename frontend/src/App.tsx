@@ -86,6 +86,7 @@ function WorkspaceApp() {
   const [focusRequest, setFocusRequest] = useState<MapFocusRequest | null>(null)
   const [workspacePanel, setWorkspacePanel] = useState<WorkspacePanel>('places')
   const [placesPanelCollapsed, setPlacesPanelCollapsed] = useState(false)
+  const restorePlacesPanelAfterEditor = useRef(false)
   const [removedPlaceId, setRemovedPlaceId] = useState<string | null>(null); const [isLoading, setIsLoading] = useState(false); const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [refreshVersion, setRefreshVersion] = useState(0); const requestSequence = useRef(0); const focusSequence = useRef(0); const previousMapConfig = useRef<string | null | undefined>(undefined)
   const [temporarySearchResult, setTemporarySearchResult] = useState<GeocodingResult | null>(null)
@@ -243,6 +244,20 @@ function WorkspaceApp() {
   )
   const selectedPlaceId = getSidebarPlaceId(sidebarState)
   const editorOpen = sidebarState.mode === 'create' || sidebarState.mode === 'edit'
+  useEffect(() => {
+    if (editorOpen) {
+      if (workspacePanel === 'places') {
+        restorePlacesPanelAfterEditor.current = true
+        setPlacesPanelCollapsed(true)
+      }
+      return
+    }
+
+    if (restorePlacesPanelAfterEditor.current) {
+      restorePlacesPanelAfterEditor.current = false
+      if (workspacePanel === 'places') setPlacesPanelCollapsed(false)
+    }
+  }, [editorOpen, workspacePanel])
   useEffect(() => {
     if (editorOpen && activeMap !== null && activeMap.can_edit !== true) {
       navigate(withMap(sidebarState.mode === 'edit' ? `/places/${sidebarState.placeId}` : '/', activeMapId, activeStatusId), { replace: true })
