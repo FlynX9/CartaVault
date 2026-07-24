@@ -57,7 +57,7 @@ export function CategoryIconGrid({ icons, selectedIconId, onSelect, onChoose }: 
             onDoubleClick={() => onChoose(icon.id)}
             onKeyDown={(event) => moveFocus(event, icon.id)}
           >
-            <CategoryIconPreview iconId={icon.id} size={24} showLabel={false} />
+            <CategoryIconPreview iconId={icon.id} size={21} showLabel={false} />
             <span>{icon.label}</span>
             {selected && <small>Choisie</small>}
           </button>
