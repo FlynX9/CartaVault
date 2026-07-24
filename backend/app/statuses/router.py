@@ -13,7 +13,7 @@ from app.auth.permissions import require_map_role
 from app.database import get_db
 from app.places.models import Place
 from app.statuses.models import PlaceStatus
-from app.statuses.schemas import PlaceStatusCreate, PlaceStatusRead, PlaceStatusUpdate
+from app.statuses.schemas import PlaceStatusCreate, PlaceStatusOrder, PlaceStatusRead, PlaceStatusUpdate
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 
@@ -90,6 +90,38 @@ def get_statuses(
     return [status_to_read(*row) for row in database_session.execute(statement)]
 
 
+@router.post("/reorder", response_model=list[PlaceStatusRead])
+def reorder_statuses(
+    status_order: PlaceStatusOrder,
+    map_id: UUID = Query(...),
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[PlaceStatusRead]:
+    """Persist the complete order selected in the statuses workspace."""
+
+    require_map_role(database_session, map_id, current_user, "editor")
+    statuses = list(database_session.scalars(
+        select(PlaceStatus)
+        .where(PlaceStatus.map_id == map_id)
+        .order_by(PlaceStatus.sort_order, func.lower(PlaceStatus.name), PlaceStatus.id)
+    ))
+    if len(status_order.ids) != len(statuses) or set(status_order.ids) != {item.id for item in statuses}:
+        raise HTTPException(status_code=422, detail="The status order must contain every status exactly once")
+
+    try:
+        for item in statuses:
+            item.sort_order += 10_000
+        database_session.flush()
+        by_id = {item.id: item for item in statuses}
+        for index, status_id in enumerate(status_order.ids, start=1):
+            by_id[status_id].sort_order = index * 10
+        database_session.commit()
+        return [read_status(database_session, status_id) for status_id in status_order.ids]
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to reorder statuses") from error
+
+
 @router.get("/{status_id}", response_model=PlaceStatusRead)
 def get_status(
     status_id: UUID,
@@ -117,7 +149,10 @@ def create_status(
         slug=slugify_status_name(status_data.name),
         color=status_data.color,
         functional_state=status_data.functional_state,
-        sort_order=status_data.sort_order,
+        sort_order=(database_session.scalar(
+            select(func.coalesce(func.max(PlaceStatus.sort_order), 0))
+            .where(PlaceStatus.map_id == status_data.map_id)
+        ) + 10),
         is_default=status_data.is_default,
         is_active=status_data.is_active,
     )

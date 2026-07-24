@@ -23,7 +23,6 @@ class PlaceStatusCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     functional_state: Literal["non_visited", "visited"]
     color: str
-    sort_order: int = Field(default=0, ge=0)
     is_default: bool = False
     is_active: bool = True
 
@@ -50,7 +49,6 @@ class PlaceStatusCreate(BaseModel):
 class PlaceStatusUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     color: str | None = None
-    sort_order: int | None = Field(default=None, ge=0)
     is_default: bool | None = None
     is_active: bool | None = None
     functional_state: Literal["non_visited", "visited"] | None = None
@@ -94,3 +92,9 @@ class PlaceStatusRead(PlaceStatusSummary):
     created_at: datetime
     updated_at: datetime
     places_count: int = 0
+
+
+class PlaceStatusOrder(BaseModel):
+    """The complete, user-defined order of statuses for one map."""
+
+    ids: list[UUID] = Field(min_length=1, max_length=100)

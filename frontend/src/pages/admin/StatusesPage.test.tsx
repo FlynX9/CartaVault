@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createStatus, deleteStatus, getStatuses, updateStatus } from '../../api/statuses'
+import { createStatus, deleteStatus, getStatuses, reorderStatuses, updateStatus } from '../../api/statuses'
 import { StatusesPanel } from './StatusesPage'
 
 vi.mock('../../api/statuses', () => ({
@@ -9,6 +9,7 @@ vi.mock('../../api/statuses', () => ({
   createStatus: vi.fn(),
   updateStatus: vi.fn(),
   deleteStatus: vi.fn(),
+  reorderStatuses: vi.fn(),
 }))
 
 const STATUS = {
@@ -22,6 +23,7 @@ beforeEach(() => {
   vi.mocked(createStatus).mockResolvedValue({ ...STATUS, id: 'new-id', name: 'À revoir' })
   vi.mocked(updateStatus).mockResolvedValue(STATUS)
   vi.mocked(deleteStatus).mockResolvedValue()
+  vi.mocked(reorderStatuses).mockResolvedValue([STATUS])
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
@@ -39,10 +41,10 @@ describe('StatusesPage', () => {
     fireEvent.change(screen.getByLabelText('Nom *'), { target: { value: 'À revoir' } })
     expect(screen.queryByLabelText('Couleur hexadécimale')).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Couleur'), { target: { value: '#abcdef' } })
-    fireEvent.change(screen.getByLabelText('Ordre d’affichage'), { target: { value: '25' } })
     fireEvent.click(screen.getByRole('radio', { name: 'Visité' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(createStatus).toHaveBeenCalledWith(expect.objectContaining({ name: 'À revoir', color: '#ABCDEF', sort_order: 25, functional_state: 'visited', map_id: 'map-id' })))
+    await waitFor(() => expect(createStatus).toHaveBeenCalledWith(expect.objectContaining({ name: 'À revoir', color: '#ABCDEF', functional_state: 'visited', map_id: 'map-id' })))
+    expect(createStatus).not.toHaveBeenCalledWith(expect.objectContaining({ sort_order: expect.anything() }))
   })
 
   it('explains the functional state and confirms an impactful change', async () => {
@@ -54,7 +56,7 @@ describe('StatusesPage', () => {
     const settings = screen.getByRole('group', { name: 'Paramètres du statut' })
     expect(settings).toBeVisible()
     expect(within(settings).getByLabelText('Couleur')).toBeEnabled()
-    expect(within(settings).getByLabelText('Ordre d’affichage')).toBeVisible()
+    expect(within(settings).queryByLabelText('Ordre d’affichage')).not.toBeInTheDocument()
     expect(within(settings).getByRole('checkbox', { name: 'Actif' })).toBeVisible()
     expect(within(settings).getByRole('checkbox', { name: 'Statut par défaut' })).toBeVisible()
     expect(screen.getByText(/Un statut inactif reste associé/)).toBeVisible()
@@ -64,5 +66,19 @@ describe('StatusesPage', () => {
     expect(await screen.findByText(/modifiera le classement fonctionnel de 2 lieux/)).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Confirmer la modification' }))
     await waitFor(() => expect(updateStatus).toHaveBeenCalledWith('status-id', expect.objectContaining({ functional_state: 'visited' })))
+  })
+
+  it('persists a dragged status order without exposing manual ordering', async () => {
+    const second = { ...STATUS, id: 'status-id-2', name: 'Visité', functional_state: 'visited' as const, sort_order: 20 }
+    vi.mocked(getStatuses).mockResolvedValueOnce([STATUS, second])
+    vi.mocked(reorderStatuses).mockResolvedValueOnce([second, STATUS])
+    render(<StatusesPanel mapId="map-id" variant="panel" />)
+    const first = await screen.findByText('À faire')
+    const secondItem = screen.getByText('Visité', { selector: 'strong' })
+    const dataTransfer = { effectAllowed: '', setData: vi.fn() }
+    fireEvent.dragStart(first.closest('li')!, { dataTransfer })
+    fireEvent.dragOver(secondItem.closest('li')!, { dataTransfer })
+    fireEvent.drop(secondItem.closest('li')!, { dataTransfer })
+    await waitFor(() => expect(reorderStatuses).toHaveBeenCalledWith('map-id', ['status-id-2', 'status-id']))
   })
 })

@@ -71,3 +71,10 @@ export async function updateStatus(id: string, data: PlaceStatusUpdatePayload): 
 export async function deleteStatus(id: string): Promise<void> {
   await sendWithoutResponse(`/statuses/${encodeURIComponent(id)}`, 'DELETE')
 }
+
+export async function reorderStatuses(mapId: string, ids: string[]): Promise<PlaceStatus[]> {
+  const params = new URLSearchParams({ map_id: mapId })
+  const payload = await sendJson(`/statuses/reorder?${params.toString()}`, 'POST', { ids })
+  if (!Array.isArray(payload)) throw new Error('La liste des statuts réordonnée est invalide.')
+  return payload.map(parseStatus)
+}

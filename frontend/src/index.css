@@ -2278,10 +2278,11 @@ button {
 .status-functional-state small { color: var(--cv-color-gray); font-size: 0.68rem; line-height: 1.35; }
 .status-settings { grid-column: 1 / -1; display: grid; gap: 0.65rem; margin: 0; padding: 0.65rem; background: #fff; border: 1px solid rgb(43 62 89 / 16%); border-radius: var(--cv-radius-sm); }
 .status-settings legend { padding: 0 0.2rem; color: var(--cv-color-navy); font-size: 0.78rem; font-weight: 700; }
-.status-settings-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.75rem; }
+.status-settings-fields { display: grid; grid-template-columns: auto; align-items: start; gap: 0.75rem; }
 .status-settings-fields + .status-checkbox-help { margin-top: 0.35rem; }
-.status-settings .status-order-field { display: grid; gap: 0.28rem; margin: 0; }
-.status-settings .status-order-field input { width: 100%; font-weight: 400; }
+.status-drag-handle { flex: 0 0 auto; color: var(--cv-color-gray); cursor: grab; }
+.cv-panel-status-list li.is-dragging { opacity: 0.45; }
+.cv-panel-status-list li.is-drop-target { border-color: var(--cv-color-teal); box-shadow: inset 0 3px 0 var(--cv-color-teal); }
 .cv-statuses-panel .status-settings input[type='checkbox'] { width: 0.85rem !important; height: 0.85rem !important; min-height: 0.85rem !important; flex: 0 0 0.85rem; margin: 0; padding: 0 !important; accent-color: var(--cv-color-teal); }
 @media (min-width: 761px) and (max-width: 1024px) { :root { --cv-workspace-sidebar-width: clamp(340px, 42vw, 420px); } }
 @media (max-width: 760px) { :root { --cv-workspace-sidebar-width: min(100vw, 100%); }.workspace-management-panel { width: 100%; min-width: 0; max-width: none; }.cv-management-panel .admin-page-header { top: -1rem; }.cv-statuses-panel .status-form-grid { grid-template-columns: 1fr; }.cv-statuses-panel .status-form-name { grid-column: auto; } }

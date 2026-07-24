@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState, type DragEvent, type FormEvent } from 'react'
+import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 
-import { createStatus, deleteStatus, getStatuses, updateStatus } from '../../api/statuses'
+import { createStatus, deleteStatus, getStatuses, reorderStatuses, updateStatus } from '../../api/statuses'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
@@ -10,7 +10,6 @@ import type { PlaceStatus } from '../../types/status'
 interface StatusFormState {
   name: string
   color: string
-  sort_order: string
   is_active: boolean
   is_default: boolean
   functional_state: 'non_visited' | 'visited'
@@ -19,7 +18,6 @@ interface StatusFormState {
 const EMPTY_FORM: StatusFormState = {
   name: '',
   color: '#2563EB',
-  sort_order: '0',
   is_active: true,
   is_default: false,
   functional_state: 'non_visited',
@@ -40,6 +38,8 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
   const [error, setError] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(variant === 'page')
+  const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!mapId) {
@@ -62,7 +62,6 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
     setForm({
       name: item.name,
       color: item.color,
-      sort_order: String(item.sort_order),
       is_active: item.is_active,
       is_default: item.is_default,
       functional_state: item.functional_state,
@@ -93,7 +92,6 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       map_id: mapId,
       name: form.name.trim(),
       color: form.color.toUpperCase(),
-      sort_order: Number(form.sort_order),
       is_active: form.is_active,
       is_default: form.is_default,
       functional_state: form.functional_state,
@@ -131,6 +129,30 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       setRefresh((value) => value + 1)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Suppression impossible.')
+    }
+  }
+
+  const reorder = async (event: DragEvent<HTMLLIElement>, targetId: string) => {
+    event.preventDefault()
+    if (!mapId || !canEdit || search || !draggedStatusId || draggedStatusId === targetId) return
+
+    const current = statuses
+    const sourceIndex = current.findIndex((item) => item.id === draggedStatusId)
+    const targetIndex = current.findIndex((item) => item.id === targetId)
+    if (sourceIndex < 0 || targetIndex < 0) return
+
+    const next = [...current]
+    const [moved] = next.splice(sourceIndex, 1)
+    next.splice(targetIndex, 0, moved)
+    setStatuses(next)
+    setDraggedStatusId(null)
+    setDropTargetId(null)
+
+    try {
+      setStatuses(await reorderStatuses(mapId, next.map((item) => item.id)))
+    } catch (caught) {
+      setStatuses(current)
+      setError(caught instanceof Error ? caught.message : 'Réorganisation impossible.')
     }
   }
 
@@ -185,7 +207,6 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
                     <input className="cv-status-color-input" aria-label="Couleur" type="color" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value.toUpperCase() })} />
                   </span>
                 </label>
-                <label className="form-field status-order-field"><span>Ordre d’affichage</span><input type="number" min="0" required value={form.sort_order} onChange={(event) => setForm({ ...form, sort_order: event.target.value })} /></label>
               </div>
               <div className="status-checkbox-help">
                 <label className="checkbox-field"><input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><strong>Actif</strong></label>
@@ -202,8 +223,17 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       )}
       <ul className={`admin-entity-list${isPanel ? ' cv-panel-status-list cv-workspace-panel__list' : ''}`}>
         {statuses.map((item) => (
-          <li className={isPanel ? 'cv-workspace-panel__card' : undefined} key={item.id}>
-            <div className="status-summary"><span className="status-dot" style={{ backgroundColor: item.color }} /><div><strong>{item.name}</strong>{isPanel ? <div className="status-meta"><span>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'}</span><span>Ordre {item.sort_order}</span><span>{item.places_count} POI</span>{item.is_default && <b>Défaut</b>}{!item.is_active && <b>Inactif</b>}</div> : <p>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'} · {item.slug} · ordre {item.sort_order} · {item.places_count} POI</p>}</div></div>
+          <li
+            className={`${isPanel ? 'cv-workspace-panel__card' : ''}${draggedStatusId === item.id ? ' is-dragging' : ''}${dropTargetId === item.id ? ' is-drop-target' : ''}`}
+            key={item.id}
+            draggable={canEdit && !search}
+            onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedStatusId(item.id) }}
+            onDragOver={(event) => { if (canEdit && !search && draggedStatusId !== item.id) { event.preventDefault(); setDropTargetId(item.id) } }}
+            onDrop={(event) => void reorder(event, item.id)}
+            onDragEnd={() => { setDraggedStatusId(null); setDropTargetId(null) }}
+          >
+            {canEdit && !search && <GripVertical className="status-drag-handle" size={16} aria-hidden="true" />}
+            <div className="status-summary"><span className="status-dot" style={{ backgroundColor: item.color }} /><div><strong>{item.name}</strong>{isPanel ? <div className="status-meta"><span>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'}</span><span>{item.places_count} POI</span>{item.is_default && <b>Défaut</b>}{!item.is_active && <b>Inactif</b>}</div> : <p>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'} · {item.slug} · {item.places_count} POI</p>}</div></div>
             {canEdit && <div className="entity-actions">{isPanel ? <><button className="panel-icon-button" type="button" aria-label={`Modifier ${item.name}`} title={`Modifier ${item.name}`} onClick={() => select(item)}><Pencil size={16} /></button><button className="panel-icon-button danger" type="button" aria-label={`Supprimer ${item.name}`} title={`Supprimer ${item.name}`} disabled={item.is_default || item.places_count > 0} onClick={() => void remove(item)}><Trash2 size={16} /></button></> : <><button className="secondary-button" type="button" onClick={() => select(item)}>Modifier</button><button className="danger-button" type="button" disabled={item.is_default || item.places_count > 0} onClick={() => void remove(item)}>Supprimer</button></>}</div>}
           </li>
         ))}

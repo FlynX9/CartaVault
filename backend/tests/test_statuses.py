@@ -70,6 +70,28 @@ def test_status_crud_default_and_conflicts(integration_client, database_session,
     assert integration_client.get(f"/statuses/{uuid4()}").status_code == 404
 
 
+def test_statuses_are_automatically_ordered_and_can_be_reordered(integration_client, poi_map) -> None:
+    map_id = str(poi_map.id)
+    initial = integration_client.get("/statuses", params={"map_id": map_id}).json()
+    created = integration_client.post(
+        "/statuses",
+        json={"map_id": map_id, "name": "Later", "color": "#123ABC", "functional_state": "non_visited"},
+    )
+    assert created.status_code == 201
+    ordered = integration_client.get("/statuses", params={"map_id": map_id}).json()
+    assert ordered[-1]["id"] == created.json()["id"]
+
+    status_ids = [item["id"] for item in reversed(ordered)]
+    reordered = integration_client.post("/statuses/reorder", params={"map_id": map_id}, json={"ids": status_ids})
+    assert reordered.status_code == 200
+    assert [item["id"] for item in reordered.json()] == status_ids
+    assert [item["id"] for item in integration_client.get("/statuses", params={"map_id": map_id}).json()] == status_ids
+    assert [item["sort_order"] for item in reordered.json()] == [10, 20, 30, 40, 50]
+    assert integration_client.post(
+        "/statuses/reorder", params={"map_id": map_id}, json={"ids": [initial[0]["id"]]}
+    ).status_code == 422
+
+
 def test_places_use_and_filter_tracking_status(integration_client, poi_map) -> None:
     explicit = integration_client.post(
         "/statuses",

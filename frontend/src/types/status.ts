@@ -29,7 +29,6 @@ export interface PlaceStatusCreatePayload {
   name: string
   functional_state: 'non_visited' | 'visited'
   color: string
-  sort_order: number
   is_default: boolean
   is_active: boolean
 }
