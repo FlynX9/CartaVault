@@ -2649,6 +2649,8 @@ button {
 
 .map-editor-panel .editor-page {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 0;
   min-height: 100%;
   padding: 1rem;
@@ -2656,7 +2658,7 @@ button {
 }
 
 .map-editor-panel .editor-header {
-  padding: 0.2rem 0.15rem 1rem;
+  padding: 0.2rem 0.15rem 0.55rem;
 }
 
 .map-editor-panel .editor-header .details-kicker {
@@ -2682,6 +2684,7 @@ button {
 .map-editor-panel .place-form {
   gap: 0.8rem;
   padding-bottom: 0.6rem;
+  align-content: start;
 }
 
 .map-editor-panel .form-section,
@@ -2797,6 +2800,19 @@ button {
   margin-top: 0.1rem;
 }
 
+.map-editor-panel .form-section--general .general-description textarea {
+  min-height: 8.25rem;
+}
+
+.map-editor-panel .form-section--general .general-name { order: 1; }
+.map-editor-panel .form-section--general .general-map { order: 2; }
+.map-editor-panel .form-section--general .general-region { order: 3; }
+.map-editor-panel .form-section--general .place-rating-fields { order: 4; }
+.map-editor-panel .form-section--general .general-description { order: 5; }
+.map-editor-panel .form-section--general .status-field { order: 6; }
+.map-editor-panel .form-section--general .category-field { order: 7; }
+.map-editor-panel .form-section--general .tag-field { order: 8; }
+
 .map-editor-panel .favorite-field {
   display: flex;
   align-items: center;
@@ -2817,10 +2833,10 @@ button {
 .map-editor-panel .place-rating-fields {
   grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
-  padding: 0.75rem;
-  background: rgb(43 62 89 / 4%);
-  border: 1px solid rgb(43 62 89 / 9%);
-  border-radius: 0.6rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .map-editor-panel .place-rating-fields > span {
@@ -3007,6 +3023,49 @@ button {
   .editor-page .form-grid .form-field-wide { grid-column: 1; }
   .editor-page .place-rating-fields { grid-template-columns: minmax(0, 1fr); }
   .editor-page .place-rating-fields > span { grid-column: 1; }
+}
+
+/* Wide POI editor: keep related information visible together without making
+   the form a single long vertical flow. */
+@media (min-width: 961px) {
+  .map-workspace .map-sidebar.map-editor-panel {
+    width: min(60rem, calc(100% - 1.6rem));
+    max-width: none;
+  }
+
+  .map-workspace.place-list-open .map-sidebar.map-editor-panel {
+    width: min(60rem, calc(100% - var(--cv-workspace-sidebar-width) - 2rem));
+  }
+}
+
+@container poi-editor (min-width: 44rem) {
+  .map-editor-panel .place-form__editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0.8rem;
+  }
+
+  .map-editor-panel .place-form__side-stack {
+    display: grid;
+    align-content: start;
+    gap: 0.8rem;
+    min-width: 0;
+  }
+
+  .map-editor-panel .form-section--state .form-grid,
+  .map-editor-panel .form-section--access .form-grid,
+  .map-editor-panel .form-section--chronology .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .map-editor-panel .place-form__photos {
+    min-width: 0;
+  }
+
+  .map-editor-panel .place-form__photos .photo-manager-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {

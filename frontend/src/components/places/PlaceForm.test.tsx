@@ -47,7 +47,7 @@ describe('PlaceForm', () => {
     render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', statusId: 'todo', description: 'Valeur conservée' }} maps={[configuredMap as never]} allowMapChange categories={[]} tags={[]} statuses={statuses} submitLabel="Créer" isSubmitting={false} onSubmit={vi.fn()} />)
 
     expect(screen.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument()
-    expect(screen.getByText('Favori')).toBeVisible()
+    expect(screen.queryByText('Favori')).not.toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Envie avant visite' })).toBeVisible()
     expect(screen.queryByRole('group', { name: 'Évaluation après visite' })).not.toBeInTheDocument()
 
