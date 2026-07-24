@@ -90,6 +90,19 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
+  it('returns to the Places workspace when Lieux is selected from Sorties', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
+
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+  })
+
   it('reports refusal when deleting a map from the maps panel', async () => {
     vi.mocked(deleteMap).mockRejectedValue(new ApiError(409, 'Conflict'))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
