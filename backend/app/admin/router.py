@@ -153,15 +153,29 @@ def verify_resend(session: Session = Depends(get_db)) -> CredentialStatus:
         raise HTTPException(404, "Aucune clé Resend n’est configurée.")
     try:
         value = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
-        request = Request("https://api.resend.com/domains", headers={"Authorization": f"Bearer {value}", "Accept": "application/json"})
+        request = Request(
+            "https://api.resend.com/domains",
+            headers={
+                "Authorization": f"Bearer {value}",
+                "Accept": "application/json",
+                "User-Agent": "CartaVault/1.0",
+            },
+        )
         with urlopen(request, timeout=email_settings.timeout_seconds) as response:  # noqa: S310 - fixed provider endpoint
             if response.status >= 400:
                 raise HTTPError(request.full_url, response.status, "provider error", response.headers, None)
-        credential.verified_at = datetime.now(UTC).replace(tzinfo=None); credential.last_error_code = None
-    except (CredentialEncryptionError, HTTPError, URLError, TimeoutError, OSError) as error:
+    except HTTPError as error:
+        # Resend returns 401 when a valid `sending_access` key calls an
+        # account-management endpoint. Invalid API keys return 403.
+        if error.code != 401:
+            credential.verified_at = None; credential.last_error_code = "RESEND_VERIFICATION_FAILED"
+            session.commit()
+            raise HTTPException(502, "La vérification Resend a échoué.") from error
+    except (CredentialEncryptionError, URLError, TimeoutError, OSError) as error:
         credential.verified_at = None; credential.last_error_code = "RESEND_VERIFICATION_FAILED"
         session.commit()
         raise HTTPException(502, "La vérification Resend a échoué.") from error
+    credential.verified_at = datetime.now(UTC).replace(tzinfo=None); credential.last_error_code = None
     session.commit()
     return next(item for item in _credential_statuses(session) if item.provider == "resend")
 

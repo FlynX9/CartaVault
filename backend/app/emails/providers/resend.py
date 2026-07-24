@@ -13,14 +13,20 @@ class ResendEmailProvider:
         self.api_key = api_key
 
     def send(self, message: EmailMessage) -> str | None:
+        if not email_settings.from_address:
+            raise EmailDeliveryError(
+                "EMAIL_SENDER_NOT_CONFIGURED",
+                "L’adresse d’expédition Resend n’est pas configurée.",
+            )
         payload = {
             "from": f"{email_settings.from_name} <{email_settings.from_address}>",
             "to": message.recipients,
-            "reply_to": email_settings.reply_to,
             "subject": message.subject,
             "html": message.html,
             "text": message.text,
         }
+        if email_settings.reply_to:
+            payload["reply_to"] = email_settings.reply_to
         request = Request(
             "https://api.resend.com/emails", data=json.dumps(payload).encode("utf-8"), method="POST",
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "User-Agent": "CartaVault/1.0"},

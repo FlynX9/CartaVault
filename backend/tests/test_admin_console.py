@@ -1,4 +1,4 @@
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from uuid import uuid4
 
 import pytest
@@ -73,6 +73,54 @@ def test_admin_credentials_never_expose_secrets(integration_client, database_ses
     encryption = next(item for item in response.json() if item["provider"] == "credential_encryption")
     assert encryption["editable"] is False
     assert "value" not in encryption
+
+
+def test_resend_verification_accepts_a_sending_only_key(integration_client, monkeypatch) -> None:
+    saved = integration_client.put(
+        "/admin/console/credentials/resend",
+        json={"value": "re_sending-only-test-key"},
+    )
+    assert saved.status_code == 200
+
+    def reject_domain_listing(*_args, **_kwargs):
+        raise HTTPError(
+            "https://api.resend.com/domains",
+            401,
+            "This API key is restricted to only send emails.",
+            None,
+            None,
+        )
+
+    monkeypatch.setattr("app.admin.router.urlopen", reject_domain_listing)
+
+    verified = integration_client.post("/admin/console/credentials/resend/verify")
+
+    assert verified.status_code == 200
+    assert verified.json()["verified_at"] is not None
+    assert verified.json()["last_error_code"] is None
+
+
+def test_resend_verification_rejects_an_invalid_key(integration_client, monkeypatch) -> None:
+    saved = integration_client.put(
+        "/admin/console/credentials/resend",
+        json={"value": "re_invalid-test-key"},
+    )
+    assert saved.status_code == 200
+
+    def reject_invalid_key(*_args, **_kwargs):
+        raise HTTPError(
+            "https://api.resend.com/domains",
+            403,
+            "API key is invalid.",
+            None,
+            None,
+        )
+
+    monkeypatch.setattr("app.admin.router.urlopen", reject_invalid_key)
+
+    verified = integration_client.post("/admin/console/credentials/resend/verify")
+
+    assert verified.status_code == 502
 
 
 def test_admin_quota_profile_enforces_limit_without_deleting_data(integration_client, poi_map, database_session, auth_user) -> None:

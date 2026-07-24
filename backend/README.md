@@ -10,7 +10,7 @@ The `/account` router manages personal profile data, email and password changes,
 
 `POST /auth/register` stores a pending registration request without creating a `users` row. An administrator accepts or declines the request through `/admin/registration-requests`; a user is created and activated only when accepted. Password reset always returns a generic response, uses a single-use hash-only token, and revokes sessions after confirmation.
 
-The Resend key is entered from Administration and encrypted with `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; the API returns only its suffix. Non-secret settings are `EMAIL_FROM_NAME`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES`, and `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Each email flow has versioned CartaVault HTML and text templates under `app/emails/templates/`, with `.en` and `.fr` variants. Registration-request language is retained until approval; password resets use the account preference.
+The Resend key is entered from Administration and encrypted with `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; the API returns only its suffix. Both full-access and send-only Resend keys are supported. `EMAIL_FROM_ADDRESS` must use a domain verified in the corresponding Resend account; an empty reply-to address is omitted from provider requests. Other non-secret settings are `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES`, and `EMAIL_PROVIDER_TIMEOUT_SECONDS`. Each email flow has versioned CartaVault HTML and text templates under `app/emails/templates/`, with `.en` and `.fr` variants. Registration-request language is retained until approval; password resets use the account preference.
 
 ## Authentication, roles, and security
 
