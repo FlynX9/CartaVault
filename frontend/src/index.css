@@ -2677,6 +2677,36 @@ button {
 .kmz-import-warning, .kmz-import-error { margin: .55rem 0 0 1.55rem; font-size: .8rem; }.kmz-import-warning { color: #8a5a00; }.kmz-import-error { color: #a12424; }.kmz-import-state { padding: 2rem; text-align: center; }.kmz-import-force-button { display: inline-flex; align-items: center; gap: .35rem; min-height: 2rem; margin: .55rem 0 0 1.55rem; padding: .35rem .6rem; color: #8a5a00; background: #fff8e8; border: 1px solid #e3b35c; border-radius: .5rem; font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }.kmz-import-force-button:hover, .kmz-import-force-button:focus-visible { color: var(--cv-color-navy); background: #fff2d6; outline: 2px solid rgb(200 161 74 / 28%); outline-offset: 1px; }.kmz-import-force-button:disabled { color: var(--cv-color-teal); background: rgb(15 166 138 / 9%); border-color: rgb(15 166 138 / 30%); cursor: default; }.kmz-import-dialog .dialog-actions { justify-content: flex-end; padding-top: .75rem; border-top: 1px solid rgb(43 62 89 / 10%); }.kmz-import-dialog .dialog-actions > button { min-height: 2.35rem; padding: .45rem .8rem; border-radius: .55rem; font-size: .82rem; font-weight: 700; }.kmz-import-dialog .dialog-actions .secondary-button { color: var(--cv-color-slate); background: white; border: 1px solid rgb(43 62 89 / 16%); }.kmz-import-dialog .dialog-actions .secondary-button:hover, .kmz-import-dialog .dialog-actions .secondary-button:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 0; }.kmz-import-dialog .dialog-actions .primary-button { color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); }.kmz-import-dialog .dialog-actions .primary-button:hover, .kmz-import-dialog .dialog-actions .primary-button:focus-visible { background: #0b8f77; border-color: #0b8f77; }
 .kmz-import-report .primary-button { min-height: 2.35rem; padding: .45rem .85rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: .55rem; box-shadow: none; font-size: .82rem; font-weight: 700; }.kmz-import-report .primary-button:hover, .kmz-import-report .primary-button:focus-visible { background: #0b8f77; border-color: #0b8f77; box-shadow: none; outline: 2px solid rgb(15 166 138 / 18%); outline-offset: 1px; }
 @media (max-width: 600px) { .kmz-import-dialog { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }.kmz-import-dialog__header, .kmz-import-upload, .kmz-import-preview, .kmz-import-report { padding-right: 1rem; padding-left: 1rem; }.kmz-import-items dl { grid-template-columns: 1fr; gap: .1rem; } }
+
+/* KMZ import follows the compact density of CartaVault workspace panels. */
+.kmz-import-dialog { width: min(42rem, calc(100vw - 2rem)); font-size: .78rem; }
+.kmz-import-dialog__header { gap: .75rem; padding: .9rem 1rem .75rem; }
+.kmz-import-dialog__header h2 { margin: .1rem 0; font-size: 1rem; line-height: 1.2; }
+.kmz-import-dialog__header p:not(.cv-workspace-panel__eyebrow) { font-size: .72rem; }
+.kmz-import-dialog__header .cv-workspace-panel__eyebrow { font-size: .56rem; }
+.kmz-import-dialog__header .panel-icon-button { width: 2rem; height: 2rem; flex-basis: 2rem; border-radius: .55rem; }
+.kmz-import-dialog__header .panel-icon-button svg { width: .9rem; height: .9rem; }
+.kmz-import-upload, .kmz-import-preview, .kmz-import-report { gap: .65rem; padding: .85rem 1rem; }
+.kmz-import-dropzone { min-height: 8rem; gap: .35rem; padding: .8rem; border-radius: .65rem; font-size: .78rem; }
+.kmz-import-dropzone svg { width: 1.35rem; height: 1.35rem; }
+.kmz-import-dropzone small { font-size: .68rem; }
+.kmz-import-summary { gap: .45rem; padding: .55rem .65rem; font-size: .78rem; }
+.kmz-import-summary span { font-size: .7rem; }
+.kmz-import-toolbar { gap: .45rem; }
+.kmz-import-toolbar button { min-height: 1.9rem; padding: .3rem .5rem; border-radius: .45rem; font-size: .72rem; }
+.kmz-import-toolbar button svg { width: .85rem; height: .85rem; }
+.kmz-import-remote-option { gap: .25rem .45rem; padding: .55rem .65rem; border-radius: .55rem; font-size: .76rem; }
+.kmz-import-remote-option small { font-size: .66rem; }
+.kmz-import-items { gap: .45rem; }
+.kmz-import-items li { padding: .6rem; border-radius: .55rem; }
+.kmz-import-items label { gap: .5rem; font-size: .76rem; }
+.kmz-import-items small, .kmz-import-items details { font-size: .68rem; }
+.kmz-import-items details { margin-top: .45rem; }
+.kmz-import-warning, .kmz-import-error { margin-top: .4rem; font-size: .68rem; }
+.kmz-import-force-button { min-height: 1.9rem; margin-top: .45rem; padding: .3rem .5rem; font-size: .7rem; }
+.kmz-import-dialog .dialog-actions { gap: .45rem; padding-top: .6rem; }
+.kmz-import-dialog .dialog-actions > button, .kmz-import-report .primary-button { min-height: 2.1rem; padding: .38rem .65rem; border-radius: .5rem; font-size: .74rem; }
+.kmz-import-state { padding: 1.35rem; font-size: .78rem; }
 .popup-imported-data { margin: .5rem 0; }.popup-imported-data h3 { margin: 0; padding: .35rem 1rem .15rem; color: var(--cv-color-gray); font-size: .78rem; }.popup-imported-data .popup-details { padding-top: .2rem; padding-bottom: .35rem; }.popup-imported-data dt { color: var(--cv-color-gray); font-weight: 700; }.popup-imported-data dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 
 #map-place-list .place-list-map-meta {
