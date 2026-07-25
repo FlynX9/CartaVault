@@ -7735,3 +7735,61 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 @media (hover: none) {
   .trip-planner-panel .trip-panel-free-stop { opacity: .72; }
 }
+
+/* Trip workspace -----------------------------------------------------------
+   On wide screens, preparation is a second left dock attached to Lieux. This
+   keeps the map as a single, persistent Leaflet canvas while making the
+   planning workflow read from left to right: places, itinerary, map. */
+.map-workspace.trip-planning-open {
+  --cv-trip-panel-gap: .6rem;
+  --cv-trip-map-min-width: 22rem;
+  --cv-trip-left-dock-width: var(--cv-left-panel-width, var(--cv-workspace-sidebar-width));
+}
+
+.map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) {
+  --cv-trip-left-dock-width: 208px;
+}
+
+.map-workspace.trip-planning-open .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
+  right: auto;
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap));
+  width: min(
+    var(--cv-right-panel-width, 40rem),
+    max(20rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-map-min-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap)))
+  );
+}
+
+/* The second resize divider now belongs to the right edge of the itinerary,
+   rather than the right edge of the map workspace. */
+.map-workspace.trip-planning-open .cv-panel-resize-handle--right {
+  right: auto;
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-right-panel-width, 40rem) - 6px);
+}
+
+/* Geographic search belongs to the remaining map column in trip mode. It
+   retains its compact/expand-on-hover behaviour, without crossing either
+   left-side panel. The legend follows the same visual column. */
+.map-workspace.trip-planning-open .geographic-search {
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-right-panel-width, 40rem) + .8rem);
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-right-panel-width, 40rem) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
+}
+
+.map-workspace.trip-planning-open .status-legend {
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-right-panel-width, 40rem) + .45rem);
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .map-workspace.trip-planning-open { --cv-trip-map-min-width: 12rem; }
+}
+
+@media (max-width: 760px) {
+  .map-workspace.trip-planning-open .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .map-workspace.trip-planning-open .cv-panel-resize-handle--right { display: none; }
+}

@@ -48,6 +48,7 @@ interface MapPageProps {
   mapNotice?: string | null
   sidebarOpen: boolean
   sidebarResizable?: boolean
+  tripPlanningActive?: boolean
   placeListOpen: boolean
   statuses: PlaceStatusSummary[]
   canEdit?: boolean
@@ -86,6 +87,7 @@ export function MapPage({
   mapNotice = null,
   sidebarOpen,
   sidebarResizable = false,
+  tripPlanningActive = false,
   placeListOpen,
   statuses,
   canEdit = true,
@@ -225,7 +227,7 @@ export function MapPage({
 
   return (
     <section
-      className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}`}
+      className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}`}
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
       <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>

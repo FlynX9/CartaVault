@@ -98,6 +98,7 @@ describe('MapPage', () => {
           errorMessage={null}
           sidebarOpen
           sidebarResizable
+          tripPlanningActive
           placeListOpen
           statuses={[]}
           sidebar={<aside aria-label="Sorties">Sorties</aside>}
@@ -112,6 +113,7 @@ describe('MapPage', () => {
 
     const loadedMap = await screen.findByTestId('poi-map')
     const workspace = loadedMap.closest('.map-workspace') as HTMLElement
+    expect(workspace).toHaveClass('trip-planning-open')
     Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1400 })
     const map = screen.getByTestId('poi-map')
 
