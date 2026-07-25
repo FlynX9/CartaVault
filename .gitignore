@@ -29,6 +29,11 @@ secrets/
 # Runtime storage (uploaded photos and temporary KMZ exports)
 backend/storage/
 
+# Local Docker image packages
+/docker-exports/
+*-images.tar
+*-images.tar.sha256
+
 # Pytest
 /.pytest_tmp*/
 backend/.pytest_*/
