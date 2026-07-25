@@ -7744,17 +7744,22 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   --cv-trip-panel-gap: .6rem;
   --cv-trip-map-min-width: 22rem;
   --cv-trip-left-dock-width: var(--cv-left-panel-width, var(--cv-workspace-sidebar-width));
+  --cv-trip-panel-dock-width: var(--cv-right-panel-width, 40rem);
 }
 
 .map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) {
   --cv-trip-left-dock-width: 208px;
 }
 
+.map-workspace.trip-planning-open:has(.trip-planner-panel.is-collapsed) {
+  --cv-trip-panel-dock-width: 13rem;
+}
+
 .map-workspace.trip-planning-open .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
   right: auto;
   left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap));
   width: min(
-    var(--cv-right-panel-width, 40rem),
+    var(--cv-trip-panel-dock-width),
     max(20rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-map-min-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap)))
   );
 }
@@ -7763,19 +7768,32 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
    rather than the right edge of the map workspace. */
 .map-workspace.trip-planning-open .cv-panel-resize-handle--right {
   right: auto;
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-right-panel-width, 40rem) - 6px);
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) - 6px);
 }
 
 /* Geographic search belongs to the remaining map column in trip mode. It
    retains its compact/expand-on-hover behaviour, without crossing either
    left-side panel. The legend follows the same visual column. */
 .map-workspace.trip-planning-open .geographic-search {
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-right-panel-width, 40rem) + .8rem);
-  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-right-panel-width, 40rem) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .8rem);
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-panel-dock-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
 }
 
 .map-workspace.trip-planning-open .status-legend {
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-right-panel-width, 40rem) + .45rem);
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .45rem);
+}
+
+/* The collapsed-Lieux rule is intentionally more specific than the normal map
+   control rule. Repeat the trip selector at the same specificity so search
+   remains in the map column rather than underneath either compact panel. */
+.map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) .geographic-search {
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .8rem);
+  width: 3.5rem;
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-panel-dock-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
+}
+
+.map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) .status-legend {
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .45rem);
 }
 
 @media (min-width: 761px) and (max-width: 1180px) {
@@ -7793,3 +7811,54 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 
   .map-workspace.trip-planning-open .cv-panel-resize-handle--right { display: none; }
 }
+
+/* A reduced trip panel mirrors the compact Lieux identity row. Both panels can
+   be reduced independently, without ending the active trip-planning session. */
+.map-workspace .trip-planner-panel.is-collapsed {
+  bottom: auto;
+  width: 13rem !important;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+
+.trip-planner-panel.is-collapsed > :not(.trip-panel-header) { display: none; }
+
+.trip-planner-panel.is-collapsed .trip-panel-header--collapsed {
+  min-height: 3.5rem;
+  padding: .5rem .55rem .5rem .75rem;
+  border-bottom: 0;
+}
+
+.trip-planner-panel.is-collapsed .cv-workspace-panel__heading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: .42rem;
+}
+
+.trip-planner-panel.is-collapsed .cv-workspace-panel__title {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.trip-panel-collapsed-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-color-gray);
+  font-size: .72rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-planner-panel.is-collapsed .trip-panel-collapse-toggle {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  flex: 0 0 2.25rem;
+}
+
+.map-workspace.trip-planner-collapsed .cv-panel-resize-handle--right { display: none; }

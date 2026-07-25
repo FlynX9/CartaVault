@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
-import { ArrowDown, ArrowUp, BedDouble, Car, Check, ChevronDown, Clock3, Copy, Download, Eye, EyeOff, Flag, GripVertical, Lock, MapPin, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sun, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, BedDouble, Car, Check, ChevronDown, Clock3, Copy, Download, Eye, EyeOff, Flag, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sun, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
 import { getAccountPreferences } from '../../api/account'
@@ -11,9 +11,9 @@ import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } 
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from './TripTimePlanning'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 
-interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onClose: () => void }
+interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onClose: () => void }
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onStopFocus, onClose }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onStopFocus }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const canEdit = poiMap.can_edit === true
   const [trips, setTrips] = useState<Trip[]>([])
@@ -142,8 +142,11 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     window.open(tripExportUrl(item.download_url), '_blank', 'noopener,noreferrer')
   }
 
-  return <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? ' trip-planner-panel--trip-view' : ''}`} aria-label="Préparation de sortie">
-    <header className="trip-panel-header cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Sortie</p><h2 className="cv-workspace-panel__title" title={trip?.name ?? 'Préparation'}>{trip?.name ?? 'Préparation'}</h2></div><div className="trip-panel-header-actions cv-workspace-panel__header-actions"><button className={`panel-icon-button trip-view-button${tripViewOnly ? ' active' : ''}`} type="button" aria-label={tripViewOnly ? 'Quitter la vue du voyage' : 'Activer la vue du voyage'} aria-pressed={tripViewOnly} title={tripViewOnly ? 'Afficher la préparation complète' : 'Afficher uniquement le voyage'} onClick={() => onTripViewOnlyChange(!tripViewOnly)}><Route size={16} /></button><button className="panel-icon-button" type="button" aria-label="Fermer le panneau Sortie" onClick={onClose}><X size={17} /></button></div></header>
+  const tripName = trip?.name ?? 'Préparation'
+
+  return <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? ' trip-planner-panel--trip-view' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label="Préparation de sortie">
+    {collapsed ? <header className="trip-panel-header trip-panel-header--collapsed cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><h2 className="cv-workspace-panel__title">Sortie</h2><span className="trip-panel-collapsed-name" title={tripName}>{tripName}</span></div><button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Développer le panneau Sortie" aria-expanded="false" onClick={() => onCollapsedChange(false)}><Plus size={18} /></button></header> : <>
+    <header className="trip-panel-header cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Sortie</p><h2 className="cv-workspace-panel__title" title={tripName}>{tripName}</h2></div><div className="trip-panel-header-actions cv-workspace-panel__header-actions"><button className={`panel-icon-button trip-view-button${tripViewOnly ? ' active' : ''}`} type="button" aria-label={tripViewOnly ? 'Quitter la vue du voyage' : 'Activer la vue du voyage'} aria-pressed={tripViewOnly} title={tripViewOnly ? 'Afficher la préparation complète' : 'Afficher uniquement le voyage'} onClick={() => onTripViewOnlyChange(!tripViewOnly)}><Route size={16} /></button><button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Réduire le panneau Sortie" aria-expanded="true" onClick={() => onCollapsedChange(true)}><Minus size={17} /></button></div></header>
     {tripViewOnly ? <div className="trip-panel-compact-summary">{summary ? <TripSummaryMetrics summary={summary} defaultOpen /> : <div className="trip-panel-empty" role="status"><Route size={24} /><strong>Chargement du résumé…</strong></div>}</div> : <>
     {error && <p className="trip-panel-error" role="alert">{error === 'Internal Server Error' ? 'Une erreur serveur empêche cette opération.' : error}</p>}
     <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => void selectTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && canEdit && <button className="panel-icon-button" type="button" aria-label="Dupliquer cette sortie" title="Dupliquer la sortie" onClick={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })}><Copy size={16} /></button>}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres du voyage' : 'Afficher les paramètres du voyage'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres du voyage" onClick={() => setSettingsOpen((current) => !current)}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} />}</div>
@@ -168,6 +171,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     </>}</>}</>}
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
     {confirmationDialog}
+    </>}
   </aside>
 }
 

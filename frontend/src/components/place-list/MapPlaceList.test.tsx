@@ -51,6 +51,13 @@ describe('MapPlaceList', () => {
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
 
+  it('hides the new-place action while trip planning is active', async () => {
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('button', { name: /Tous42/ })
+    expect(screen.queryByRole('link', { name: 'Nouveau lieu' })).not.toBeInTheDocument()
+  })
+
   it('filters by the selected map UUID', async () => {
     const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', country: { iso_alpha2: 'FR', name: 'France' } } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))

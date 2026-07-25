@@ -46,7 +46,7 @@ describe('TripPlannerPanel', () => {
   it('renders as the right workspace panel and not as a modal', async () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={null} activeDayId={null} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('map-sidebar', 'trip-planner-panel')
-    const header = screen.getByRole('button', { name: 'Fermer le panneau Sortie' }).closest('header')
+    const header = screen.getByRole('button', { name: 'Réduire le panneau Sortie' }).closest('header')
     expect(header).toHaveClass('trip-panel-header', 'cv-workspace-panel__header')
     expect(header?.querySelector('.cv-workspace-panel__title')).toBeInTheDocument()
     expect(container.querySelector('.trip-planner-overlay')).not.toBeInTheDocument()
@@ -82,7 +82,7 @@ describe('TripPlannerPanel', () => {
     expect(createButton.compareDocumentPosition(duplicateButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(duplicateButton.compareDocumentPosition(settingsButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(settingsButton.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Fermer le panneau Sortie' }).closest('header')).not.toContainElement(duplicateButton)
+    expect(screen.getByRole('button', { name: 'Réduire le panneau Sortie' }).closest('header')).not.toContainElement(duplicateButton)
 
     fireEvent.click(settingsButton)
     expect(screen.getByText('Paramètres du voyage')).toBeVisible()
@@ -134,8 +134,8 @@ describe('TripPlannerPanel', () => {
     const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly={false} onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     const viewButton = await screen.findByRole('button', { name: 'Activer la vue du voyage' })
-    const closeButton = screen.getByRole('button', { name: 'Fermer le panneau Sortie' })
-    expect(viewButton.compareDocumentPosition(closeButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const collapseButton = screen.getByRole('button', { name: 'Réduire le panneau Sortie' })
+    expect(viewButton.compareDocumentPosition(collapseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(viewButton)
     expect(onTripViewOnlyChange).toHaveBeenCalledWith(true)
 
@@ -148,6 +148,23 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
     expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
+  })
+
+  it('reduces independently to a compact trip identity row and restores on demand', async () => {
+    const onCollapsedChange = vi.fn()
+    const { rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Réduire le panneau Sortie' }))
+    expect(onCollapsedChange).toHaveBeenCalledWith(true)
+
+    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" collapsed onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('is-collapsed')
+    expect(screen.getByText('Sortie')).toBeVisible()
+    expect(screen.getByText('Voyage test')).toBeVisible()
+    expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Développer le panneau Sortie' }))
+    expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
 
   it('shows routing engine and country constraint once in trip settings', async () => {
