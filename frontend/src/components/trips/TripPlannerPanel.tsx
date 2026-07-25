@@ -116,8 +116,20 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     if (data.startsWith('stop:')) void run(async () => { await moveTripStop(data.slice(5), day.id, day.stops.length); await reload(trip!.id) })
   }
   const dropStop = (event: DragEvent, day: TripDay, index: number) => {
-    event.preventDefault(); event.stopPropagation(); const stopId = event.dataTransfer.getData('text/plain').replace(/^stop:/, '')
+    event.preventDefault(); event.stopPropagation(); const data = event.dataTransfer.getData('text/plain')
     setDraggedStopId(null); setDropTarget(null)
+    if (data.startsWith('place:')) {
+      const placeId = data.slice(6)
+      if (!placeId) return
+      void run(async () => {
+        const created = await addTripStop(day.id, { place_id: placeId, stop_type: 'place', visit_duration_minutes: 30 })
+        if (index < day.stops.length) await moveTripStop(created.id, day.id, index)
+        await reload(trip!.id)
+      })
+      return
+    }
+    if (!data.startsWith('stop:')) return
+    const stopId = data.slice(5)
     if (!stopId) return
     void run(async () => { await moveTripStop(stopId, day.id, index); await reload(trip!.id) })
   }

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -66,7 +66,7 @@ describe('TopBar account entry', () => {
     fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: /connexion$/i }))
     expect(logout).toHaveBeenCalledOnce()
-    expect(await screen.findByTestId('current-path')).toHaveTextContent('/login')
+    await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/login'))
   })
 
   it('returns to the login page even when the logout request fails', async () => {
@@ -75,7 +75,7 @@ describe('TopBar account entry', () => {
     fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
     fireEvent.click(screen.getByRole('menuitem', { name: /connexion$/i }))
 
-    expect(await screen.findByTestId('current-path')).toHaveTextContent('/login')
+    await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/login'))
   })
 
   it('hides administration from a standard user', () => {

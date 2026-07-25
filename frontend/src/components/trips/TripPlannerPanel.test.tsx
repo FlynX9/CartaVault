@@ -251,6 +251,30 @@ describe('TripPlannerPanel', () => {
     await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
   })
 
+  it('inserts a POI dropped on an existing stop without sending the drag prefix as a UUID', async () => {
+    const existingStop = {
+      id: 'stop-existing', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const,
+      name: 'Étape existante', latitude: 48, longitude: 2, address: null, sort_order: 0,
+      visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const,
+    }
+    const withStop = { ...trip, days: [{ ...trip.days[0], stops: [existingStop] }] } satisfies Trip
+    const createdStop = { ...existingStop, id: 'stop-created', place_id: 'place-42', stop_type: 'place' as const, name: 'Nouveau POI' }
+    vi.mocked(listTrips).mockResolvedValue([withStop])
+    vi.mocked(getTrip).mockResolvedValue(withStop)
+    vi.mocked(addTripStop).mockResolvedValue(createdStop)
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStop} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const target = await screen.findByRole('button', { name: /Étape existante/ })
+    const dataTransfer = { getData: () => 'place:place-42' }
+    fireEvent.dragOver(target.closest('li')!, { dataTransfer, clientY: 0 })
+    fireEvent.drop(target.closest('li')!, { dataTransfer })
+
+    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
+    expect(moveTripStop).toHaveBeenCalledWith('stop-created', 'day-1', 0)
+    expect(moveTripStop).not.toHaveBeenCalledWith('place:place-42', expect.anything(), expect.anything())
+  })
+
   it('opens the night modal prefilled when a POI is dropped between two days', async () => {
     const twoDays = { ...trip, days: [{ ...trip.days[0], color: '#e11d48' }, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563eb' }] }
     vi.mocked(listTrips).mockResolvedValue([twoDays])
