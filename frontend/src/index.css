@@ -4750,6 +4750,10 @@ body {
 /* Keep the POI detail card roomy enough for its two-column header. */
 .leaflet-popup-content:has(.place-map-popup) { width: min(42rem, calc(100vw - 3rem)) !important; }
 .place-map-popup { width: min(42rem, calc(100vw - 3rem)); }
+.leaflet-popup.trip-place-popup .leaflet-popup-content:has(.place-map-popup),
+.leaflet-popup.trip-place-popup .place-map-popup {
+  width: min(var(--cv-trip-popup-width, 28rem), calc(100vw - 1.5rem)) !important;
+}
 .popup-overview-tag-section { display: flex; width: 100%; align-items: center; gap: 0.55rem; margin-top: 0.65rem; }
 .popup-overview-tag-section > span, .popup-overview-status-section > span, .popup-overview-category-section > span { flex: 0 0 auto; color: #8a96a3; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; }
 .popup-overview-tag-section .popup-overview-tags { margin: 0; }

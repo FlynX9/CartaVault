@@ -301,7 +301,30 @@ function WorkspaceApp() {
         : workspacePanel === 'statuses' ? <StatusesWorkspacePanel mapId={activeMapId ?? undefined} canEdit={activeMap?.can_edit === true} collapsed={collapsedWorkspacePanel === 'statuses'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'statuses' : null)} />
           : null}</Suspense>
 
-  const rightSidebar = tripPlannerOpen && activeMap ? <Suspense fallback={<aside className="map-sidebar" role="status">Chargement de la préparation de sortieâ€¦</aside>}><TripPlannerPanel poiMap={activeMap} trip={activeTrip} activeDayId={activeTripDayId} tripViewOnly={tripViewOnly} hiddenDayIds={hiddenTripDayIds} collapsed={tripPlannerCollapsed} onCollapsedChange={setTripPlannerCollapsed} onTripViewOnlyChange={(enabled) => { setTripViewOnly(enabled); setTripPlannerCollapsed(false); setWorkspacePanel(enabled ? null : 'places'); if (enabled) { const tripBounds = getTripMapBounds(activeTrip); if (tripBounds) setFocusRequest({ id: ++focusSequence.current, bounds: tripBounds, maxZoom: 15 }) } }} onDayVisibilityChange={(dayId, visible) => setHiddenTripDayIds((current) => { const next = new Set(current); if (visible) next.delete(dayId); else next.add(dayId); return next })} onTripChange={setActiveTrip} onActiveDayChange={setActiveTripDayId} onStopFocus={(latitude, longitude) => setFocusRequest({ id: ++focusSequence.current, view: { center: [latitude, longitude], zoom: Math.max(mapView.zoom, 15) } })} onClose={() => { setTripPlannerOpen(false); setTripPlannerCollapsed(false); setActiveTrip(null); setActiveTripDayId(null); setTripViewOnly(false); setHiddenTripDayIds(new Set()) }} /></Suspense> : <MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />
+  const handleTripStopFocus = (latitude: number, longitude: number) => {
+    setFocusRequest({ id: ++focusSequence.current, view: { center: [latitude, longitude], zoom: Math.max(mapView.zoom, 15) } })
+  }
+  const handleTripPlaceSelect = async (placeId: string) => {
+    const visiblePlace = places.find((item) => item.id === placeId)
+    if (visiblePlace) {
+      handleSelect(visiblePlace)
+      return
+    }
+    try {
+      const controller = new AbortController()
+      const place = await getPlaceDetails(placeId, controller.signal)
+      if (place.latitude === null || place.longitude === null) {
+        showTripNotice('Ce lieu ne possède pas de coordonnées exploitables.')
+        return
+      }
+      const marker: MapPlace = { id: place.id, map_id: place.map_id, name: place.name, latitude: place.latitude, longitude: place.longitude, status: place.status, categories: place.categories, tags: place.tags }
+      setPlaces((current) => current.some((item) => item.id === marker.id) ? current : [...current, marker])
+      handleSelect(marker)
+    } catch (caught) {
+      showTripNotice(caught instanceof Error ? caught.message : 'Impossible d’ouvrir ce lieu.')
+    }
+  }
+  const rightSidebar = tripPlannerOpen && activeMap ? <Suspense fallback={<aside className="map-sidebar" role="status">Chargement de la préparation de sortieâ€¦</aside>}><TripPlannerPanel poiMap={activeMap} trip={activeTrip} activeDayId={activeTripDayId} tripViewOnly={tripViewOnly} hiddenDayIds={hiddenTripDayIds} collapsed={tripPlannerCollapsed} onCollapsedChange={setTripPlannerCollapsed} onTripViewOnlyChange={(enabled) => { setTripViewOnly(enabled); setTripPlannerCollapsed(false); setWorkspacePanel(enabled ? null : 'places'); if (enabled) { const tripBounds = getTripMapBounds(activeTrip); if (tripBounds) setFocusRequest({ id: ++focusSequence.current, bounds: tripBounds, maxZoom: 15 }) } }} onDayVisibilityChange={(dayId, visible) => setHiddenTripDayIds((current) => { const next = new Set(current); if (visible) next.delete(dayId); else next.add(dayId); return next })} onTripChange={setActiveTrip} onActiveDayChange={setActiveTripDayId} onStopFocus={handleTripStopFocus} onStopPlaceSelect={(placeId) => { void handleTripPlaceSelect(placeId) }} onClose={() => { setTripPlannerOpen(false); setTripPlannerCollapsed(false); setActiveTrip(null); setActiveTripDayId(null); setTripViewOnly(false); setHiddenTripDayIds(new Set()) }} /></Suspense> : <MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />
 
   const handleWorkspacePanelChange = (panel: WorkspacePanel) => {
     if (panel === 'places' && tripPlannerOpen) {

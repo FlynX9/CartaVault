@@ -364,12 +364,14 @@ describe('TripPlannerPanel', () => {
   it('focuses the map when a stop is selected and hides visit status controls', async () => {
     const onStopFocus = vi.fn()
     const onActiveDayChange = vi.fn()
-    const withStop = { ...trip, days: [{ ...trip.days[0], stops: [{ id: 'stop-focus', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location', name: 'Belvédère', latitude: 42.4, longitude: 3.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' }] }] } satisfies Trip
+    const onStopPlaceSelect = vi.fn()
+    const withStop = { ...trip, days: [{ ...trip.days[0], stops: [{ id: 'stop-focus', trip_day_id: 'day-1', place_id: 'place-focus', stop_type: 'place', name: 'Belvédère', latitude: 42.4, longitude: 3.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' }] }] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withStop]); vi.mocked(getTrip).mockResolvedValue(withStop)
-    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStop} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onStopFocus={onStopFocus} onClose={vi.fn()} />)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStop} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: /Belvédère/ }))
     expect(onStopFocus).toHaveBeenCalledWith(42.4, 3.1)
     expect(onActiveDayChange).toHaveBeenCalledWith('day-1')
+    expect(onStopPlaceSelect).toHaveBeenCalledWith('place-focus')
     expect(screen.queryByRole('combobox', { name: /Visite/ })).not.toBeInTheDocument()
   })
 
