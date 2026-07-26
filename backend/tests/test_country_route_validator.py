@@ -1,4 +1,5 @@
-from app.trips.routing.country_validator import CountryRouteValidator
+from app.trips.routing.country_validator import CountryRouteValidator, load_boundaries
+from app.countries.catalog import load_country_bounds, load_country_catalog
 
 
 BOUNDARIES = {
@@ -36,3 +37,16 @@ def test_tolerates_small_boundary_imprecision_but_not_real_crossing():
 def test_reports_invalid_geometry_and_unavailable_boundary():
     assert validator().validate_route_within_country({"type": "LineString", "coordinates": []}, "TST").reason == "invalid_geometry"
     assert validator().validate_route_within_country({"type": "LineString", "coordinates": [[0, 0], [1, 1]]}, "NONE").reason == "boundary_unavailable"
+
+
+def test_embedded_boundaries_cover_france_and_validate_a_route_inside_it():
+    boundaries = load_boundaries()
+    assert "FRA" in boundaries
+    primary_country_codes = set(load_country_bounds())
+    expected_codes = {country["iso_alpha3"] for country in load_country_catalog() if country["iso_alpha2"] in primary_country_codes}
+    assert expected_codes <= boundaries.keys()
+    result = CountryRouteValidator().validate_route_within_country(
+        {"type": "LineString", "coordinates": [[2.30, 48.84], [2.36, 48.87]]},
+        "FRA",
+    )
+    assert result.is_valid is True

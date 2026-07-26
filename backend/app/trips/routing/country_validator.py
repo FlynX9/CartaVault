@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from math import cos, hypot, radians
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
 from app.config import routing_settings
 
@@ -26,10 +26,15 @@ class CountryRouteValidation:
     reason: str | None = None
 
 
+Ring: TypeAlias = list[list[float]]
+Polygon: TypeAlias = list[Ring]
+CountryBoundaries: TypeAlias = dict[str, list[Polygon]]
+
+
 class CountryRouteValidator:
     """Validate every sufficiently dense point of an OSRM LineString."""
 
-    def __init__(self, boundaries: dict[str, list[list[list[float]]]] | None = None, *, tolerance_meters: int | None = None, max_outside_distance_meters: int | None = None):
+    def __init__(self, boundaries: CountryBoundaries | dict[str, list[Ring]] | None = None, *, tolerance_meters: int | None = None, max_outside_distance_meters: int | None = None):
         self.boundaries = boundaries if boundaries is not None else load_boundaries()
         self.tolerance_meters = routing_settings.country_boundary_tolerance_meters if tolerance_meters is None else tolerance_meters
         self.max_outside_distance_meters = routing_settings.max_outside_distance_meters if max_outside_distance_meters is None else max_outside_distance_meters
@@ -71,19 +76,20 @@ class CountryRouteValidator:
 
 
 @lru_cache(maxsize=1)
-def load_boundaries() -> dict[str, list[list[list[float]]]]:
+def load_boundaries() -> CountryBoundaries:
     path = Path(__file__).parents[2] / "countries" / "data" / "routing_boundaries.geojson"
     payload = json.loads(path.read_text(encoding="utf-8"))
-    boundaries: dict[str, list[list[list[float]]]] = {}
+    boundaries: CountryBoundaries = {}
     for feature in payload.get("features", []):
-        code = feature.get("properties", {}).get("iso_a3")
+        properties = feature.get("properties", {})
+        code = properties.get("iso_a3") or properties.get("ISO_A3") or properties.get("ADM0_A3")
         geometry = feature.get("geometry", {})
-        if not isinstance(code, str):
+        if not isinstance(code, str) or len(code) != 3 or not code.isalpha():
             continue
         if geometry.get("type") == "Polygon":
-            boundaries[code] = geometry.get("coordinates", [])
+            boundaries[code.upper()] = [geometry.get("coordinates", [])]
         elif geometry.get("type") == "MultiPolygon":
-            boundaries[code] = [ring for polygon in geometry.get("coordinates", []) for ring in polygon]
+            boundaries[code.upper()] = geometry.get("coordinates", [])
     return boundaries
 
 
@@ -102,8 +108,26 @@ def _densify(coordinates: list[list[float]], max_step_meters: float = 100) -> li
     return result
 
 
-def _inside_any(point: list[float], rings: list[list[list[float]]]) -> bool:
-    return any(_inside_ring(point, ring) for ring in rings)
+def _inside_any(point: list[float], polygons: list[Polygon] | list[Ring]) -> bool:
+    normalized = _normalize_polygons(polygons)
+    return any(_inside_polygon(point, polygon) for polygon in normalized)
+
+
+def _normalize_polygons(polygons: list[Polygon] | list[Ring]) -> list[Polygon]:
+    """Accept legacy flat rings in tests while retaining polygon holes in data."""
+
+    if not polygons:
+        return []
+    first = polygons[0]
+    if first and isinstance(first[0], list) and first[0] and isinstance(first[0][0], (int, float)):
+        return [[ring] for ring in polygons]  # legacy outer rings
+    return polygons  # type: ignore[return-value]
+
+
+def _inside_polygon(point: list[float], polygon: Polygon) -> bool:
+    if not polygon or not _inside_ring(point, polygon[0]):
+        return False
+    return not any(_inside_ring(point, hole) for hole in polygon[1:])
 
 
 def _inside_ring(point: list[float], ring: list[list[float]]) -> bool:
@@ -117,8 +141,8 @@ def _inside_ring(point: list[float], ring: list[list[float]]) -> bool:
     return inside
 
 
-def _distance_to_polygons_meters(point: list[float], rings: list[list[list[float]]]) -> float:
-    return min(_distance_to_segment_meters(point, start, end) for ring in rings for start, end in zip(ring, ring[1:] + ring[:1]))
+def _distance_to_polygons_meters(point: list[float], polygons: list[Polygon] | list[Ring]) -> float:
+    return min(_distance_to_segment_meters(point, start, end) for polygon in _normalize_polygons(polygons) for ring in polygon for start, end in zip(ring, ring[1:] + ring[:1]))
 
 
 def _distance_to_segment_meters(point: list[float], start: list[float], end: list[float]) -> float:
