@@ -5968,6 +5968,12 @@ html[data-theme='dark'] .admin-console__avatar {
   background-color: var(--cv-brand-navy);
 }
 
+html[data-theme='dark'] .admin-console {
+  --admin-surface: var(--cv-color-off-white);
+  --admin-card: var(--cv-surface);
+  --admin-border: var(--cv-border-subtle);
+}
+
 html[data-theme='dark'] .app-header {
   color: var(--cv-color-navy);
   background: rgb(14 28 39 / 96%);
@@ -6067,6 +6073,74 @@ html[data-theme='dark'] :is(
   color: var(--cv-color-navy);
   background-color: var(--cv-surface);
   border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(
+  .admin-console__filters,
+  .admin-console__metrics article,
+  .instance-status__summary article,
+  .instance-status__panel
+) {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .instance-status__services li,
+html[data-theme='dark'] .instance-status__checks li,
+html[data-theme='dark'] .instance-status__errors li,
+html[data-theme='dark'] .instance-status__metrics article,
+html[data-theme='dark'] .instance-status__empty {
+  color: var(--cv-color-navy);
+  background-color: var(--cv-surface-muted);
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] :is(
+  .admin-console__filters label,
+  .instance-status__summary article > span:first-child,
+  .instance-status__panel header p,
+  .instance-status__services small,
+  .instance-status__checks small,
+  .instance-status__metrics span,
+  .instance-status__metrics small
+) {
+  color: var(--cv-color-gray);
+}
+
+html[data-theme='dark'] :is(
+  .admin-console__badges .active,
+  .admin-console__credential-grid .ok,
+  .admin-console__health .ok,
+  .instance-status__badge--operational
+) {
+  color: #66e8ce;
+  background: rgb(15 166 138 / 20%);
+}
+
+html[data-theme='dark'] :is(
+  .admin-console__badges .inactive,
+  .admin-console__credential-grid .warning,
+  .admin-console__health .warning,
+  .instance-status__badge--degraded
+) {
+  color: #ffd78a;
+  background: rgb(138 93 0 / 28%);
+}
+
+html[data-theme='dark'] :is(
+  .admin-console__badges .deleted,
+  .admin-console__health .unavailable,
+  .instance-status__badge--unavailable,
+  .instance-status__badge--misconfigured
+) {
+  color: #ffb4ab;
+  background: rgb(180 35 24 / 24%);
+}
+
+html[data-theme='dark'] .instance-status__badge--unknown {
+  color: var(--cv-color-slate);
+  background: var(--cv-surface-muted);
 }
 
 html[data-theme='dark'] :is(
