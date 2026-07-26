@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { ArrowDown, ArrowUp, BedDouble, Car, Check, ChevronDown, Clock3, Copy, Download, Eye, EyeOff, Flag, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sun, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
@@ -12,6 +12,8 @@ import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from '.
 import { useConfirmDialog } from '../common/useConfirmDialog'
 
 interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onClose: () => void }
+
+const DayCollapseContext = createContext<{ collapsedDayIds: ReadonlySet<string>; onToggle: (dayId: string) => void } | null>(null)
 
 export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onStopFocus }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
@@ -32,6 +34,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [loadingTripId, setLoadingTripId] = useState<string | null>(null)
   const [preferredRoutingProvider, setPreferredRoutingProvider] = useState<'osrm' | 'google'>('osrm')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set())
   const activeDayIdRef = useRef(activeDayId)
   const onTripChangeRef = useRef(onTripChange)
   const onActiveDayChangeRef = useRef(onActiveDayChange)
@@ -41,6 +44,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   onActiveDayChangeRef.current = onActiveDayChange
 
   useEffect(() => { activeDayIdRef.current = activeDayId }, [activeDayId])
+  useEffect(() => {
+    const dayIds = new Set(trip?.days.map((day) => day.id) ?? [])
+    setCollapsedDayIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))))
+  }, [trip])
   useEffect(() => { const controller = new AbortController(); void getAccountPreferences(controller.signal).then((value) => setPreferredRoutingProvider(value.routing.provider)).catch(() => undefined); return () => controller.abort() }, [])
 
   const loadTripDetails = useCallback(async (target: string, signal?: AbortSignal) => {
@@ -141,6 +148,12 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     const item = await exportTripGpx(trip!.id)
     window.open(tripExportUrl(item.download_url), '_blank', 'noopener,noreferrer')
   }
+  const toggleDayCollapsed = (dayId: string) => setCollapsedDayIds((current) => {
+    const next = new Set(current)
+    if (next.has(dayId)) next.delete(dayId)
+    else next.add(dayId)
+    return next
+  })
 
   const tripName = trip?.name ?? 'Préparation'
 
@@ -155,10 +168,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
       {settingsOpen && <TripSettings trip={trip} canEdit={canEdit} canDelete={poiMap.can_delete === true} busy={busy} draftName={draftName} dirty={dirty} loadSettings={loadSettingsDraft ?? readLoadSettings(trip)} routingProviderLabel={summary?.route_provider_labels?.join(', ') || (preferredRoutingProvider === 'google' ? 'Google Routes' : 'OSRM')} countryConstraintName={summary?.country_constraint_enabled ? summary.constraint_country_name ?? poiMap.country.name : null} onNameChange={(value) => { setDraftName(value); setDirty(value !== trip.name) }} onLoadSettingsChange={setLoadSettingsDraft} onSave={() => void run(async () => { if (draftName !== trip.name) await updateTrip(trip.id, { name: draftName }); if (loadSettingsDraft) await updateTripLoadSettings(trip.id, loadSettingsDraft); await reload(trip.id) })} onDuplicate={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })} onDelete={() => void confirm({ title: 'Supprimer cette sortie ?', message: `La sortie « ${trip.name} » et toute sa planification seront définitivement supprimées.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTrip(trip.id); await reload('') }) })} />}
       {summary && <TripSummaryMetrics summary={summary} />}
       <details className="trip-panel-section trip-panel-journeys" open><summary><span>Trajets</span><small>{trip.days.length} {trip.days.length > 1 ? 'journées' : 'journée'}</small><ChevronDown className="trip-panel-chevron" size={15} /></summary>
-        <div className="trip-panel-days">{trip.days.map((day, dayIndex) => <div key={day.id} style={{ '--trip-day-color': day.color ?? '#0FA68A' } as CSSProperties}>
+        <DayCollapseContext.Provider value={{ collapsedDayIds, onToggle: toggleDayCollapsed }}><div className="trip-panel-days">{trip.days.map((day, dayIndex) => <div key={day.id} style={{ '--trip-day-color': day.color ?? '#0FA68A' } as CSSProperties}>
           {dayIndex === 0 && <Departure trip={trip} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} canEdit={canEdit} reload={reload} />}
           {dayIndex > 0 && <Night previous={trip.days[dayIndex - 1]} next={day} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} trip={trip} canEdit={canEdit} reload={reload} />}
-          <details className={`trip-panel-day${day.id === activeDayId ? ' is-active' : ''}`} open onToggle={(event) => { if (event.currentTarget.open) onActiveDayChange(day.id) }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, day)}>
+          <details className={`trip-panel-day${day.id === activeDayId ? ' is-active' : ''}`} open={!collapsedDayIds.has(day.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea, a')) return; onActiveDayChange(day.id); if (target.closest('.trip-panel-day > summary')) event.preventDefault() }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, day)}>
             <summary><span className="trip-panel-day-number"><Sun aria-hidden="true" size={12} /><b>J{day.day_number}</b></span><span className="trip-panel-day-heading"><strong>{day.title || `Jour ${day.day_number}`}</strong><small>{day.stops.length} {day.stops.length > 1 ? 'étapes' : 'étape'}</small></span><DayHeaderMetrics summary={daySummaries[day.id]} /><span className="trip-panel-day-actions"><DayVisibilityToggle day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />{canEdit && <><button type="button" aria-label="Monter la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, -1) }}><ArrowUp size={12} /></button><button type="button" aria-label="Descendre la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, 1) }}><ArrowDown size={12} /></button><button type="button" aria-label="Dupliquer la journée" onClick={(event) => { event.preventDefault(); void run(async () => { await duplicateTripDay(day.id); await reload(trip.id) }) }}><Copy size={12} /></button><button type="button" aria-label="Supprimer la journée" onClick={(event) => { event.preventDefault(); void confirm({ title: 'Supprimer cette journée ?', message: `Le jour ${day.day_number}, ses étapes et son itinéraire seront définitivement supprimés.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripDay(day.id); await reload(trip.id) }) }) }}><Trash2 size={12} /></button></>}</span></summary>
             <div className="trip-panel-day-content">{day.route_status === 'stale' && <p>Itinéraire à recalculer</p>}{daySummaries[day.id]?.country_constraint_status === 'unchecked' && <p className="trip-metrics-warning">Itinéraire à vérifier avec la contrainte pays.</p>}{daySummaries[day.id]?.country_constraint_status === 'invalid' && <p className="trip-panel-error">Itinéraire refusé : passage hors de {daySummaries[day.id]?.constraint_country_name}.</p>}
               <ul>{day.stops.map((stop, index) => <li key={stop.id} className={`${draggedStopId === stop.id ? 'is-dragging' : ''}${dropTarget?.dayId === day.id && dropTarget.index === index ? ' drop-before' : ''}${index === day.stops.length - 1 && dropTarget?.dayId === day.id && dropTarget.index === day.stops.length ? ' drop-after' : ''}`} draggable={canEdit} onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `stop:${stop.id}`); setDraggedStopId(stop.id) }} onDragEnd={() => { setDraggedStopId(null); setDropTarget(null) }} onDragOver={(event) => { if (!canEdit) return; event.preventDefault(); event.stopPropagation(); const bounds = event.currentTarget.getBoundingClientRect(); setDropTarget({ dayId: day.id, index: index + Number(event.clientY > bounds.top + bounds.height / 2) }) }} onDrop={(event) => dropStop(event, day, dropTarget?.dayId === day.id ? dropTarget.index : index)}><GripVertical className="trip-stop-grip" size={13} /><i>{index + 1}</i><MapPin className="trip-stop-kind" aria-hidden="true" size={14} /><span role="button" tabIndex={0} onClick={() => onStopFocus?.(stop.latitude, stop.longitude)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onStopFocus?.(stop.latitude, stop.longitude) } }}><strong>{stop.name}</strong>{stop.stop_type !== 'place' && <small>{stopTypeLabel(stop.stop_type)}</small>}</span><span className="trip-stop-duration"><Clock3 aria-hidden="true" size={12} />{formatMinutes(stop.visit_duration_minutes)}</span><span className="trip-stop-drive"><Car aria-hidden="true" size={12} />{formatRouteDuration(day.route_segments?.[index]?.duration_seconds ?? null)}</span>{canEdit && <VisitDurationControl stop={stop} disabled={busy} onChange={async (minutes) => { await updateTripStop(stop.id, { visit_duration_minutes: minutes }); await reload(trip.id) }} />}{stop.is_locked && <Lock size={11} />}{canEdit && <span className="trip-panel-stop-actions"><button type="button" aria-label="Monter l’étape" onClick={(event) => { event.stopPropagation(); reorderStops(day, index, -1) }}><ArrowUp size={11} /></button><button type="button" aria-label="Descendre l’étape" onClick={(event) => { event.stopPropagation(); reorderStops(day, index, 1) }}><ArrowDown size={11} /></button><button type="button" aria-label="Supprimer l’étape" onClick={(event) => { event.stopPropagation(); void confirm({ title: 'Supprimer cette étape ?', message: `« ${stop.name} » sera retirée de la journée.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripStop(stop.id); await reload(trip.id) }) }) }}><Trash2 size={11} /></button></span>}</li>)}</ul>
@@ -166,7 +179,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
           </details>
           {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
           {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEdit} reload={reload} />}
-        </div>)}</div>
+        </div>)}</div></DayCollapseContext.Provider>
       </details>
     </>}</>}</>}
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
@@ -240,10 +253,12 @@ function DaySettings({ day, summary, canEdit, busy, endsAtHotel, onTimingSave, o
 }
 
 function DayVisibilityToggle({ day, hidden, onChange }: { day: TripDay; hidden: boolean; onChange: (visible: boolean) => void }) {
+  const dayCollapse = useContext(DayCollapseContext)
   const hasMapContent = day.stops.length > 0 || Boolean(day.route_geometry?.coordinates.length)
   const visible = hasMapContent && !hidden
   const label = !hasMapContent ? `Jour ${day.day_number} sans contenu cartographique` : `${hidden ? 'Afficher' : 'Masquer'} le jour ${day.day_number} sur la carte`
-  return <button className="trip-day-visibility-toggle" type="button" role="switch" aria-checked={visible} aria-label={label} title={label} disabled={!hasMapContent} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onChange(hidden) }}>{visible ? <Eye size={12} /> : <EyeOff size={12} />}</button>
+  const collapsed = dayCollapse?.collapsedDayIds.has(day.id) ?? false
+  return <><button className="trip-day-visibility-toggle" type="button" role="switch" aria-checked={visible} aria-label={label} title={label} disabled={!hasMapContent} onClick={(event) => { event.preventDefault(); event.stopPropagation(); onChange(hidden) }}>{visible ? <Eye size={12} /> : <EyeOff size={12} />}</button>{dayCollapse && <button className="trip-day-collapse-toggle trip-day-collapse-toggle--inline" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} le jour ${day.day_number}`} aria-expanded={!collapsed} onClick={(event) => { event.preventDefault(); event.stopPropagation(); dayCollapse.onToggle(day.id) }}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>}</>
 }
 
 function FreeStop({ day, poiMap, reload }: { day: TripDay; poiMap: PoiMap; reload: () => Promise<void> }) {

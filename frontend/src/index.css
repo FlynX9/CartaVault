@@ -4891,6 +4891,14 @@ body {
 .trip-day-header-metrics > .trip-day-load-label { color: var(--trip-load-color, var(--cv-color-slate)); background: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 12%, white); border: 1px solid color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 24%, white); }
 .trip-planner-panel .trip-panel-day-actions { display: flex; gap: 0.18rem; }
 .trip-planner-panel .trip-panel-day-actions button { width: 25px; min-width: 25px; height: 25px; min-height: 25px; border-radius: 6px; }
+.trip-planner-panel .trip-panel-day-actions { margin-right: 0; padding-right: 0; }
+.trip-planner-panel .trip-day-collapse-toggle { position: absolute; z-index: 3; inset: .82rem .65rem auto auto; display: grid; width: 25px; min-width: 25px; height: 25px; min-height: 25px; padding: 0; color: var(--cv-color-slate); background: var(--cv-surface, #fff); border: 1px solid var(--cv-border-subtle, #dfe7ec); border-radius: 6px; place-items: center; cursor: pointer; transform: none !important; }
+.trip-planner-panel .trip-day-collapse-toggle--inline { position: static; z-index: auto; display: grid; order: 10; margin: 0; transform: none !important; }
+.trip-planner-panel .trip-day-collapse-toggle:hover { color: var(--trip-day-color, var(--cv-color-teal)); border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, var(--cv-border-subtle, #dfe7ec)); background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 8%, var(--cv-surface, #fff)); }
+.trip-planner-panel .trip-day-collapse-toggle svg { transform: rotate(180deg); transition: transform 150ms ease; }
+.trip-planner-panel .trip-day-collapse-toggle svg.is-collapsed { transform: rotate(0deg); }
+.trip-planner-panel .trip-panel-day.is-active > summary { background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 7%, var(--cv-surface, #fff)); }
+.trip-planner-panel .trip-panel-day > summary:focus-visible { outline: 2px solid var(--trip-day-color, var(--cv-color-teal)); outline-offset: -2px; }
 .trip-planner-panel .trip-panel-day-content { gap: 0.5rem; padding: 0.5rem; border-top-color: #e9eef1; }
 .trip-planner-panel .trip-panel-day-content > ul { gap: 0; overflow: hidden; order: -2; border: 1px solid #e6ecef; border-radius: 8px; }
 .trip-planner-panel .trip-panel-day-content > ul > li { display: grid; grid-template-columns: auto 22px auto minmax(7rem, 1fr) auto auto auto auto auto; min-height: 44px; align-items: center; gap: 0.38rem; padding: 0.42rem 0.5rem; background: #fff; border-bottom: 1px solid #edf1f3; border-radius: 0; }
