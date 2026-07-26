@@ -32,33 +32,35 @@ function MapHarness({ initiallySelected = false, markerFilter, onTripPlaceAdd }:
   )
 
   return (
-    <PoiMap
-      places={[place]}
-      selectedPlaceId={selectedPlaceId}
-      initialView={{ center: [48, 2], zoom: 13 }}
-      onBoundsChange={vi.fn()}
-      onViewChange={vi.fn()}
-      onPlaceSelect={(selectedPlace) => setSelectedPlaceId(selectedPlace.id)}
-      focusRequest={null}
-      layoutKey="test"
-      popupContent={(
+    <>
+      <PoiMap
+        places={[place]}
+        selectedPlaceId={selectedPlaceId}
+        initialView={{ center: [48, 2], zoom: 13 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={(selectedPlace) => setSelectedPlaceId(selectedPlace.id)}
+        focusRequest={null}
+        layoutKey="test"
+        onPopupClose={() => setSelectedPlaceId(null)}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+        markerFilter={markerFilter}
+        onTripPlaceAdd={onTripPlaceAdd}
+      />
+      {selectedPlaceId && (
         <article>
           Détails enrichis
           <button type="button" onClick={() => setSelectedPlaceId(null)}>Fermer</button>
         </article>
       )}
-      onPopupClose={() => setSelectedPlaceId(null)}
-      basemapId="cartavault-light"
-      onBasemapTileError={vi.fn()}
-      markerFilter={markerFilter}
-      onTripPlaceAdd={onTripPlaceAdd}
-    />
+    </>
   )
 }
 
-describe('PoiMap Leaflet popup lifecycle', () => {
-  it('keeps the selected POI outside its cluster so its popup can stay mounted', async () => {
-    render(
+describe('PoiMap selection lifecycle', () => {
+  it('keeps the selected POI outside its cluster and marks it as selected', async () => {
+    const { container } = render(
       <PoiMap
         places={[place, nearbyPlace]}
         selectedPlaceId={place.id}
@@ -68,7 +70,6 @@ describe('PoiMap Leaflet popup lifecycle', () => {
         onPlaceSelect={vi.fn()}
         focusRequest={null}
         layoutKey="selected-cluster"
-        popupContent={<p>Détails enrichis</p>}
         onPopupClose={vi.fn()}
         basemapId="cartavault-light"
         onBasemapTileError={vi.fn()}
@@ -78,7 +79,7 @@ describe('PoiMap Leaflet popup lifecycle', () => {
     expect(await screen.findByTitle('Manufacture')).toBeVisible()
     expect(await screen.findByTitle('Atelier voisin')).toBeVisible()
     expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
-    expect(await screen.findByText('Détails enrichis')).toBeVisible()
+    expect(container.querySelector('.status-marker.selected')).toBeInTheDocument()
   })
 
   it('renders every POI independently at the configured maximum zoom', async () => {
@@ -92,7 +93,6 @@ describe('PoiMap Leaflet popup lifecycle', () => {
         onPlaceSelect={vi.fn()}
         focusRequest={null}
         layoutKey="maximum-zoom"
-        popupContent={null}
         onPopupClose={vi.fn()}
         basemapId="cartavault-light"
         onBasemapTileError={vi.fn()}
@@ -104,7 +104,7 @@ describe('PoiMap Leaflet popup lifecycle', () => {
     expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
   })
 
-  it('opens the enriched popup on the first real marker click', async () => {
+  it('selects the marker and exposes its enriched detail on the first real marker click', async () => {
     render(<MapHarness />)
 
     const marker = await screen.findByTitle('Manufacture')
@@ -119,13 +119,13 @@ describe('PoiMap Leaflet popup lifecycle', () => {
     expect(await screen.findByText('Détails enrichis')).toBeVisible()
   })
 
-  it('opens the popup once a preselected marker and its popup are mounted', async () => {
+  it('shows the detail once a preselected marker is mounted', async () => {
     render(<MapHarness initiallySelected />)
 
     await waitFor(() => expect(screen.getByText('Détails enrichis')).toBeVisible())
   })
 
-  it('closes the popup and clears the selection when the map is clicked', async () => {
+  it('closes the detail and clears the selection when the map is clicked', async () => {
     const { container } = render(<MapHarness />)
     fireEvent.click(await screen.findByTitle('Manufacture'))
     expect(await screen.findByText('Détails enrichis')).toBeVisible()
@@ -151,7 +151,7 @@ describe('PoiMap Leaflet popup lifecycle', () => {
   it('hides both the route and the stops of a disabled trip day in trip view', async () => {
     const day = { id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#2563EB', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed' as const, safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: 1000, route_duration_seconds: 120, visit_duration_minutes: 30, total_duration_minutes: 32, route_geometry: { type: 'LineString' as const, coordinates: [[2, 48], [2.1, 48.1]] as [number, number][] }, route_segments: [], route_status: 'ready', sort_order: 0, stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Étape', latitude: 48, longitude: 2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }
     const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [day] } satisfies Trip
-    const commonProps = { places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 13 }, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(), focusRequest: null, layoutKey: 'test', popupContent: null, onPopupClose: vi.fn(), basemapId: 'cartavault-light' as const, onBasemapTileError: vi.fn(), trip, tripViewOnly: true }
+    const commonProps = { places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 13 }, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(), focusRequest: null, layoutKey: 'test', onPopupClose: vi.fn(), basemapId: 'cartavault-light' as const, onBasemapTileError: vi.fn(), trip, tripViewOnly: true }
     const { container, rerender } = render(<PoiMap {...commonProps} hiddenTripDayIds={new Set()} />)
 
     await waitFor(() => expect(container.querySelectorAll('.leaflet-overlay-pane path')).toHaveLength(2))

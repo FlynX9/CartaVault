@@ -56,6 +56,7 @@ describe('MapPage', () => {
           placeListOpen
           statuses={[{ id: 'status-id', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }]}
           sidebar={<aside aria-label="Volet de test">Contenu</aside>}
+          popupContent={<article>Détails du lieu</article>}
           placeList={<aside aria-label="Liste de test">Liste</aside>}
           focusRequest={null}
           onBoundsChange={vi.fn()}
@@ -71,6 +72,9 @@ describe('MapPage', () => {
     expect(map).toHaveAttribute('data-layout-key', 'true-true')
     expect(screen.getByLabelText('Liste de test')).toBeVisible()
     expect(screen.getByLabelText('Volet de test')).toBeVisible()
+    const placeDetail = screen.getByRole('complementary', { name: 'Détails du lieu sélectionné' })
+    expect(placeDetail).toHaveTextContent('Détails du lieu')
+    expect(placeDetail.parentElement).toHaveClass('map-layout')
     const legend = screen.getByRole('complementary', { name: 'Légende des statuts' })
     fireEvent.mouseEnter(legend)
     expect(legend).toHaveTextContent('À faire')

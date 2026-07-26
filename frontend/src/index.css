@@ -8500,3 +8500,52 @@ html[data-theme='dark'] .dashboard-map-target__options {
   .dashboard-activity ol { grid-template-columns: minmax(0, 1fr); }
   .dashboard-recent time { display: none; }
 }
+
+/* Fixed POI detail card and explicit selected-marker state. */
+.map-place-detail-overlay {
+  position: absolute;
+  z-index: 1100;
+  top: var(--cv-canvas-padding, 0.8rem);
+  right: var(--cv-canvas-padding, 0.8rem);
+  width: min(42rem, calc(100% - 1.6rem));
+  max-height: calc(100% - (2 * var(--cv-canvas-padding, 0.8rem)));
+  pointer-events: auto;
+}
+
+.map-place-detail-overlay .place-map-popup {
+  width: 100% !important;
+  max-height: inherit;
+  box-sizing: border-box;
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: 0.9rem;
+  box-shadow: var(--cv-shadow-float);
+}
+
+.status-marker.selected {
+  width: 34px;
+  height: 34px;
+  border-color: var(--cv-surface);
+  outline: 3px solid color-mix(in srgb, var(--marker-color) 72%, white);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--marker-color) 24%, transparent),
+    0 6px 14px rgb(13 27 42 / 40%);
+}
+
+html[data-theme='dark'] .status-marker.selected {
+  border-color: var(--cv-surface);
+  outline-color: color-mix(in srgb, var(--marker-color) 68%, #dce6ef);
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, var(--marker-color) 30%, transparent),
+    0 6px 16px rgb(0 0 0 / 62%);
+}
+
+@media (max-width: 760px) {
+  .map-place-detail-overlay {
+    top: 0.6rem;
+    right: 0.6rem;
+    left: 0.6rem;
+    width: auto;
+    max-height: calc(100% - 1.2rem);
+  }
+}

@@ -244,7 +244,6 @@ export function MapPage({
           onPlaceSelect={onPlaceSelect}
           focusRequest={focusRequest}
           layoutKey={`${placeListOpen}-${sidebarOpen}`}
-          popupContent={popupContent}
           onPopupClose={onPopupClose}
           basemapId={basemapId}
           onBasemapTileError={handleBasemapTileError}
@@ -260,8 +259,12 @@ export function MapPage({
           hiddenTripDayIds={hiddenTripDayIds}
           activeTripDayId={activeTripDayId}
           onTripPlaceAdd={onTripPlaceAdd}
-          tripPlanningActive={tripPlanningActive}
         />
+        {popupContent && (
+          <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
+            {popupContent}
+          </aside>
+        )}
         {contextMenu && <MapContextMenu state={contextMenu} canCreate={canEdit} tripDays={onTripCoordinateAdd ? trip?.days.map((day) => ({ id: day.id, label: `Jour ${day.day_number}${day.title ? ` · ${day.title}` : ''}` })) : []} onAddToTripDay={onTripCoordinateAdd ? (dayId) => { const { latitude, longitude } = contextMenu; setContextMenu(null); onTripCoordinateAdd(dayId, latitude, longitude) } : undefined} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
