@@ -19,7 +19,7 @@ class DashboardSummary(BaseModel):
 
 
 class DashboardStatusItem(BaseModel):
-    id: UUID
+    id: UUID | None = None
     name: str
     color: str
     count: int

@@ -246,7 +246,7 @@ export function DashboardPage({
         <header><div><p>{t('dashboard.analytics')}</p><h2>{t('dashboard.statuses')}</h2></div><span>{formatNumber(totalStatusPlaces)}</span></header>
         {dashboard.statuses.length === 0 ? <DashboardEmpty /> : <div className="dashboard-status-content">
           <div className="dashboard-donut" style={{ background: statusGradient }} aria-label={t('dashboard.statusChart', { count: totalStatusPlaces })}><span><strong>{formatNumber(totalStatusPlaces)}</strong><small>{t('dashboard.places')}</small></span></div>
-          <ul>{dashboard.statuses.map((status) => <li key={status.id}><i style={{ background: status.color }} /><span>{status.name}</span><strong>{formatNumber(status.count)}</strong></li>)}</ul>
+          <ul>{dashboard.statuses.map((status) => <li key={`${status.name}\u0000${status.color}`}><i style={{ background: status.color }} /><span>{status.name}</span><strong>{formatNumber(status.count)}</strong></li>)}</ul>
         </div>}
       </section>
 
@@ -261,7 +261,7 @@ export function DashboardPage({
 
       <section className="dashboard-card">
         <header><div><p>{t('dashboard.analytics')}</p><h2>{t('dashboard.categories')}</h2></div></header>
-        {dashboard.top_categories.length === 0 ? <DashboardEmpty /> : <ul className="dashboard-ranking">{dashboard.top_categories.map((category) => <li key={category.id ?? category.name}>
+        {dashboard.top_categories.length === 0 ? <DashboardEmpty /> : <ul className="dashboard-ranking">{dashboard.top_categories.map((category) => <li key={`${category.name}\u0000${category.icon ?? ''}`}>
           <span className="dashboard-category-icon"><CategoryIconPreview iconId={category.icon ?? undefined} size={18} showLabel={false} /></span>
           <span><b>{category.name}</b><i><em style={{ width: `${category.count / maxCategory * 100}%` }} /></i></span>
           <strong>{formatNumber(category.count)}</strong>

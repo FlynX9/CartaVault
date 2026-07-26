@@ -21,7 +21,7 @@ export interface DashboardNamedCount {
 }
 
 export interface DashboardStatusItem {
-  id: string
+  id: string | null
   name: string
   color: string
   count: number

@@ -134,3 +134,77 @@ def test_dashboard_returns_a_complete_empty_state_for_an_account_without_maps(
     assert payload["recent_trips"] == []
     assert payload["map_points"] == []
     assert payload["activity"] == []
+
+
+def test_dashboard_groups_identical_statuses_and_categories_across_accessible_maps(
+    integration_client: TestClient,
+    database_session: Session,
+    auth_user: User,
+    poi_map: PoiMap,
+    france_country: Country,
+) -> None:
+    auth_user.is_admin = False
+    second_owner = _user(database_session, "second-owner")
+    second_map = PoiMap(
+        name="Second accessible map",
+        country_id=france_country.id,
+        owner_id=second_owner.id,
+        is_private=True,
+    )
+    database_session.add(second_map)
+    database_session.flush()
+    database_session.add_all(
+        [
+            MapMembership(map_id=second_map.id, user_id=second_owner.id, role="owner"),
+            MapMembership(map_id=second_map.id, user_id=auth_user.id, role="editor"),
+        ]
+    )
+    create_default_statuses(database_session, second_map.id)
+    database_session.flush()
+    _set_current_user(auth_user)
+
+    places = []
+    for index, map_id in enumerate((poi_map.id, second_map.id), start=1):
+        place_response = integration_client.post(
+            "/places",
+            json={
+                "name": f"Grouped place {index}",
+                "map_id": str(map_id),
+                "latitude": 48.0 + index,
+                "longitude": 2.0 + index,
+            },
+        )
+        assert place_response.status_code == 201
+        places.append(place_response.json())
+
+        category_response = integration_client.post(
+            "/categories",
+            json={"name": "Église", "map_id": str(map_id), "icon": "mdi:church"},
+        )
+        assert category_response.status_code == 201
+        assign_response = integration_client.post(
+            f"/places/{places[-1]['id']}/categories/{category_response.json()['id']}",
+        )
+        assert assign_response.status_code == 200
+
+    response = integration_client.get("/dashboard")
+
+    assert response.status_code == 200
+    payload = response.json()
+    grouped_status = next(
+        status
+        for status in payload["statuses"]
+        if status["name"] == places[0]["status"]["name"]
+        and status["color"] == places[0]["status"]["color"]
+    )
+    assert grouped_status["id"] is None
+    assert grouped_status["count"] == 2
+    assert payload["top_categories"] == [
+        {
+            "id": None,
+            "name": "Église",
+            "count": 2,
+            "icon": "mdi:church",
+            "country_code": None,
+        }
+    ]

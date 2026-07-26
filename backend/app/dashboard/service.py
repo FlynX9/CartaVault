@@ -69,13 +69,18 @@ def build_dashboard(session: Session, user: User) -> DashboardRead:
     ) or 0
 
     statuses = [
-        DashboardStatusItem(id=row.id, name=row.name, color=row.color, count=row.count)
+        DashboardStatusItem(name=row.name, color=row.color, count=row.count)
         for row in session.execute(
-            select(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color, func.count(Place.id).label("count"))
+            select(
+                PlaceStatus.name,
+                PlaceStatus.color,
+                func.count(Place.id).label("count"),
+                func.min(PlaceStatus.sort_order).label("first_sort_order"),
+            )
             .join(Place, Place.status_id == PlaceStatus.id)
             .where(active_places)
-            .group_by(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color, PlaceStatus.sort_order)
-            .order_by(PlaceStatus.sort_order, PlaceStatus.name)
+            .group_by(PlaceStatus.name, PlaceStatus.color)
+            .order_by("first_sort_order", PlaceStatus.name, PlaceStatus.color)
         )
     ]
     top_countries = [
@@ -91,14 +96,14 @@ def build_dashboard(session: Session, user: User) -> DashboardRead:
         )
     ]
     top_categories = [
-        DashboardNamedCount(id=row.id, name=row.name, icon=row.icon, count=row.count)
+        DashboardNamedCount(name=row.name, icon=row.icon, count=row.count)
         for row in session.execute(
-            select(Category.id, Category.name, Category.icon, func.count(distinct(Place.id)).label("count"))
+            select(Category.name, Category.icon, func.count(distinct(Place.id)).label("count"))
             .join(place_categories_table, place_categories_table.c.category_id == Category.id)
             .join(Place, Place.id == place_categories_table.c.place_id)
             .where(active_places)
-            .group_by(Category.id, Category.name, Category.icon)
-            .order_by(func.count(distinct(Place.id)).desc(), Category.name)
+            .group_by(Category.name, Category.icon)
+            .order_by(func.count(distinct(Place.id)).desc(), Category.name, Category.icon)
             .limit(6)
         )
     ]
