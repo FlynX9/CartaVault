@@ -7760,6 +7760,35 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > span {
   border: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 40%, var(--cv-border-strong));
 }
 
+/* Keep route feedback readable without introducing light strips in dark mode. */
+.trip-planner-panel .trip-panel-day-content > ul:empty {
+  display: none;
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content {
+  border-top-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content > p:not(.trip-panel-error) {
+  color: #e6c27a;
+  background: rgb(91 62 8 / 32%);
+  border: 1px solid rgb(230 194 122 / 18%);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-drop {
+  color: var(--cv-color-gray) !important;
+  background: var(--cv-surface-muted) !important;
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content > ul {
+  border-color: var(--cv-border-subtle);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content > ul > li {
+  border-bottom-color: var(--cv-border-subtle);
+}
+
 html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day-load-label {
   color: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 72%, white);
   background: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 17%, var(--cv-surface-muted));
