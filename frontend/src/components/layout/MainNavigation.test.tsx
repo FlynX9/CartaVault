@@ -12,6 +12,18 @@ function Location() {
 describe('MainNavigation', () => {
   afterEach(cleanup)
 
+  it('opens the dashboard and keeps it as the only active navigation entry', () => {
+    const onOpenDashboard = vi.fn()
+    render(<MemoryRouter><MainNavigation activePanel={null} dashboardActive onPanelChange={vi.fn()} onOpenDashboard={onOpenDashboard} /></MemoryRouter>)
+
+    const dashboard = screen.getByRole('button', { name: 'Accueil' })
+    expect(dashboard).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Cartes' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(dashboard)
+    expect(onOpenDashboard).toHaveBeenCalledOnce()
+  })
+
   it('keeps a single active workspace entry and exposes the maps catalog', () => {
     const onPanelChange = vi.fn()
     render(<MemoryRouter><MainNavigation activePanel={'maps' as WorkspacePanel} onPanelChange={onPanelChange} /></MemoryRouter>)

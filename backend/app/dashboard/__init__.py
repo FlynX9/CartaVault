@@ -1,0 +1,1 @@
+"""Authenticated dashboard aggregates."""

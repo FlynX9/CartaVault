@@ -72,6 +72,19 @@ The application shell provides:
 
 Panels include Maps, Places, Categories, Tags, Statuses, Trips, Media, and Administration. The Places panel collapses to a compact header rather than unmounting its list and map state.
 
+## Home dashboard
+
+The authenticated `/dashboard` route is the default landing page. It uses the
+existing application shell and exposes responsive KPI cards, status/country/
+category summaries, recent places and trips, actionable data-quality counts,
+and a lightweight Leaflet preview. Quick actions delegate to the existing map,
+place, KMZ, and trip workflows instead of duplicating dialogs or mutations.
+
+Dashboard writes follow the active map permissions: viewers keep the read-only
+overview but do not receive place, import, or trip creation actions. Loading,
+empty, and error states are localized and support both themes. The map preview
+aggregates coordinates and does not load the complete place collection.
+
 ## Geographic search and context actions
 
 The map search uses existing geocoding services and retains its independent temporary marker. A right-click map context menu provides safe actions to create a place at the clicked coordinate, copy coordinates, or open Google Maps. It is keyboard accessible through the map-centre action and closes on movement, zoom, Escape, or action selection.

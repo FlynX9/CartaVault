@@ -39,8 +39,11 @@ function VectorBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDe
     return () => {
       controller.abort()
       if (layer !== null) {
-        if (mapLibreErrorHandler !== null) layer.getMaplibreMap().off('error', mapLibreErrorHandler)
-        layer.removeFrom(map)
+        const mapLibreMap = layer.getMaplibreMap()
+        if (mapLibreErrorHandler !== null && mapLibreMap !== null) {
+          mapLibreMap.off('error', mapLibreErrorHandler)
+        }
+        if (map.hasLayer(layer)) layer.removeFrom(map)
         map.attributionControl?.removeAttribution(basemap.attribution)
       }
     }

@@ -12,6 +12,7 @@ import { NotificationCenter } from '../notifications/NotificationCenter'
 
 interface TopBarProps {
   isMapWorkspace: boolean
+  contextLabel?: string
   markerCount: number
   onMapAccessChanged: () => void
   onOpenAdmin: () => void
@@ -19,7 +20,7 @@ interface TopBarProps {
 
 const API_DOCUMENTATION_URL = API_BASE_URL === '/api' ? 'http://localhost:8000/docs' : `${API_BASE_URL}/docs`
 
-export function TopBar({ isMapWorkspace, markerCount, onMapAccessChanged, onOpenAdmin }: TopBarProps) {
+export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin }: TopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { resolvedTheme, toggleTheme } = useTheme()
@@ -64,7 +65,7 @@ export function TopBar({ isMapWorkspace, markerCount, onMapAccessChanged, onOpen
   return (
     <header className="app-header">
       <div className="brand-block">
-        <p className="app-eyebrow">{isMapWorkspace ? t('app.workspace') : t('app.administration')}</p>
+        <p className="app-eyebrow">{contextLabel ?? (isMapWorkspace ? t('app.workspace') : t('app.administration'))}</p>
         <h1 className="cartavault-wordmark"><span>Carta</span><strong>Vault</strong></h1>
       </div>
       <nav className="app-header-actions" aria-label={t('topbar.mainNavigation')}>

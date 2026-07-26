@@ -120,3 +120,11 @@ Status tests also cover four defaults on a new map, `functional_state` validatio
 ## Media coverage
 
 Media integration tests verify pagination and derived thumbnails, assert that storage paths are not exposed, and cover owner, viewer, and unrelated-admin access. Database tests must continue to run only against the validated `TEST_DATABASE_URL`; generated source files and thumbnail derivatives are removed before the photo-storage fixture completes.
+
+## Dashboard coverage
+
+`test_dashboard.py` validates the aggregate endpoint against
+`cartavault_test`. The same accessible map totals and recent entities are
+verified for owner, editor, and viewer memberships, while a private map owned
+by another account must remain absent. A separate scenario verifies the
+complete zero-data response for an account without map memberships.

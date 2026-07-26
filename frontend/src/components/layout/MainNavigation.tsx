@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { CircleDot, Images, MapPinned, MapPin, Route, Shapes, Tag } from 'lucide-react'
+import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag } from 'lucide-react'
 import { useI18n } from '../../i18n/useI18n'
 
 export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | null
@@ -12,20 +12,26 @@ interface Props {
   isAdmin?: boolean
   onOpenTrips?: () => void
   tripPlanningActive?: boolean
+  dashboardActive?: boolean
+  onOpenDashboard?: () => void
 }
 
 function navClass(active: boolean): string {
   return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
 }
 
-export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false }: Props) {
+export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, dashboardActive = false, onOpenDashboard }: Props) {
   const { t } = useI18n()
   const togglePanel = (panel: Exclude<WorkspacePanel, null>) => activePanel === panel ? onWorkspacePanelToggle(panel) : onPanelChange(panel)
   const placesActive = activePanel === 'places' && !tripPlanningActive
 
   return <nav className="main-navigation cv-main-navigation" aria-label={t('nav.main')}>
-    <Link className="main-navigation-brand" to="/" aria-label="CartaVault"><img src="/cartavault-logo.png" alt="CartaVault" /></Link>
+    <Link className="main-navigation-brand" to="/dashboard" aria-label="CartaVault" onClick={onOpenDashboard ? (event) => { event.preventDefault(); onOpenDashboard() } : undefined}><img src="/cartavault-logo.png" alt="CartaVault" /></Link>
     <div className="main-navigation-links cv-main-navigation__items">
+      <div className="cv-main-navigation__group">
+        <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={onOpenDashboard}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>
+      </div>
+      <div className="cv-main-navigation__separator" role="separator" />
       <div className="cv-main-navigation__group" aria-label="Cartographie">
         <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={23} /><span>{t('nav.maps')}</span></button>
         <button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => placesActive ? onPlacesPanelToggle() : onPanelChange('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>

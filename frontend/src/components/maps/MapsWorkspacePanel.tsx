@@ -22,11 +22,12 @@ interface MapsWorkspacePanelProps {
   collapsed?: boolean
   onCollapsedChange?: (collapsed: boolean) => void
   onClose?: () => void
+  createRequest?: number
 }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
 
-export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose }: MapsWorkspacePanelProps) {
+export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose, createRequest = 0 }: MapsWorkspacePanelProps) {
   const { t } = useI18n()
   const [creating, setCreating] = useState(false)
   const [query, setQuery] = useState('')
@@ -35,6 +36,9 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   const [busyInvitationId, setBusyInvitationId] = useState<string | null>(null)
   const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null)
   const createButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (createRequest > 0) setCreating(true)
+  }, [createRequest])
 
   const loadInvitations = useCallback(() => {
     const controller = new AbortController()

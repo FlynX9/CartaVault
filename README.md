@@ -317,6 +317,19 @@ Before publishing or deploying the project:
 
 ## Project status
 
+### Permission-aware home dashboard
+
+Authenticated users land on `/dashboard`, which summarizes only maps they can
+access. It combines place, map, country, trip, media, status, country, category,
+recent-item, data-quality, and geographic aggregates without fabricating
+historical trends. Owner, editor, and viewer memberships use the same read
+model; edit shortcuts are offered only when the active map is editable.
+
+The geographic preview deliberately uses aggregated coordinate buckets and the
+existing CartaVault basemap stack. Recent activity is shown only from reliable
+place-history records. Empty accounts and unavailable dashboard data have
+dedicated, localized states.
+
 ### Custom statuses and visit filters
 
 Statuses are scoped to each map and remain fully customizable. Every status is

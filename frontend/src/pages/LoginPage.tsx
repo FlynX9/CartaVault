@@ -1,6 +1,6 @@
 import { LogIn, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -25,6 +25,7 @@ function loadRememberedEmail(): string {
 
 export function LoginPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const { t } = useI18n()
   const rememberedEmail = loadRememberedEmail()
   const [email, setEmail] = useState(rememberedEmail)
@@ -39,6 +40,7 @@ export function LoginPage() {
     setError(null)
     try {
       await login({ email, password })
+      navigate('/dashboard', { replace: true })
       try {
         if (remember) window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email)
         else window.localStorage.removeItem(REMEMBERED_EMAIL_KEY)

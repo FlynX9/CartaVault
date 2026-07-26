@@ -11,11 +11,11 @@ import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } 
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from './TripTimePlanning'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 
-interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onClose: () => void }
+interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onClose: () => void }
 
 const DayCollapseContext = createContext<{ collapsedDayIds: ReadonlySet<string>; onToggle: (dayId: string) => void } | null>(null)
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onStopFocus, onStopPlaceSelect = () => undefined }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onStopFocus, onStopPlaceSelect = () => undefined }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const canEdit = poiMap.can_edit === true
   const [trips, setTrips] = useState<Trip[]>([])
@@ -44,6 +44,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   onActiveDayChangeRef.current = onActiveDayChange
 
   useEffect(() => { activeDayIdRef.current = activeDayId }, [activeDayId])
+  useEffect(() => {
+    if (createRequest > 0 && canEdit) setCreateOpen(true)
+  }, [canEdit, createRequest])
   useEffect(() => {
     const dayIds = new Set(trip?.days.map((day) => day.id) ?? [])
     setCollapsedDayIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))))

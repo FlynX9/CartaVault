@@ -97,6 +97,19 @@ Swagger is available at <http://127.0.0.1:8000/docs>.
 
 Feature routers include authentication, account, users, administration, maps, countries, places, categories, tags, statuses, photos, imports, exports, media, and trips. OpenAPI is the authoritative endpoint reference.
 
+### Dashboard aggregate
+
+`GET /dashboard` returns one permission-scoped overview for the authenticated
+account. Administrators see all maps; other users see only maps represented by
+their `owner`, `editor`, or `viewer` memberships. The endpoint uses SQL
+aggregations for totals, status/country/category rankings, attention counts,
+recent places and trips, route summaries, and coordinate buckets. It never
+loads all places into Python and never exposes counts from inaccessible maps.
+
+The optional activity list is sourced only from persisted place-history
+events. No trend or historical comparison is returned because the current
+schema cannot calculate one reliably. No schema migration is required.
+
 ## Database and Alembic
 
 The initial Alembic revision is a baseline for an existing schema. A fresh Docker volume is initialized through `database/init/001_initial_schema.sql`; Alembic then evolves the schema. Do not assume `alembic upgrade head` alone can recreate a historic fresh database.

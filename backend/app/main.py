@@ -21,6 +21,7 @@ from app.auth.public_router import router as public_auth_router
 from app.auth.registration_admin_router import router as registration_admin_router
 from app.categories.router import router as categories_router
 from app.countries.router import router as countries_router
+from app.dashboard.router import router as dashboard_router
 from app.database import SessionLocal
 from app.exports.router import router as exports_router
 from app.imports.router import router as imports_router
@@ -121,6 +122,7 @@ app.include_router(registration_admin_router)
 app.include_router(admin_console_router)
 app.include_router(quotas_router)
 app.include_router(instance_status_router)
+app.include_router(dashboard_router)
 app.include_router(places_map_router)
 app.include_router(places_advanced_router)
 app.include_router(places_router)

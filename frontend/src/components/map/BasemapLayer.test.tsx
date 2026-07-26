@@ -1,13 +1,31 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import L from 'leaflet'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { BasemapLayer } from './BasemapLayer'
+
+const { mapMock } = vi.hoisted(() => ({
+  mapMock: {
+    attributionControl: {
+      addAttribution: vi.fn(),
+      removeAttribution: vi.fn(),
+    },
+    hasLayer: vi.fn(() => true),
+  },
+}))
 
 vi.mock('react-leaflet', () => ({
   TileLayer: ({ url, attribution, maxZoom, eventHandlers }: { url: string; attribution: string; maxZoom: number; eventHandlers: { tileerror: () => void } }) => <button type="button" data-testid="tile-layer" data-url={url} data-attribution={attribution} data-max-zoom={maxZoom} onClick={eventHandlers.tileerror} />,
+  useMap: () => mapMock,
 }))
+vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  vi.clearAllMocks()
+})
 
 describe('BasemapLayer', () => {
   it('renders exactly the selected registry tile source', () => {
@@ -23,5 +41,25 @@ describe('BasemapLayer', () => {
     render(<BasemapLayer basemapId="osm" onTileError={onTileError} />)
     fireEvent.click(screen.getByTestId('tile-layer'))
     expect(onTileError).toHaveBeenCalledWith('osm')
+  })
+
+  it('safely unmounts a vector layer after MapLibre has already released its map', async () => {
+    const mapLibreMap = { on: vi.fn(), off: vi.fn() }
+    const layer = {
+      addTo: vi.fn(),
+      removeFrom: vi.fn(),
+      getMaplibreMap: vi.fn()
+        .mockReturnValueOnce(mapLibreMap)
+        .mockReturnValueOnce(null),
+    }
+    vi.mocked(loadCartaVaultStyle).mockResolvedValue({ version: 8, sources: {}, layers: [] })
+    vi.spyOn(L, 'maplibreGL').mockReturnValue(layer as unknown as L.MaplibreGLLayer)
+
+    const rendered = render(<BasemapLayer basemapId="cartavault-light" onTileError={vi.fn()} />)
+    await waitFor(() => expect(layer.addTo).toHaveBeenCalledWith(mapMock))
+
+    expect(() => rendered.unmount()).not.toThrow()
+    expect(layer.removeFrom).toHaveBeenCalledWith(mapMock)
+    expect(mapLibreMap.off).not.toHaveBeenCalled()
   })
 })

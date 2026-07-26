@@ -27,7 +27,7 @@ const emptyFacets: PlaceFacets = { total: 0, non_visited: 0, visited: 0, favorit
 
 interface Props {
   poiMap: PoiMap | null; statuses?: PlaceStatusSummary[]; filters?: PlaceFilters; selectedPlaceId: string | null; refreshVersion: number; removedPlaceId: string | null
-  onFiltersChange?: (filters: PlaceFilters) => void; onPlaceSelect: (place: PreviewPlace) => void; onClose?: () => void; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onImported?: () => void; tripPlanningActive?: boolean; tripPlaceIds?: Set<string>; onBulkChanged?: () => void
+  onFiltersChange?: (filters: PlaceFilters) => void; onPlaceSelect: (place: PreviewPlace) => void; onClose?: () => void; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onImported?: () => void; tripPlanningActive?: boolean; tripPlaceIds?: Set<string>; onBulkChanged?: () => void; importRequest?: number
 }
 
 const sortPlaces = (places: PlaceDetails[]) => places
@@ -45,7 +45,7 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1)
 }
 
-export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), onBulkChanged = () => undefined, importRequest = 0 }: Props) {
   const { t, formatDate } = useI18n()
   const { confirm, confirmationDialog } = useConfirmDialog()
   const [places, setPlaces] = useState<PlaceDetails[]>([]); const [loading, setLoading] = useState(false); const [listReady, setListReady] = useState(false); const [hasMore, setHasMore] = useState(false); const [nextOffset, setNextOffset] = useState(0); const [error, setError] = useState<string | null>(null); const [listRequestVersion, setListRequestVersion] = useState(0)
@@ -60,6 +60,9 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   useEffect(() => { setMarkerFilter({ query: filters.query, categoryId: filters.categoryIds[0] ?? '', statusId: filters.statusIds[0] ?? null, tagId: filters.tagIds[0] ?? '' }) }, [filters, setMarkerFilter])
   useEffect(() => { placesRef.current = places }, [places])
   useEffect(() => { if (tripPlanningActive) setImporting(false) }, [tripPlanningActive])
+  useEffect(() => {
+    if (importRequest > 0 && poiMap?.can_import !== false && !tripPlanningActive) setImporting(true)
+  }, [importRequest, poiMap, tripPlanningActive])
   useEffect(() => { selectionController.current?.abort(); setSelectedIds(new Set()); setPlaces([]); setFacets(emptyFacets); setNextOffset(0); setListReady(false); setBulkNotice(null) }, [poiMap?.id])
   useEffect(() => {
     const mapId = poiMap?.id
