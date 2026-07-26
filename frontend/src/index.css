@@ -7955,13 +7955,109 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 
 .dashboard-quick-actions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: .55rem;
 }
 
+.dashboard-map-target {
+  position: relative;
+  display: grid;
+  gap: .3rem;
+  min-width: min(17rem, 100%);
+}
+
+.dashboard-map-target > span {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  color: var(--cv-color-gray);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.dashboard-map-target > span svg { width: .85rem; height: .85rem; }
+
+.dashboard-quick-actions .dashboard-map-target__trigger {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) 1rem;
+  width: 100%;
+  min-width: 0;
+  height: 2.65rem;
+  padding: 0 .7rem;
+  color: var(--cv-color-navy);
+  background: var(--cv-color-off-white);
+  border: 1px solid var(--cv-border-subtle, rgb(43 62 89 / 14%));
+  border-radius: .7rem;
+  box-shadow: none;
+  text-align: left;
+}
+
+.dashboard-quick-actions .dashboard-map-target__trigger strong {
+  overflow: hidden;
+  font-size: .78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-map-target__flag {
+  width: 1.15rem;
+  height: .82rem;
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.dashboard-map-target__options {
+  position: absolute;
+  z-index: var(--cv-z-panel);
+  top: calc(100% + .35rem);
+  right: 0;
+  left: 0;
+  display: grid;
+  gap: .2rem;
+  max-height: 16rem;
+  padding: .35rem;
+  overflow-y: auto;
+  background: var(--cv-color-off-white);
+  border: 1px solid var(--cv-border-subtle, rgb(43 62 89 / 14%));
+  border-radius: .7rem;
+  box-shadow: var(--cv-shadow-md);
+}
+
+.dashboard-quick-actions .dashboard-map-target__options button {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) 1rem;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: .4rem .55rem;
+  background: transparent;
+  border-color: transparent;
+  border-radius: .45rem;
+  box-shadow: none;
+  text-align: left;
+}
+
+.dashboard-map-target__options button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-quick-actions .dashboard-map-target__options button[aria-selected='true'] {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, transparent);
+}
+
+.dashboard-map-target__trigger:focus-visible {
+  border-color: var(--cv-color-teal);
+  outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 22%, transparent);
+  outline-offset: 1px;
+}
+
 .dashboard-quick-actions button {
   display: inline-flex;
+  flex: 0 0 auto;
   min-height: 2.65rem;
   align-items: center;
   gap: .45rem;
@@ -7974,6 +8070,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   cursor: pointer;
   font-size: .78rem;
   font-weight: 750;
+  white-space: nowrap;
   transition: 150ms ease;
 }
 
@@ -8182,7 +8279,16 @@ html[data-theme='dark'] .dashboard-quick-actions button {
   box-shadow: 0 7px 24px rgb(0 0 0 / 22%);
 }
 
+html[data-theme='dark'] .dashboard-map-target__trigger,
+html[data-theme='dark'] .dashboard-map-target__options {
+  color: var(--cv-text);
+  background: var(--cv-surface-raised);
+  border-color: var(--cv-border);
+}
+
 @media (max-width: 1180px) {
+  .dashboard-hero { align-items: stretch; flex-direction: column; }
+  .dashboard-quick-actions { justify-content: flex-start; }
   .dashboard-secondary-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .dashboard-grid--analytics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-status-card { grid-column: 1 / -1; }
@@ -8190,8 +8296,8 @@ html[data-theme='dark'] .dashboard-quick-actions button {
 }
 
 @media (max-width: 840px) {
-  .dashboard-hero { align-items: stretch; flex-direction: column; }
-  .dashboard-quick-actions { justify-content: flex-start; }
+  .dashboard-quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-map-target { grid-column: 1 / -1; }
   .dashboard-primary-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-grid--recent,
   .dashboard-grid--bottom { grid-template-columns: minmax(0, 1fr); }

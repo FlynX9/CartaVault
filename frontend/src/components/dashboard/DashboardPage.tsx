@@ -3,6 +3,8 @@ import {
   ArrowRight,
   Camera,
   CheckCircle2,
+  Check,
+  ChevronDown,
   CircleHelp,
   Clock3,
   Copy,
@@ -18,24 +20,26 @@ import {
   Shapes,
   Upload,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { getDashboard } from '../../api/dashboard'
 import { getPhotoFileUrl } from '../../api/photos'
 import { useAuth } from '../../auth/useAuth'
 import { useI18n } from '../../i18n/useI18n'
 import type { Dashboard } from '../../types/dashboard'
+import type { PoiMap } from '../../types/map'
 import { formatRouteDistance, formatRouteDuration } from '../trips/tripMetrics'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { CountryFlag } from '../maps/CountryFlag'
 import { DashboardMapPreview } from './DashboardMapPreview'
 
 interface DashboardPageProps {
-  activeMapEditable: boolean
+  maps: PoiMap[]
+  activeMapId: string | null
   onCreateMap: () => void
-  onCreatePlace: () => void
-  onImportKmz: () => void
-  onCreateTrip: () => void
+  onCreatePlace: (mapId: string) => void
+  onImportKmz: (mapId: string) => void
+  onCreateTrip: (mapId: string) => void
   onOpenPlace: (placeId: string, mapId: string) => void
   onOpenTrip: (tripId: string, mapId: string) => void
   onViewAllPlaces: () => void
@@ -59,7 +63,8 @@ const EMPTY_DASHBOARD: Dashboard = {
 }
 
 export function DashboardPage({
-  activeMapEditable,
+  maps,
+  activeMapId,
   onCreateMap,
   onCreatePlace,
   onImportKmz,
@@ -74,6 +79,30 @@ export function DashboardPage({
   const [dashboard, setDashboard] = useState<Dashboard>(EMPTY_DASHBOARD)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [targetMapId, setTargetMapId] = useState(activeMapId ?? maps[0]?.id ?? '')
+  const [mapChooserOpen, setMapChooserOpen] = useState(false)
+  const mapChooserRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (targetMapId && maps.some((map) => map.id === targetMapId)) return
+    setTargetMapId(activeMapId && maps.some((map) => map.id === activeMapId) ? activeMapId : maps[0]?.id ?? '')
+  }, [activeMapId, maps, targetMapId])
+
+  useEffect(() => {
+    if (!mapChooserOpen) return
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!mapChooserRef.current?.contains(event.target as Node)) setMapChooserOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMapChooserOpen(false)
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [mapChooserOpen])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -106,6 +135,11 @@ export function DashboardPage({
   }, [dashboard.statuses, totalStatusPlaces])
   const maxCountry = Math.max(...dashboard.top_countries.map((item) => item.count), 1)
   const maxCategory = Math.max(...dashboard.top_categories.map((item) => item.count), 1)
+  const targetMap = maps.find((map) => map.id === targetMapId) ?? null
+  const hasMaps = maps.length > 0
+  const canEditTargetMap = targetMap?.can_edit === true
+  const canImportIntoTargetMap = targetMap !== null && targetMap.can_import !== false && targetMap.can_edit === true
+  const unavailableReason = !hasMaps ? t('dashboard.action.noMaps') : t('dashboard.action.noPermission')
   const attentionItems = [
     ['without_photos', Camera],
     ['without_categories', Shapes],
@@ -142,10 +176,44 @@ export function DashboardPage({
         <p>{t('dashboard.summary', { places: dashboard.summary.places, maps: dashboard.summary.maps, countries: dashboard.summary.countries })}</p>
       </div>
       <div className="dashboard-quick-actions" aria-label={t('dashboard.quickActions')}>
+        <div className="dashboard-map-target" ref={mapChooserRef}>
+          <span><Map aria-hidden="true" />{t('dashboard.targetMap')}</span>
+          <button
+            type="button"
+            className="dashboard-map-target__trigger"
+            role="combobox"
+            aria-label={t('dashboard.targetMap')}
+            aria-expanded={mapChooserOpen}
+            aria-controls="dashboard-map-options"
+            disabled={!hasMaps}
+            onClick={() => setMapChooserOpen((open) => !open)}
+          >
+            {targetMap
+              ? <><CountryFlag countryCode={targetMap.country.iso_alpha2} className="dashboard-map-target__flag" fallbackSize={17} /><strong>{targetMap.name}</strong></>
+              : <strong>{t('dashboard.noMaps')}</strong>}
+            <ChevronDown aria-hidden="true" />
+          </button>
+          {mapChooserOpen && <div className="dashboard-map-target__options" id="dashboard-map-options" role="listbox" aria-label={t('dashboard.targetMap')}>
+            {maps.map((map) => <button
+              key={map.id}
+              type="button"
+              role="option"
+              aria-selected={map.id === targetMapId}
+              onClick={() => {
+                setTargetMapId(map.id)
+                setMapChooserOpen(false)
+              }}
+            >
+              <CountryFlag countryCode={map.country.iso_alpha2} className="dashboard-map-target__flag" fallbackSize={17} />
+              <span>{map.name}</span>
+              {map.id === targetMapId && <Check aria-hidden="true" />}
+            </button>)}
+          </div>}
+        </div>
         <button type="button" className="primary" onClick={onCreateMap}><Plus /><span>{t('dashboard.action.map')}</span></button>
-        <button type="button" disabled={!activeMapEditable} onClick={onCreatePlace}><MapPin /><span>{t('dashboard.action.place')}</span></button>
-        <button type="button" disabled={!activeMapEditable} onClick={onImportKmz}><Upload /><span>{t('dashboard.action.import')}</span></button>
-        <button type="button" disabled={!activeMapEditable} onClick={onCreateTrip}><Route /><span>{t('dashboard.action.trip')}</span></button>
+        <button type="button" disabled={!canEditTargetMap} title={!canEditTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onCreatePlace(targetMap.id)}><MapPin /><span>{t('dashboard.action.place')}</span></button>
+        <button type="button" disabled={!canImportIntoTargetMap} title={!canImportIntoTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onImportKmz(targetMap.id)}><Upload /><span>{t('dashboard.action.import')}</span></button>
+        <button type="button" disabled={!canEditTargetMap} title={!canEditTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onCreateTrip(targetMap.id)}><Route /><span>{t('dashboard.action.trip')}</span></button>
       </div>
     </header>
 

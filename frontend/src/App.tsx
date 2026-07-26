@@ -384,11 +384,12 @@ function WorkspaceApp() {
     <TopBar isMapWorkspace={isMapWorkspace} contextLabel={dashboardOpen ? t('dashboard.title') : undefined} markerCount={places.length} onMapAccessChanged={() => setRefreshVersion((value) => value + 1)} onOpenAdmin={openAdmin} />
     <Routes>
       <Route path="/dashboard" element={<Suspense fallback={<div className="dashboard-page dashboard-page--state" role="status">Loading…</div>}><DashboardPage
-        activeMapEditable={activeMap?.can_edit === true}
+        maps={maps}
+        activeMapId={activeMapId}
         onCreateMap={() => { navigate(withMap('/', activeMapId, activeStatusId)); setWorkspacePanel('maps'); setCollapsedWorkspacePanel(null); setCreateMapRequest((value) => value + 1) }}
-        onCreatePlace={() => { if (activeMap?.can_edit === true) { setWorkspacePanel('places'); navigate(withMap('/places/new', activeMap.id, activeStatusId)) } }}
-        onImportKmz={() => { if (activeMap?.can_import !== false && activeMap) { navigate(withMap('/', activeMap.id, activeStatusId)); setWorkspacePanel('places'); setPlacesPanelCollapsed(false); setImportRequest((value) => value + 1) } }}
-        onCreateTrip={() => openTrips(true)}
+        onCreatePlace={(mapId) => { const target = maps.find((map) => map.id === mapId); if (target?.can_edit === true) { setWorkspacePanel('places'); navigate(withMap('/places/new', target.id, null)) } }}
+        onImportKmz={(mapId) => { const target = maps.find((map) => map.id === mapId); if (target?.can_import !== false && target?.can_edit === true) { navigate(withMap('/', target.id, null)); setWorkspacePanel('places'); setPlacesPanelCollapsed(false); setImportRequest((value) => value + 1) } }}
+        onCreateTrip={(mapId) => { const target = maps.find((map) => map.id === mapId); if (target?.can_edit === true) { navigate(withMap('/', target.id, null)); setWorkspacePanel('places'); setPlacesPanelCollapsed(false); setTripPlannerCollapsed(false); setTripPlannerOpen(true); setCreateTripRequest((value) => value + 1) } }}
         onOpenPlace={(placeId, mapId) => { setWorkspacePanel('places'); navigate(withMap(`/places/${placeId}`, mapId, null)) }}
         onOpenTrip={(tripId, mapId) => { navigate(withMap('/', mapId, null)); setWorkspacePanel('places'); setTripPlannerOpen(true); setTripPlannerCollapsed(false); void getTrip(tripId).then((loaded) => { setActiveTrip(loaded); setActiveTripDayId(loaded.days[0]?.id ?? null) }).catch((caught: unknown) => setTripNotice(caught instanceof Error ? caught.message : 'Unable to open this trip.')) }}
         onViewAllPlaces={() => { setWorkspacePanel('places'); setPlacesPanelCollapsed(false); navigate(withMap('/', activeMapId, activeStatusId)) }}
