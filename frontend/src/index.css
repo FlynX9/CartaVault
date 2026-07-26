@@ -4893,7 +4893,7 @@ body {
 .trip-planner-panel .trip-panel-day-actions button { width: 25px; min-width: 25px; height: 25px; min-height: 25px; border-radius: 6px; }
 .trip-planner-panel .trip-panel-day-content { gap: 0.5rem; padding: 0.5rem; border-top-color: #e9eef1; }
 .trip-planner-panel .trip-panel-day-content > ul { gap: 0; overflow: hidden; order: -2; border: 1px solid #e6ecef; border-radius: 8px; }
-.trip-planner-panel .trip-panel-day-content > ul > li { display: grid; grid-template-columns: auto 22px auto minmax(7rem, 1fr) auto auto auto auto auto; min-height: 38px; align-items: center; gap: 0.38rem; padding: 0.35rem 0.42rem; background: #fff; border-bottom: 1px solid #edf1f3; border-radius: 0; }
+.trip-planner-panel .trip-panel-day-content > ul > li { display: grid; grid-template-columns: auto 22px auto minmax(7rem, 1fr) auto auto auto auto auto; min-height: 44px; align-items: center; gap: 0.38rem; padding: 0.42rem 0.5rem; background: #fff; border-bottom: 1px solid #edf1f3; border-radius: 0; }
 .trip-planner-panel .trip-panel-day-content > ul > li:last-child { border-bottom: 0; }
 .trip-planner-panel .trip-panel-day-content > ul > li:hover { background: rgb(15 166 138 / 5%); }
 .trip-planner-panel .trip-stop-grip { color: #a7b1ba; }
@@ -4911,7 +4911,9 @@ body {
 .trip-planner-panel .trip-panel-night { grid-template-columns: auto minmax(7rem, 1fr) auto auto; }
 .trip-planner-panel .trip-panel-night::before { position: absolute; z-index: 1; top: 8px; left: -2.55rem; width: 40px; height: 40px; background: var(--cv-color-navy); border: 3px solid #f7f9fb; border-radius: 50%; content: ''; box-shadow: 0 2px 5px rgb(13 27 42 / 12%); }
 .places-redesign-list .places-place-copy > strong { font-size: .78rem; }
-.trip-planner-panel .trip-panel-day-content li strong { font-size: .68rem; }
+/* Stop names deliberately share the list-POI title scale: a trip should not
+   feel denser simply because the same places are shown as itinerary steps. */
+.trip-planner-panel .trip-panel-day-content li strong { font-size: .78rem; }
 .trip-planner-panel .trip-panel-night > svg { position: relative; z-index: 2; margin-left: -2.95rem; color: white; }
 .trip-planner-panel .trip-panel-night strong { font-size: 0.72rem; text-transform: uppercase; }
 .trip-planner-panel .trip-panel-night small { font-size: 0.6rem; }

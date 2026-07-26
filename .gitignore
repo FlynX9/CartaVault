@@ -45,3 +45,5 @@ htmlcov/
 
 # Local Codex workspace metadata
 /.agents/
+
+/docs/screenshots/convert_to_webp.py
