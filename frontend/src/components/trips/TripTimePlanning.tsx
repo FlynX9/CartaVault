@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { ChevronDown } from 'lucide-react'
 
 import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripStop } from '../../types/trip'
-import { formatClock, formatMinutes, formatRouteDistance, formatScheduleDelta } from './tripMetrics'
+import { formatClock, formatMinutes, formatRouteDistance } from './tripMetrics'
 
 interface DayTimingProps {
   day: TripDay
@@ -13,28 +13,24 @@ interface DayTimingProps {
   onSave: (payload: TripDayTimingPayload) => Promise<void>
 }
 
-export function DayTimingSettings({ day, summary, canEdit, busy, endsAtHotel = false, onSave }: DayTimingProps) {
+export function DayTimingSettings({ day, summary: _summary, canEdit, busy, endsAtHotel = false, onSave }: DayTimingProps) {
   const [draft, setDraft] = useState<TripDayTimingPayload>(() => timingPayload(day))
   useEffect(() => setDraft(timingPayload(day)), [day])
 
   const update = <K extends keyof TripDayTimingPayload>(key: K, value: TripDayTimingPayload[K]) => setDraft((current) => ({ ...current, [key]: value }))
   const bufferPresets = [0, 5, 10, 15, 20, 30]
   const marginPresets = draft.safety_margin_type === 'fixed' ? [0, 15, 30, 45, 60] : [0, 5, 10, 15, 20]
-  return <details className="trip-time-settings">
-    <summary><span id={`day-${day.id}-planning-title`}>Planification horaire</span><ChevronDown className="trip-panel-chevron" size={15} /></summary>
+  return <section className="trip-time-settings">
+    <h4 id={`day-${day.id}-planning-title`}>Planification horaire</h4>
     <div className="trip-time-settings__body" aria-labelledby={`day-${day.id}-planning-title`}>
     <div className="trip-time-settings__grid">
       <label>{endsAtHotel ? 'Arrivée souhaitée à l’hôtel' : 'Heure cible de fin de journée'}<input aria-label={endsAtHotel ? 'Arrivée souhaitée à l’hôtel' : 'Heure cible de fin de journée'} type="time" value={draft.target_arrival_time ?? ''} disabled={!canEdit || busy} onChange={(event) => update('target_arrival_time', event.target.value || null)} /><small>CartaVault utilisera cette heure pour proposer une heure de départ.</small></label>
       <label>Temps tampon entre les étapes<span className="trip-time-settings__combined"><select aria-label="Préréglage du temps tampon" value={bufferPresets.includes(draft.default_stop_buffer_minutes) ? draft.default_stop_buffer_minutes : 'custom'} disabled={!canEdit || busy} onChange={(event) => { if (event.target.value !== 'custom') update('default_stop_buffer_minutes', Number(event.target.value)) }}>{bufferPresets.map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}<option value="custom">Personnalisé</option></select>{!bufferPresets.includes(draft.default_stop_buffer_minutes) && <input aria-label="Temps tampon personnalisé" type="number" min="0" max="720" step="5" value={draft.default_stop_buffer_minutes} disabled={!canEdit || busy} onChange={(event) => update('default_stop_buffer_minutes', Number(event.target.value))} />}</span><small>Temps ajouté entre deux visites pour le stationnement, la préparation et les petits retards.</small></label>
       <label>Marge de sécurité<span className="trip-time-settings__combined"><select aria-label="Type de marge" value={draft.safety_margin_type} disabled={!canEdit || busy} onChange={(event) => update('safety_margin_type', event.target.value as TripDayTimingPayload['safety_margin_type'])}><option value="fixed">Minutes</option><option value="percentage">Pourcentage</option></select><select aria-label="Valeur de la marge" value={marginPresets.includes(draft.safety_margin_value) ? draft.safety_margin_value : 'custom'} disabled={!canEdit || busy} onChange={(event) => { if (event.target.value !== 'custom') update('safety_margin_value', Number(event.target.value)) }}>{marginPresets.map((value) => <option key={value} value={value}>{value}{draft.safety_margin_type === 'percentage' ? ' %' : ' min'}</option>)}<option value="custom">Personnalisée</option></select></span>{!marginPresets.includes(draft.safety_margin_value) && <input aria-label="Marge personnalisée" type="number" min="0" max={draft.safety_margin_type === 'percentage' ? 100 : 720} value={draft.safety_margin_value} disabled={!canEdit || busy} onChange={(event) => update('safety_margin_value', Number(event.target.value))} />}</label>
     </div>
-    {summary && <div className="trip-time-settings__results" aria-live="polite">
-      <span>Arrivée estimée <strong>{formatClock(summary.estimated_arrival_time, summary.estimated_arrival_day_offset)}</strong></span>
-      <span>Écart <strong>{formatScheduleDelta(summary.schedule_delta_minutes)}</strong></span>
-    </div>}
     {canEdit && <div className="trip-time-settings__actions"><button className="primary" type="button" disabled={busy} onClick={() => void onSave(draft)}>Enregistrer</button></div>}
     </div>
-  </details>
+  </section>
 }
 
 export function DayTimeSummary({ day, summary }: { day: TripDay; summary: TripDayTimeSummary | undefined }) {

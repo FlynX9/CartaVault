@@ -7789,6 +7789,82 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content > ul > li {
   border-bottom-color: var(--cv-border-subtle);
 }
 
+/* Day settings are one cohesive panel, not a stack of nested cards. */
+.trip-planner-panel .trip-day-settings > summary {
+  font-size: .76rem;
+}
+
+.trip-planner-panel .trip-day-settings__body {
+  gap: .8rem;
+  padding: .7rem;
+}
+
+.trip-planner-panel .trip-day-settings :is(.trip-day-color-section, .trip-time-settings) {
+  margin: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.trip-planner-panel :is(.trip-day-color-section, .trip-time-settings) > h4 {
+  margin: 0 0 .45rem;
+  padding: 0;
+  color: var(--cv-color-navy);
+  font-size: .76rem;
+  font-weight: 760;
+}
+
+.trip-planner-panel .trip-day-color-section .trip-day-color-picker {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: .7rem;
+}
+
+.trip-planner-panel .trip-day-color-picker > label {
+  font-weight: 500;
+}
+
+.trip-planner-panel .trip-day-color-picker input[type='color'] {
+  width: 2.65rem;
+  height: 1.7rem;
+  padding: .12rem;
+}
+
+.trip-planner-panel .trip-time-settings__body {
+  padding: 0;
+  background: transparent;
+}
+
+.trip-planner-panel .trip-time-settings label {
+  gap: .28rem;
+  color: var(--cv-color-slate);
+  font-size: .7rem;
+  font-weight: 500;
+}
+
+.trip-planner-panel .trip-time-settings label > small {
+  font-size: .6rem;
+  line-height: 1.45;
+}
+
+.trip-planner-panel .trip-time-settings__grid > label:first-child input[type='time'] {
+  width: min(100%, 10rem);
+  min-height: 1.75rem;
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-day-settings :is(
+  .trip-day-color-section,
+  .trip-time-settings,
+  .trip-time-settings__body
+) {
+  background: transparent;
+  border-color: transparent;
+}
+
 html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day-load-label {
   color: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 72%, white);
   background: color-mix(in srgb, var(--trip-load-color, var(--cv-color-slate)) 17%, var(--cv-surface-muted));

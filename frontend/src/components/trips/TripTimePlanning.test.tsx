@@ -19,8 +19,9 @@ describe('TripTimePlanning', () => {
     expect(screen.getByLabelText('Marge : 15 min')).toBeVisible()
     expect(screen.queryByText(/pause/i)).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Départ planifié')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByText('Planification horaire'))
-    expect(document.querySelector('.trip-time-settings > summary > strong')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Planification horaire' })).toBeVisible()
+    expect(screen.queryByText('Arrivée estimée')).not.toBeInTheDocument()
+    expect(screen.queryByText('Écart')).not.toBeInTheDocument()
   })
 
   it('offers visit presets and custom values', () => {
@@ -34,7 +35,6 @@ describe('TripTimePlanning', () => {
   it('saves buffer presets, percentage margins and target times', () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(<DayTimingSettings day={day} summary={summary} canEdit busy={false} onSave={onSave} />)
-    fireEvent.click(screen.getByText('Planification horaire'))
     fireEvent.change(screen.getByLabelText('Préréglage du temps tampon'), { target: { value: '30' } })
     fireEvent.change(screen.getByLabelText('Type de marge'), { target: { value: 'percentage' } })
     fireEvent.change(screen.getByLabelText('Valeur de la marge'), { target: { value: '10' } })
@@ -45,7 +45,6 @@ describe('TripTimePlanning', () => {
 
   it('uses 20:00 as the editable default arrival when the day has no override', () => {
     render(<DayTimingSettings day={{ ...day, target_arrival_time: null }} summary={{ ...summary, target_arrival_time: '20:00:00' }} canEdit busy={false} onSave={vi.fn()} />)
-    fireEvent.click(screen.getByText('Planification horaire'))
     expect(screen.getByLabelText('Heure cible de fin de journée')).toHaveValue('20:00')
   })
 

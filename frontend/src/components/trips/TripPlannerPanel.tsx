@@ -249,8 +249,8 @@ function DaySettings({ day, summary, canEdit, busy, endsAtHotel, onTimingSave, o
   return <details className="trip-day-settings">
     <summary><span>Paramètres du jour</span><ChevronDown className="trip-panel-chevron" size={14} /></summary>
     <div className="trip-day-settings__body">
-      <DayTimingSettings day={day} summary={summary} canEdit={canEdit} busy={busy} endsAtHotel={endsAtHotel} onSave={onTimingSave} />
       <section className="trip-day-color-section"><h4>Couleur du jour</h4><DayColorPicker day={day} disabled={!canEdit || busy} onSave={onColorSave} /></section>
+      <DayTimingSettings day={day} summary={summary} canEdit={canEdit} busy={busy} endsAtHotel={endsAtHotel} onSave={onTimingSave} />
     </div>
   </details>
 }
