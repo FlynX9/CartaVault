@@ -7864,3 +7864,21 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 }
 
 .map-workspace.trip-planner-collapsed .cv-panel-resize-handle--right { display: none; }
+
+/* A place already assigned to the current trip stays available for reference,
+   but is deliberately muted so it is not mistaken for a POI to add again. */
+.places-redesign-panel.is-trip-planning .places-place-card.trip-added {
+  background: var(--cv-color-mist);
+  border-color: var(--cv-border-subtle);
+  filter: grayscale(.88);
+  opacity: .62;
+}
+
+.places-redesign-panel.is-trip-planning .places-place-card.trip-added:hover {
+  border-color: var(--cv-border-subtle);
+}
+
+.places-redesign-panel.is-trip-planning .places-place-card.trip-added .place-list-trip-badge {
+  color: var(--cv-color-gray);
+  background: color-mix(in srgb, var(--cv-color-gray) 12%, transparent);
+}

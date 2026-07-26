@@ -148,6 +148,7 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-trip-planning')
     rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: /^Étape/ })).toHaveAttribute('draggable', 'false')
+    expect(container.querySelector('.places-place-card')).toHaveClass('trip-added')
     expect(screen.getByText('Ajouté')).toBeVisible()
   })
 
