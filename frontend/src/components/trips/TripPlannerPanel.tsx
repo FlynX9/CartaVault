@@ -263,7 +263,10 @@ function TripSummaryMetrics({ summary, defaultOpen = false }: { summary: TripSum
 }
 
 function DayHeaderMetrics({ summary }: { summary: TripDayTimeSummary | undefined }) {
+  const loadLabels: Record<Exclude<TripDayTimeSummary['load_level'], 'unavailable'>, string> = { low: 'Faible', medium: 'Modérée', high: 'Élevée' }
+  const loadStyle = summary?.load_color ? { '--trip-load-color': summary.load_color } as CSSProperties : undefined
   return <span className="trip-day-header-metrics" aria-label="Résumé de la journée">
+    {summary && summary.load_level !== 'unavailable' && <span className="trip-day-load-label" style={loadStyle}>{loadLabels[summary.load_level]}</span>}
     <span>{formatRouteDistance(summary?.route_distance_meters ?? null)}</span>
     <span><Car aria-hidden="true" size={12} />{formatMinutes(summary?.route_duration_minutes ?? null)}</span>
     <span><Clock3 aria-hidden="true" size={12} />{formatMinutes(summary?.total_duration_minutes ?? null)}</span>

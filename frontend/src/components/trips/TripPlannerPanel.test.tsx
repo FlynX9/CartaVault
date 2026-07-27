@@ -499,6 +499,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('184,3 km')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('3 h 42')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('9 h 12')
+    expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Modérée')
     expect(screen.getByText('Valide').closest('.trip-panel-day')).not.toBeNull()
     expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
   })
