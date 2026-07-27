@@ -5673,6 +5673,35 @@ body.cv-panel-resizing {
 .quota-editor__control em { color: var(--cv-color-gray); font-size: .58rem; font-style: normal; }
 @media (max-width: 700px) { .quota-profiles__grid, .quota-editor__identity { grid-template-columns: 1fr; }.quota-editor__limits > label { grid-template-columns: 1fr; }.quota-editor__control { grid-template-columns: auto minmax(0, 1fr) 2.5rem; } }
 
+/* Keep administration actions at the same compact scale as account-row controls. */
+.admin-console__credential-form button,
+.quota-profiles > .admin-console__heading > .primary-button,
+.quota-profile .admin-console__actions button,
+.quota-editor .admin-console__actions button,
+.admin-console__refresh {
+  min-height: 1.85rem;
+  padding: .26rem .48rem;
+  border-radius: .48rem;
+  font-size: .62rem;
+  line-height: 1.2;
+}
+.admin-console__credential-form button svg,
+.quota-profiles > .admin-console__heading > .primary-button svg,
+.quota-profile .admin-console__actions button svg,
+.quota-editor .admin-console__actions button svg,
+.admin-console__refresh svg { width: .86rem; height: .86rem; }
+
+/* The instance action lives alone in a roomy page header: keep it deliberately tighter. */
+button.admin-console__refresh {
+  height: 1.8rem;
+  min-height: 1.8rem;
+  align-self: center;
+  padding: .2rem .42rem;
+  font-size: .6rem;
+  white-space: nowrap;
+}
+button.admin-console__refresh svg { width: .8rem; height: .8rem; }
+
 /* Central media library: wide workspace panel, anchored like the other left panels. */
 .map-workspace .media-workspace-panel {
   display: flex;
