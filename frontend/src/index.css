@@ -9645,6 +9645,11 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
    separately with a stronger outline instead of changing the header fill. */
 .trip-planner-panel .trip-panel-day > summary {
   background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 7%, var(--cv-surface, #fff));
+  border-radius: 10px 10px 0 0;
+}
+
+.trip-planner-panel .trip-panel-day:not([open]) > summary {
+  border-radius: 10px;
 }
 
 .trip-planner-panel .trip-panel-day.is-active {
@@ -9740,13 +9745,8 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 .trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number {
-  background:
-    linear-gradient(var(--trip-day-color, var(--cv-color-teal)), var(--trip-day-color, var(--cv-color-teal))) padding-box,
-    linear-gradient(
-      color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 78%, black),
-      color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 78%, black)
-    ) border-box !important;
-  border: 3px solid transparent !important;
+  background: var(--trip-day-color, var(--cv-color-teal)) !important;
+  border: 3px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 78%, black) !important;
 }
 
 .trip-planner-panel .trip-timeline-night-badge {
