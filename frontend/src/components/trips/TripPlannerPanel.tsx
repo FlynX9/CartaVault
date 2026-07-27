@@ -388,7 +388,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
   return <>
     {dropError && <p className="trip-panel-error" role="alert">{dropError}</p>}
     <div
-      className={`trip-panel-night${canEdit ? ' drop-enabled' : ''}${selected ? ' is-active' : ''}${dropActive ? ' is-drop-target' : ''}`}
+      className={`trip-panel-night${night ? '' : ' is-empty'}${canEdit ? ' drop-enabled' : ''}${selected ? ' is-active' : ''}${dropActive ? ' is-drop-target' : ''}`}
       style={timelineColors}
       aria-busy={dropping}
       aria-pressed={selected}

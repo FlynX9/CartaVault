@@ -9517,6 +9517,16 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   );
 }
 
+.trip-planner-panel .trip-panel-night.is-empty.drop-enabled:hover {
+  background: color-mix(in srgb, var(--cv-color-gray) 7%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-gray) 32%, var(--cv-border-subtle, #dfe7ec));
+}
+
+.trip-planner-panel .trip-panel-night.is-empty.drop-enabled:hover .trip-night-header-row {
+  background: color-mix(in srgb, var(--cv-color-gray) 7%, var(--cv-surface, #fff));
+  border-bottom-color: color-mix(in srgb, var(--cv-color-gray) 22%, var(--cv-border-subtle, #e9eef1));
+}
+
 .trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
   position: absolute;
   z-index: 3;
