@@ -6483,6 +6483,21 @@ html[data-theme='dark'] :is(
   border-color: var(--cv-border-strong);
   box-shadow: none;
 }
+
+/* The password reveal control is a button, so it is not covered by the
+   dark input rule above. Keep it visually joined to the secret field. */
+html[data-theme='dark'] .account-secret-input button {
+  color: var(--cv-color-gray);
+  background-color: var(--cv-surface);
+  border-color: var(--cv-border-strong);
+}
+
+html[data-theme='dark'] .account-secret-input button:hover,
+html[data-theme='dark'] .account-secret-input button:focus-visible {
+  color: var(--cv-color-teal);
+  background-color: var(--cv-surface-muted);
+  border-color: color-mix(in srgb, var(--cv-color-teal) 52%, var(--cv-border-strong));
+}
 html[data-theme='dark'] :is(input, textarea)::placeholder { color: var(--cv-color-gray); opacity: .88; }
 html[data-theme='dark'] :is(input, select, textarea):focus {
   border-color: var(--cv-color-teal);
