@@ -136,6 +136,16 @@ def archive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User =
     return _trip_read(session, trip_id)
 
 
+@router.post("/trips/{trip_id}/unarchive", response_model=TripRead)
+def unarchive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = require_trip_editor(session, trip_id, user).trip
+    trip.status = "in_progress"
+    trip.completed_at = None
+    trip.archived_at = None
+    session.commit()
+    return _trip_read(session, trip_id)
+
+
 @router.post("/trips/{trip_id}/duplicate", response_model=TripRead, status_code=201)
 def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     source = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)

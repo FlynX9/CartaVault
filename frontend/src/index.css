@@ -2348,6 +2348,22 @@ button {
   }
 }
 
+/* A completed trip is intentionally read-only, including any controls that may
+   be restyled later in the trip panel stylesheet. */
+.trip-planner-panel--read-only .trip-panel-day-actions button,
+.trip-planner-panel--read-only .trip-panel-stop-actions,
+.trip-planner-panel--read-only .trip-visit-duration,
+.trip-planner-panel--read-only .trip-panel-free-stop,
+.trip-planner-panel--read-only .trip-panel-route-actions__main,
+.trip-planner-panel--read-only .trip-panel-optimization,
+.trip-planner-panel--read-only .trip-panel-insert-day,
+.trip-planner-panel--read-only .trip-panel-journeys-actions,
+.trip-planner-panel--read-only .trip-panel-settings .trip-panel-inline-actions,
+.trip-planner-panel--read-only .trip-day-settings-trigger,
+.trip-planner-panel--read-only .trip-day-settings {
+  display: none !important;
+}
+
 /* Unified trash panel. */
 .trash-workspace-panel {
   background: var(--cv-surface);
@@ -5110,6 +5126,16 @@ body {
 .trip-planner-panel .trip-panel-trip-status { flex: 0 0 auto; padding: 0.18rem 0.42rem; border-radius: 999px; font-size: 0.62rem; font-weight: 720; line-height: 1.1; }
 .trip-planner-panel .trip-panel-trip-status--active { color: #087d6a; background: rgb(15 166 138 / 12%); }
 .trip-planner-panel .trip-panel-trip-status--completed { color: #53616c; background: rgb(100 112 122 / 12%); }
+.trip-planner-panel--read-only .trip-panel-day-actions button,
+.trip-planner-panel--read-only .trip-panel-stop-actions,
+.trip-planner-panel--read-only .trip-visit-duration,
+.trip-planner-panel--read-only .trip-panel-free-stop,
+.trip-planner-panel--read-only .trip-panel-route-actions__main,
+.trip-planner-panel--read-only .trip-panel-optimization,
+.trip-planner-panel--read-only .trip-panel-insert-day,
+.trip-planner-panel--read-only .trip-panel-journeys-actions,
+.trip-planner-panel--read-only .trip-panel-settings .trip-panel-inline-actions { display: none; }
+.trip-planner-panel--read-only .trip-panel-day-content > ul > li { cursor: default; }
 .trip-planner-panel .trip-panel-selector { gap: 0.55rem; padding: 0.7rem 1rem; background: #fff; }
 .trip-planner-panel .trip-panel-selector select { min-height: 40px; padding: 0.45rem 0.7rem; border-radius: 8px; font-size: 0.78rem; }
 .trip-planner-panel .trip-panel-selector .panel-icon-button,

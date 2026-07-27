@@ -46,6 +46,11 @@ def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_cli
     assert archived.json()["archived_at"] is None
     assert trip["id"] in {item["id"] for item in integration_client.get(f"/maps/{poi_map.id}/trips").json()}
 
+    restored = integration_client.post(f"/trips/{trip['id']}/unarchive")
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "in_progress"
+    assert restored.json()["completed_at"] is None
+
 
 def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_client, database_session, poi_map, auth_user, france_country) -> None:
     created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Road trip", "start_date": "2026-08-01", "end_date": "2026-08-03"})
