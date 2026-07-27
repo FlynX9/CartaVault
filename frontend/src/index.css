@@ -5208,6 +5208,9 @@ body {
 @media (hover: none) { .trip-planner-panel .trip-panel-insert-day > button { opacity: 0.55; } }
 .trip-planner-panel .trip-panel-route-actions { gap: 0.4rem; }
 .trip-planner-panel .trip-panel-route-actions button { min-height: 30px; padding: 0.32rem 0.6rem; border-radius: 7px; font-size: 0.64rem; }
+.trip-planner-panel .trip-panel-route-actions { align-items: center; }
+.trip-planner-panel .trip-panel-route-actions__main { display: flex; align-items: center; gap: 0.4rem; }
+.trip-planner-panel .trip-day-settings-trigger { margin-left: auto; }
 .trip-planner-panel .trip-day-color-picker { padding: 0.4rem 0.5rem; border-radius: 7px; font-size: 0.62rem; }
 .trip-planner-panel .trip-panel-settings-actions button { min-height: 32px; border-radius: 7px; font-size: 0.64rem; }
 @media (max-width: 760px) {
