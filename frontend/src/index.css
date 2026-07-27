@@ -9497,6 +9497,26 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   border-color: color-mix(in srgb, #dc2626 42%, var(--cv-border-subtle, #dfe7ec));
 }
 
+.trip-planner-panel .trip-panel-day-content > ul > li {
+  transition: background 150ms ease;
+}
+
+.trip-planner-panel .trip-panel-day-content > ul > li:is(:hover, :focus-within) {
+  background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 9%, var(--cv-surface, #fff));
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop {
+  transition: background 150ms ease;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop:is(:hover, :focus-within) {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 9%, var(--cv-surface, #fff)),
+    color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 9%, var(--cv-surface, #fff))
+  );
+}
+
 .trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
   position: absolute;
   z-index: 3;
