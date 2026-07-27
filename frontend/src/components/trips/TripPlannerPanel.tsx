@@ -101,6 +101,14 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     if (!target) { loadControllerRef.current?.abort(); onTripChangeRef.current(null); onActiveDayChangeRef.current(null); setSummary(null); setDaySummaries({}); setLoadingTripId(null); return }
     await selectTrip(target)
   }
+  const refreshTripSilently = async (id = trip?.id) => {
+    if (!id) return
+    const selectionVersion = selectionVersionRef.current
+    const details = await loadTripDetails(id)
+    if (selectionVersion !== selectionVersionRef.current) return
+    applyLoadedTrip(details)
+    setTrips((current) => current.map((item) => item.id === details.loaded.id ? details.loaded : item))
+  }
   useEffect(() => {
     let active = true
     const initialSelectionVersion = selectionVersionRef.current
@@ -134,8 +142,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const drop = (event: DragEvent, day: TripDay) => {
     if (!canEditTrip) return
     event.preventDefault(); const data = event.dataTransfer.getData('text/plain')
-    if (data.startsWith('place:')) void run(async () => { await addTripStop(day.id, { place_id: data.slice(6), stop_type: 'place', visit_duration_minutes: 30 }); await reload(trip!.id) })
-    if (data.startsWith('stop:')) void run(async () => { await moveTripStop(data.slice(5), day.id, day.stops.length); await reload(trip!.id) })
+    if (data.startsWith('place:')) void run(async () => { await addTripStop(day.id, { place_id: data.slice(6), stop_type: 'place', visit_duration_minutes: 30 }); await refreshTripSilently(trip!.id) })
+    if (data.startsWith('stop:')) void run(async () => { await moveTripStop(data.slice(5), day.id, day.stops.length); await refreshTripSilently(trip!.id) })
   }
   const dropStop = (event: DragEvent, day: TripDay, index: number) => {
     if (!canEditTrip) return
@@ -147,14 +155,14 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
       void run(async () => {
         const created = await addTripStop(day.id, { place_id: placeId, stop_type: 'place', visit_duration_minutes: 30 })
         if (index < day.stops.length) await moveTripStop(created.id, day.id, index)
-        await reload(trip!.id)
+        await refreshTripSilently(trip!.id)
       })
       return
     }
     if (!data.startsWith('stop:')) return
     const stopId = data.slice(5)
     if (!stopId) return
-    void run(async () => { await moveTripStop(stopId, day.id, index); await reload(trip!.id) })
+    void run(async () => { await moveTripStop(stopId, day.id, index); await refreshTripSilently(trip!.id) })
   }
   const recalculateRoute = (day: TripDay) => void run(async () => {
     if (!canEditTrip) return

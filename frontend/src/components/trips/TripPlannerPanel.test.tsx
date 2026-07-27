@@ -326,8 +326,13 @@ describe('TripPlannerPanel', () => {
     await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1', expect.any(AbortSignal)))
     const day = container.querySelector('.trip-panel-day')
     expect(day).not.toBeNull()
+    vi.mocked(listTrips).mockClear()
+    onTripChange.mockClear()
     fireEvent.drop(day!, { dataTransfer: { getData: () => 'place:place-42' } })
     await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
+    await waitFor(() => expect(onTripChange).toHaveBeenCalled())
+    expect(listTrips).not.toHaveBeenCalled()
+    expect(screen.queryByText('Chargement du voyage…')).not.toBeInTheDocument()
   })
 
   it('selects a day without collapsing it, and uses its dedicated control to collapse it', async () => {
