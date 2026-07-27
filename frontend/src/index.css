@@ -3381,6 +3381,72 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-sessions { display: grid; gap: .45rem; margin: .8rem 0; padding: 0; list-style: none; }.account-sessions li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .6rem; padding: .7rem; background: white; border: 1px solid rgb(43 62 89 / 10%); border-radius: .6rem; }.account-sessions li > div { display: grid; min-width: 0; }.account-sessions strong, .account-sessions span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.account-sessions strong { font-size: .78rem; }.account-sessions span { color: var(--cv-color-gray); font-size: .68rem; }.account-sessions b { width: fit-content; margin-top: .2rem; color: var(--cv-color-teal); font-size: .65rem; }
 .danger-button { min-height: 2.35rem; padding: .4rem .7rem; color: white; background: #b42318; border: 1px solid #b42318; border-radius: .5rem; font-weight: 700; }.danger-button:disabled { opacity: .45; }
 @media (max-width: 700px) { .account-overlay { padding: 0; }.account-modal { grid-template: auto auto minmax(0, 1fr) / 1fr; width: 100vw; height: 100dvh; border-radius: 0; }.account-modal__nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid rgb(43 62 89 / 10%); }.account-modal__nav button { flex: 0 0 auto; }.account-modal__nav button.danger { margin-top: 0; }.account-modal__content { padding: .85rem; }.account-avatar-editor { align-items: flex-start; flex-direction: column; }.account-metadata { grid-template-columns: 1fr; } }
+
+/* A single compact scale for every user-setting section and control. */
+.account-modal {
+  --account-control-height: 1.9rem;
+  --account-control-radius: .5rem;
+  --account-text-size: .64rem;
+}
+.account-modal__header h2 { font-size: .92rem; }
+.account-modal__header p, .account-modal__header span { font-size: .66rem; }
+.account-modal__nav { gap: .2rem; padding: .65rem; }
+.account-modal__nav button { min-height: 2.2rem; gap: .5rem; padding: .42rem .55rem; border-radius: var(--account-control-radius); font-size: var(--account-text-size); }
+.account-modal__content { padding: 1rem; }
+.account-content-heading { margin-bottom: .75rem; }
+.account-content-heading h2 { font-size: 1.05rem; }
+.account-content-heading > span { font-size: .7rem; }
+.account-form, .account-credential, .account-avatar-editor, .account-metadata, .account-info, .account-danger-summary { max-width: 36rem; border-radius: .65rem; }
+.account-form { gap: .55rem; margin: .65rem 0; padding: .75rem; }
+.account-form h3 { font-size: .78rem; }
+.account-form label, .account-credential__form label, .account-credential__delete label { gap: .2rem; font-size: var(--account-text-size); }
+.account-form input, .account-form select, .account-credential__delete input, .account-secret-input input, .account-secret-input button { min-height: var(--account-control-height); padding: .36rem .52rem; border-radius: var(--account-control-radius); font-size: var(--account-text-size); }
+.account-secret-input { grid-template-columns: minmax(0, 1fr) var(--account-control-height); }
+.account-button { min-height: var(--account-control-height); gap: .32rem; padding: .32rem .58rem; border-radius: var(--account-control-radius); font-size: var(--account-text-size); }
+.account-routing-preferences { gap: .36rem; padding: .6rem; border-radius: .55rem; }
+.account-routing-preferences legend { font-size: .66rem; }
+.account-routing-preferences small, .account-credential__help, .account-credential__warning { font-size: .64rem; }
+.account-credential { gap: .45rem; margin: .65rem 0; padding: .7rem; }
+.account-credential__heading h3 { font-size: .76rem; }
+.account-credential__heading p { font-size: .66rem; }
+.account-credential__status { font-size: .6rem; }
+.account-profile-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(14rem, .8fr); max-width: 36rem; gap: .65rem; }
+.account-profile-section .account-form { max-width: none; margin: 0; }
+.account-avatar-editor { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .7rem; padding: .75rem; background: white; border: 1px solid rgb(43 62 89 / 10%); }
+.account-avatar-editor > div:last-child { display: grid; min-width: 0; gap: .35rem; }
+.account-avatar-editor strong { color: var(--cv-color-navy); font-size: .76rem; }
+.account-avatar-editor p { margin: 0; color: var(--cv-color-gray); font-size: .64rem; line-height: 1.4; }
+.account-avatar-editor > div:last-child > div { display: flex; flex-wrap: wrap; gap: .35rem; }
+.account-avatar-editor small { width: auto; font-size: .62rem; }
+.account-avatar.large { width: 4.2rem; height: 4.2rem; font-size: 1.15rem; }
+.account-metadata { gap: .32rem .65rem; margin-top: .65rem; padding: .75rem; font-size: .68rem; }
+.account-success, .account-info, .account-danger-summary { padding: .65rem; font-size: .68rem; }
+.account-sessions { gap: .4rem; margin: .65rem 0; }
+.account-sessions li { gap: .5rem; padding: .6rem; border-radius: .55rem; }
+.account-sessions strong { font-size: .7rem; }
+.account-sessions span, .account-sessions b { font-size: .62rem; }
+.account-preferences-form { display: grid; max-width: 36rem; gap: .65rem; }
+.account-preferences-section { display: grid; gap: .45rem; padding: .65rem; background: var(--cv-color-mist); border: 1px solid rgb(43 62 89 / 10%); border-radius: .58rem; }
+.account-preferences-section > h3 { margin: 0; color: var(--cv-color-navy); font-size: .76rem; }
+.account-preferences-section__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .6rem; }
+.account-preferences-section__fields > label { min-width: 0; align-content: start; }
+.account-preferences-section__fields small { min-height: 1.8em; line-height: 1.4; }
+.account-modal select { font-weight: 500; }
+.account-modal .checkbox-field { font-weight: 500; }
+.account-preferences-section:not(.account-preferences-section--routing) { background: transparent; }
+.account-preferences-section--routing { background: transparent; border-color: rgb(15 166 138 / 28%); }
+.account-preferences-section--routing > small { color: var(--cv-color-gray); font-size: .64rem; line-height: 1.4; }
+.account-preferences-section--routing .account-credential { max-width: none; margin: .15rem 0 0; background: var(--cv-surface); }
+.account-preferences-section--routing .account-credential .account-button { min-height: 1.75rem; gap: .28rem; padding: .2rem .42rem; border-radius: .44rem; font-size: .6rem; }
+.account-preferences-section--routing .account-credential .account-button svg { width: .76rem; height: .76rem; }
+.account-preferences-form__actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.account-preferences-form__actions .account-button { justify-self: auto; }
+@media (max-width: 700px) {
+  .account-modal__content { padding: .85rem; }
+  .account-profile-section { grid-template-columns: 1fr; }
+  .account-avatar-editor { grid-template-columns: auto minmax(0, 1fr); align-items: center; flex-direction: initial; }
+  .account-preferences-section__fields { grid-template-columns: 1fr; }
+}
 .login-page { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: var(--cv-color-mist); }
 .login-card { width: min(100%, 28rem); padding: 2rem; border: 1px solid #dbe3ea; border-radius: var(--cv-radius-lg); background: var(--cv-color-off-white); box-shadow: var(--cv-shadow-md); }
 .login-card__logo { width: 3.5rem; height: 3.5rem; }
