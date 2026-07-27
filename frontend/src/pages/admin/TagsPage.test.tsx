@@ -12,7 +12,7 @@ vi.mock('../../api/tags', () => ({
   deleteTag: vi.fn(),
 }))
 
-const TAG = { id: '22222222-2222-4222-8222-222222222222', name: 'Brique', color: '#0FA68A' }
+const TAG = { id: '22222222-2222-4222-8222-222222222222', name: 'Brique', color: '#0FA68A', places_count: 0 }
 
 beforeEach(() => {
   vi.mocked(getTags).mockResolvedValue([TAG])

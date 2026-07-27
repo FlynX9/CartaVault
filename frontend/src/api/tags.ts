@@ -1,12 +1,12 @@
 import type { TagCreatePayload, TagRead, TagUpdatePayload } from '../types/admin'
 import { normalizeTagColor } from '../tags/tagColors'
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import { isRecord, readString, readUuid } from './validation'
+import { isRecord, readNumber, readString, readUuid } from './validation'
 
 export function parseTag(value: unknown): TagRead {
   const context = "Le tag renvoyé par l'API"
   if (!isRecord(value)) throw new Error(`${context} est invalide.`)
-  return { id: readUuid(value, 'id', context), map_id: readUuid(value, 'map_id', context), name: readString(value, 'name', context), color: normalizeTagColor(readString(value, 'color', context)) }
+  return { id: readUuid(value, 'id', context), map_id: readUuid(value, 'map_id', context), name: readString(value, 'name', context), color: normalizeTagColor(readString(value, 'color', context)), places_count: readNumber(value, 'places_count', context) }
 }
 
 export async function getTags(signal?: AbortSignal, q?: string, mapId?: string | null): Promise<TagRead[]> {

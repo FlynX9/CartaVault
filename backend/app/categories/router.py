@@ -11,28 +11,45 @@ from app.auth.permissions import require_category_role, require_map_role
 from app.categories.models import Category
 from app.categories.schemas import CategoryCreate, CategoryRead, CategoryUpdate
 from app.database import get_db
+from app.places.models import Place
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 
-def _read(category: Category) -> CategoryRead:
-    return CategoryRead.model_validate(category, from_attributes=True)
+def _read(category: Category, places_count: int = 0) -> CategoryRead:
+    return CategoryRead.model_validate(category, from_attributes=True).model_copy(update={"places_count": places_count})
+
+
+def _read_statement():
+    return (
+        select(
+            Category,
+            func.count(Place.id).filter(Place.deleted_at.is_(None)).label("places_count"),
+        )
+        .outerjoin(Category.places)
+        .group_by(Category.id)
+    )
+
+
+def _read_category(database_session: Session, category: Category) -> CategoryRead:
+    row = database_session.execute(_read_statement().where(Category.id == category.id)).one()
+    return _read(*row)
 
 
 @router.get("", response_model=list[CategoryRead])
 def get_categories(map_id: UUID = Query(), q: str | None = Query(default=None, min_length=1, max_length=100), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[CategoryRead]:
     require_map_role(database_session, map_id, current_user, "viewer")
-    statement = select(Category).where(Category.map_id == map_id)
+    statement = _read_statement().where(Category.map_id == map_id)
     if q is not None:
         statement = statement.where(Category.name.ilike(f"%{q.strip()}%"))
-    return [_read(item) for item in database_session.scalars(statement.order_by(func.lower(Category.name), Category.id))]
+    return [_read(*row) for row in database_session.execute(statement.order_by(func.lower(Category.name), Category.id)).all()]
 
 
 @router.get("/{category_id}", response_model=CategoryRead)
 def get_category(category_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> CategoryRead:
-    return _read(require_category_role(database_session, category_id, current_user, "viewer"))
+    return _read_category(database_session, require_category_role(database_session, category_id, current_user, "viewer"))
 
 
 @router.post("", response_model=CategoryRead, status_code=201)
@@ -61,7 +78,7 @@ def update_category(category_id: UUID, data: CategoryUpdate, database_session: S
     try:
         database_session.commit()
         database_session.refresh(category)
-        return _read(category)
+        return _read_category(database_session, category)
     except IntegrityError as error:
         database_session.rollback()
         raise HTTPException(status_code=409, detail="A category with this name already exists in this map") from error

@@ -24,6 +24,10 @@ const EMPTY_FORM: StatusFormState = {
   functional_state: 'non_visited',
 }
 
+function formatAssociatedPlaces(count: number) {
+  return `${count} ${count === 1 ? 'POI associé' : 'POI associés'}`
+}
+
 interface StatusesPanelProps {
   variant?: 'page' | 'panel'
   mapId?: string
@@ -231,7 +235,7 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
             onDragEnd={() => { setDraggedStatusId(null); setDropTargetId(null) }}
           >
             {canEdit && !search && <GripVertical className="status-drag-handle" size={16} aria-hidden="true" />}
-            <div className="status-summary"><span className="status-dot" style={{ backgroundColor: item.color }} /><div><strong>{item.name}</strong>{isPanel ? <div className="status-meta"><span>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'}</span><span>{item.places_count} POI</span>{item.is_default && <b>Défaut</b>}{!item.is_active && <b>Inactif</b>}</div> : <p>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'} · {item.slug} · {item.places_count} POI</p>}</div></div>
+            <div className="status-summary"><span className="status-dot" style={{ backgroundColor: item.color }} /><div><strong>{item.name}</strong>{isPanel ? <div className="status-meta"><span>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'}</span><span className="status-place-count" aria-label={formatAssociatedPlaces(item.places_count)}>{item.places_count} POI</span>{item.is_default && <b>Défaut</b>}{!item.is_active && <b>Inactif</b>}</div> : <p>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'} · {item.slug} · <span className="status-place-count" aria-label={formatAssociatedPlaces(item.places_count)}>{item.places_count} POI</span></p>}</div></div>
             {canEdit && <div className="entity-actions">{isPanel ? <><button className="panel-icon-button" type="button" aria-label={`Modifier ${item.name}`} title={`Modifier ${item.name}`} onClick={() => select(item)}><Pencil size={16} /></button><button className="panel-icon-button danger" type="button" aria-label={`Supprimer ${item.name}`} title={`Supprimer ${item.name}`} disabled={item.is_default || item.places_count > 0} onClick={() => void remove(item)}><Trash2 size={16} /></button></> : <><button className="secondary-button" type="button" onClick={() => select(item)}>Modifier</button><button className="danger-button" type="button" disabled={item.is_default || item.places_count > 0} onClick={() => void remove(item)}>Supprimer</button></>}</div>}
           </li>
         ))}

@@ -31,6 +31,14 @@ def test_category_icons_and_primary_category_lifecycle(integration_client, poi_m
     place_id = place["id"]
     assert integration_client.post(f"/places/{place_id}/categories/{first.json()['id']}").status_code == 200
     assert integration_client.post(f"/places/{place_id}/categories/{second.json()['id']}").status_code == 200
+    tag = integration_client.post("/tags", json={"map_id": map_id, "name": f"Usage tag {uuid4().hex}"})
+    assert tag.status_code == 201
+    assert integration_client.post(f"/places/{place_id}/tags/{tag.json()['id']}").status_code == 200
+    category_counts = {item["id"]: item["places_count"] for item in integration_client.get("/categories", params={"map_id": map_id}).json()}
+    tag_counts = {item["id"]: item["places_count"] for item in integration_client.get("/tags", params={"map_id": map_id}).json()}
+    assert category_counts[first.json()["id"]] == 1
+    assert category_counts[second.json()["id"]] == 1
+    assert tag_counts[tag.json()["id"]] == 1
     detail = integration_client.get(f"/places/{place_id}").json()
     assert [item["is_primary"] for item in detail["categories"]].count(True) == 1
     assert next(item for item in detail["categories"] if item["is_primary"])["id"] == first.json()["id"]

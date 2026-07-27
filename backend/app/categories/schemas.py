@@ -77,3 +77,4 @@ class CategoryRead(BaseModel):
     description: str | None
     icon: str
     marks_as_visited: bool
+    places_count: int = 0

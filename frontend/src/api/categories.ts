@@ -4,7 +4,7 @@ import type {
   CategoryUpdatePayload,
 } from '../types/admin'
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import { isRecord, readNullableString, readString, readUuid } from './validation'
+import { isRecord, readNullableString, readNumber, readString, readUuid } from './validation'
 
 export function parseCategory(value: unknown): CategoryRead {
   const context = "La catégorie renvoyée par l'API"
@@ -16,6 +16,7 @@ export function parseCategory(value: unknown): CategoryRead {
     description: readNullableString(value, 'description', context),
     icon: readString(value, 'icon', context),
     marks_as_visited: value.marks_as_visited === true,
+    places_count: readNumber(value, 'places_count', context),
   }
 }
 

@@ -31,8 +31,14 @@ describe('StatusesPage', () => {
   it('shows color, default state, usage count and protected deletion', async () => {
     render(<StatusesPanel mapId="map-id" />)
     expect(await screen.findByText('À faire')).toBeVisible()
-    expect(screen.getByText(/2 POI/)).toBeVisible()
+    expect(screen.getByLabelText('2 POI associés')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Supprimer' })).toBeDisabled()
+  })
+
+  it('labels the status usage count in the compact workspace panel', async () => {
+    render(<StatusesPanel mapId="map-id" variant="panel" />)
+
+    expect(await screen.findByLabelText('2 POI associés')).toHaveTextContent('2 POI')
   })
 
   it('creates a status with the accessible graphical color picker only', async () => {

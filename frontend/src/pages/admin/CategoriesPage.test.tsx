@@ -11,7 +11,7 @@ vi.mock('../../api/categories', () => ({
   deleteCategory: vi.fn(),
 }))
 
-const CATEGORY = { id: '11111111-1111-4111-8111-111111111111', name: 'Industrie', description: 'Patrimoine industriel', icon: 'mdi:church' }
+const CATEGORY = { id: '11111111-1111-4111-8111-111111111111', name: 'Industrie', description: 'Patrimoine industriel', icon: 'mdi:church', places_count: 0 }
 
 beforeEach(() => {
   vi.mocked(getCategories).mockResolvedValue([CATEGORY])

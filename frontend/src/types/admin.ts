@@ -5,6 +5,7 @@ export interface CategoryRead {
   description: string | null
   icon?: string
   marks_as_visited?: boolean
+  places_count: number
 }
 
 export interface CategoryCreatePayload {
@@ -27,6 +28,7 @@ export interface TagRead {
   map_id?: string
   name: string
   color: string
+  places_count: number
 }
 
 export interface TagCreatePayload {

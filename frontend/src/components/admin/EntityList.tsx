@@ -9,6 +9,7 @@ export interface ManagedEntity {
   icon?: string
   marks_as_visited?: boolean
   color?: string
+  places_count: number
 }
 
 interface EntityListProps {
@@ -34,6 +35,7 @@ export function EntityList({ entities, emptyMessage, onEdit, onDelete, variant =
           <div className="entity-summary">
             <strong>{entity.name}</strong>
             {'description' in entity && entity.description && <p>{entity.description}</p>}
+            {variant === 'panel' && <span className="entity-place-count" aria-label={`${entity.places_count} ${entity.places_count === 1 ? 'POI associé' : 'POI associés'}`}>{entity.places_count} POI</span>}
           </div>
           {!readOnly && (
             <div className="entity-actions">

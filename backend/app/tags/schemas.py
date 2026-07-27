@@ -81,3 +81,4 @@ class TagRead(BaseModel):
     map_id: UUID
     name: str
     color: str
+    places_count: int = 0
