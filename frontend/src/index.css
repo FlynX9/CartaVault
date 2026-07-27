@@ -9380,6 +9380,38 @@ html[data-theme='dark'] .geocoding-marker {
   text-transform: uppercase;
 }
 
+.trip-planner-panel .trip-panel-night .trip-night-header-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .3rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-collapse-toggle {
+  flex: 0 0 25px;
+}
+
+.trip-planner-panel .trip-panel-night.is-collapsed {
+  min-height: 52px;
+}
+
+.trip-planner-panel .trip-panel-night.is-collapsed .trip-night-content {
+  gap: 0;
+}
+
+.trip-planner-panel .trip-panel-night.is-collapsed .trip-night-header-row {
+  min-height: 52px;
+  margin: -.55rem -.65rem;
+  align-items: center;
+  border-bottom: 0;
+  border-radius: 10px;
+}
+
+.trip-planner-panel .trip-panel-night.is-collapsed .trip-night-header-actions {
+  align-self: center;
+}
+
 .trip-planner-panel .trip-panel-night .trip-night-stop {
   display: grid;
   min-width: 0;
@@ -9605,4 +9637,32 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 .trip-planner-panel .trip-panel-night:focus-visible {
   outline: 2px solid var(--cv-color-teal);
   outline-offset: 2px;
+}
+
+/* Keep the timeline compact at rest. The insertion affordance expands only
+   when it is intentionally hovered or reached with the keyboard. */
+.trip-planner-panel .trip-panel-insert-day {
+  height: .35rem;
+  min-height: .35rem;
+  margin: -.1rem 0 .1rem;
+  overflow: visible;
+  transition: height 140ms ease, min-height 140ms ease, margin 140ms ease;
+}
+
+.trip-planner-panel .trip-panel-insert-day:hover,
+.trip-planner-panel .trip-panel-insert-day:focus-within {
+  height: 1.55rem;
+  min-height: 1.55rem;
+  margin: -.35rem 0 .45rem;
+}
+
+/* The day segment reaches the following night/arrival marker even while the
+   insertion control temporarily opens between both cards. */
+.trip-planner-panel .trip-panel-day::after {
+  bottom: -1.45rem;
+}
+
+.trip-planner-panel .trip-panel-days > div:has(.trip-panel-insert-day:hover) .trip-panel-day::after,
+.trip-planner-panel .trip-panel-days > div:has(.trip-panel-insert-day:focus-within) .trip-panel-day::after {
+  bottom: -2.65rem;
 }

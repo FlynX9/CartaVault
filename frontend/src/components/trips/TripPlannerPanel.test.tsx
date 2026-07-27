@@ -361,6 +361,22 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('collapses and expands a night with its dedicated control', async () => {
+    const twoDays = { ...trip, days: [{ ...trip.days[0] }, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }] }
+    vi.mocked(listTrips).mockResolvedValue([twoDays])
+    vi.mocked(getTrip).mockResolvedValue(twoDays)
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    const nightCard = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')!
+
+    fireEvent.click(await within(nightCard).findByRole('button', { name: 'Réduire la nuit 1' }))
+    expect(nightCard).toHaveClass('is-collapsed')
+    expect(within(nightCard).queryByText('Glissez des POI depuis le panneau Lieux')).not.toBeInTheDocument()
+
+    fireEvent.click(within(nightCard).getByRole('button', { name: 'Développer la nuit 1' }))
+    expect(nightCard).not.toHaveClass('is-collapsed')
+    expect(within(nightCard).getByText('Glissez des POI depuis le panneau Lieux')).toBeVisible()
+  })
+
   it('adds a fixed departure before day one from a dropped POI', async () => {
     vi.mocked(getPlaceDetails).mockResolvedValue({ id: 'departure-poi', name: 'Maison', latitude: 50, longitude: 4, map: { id: 'map-1', name: 'Belgique', country: {} } } as never)
     vi.mocked(addTripDeparture).mockResolvedValue({} as never)

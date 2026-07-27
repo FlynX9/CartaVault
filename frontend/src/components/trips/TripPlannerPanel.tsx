@@ -352,6 +352,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
   const [dropError, setDropError] = useState<string | null>(null)
   const [dropping, setDropping] = useState(false)
   const [dropActive, setDropActive] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const anchor = previous.stops.at(-1) ?? next.stops[0]
   const drop = (event: DragEvent) => {
     event.preventDefault(); setDropActive(false)
@@ -388,7 +389,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
   return <>
     {dropError && <p className="trip-panel-error" role="alert">{dropError}</p>}
     <div
-      className={`trip-panel-night${night ? '' : ' is-empty'}${canEdit ? ' drop-enabled' : ''}${selected ? ' is-active' : ''}${dropActive ? ' is-drop-target' : ''}`}
+      className={`trip-panel-night${night ? '' : ' is-empty'}${canEdit ? ' drop-enabled' : ''}${selected ? ' is-active' : ''}${collapsed ? ' is-collapsed' : ''}${dropActive ? ' is-drop-target' : ''}`}
       style={timelineColors}
       aria-busy={dropping}
       aria-pressed={selected}
@@ -396,7 +397,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
       tabIndex={0}
       onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button')) return; selectNight(); if (target.closest('.trip-night-stop')) focusNightLocation() }}
       onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectNight(); focusNightLocation() } }}
-      onDragEnter={(event) => { if (canEdit && event.dataTransfer.types.includes('text/plain')) setDropActive(true) }}
+      onDragEnter={(event) => { if (canEdit && event.dataTransfer.types.includes('text/plain')) { setCollapsed(false); setDropActive(true) } }}
       onDragLeave={(event) => { if (event.currentTarget === event.target) setDropActive(false) }}
       onDragOver={(event) => { if (canEdit) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setDropActive(true) } }}
       onDrop={drop}
@@ -405,9 +406,12 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
       <div className="trip-night-content">
         <div className="trip-night-header-row">
           <strong>Nuit {previous.day_number}</strong>
-          <span className="trip-anchor-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}><span>Départ conseillé</span><Clock3 aria-hidden="true" size={12} /><strong>{recommendedLabel}</strong></span>
+          <span className="trip-night-header-actions">
+            <span className="trip-anchor-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}><span>Départ conseillé</span><Clock3 aria-hidden="true" size={12} /><strong>{recommendedLabel}</strong></span>
+            <button className="trip-day-collapse-toggle trip-day-collapse-toggle--inline trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} la nuit ${previous.day_number}`} aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
+          </span>
         </div>
-        {night ? <div className="trip-night-stop" aria-label={nightSourceLabel(night.source_type, night.place_id)}>
+        {!collapsed && (night ? <div className="trip-night-stop" aria-label={nightSourceLabel(night.source_type, night.place_id)}>
           <MapPin className="trip-stop-kind" aria-hidden="true" size={14} />
           <span className="trip-night-stop-copy">
             <strong>{dropping ? 'Enregistrement…' : night.name}</strong>
@@ -416,7 +420,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
           {canEdit && <button type="button" aria-label="Retirer le lieu de la nuit" title="Retirer le lieu" onClick={removeNightLocation}><Trash2 size={11} /></button>}
         </div> : <div className="trip-night-placeholder">{dropActive
           ? <span className="trip-night-drop-indicator" aria-hidden="true"><Plus size={12} />Déposer ici</span>
-          : 'Glissez des POI depuis le panneau Lieux'}</div>}
+          : 'Glissez des POI depuis le panneau Lieux'}</div>)}
       </div>
     </div>
     {dialog && <CreateTripNightDialog previousDayId={previous.id} nextDayId={next.id} mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.edit ? night?.place_id ?? undefined : undefined} initialLocation={dialog.edit && night && !night.place_id ? night : undefined} initialSourceType={night?.source_type} initialNotes={dialog.edit ? night?.notes : undefined} initialCheckInTime={dialog.edit ? night?.check_in_time : undefined} initialCheckOutTime={dialog.edit ? night?.check_out_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && night) await updateTripNight(night.id, payload); else await addTripNight(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
