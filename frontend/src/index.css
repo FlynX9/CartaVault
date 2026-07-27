@@ -9465,6 +9465,38 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   border-color: var(--cv-color-border);
 }
 
+/* Trip editing actions stay neutral at rest and reveal their intent on hover
+   or keyboard focus. */
+.trip-planner-panel :is(.trip-panel-day-actions, .trip-panel-stop-actions) button {
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.trip-planner-panel :is(.trip-panel-day-actions, .trip-panel-stop-actions) button:is(
+  [aria-label='Monter la journée'],
+  [aria-label='Descendre la journée'],
+  [aria-label='Monter l’étape'],
+  [aria-label='Descendre l’étape']
+):is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 11%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 46%, var(--cv-border-subtle, #dfe7ec));
+}
+
+.trip-planner-panel .trip-panel-day-actions button[aria-label='Dupliquer la journée']:is(:hover, :focus-visible) {
+  color: #2563eb;
+  background: color-mix(in srgb, #2563eb 10%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, #2563eb 42%, var(--cv-border-subtle, #dfe7ec));
+}
+
+.trip-planner-panel :is(.trip-panel-day-actions, .trip-panel-stop-actions) button:is(
+  [aria-label='Supprimer la journée'],
+  [aria-label='Supprimer l’étape']
+):is(:hover, :focus-visible) {
+  color: #dc2626;
+  background: color-mix(in srgb, #dc2626 9%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, #dc2626 42%, var(--cv-border-subtle, #dfe7ec));
+}
+
 .trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
   position: absolute;
   z-index: 3;
