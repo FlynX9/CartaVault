@@ -70,7 +70,7 @@ describe('TripPlannerPanel', () => {
 
     const emptyStatuses = await screen.findAllByText('Vide')
     expect(emptyStatuses).toHaveLength(5)
-    emptyStatuses.forEach((status) => expect(status).toHaveClass('trip-timeline-status--empty'))
+    emptyStatuses.forEach((status) => expect(status.closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--empty'))
     expect(within(container.querySelector('.trip-panel-departure') as HTMLElement).getByText('Vide')).toBeVisible()
     expect(within(container.querySelector('.trip-panel-arrival') as HTMLElement).getByText('Vide')).toBeVisible()
   })
@@ -83,7 +83,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'ready', has_current_route: true })
 
     const rendered = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={readyTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    expect(await screen.findByText('Valide')).toHaveClass('trip-timeline-status--valid')
+    expect((await screen.findByText('Valide')).closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--valid')
 
     rendered.unmount()
     const staleTrip = { ...readyTrip, days: [{ ...readyTrip.days[0], route_status: 'stale' }] } satisfies Trip
@@ -92,7 +92,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'stale', route_is_stale: true })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={staleTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    expect(await screen.findByText('Non calculé')).toHaveClass('trip-timeline-status--pending')
+    expect((await screen.findByText('Non calculé')).closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--pending')
   })
 
   it('organizes the workspace into summary, settings and journeys without lifecycle actions', async () => {

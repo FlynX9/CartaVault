@@ -266,8 +266,8 @@ function DayHeaderMetrics({ summary }: { summary: TripDayTimeSummary | undefined
   const loadLabels: Record<Exclude<TripDayTimeSummary['load_level'], 'unavailable'>, string> = { low: 'Faible', medium: 'Modérée', high: 'Élevée' }
   const loadStyle = summary?.load_color ? { '--trip-load-color': summary.load_color } as CSSProperties : undefined
   return <span className="trip-day-header-metrics" aria-label="Résumé de la journée">
-    {summary && summary.load_level !== 'unavailable' && <span className="trip-day-load-label" style={loadStyle}>{loadLabels[summary.load_level]}</span>}
-    <span>{formatRouteDistance(summary?.route_distance_meters ?? null)}</span>
+    {summary && summary.load_level !== 'unavailable' && <span className="trip-day-load-label" style={loadStyle}><span>Charge :</span><strong>{loadLabels[summary.load_level]}</strong></span>}
+    <span><Route aria-hidden="true" size={12} />{formatRouteDistance(summary?.route_distance_meters ?? null)}</span>
     <span><Car aria-hidden="true" size={12} />{formatMinutes(summary?.route_duration_minutes ?? null)}</span>
     <span><Clock3 aria-hidden="true" size={12} />{formatMinutes(summary?.total_duration_minutes ?? null)}</span>
   </span>
@@ -444,7 +444,7 @@ function getDayTimelineStatus(day: TripDay, summary: TripDayTimeSummary | undefi
 
 function TimelineStatusBadge({ status }: { status: TimelineStatus }) {
   const labels: Record<TimelineStatus, string> = { valid: 'Valide', pending: 'Non calculé', empty: 'Vide' }
-  return <span className={`trip-timeline-status trip-timeline-status--${status}`}>{labels[status]}</span>
+  return <span className={`trip-timeline-status trip-timeline-status--${status}`}><span>Statut :</span><strong>{labels[status]}</strong></span>
 }
 
 function canCalculateRoute(trip: Trip, day: TripDay, dayIndex: number) { const hasInheritedStart = dayIndex > 0 && trip.days[dayIndex - 1]?.stops.length > 0; const hasStart = dayIndex === 0 ? trip.departure !== null : trip.nights.some((night) => night.next_day_id === day.id) || hasInheritedStart; const hasEnd = trip.nights.some((night) => night.previous_day_id === day.id) || dayIndex === trip.days.length - 1 && (trip.arrival ?? trip.departure) !== null; return day.stops.length + Number(hasStart) + Number(hasEnd) >= 2 }
