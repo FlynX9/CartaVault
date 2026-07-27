@@ -72,7 +72,8 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('Arrivée')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Démarrer' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Terminer' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Optimiser le voyage' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Calculer les itinéraires' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Optimiser le voyage' })).toBeVisible()
 
     const selector = screen.getByLabelText('Voyage actif').closest<HTMLElement>('.trip-panel-selector')!
     const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })

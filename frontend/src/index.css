@@ -3813,7 +3813,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .trip-planner-panel { overflow-y: auto; }
 .trip-panel-section[open].trip-panel-journeys { display: block; min-height: auto; flex: 0 0 auto; }
 .trip-panel-journeys .trip-panel-days { overflow: visible; }
-.trip-panel-journeys-actions { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; padding: .5rem; }
+.trip-panel-journeys-actions { display: flex; align-items: center; justify-content: flex-start; gap: .5rem; padding: .5rem; border-top: 1px solid var(--cv-border-subtle, rgb(43 62 89 / 10%)); }
 .trip-panel-add-day-ghost { display: grid; width: 100%; min-height: 3.4rem; place-items: center; margin: 0 0 .4rem; padding: .45rem; color: var(--cv-color-gray); background: rgb(242 245 248 / 76%); border: 1px dashed rgb(100 112 122 / 32%); border-radius: .6rem; cursor: pointer; }
 .trip-panel-add-day-ghost__plus { display: grid; width: 2rem; height: 2rem; place-items: center; color: var(--cv-color-gray); background: white; border: 1px dashed rgb(100 112 122 / 48%); border-radius: .42rem; }
 .trip-panel-add-day-ghost:hover .trip-panel-add-day-ghost__plus { color: var(--cv-color-teal); background: rgb(15 166 138 / 6%); border-color: var(--cv-color-teal); }

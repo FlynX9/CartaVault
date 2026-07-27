@@ -147,6 +147,35 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     await calculateTripDayRoute(day.id); await reload(trip!.id); setRouteFeedback(day.id)
     window.setTimeout(() => setRouteFeedback((current) => current === day.id ? null : current), 1600)
   })
+  const recalculateAllRoutes = () => {
+    if (!trip) return
+    const routableDays = trip.days.filter((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))
+    if (!routableDays.length) return
+    void run(async () => {
+      for (const day of routableDays) await calculateTripDayRoute(day.id)
+      await reload(trip.id)
+      setRouteFeedback('all')
+      window.setTimeout(() => setRouteFeedback((current) => current === 'all' ? null : current), 1600)
+    })
+  }
+  const optimizeAllDays = () => {
+    if (!trip) return
+    const optimizableDays = trip.days.filter((day) => day.stops.length >= 2)
+    if (!optimizableDays.length) return
+    void confirm({
+      title: 'Optimiser tout le voyage ?',
+      message: `${optimizableDays.length} ${optimizableDays.length > 1 ? 'journées seront optimisées' : 'journée sera optimisée'} en conservant les étapes verrouillées, les départs et les arrivées.`,
+    }).then((confirmed) => {
+      if (!confirmed) return
+      void run(async () => {
+        for (const day of optimizableDays) {
+          const proposal = await optimizeTripDay(day.id)
+          await confirmTripOptimization(day.id, proposal.optimized_stop_ids)
+        }
+        await reload(trip.id)
+      })
+    })
+  }
   const exportGpx = async () => {
     const item = await exportTripGpx(trip!.id)
     window.open(tripExportUrl(item.download_url), '_blank', 'noopener,noreferrer')
@@ -183,6 +212,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
           {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
           {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEdit} reload={reload} />}
         </div>)}</div></DayCollapseContext.Provider>
+        {canEdit && <div className="trip-panel-journeys-actions trip-panel-route-actions" aria-label="Actions globales des trajets">
+          <button className={routeFeedback === 'all' ? 'route-success' : undefined} type="button" disabled={busy || !trip.days.some((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))} onClick={recalculateAllRoutes}>{routeFeedback === 'all' ? <><Check size={13} />Itinéraires rafraîchis</> : <><Route size={13} />Calculer les itinéraires</>}</button>
+          <button type="button" disabled={busy || !trip.days.some((day) => day.stops.length >= 2)} onClick={optimizeAllDays}><Navigation size={13} />Optimiser le voyage</button>
+        </div>}
       </details>
     </>}</>}</>}
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
