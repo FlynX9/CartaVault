@@ -414,9 +414,10 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
             <small>{nightSourceLabel(night.source_type, night.place_id)}</small>
           </span>
           {canEdit && <button type="button" aria-label="Retirer le lieu de la nuit" title="Retirer le lieu" onClick={removeNightLocation}><Trash2 size={11} /></button>}
-        </div> : <div className="trip-night-placeholder">Glissez des POI depuis le panneau Lieux</div>}
+        </div> : <div className="trip-night-placeholder">{dropActive
+          ? <span className="trip-night-drop-indicator" aria-hidden="true"><Plus size={12} />Déposer ici</span>
+          : 'Glissez des POI depuis le panneau Lieux'}</div>}
       </div>
-      {dropActive && <span className="trip-night-drop-indicator" aria-hidden="true"><Plus size={12} />Déposer ici</span>}
     </div>
     {dialog && <CreateTripNightDialog previousDayId={previous.id} nextDayId={next.id} mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.edit ? night?.place_id ?? undefined : undefined} initialLocation={dialog.edit && night && !night.place_id ? night : undefined} initialSourceType={night?.source_type} initialNotes={dialog.edit ? night?.notes : undefined} initialCheckInTime={dialog.edit ? night?.check_in_time : undefined} initialCheckOutTime={dialog.edit ? night?.check_out_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && night) await updateTripNight(night.id, payload); else await addTripNight(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
   </>

@@ -9528,10 +9528,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
-  position: absolute;
-  z-index: 3;
-  right: .65rem;
-  bottom: -.68rem;
+  position: static;
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-source::before {
@@ -9558,13 +9555,17 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 .trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
   display: inline-flex;
+  width: fit-content;
   min-height: 24px;
   align-items: center;
+  align-self: center;
+  justify-content: center;
+  justify-self: center;
   gap: .28rem;
   padding: .16rem .42rem;
-  color: var(--cv-color-teal);
-  background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface, #fff));
-  border: 1px dashed color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-subtle, #dfe7ec));
+  color: var(--cv-color-slate);
+  background: color-mix(in srgb, var(--cv-color-gray) 11%, var(--cv-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--cv-color-gray) 35%, var(--cv-border-subtle, #dfe7ec));
   border-radius: .38rem;
   font-size: .59rem;
   font-weight: 720;
@@ -9574,6 +9575,16 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 .trip-planner-panel .trip-panel-night.is-drop-target {
   background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff));
   border-color: color-mix(in srgb, var(--cv-color-teal) 62%, var(--cv-border-subtle, #dfe7ec));
+}
+
+.trip-planner-panel .trip-panel-night.is-empty.is-drop-target {
+  background: color-mix(in srgb, var(--cv-color-gray) 8%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-gray) 45%, var(--cv-border-subtle, #dfe7ec));
+}
+
+.trip-planner-panel .trip-panel-night.is-empty.is-drop-target .trip-night-header-row {
+  background: color-mix(in srgb, var(--cv-color-gray) 8%, var(--cv-surface, #fff));
+  border-bottom-color: color-mix(in srgb, var(--cv-color-gray) 28%, var(--cv-border-subtle, #e9eef1));
 }
 
 .trip-planner-panel .trip-panel-night.is-active {

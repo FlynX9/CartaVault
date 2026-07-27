@@ -351,10 +351,11 @@ describe('TripPlannerPanel', () => {
     const nightCard = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')
     expect(nightCard?.style.getPropertyValue('--trip-night-previous-color')).toBe('#e11d48')
     expect(nightCard?.style.getPropertyValue('--trip-night-next-color')).toBe('#2563eb')
-    const nightDropTarget = container.querySelector('.trip-panel-night:not(.trip-panel-departure)')!
+    const nightDropTarget = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')!
     const dataTransfer = { types: ['text/plain'], getData: () => 'place:hotel-poi' }
     fireEvent.dragEnter(nightDropTarget, { dataTransfer })
-    expect(screen.getByText('Déposer ici')).toBeVisible()
+    expect(within(nightDropTarget).getByText('Déposer ici')).toBeVisible()
+    expect(within(nightDropTarget).queryByText('Glissez des POI depuis le panneau Lieux')).not.toBeInTheDocument()
     fireEvent.drop(nightDropTarget, { dataTransfer })
     await waitFor(() => expect(addTripNight).toHaveBeenCalledWith('trip-1', { previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-poi', source_type: 'place' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
