@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+from app.photos import storage
 from app.photos.storage import (
     BACKEND_ROOT,
     MAX_PHOTO_SIZE,
@@ -125,6 +126,26 @@ def test_rejects_oversized_file_and_removes_partial_file(
     with pytest.raises(PhotoTooLargeError):
         store_photo_file(
             OversizedJpegStream(),  # type: ignore[arg-type]
+            "image/jpeg",
+            uuid4(),
+            uuid4(),
+        )
+
+    assert not [path for path in photo_storage.rglob("*") if path.is_file()]
+
+
+def test_removes_final_file_when_dimension_validation_fails(
+    photo_storage: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def reject_unsafe_dimensions(_path: Path) -> tuple[int | None, int | None]:
+        raise UnsupportedPhotoTypeError("Unsafe dimensions")
+
+    monkeypatch.setattr(storage, "read_photo_dimensions", reject_unsafe_dimensions)
+
+    with pytest.raises(UnsupportedPhotoTypeError, match="Unsafe dimensions"):
+        store_photo_file(
+            BytesIO(JPEG_BYTES),
             "image/jpeg",
             uuid4(),
             uuid4(),

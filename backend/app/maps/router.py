@@ -75,6 +75,18 @@ def read_map(database_session: Session, map_id: UUID, *, include_deleted: bool =
     return database_session.scalar(statement)
 
 
+def _loaded_map_access(poi_map: PoiMap, current_user: User) -> MapAccess:
+    if current_user.is_admin:
+        return MapAccess(poi_map, "admin")
+    membership = next(
+        (item for item in poi_map.memberships if item.user_id == current_user.id),
+        None,
+    )
+    if membership is None:
+        raise HTTPException(status_code=404, detail="Map not found")
+    return MapAccess(poi_map, membership.role)
+
+
 @router.get("", response_model=list[MapRead])
 def get_maps(q: str | None = Query(default=None, min_length=1, max_length=120), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[MapRead]:
     statement = select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships)).where(PoiMap.deleted_at.is_(None))
@@ -83,7 +95,7 @@ def get_maps(q: str | None = Query(default=None, min_length=1, max_length=120), 
     if q is not None:
         statement = statement.where(PoiMap.name.ilike(f"%{q.strip()}%"))
     maps = database_session.scalars(statement.order_by(func.lower(PoiMap.name), PoiMap.id)).unique().all()
-    return [map_to_read(poi_map, get_map_access(database_session, poi_map.id, current_user)) for poi_map in maps]
+    return [map_to_read(poi_map, _loaded_map_access(poi_map, current_user)) for poi_map in maps]
 
 
 @router.get("/{map_id}", response_model=MapRead)

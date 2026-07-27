@@ -196,7 +196,12 @@ def store_photo_file(
         raise PhotoStorageError("Unable to store the uploaded image") from error
 
     relative_path = PurePosixPath(str(place_id), filename).as_posix()
-    dimensions = read_photo_dimensions(final_path)
+    try:
+        dimensions = read_photo_dimensions(final_path)
+    except PhotoStorageError:
+        final_path.unlink(missing_ok=True)
+        _remove_directory_if_empty(place_directory, storage_root)
+        raise
 
     return StoredPhoto(
         filename=filename,
@@ -217,6 +222,10 @@ def read_photo_dimensions(file_path: Path) -> tuple[int | None, int | None]:
             image.verify()
         with Image.open(file_path) as image:
             return image.size
+    except Image.DecompressionBombError as error:
+        raise UnsupportedPhotoTypeError(
+            "The uploaded image dimensions exceed the safe processing limit"
+        ) from error
     except (OSError, UnidentifiedImageError):
         # Legacy signature-only test files and damaged images remain diagnosable.
         return (None, None)
@@ -289,7 +298,7 @@ def get_photo_thumbnail(
             )
         temporary_path.replace(thumbnail_path)
         return thumbnail_path
-    except (OSError, UnidentifiedImageError) as error:
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
         temporary_path.unlink(missing_ok=True)
         raise PhotoStorageError("Unable to generate the photo thumbnail") from error
 

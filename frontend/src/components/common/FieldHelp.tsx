@@ -41,9 +41,24 @@ export function FieldHelp({ children, label = 'Afficher l’aide du champ' }: Fi
   )
 
   return <span className="field-help" onMouseEnter={(event) => open(event.currentTarget)} onMouseLeave={() => setPosition(null)}>
-    <button type="button" aria-label={label} aria-describedby={position ? tooltipId : undefined} onFocus={(event) => open(event.currentTarget)} onBlur={() => setPosition(null)}>
+    <span
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      aria-describedby={position ? tooltipId : undefined}
+      onClick={(event) => open(event.currentTarget)}
+      onFocus={(event) => open(event.currentTarget)}
+      onBlur={() => setPosition(null)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setPosition(null)
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          open(event.currentTarget)
+        }
+      }}
+    >
       <Info aria-hidden="true" size={13} />
-    </button>
+    </span>
     {tooltip}
   </span>
 }

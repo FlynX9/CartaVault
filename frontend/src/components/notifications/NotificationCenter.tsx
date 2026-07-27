@@ -31,16 +31,20 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
   const [error, setError] = useState<string | null>(null)
   const announcedIds = useRef<Set<string>>(new Set())
   const container = useRef<HTMLDivElement>(null)
+  const loadController = useRef<AbortController | null>(null)
 
   const notifications = useMemo<NotificationItem[]>(() => [
     ...registrationRequests.map((item) => ({ kind: 'registration' as const, item })),
     ...invitations.map((item) => ({ kind: 'invitation' as const, item })),
   ].sort((left, right) => right.item.created_at.localeCompare(left.item.created_at)), [invitations, registrationRequests])
 
-  const load = useCallback((signal?: AbortSignal) => {
-    const pendingRegistrations = isAdmin ? getRegistrationRequests(signal) : Promise.resolve([])
-    void Promise.all([getPendingMapInvitations(signal), pendingRegistrations]).then(([pending, requests]) => {
-      if (signal?.aborted) return
+  const load = useCallback(() => {
+    loadController.current?.abort()
+    const controller = new AbortController()
+    loadController.current = controller
+    const pendingRegistrations = isAdmin ? getRegistrationRequests(controller.signal) : Promise.resolve([])
+    void Promise.all([getPendingMapInvitations(controller.signal), pendingRegistrations]).then(([pending, requests]) => {
+      if (controller.signal.aborted) return
       const registrations = requests.filter((item) => item.status === 'pending')
       const received: NotificationItem[] = [
         ...registrations.map((item) => ({ kind: 'registration' as const, item })),
@@ -56,19 +60,20 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
       if (!(caught instanceof Error && caught.name === 'AbortError')) {
         setError(caught instanceof Error ? caught.message : 'Impossible de charger les notifications.')
       }
+    }).finally(() => {
+      if (loadController.current === controller) loadController.current = null
     })
   }, [isAdmin])
 
   useEffect(() => {
-    const controller = new AbortController()
-    load(controller.signal)
+    load()
     const refreshVisible = () => { if (document.visibilityState === 'visible') load() }
     const interval = window.setInterval(refreshVisible, REFRESH_INTERVAL_MS)
     window.addEventListener('focus', refreshVisible)
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshVisible)
     document.addEventListener('visibilitychange', refreshVisible)
     return () => {
-      controller.abort()
+      loadController.current?.abort()
       window.clearInterval(interval)
       window.removeEventListener('focus', refreshVisible)
       window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshVisible)

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.auth.rate_limit import PublicAuthRateLimiter
+from app.auth import rate_limit
+from app.auth.rate_limit import PublicAuthRateLimiter, rate_limit_key
 from app.emails.providers.base import EmailMessage
 from app.emails.service import EmailService
 
@@ -71,3 +72,44 @@ def test_public_auth_rate_limiter_rejects_a_burst() -> None:
         limiter.check("client")
 
     assert getattr(caught.value, "status_code", None) == 429
+
+
+def test_public_auth_rate_limiter_discards_expired_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    now = 0.0
+    monkeypatch.setattr(rate_limit, "monotonic", lambda: now)
+    limiter = PublicAuthRateLimiter(
+        limit=2,
+        window_seconds=60,
+        max_keys=2,
+        cleanup_interval=1,
+    )
+    limiter.check("first")
+    limiter.check("second")
+
+    now = 61.0
+    limiter.check("third")
+    limiter.check("fourth")
+
+
+def test_rate_limit_keys_do_not_retain_personal_identifiers() -> None:
+    key = rate_limit_key("login", "192.0.2.1", "person@example.test")
+
+    assert key.startswith("login:")
+    assert "192.0.2.1" not in key
+    assert "person@example.test" not in key
+
+
+def test_public_auth_rate_limiter_keeps_a_bounded_identity_registry() -> None:
+    limiter = PublicAuthRateLimiter(
+        limit=2,
+        window_seconds=60,
+        max_keys=2,
+        cleanup_interval=10,
+    )
+
+    limiter.check("first")
+    limiter.check("second")
+    limiter.check("third")
+
+    assert len(limiter._requests) == 2
+    assert "first" not in limiter._requests

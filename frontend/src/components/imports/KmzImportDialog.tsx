@@ -1,5 +1,5 @@
 import { CheckSquare, FileArchive, ShieldAlert, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { confirmKmzImport, previewKmzImport } from '../../api/imports'
@@ -34,19 +34,28 @@ export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
   const [step, setStep] = useState<Step>('upload')
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<KmzImportProgress | null>(null)
+  const operationController = useRef<AbortController | null>(null)
+
+  useEffect(() => () => operationController.current?.abort(), [])
 
   const analyze = async (candidate: File) => {
+    operationController.current?.abort()
+    const controller = new AbortController()
+    operationController.current = controller
     setStep('analyzing')
     setError(null)
     try {
-      const nextPreview = await previewKmzImport(poiMap.id, candidate)
+      const nextPreview = await previewKmzImport(poiMap.id, candidate, controller.signal)
       setPreview(nextPreview)
       setSelected(nextPreview.items.filter((item) => item.selected_by_default && item.importable && !item.already_imported).map((item) => item.source_index))
       setForced([])
       setStep('preview')
     } catch (caught) {
+      if (caught instanceof Error && caught.name === 'AbortError') return
       setError(caught instanceof Error ? caught.message : 'Analyse du KMZ impossible.')
       setStep('upload')
+    } finally {
+      if (operationController.current === controller) operationController.current = null
     }
   }
 
@@ -66,6 +75,9 @@ export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
 
   const confirm = async () => {
     if (!preview) return
+    operationController.current?.abort()
+    const controller = new AbortController()
+    operationController.current = controller
     setStep('confirming')
     setError(null)
     setProgress({ status: 'pending', completed: 0, total: 1, percent: 0, message: 'Préparation de l’import' })
@@ -77,13 +89,17 @@ export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
         downloadRemoteImages,
         forced,
         setProgress,
+        controller.signal,
       )
       setReport(nextReport)
       setStep('report')
       onImported()
     } catch (caught) {
+      if (caught instanceof Error && caught.name === 'AbortError') return
       setError(caught instanceof Error ? caught.message : "L'import est impossible.")
       setStep('preview')
+    } finally {
+      if (operationController.current === controller) operationController.current = null
     }
   }
 

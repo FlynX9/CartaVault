@@ -36,12 +36,15 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   const [busyInvitationId, setBusyInvitationId] = useState<string | null>(null)
   const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null)
   const createButton = useRef<HTMLButtonElement>(null)
+  const invitationController = useRef<AbortController | null>(null)
   useEffect(() => {
     if (createRequest > 0) setCreating(true)
   }, [createRequest])
 
   const loadInvitations = useCallback(() => {
+    invitationController.current?.abort()
     const controller = new AbortController()
+    invitationController.current = controller
     void getPendingMapInvitations(controller.signal).then((pending) => {
       setInvitations(pending)
       setInvitationError(null)
@@ -49,16 +52,17 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
       if (!(caught instanceof Error && caught.name === 'AbortError')) {
         setInvitationError(caught instanceof Error ? caught.message : t('maps.invitation.loadError'))
       }
+    }).finally(() => {
+      if (invitationController.current === controller) invitationController.current = null
     })
-    return () => controller.abort()
   }, [t])
 
   useEffect(() => {
-    const abort = loadInvitations()
+    loadInvitations()
     const refresh = () => loadInvitations()
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh)
     return () => {
-      abort()
+      invitationController.current?.abort()
       window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh)
     }
   }, [loadInvitations])

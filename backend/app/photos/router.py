@@ -89,12 +89,6 @@ def get_place_photos(
 ) -> list[PhotoRead]:
     """Return photo metadata associated with one place."""
 
-    if database_session.get(Place, place_id) is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Place with id {place_id} was not found",
-        )
-
     statement = (
         build_photo_read_statement()
         .where(Photo.place_id == place_id)

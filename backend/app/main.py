@@ -3,6 +3,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from contextlib import suppress
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
@@ -62,11 +63,31 @@ def get_cors_allowed_origins() -> list[str]:
     if configured_origins is None:
         return list(DEFAULT_CORS_ALLOWED_ORIGINS)
 
-    return [
-        origin.strip().rstrip("/")
-        for origin in configured_origins.split(",")
-        if origin.strip()
-    ]
+    origins: list[str] = []
+    for configured_origin in configured_origins.split(","):
+        origin = configured_origin.strip().rstrip("/")
+        if not origin:
+            continue
+        try:
+            parsed = urlsplit(origin)
+            parsed.port
+        except ValueError as error:
+            raise RuntimeError(f"Invalid CORS origin: {origin}") from error
+        if (
+            origin == "*"
+            or parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise RuntimeError(f"Invalid CORS origin: {origin}")
+        normalized = f"{parsed.scheme}://{parsed.netloc}"
+        if normalized not in origins:
+            origins.append(normalized)
+    return origins
 
 
 load_dotenv()

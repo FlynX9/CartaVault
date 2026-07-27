@@ -27,14 +27,46 @@ from app.places.models import Place
 router = APIRouter(prefix="/admin/console", tags=["admin-console"], dependencies=[Depends(require_admin)])
 
 
-def _user_read(session: Session, user: User) -> AdminUserRead:
-    owned = session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id, PoiMap.deleted_at.is_(None))) or 0
-    shared = session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.user_id == user.id, MapMembership.role != "owner")) or 0
-    places = session.scalar(
-        select(func.count()).select_from(Place).join(PoiMap, Place.map_id == PoiMap.id).where(
-            PoiMap.owner_id == user.id, PoiMap.deleted_at.is_(None), Place.deleted_at.is_(None),
+UserCounts = tuple[int, int, int]
+
+
+def _user_counts(session: Session, user_ids: list[UUID]) -> dict[UUID, UserCounts]:
+    if not user_ids:
+        return {}
+
+    owned = dict(session.execute(
+        select(PoiMap.owner_id, func.count())
+        .where(PoiMap.owner_id.in_(user_ids), PoiMap.deleted_at.is_(None))
+        .group_by(PoiMap.owner_id)
+    ).all())
+    shared = dict(session.execute(
+        select(MapMembership.user_id, func.count())
+        .where(MapMembership.user_id.in_(user_ids), MapMembership.role != "owner")
+        .group_by(MapMembership.user_id)
+    ).all())
+    places = dict(session.execute(
+        select(PoiMap.owner_id, func.count())
+        .select_from(Place)
+        .join(PoiMap, Place.map_id == PoiMap.id)
+        .where(
+            PoiMap.owner_id.in_(user_ids),
+            PoiMap.deleted_at.is_(None),
+            Place.deleted_at.is_(None),
         )
-    ) or 0
+        .group_by(PoiMap.owner_id)
+    ).all())
+    return {
+        user_id: (
+            int(owned.get(user_id, 0)),
+            int(shared.get(user_id, 0)),
+            int(places.get(user_id, 0)),
+        )
+        for user_id in user_ids
+    }
+
+
+def _user_read(session: Session, user: User, counts: UserCounts | None = None) -> AdminUserRead:
+    owned, shared, places = counts or _user_counts(session, [user.id])[user.id]
     state = "deleted" if user.deleted_at else "active" if user.is_active else "inactive"
     profile = user.quota_profile
     return AdminUserRead(
@@ -71,7 +103,14 @@ def list_users(
     users = session.scalars(
         select(User).options(joinedload(User.quota_profile)).where(*filters).order_by(func.lower(User.email), User.id).offset((page - 1) * page_size).limit(page_size)
     ).all()
-    return AdminUserPage(items=[_user_read(session, item) for item in users], total=total, page=page, page_size=page_size, pages=max(1, ceil(total / page_size)))
+    counts = _user_counts(session, [item.id for item in users])
+    return AdminUserPage(
+        items=[_user_read(session, item, counts[item.id]) for item in users],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, ceil(total / page_size)),
+    )
 
 
 @router.patch("/users/{user_id}", response_model=AdminUserRead)

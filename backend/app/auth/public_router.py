@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.models import AuthActionToken, RegistrationRequest, User, UserSession
-from app.auth.rate_limit import public_auth_rate_limiter
+from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
 from app.auth.schemas import PasswordResetConfirm, PasswordResetRequest, RegistrationCreate
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email
 from app.config import email_settings
@@ -25,7 +25,8 @@ GENERIC_RESET_MESSAGE = "Si un compte correspond à cette adresse, un email de r
 
 @router.post("/register", status_code=status.HTTP_202_ACCEPTED)
 def register(data: RegistrationCreate, request: Request, database_session: Session = Depends(get_db)) -> dict[str, str]:
-    public_auth_rate_limiter.check(f"register:{request.client.host if request.client else 'unknown'}")
+    client_host = request.client.host if request.client else "unknown"
+    public_auth_rate_limiter.check(rate_limit_key("register", client_host))
     email = normalize_email(str(data.email))
     if database_session.scalar(select(User.id).where(User.email == email)) is not None or database_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.email == email)) is not None:
         raise HTTPException(409, "Une inscription existe déjà pour cette adresse email.")
@@ -55,7 +56,8 @@ def register(data: RegistrationCreate, request: Request, database_session: Sessi
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
 def request_password_reset(data: PasswordResetRequest, request: Request, database_session: Session = Depends(get_db)) -> dict[str, str]:
-    public_auth_rate_limiter.check(f"password-reset:{request.client.host if request.client else 'unknown'}")
+    client_host = request.client.host if request.client else "unknown"
+    public_auth_rate_limiter.check(rate_limit_key("password-reset", client_host))
     user = database_session.scalar(select(User).where(User.email == normalize_email(str(data.email)), User.is_active.is_(True), User.deleted_at.is_(None)))
     if user is not None:
         now = datetime.now(UTC).replace(tzinfo=None)

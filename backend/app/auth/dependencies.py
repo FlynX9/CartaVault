@@ -60,10 +60,12 @@ def require_csrf(
     csrf_header = request.headers.get("X-CSRF-Token")
     if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
+    now = datetime.now(UTC).replace(tzinfo=None)
     user_session = database_session.scalar(
         select(UserSession).where(
             UserSession.token_hash == hash_token(session_token),
             UserSession.revoked_at.is_(None),
+            UserSession.expires_at > now,
         )
     )
     if user_session is None or not tokens_match(csrf_header, user_session.csrf_token_hash):

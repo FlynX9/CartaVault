@@ -3453,9 +3453,9 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-sessions strong { font-size: .7rem; }
 .account-sessions span, .account-sessions b { font-size: .62rem; }
 .field-help { position: relative; display: inline-flex; flex: 0 0 auto; margin-left: .22rem; vertical-align: -.12em; white-space: nowrap; }
-.field-help > button { display: grid; width: 1rem; height: 1rem; padding: 0; color: var(--cv-color-gray); background: transparent; border: 0; border-radius: 50%; cursor: help; line-height: 1; place-items: center; }
-.field-help > button:hover, .field-help > button:focus-visible { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 12%, transparent); outline: none; }
-.field-help > button:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cv-color-teal) 30%, transparent); }
+.field-help > [role='button'] { display: grid; width: 1rem; height: 1rem; padding: 0; color: var(--cv-color-gray); background: transparent; border: 0; border-radius: 50%; cursor: help; line-height: 1; place-items: center; }
+.field-help > [role='button']:hover, .field-help > [role='button']:focus-visible { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 12%, transparent); outline: none; }
+.field-help > [role='button']:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cv-color-teal) 30%, transparent); }
 .field-help__tooltip { position: fixed; z-index: calc(var(--cv-z-modal) + 20); left: var(--field-help-left); top: var(--field-help-top); display: block; width: min(17rem, calc(100vw - 1.25rem)); max-width: calc(100vw - 1.25rem); padding: .45rem .55rem; color: var(--cv-color-off-white); background: var(--cv-color-navy); border: 1px solid color-mix(in srgb, var(--cv-color-off-white) 14%, transparent); border-radius: .45rem; box-shadow: var(--cv-shadow-sm); font-size: .62rem; font-weight: 500; line-height: 1.4; pointer-events: none; transform: translate(-50%, -100%); white-space: normal; }
 .field-help__tooltip--below { transform: translate(-50%, 0); }
 .form-section-help { display: flex; justify-content: flex-end; margin-top: -.2rem; }

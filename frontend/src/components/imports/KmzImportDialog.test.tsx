@@ -27,7 +27,7 @@ describe('KmzImportDialog', () => {
     fireEvent.click(screen.getByText(/Donn/))
     expect(screen.getByText('Architecte')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: /Importer 1 POI/ }))
-    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledWith('map-id', preview.import_id, [0], false, [], expect.any(Function)))
+    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledWith('map-id', preview.import_id, [0], false, [], expect.any(Function), expect.any(AbortSignal)))
     expect(imported).toHaveBeenCalledOnce()
     expect(screen.getByRole('heading', { name: /Import termin/ })).toBeVisible()
   })
@@ -69,7 +69,7 @@ describe('KmzImportDialog', () => {
     await screen.findByText('Point importé')
     fireEvent.click(screen.getByRole('button', { name: /Forcer l.import/ }))
     fireEvent.click(screen.getByRole('button', { name: /Importer 1 POI/ }))
-    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledWith('map-id', preview.import_id, [0], false, [0], expect.any(Function)))
+    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledWith('map-id', preview.import_id, [0], false, [0], expect.any(Function), expect.any(AbortSignal)))
   })
 
   it('forces every valid duplicate in one action', async () => {
@@ -90,7 +90,7 @@ describe('KmzImportDialog', () => {
     expect(screen.getByText('Même nom et mêmes coordonnées dans ce fichier')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Forcer tous les doublons (2)' }))
     fireEvent.click(screen.getByRole('button', { name: /Importer 2 POI/ }))
-    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledWith('map-id', preview.import_id, [0, 1], false, [0, 1], expect.any(Function)))
+    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledWith('map-id', preview.import_id, [0, 1], false, [0, 1], expect.any(Function), expect.any(AbortSignal)))
   })
 
   it('shows measurable progress while images are imported', async () => {

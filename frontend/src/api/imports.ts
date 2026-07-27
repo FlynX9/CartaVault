@@ -48,9 +48,27 @@ function parseProgress(payload: unknown): KmzImportProgress & { report: KmzImpor
   }
 }
 
-export async function previewKmzImport(mapId: string, file: File): Promise<KmzPreview> {
+export async function previewKmzImport(mapId: string, file: File, signal?: AbortSignal): Promise<KmzPreview> {
   const formData = new FormData(); formData.append('file', file)
-  return parsePreview(await sendFormData(`/maps/${encodeURIComponent(mapId)}/imports/kmz/preview`, 'POST', formData))
+  return parsePreview(await sendFormData(`/maps/${encodeURIComponent(mapId)}/imports/kmz/preview`, 'POST', formData, signal))
+}
+
+function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason ?? new DOMException('The operation was aborted.', 'AbortError'))
+      return
+    }
+    const onAbort = () => {
+      window.clearTimeout(timeout)
+      reject(signal?.reason ?? new DOMException('The operation was aborted.', 'AbortError'))
+    }
+    const timeout = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, milliseconds)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
 }
 
 export async function confirmKmzImport(
@@ -60,13 +78,14 @@ export async function confirmKmzImport(
   downloadRemoteImages = false,
   forceSourceIndexes: number[] = [],
   onProgress?: (progress: KmzImportProgress) => void,
+  signal?: AbortSignal,
 ): Promise<KmzImportReport> {
   const started = await sendJson(`/maps/${encodeURIComponent(mapId)}/imports/kmz/confirm-jobs`, 'POST', {
     import_id: importId,
     selected_source_indexes: selectedSourceIndexes,
     download_remote_images: downloadRemoteImages,
     force_source_indexes: forceSourceIndexes,
-  })
+  }, signal)
   const context = "Le démarrage de l'import KMZ"
   if (!isRecord(started)) throw new Error(`${context} est invalide.`)
   const jobId = readUuid(started, 'job_id', context)
@@ -75,10 +94,11 @@ export async function confirmKmzImport(
     const progress = parseProgress(await getJson(
       `/maps/${encodeURIComponent(mapId)}/imports/kmz/confirm-jobs/${encodeURIComponent(jobId)}`,
       new URLSearchParams(),
+      signal,
     ))
     onProgress?.(progress)
     if (progress.status === 'completed' && progress.report) return progress.report
     if (progress.status === 'failed') throw new Error(progress.error ?? "L'import KMZ a échoué.")
-    await new Promise((resolve) => window.setTimeout(resolve, 300))
+    await delay(300, signal)
   }
 }
