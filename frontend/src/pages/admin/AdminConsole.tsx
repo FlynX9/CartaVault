@@ -65,6 +65,8 @@ function SectionHeading({ eyebrow, title, description, action }: { eyebrow: stri
 }
 
 function AdminUsersSection() {
+  const location = useLocation()
+  const registrationHeading = useRef<HTMLHeadingElement>(null)
   const [result, setResult] = useState<AdminUserPage | null>(null)
   const [q, setQ] = useState(''); const [role, setRole] = useState<AdminRole | ''>(''); const [state, setState] = useState<AdminUserState | ''>('')
   const [page, setPage] = useState(1); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null)
@@ -112,11 +114,19 @@ function AdminUsersSection() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Affectation impossible.') }
   }
   const pending = requests.filter((item) => item.status === 'pending')
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('admin_notification') !== 'registration-requests' || pending.length === 0) return
+    const frame = window.requestAnimationFrame(() => {
+      registrationHeading.current?.scrollIntoView({ block: 'nearest' })
+      registrationHeading.current?.focus()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [location.search, pending.length])
   return <section>
     <SectionHeading eyebrow="Accès" title="Utilisateurs" description="Comptes, rôles et état d’accès à CartaVault." />
     <div className="admin-console__filters"><label>Recherche<input type="search" value={q} placeholder="Nom ou adresse email" onChange={(event) => { setQ(event.target.value); setPage(1) }} /></label><label>Rôle<select value={role} onChange={(event) => { setRole(event.target.value as AdminRole | ''); setPage(1) }}><option value="">Tous</option><option value="admin">Administrateurs</option><option value="user">Utilisateurs</option></select></label><label>État<select value={state} onChange={(event) => { setState(event.target.value as AdminUserState | ''); setPage(1) }}><option value="">Tous</option><option value="active">Actifs</option><option value="inactive">Inactifs</option><option value="deleted">Supprimés</option></select></label></div>
     {error && <div className="form-alert" role="alert">{error}</div>}
-    {pending.length > 0 && <section className="admin-console__card"><h3>Demandes d’inscription <span>{pending.length}</span></h3><ul className="admin-console__rows">{pending.map((item) => <li key={item.id}><div><strong>{item.display_name}</strong><small>{item.email}</small></div><label className="admin-console__profile-select">Profil de quotas<select aria-label={`Profil de quotas pour ${item.email}`} value={approvalProfiles[item.id] ?? ''} onChange={(event) => setApprovalProfiles({ ...approvalProfiles, [item.id]: event.target.value })}>{profiles.filter((profile) => profile.is_active).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}{profile.is_default ? ' — par défaut' : ''}</option>)}</select></label><div className="admin-console__actions"><button aria-label={`Accepter ${item.email}`} onClick={() => void decide(item, 'approve')}><Check size={16} /></button><button className="danger" aria-label={`Refuser ${item.email}`} onClick={() => void decide(item, 'reject')}><X size={16} /></button></div></li>)}</ul></section>}
+    {pending.length > 0 && <section className="admin-console__card"><h3 id="registration-requests-title" ref={registrationHeading} tabIndex={-1}>Demandes d’inscription <span>{pending.length}</span></h3><ul className="admin-console__rows">{pending.map((item) => <li key={item.id}><div><strong>{item.display_name}</strong><small>{item.email}</small></div><label className="admin-console__profile-select">Profil de quotas<select aria-label={`Profil de quotas pour ${item.email}`} value={approvalProfiles[item.id] ?? ''} onChange={(event) => setApprovalProfiles({ ...approvalProfiles, [item.id]: event.target.value })}>{profiles.filter((profile) => profile.is_active).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}{profile.is_default ? ' — par défaut' : ''}</option>)}</select></label><div className="admin-console__actions"><button aria-label={`Accepter ${item.email}`} onClick={() => void decide(item, 'approve')}><Check size={16} /></button><button className="danger" aria-label={`Refuser ${item.email}`} onClick={() => void decide(item, 'reject')}><X size={16} /></button></div></li>)}</ul></section>}
     <section className="admin-console__card"><h3>Comptes <span>{result?.total ?? 0}</span></h3>{loading ? <p role="status">Chargement…</p> : result?.items.length === 0 ? <p>Aucun utilisateur trouvé.</p> : <ul className="admin-console__user-grid">{result?.items.map((item) => <li key={item.id}>
       <div className="admin-console__avatar">{item.display_name.charAt(0).toUpperCase()}</div><div><strong>{item.display_name}</strong><small>{item.email}</small><p>{item.owned_map_count} carte(s) · {item.shared_map_count} partage(s) · dernière connexion {item.last_login_at ? new Date(item.last_login_at).toLocaleDateString('fr-FR') : 'jamais'}</p></div>
       <div className="admin-console__badges"><span className={item.role}>{item.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span><span className={item.state}>{item.state === 'active' ? 'Actif' : item.state === 'inactive' ? 'Inactif' : 'Supprimé'}</span><label className="admin-console__profile-select">Quotas<select aria-label={`Profil de quotas de ${item.email}`} value={item.quota_profile_id} onChange={(event) => void assignProfile(item, event.target.value)}>{profiles.filter((profile) => profile.is_active || profile.id === item.quota_profile_id).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label></div>

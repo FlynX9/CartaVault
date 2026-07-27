@@ -16,7 +16,7 @@ function renderTopBar(markerCount = 0) {
   return render(
     <MemoryRouter initialEntries={['/workspace']}>
       <ThemeProvider>
-        <TopBar isMapWorkspace markerCount={markerCount} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} />
+        <TopBar isMapWorkspace markerCount={markerCount} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
         <CurrentPath />
       </ThemeProvider>
     </MemoryRouter>,

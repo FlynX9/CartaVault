@@ -114,6 +114,11 @@ function WorkspaceApp() {
   const tripAddPending = useRef(new Set<string>())
   const tripNoticeTimer = useRef<number | null>(null)
   const openAdmin = useCallback(() => navigate({ pathname: '/admin/users', search: location.search }), [location.search, navigate])
+  const openRegistrationRequests = useCallback(() => {
+    const search = new URLSearchParams(location.search)
+    search.set('admin_notification', 'registration-requests')
+    navigate({ pathname: '/admin/users', search: `?${search.toString()}` })
+  }, [location.search, navigate])
   const closeAdmin = useCallback(() => navigate({ pathname: '/', search: location.search }), [location.search, navigate])
 
   useEffect(() => () => { if (tripNoticeTimer.current !== null) window.clearTimeout(tripNoticeTimer.current) }, [])
@@ -383,7 +388,7 @@ function WorkspaceApp() {
   }
 
   return <main className={`app-shell${dashboardOpen ? ' dashboard-shell' : ''}`}><MainNavigation activePanel={dashboardOpen ? null : workspacePanel} dashboardActive={dashboardOpen} tripPlanningActive={!dashboardOpen && tripPlannerOpen} onOpenDashboard={openDashboard} onPanelChange={handleWorkspacePanelChange} onWorkspacePanelToggle={toggleWorkspacePanelCollapsed} onPlacesPanelToggle={() => setPlacesPanelCollapsed((collapsed) => !collapsed)} onOpenTrips={() => openTrips()} isAdmin={user?.is_admin === true} /><div className="app-body">
-    <TopBar isMapWorkspace={isMapWorkspace} contextLabel={dashboardOpen ? t('dashboard.title') : undefined} markerCount={places.length} onMapAccessChanged={() => setRefreshVersion((value) => value + 1)} onOpenAdmin={openAdmin} />
+    <TopBar isMapWorkspace={isMapWorkspace} contextLabel={dashboardOpen ? t('dashboard.title') : undefined} markerCount={places.length} onMapAccessChanged={() => setRefreshVersion((value) => value + 1)} onOpenAdmin={openAdmin} onOpenRegistrationRequests={openRegistrationRequests} />
     <Routes>
       <Route path="/dashboard" element={<Suspense fallback={<div className="dashboard-page dashboard-page--state" role="status">Loading…</div>}><DashboardPage
         maps={maps}

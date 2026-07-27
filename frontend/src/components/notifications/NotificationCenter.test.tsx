@@ -2,15 +2,19 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations } from '../../api/maps'
+import { getRegistrationRequests } from '../../api/registration'
 import { NotificationCenter } from './NotificationCenter'
 
 vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn(), getPendingMapInvitations: vi.fn() }))
+vi.mock('../../api/registration', () => ({ getRegistrationRequests: vi.fn() }))
 
 const INVITATION = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', map_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', map_name: 'Carte partagée', role: 'editor' as const, invited_by_display_name: 'Alice Martin', created_at: '2026-07-16T08:00:00', expires_at: '2026-07-23T08:00:00' }
+const REGISTRATION = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', email: 'new@example.test', display_name: 'New user', status: 'pending' as const, created_at: '2026-07-17T08:00:00', reviewed_at: null, notification_sent_at: null, notification_error_code: null }
 
 beforeEach(() => {
   window.localStorage.clear()
   vi.mocked(getPendingMapInvitations).mockResolvedValue([INVITATION])
+  vi.mocked(getRegistrationRequests).mockResolvedValue([])
   vi.mocked(acceptPendingMapInvitation).mockResolvedValue()
   vi.mocked(declinePendingMapInvitation).mockResolvedValue()
 })
@@ -22,12 +26,12 @@ describe('NotificationCenter', () => {
     render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
     await act(async () => Promise.resolve())
     expect(screen.getByRole('status')).toHaveTextContent('Alice Martin')
-    expect(screen.getByRole('button', { name: 'Notifications, 1 non lue' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Notifications, 1 en attente' })).toBeVisible()
     act(() => vi.advanceTimersByTime(7_000))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 non lue' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
     expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('Carte partagée')
-    expect(screen.getByRole('button', { name: 'Notifications, 0 non lue' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Notifications, 1 en attente' })).toBeVisible()
   })
 
   it('accepts access from the toast and refreshes maps', async () => {
@@ -46,11 +50,28 @@ describe('NotificationCenter', () => {
     })
     render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
     await screen.findByRole('status')
-    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 non lue' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
     const panel = screen.getByLabelText('Centre de notifications')
     fireEvent.click(findButton(panel, 'Refuser'))
     await waitFor(() => expect(declinePendingMapInvitation).toHaveBeenCalledWith(INVITATION.id))
     expect(panel).toHaveTextContent('Aucune notification.')
+  })
+
+  it('shows pending registrations to administrators and opens their validation panel', async () => {
+    const onOpenRegistrationRequests = vi.fn()
+    vi.mocked(getRegistrationRequests).mockResolvedValue([REGISTRATION])
+
+    render(<NotificationCenter userId="admin-1" isAdmin onAccessChanged={vi.fn()} onOpenRegistrationRequests={onOpenRegistrationRequests} />)
+
+    await screen.findByRole('status', { name: 'Nouvelle demande d’inscription' })
+    expect(screen.getByRole('button', { name: 'Notifications, 2 en attente' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 2 en attente' }))
+    const panel = screen.getByLabelText('Centre de notifications')
+    expect(panel).toHaveTextContent('new@example.test')
+    fireEvent.click(findButton(panel, 'Examiner la demande'))
+
+    expect(onOpenRegistrationRequests).toHaveBeenCalledOnce()
+    expect(screen.queryByLabelText('Centre de notifications')).not.toBeInTheDocument()
   })
 })
 

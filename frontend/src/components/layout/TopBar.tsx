@@ -16,11 +16,12 @@ interface TopBarProps {
   markerCount: number
   onMapAccessChanged: () => void
   onOpenAdmin: () => void
+  onOpenRegistrationRequests: () => void
 }
 
 const API_DOCUMENTATION_URL = API_BASE_URL === '/api' ? 'http://localhost:8000/docs' : `${API_BASE_URL}/docs`
 
-export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin }: TopBarProps) {
+export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { resolvedTheme, toggleTheme } = useTheme()
@@ -75,7 +76,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
             <span>{t('topbar.marker', { count: markerCount })}</span>
           </div>
         )}
-        {user && <NotificationCenter userId={user.id} onAccessChanged={onMapAccessChanged} />}
+        {user && <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />}
         {user && (
           <div className="user-account-cluster">
             <div ref={menu} className="user-account-menu">

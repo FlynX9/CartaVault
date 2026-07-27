@@ -3407,6 +3407,9 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .notification-center__panel li > svg { margin-top: 0.15rem; color: var(--cv-color-teal); }
 .notification-center__panel li p { color: var(--cv-color-slate); font-size: 0.8rem; line-height: 1.4; }
 .notification-center__panel li small { display: block; margin-top: 0.2rem; color: var(--cv-color-gray); font-size: 0.7rem; }
+.notification-center__registration-link { width: 100%; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
+.notification-center__registration-link:focus-visible { outline: 2px solid var(--cv-color-teal); outline-offset: 0.2rem; border-radius: 0.35rem; }
+.notification-center__review { display: inline-flex; margin-top: 0.55rem; font-size: 0.72rem; }
 .notification-center__empty { padding: 1.5rem 1rem; color: var(--cv-color-gray); font-size: 0.8rem; text-align: center; }
 .notification-actions { display: flex; gap: 0.4rem; margin-top: 0.65rem; }
 .notification-actions button { display: inline-flex; align-items: center; justify-content: center; min-height: 2rem; gap: 0.3rem; padding: 0.3rem 0.6rem; border-radius: 0.45rem; font-size: 0.72rem; font-weight: 700; }
