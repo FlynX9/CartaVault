@@ -12,6 +12,7 @@ const PLACE_ID = '11111111-1111-4111-8111-111111111111'
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', map_id: MAP_ID, name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null, icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Brique' }], custom_fields: { gx_media_links: 'technical-data' }, interest_rating: null, visit_rating: null, created_at: '2026-01-01', updated_at: '2026-02-02' }
 const PHOTO = { id: '22222222-2222-4222-8222-222222222222', place_id: PLACE_ID, filename: 'photo.jpg', original_name: null, path: 'must-not-be-used.jpg', description: 'Façade', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
+const SECOND_PHOTO = { ...PHOTO, id: '33333333-3333-4333-8333-333333333333', filename: 'second.jpg', description: 'Cour intérieure', sort_order: 1, is_primary: false }
 
 beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(deletePlace).mockResolvedValue(); vi.mocked(geocodingService.reverse).mockResolvedValue([]) })
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
@@ -90,6 +91,18 @@ describe('PlaceMapPopup', () => {
     fireEvent.click(within(viewer).getByRole('button', { name: /Fermer la visionneuse|Close photo viewer/ }))
     expect(screen.queryByRole('dialog', { name: 'Manufacture' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Manufacture' })).toBeVisible()
+  })
+
+  it('uses compact overlay arrows to browse several photos', async () => {
+    vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO, SECOND_PHOTO])
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Navigation des photos')).toHaveTextContent('1 / 2')
+    const previous = screen.getByRole('button', { name: 'Photo précédente' })
+    expect(previous).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Photo suivante' }))
+    expect(screen.getByRole('img', { name: 'Cour intérieure' })).toBeVisible()
+    expect(screen.getByLabelText('Navigation des photos')).toHaveTextContent('2 / 2')
   })
 
   it('uses reverse geocoding to display the city and postal code from GPS coordinates', async () => {

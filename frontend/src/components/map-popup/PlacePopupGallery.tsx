@@ -1,4 +1,4 @@
-import { Maximize2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { getPhotoFileUrl } from '../../api/photos'
@@ -47,10 +47,10 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
         </button>
       )}
       {orderedPhotos.length > 1 && (
-        <figcaption>
-          <button type="button" disabled={index === 0} aria-label="Photo précédente" title="Photo précédente" onClick={() => { setFailed(false); setIndex(index - 1) }}>‹</button>
-          <span>{index + 1} / {orderedPhotos.length}</span>
-          <button type="button" disabled={index === orderedPhotos.length - 1} aria-label="Photo suivante" title="Photo suivante" onClick={() => { setFailed(false); setIndex(index + 1) }}>›</button>
+        <figcaption className="popup-gallery__navigation" aria-label="Navigation des photos">
+          <button type="button" disabled={index === 0} aria-label="Photo précédente" title="Photo précédente" onClick={() => { setFailed(false); setIndex(index - 1) }}><ChevronLeft size={14} aria-hidden="true" /></button>
+          <span aria-live="polite">{index + 1} / {orderedPhotos.length}</span>
+          <button type="button" disabled={index === orderedPhotos.length - 1} aria-label="Photo suivante" title="Photo suivante" onClick={() => { setFailed(false); setIndex(index + 1) }}><ChevronRight size={14} aria-hidden="true" /></button>
         </figcaption>
       )}
       {viewerOpen && <PhotoViewer photos={orderedPhotos} placeName={placeName} initialPhotoId={photo.id} onClose={() => setViewerOpen(false)} />}
