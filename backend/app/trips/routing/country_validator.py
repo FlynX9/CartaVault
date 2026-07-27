@@ -36,6 +36,11 @@ class CountryRouteValidator:
 
     def __init__(self, boundaries: CountryBoundaries | dict[str, list[Ring]] | None = None, *, tolerance_meters: int | None = None, max_outside_distance_meters: int | None = None):
         self.boundaries = boundaries if boundaries is not None else load_boundaries()
+        # The embedded production dataset intentionally favours a compact
+        # footprint.  Its low-resolution borders can leave small gaps or
+        # differ from road geometry near a frontier, so only a point that is
+        # also inside a different country is a confirmed country exit.
+        self._confirm_foreign_country = boundaries is None
         self.tolerance_meters = routing_settings.country_boundary_tolerance_meters if tolerance_meters is None else tolerance_meters
         self.max_outside_distance_meters = routing_settings.max_outside_distance_meters if max_outside_distance_meters is None else max_outside_distance_meters
 
@@ -57,6 +62,8 @@ class CountryRouteValidator:
             inside = _inside_any(point, polygons)
             close_to_border = _distance_to_polygons_meters(point, polygons) <= self.tolerance_meters
             outside = not inside and not close_to_border
+            if outside and self._confirm_foreign_country:
+                outside = _containing_foreign_country(point, self.boundaries, country_code) is not None
             if outside:
                 if first_exit is None:
                     first_exit = {"longitude": float(point[0]), "latitude": float(point[1])}
@@ -111,6 +118,22 @@ def _densify(coordinates: list[list[float]], max_step_meters: float = 100) -> li
 def _inside_any(point: list[float], polygons: list[Polygon] | list[Ring]) -> bool:
     normalized = _normalize_polygons(polygons)
     return any(_inside_polygon(point, polygon) for polygon in normalized)
+
+
+def _containing_foreign_country(point: list[float], boundaries: CountryBoundaries, country_code: str) -> str | None:
+    """Return the foreign country containing a point, when known locally.
+
+    A low-resolution local outline alone is not enough evidence that a route
+    left its country: it can be a simplification gap.  A positive match in a
+    neighbouring country outline is reliable evidence and keeps the constraint
+    effective for real cross-border routes.
+    """
+
+    expected = country_code.upper()
+    for code, polygons in boundaries.items():
+        if code.upper() != expected and _inside_any(point, polygons):
+            return code.upper()
+    return None
 
 
 def _normalize_polygons(polygons: list[Polygon] | list[Ring]) -> list[Polygon]:

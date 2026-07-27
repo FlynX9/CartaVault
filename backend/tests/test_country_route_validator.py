@@ -50,3 +50,26 @@ def test_embedded_boundaries_cover_france_and_validate_a_route_inside_it():
         "FRA",
     )
     assert result.is_valid is True
+
+
+def test_embedded_boundaries_reject_a_route_confirmed_inside_a_neighbouring_country():
+    result = CountryRouteValidator().validate_route_within_country(
+        {"type": "LineString", "coordinates": [[44.80, 41.70], [45.50, 40.20]]},
+        "GEO",
+    )
+    assert result.is_valid is False
+    assert result.reason == "route_leaves_country"
+
+
+def test_embedded_georgia_border_tolerance_accepts_the_gogadzeebi_road_corridor():
+    # The compact Natural Earth 1:110m outline places this Georgian road up
+    # to 900 m on the Turkish side.  It must not invalidate an in-country
+    # route merely because of the bundled boundary precision.
+    result = CountryRouteValidator().validate_route_within_country(
+        {
+            "type": "LineString",
+            "coordinates": [[42.155172, 41.554375], [42.154970, 41.554300], [42.155110, 41.559880]],
+        },
+        "GEO",
+    )
+    assert result.is_valid is True

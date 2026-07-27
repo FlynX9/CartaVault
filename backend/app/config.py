@@ -53,7 +53,9 @@ class RoutingSettings:
     timeout_seconds: int = _positive_int("OSRM_TIMEOUT_SECONDS", 12)
     max_waypoints: int = _positive_int("OSRM_MAX_WAYPOINTS", 50)
     profile: str = os.getenv("OSRM_PROFILE", "driving")
-    country_boundary_tolerance_meters: int = _nonnegative_int("ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS", 250)
+    # Natural Earth 1:110m boundaries are intentionally compact and can be
+    # offset by several hundred metres around mountain or river frontiers.
+    country_boundary_tolerance_meters: int = _nonnegative_int("ROUTING_COUNTRY_BOUNDARY_TOLERANCE_METERS", 1_000)
     max_outside_distance_meters: int = _nonnegative_int("ROUTING_MAX_OUTSIDE_DISTANCE_METERS", 500)
 
 
