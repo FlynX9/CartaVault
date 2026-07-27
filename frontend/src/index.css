@@ -3623,7 +3623,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .trip-panel-optimization { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .3rem; }.trip-optimization-comparison { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .22rem; }.trip-optimization-comparison > div { display: grid; min-width: 0; gap: .1rem; padding: .28rem; background: white; border-radius: .3rem; }.trip-optimization-comparison strong { color: var(--cv-color-teal); }.trip-optimization-comparison span { overflow-wrap: anywhere; }
 @media (max-width: 520px) { .trip-metrics dl, .trip-metrics-day { grid-template-columns: 1fr; }.trip-optimization-comparison { grid-template-columns: 1fr; } }
 
-.trip-panel-global-optimization { display: grid; gap: .45rem; margin: 0 .5rem .55rem; padding: .55rem; color: var(--cv-color-slate); background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface, white)); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 30%, var(--cv-border-subtle, #dfe7ec)); border-radius: .5rem; }
+.trip-panel-global-optimization { display: grid; gap: .45rem; margin: .55rem .5rem 0; padding: .55rem; color: var(--cv-color-slate); background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface, white)); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 30%, var(--cv-border-subtle, #dfe7ec)); border-radius: .5rem; }
 .trip-panel-global-optimization > header { display: flex; align-items: flex-end; justify-content: space-between; gap: .5rem; }
 .trip-panel-global-optimization h3, .trip-panel-global-optimization p { margin: 0; }
 .trip-panel-global-optimization h3 { color: var(--cv-color-navy); font-size: .7rem; }
