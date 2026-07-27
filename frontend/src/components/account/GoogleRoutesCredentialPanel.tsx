@@ -3,6 +3,7 @@ import { Eye, EyeOff, KeyRound, RefreshCw, Trash2 } from 'lucide-react'
 
 import { deleteGoogleRoutesCredential, storeGoogleRoutesCredential, verifyGoogleRoutesCredential } from '../../api/account'
 import type { GoogleRoutesCredentialStatus } from '../../types/account'
+import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 
 interface GoogleRoutesCredentialPanelProps {
@@ -63,13 +64,11 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
   return <section className="account-credential" aria-labelledby="google-routes-credential-title">
     <div className="account-credential__heading">
       <KeyRound size={18} aria-hidden="true" />
-      <div><h3 id="google-routes-credential-title">Clé Google Routes</h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div>
-      {status.verified && <span className="account-credential__status">Vérifiée</span>}
+      <div><h3 id="google-routes-credential-title">Clé Google Routes<FieldHelp>La clé est chiffrée sur le serveur et n’est jamais renvoyée à votre navigateur après son enregistrement.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div>
+      {status.verified && <span className="account-credential__verification"><span className="account-credential__status">Vérifiée</span>{status.verified_at && <time dateTime={status.verified_at}>{formatShortDate(status.verified_at)}</time>}</span>}
     </div>
     {!storageAvailable && <p className="account-credential__warning" role="status">Le stockage sécurisé des clés utilisateur n’est pas configuré sur ce serveur.</p>}
-    {status.configured && status.verified_at && <small>Vérifiée le {formatDate(status.verified_at)}.</small>}
     {status.last_error_code && <p className="account-credential__warning">La clé doit être vérifiée ou remplacée avant utilisation.</p>}
-    <p className="account-credential__help">La clé est chiffrée sur le serveur et n’est jamais renvoyée à votre navigateur après son enregistrement.</p>
     {(editing || !status.configured) && storageAvailable && <form className="account-credential__form" onSubmit={submit}>
       <label>Nouvelle clé
         <span className="account-secret-input"><input aria-label="Clé Google Routes" type={revealed ? 'text' : 'password'} value={apiKey} required maxLength={512} autoComplete="off" spellCheck={false} onChange={(event) => setApiKey(event.target.value)} /><button type="button" aria-label={revealed ? 'Masquer la clé' : 'Afficher la clé'} onClick={() => setRevealed((value) => !value)}>{revealed ? <EyeOff size={16} /> : <Eye size={16} />}</button></span>
@@ -77,11 +76,10 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
       <div className="account-credential__actions"><button className="account-button account-button--primary" type="submit" disabled={busy}>Enregistrer cette clé</button>{status.configured && <button className="account-button account-button--secondary" type="button" onClick={() => { setApiKey(''); setEditing(false) }}>Annuler</button>}</div>
     </form>}
     {status.configured && !editing && <div className="account-credential__actions"><button className="account-button account-button--secondary" type="button" disabled={busy} onClick={() => setEditing(true)}>Remplacer</button><button className="account-button account-button--secondary" type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={15} />Vérifier</button><button className="account-button account-button--danger-quiet" type="button" disabled={busy} onClick={() => setConfirmingDelete((value) => !value)}><Trash2 size={15} />Supprimer</button></div>}
-    {status.configured && <small>La vérification effectue un appel à Google Routes API.</small>}
     {confirmingDelete && <form className="account-credential__delete" onSubmit={remove}><label>Mot de passe actuel<input type="password" value={deletePassword} required autoComplete="current-password" onChange={(event) => setDeletePassword(event.target.value)} /></label><button className="account-button account-button--danger" type="submit" disabled={busy}>Confirmer la suppression</button></form>}
     {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}{confirmationDialog}
   </section>
 }
 
-function formatDate(value: string): string { return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(value)) }
+function formatShortDate(value: string): string { return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short' }).format(new Date(value)) }
 function messageFor(reason: unknown, fallback: string): string { return reason instanceof Error ? reason.message : fallback }
