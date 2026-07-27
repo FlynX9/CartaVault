@@ -9639,6 +9639,38 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   outline-offset: 2px;
 }
 
+/* Day and night colors identify the timeline permanently. Selection is shown
+   separately with a stronger outline instead of changing the header fill. */
+.trip-planner-panel .trip-panel-day > summary {
+  background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 7%, var(--cv-surface, #fff));
+}
+
+.trip-planner-panel .trip-panel-day.is-active {
+  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 72%, var(--cv-border-subtle, #dfe7ec));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 50%, transparent);
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-row {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff)),
+    color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff))
+  );
+}
+
+.trip-planner-panel .trip-panel-night.is-active {
+  border-color: color-mix(
+    in srgb,
+    var(--trip-night-previous-color, var(--cv-color-teal)) 50%,
+    var(--trip-night-next-color, var(--cv-color-teal))
+  );
+  box-shadow: 0 0 0 2px color-mix(
+    in srgb,
+    var(--trip-night-next-color, var(--cv-color-teal)) 50%,
+    transparent
+  );
+}
+
 /* Keep the timeline compact at rest. The insertion affordance expands only
    when it is intentionally hovered or reached with the keyboard. */
 .trip-planner-panel .trip-panel-insert-day {
