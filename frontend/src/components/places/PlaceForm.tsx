@@ -12,6 +12,7 @@ import type { PoiMap } from '../../types/map'
 import type { PlaceStatusSummary } from '../../types/status'
 import type { DraftPosition } from '../../types/place'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
+import { FieldHelp } from '../common/FieldHelp'
 import { getTagColorStyle } from '../../tags/tagColors'
 
 interface PlaceFormProps {
@@ -241,7 +242,7 @@ export function PlaceForm({
             <h3>Localisation</h3>
           </div>
         </div>
-        <p className="form-hint">Déplacez le marqueur sur la carte principale ou saisissez les coordonnées.</p>
+        <div className="form-section-help"><FieldHelp>Déplacez le marqueur sur la carte principale ou saisissez les coordonnées.</FieldHelp></div>
         <div className="coordinate-grid">
           {(['latitude', 'longitude'] as const).map((field) => (
             <label className="form-field" key={field}>

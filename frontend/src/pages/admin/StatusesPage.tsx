@@ -3,6 +3,7 @@ import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { createStatus, deleteStatus, getStatuses, reorderStatuses, updateStatus } from '../../api/statuses'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
+import { FieldHelp } from '../../components/common/FieldHelp'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
 import type { PlaceStatus } from '../../types/status'
@@ -191,12 +192,11 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
           <div className="status-form-grid">
             <label className="form-field status-form-name"><span>Nom *</span><input required maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
             <fieldset className="form-field status-functional-state">
-              <legend>État de visite *</legend>
+              <legend>État de visite *<FieldHelp>Cet état permet à CartaVault de regrouper les lieux dans les filtres « Visités » et « Non visités ». Il reste indépendant du nom du statut.</FieldHelp></legend>
               <div className="status-functional-options">
                 <label><input type="radio" name="functional-state" value="non_visited" checked={form.functional_state === 'non_visited'} onChange={() => setForm({ ...form, functional_state: 'non_visited' })} /> Non visité</label>
                 <label><input type="radio" name="functional-state" value="visited" checked={form.functional_state === 'visited'} onChange={() => setForm({ ...form, functional_state: 'visited' })} /> Visité</label>
               </div>
-              <small>Cet état permet à CartaVault de regrouper les lieux dans les filtres « Visités » et « Non visités ». Il reste indépendant du nom du statut.</small>
             </fieldset>
             <fieldset className="form-field status-settings">
               <legend>Paramètres du statut</legend>
@@ -209,12 +209,10 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
                 </label>
               </div>
               <div className="status-checkbox-help">
-                <label className="checkbox-field"><input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><strong>Actif</strong></label>
-                <small>Un statut inactif reste associé aux lieux existants, mais ne peut plus être choisi pour de nouveaux lieux.</small>
+                <div className="status-checkbox-help__label"><label className="checkbox-field"><input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><strong>Actif</strong></label><FieldHelp>Un statut inactif reste associé aux lieux existants, mais ne peut plus être choisi pour de nouveaux lieux.</FieldHelp></div>
               </div>
               <div className="status-checkbox-help">
-                <label className="checkbox-field"><input type="checkbox" checked={form.is_default} onChange={(event) => setForm({ ...form, is_default: event.target.checked })} /><strong>Statut par défaut</strong></label>
-                <small>Ce statut est automatiquement proposé lors de la création d’un nouveau lieu.</small>
+                <div className="status-checkbox-help__label"><label className="checkbox-field"><input type="checkbox" checked={form.is_default} onChange={(event) => setForm({ ...form, is_default: event.target.checked })} /><strong>Statut par défaut</strong></label><FieldHelp>Ce statut est automatiquement proposé lors de la création d’un nouveau lieu.</FieldHelp></div>
               </div>
             </fieldset>
           </div>

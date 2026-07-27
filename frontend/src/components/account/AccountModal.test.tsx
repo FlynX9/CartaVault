@@ -63,9 +63,7 @@ describe('AccountModal', () => {
   it('persists the trash retention period', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
-    const retentionSelect = screen.getByText('Conservation de la corbeille').closest('label')?.querySelector('select')
-    expect(retentionSelect).not.toBeNull()
-    fireEvent.change(retentionSelect!, { target: { value: '60' } })
+    fireEvent.change(screen.getByLabelText('Conservation de la corbeille'), { target: { value: '60' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, trash_retention_days: 60 }))
   })

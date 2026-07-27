@@ -3425,14 +3425,27 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-sessions li { gap: .5rem; padding: .6rem; border-radius: .55rem; }
 .account-sessions strong { font-size: .7rem; }
 .account-sessions span, .account-sessions b { font-size: .62rem; }
+.field-help { position: relative; display: inline-flex; flex: 0 0 auto; margin-left: .22rem; vertical-align: -.12em; white-space: nowrap; }
+.field-help > button { display: grid; width: 1rem; height: 1rem; padding: 0; color: var(--cv-color-gray); background: transparent; border: 0; border-radius: 50%; cursor: help; line-height: 1; place-items: center; }
+.field-help > button:hover, .field-help > button:focus-visible { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 12%, transparent); outline: none; }
+.field-help > button:focus-visible { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cv-color-teal) 30%, transparent); }
+.field-help__tooltip { position: fixed; z-index: calc(var(--cv-z-modal) + 20); left: var(--field-help-left); top: var(--field-help-top); display: block; width: min(17rem, calc(100vw - 1.25rem)); max-width: calc(100vw - 1.25rem); padding: .45rem .55rem; color: var(--cv-color-off-white); background: var(--cv-color-navy); border: 1px solid color-mix(in srgb, var(--cv-color-off-white) 14%, transparent); border-radius: .45rem; box-shadow: var(--cv-shadow-sm); font-size: .62rem; font-weight: 500; line-height: 1.4; pointer-events: none; transform: translate(-50%, -100%); white-space: normal; }
+.field-help__tooltip--below { transform: translate(-50%, 0); }
+.form-section-help { display: flex; justify-content: flex-end; margin-top: -.2rem; }
+.form-section-help .field-help { margin: 0; }
 .account-preferences-form { display: grid; max-width: 36rem; gap: .65rem; }
 .account-preferences-section { display: grid; gap: .45rem; padding: .65rem; background: var(--cv-color-mist); border: 1px solid rgb(43 62 89 / 10%); border-radius: .58rem; }
 .account-preferences-section > h3 { margin: 0; color: var(--cv-color-navy); font-size: .76rem; }
 .account-preferences-section__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .6rem; }
 .account-preferences-section__fields > label { min-width: 0; align-content: start; }
+.account-field-with-help { display: grid; min-width: 0; gap: .2rem; }
+.account-field-with-help > div { display: inline-flex; align-items: center; width: fit-content; }
+.account-field-with-help > div > label { color: var(--cv-color-slate); font-size: .64rem; font-weight: 700; }
+.account-field-with-help > select { width: 100%; }
 .account-preferences-section__fields small { min-height: 1.8em; line-height: 1.4; }
 .account-modal select { font-weight: 500; }
 .account-modal .checkbox-field { font-weight: 500; }
+.account-checkbox-with-help, .status-checkbox-help__label { display: inline-flex; align-items: center; width: fit-content; }
 .account-preferences-section:not(.account-preferences-section--routing) { background: transparent; }
 .account-preferences-section--routing { background: transparent; border-color: rgb(15 166 138 / 28%); }
 .account-preferences-section--routing > small { color: var(--cv-color-gray); font-size: .64rem; line-height: 1.4; }
