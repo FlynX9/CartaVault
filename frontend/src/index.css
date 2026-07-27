@@ -9726,3 +9726,56 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 .trip-planner-panel .trip-panel-days > div:has(.trip-panel-insert-day:focus-within) .trip-panel-day::after {
   bottom: -2.65rem;
 }
+
+/* Give timeline markers breathing room without reducing the useful width of
+   day and night cards. Markers and connectors share the same center axis. */
+.trip-planner-panel .trip-panel-days > div {
+  --trip-timeline-x: -1.65rem;
+}
+
+.trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number,
+.trip-planner-panel .trip-timeline-night-badge,
+.trip-planner-panel .trip-timeline-anchor-badge {
+  left: calc(var(--trip-timeline-x) - 1.25rem) !important;
+}
+
+.trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-panel-day-number {
+  background:
+    linear-gradient(var(--trip-day-color, var(--cv-color-teal)), var(--trip-day-color, var(--cv-color-teal))) padding-box,
+    linear-gradient(
+      color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 78%, black),
+      color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 78%, black)
+    ) border-box !important;
+  border: 3px solid transparent !important;
+}
+
+.trip-planner-panel .trip-timeline-night-badge {
+  background:
+    linear-gradient(
+      to bottom,
+      var(--trip-night-previous-color, var(--cv-color-teal)),
+      var(--trip-night-next-color, var(--cv-color-teal))
+    ) padding-box,
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 78%, black),
+      color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 78%, black)
+    ) border-box !important;
+  border: 3px solid transparent !important;
+}
+
+.trip-planner-panel .trip-timeline-anchor-badge {
+  background:
+    linear-gradient(var(--trip-anchor-color, var(--cv-color-teal)), var(--trip-anchor-color, var(--cv-color-teal))) padding-box,
+    linear-gradient(
+      color-mix(in srgb, var(--trip-anchor-color, var(--cv-color-teal)) 78%, black),
+      color-mix(in srgb, var(--trip-anchor-color, var(--cv-color-teal)) 78%, black)
+    ) border-box !important;
+  border: 3px solid transparent !important;
+}
+
+@media (max-width: 560px) {
+  .trip-planner-panel .trip-panel-days > div {
+    --trip-timeline-x: -1.42rem;
+  }
+}
