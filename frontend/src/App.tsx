@@ -5,7 +5,7 @@ import { ApiError } from './api/client'
 import { deleteMap, getMaps } from './api/maps'
 import { getMapPlaces, getPlaceDetails } from './api/places'
 import { getStatuses } from './api/statuses'
-import { addTripStop, getTrip } from './api/trips'
+import { addTripNight, addTripStop, getTrip } from './api/trips'
 import { TopBar } from './components/layout/TopBar'
 import { MainNavigation, type WorkspacePanel } from './components/layout/MainNavigation'
 import { buildMapOpeningFocusRequest, getMapOpeningConfigurationKey } from './components/map/mapOpeningFocus'
@@ -17,7 +17,7 @@ import { InvitationPage } from './pages/InvitationPage'
 import type { PoiMap } from './types/map'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView, PlaceFilters, PlaceMutation, PreviewPlace } from './types/place'
 import type { PlaceStatusSummary } from './types/status'
-import type { Trip } from './types/trip'
+import type { Trip, TripNightTarget } from './types/trip'
 import type { GeocodingResult } from './geocoding/types'
 import { readMapId, readStatusId, withMap } from './utils/map'
 import { deserializePlaceFilters, serializePlaceFilters } from './places/placeFilters'
@@ -105,6 +105,7 @@ function WorkspaceApp() {
   const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false)
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null)
   const [activeTripDayId, setActiveTripDayId] = useState<string | null>(null)
+  const [activeTripNightTarget, setActiveTripNightTarget] = useState<TripNightTarget | null>(null)
   const [tripViewOnly, setTripViewOnly] = useState(false)
   const [hiddenTripDayIds, setHiddenTripDayIds] = useState<Set<string>>(() => new Set())
   const [tripNotice, setTripNotice] = useState<string | null>(null)
@@ -213,19 +214,38 @@ function WorkspaceApp() {
   const handleDeletePlace = (id: string) => { setPlaces((current) => current.filter((place) => place.id !== id)); setSelectedPlace((current) => current?.id === id ? null : current); setRemovedPlaceId(id); setRefreshVersion((value) => value + 1) }
   const handleSelect = (place: PreviewPlace, revealClusteredPlace = false) => { setSelectedPlace(place); setWorkspacePanel('places'); navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId)); if (place.latitude !== null && place.longitude !== null) setFocusRequest({ id: ++focusSequence.current, view: { center: [place.latitude, place.longitude], zoom: revealClusteredPlace ? 19 : Math.max(mapView.zoom, 13) } }) }
   const showTripNotice = (message: string) => { setTripNotice(message); if (tripNoticeTimer.current !== null) window.clearTimeout(tripNoticeTimer.current); tripNoticeTimer.current = window.setTimeout(() => setTripNotice(null), 2600) }
-  const addPlaceToActiveTripDay = async (place: MapPlace) => {
+  const addPlaceToActiveTripTarget = async (place: PreviewPlace) => {
     if (!tripPlannerOpen || activeMap?.can_edit !== true) return
     if (!activeTrip) { showTripNotice('Créez ou sélectionnez une sortie.'); return }
+    if (activeTrip.status === 'completed' || activeTrip.status === 'archived') return
+    if (activeTripNightTarget?.nightId) return
     if (!activeTripDayId) { showTripNotice('Sélectionnez une journée.'); return }
-    const key = `${activeTripDayId}:${place.id}`
+    const key = activeTripNightTarget
+      ? `night:${activeTripNightTarget.previousDayId}:${activeTripNightTarget.nextDayId}:${place.id}`
+      : `day:${activeTripDayId}:${place.id}`
     if (tripAddPending.current.has(key)) return
-    if (activeTrip.days.some((day) => day.stops.some((stop) => stop.place_id === place.id))) { showTripNotice('Ce POI est déjà présent dans la sortie.'); return }
+    if (
+      activeTrip.days.some((day) => day.stops.some((stop) => stop.place_id === place.id))
+      || activeTrip.nights.some((night) => night.place_id === place.id)
+    ) { showTripNotice('Ce POI est déjà présent dans la sortie.'); return }
     tripAddPending.current.add(key)
     try {
-      await addTripStop(activeTripDayId, { place_id: place.id, stop_type: 'place', visit_duration_minutes: 30 })
+      if (activeTripNightTarget) {
+        const createdNight = await addTripNight(activeTrip.id, {
+          previous_day_id: activeTripNightTarget.previousDayId,
+          next_day_id: activeTripNightTarget.nextDayId,
+          place_id: place.id,
+          source_type: 'place',
+        })
+        setActiveTripNightTarget({ ...activeTripNightTarget, nightId: createdNight.id })
+      } else {
+        await addTripStop(activeTripDayId, { place_id: place.id, stop_type: 'place', visit_duration_minutes: 30 })
+      }
       const loaded = await getTrip(activeTrip.id); setActiveTrip(loaded)
       const day = loaded.days.find((item) => item.id === activeTripDayId)
-      showTripNotice(`${place.name} ajouté${day ? ` au jour ${day.day_number}` : ''}.`)
+      showTripNotice(activeTripNightTarget
+        ? `${place.name} ajouté à la nuit sélectionnée.`
+        : `${place.name} ajouté${day ? ` au jour ${day.day_number}` : ''}.`)
     } catch (caught) {
       showTripNotice(caught instanceof Error ? caught.message : 'Impossible d’ajouter ce POI.')
     } finally {
@@ -285,6 +305,7 @@ function WorkspaceApp() {
   useEffect(() => {
     setActiveTrip(null)
     setActiveTripDayId(null)
+    setActiveTripNightTarget(null)
     setTripPlannerCollapsed(false)
   }, [activeMapId])
   useEffect(() => {
@@ -304,10 +325,23 @@ function WorkspaceApp() {
     const panelId = panel === 'places' ? 'map-place-list' : `workspace-${panel}-panel`
     window.setTimeout(() => document.getElementById(panelId)?.focus(), 0)
   }
+  const activeTripAddTargetLabel = tripPlannerOpen
+    && activeMap?.can_edit === true
+    && activeTrip !== null
+    && activeTrip.status !== 'completed'
+    && activeTrip.status !== 'archived'
+    ? activeTripNightTarget === null
+      ? activeTrip.days.find((day) => day.id === activeTripDayId)?.day_number
+        ? `Ajouter au jour ${activeTrip.days.find((day) => day.id === activeTripDayId)?.day_number}`
+        : null
+      : activeTripNightTarget.nightId === null
+        ? 'Ajouter à la nuit sélectionnée'
+        : null
+    : null
   const workspaceContent = <Suspense fallback={<aside className="cv-workspace-panel" role="status">Chargement du panneauâ€¦</aside>}>{workspacePanel === 'maps'
     ? <MapsWorkspacePanel maps={maps} activeMapId={activeMapId} isLoading={mapsLoading} errorMessage={mapsError} onOpen={(mapId) => { navigate(withMap('/', mapId, activeStatusId)); setWorkspacePanel('places') }} onDelete={(poiMap) => void deleteWorkspaceMap(poiMap)} onCreated={(poiMap) => { setMaps((current) => [...current, poiMap]); navigate(withMap('/', poiMap.id, activeStatusId)); setWorkspacePanel('places') }} onExport={setExportMap} onMembers={setMembersMap} onAccessChanged={() => setRefreshVersion((value) => value + 1)} collapsed={collapsedWorkspacePanel === 'maps'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'maps' : null)} createRequest={createMapRequest} />
     : workspacePanel === 'places'
-    ? <MapPlaceList poiMap={activeMap} statuses={statuses} filters={placeFilters} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} collapsed={placesPanelCollapsed} onCollapsedChange={setPlacesPanelCollapsed} onFiltersChange={(filters: PlaceFilters) => { const params = serializePlaceFilters(filters); if (activeMapId) params.set('map', activeMapId); navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : '' }) }} onPlaceSelect={(place) => handleSelect(place, true)} onImported={() => setRefreshVersion((value) => value + 1)} onBulkChanged={() => setRefreshVersion((value) => value + 1)} tripPlanningActive={tripPlannerOpen} tripPlaceIds={new Set(activeTrip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? [])} importRequest={importRequest} />
+    ? <MapPlaceList poiMap={activeMap} statuses={statuses} filters={placeFilters} selectedPlaceId={selectedPlaceId} refreshVersion={refreshVersion} removedPlaceId={removedPlaceId} collapsed={placesPanelCollapsed} onCollapsedChange={setPlacesPanelCollapsed} onFiltersChange={(filters: PlaceFilters) => { const params = serializePlaceFilters(filters); if (activeMapId) params.set('map', activeMapId); navigate({ pathname: location.pathname, search: params.toString() ? `?${params}` : '' }) }} onPlaceSelect={(place) => handleSelect(place, true)} onImported={() => setRefreshVersion((value) => value + 1)} onBulkChanged={() => setRefreshVersion((value) => value + 1)} tripPlanningActive={tripPlannerOpen} tripPlaceIds={new Set([...(activeTrip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id)) ?? []), ...(activeTrip?.nights.map((night) => night.place_id) ?? [])].filter((id): id is string => id !== null))} tripAddTargetLabel={activeTripAddTargetLabel} onTripPlaceAdd={(place) => void addPlaceToActiveTripTarget(place)} importRequest={importRequest} />
     : workspacePanel === 'media'
       ? <MediaWorkspacePanel collapsed={collapsedWorkspacePanel === 'media'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'media' : null)} onOpenPlace={(media) => { setWorkspacePanel('places'); navigate(withMap(`/places/${media.place.id}`, media.map.id, null)) }} />
     : workspacePanel === 'categories' && activeMapId !== null ? <CategoriesWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} collapsed={collapsedWorkspacePanel === 'categories'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'categories' : null)} />
@@ -339,7 +373,7 @@ function WorkspaceApp() {
       showTripNotice(caught instanceof Error ? caught.message : 'Impossible d’ouvrir ce lieu.')
     }
   }
-  const rightSidebar = tripPlannerOpen && activeMap ? <Suspense fallback={<aside className="map-sidebar" role="status">Chargement de la préparation de sortieâ€¦</aside>}><TripPlannerPanel poiMap={activeMap} trip={activeTrip} activeDayId={activeTripDayId} tripViewOnly={tripViewOnly} hiddenDayIds={hiddenTripDayIds} collapsed={tripPlannerCollapsed} createRequest={createTripRequest} onCollapsedChange={setTripPlannerCollapsed} onTripViewOnlyChange={(enabled) => { setTripViewOnly(enabled); setTripPlannerCollapsed(false); setWorkspacePanel(enabled ? null : 'places'); if (enabled) { const tripBounds = getTripMapBounds(activeTrip); if (tripBounds) setFocusRequest({ id: ++focusSequence.current, bounds: tripBounds, maxZoom: 15 }) } }} onDayVisibilityChange={(dayId, visible) => setHiddenTripDayIds((current) => { const next = new Set(current); if (visible) next.delete(dayId); else next.add(dayId); return next })} onTripChange={setActiveTrip} onActiveDayChange={setActiveTripDayId} onStopFocus={handleTripStopFocus} onStopPlaceSelect={(placeId) => { void handleTripPlaceSelect(placeId) }} onClose={() => { setTripPlannerOpen(false); setTripPlannerCollapsed(false); setActiveTrip(null); setActiveTripDayId(null); setTripViewOnly(false); setHiddenTripDayIds(new Set()) }} /></Suspense> : <MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />
+  const rightSidebar = tripPlannerOpen && activeMap ? <Suspense fallback={<aside className="map-sidebar" role="status">Chargement de la préparation de sortieâ€¦</aside>}><TripPlannerPanel poiMap={activeMap} trip={activeTrip} activeDayId={activeTripDayId} tripViewOnly={tripViewOnly} hiddenDayIds={hiddenTripDayIds} collapsed={tripPlannerCollapsed} createRequest={createTripRequest} onCollapsedChange={setTripPlannerCollapsed} onTripViewOnlyChange={(enabled) => { setTripViewOnly(enabled); setTripPlannerCollapsed(false); setWorkspacePanel(enabled ? null : 'places'); if (enabled) { const tripBounds = getTripMapBounds(activeTrip); if (tripBounds) setFocusRequest({ id: ++focusSequence.current, bounds: tripBounds, maxZoom: 15 }) } }} onDayVisibilityChange={(dayId, visible) => setHiddenTripDayIds((current) => { const next = new Set(current); if (visible) next.delete(dayId); else next.add(dayId); return next })} onTripChange={setActiveTrip} onActiveDayChange={setActiveTripDayId} onActiveNightTargetChange={setActiveTripNightTarget} onStopFocus={handleTripStopFocus} onStopPlaceSelect={(placeId) => { void handleTripPlaceSelect(placeId) }} onClose={() => { setTripPlannerOpen(false); setTripPlannerCollapsed(false); setActiveTrip(null); setActiveTripDayId(null); setActiveTripNightTarget(null); setTripViewOnly(false); setHiddenTripDayIds(new Set()) }} /></Suspense> : <MapSidebar state={sidebarState} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} geographicPrefill={temporarySearchResult} coordinatePrefill={coordinatePrefill} draftPosition={draftPosition} onDraftPositionChange={setDraftPosition} onClose={() => { setCoordinatePrefill(null); setDraftPosition(null); setSelectedPlace(null); navigate(withMap('/', activeMapId, activeStatusId)) }} onPlaceMutated={handleMutation} onPlaceDeleted={handleDeletePlace} />
 
   const handleWorkspacePanelChange = (panel: WorkspacePanel) => {
     if (dashboardOpen) navigate(withMap('/', activeMapId, activeStatusId))
@@ -348,6 +382,7 @@ function WorkspaceApp() {
       setTripPlannerCollapsed(false)
       setActiveTrip(null)
       setActiveTripDayId(null)
+      setActiveTripNightTarget(null)
       setTripViewOnly(false)
       setHiddenTripDayIds(new Set())
     }
@@ -400,7 +435,7 @@ function WorkspaceApp() {
         onOpenPlace={(placeId, mapId) => { setWorkspacePanel('places'); navigate(withMap(`/places/${placeId}`, mapId, null)) }}
         onOpenTrip={(tripId, mapId) => { navigate(withMap('/', mapId, null)); setWorkspacePanel('places'); setTripPlannerOpen(true); setTripPlannerCollapsed(false); void getTrip(tripId).then((loaded) => { setActiveTrip(loaded); setActiveTripDayId(loaded.days[0]?.id ?? null) }).catch((caught: unknown) => setTripNotice(caught instanceof Error ? caught.message : 'Unable to open this trip.')) }}
       /></Suspense>} />
-      <Route path="*" element={<MapPage places={places} canEdit={activeMap?.can_edit === true} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen || tripPlannerOpen} sidebarResizable={tripPlannerOpen && !tripPlannerCollapsed} tripPlanningActive={tripPlannerOpen} tripPlannerCollapsed={tripPlannerCollapsed} placeListOpen={workspacePanel !== null} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} draftPosition={draftPosition} draftPlaceId={sidebarState.mode === 'edit' ? sidebarState.placeId : null} onDraftPositionChange={setDraftPosition} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setCoordinatePrefill(null); setDraftPosition({ latitude: result.latitude, longitude: result.longitude }); setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} onCreateFromCoordinates={(latitude, longitude) => { setCoordinatePrefill({ latitude, longitude }); setDraftPosition({ latitude, longitude }); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={workspaceContent} sidebar={rightSidebar} trip={activeTrip} tripViewOnly={tripViewOnly} hiddenTripDayIds={hiddenTripDayIds} activeTripDayId={activeTripDayId} onTripPlaceAdd={tripPlannerOpen ? (place) => void addPlaceToActiveTripDay(place) : undefined} onTripCoordinateAdd={tripPlannerOpen && activeMap?.can_edit === true ? (dayId, latitude, longitude) => void addCoordinatesToTripDay(dayId, latitude, longitude) : undefined} tripNotice={tripNotice} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
+      <Route path="*" element={<MapPage places={places} canEdit={activeMap?.can_edit === true} selectedPlaceId={selectedPlaceId} initialView={mapView} isLoading={isLoading} errorMessage={errorMessage} sidebarOpen={editorOpen || tripPlannerOpen} sidebarResizable={tripPlannerOpen && !tripPlannerCollapsed} tripPlanningActive={tripPlannerOpen} tripPlannerCollapsed={tripPlannerCollapsed} placeListOpen={workspacePanel !== null} statuses={statuses} focusRequest={focusRequest} popupContent={popupContent} activeCountryCode={activeMap?.country.iso_alpha2} temporarySearchResult={temporarySearchResult} draftPosition={draftPosition} draftPlaceId={sidebarState.mode === 'edit' ? sidebarState.placeId : null} onDraftPositionChange={setDraftPosition} onGeographicResultSelect={(result) => { setTemporarySearchResult(result); setFocusRequest({ id: ++focusSequence.current, view: { center: [result.latitude, result.longitude], zoom: result.boundingBox ? 12 : 15 } }) }} onGeographicResultClear={() => setTemporarySearchResult(null)} onCreateFromGeographicResult={(result) => { setCoordinatePrefill(null); setDraftPosition({ latitude: result.latitude, longitude: result.longitude }); setTemporarySearchResult(result); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} onCreateFromCoordinates={(latitude, longitude) => { setCoordinatePrefill({ latitude, longitude }); setDraftPosition({ latitude, longitude }); navigate(withMap('/places/new', activeMapId, activeStatusId)) }} placeList={workspaceContent} sidebar={rightSidebar} trip={activeTrip} tripViewOnly={tripViewOnly} hiddenTripDayIds={hiddenTripDayIds} activeTripDayId={activeTripDayId} onTripPlaceAdd={tripPlannerOpen ? (place) => void addPlaceToActiveTripTarget(place) : undefined} onTripCoordinateAdd={tripPlannerOpen && activeMap?.can_edit === true ? (dayId, latitude, longitude) => void addCoordinatesToTripDay(dayId, latitude, longitude) : undefined} tripNotice={tripNotice} onBoundsChange={setBounds} onViewChange={setMapView} onPlaceSelect={handleSelect} onPopupClose={closePopup} />} />
     </Routes>
   </div>{exportMap && <Suspense fallback={null}><KmzExportDialog poiMap={exportMap} onClose={() => setExportMap(null)} /></Suspense>}{membersMap && <Suspense fallback={null}><MapMembersDialog poiMap={membersMap} onClose={() => setMembersMap(null)} onMapUpdated={(updated) => setMaps((current) => current.map((item) => item.id === updated.id ? updated : item))} /></Suspense>}{adminOpen && <RequireAdmin><Suspense fallback={<div className="account-overlay"><section className="admin-console admin-console--loading" role="status">Chargement de l’administration…</section></div>}><AdminConsole onClose={closeAdmin} /></Suspense></RequireAdmin>}{confirmationDialog}</main>
 }

@@ -11,11 +11,11 @@ import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } 
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from './TripTimePlanning'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 
-interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onClose: () => void }
+interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onActiveNightTargetChange?: (target: TripNightTarget | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onClose: () => void }
 
 const DayCollapseContext = createContext<{ collapsedDayIds: ReadonlySet<string>; onToggle: (dayId: string) => void } | null>(null)
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onStopFocus, onStopPlaceSelect = () => undefined }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveNightTargetChange = () => undefined, onStopFocus, onStopPlaceSelect = () => undefined }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const canEdit = poiMap.can_edit === true
   const isArchivedTrip = trip?.status === 'completed' || trip?.status === 'archived'
@@ -44,10 +44,12 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const activeDayIdRef = useRef(activeDayId)
   const onTripChangeRef = useRef(onTripChange)
   const onActiveDayChangeRef = useRef(onActiveDayChange)
+  const onActiveNightTargetChangeRef = useRef(onActiveNightTargetChange)
   const loadControllerRef = useRef<AbortController | null>(null)
   const selectionVersionRef = useRef(0)
   onTripChangeRef.current = onTripChange
   onActiveDayChangeRef.current = onActiveDayChange
+  onActiveNightTargetChangeRef.current = onActiveNightTargetChange
 
   useEffect(() => { activeDayIdRef.current = activeDayId }, [activeDayId])
   useEffect(() => {
@@ -73,6 +75,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const selectTrip = useCallback(async (target: string) => {
     selectionVersionRef.current += 1
     loadControllerRef.current?.abort()
+    setActiveNightTarget(null)
+    onActiveNightTargetChangeRef.current(null)
     if (!target) {
       loadControllerRef.current = null
       setLoadingTripId(null); setError(null); setSummary(null); setDaySummaries({})
@@ -205,7 +209,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     else next.add(dayId)
     return next
   })
-  const activateDay = (dayId: string) => { setActiveNightTarget(null); onActiveDayChange(dayId) }
+  const activateDay = (dayId: string) => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveDayChange(dayId) }
   const setAllTimelineCollapsed = (nextCollapsed: boolean) => {
     setCollapsedDayIds(nextCollapsed ? new Set(trip?.days.map((day) => day.id) ?? []) : new Set())
     setTimelineCollapseRequest((current) => ({ collapsed: nextCollapsed, version: current.version + 1 }))
@@ -227,7 +231,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
         {globalOptimization && <GlobalOptimizationReview proposals={globalOptimization} busy={busy} onCancel={() => setGlobalOptimization(null)} onApply={applyGlobalOptimization} />}
         <DayCollapseContext.Provider value={{ collapsedDayIds, onToggle: toggleDayCollapsed }}><div className="trip-panel-days">{trip.days.map((day, dayIndex) => <div key={day.id} style={{ '--trip-day-color': day.color ?? '#0FA68A' } as CSSProperties}>
           {dayIndex === 0 && <Departure trip={trip} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
-          {dayIndex > 0 && <Night previous={trip.days[dayIndex - 1]} next={day} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onSelect={(target) => { setActiveNightTarget(target); onActiveDayChange(day.id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
+          {dayIndex > 0 && <Night previous={trip.days[dayIndex - 1]} next={day} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onSelect={(target) => { setActiveNightTarget(target); onActiveNightTargetChange(target); onActiveDayChange(day.id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
           <details className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? ' is-active' : ''}`} open={!collapsedDayIds.has(day.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea, a')) return; activateDay(day.id); if (target.closest('.trip-panel-day > summary')) event.preventDefault() }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, day)}>
             <summary><span className="trip-panel-day-number"><Sun aria-hidden="true" size={12} /><b>J{day.day_number}</b></span><span className="trip-panel-day-heading"><span className="trip-panel-timeline-heading"><strong>{day.title || `Jour ${day.day_number}`}</strong><TimelineStatusBadge status={getDayTimelineStatus(day, daySummaries[day.id])} /></span><small>{day.stops.length} {day.stops.length > 1 ? 'étapes' : 'étape'}</small></span><DayHeaderMetrics summary={daySummaries[day.id]} /><span className="trip-panel-day-actions"><DayVisibilityToggle day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />{canEdit && <><button type="button" aria-label="Monter la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, -1) }}><ArrowUp size={12} /></button><button type="button" aria-label="Descendre la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, 1) }}><ArrowDown size={12} /></button><button type="button" aria-label="Dupliquer la journée" onClick={(event) => { event.preventDefault(); void run(async () => { await duplicateTripDay(day.id); await reload(trip.id) }) }}><Copy size={12} /></button><button type="button" aria-label="Supprimer la journée" onClick={(event) => { event.preventDefault(); void confirm({ title: 'Supprimer cette journée ?', message: `Le jour ${day.day_number}, ses étapes et son itinéraire seront définitivement supprimés.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripDay(day.id); await reload(trip.id) }) }) }}><Trash2 size={12} /></button></>}</span></summary>
             <div className="trip-panel-day-content">{day.route_status === 'stale' && <p>Itinéraire à recalculer</p>}{daySummaries[day.id]?.country_constraint_status === 'unchecked' && <p className="trip-metrics-warning">Itinéraire à vérifier avec la contrainte pays.</p>}{daySummaries[day.id]?.country_constraint_status === 'invalid' && <p className="trip-panel-error">Itinéraire refusé : passage hors de {daySummaries[day.id]?.constraint_country_name}.</p>}

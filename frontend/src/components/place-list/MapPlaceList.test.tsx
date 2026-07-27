@@ -152,6 +152,22 @@ describe('MapPlaceList', () => {
     expect(screen.getByText('Ajouté')).toBeVisible()
   })
 
+  it('adds an available POI directly to the selected trip target', async () => {
+    const place = { id: 'place-id', name: 'Étape ciblée', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    const onTripPlaceAdd = vi.fn()
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, tripPlanningActive: true, tripAddTargetLabel: 'Ajouter au jour 2', onTripPlaceAdd, onPlaceSelect: vi.fn() }
+    const { rerender } = render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set()} /></MemoryRouter>)
+
+    const addButton = await screen.findByRole('button', { name: 'Ajouter au jour 2 : Étape ciblée' })
+    expect(addButton.closest('.places-place-card')).toHaveClass('has-trip-add-action')
+    fireEvent.click(addButton)
+    expect(onTripPlaceAdd).toHaveBeenCalledWith(place)
+
+    rerender(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
+    expect(screen.queryByRole('button', { name: 'Ajouter au jour 2 : Étape ciblée' })).not.toBeInTheDocument()
+  })
+
   it('keeps the rich card layout when multi-selection is enabled', async () => {
     const place = { id: 'place-id', name: 'Sélection', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
