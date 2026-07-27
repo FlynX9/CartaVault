@@ -5610,6 +5610,19 @@ body.cv-panel-resizing {
 .admin-console__user-actions { flex-wrap: nowrap; gap: .35rem; }
 .admin-console__user-quota, .admin-console__user-actions { align-self: end; }
 .admin-console__user-actions button { min-height: 1.85rem; padding: .26rem .48rem; border-radius: .48rem; font-size: .62rem; white-space: nowrap; }
+
+/* Keep account search and registration validation as compact as account rows. */
+.admin-console__filters { gap: .55rem; margin-bottom: .75rem; padding: .7rem; border-radius: .7rem; }
+.admin-console__filters label { gap: .22rem; font-size: .62rem; }
+.admin-console__filters input, .admin-console__filters select { min-height: 2.1rem; padding: .38rem .52rem; border-radius: .5rem; font-size: .68rem; }
+.admin-console__rows { gap: .42rem; }
+.admin-console__rows li { gap: .65rem; padding: .55rem .65rem; border-radius: .55rem; }
+.admin-console__rows strong { font-size: .76rem; line-height: 1.2; }
+.admin-console__rows small { margin-top: .08rem; font-size: .62rem; }
+.admin-console__rows .admin-console__profile-select { min-width: 8.5rem; gap: .14rem; font-size: .58rem; }
+.admin-console__rows .admin-console__profile-select select { min-height: 1.85rem; padding: .24rem .42rem; font-size: .63rem; }
+.admin-console__rows .admin-console__actions { gap: .3rem; }
+.admin-console__rows .admin-console__actions button { width: 1.9rem; min-height: 1.85rem; padding: .2rem; border-radius: .48rem; }
 @media (max-width: 900px) {
   .admin-console__user-grid > li { grid-template-columns: 2.4rem minmax(0, 1fr); }
   .admin-console__user-quota, .admin-console__user-actions { grid-column: 2; }
