@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, Clock3, Copy, Download, Eye, EyeOff, Flag, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sparkles, Sun, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BadgeCheck, Calculator, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sparkles, Sun, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
 import { getAccountPreferences } from '../../api/account'
@@ -288,7 +288,7 @@ function DayHeaderMetrics({ summary }: { summary: TripDayTimeSummary | undefined
   const loadLabels: Record<Exclude<TripDayTimeSummary['load_level'], 'unavailable'>, string> = { low: 'Faible', medium: 'Modérée', high: 'Élevée' }
   const loadStyle = summary?.load_color ? { '--trip-load-color': summary.load_color } as CSSProperties : undefined
   return <span className="trip-day-header-metrics" aria-label="Résumé de la journée">
-    {summary && summary.load_level !== 'unavailable' && <span className="trip-day-load-label" style={loadStyle}><span>Charge :</span><strong>{loadLabels[summary.load_level]}</strong></span>}
+    {summary && summary.load_level !== 'unavailable' && <span className="trip-day-load-label" style={loadStyle}><Gauge aria-hidden="true" size={12} /><strong>{loadLabels[summary.load_level]}</strong></span>}
     <span><Route aria-hidden="true" size={12} />{formatRouteDistance(summary?.route_distance_meters ?? null)}</span>
     <span><Car aria-hidden="true" size={12} />{formatMinutes(summary?.route_duration_minutes ?? null)}</span>
     <span><Clock3 aria-hidden="true" size={12} />{formatMinutes(summary?.total_duration_minutes ?? null)}</span>
@@ -560,7 +560,8 @@ function getDayTimelineStatus(day: TripDay, summary: TripDayTimeSummary | undefi
 
 function TimelineStatusBadge({ status }: { status: TimelineStatus }) {
   const labels: Record<TimelineStatus, string> = { valid: 'Valide', pending: 'Non calculé', empty: 'Vide' }
-  return <span className={`trip-timeline-status trip-timeline-status--${status}`}><span>Statut :</span><strong>{labels[status]}</strong></span>
+  const StatusIcon = status === 'valid' ? BadgeCheck : status === 'pending' ? Calculator : CircleAlert
+  return <span className={`trip-timeline-status trip-timeline-status--${status}`}><StatusIcon aria-hidden="true" size={12} /><strong>{labels[status]}</strong></span>
 }
 
 function canCalculateRoute(trip: Trip, day: TripDay, dayIndex: number) { const hasInheritedStart = dayIndex > 0 && trip.days[dayIndex - 1]?.stops.length > 0; const hasStart = dayIndex === 0 ? trip.departure !== null : trip.nights.some((night) => night.next_day_id === day.id) || hasInheritedStart; const hasEnd = trip.nights.some((night) => night.previous_day_id === day.id) || dayIndex === trip.days.length - 1 && (trip.arrival ?? trip.departure) !== null; return day.stops.length + Number(hasStart) + Number(hasEnd) >= 2 }

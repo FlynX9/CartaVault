@@ -6182,7 +6182,7 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
   color: var(--cv-color-slate);
   background: #fff;
   border: 1px solid rgb(43 62 89 / 14%);
-  border-radius: .42rem;
+  border-radius: 999px;
   font: inherit;
 }
 .media-pagination nav { display: flex; align-items: center; justify-content: center; gap: .15rem; }
@@ -9894,59 +9894,56 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 .trip-planner-panel .trip-panel-day-heading .trip-timeline-status {
-  top: calc(50% - .55rem);
+  top: calc(50% - .88rem);
 }
 
 .trip-planner-panel .trip-timeline-status {
-  display: grid;
-  width: 8.5rem;
-  min-height: 16px;
+  --trip-status-color: var(--cv-color-gray);
+  display: inline-flex;
+  width: 7.25rem;
+  min-height: 24px;
   box-sizing: border-box;
   align-items: center;
-  grid-template-columns: 2.8rem minmax(0, 1fr);
-  gap: .3rem;
+  gap: .32rem;
   justify-content: start;
-  padding: 0;
-  color: var(--cv-color-gray);
-  background: transparent;
-  border: 0;
-  border-radius: 0;
+  padding: .2rem .46rem;
+  color: var(--trip-status-color);
+  background: color-mix(in srgb, var(--cv-surface, #fff) 48%, transparent);
+  border: 1px solid var(--trip-status-color);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgb(13 27 42 / 4%);
   font-size: .61rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.15;
   white-space: nowrap;
 }
 
+.trip-planner-panel .trip-timeline-status > svg {
+  flex: 0 0 auto;
+  stroke-width: 2;
+}
+
 .trip-planner-panel .trip-timeline-status > strong {
   overflow: hidden;
+  color: inherit;
   font-size: inherit;
   font-weight: 750;
+  letter-spacing: normal;
   text-overflow: ellipsis;
+  text-transform: none;
   white-space: nowrap;
 }
 
-.trip-planner-panel .trip-timeline-status--valid > strong {
-  color: color-mix(in srgb, var(--cv-color-teal) 82%, black);
+.trip-planner-panel .trip-timeline-status--valid {
+  --trip-status-color: #0f927d;
 }
 
-.trip-planner-panel .trip-timeline-status--pending > strong {
-  color: #a55b0b;
+.trip-planner-panel .trip-timeline-status--pending {
+  --trip-status-color: #b96a12;
 }
 
-.trip-planner-panel .trip-timeline-status--empty > strong {
-  color: #b42318;
-}
-
-html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--valid > strong {
-  color: #75ddcb;
-}
-
-html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--pending > strong {
-  color: #f0b35d;
-}
-
-html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--empty > strong {
-  color: #f08b83;
+.trip-planner-panel .trip-timeline-status--empty {
+  --trip-status-color: #c94a43;
 }
 
 @media (max-width: 560px) {
@@ -9990,32 +9987,43 @@ html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--empty > stron
 
 .trip-planner-panel .trip-day-header-metrics > .trip-day-load-label {
   position: absolute;
-  top: calc(50% + .55rem);
+  top: calc(50% + .88rem);
   left: 5.45rem;
-  display: grid;
-  width: 8.5rem;
-  min-height: 16px;
+  display: inline-flex;
+  width: 7.25rem;
+  min-height: 24px;
   box-sizing: border-box;
   align-items: center;
-  grid-template-columns: 2.8rem minmax(0, 1fr);
-  gap: .3rem;
+  gap: .32rem;
   justify-content: start;
-  padding: 0;
-  color: var(--cv-color-gray);
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  font-weight: 600;
+  padding: .2rem .46rem;
+  color: var(--trip-load-color, var(--cv-color-slate));
+  background: color-mix(in srgb, var(--cv-surface, #fff) 48%, transparent);
+  border: 1px solid var(--trip-load-color, var(--cv-color-slate));
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgb(13 27 42 / 4%);
+  font-weight: 700;
   line-height: 1.15;
   transform: translateY(-50%);
 }
 
+html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day-load-label {
+  background: color-mix(in srgb, var(--cv-surface, #fff) 48%, transparent);
+}
+
+.trip-planner-panel .trip-day-header-metrics > .trip-day-load-label > svg {
+  flex: 0 0 auto;
+  stroke-width: 2;
+}
+
 .trip-planner-panel .trip-day-header-metrics > .trip-day-load-label > strong {
   overflow: hidden;
-  color: var(--trip-load-color, var(--cv-color-slate));
+  color: inherit;
   font-size: inherit;
   font-weight: 750;
+  letter-spacing: normal;
   text-overflow: ellipsis;
+  text-transform: none;
   white-space: nowrap;
 }
 

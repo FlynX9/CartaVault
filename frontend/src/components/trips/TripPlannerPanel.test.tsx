@@ -71,6 +71,7 @@ describe('TripPlannerPanel', () => {
     const emptyStatuses = await screen.findAllByText('Vide')
     expect(emptyStatuses).toHaveLength(5)
     emptyStatuses.forEach((status) => expect(status.closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--empty'))
+    emptyStatuses.forEach((status) => expect(status.closest('.trip-timeline-status')?.querySelector('.lucide-circle-alert')).toBeInTheDocument())
     expect(within(container.querySelector('.trip-panel-departure') as HTMLElement).getByText('Vide')).toBeVisible()
     expect(within(container.querySelector('.trip-panel-arrival') as HTMLElement).getByText('Vide')).toBeVisible()
   })
@@ -83,7 +84,9 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'ready', has_current_route: true })
 
     const rendered = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={readyTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    expect((await screen.findByText('Valide')).closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--valid')
+    const validStatus = (await screen.findByText('Valide')).closest('.trip-timeline-status')
+    expect(validStatus).toHaveClass('trip-timeline-status--valid')
+    expect(validStatus?.querySelector('.lucide-badge-check')).toBeInTheDocument()
 
     rendered.unmount()
     const staleTrip = { ...readyTrip, days: [{ ...readyTrip.days[0], route_status: 'stale' }] } satisfies Trip
@@ -92,7 +95,9 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'stale', route_is_stale: true })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={staleTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    expect((await screen.findByText('Non calculé')).closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--pending')
+    const pendingStatus = (await screen.findByText('Non calculé')).closest('.trip-timeline-status')
+    expect(pendingStatus).toHaveClass('trip-timeline-status--pending')
+    expect(pendingStatus?.querySelector('.lucide-calculator')).toBeInTheDocument()
   })
 
   it('organizes the workspace into summary, settings and journeys without lifecycle actions', async () => {
@@ -506,6 +511,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('3 h 42')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('9 h 12')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Modérée')
+    expect(screen.getByLabelText('Résumé de la journée').querySelector('.lucide-gauge')).toBeInTheDocument()
     expect(screen.getByText('Valide').closest('.trip-panel-day')).not.toBeNull()
     expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
   })
