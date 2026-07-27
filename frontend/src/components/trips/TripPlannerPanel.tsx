@@ -220,7 +220,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
       {summary && <TripSummaryMetrics summary={summary} />}
       <details className="trip-panel-section trip-panel-journeys" open><summary><span>Trajets</span><small>{trip.days.length} {trip.days.length > 1 ? 'journées' : 'journée'}</small><ChevronDown className="trip-panel-chevron" size={15} /></summary>
         <DayCollapseContext.Provider value={{ collapsedDayIds, onToggle: toggleDayCollapsed }}><div className="trip-panel-days">{trip.days.map((day, dayIndex) => <div key={day.id} style={{ '--trip-day-color': day.color ?? '#0FA68A' } as CSSProperties}>
-          {dayIndex === 0 && <Departure trip={trip} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} canEdit={canEditTrip} reload={reload} />}
+          {dayIndex === 0 && <Departure trip={trip} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} canEdit={canEditTrip} reload={reload} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
           {dayIndex > 0 && <Night previous={trip.days[dayIndex - 1]} next={day} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} onSelect={(target) => { setActiveNightTarget(target); onActiveDayChange(day.id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
           <details className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? ' is-active' : ''}`} open={!collapsedDayIds.has(day.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea, a')) return; activateDay(day.id); if (target.closest('.trip-panel-day > summary')) event.preventDefault() }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, day)}>
             <summary><span className="trip-panel-day-number"><Sun aria-hidden="true" size={12} /><b>J{day.day_number}</b></span><span className="trip-panel-day-heading"><span className="trip-panel-timeline-heading"><strong>{day.title || `Jour ${day.day_number}`}</strong><TimelineStatusBadge status={getDayTimelineStatus(day, daySummaries[day.id])} /></span><small>{day.stops.length} {day.stops.length > 1 ? 'étapes' : 'étape'}</small></span><DayHeaderMetrics summary={daySummaries[day.id]} /><span className="trip-panel-day-actions"><DayVisibilityToggle day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />{canEdit && <><button type="button" aria-label="Monter la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, -1) }}><ArrowUp size={12} /></button><button type="button" aria-label="Descendre la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, 1) }}><ArrowDown size={12} /></button><button type="button" aria-label="Dupliquer la journée" onClick={(event) => { event.preventDefault(); void run(async () => { await duplicateTripDay(day.id); await reload(trip.id) }) }}><Copy size={12} /></button><button type="button" aria-label="Supprimer la journée" onClick={(event) => { event.preventDefault(); void confirm({ title: 'Supprimer cette journée ?', message: `Le jour ${day.day_number}, ses étapes et son itinéraire seront définitivement supprimés.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripDay(day.id); await reload(trip.id) }) }) }}><Trash2 size={12} /></button></>}</span></summary>
@@ -229,7 +229,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
               {day.stops.length === 0 && <p className="trip-panel-drop">Glissez des POI depuis le panneau Lieux</p>}{canEdit && <FreeStop day={day} poiMap={poiMap} reload={() => reload(trip.id)} />}<div className="trip-panel-route-actions"><div className="trip-panel-route-actions__main"><button className={routeFeedback === day.id ? 'route-success' : undefined} type="button" disabled={!canCalculateRoute(trip, day, dayIndex)} onClick={() => recalculateRoute(day)}>{routeFeedback === day.id ? <><Check size={13} />Itinéraire rafraîchi</> : <><Route size={13} />Itinéraire</>}</button><button type="button" disabled={day.stops.length < 2} onClick={() => void run(async () => setOptimization({ dayId: day.id, value: await optimizeTripDay(day.id) }))}><Navigation size={13} />Optimiser</button></div><button className="trip-day-settings-trigger" type="button" aria-expanded={openDaySettingsIds.has(day.id)} aria-controls={`trip-day-settings-${day.id}`} onClick={() => toggleDaySettings(day.id)}><SlidersHorizontal size={13} />Paramètres du jour</button></div>{optimization?.dayId === day.id && <div className="trip-panel-optimization"><OptimizationMetrics value={optimization.value} /><button type="button" onClick={() => setOptimization(null)}>Refuser</button><button type="button" onClick={() => void run(async () => { await confirmTripOptimization(day.id, optimization.value.optimized_stop_ids); setOptimization(null); await reload(trip.id) })}><Check size={11} />Accepter</button></div>}<DaySettings open={openDaySettingsIds.has(day.id)} day={day} summary={daySummaries[day.id]} canEdit={canEdit} busy={busy} endsAtHotel={trip.nights.some((night) => night.previous_day_id === day.id)} onTimingSave={async (payload) => { await updateTripDayTiming(day.id, payload); await reload(trip.id) }} onColorSave={(color) => void run(async () => { await updateTripDay(day.id, { color }); await reload(trip.id) })} /></div>
           </details>
           {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
-          {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEditTrip} reload={reload} />}
+          {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEditTrip} reload={reload} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
         </div>)}</div></DayCollapseContext.Provider>
         {canEdit && <div className="trip-panel-journeys-actions trip-panel-route-actions" aria-label="Actions globales des trajets">
           <button className={routeFeedback === 'all' ? 'route-success' : undefined} type="button" disabled={busy || !trip.days.some((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))} onClick={recalculateAllRoutes}>{routeFeedback === 'all' ? <><Check size={13} />Itinéraires rafraîchis</> : <><Route size={13} />Calculer les itinéraires</>}</button>
@@ -332,18 +332,107 @@ function FreeStop({ day, poiMap, reload }: { day: TripDay; poiMap: PoiMap; reloa
   return <><button className="trip-panel-free-stop" type="button" aria-label="Ajouter un Lieu libre" title="Ajouter un lieu libre" onClick={() => setOpen(true)}><span aria-hidden="true" /><i aria-hidden="true"><Plus size={14} /></i><span aria-hidden="true" /></button>{open && <CreateTripNightDialog kind="stop" mapName={poiMap.name} countryCode={poiMap.country.iso_alpha2} focus={[anchor?.latitude ?? poiMap.effective_center_latitude, anchor?.longitude ?? poiMap.effective_center_longitude]} onClose={() => setOpen(false)} onCreate={async (payload) => { await addTripStop(day.id, { ...payload }); await reload(); setOpen(false) }} />}</>
 }
 
-function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, reload }: { trip: Trip; recommendedStart: string | null; recommendedStartOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void> }) {
-  const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null); const anchor = trip.days[0]?.stops[0]
-  const drop = (event: DragEvent) => { event.preventDefault(); if (trip.departure || !canEdit) return; const value = event.dataTransfer.getData('text/plain'); if (value.startsWith('place:')) setDialog({ placeId: value.slice(6) }) }
+function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, reload, onStopFocus, onStopPlaceSelect }: { trip: Trip; recommendedStart: string | null; recommendedStartOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+  const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
+  const [collapsed, setCollapsed] = useState(false)
+  const [dropActive, setDropActive] = useState(false)
+  const anchor = trip.days[0]?.stops[0]
+  const departure = trip.departure
+  const drop = (event: DragEvent) => {
+    event.preventDefault()
+    setDropActive(false)
+    if (departure || !canEdit) return
+    const value = event.dataTransfer.getData('text/plain')
+    if (value.startsWith('place:')) setDialog({ placeId: value.slice(6) })
+  }
   const recommendedLabel = formatClock(recommendedStart, recommendedStartOffset)
-  return <><div className={`trip-panel-night trip-panel-departure${!trip.departure && canEdit ? ' drop-enabled' : ''}`} onDragOver={(event) => { if (!trip.departure && canEdit) event.preventDefault() }} onDrop={drop}><span className="trip-timeline-anchor-badge"><MapPin aria-hidden="true" size={15} /></span><span className="trip-anchor-copy"><span className="trip-panel-timeline-heading"><strong>Départ</strong><TimelineStatusBadge status={trip.departure ? 'valid' : 'empty'} /></span><small>{trip.departure?.name ?? 'Glissez un POI ou ajoutez un point de départ'}</small></span><span className="trip-anchor-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}><span>Départ conseillé</span><Clock3 aria-hidden="true" size={12} /><strong>{recommendedLabel}</strong></span>{canEdit && (trip.departure ? <span className="trip-anchor-actions"><button type="button" aria-label="Modifier le point de départ" onClick={() => setDialog({ edit: true })}><Pencil size={11} /></button></span> : <button type="button" onClick={() => setDialog({})}><Plus size={11} />Ajouter</button>)}</div>{dialog && <CreateTripNightDialog kind="departure" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? trip.departure?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && trip.departure && !trip.departure.place_id ? trip.departure : undefined} initialNotes={dialog.edit ? trip.departure?.notes : undefined} initialDepartureTime={dialog.edit ? trip.departure?.departure_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && trip.departure) await updateTripDeparture(trip.departure.id, payload); else await addTripDeparture(trip.id, payload); await reload(trip.id); setDialog(null) }} />}</>
+  const focusDeparture = () => {
+    if (!departure) return
+    onStopFocus?.(departure.latitude, departure.longitude)
+    if (departure.place_id) onStopPlaceSelect(departure.place_id)
+  }
+
+  return <>
+    <div
+      className={`trip-panel-night trip-panel-departure${departure ? '' : ' is-empty'}${canEdit && !departure ? ' drop-enabled' : ''}${collapsed ? ' is-collapsed' : ''}${dropActive ? ' is-drop-target' : ''}`}
+      onDragEnter={(event) => { if (!departure && canEdit) { event.preventDefault(); setDropActive(true) } }}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropActive(false) }}
+      onDragOver={(event) => { if (!departure && canEdit) event.preventDefault() }}
+      onDrop={drop}
+    >
+      <span className="trip-timeline-anchor-badge"><MapPin aria-hidden="true" size={15} /></span>
+      <div className="trip-night-content">
+        <div className="trip-night-header-row">
+          <span className="trip-panel-timeline-heading"><strong>Départ</strong><TimelineStatusBadge status={departure ? 'valid' : 'empty'} /></span>
+          <span className="trip-night-header-actions">
+            <span className="trip-anchor-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}><span>Départ conseillé</span><Clock3 aria-hidden="true" size={12} /><strong>{recommendedLabel}</strong></span>
+            <button className="trip-day-collapse-toggle trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} le départ`} aria-expanded={!collapsed} onClick={() => setCollapsed((current) => !current)}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
+          </span>
+        </div>
+        {!collapsed && (departure
+          ? <div className="trip-night-stop" role="button" tabIndex={0} aria-label={departure.place_id ? 'POI' : 'Point cartographique'} onClick={focusDeparture} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusDeparture() } }}>
+              <MapPin aria-hidden="true" size={14} />
+              <span className="trip-night-stop-copy"><strong>{departure.name}</strong><small>{departure.place_id ? 'POI' : 'Point cartographique'}</small></span>
+              {canEdit && <button type="button" aria-label="Modifier le point de départ" onClick={(event) => { event.stopPropagation(); setDialog({ edit: true }) }}><Pencil size={11} /></button>}
+            </div>
+          : <div className="trip-night-placeholder">
+              {dropActive ? <span className="trip-night-drop-indicator">Déposer ici</span> : <><span>Glissez un POI depuis le panneau Lieux</span>{canEdit && <button type="button" onClick={() => setDialog({})}><Plus size={11} />Ajouter</button>}</>}
+            </div>)}
+      </div>
+    </div>
+    {dialog && <CreateTripNightDialog kind="departure" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? departure?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && departure && !departure.place_id ? departure : undefined} initialNotes={dialog.edit ? departure?.notes : undefined} initialDepartureTime={dialog.edit ? departure?.departure_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && departure) await updateTripDeparture(departure.id, payload); else await addTripDeparture(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
+  </>
 }
 
-function Arrival({ trip, canEdit, reload }: { trip: Trip; canEdit: boolean; reload: (id?: string) => Promise<void> }) {
-  const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null); const anchor = trip.days.at(-1)?.stops.at(-1) ?? trip.departure
-  const drop = (event: DragEvent) => { event.preventDefault(); if (trip.arrival || !canEdit) return; const value = event.dataTransfer.getData('text/plain'); if (value.startsWith('place:')) setDialog({ placeId: value.slice(6) }) }
-  const fallback = trip.departure?.name ?? 'Même point que le départ'
-  return <><div className={`trip-panel-night trip-panel-arrival${!trip.arrival && canEdit ? ' drop-enabled' : ''}`} onDragOver={(event) => { if (!trip.arrival && canEdit) event.preventDefault() }} onDrop={drop}><span className="trip-timeline-anchor-badge trip-timeline-arrival-badge"><Flag aria-hidden="true" size={14} /></span><span className="trip-anchor-copy"><span className="trip-panel-timeline-heading"><strong>Arrivée</strong><TimelineStatusBadge status={trip.arrival || trip.departure ? 'valid' : 'empty'} /></span><small>{trip.arrival?.name ?? fallback}</small></span>{canEdit && (trip.arrival ? <span className="trip-anchor-actions"><button type="button" aria-label="Modifier le point d’arrivée" onClick={() => setDialog({ edit: true })}><Pencil size={11} /></button></span> : <button type="button" onClick={() => setDialog({})}><Plus size={11} />Personnaliser</button>)}</div>{dialog && <CreateTripNightDialog kind="arrival" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? trip.arrival?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && trip.arrival && !trip.arrival.place_id ? trip.arrival : undefined} initialNotes={dialog.edit ? trip.arrival?.notes : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && trip.arrival) await updateTripArrival(trip.arrival.id, payload); else await addTripArrival(trip.id, payload); await reload(trip.id); setDialog(null) }} />}</>
+function Arrival({ trip, canEdit, reload, onStopFocus, onStopPlaceSelect }: { trip: Trip; canEdit: boolean; reload: (id?: string) => Promise<void>; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+  const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
+  const [collapsed, setCollapsed] = useState(false)
+  const [dropActive, setDropActive] = useState(false)
+  const anchor = trip.days.at(-1)?.stops.at(-1) ?? trip.departure
+  const arrival = trip.arrival
+  const effectiveArrival = arrival ?? trip.departure
+  const drop = (event: DragEvent) => {
+    event.preventDefault()
+    setDropActive(false)
+    if (arrival || !canEdit) return
+    const value = event.dataTransfer.getData('text/plain')
+    if (value.startsWith('place:')) setDialog({ placeId: value.slice(6) })
+  }
+  const focusArrival = () => {
+    if (!effectiveArrival) return
+    onStopFocus?.(effectiveArrival.latitude, effectiveArrival.longitude)
+    if (effectiveArrival.place_id) onStopPlaceSelect(effectiveArrival.place_id)
+  }
+
+  return <>
+    <div
+      className={`trip-panel-night trip-panel-arrival${effectiveArrival ? '' : ' is-empty'}${canEdit && !arrival ? ' drop-enabled' : ''}${collapsed ? ' is-collapsed' : ''}${dropActive ? ' is-drop-target' : ''}`}
+      onDragEnter={(event) => { if (!arrival && canEdit) { event.preventDefault(); setDropActive(true) } }}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropActive(false) }}
+      onDragOver={(event) => { if (!arrival && canEdit) event.preventDefault() }}
+      onDrop={drop}
+    >
+      <span className="trip-timeline-anchor-badge trip-timeline-arrival-badge"><Flag aria-hidden="true" size={14} /></span>
+      <div className="trip-night-content">
+        <div className="trip-night-header-row">
+          <span className="trip-panel-timeline-heading"><strong>Arrivée</strong><TimelineStatusBadge status={effectiveArrival ? 'valid' : 'empty'} /></span>
+          <span className="trip-night-header-actions">
+            <button className="trip-day-collapse-toggle trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} l’arrivée`} aria-expanded={!collapsed} onClick={() => setCollapsed((current) => !current)}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
+          </span>
+        </div>
+        {!collapsed && (effectiveArrival
+          ? <div className="trip-night-stop" role="button" tabIndex={0} aria-label={arrival ? (arrival.place_id ? 'POI' : 'Point cartographique') : 'Même point que le départ'} onClick={focusArrival} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusArrival() } }}>
+              <MapPin aria-hidden="true" size={14} />
+              <span className="trip-night-stop-copy"><strong>{effectiveArrival.name}</strong><small>{arrival ? (arrival.place_id ? 'POI' : 'Point cartographique') : 'Même point que le départ'}</small></span>
+              {canEdit && <button type="button" aria-label={arrival ? 'Modifier le point d’arrivée' : 'Personnaliser le point d’arrivée'} onClick={(event) => { event.stopPropagation(); setDialog(arrival ? { edit: true } : {}) }}><Pencil size={11} /></button>}
+            </div>
+          : <div className="trip-night-placeholder">
+              {dropActive ? <span className="trip-night-drop-indicator">Déposer ici</span> : <><span>Glissez un POI depuis le panneau Lieux</span>{canEdit && <button type="button" onClick={() => setDialog({})}><Plus size={11} />Personnaliser</button>}</>}
+            </div>)}
+      </div>
+    </div>
+    {dialog && <CreateTripNightDialog kind="arrival" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? arrival?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && arrival && !arrival.place_id ? arrival : undefined} initialNotes={dialog.edit ? arrival?.notes : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && arrival) await updateTripArrival(arrival.id, payload); else await addTripArrival(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
+  </>
 }
 
 function Night({ trip, previous, next, recommendedStart, recommendedStartOffset, activeTarget, canEdit, reload, onSelect, onStopFocus, onStopPlaceSelect }: { trip: Trip; previous: TripDay; next: TripDay; recommendedStart: string | null; recommendedStartOffset: number | null; activeTarget: TripNightTarget | null; canEdit: boolean; reload: (id?: string) => Promise<void>; onSelect: (target: TripNightTarget) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {

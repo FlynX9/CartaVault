@@ -9379,15 +9379,32 @@ html[data-theme='dark'] .geocoding-marker {
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-header-actions {
-  display: flex;
+  position: relative;
+  z-index: 2;
+  display: grid;
   min-width: 0;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: flex-end;
+  grid-template-columns: auto 25px;
+  justify-content: end;
   gap: .3rem;
+  padding-left: .35rem;
+  background: inherit;
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-collapse-toggle {
+  position: static;
+  inset: auto;
+  grid-column: 2;
   flex: 0 0 25px;
+  margin: 0;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-actions .trip-anchor-recommended {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin-right: .05rem;
 }
 
 .trip-planner-panel .trip-panel-night.is-collapsed {
@@ -9901,8 +9918,6 @@ html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--empty > stron
 
 .trip-planner-panel .trip-panel-day > summary,
 .trip-planner-panel .trip-panel-night .trip-night-header-row,
-.trip-planner-panel .trip-panel-departure,
-.trip-planner-panel .trip-panel-arrival,
 .trip-planner-panel .trip-panel-night.is-collapsed,
 .trip-planner-panel .trip-panel-night.is-collapsed .trip-night-header-row {
   height: 76px;
@@ -9986,9 +10001,52 @@ html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--empty > stron
   align-self: stretch;
 }
 
-.trip-planner-panel .trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival) .trip-anchor-recommended {
+.trip-planner-panel .trip-panel-night .trip-anchor-recommended {
   color: var(--cv-color-slate);
   background: var(--cv-surface, #fff);
   border: 1px solid var(--cv-border-subtle, #dfe7ec);
   box-shadow: none;
+}
+
+/* Departure and arrival now follow the same expandable timeline-card pattern
+   as overnight stops. Both anchors intentionally use the same neutral visual
+   language so the coloured day sequence remains the primary focus. */
+.trip-planner-panel .trip-panel-departure,
+.trip-planner-panel .trip-panel-arrival {
+  --trip-anchor-color: var(--cv-color-navy);
+  --trip-night-previous-color: var(--cv-color-slate);
+  --trip-night-next-color: var(--cv-color-slate);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  background: var(--cv-surface, #fff);
+  border-color: var(--cv-border-subtle, #dfe7ec);
+}
+
+.trip-planner-panel .trip-panel-departure .trip-night-header-row,
+.trip-planner-panel .trip-panel-arrival .trip-night-header-row {
+  background: color-mix(in srgb, var(--cv-color-slate) 8%, var(--cv-surface, #fff));
+}
+
+.trip-planner-panel .trip-panel-departure .trip-night-header-row > .trip-panel-timeline-heading > strong,
+.trip-planner-panel .trip-panel-arrival .trip-night-header-row > .trip-panel-timeline-heading > strong {
+  color: var(--cv-color-slate);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-departure .trip-night-header-row,
+html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-header-row {
+  background: color-mix(in srgb, var(--cv-color-slate) 44%, var(--cv-surface, #0d1b2a));
+}
+
+.trip-planner-panel .trip-panel-departure .trip-night-placeholder,
+.trip-planner-panel .trip-panel-arrival .trip-night-placeholder {
+  grid-auto-flow: column;
+  justify-content: center;
+  gap: .45rem;
+}
+
+.trip-planner-panel .trip-panel-departure .trip-night-placeholder button,
+.trip-planner-panel .trip-panel-arrival .trip-night-placeholder button {
+  min-height: 23px;
+  padding: .16rem .42rem;
+  font-size: .58rem;
 }

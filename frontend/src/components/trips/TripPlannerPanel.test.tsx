@@ -622,6 +622,16 @@ describe('TripPlannerPanel', () => {
     expect(container.querySelector('.trip-night-metrics')).not.toBeInTheDocument()
     expect(container.querySelector('.trip-night-kind')).not.toBeInTheDocument()
     expect(container.querySelector('.trip-night-stop')).toHaveAttribute('aria-label', 'Point cartographique')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire le départ' }))
+    expect(screen.queryByText('Maison')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Développer le départ' }))
+    expect(screen.getByText('Maison')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire l’arrivée' }))
+    expect(screen.queryByText('Retour maison')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Développer l’arrivée' }))
+    expect(screen.getByText('Retour maison')).toBeVisible()
   })
 
   it('selects a night as the active itinerary target without opening its editor', async () => {
