@@ -1,4 +1,5 @@
 import { useState, type FocusEvent } from 'react'
+import { Map, Moon, Satellite, Sun, type LucideIcon } from 'lucide-react'
 
 import { AVAILABLE_BASEMAPS, getBasemap, type BasemapId } from '../../map/basemaps'
 
@@ -7,18 +8,43 @@ interface BasemapSelectorProps {
   onBasemapChange: (id: BasemapId) => void
 }
 
+const basemapIcons: Record<BasemapId, LucideIcon> = {
+  'cartavault-light': Sun,
+  'cartavault-dark': Moon,
+  satellite: Satellite,
+  osm: Map,
+}
+
 export function BasemapSelector({ activeBasemapId, onBasemapChange }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
   const activeBasemap = getBasemap(activeBasemapId)
-  const visibleBasemaps = expanded
-    ? [activeBasemap, ...AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== activeBasemapId)]
-    : [activeBasemap]
   const selectBasemap = (id: BasemapId) => {
     onBasemapChange(id)
     setExpanded(false)
   }
   const handleBlur = (event: FocusEvent<HTMLFieldSetElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExpanded(false)
+  }
+  const renderBasemapButton = (basemap: typeof activeBasemap, active: boolean) => {
+    const Icon = basemapIcons[basemap.id]
+    return <button
+      key={basemap.id}
+      type="button"
+      className={active ? 'active' : undefined}
+      aria-pressed={active}
+      aria-expanded={active ? expanded : undefined}
+      aria-label={`Utiliser le fond ${basemap.label}`}
+      title={basemap.label}
+      onClick={() => selectBasemap(basemap.id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          selectBasemap(basemap.id)
+        }
+      }}
+    >
+      <Icon size={16} aria-hidden="true" /><span className="basemap-selector__label">{basemap.shortLabel}</span>
+    </button>
   }
 
   return (
@@ -31,27 +57,8 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange }: BasemapSel
       onBlur={handleBlur}
     >
       <legend>Fond</legend>
-      <div className="basemap-selector-options">
-        {visibleBasemaps.map((basemap) => (
-          <button
-            key={basemap.id}
-            type="button"
-            className={basemap.id === activeBasemapId ? 'active' : undefined}
-            aria-pressed={basemap.id === activeBasemapId}
-            aria-expanded={basemap.id === activeBasemapId ? expanded : undefined}
-            aria-label={`Utiliser le fond ${basemap.label}`}
-            onClick={() => selectBasemap(basemap.id)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                selectBasemap(basemap.id)
-              }
-            }}
-          >
-            {basemap.shortLabel}
-          </button>
-        ))}
-      </div>
+      {expanded && <div className="basemap-selector-options">{AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== activeBasemapId).map((basemap) => renderBasemapButton(basemap, false))}</div>}
+      {renderBasemapButton(activeBasemap, true)}
     </fieldset>
   )
 }

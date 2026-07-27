@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, ListFilter } from 'lucide-react'
+import { ListFilter } from 'lucide-react'
 
 import type { PlaceStatusSummary } from '../../types/status'
 import { useI18n } from '../../i18n/useI18n'
@@ -25,8 +25,7 @@ export function StatusLegend({ statuses }: StatusLegendProps) {
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setExpanded(false) }}
     >
       <button className="status-legend__toggle" type="button" aria-expanded={expanded} aria-label={expanded ? t('map.legend.hide') : t('map.legend.show')} onClick={() => setExpanded(true)}>
-        <span><ListFilter size={15} aria-hidden="true" />{t('map.legend.title')}</span>
-        {expanded ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
+        <span><ListFilter size={16} aria-hidden="true" /><span className="status-legend__label">{t('map.legend.title')}</span></span>
       </button>
       <ul aria-hidden={!expanded}>
         {statuses.map((status) => (

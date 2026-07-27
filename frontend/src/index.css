@@ -8899,3 +8899,215 @@ html[data-theme='dark'] .status-marker.selected {
     max-height: calc(100% - 1.2rem);
   }
 }
+
+/* Fixed map-control slots keep the compact tools aligned. Each tool is anchored
+   to the right of its own slot, so opening it can only reveal content leftward. */
+.map-workspace .map-overlay-controls {
+  --cv-map-overlay-control-size: 3.5rem;
+  position: absolute;
+  z-index: var(--cv-z-map-controls);
+  top: .8rem;
+  right: .8rem;
+  left: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: .45rem;
+  pointer-events: none;
+}
+
+.map-workspace .map-overlay-control-slot {
+  position: relative;
+  width: var(--cv-map-overlay-control-size);
+  height: var(--cv-map-overlay-control-size);
+  flex: 0 0 var(--cv-map-overlay-control-size);
+  pointer-events: auto;
+  transition: width 180ms ease, flex-basis 180ms ease;
+}
+
+.map-workspace .map-overlay-control-slot:hover,
+.map-workspace .map-overlay-control-slot:focus-within {
+  z-index: 3;
+}
+
+.map-workspace .map-overlay-control-slot > :is(.status-legend, .geographic-search, .basemap-selector) {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+}
+
+.map-workspace .map-overlay-controls .status-legend,
+.map-workspace .map-overlay-controls .geographic-search,
+.map-workspace .map-overlay-controls .basemap-selector,
+.map-workspace .map-overlay-controls .geographic-search form > button {
+  box-sizing: border-box;
+  width: var(--cv-map-overlay-control-size);
+  min-width: var(--cv-map-overlay-control-size);
+  height: var(--cv-map-overlay-control-size);
+}
+
+.map-workspace .map-overlay-controls .geographic-search form {
+  width: 100%;
+  height: var(--cv-map-overlay-control-size);
+}
+
+.map-workspace .map-overlay-controls .status-legend {
+  min-height: var(--cv-map-overlay-control-size);
+  color: var(--cv-color-navy);
+  background: var(--cv-surface, rgb(250 250 248 / 97%));
+  border-color: var(--cv-border-strong, rgb(43 62 89 / 14%));
+  border-radius: .72rem;
+}
+
+.map-workspace .map-overlay-controls .status-legend__toggle {
+  min-height: var(--cv-map-overlay-control-size);
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+}
+
+.map-workspace .map-overlay-controls .status-legend__toggle > span { gap: 0; }
+.map-workspace .map-overlay-controls .status-legend__toggle > span > svg {
+  padding: 0;
+  color: currentColor;
+  background: transparent;
+  border-radius: 0;
+}
+
+.map-workspace .map-overlay-controls .status-legend__label,
+.map-workspace .map-overlay-controls .basemap-selector__label {
+  display: none;
+}
+
+.map-workspace .map-overlay-controls .status-legend--expanded {
+  width: min(15rem, calc(100vw - 10rem));
+  max-width: min(15rem, calc(100vw - 10rem));
+  height: auto;
+}
+
+.map-workspace .map-overlay-control-slot--legend:has(.status-legend--expanded) {
+  width: min(15rem, calc(100vw - 10rem));
+  flex-basis: min(15rem, calc(100vw - 10rem));
+}
+
+.map-workspace .map-overlay-controls .status-legend--expanded .status-legend__toggle {
+  justify-content: flex-start;
+  gap: .45rem;
+  padding: .55rem .65rem;
+}
+
+.map-workspace .map-overlay-controls .status-legend--expanded .status-legend__toggle > span { gap: .45rem; }
+.map-workspace .map-overlay-controls .status-legend--expanded .status-legend__label { display: inline; }
+.map-workspace .map-overlay-controls .status-legend--expanded ul { max-height: 16rem; }
+.map-workspace .map-overlay-controls .status-legend--expanded li > :last-child {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.map-workspace .map-overlay-control-slot--search {
+  --cv-map-search-expanded-width: min(28rem, calc(100vw - 10rem));
+}
+
+.map-workspace .map-overlay-control-slot--search .geographic-search {
+  max-width: var(--cv-map-search-expanded-width);
+}
+
+.map-workspace .map-overlay-control-slot--search .geographic-search:hover,
+.map-workspace .map-overlay-control-slot--search .geographic-search:focus-within,
+.map-workspace .map-overlay-control-slot--search .geographic-search.is-pinned-open {
+  width: var(--cv-map-search-expanded-width);
+}
+
+.map-workspace .map-overlay-control-slot--search:has(.geographic-search:hover),
+.map-workspace .map-overlay-control-slot--search:has(.geographic-search:focus-within),
+.map-workspace .map-overlay-control-slot--search:has(.geographic-search.is-pinned-open) {
+  width: var(--cv-map-search-expanded-width);
+  flex-basis: var(--cv-map-search-expanded-width);
+}
+
+.map-workspace .map-overlay-controls .basemap-selector {
+  display: flex;
+  min-inline-size: 0;
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--cv-color-navy);
+  background: var(--cv-surface, rgb(250 250 248 / 97%));
+  border-color: var(--cv-border-strong, rgb(43 62 89 / 14%));
+  border-radius: .72rem;
+}
+
+.map-workspace .map-overlay-controls .basemap-selector--expanded {
+  width: calc((4 * var(--cv-map-overlay-control-size)) + .75rem);
+  gap: .25rem;
+}
+
+.map-workspace .map-overlay-control-slot--basemap:has(.basemap-selector--expanded) {
+  width: calc((4 * var(--cv-map-overlay-control-size)) + .75rem);
+  flex-basis: calc((4 * var(--cv-map-overlay-control-size)) + .75rem);
+}
+
+.map-workspace .map-overlay-controls .basemap-selector > button,
+.map-workspace .map-overlay-controls .basemap-selector-options button {
+  display: grid;
+  width: var(--cv-map-overlay-control-size);
+  min-width: var(--cv-map-overlay-control-size);
+  height: var(--cv-map-overlay-control-size);
+  min-height: var(--cv-map-overlay-control-size);
+  padding: 0;
+  color: var(--cv-color-slate);
+  background: transparent;
+  border: 0;
+  border-radius: .65rem;
+  place-items: center;
+}
+
+.map-workspace .map-overlay-controls .basemap-selector > button.active {
+  color: var(--cv-color-slate);
+  background: transparent;
+  border: 0;
+}
+
+.map-workspace .map-overlay-controls .basemap-selector > button:hover,
+.map-workspace .map-overlay-controls .basemap-selector > button:focus-visible,
+.map-workspace .map-overlay-controls .basemap-selector-options button:hover,
+.map-workspace .map-overlay-controls .basemap-selector-options button:focus-visible {
+  color: var(--cv-color-teal);
+  background: var(--cv-surface-muted, var(--cv-color-mist));
+  outline: 0;
+}
+
+.map-workspace .map-overlay-controls .basemap-selector-options {
+  position: static;
+  display: flex;
+  min-width: 0;
+  gap: .25rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .map-workspace .map-overlay-controls {
+    top: .7rem;
+    right: .7rem;
+  }
+
+  .map-workspace .map-overlay-control-slot--search {
+    --cv-map-search-expanded-width: min(21rem, calc(100vw - 9rem));
+  }
+
+  .map-workspace .map-overlay-control-slot--legend:has(.status-legend--expanded),
+  .map-workspace .map-overlay-controls .status-legend--expanded {
+    width: min(14rem, calc(100vw - 9rem));
+    max-width: min(14rem, calc(100vw - 9rem));
+    flex-basis: min(14rem, calc(100vw - 9rem));
+  }
+}
