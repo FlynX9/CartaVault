@@ -483,6 +483,26 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('Conduite : 44 min')).toBeVisible()
   })
 
+  it('reviews the global optimization with a positive apply action before changing days', async () => {
+    const stops = [0, 1].map((index) => ({ id: `global-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
+    const optimizable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
+    const proposal = { manual_stop_ids: ['global-0', 'global-1'], optimized_stop_ids: ['global-1', 'global-0'], before: 17_520, after: 14_880, gain: 2_640, metric: 'duration' as const, before_distance_meters: 214_000, after_distance_meters: 176_000, distance_gain_meters: 38_000, before_duration_seconds: 17_520, after_duration_seconds: 14_880, duration_gain_seconds: 2_640 }
+    vi.mocked(listTrips).mockResolvedValue([optimizable]); vi.mocked(getTrip).mockResolvedValue(optimizable)
+    vi.mocked(optimizeTripDay).mockResolvedValue(proposal)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={optimizable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Optimiser le voyage' }))
+
+    expect(await screen.findByRole('heading', { name: 'Résultat pour 1 journée' })).toBeVisible()
+    expect(screen.getByText('Gain total : 38 km · 44 min')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Appliquer l’optimisation' })).toHaveClass('primary')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(confirmTripOptimization).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Appliquer l’optimisation' }))
+    await waitFor(() => expect(confirmTripOptimization).toHaveBeenCalledWith('day-1', ['global-1', 'global-0']))
+  })
+
   it('edits the fixed departure without deleting it first', async () => {
     const withDeparture = { ...trip, departure: { id: 'departure-1', trip_id: 'trip-1', place_id: null, name: 'Ancien départ', latitude: 48, longitude: 2, address: null, notes: null, departure_time: null } } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withDeparture]); vi.mocked(getTrip).mockResolvedValue(withDeparture); vi.mocked(updateTripDeparture).mockResolvedValue(withDeparture.departure)

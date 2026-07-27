@@ -20,6 +20,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const canEdit = poiMap.can_edit === true
   const [trips, setTrips] = useState<Trip[]>([])
   const [optimization, setOptimization] = useState<{ dayId: string; value: TripOptimization } | null>(null)
+  const [globalOptimization, setGlobalOptimization] = useState<Array<{ dayId: string; dayNumber: number; value: TripOptimization }> | null>(null)
   const [draftName, setDraftName] = useState('')
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -162,18 +163,21 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     if (!trip) return
     const optimizableDays = trip.days.filter((day) => day.stops.length >= 2)
     if (!optimizableDays.length) return
-    void confirm({
-      title: 'Optimiser tout le voyage ?',
-      message: `${optimizableDays.length} ${optimizableDays.length > 1 ? 'journées seront optimisées' : 'journée sera optimisée'} en conservant les étapes verrouillées, les départs et les arrivées.`,
-    }).then((confirmed) => {
-      if (!confirmed) return
-      void run(async () => {
-        for (const day of optimizableDays) {
-          const proposal = await optimizeTripDay(day.id)
-          await confirmTripOptimization(day.id, proposal.optimized_stop_ids)
-        }
-        await reload(trip.id)
-      })
+    void run(async () => {
+      const proposals = await Promise.all(optimizableDays.map(async (day) => ({
+        dayId: day.id,
+        dayNumber: day.day_number,
+        value: await optimizeTripDay(day.id),
+      })))
+      setGlobalOptimization(proposals)
+    })
+  }
+  const applyGlobalOptimization = () => {
+    if (!trip || !globalOptimization) return
+    void run(async () => {
+      for (const proposal of globalOptimization) await confirmTripOptimization(proposal.dayId, proposal.value.optimized_stop_ids)
+      setGlobalOptimization(null)
+      await reload(trip.id)
     })
   }
   const exportGpx = async () => {
@@ -214,8 +218,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
         </div>)}</div></DayCollapseContext.Provider>
         {canEdit && <div className="trip-panel-journeys-actions trip-panel-route-actions" aria-label="Actions globales des trajets">
           <button className={routeFeedback === 'all' ? 'route-success' : undefined} type="button" disabled={busy || !trip.days.some((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))} onClick={recalculateAllRoutes}>{routeFeedback === 'all' ? <><Check size={13} />Itinéraires rafraîchis</> : <><Route size={13} />Calculer les itinéraires</>}</button>
-          <button type="button" disabled={busy || !trip.days.some((day) => day.stops.length >= 2)} onClick={optimizeAllDays}><Navigation size={13} />Optimiser le voyage</button>
+          <button type="button" disabled={busy || globalOptimization !== null || !trip.days.some((day) => day.stops.length >= 2)} onClick={optimizeAllDays}><Navigation size={13} />Optimiser le voyage</button>
         </div>}
+        {globalOptimization && <GlobalOptimizationReview proposals={globalOptimization} busy={busy} onCancel={() => setGlobalOptimization(null)} onApply={applyGlobalOptimization} />}
       </details>
     </>}</>}</>}
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
@@ -258,6 +263,16 @@ function stopTypeLabel(value: Trip['days'][number]['stops'][number]['stop_type']
 }
 
 function OptimizationMetrics({ value }: { value: TripOptimization }) { return <div className="trip-optimization-comparison" aria-label="Comparaison de l’optimisation"><div><strong>Avant</strong><span>Distance : {formatRouteDistance(value.before_distance_meters)}</span><span>Conduite : {formatRouteDuration(value.before_duration_seconds)}</span></div><div><strong>Après</strong><span>Distance : {formatRouteDistance(value.after_distance_meters)}</span><span>Conduite : {formatRouteDuration(value.after_duration_seconds)}</span></div><div><strong>Gain</strong><span>Distance : {formatRouteDistance(value.distance_gain_meters)}</span><span>Conduite : {formatRouteDuration(value.duration_gain_seconds)}</span></div></div> }
+
+function GlobalOptimizationReview({ proposals, busy, onCancel, onApply }: { proposals: Array<{ dayId: string; dayNumber: number; value: TripOptimization }>; busy: boolean; onCancel: () => void; onApply: () => void }) {
+  const totalDistanceGain = proposals.reduce((total, proposal) => total + proposal.value.distance_gain_meters, 0)
+  const totalDurationGain = proposals.reduce((total, proposal) => total + proposal.value.duration_gain_seconds, 0)
+  return <section className="trip-panel-global-optimization" aria-live="polite" aria-labelledby="global-optimization-title">
+    <header><div><p className="cv-workspace-panel__eyebrow">Optimisation prête</p><h3 id="global-optimization-title">Résultat pour {proposals.length} {proposals.length > 1 ? 'journées' : 'journée'}</h3></div><span>Gain total : {formatRouteDistance(totalDistanceGain)} · {formatRouteDuration(totalDurationGain)}</span></header>
+    <ul>{proposals.map((proposal) => <li key={proposal.dayId}><strong>Jour {proposal.dayNumber}</strong><OptimizationMetrics value={proposal.value} /></li>)}</ul>
+    <footer><button type="button" disabled={busy} onClick={onCancel}>Annuler</button><button className="primary" type="button" disabled={busy} onClick={onApply}><Check size={12} />Appliquer l’optimisation</button></footer>
+  </section>
+}
 function Metric({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd aria-label={`${label} : ${value}`}>{value}</dd></div> }
 function TripExportMenu({ onGpx }: { onGpx: () => void }) {
   const menuRef = useRef<HTMLDetailsElement>(null)
