@@ -328,6 +328,7 @@ describe('TripPlannerPanel', () => {
     expect(day).not.toBeNull()
     vi.mocked(listTrips).mockClear()
     onTripChange.mockClear()
+    vi.mocked(getTripSummary).mockImplementationOnce(() => new Promise(() => undefined))
     fireEvent.drop(day!, { dataTransfer: { getData: () => 'place:place-42' } })
     await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
     await waitFor(() => expect(onTripChange).toHaveBeenCalled())

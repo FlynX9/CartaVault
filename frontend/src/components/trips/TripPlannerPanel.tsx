@@ -104,10 +104,19 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const refreshTripSilently = async (id = trip?.id) => {
     if (!id) return
     const selectionVersion = selectionVersionRef.current
-    const details = await loadTripDetails(id)
+    const loaded = await getTrip(id)
     if (selectionVersion !== selectionVersionRef.current) return
-    applyLoadedTrip(details)
-    setTrips((current) => current.map((item) => item.id === details.loaded.id ? details.loaded : item))
+    onTripChangeRef.current(loaded)
+    setTrips((current) => current.map((item) => item.id === loaded.id ? loaded : item))
+
+    void Promise.all([
+      getTripSummary(id),
+      Promise.all(loaded.days.map((day) => getTripDaySummary(day.id))),
+    ]).then(([loadedSummary, perDay]) => {
+      if (selectionVersion !== selectionVersionRef.current) return
+      setSummary(loadedSummary)
+      setDaySummaries(Object.fromEntries(perDay.map((item) => [item.day_id, item])))
+    }).catch(() => undefined)
   }
   useEffect(() => {
     let active = true
