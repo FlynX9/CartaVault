@@ -49,7 +49,7 @@ describe('TopBar account entry', () => {
     const api = screen.getByRole('menuitem', { name: 'API' })
     expect(options).toBeVisible()
     expect(administration).toBeVisible()
-    expect(api).toHaveAttribute('href', 'http://localhost:8000/docs')
+    expect(api).toHaveAttribute('href', `${window.location.origin}/api/docs`)
     expect(api).toHaveAttribute('target', '_blank')
     expect(api).toHaveAttribute('rel', 'noopener noreferrer')
     expect(options.compareDocumentPosition(api) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

@@ -19,7 +19,9 @@ interface TopBarProps {
   onOpenRegistrationRequests: () => void
 }
 
-const API_DOCUMENTATION_URL = API_BASE_URL === '/api' ? 'http://localhost:8000/docs' : `${API_BASE_URL}/docs`
+const API_DOCUMENTATION_URL = /^https?:\/\//.test(API_BASE_URL)
+  ? `${API_BASE_URL}/docs`
+  : new URL(`${API_BASE_URL}/docs`, window.location.origin).toString()
 
 export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth()
