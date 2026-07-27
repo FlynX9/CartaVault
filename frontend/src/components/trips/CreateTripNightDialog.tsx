@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { BedDouble, MapPin, Search, Upload, X } from 'lucide-react'
+import { BedDouble, ClipboardPaste, MapPin, Search, Upload, X } from 'lucide-react'
 
 import type { TripArrivalCreatePayload, TripDepartureCreatePayload, TripNightCreatePayload } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
@@ -59,6 +59,20 @@ interface StopProps extends CommonProps {
 
 type Props = NightProps | DepartureProps | ArrivalProps | StopProps
 
+type ReservationText = { name: string; address: string; latitude: number | null; longitude: number | null }
+
+function extractReservationText(value: string): ReservationText | null {
+  const lines = value.replace(/\r/g, '').split('\n').map((line) => line.trim()).filter(Boolean)
+  if (!lines.length) return null
+  const coordinateMatch = value.match(/(?:lat(?:itude)?\s*[:=]?\s*)?(-?\d{1,2}(?:[.,]\d+)?)\s*[,;]\s*(?:lon(?:gitude)?\s*[:=]?\s*)?(-?\d{1,3}(?:[.,]\d+)?)/i)
+  const latitude = coordinateMatch ? Number(coordinateMatch[1].replace(',', '.')) : null
+  const longitude = coordinateMatch ? Number(coordinateMatch[2].replace(',', '.')) : null
+  const useful = lines.filter((line) => !/@|https?:\/\/|\b(?:booking|confirmation|reservation|check-in|check-out)\b/i.test(line))
+  const name = useful.find((line) => line.length > 2) ?? lines[0]
+  const address = useful.find((line) => /\d{1,5}\s+.+|\b(?:rue|avenue|boulevard|road|street|lane|place|hotel|hôtel)\b/i.test(line) && line !== name) ?? useful.find((line) => line !== name) ?? ''
+  return { name, address, latitude: Number.isFinite(latitude) ? latitude : null, longitude: Number.isFinite(longitude) ? longitude : null }
+}
+
 export function CreateTripNightDialog(props: Props) {
   const { mapName, countryCode, focus, initialPlaceId, initialLocation, onClose } = props
   const isDeparture = props.kind === 'departure'
@@ -70,6 +84,7 @@ export function CreateTripNightDialog(props: Props) {
   const searchController = useRef<AbortController | null>(null)
   const placeController = useRef<AbortController | null>(null)
   const [query, setQuery] = useState('')
+  const [reservationText, setReservationText] = useState('')
   const [results, setResults] = useState<GeocodingResult[]>([])
   const [selectedResult, setSelectedResult] = useState<GeocodingResult | null>(initialLocation ? { id: 'current-anchor', name: initialLocation.name, formattedAddress: initialLocation.address ?? '', latitude: initialLocation.latitude, longitude: initialLocation.longitude, source: 'current' } : null)
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null)
@@ -106,6 +121,26 @@ export function CreateTripNightDialog(props: Props) {
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'La recherche géographique est indisponible.')
     } finally { if (!controller.signal.aborted) setLoading(false) }
+  }
+
+  const analyzeReservation = async () => {
+    const extracted = extractReservationText(reservationText)
+    if (!extracted) { setError('Collez une confirmation ou des coordonnées à analyser.'); return }
+    setLoading(true); setError(null); setSelectedPlace(null); setResults([])
+    try {
+      if (extracted.latitude !== null && extracted.longitude !== null) {
+        setSelectedResult({ id: 'reservation-coordinates', name: extracted.name, formattedAddress: extracted.address, latitude: extracted.latitude, longitude: extracted.longitude, source: 'reservation' })
+        setQuery(extracted.address || extracted.name)
+        return
+      }
+      const lookup = extracted.address || extracted.name
+      const found = await geocodingService.search(lookup, { focus, countryCode, limit: 6 })
+      if (!found.length) { setError('Aucun emplacement n’a pu être déduit de ce texte. Vérifiez l’adresse ou ajoutez des coordonnées.'); return }
+      const preferred = { ...found[0], name: extracted.name || found[0].name, formattedAddress: extracted.address || found[0].formattedAddress }
+      setSelectedResult(preferred); setQuery(lookup)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'L’analyse de la confirmation est indisponible.')
+    } finally { setLoading(false) }
   }
 
   const drop = (event: DragEvent) => {
@@ -169,6 +204,7 @@ export function CreateTripNightDialog(props: Props) {
           <section className="trip-night-location"><h3>Emplacement</h3><div className="trip-night-search"><label><span className="visually-hidden">Adresse ou coordonnées GPS</span><Search size={16} /><input ref={input} type="search" value={query} placeholder="Adresse ou coordonnées GPS…" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void search() } }} /></label><button type="button" disabled={loading} onClick={() => void search()}>{loading ? 'Recherche…' : 'Rechercher'}</button></div>
             {results.length > 0 && <div className="trip-night-results" role="listbox" aria-label="Résultats géographiques">{results.map((result) => <button key={result.id} type="button" role="option" aria-selected={selectedResult?.id === result.id} onClick={() => { setSelectedResult(result); setSelectedPlace(null); setResults([]); setQuery(result.formattedAddress) }}><MapPin size={15} /><span><strong>{result.name}</strong><small>{result.formattedAddress} · {formatCoordinates(result.latitude, result.longitude)}</small></span></button>)}</div>}
             <div className={`trip-night-drop${selectedPlace ? ' selected' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={drop}><Upload size={19} /><span><strong>Ou glissez un POI ici</strong><small>Depuis le panneau Lieux</small></span></div>
+            {!isStop && !isDeparture && !isArrival && <section className="trip-night-reservation"><h4><ClipboardPaste size={14} />Coller une confirmation</h4><textarea aria-label="Texte de confirmation de réservation" value={reservationText} onChange={(event) => setReservationText(event.target.value)} rows={4} maxLength={10000} placeholder="Collez une réservation d’hôtel ou un e-mail : le nom, l’adresse ou les coordonnées seront proposés." /><div><small>Les coordonnées GPS sont détectées directement. Sinon, CartaVault recherche l’adresse extraite.</small><button type="button" disabled={loading || !reservationText.trim()} onClick={() => void analyzeReservation()}>Analyser le texte</button></div></section>}
             {selectionName && <article className="trip-night-selection">{isDeparture || isArrival || isStop ? <MapPin size={20} /> : <BedDouble size={20} />}<span><strong>{selectionName}</strong><small>{selectionAddress}</small><small>{selectionCoordinates}</small></span><button type="button" onClick={() => { setSelectedPlace(null); setSelectedResult(null); setQuery('') }}>Changer</button></article>}
           </section>
           {!selectedPlace && selectedResult && <label className="form-field"><span>{isStop ? 'Nom du lieu' : isDeparture ? 'Nom du point de départ' : isArrival ? 'Nom du point d’arrivée' : 'Nom de l’hébergement'}</span><input name="name" defaultValue={selectedResult.name} maxLength={255} /></label>}

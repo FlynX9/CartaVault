@@ -60,6 +60,20 @@ def normalize_stop_order(day: TripDay) -> None:
     for index, stop in enumerate(sorted(day.stops, key=lambda item: item.sort_order)): stop.sort_order = index
 
 
+def previous_day_last_stop(day: TripDay) -> TripStop | None:
+    """Return the last real stop from the day before ``day``.
+
+    A night remains optional: when it has not been defined, the following day
+    naturally starts where the previous one ended.  This is deliberately a
+    routing-only fallback; it does not create a synthetic overnight record.
+    """
+    previous_days = [candidate for candidate in day.trip.days if candidate.sort_order < day.sort_order]
+    if not previous_days:
+        return None
+    previous_day = max(previous_days, key=lambda candidate: candidate.sort_order)
+    return max(previous_day.stops, key=lambda stop: stop.sort_order, default=None)
+
+
 def day_coordinates(day: TripDay) -> tuple[list[tuple[float, float]], list[str]]:
     coordinates: list[tuple[float, float]] = []
     labels: list[str] = []
@@ -67,6 +81,8 @@ def day_coordinates(day: TripDay) -> tuple[list[tuple[float, float]], list[str]]
         coordinates.append((day.previous_night.longitude, day.previous_night.latitude)); labels.append(f"night:{day.previous_night.id}")
     elif day.day_number == 1 and day.trip.departure:
         coordinates.append((day.trip.departure.longitude, day.trip.departure.latitude)); labels.append(f"departure:{day.trip.departure.id}")
+    elif previous_stop := previous_day_last_stop(day):
+        coordinates.append((previous_stop.longitude, previous_stop.latitude)); labels.append(f"previous-stop:{previous_stop.id}")
     for stop in sorted(day.stops, key=lambda item: item.sort_order):
         coordinates.append((stop.longitude, stop.latitude)); labels.append(f"stop:{stop.id}")
     if day.next_night:

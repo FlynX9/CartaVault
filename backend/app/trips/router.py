@@ -23,7 +23,7 @@ from app.trips.permissions import require_arrival_role, require_day_role, requir
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, stale, resolve_constraint_country
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, stale, resolve_constraint_country
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
 from app.quotas.registry import QuotaKey
@@ -424,7 +424,7 @@ def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Dep
 def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
     day, access = require_day_role(session, day_id, user, "editor"); stops = sorted(day.stops, key=lambda item: item.sort_order)
     if len(stops) < 2: raise HTTPException(422, "At least two stops are required for optimization")
-    start = day.previous_night or (day.trip.departure if day.day_number == 1 else None)
+    start = day.previous_night or (day.trip.departure if day.day_number == 1 else previous_day_last_stop(day))
     end = day.next_night or ((day.trip.arrival or day.trip.departure) if day.day_number == len(day.trip.days) else None)
     points = ([start] if start else []) + stops + ([end] if end else [])
     if provider.provider_id == "google":

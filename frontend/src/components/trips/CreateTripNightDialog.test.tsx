@@ -34,6 +34,16 @@ describe('CreateTripNightDialog', () => {
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-1' })))
   })
 
+  it('extracts a pasted reservation with GPS coordinates for a night', async () => {
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(<CreateTripNightDialog previousDayId="day-1" nextDayId="day-2" focus={[50, 4]} onClose={vi.fn()} onCreate={onCreate} />)
+    fireEvent.change(screen.getByLabelText('Texte de confirmation de réservation'), { target: { value: 'Hôtel des Alpes\n12 rue du Lac, Annecy\nLatitude: 45.8992, Longitude: 6.1294' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyser le texte' }))
+    expect(await screen.findByText('Hôtel des Alpes')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Hôtel des Alpes', address: '12 rue du Lac, Annecy', latitude: 45.8992, longitude: 6.1294 })))
+  })
+
   it('creates the departure without night day identifiers', async () => {
     vi.mocked(getPlaceDetails).mockResolvedValue({ id: 'place-home', name: 'Maison', latitude: 50.2, longitude: 4.4, map: { id: 'map-1', name: 'Belgique', country: {} } } as never)
     const onCreate = vi.fn().mockResolvedValue(undefined)
