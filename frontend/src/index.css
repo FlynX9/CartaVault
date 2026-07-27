@@ -9708,8 +9708,8 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   outline-offset: 2px;
 }
 
-/* Day and night colors identify the timeline permanently. Selection is shown
-   separately with a stronger outline instead of changing the header fill. */
+/* Day and night colors identify the timeline permanently. Selection lifts the
+   card above the timeline instead of thickening its border. */
 .trip-planner-panel .trip-panel-day > summary {
   background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 7%, var(--cv-surface, #fff));
   border-radius: 10px 10px 0 0;
@@ -9720,8 +9720,12 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 .trip-planner-panel .trip-panel-day.is-active {
-  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 72%, var(--cv-border-subtle, #dfe7ec));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 50%, transparent);
+  z-index: 2;
+  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, var(--cv-border-subtle, #dfe7ec));
+  box-shadow:
+    0 5px 11px color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 14%, transparent),
+    0 2px 4px rgb(13 27 42 / 11%);
+  transform: translateY(-1px);
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-header-row {
@@ -9733,16 +9737,22 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 .trip-planner-panel .trip-panel-night.is-active {
+  z-index: 2;
   border-color: color-mix(
     in srgb,
-    var(--trip-night-previous-color, var(--cv-color-teal)) 50%,
-    var(--trip-night-next-color, var(--cv-color-teal))
+    var(--trip-night-previous-color, var(--cv-color-teal)) 30%,
+    var(--cv-border-subtle, #dfe7ec)
   );
-  box-shadow: 0 0 0 2px color-mix(
-    in srgb,
-    var(--trip-night-next-color, var(--cv-color-teal)) 50%,
-    transparent
-  );
+  box-shadow:
+    0 5px 11px color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 14%, transparent),
+    0 2px 4px rgb(13 27 42 / 11%);
+  transform: translateY(-1px);
+}
+
+html[data-theme='dark'] .trip-planner-panel :is(.trip-panel-day, .trip-panel-night).is-active {
+  box-shadow:
+    0 6px 13px rgb(0 0 0 / 30%),
+    0 2px 5px rgb(0 0 0 / 20%);
 }
 
 /* Keep the timeline compact at rest. The insertion affordance expands only
