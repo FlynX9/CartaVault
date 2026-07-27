@@ -4917,10 +4917,17 @@ body {
 /* The popup deliberately exposes only the summary fields needed while navigating. */
 .place-map-popup .popup-hero { grid-template-columns: 200px minmax(0, 1fr); align-items: start; gap: 0.95rem; padding: 1rem; }
 .place-map-popup .popup-hero .popup-gallery { width: 200px; height: 160px; border-radius: 12px; }
+.place-map-popup .popup-gallery { position: relative; }
+.place-map-popup .popup-gallery__navigation { position: absolute; right: 0.5rem; bottom: 0.5rem; left: auto; display: inline-flex; width: auto; min-height: 1.65rem; align-items: center; gap: 0.15rem; margin: 0; padding: 0.16rem; color: #fff; background: rgb(13 27 42 / 62%); border: 1px solid rgb(255 255 255 / 16%); border-radius: 999px; box-shadow: 0 2px 8px rgb(0 0 0 / 18%); backdrop-filter: blur(6px); }
+.place-map-popup .popup-gallery__navigation button { display: grid; width: 1.3rem; height: 1.3rem; padding: 0; place-items: center; color: inherit; background: transparent; border: 0; border-radius: 50%; cursor: pointer; }
+.place-map-popup .popup-gallery__navigation button:hover:not(:disabled), .place-map-popup .popup-gallery__navigation button:focus-visible { background: rgb(255 255 255 / 20%); outline: 0; }
+.place-map-popup .popup-gallery__navigation button:disabled { opacity: 0.4; cursor: default; }
+.place-map-popup .popup-gallery__navigation span { min-width: 1.8rem; color: inherit; font-size: 0.67rem; font-variant-numeric: tabular-nums; font-weight: 700; text-align: center; }
 .place-map-popup .popup-overview { gap: 0.35rem; }
 .place-map-popup .popup-heading { min-width: 0; padding: 0; }
 .place-map-popup .popup-heading > .popup-heading-actions { width: auto; }
 .place-map-popup .popup-heading h2 { min-width: 0; flex: 1 1 auto; overflow: hidden; font-size: 1.02rem; font-weight: 750; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.place-map-popup .popup-heading h2:focus { outline: 0; }
 .place-map-popup .popup-title-marker { width: 26px; height: 26px; flex-basis: 26px; }
 .place-map-popup .popup-heading-actions { flex: 0 0 auto; }
 .place-map-popup .popup-heading-actions button { width: 30px; min-width: 30px; height: 30px; min-height: 30px; }
