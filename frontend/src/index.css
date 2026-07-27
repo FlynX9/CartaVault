@@ -8668,6 +8668,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   border-bottom: 1px solid var(--cv-border-subtle, rgb(43 62 89 / 10%));
 }
 .dashboard-card > header h2 { margin: 0; font-size: .93rem; letter-spacing: -.015em; }
+.dashboard-recent > header h2 { white-space: nowrap; }
 .dashboard-card > header > span { color: var(--cv-color-gray); font-size: .66rem; font-weight: 700; }
 .dashboard-text-action {
   padding: .35rem .5rem;

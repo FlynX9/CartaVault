@@ -102,8 +102,6 @@ const callbacks = {
   onCreateTrip: vi.fn(),
   onOpenPlace: vi.fn(),
   onOpenTrip: vi.fn(),
-  onViewAllPlaces: vi.fn(),
-  onViewAllTrips: vi.fn(),
 }
 
 const editableMap: PoiMap = {

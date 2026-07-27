@@ -42,8 +42,6 @@ interface DashboardPageProps {
   onCreateTrip: (mapId: string) => void
   onOpenPlace: (placeId: string, mapId: string) => void
   onOpenTrip: (tripId: string, mapId: string) => void
-  onViewAllPlaces: () => void
-  onViewAllTrips: () => void
 }
 
 const EMPTY_DASHBOARD: Dashboard = {
@@ -71,8 +69,6 @@ export function DashboardPage({
   onCreateTrip,
   onOpenPlace,
   onOpenTrip,
-  onViewAllPlaces,
-  onViewAllTrips,
 }: DashboardPageProps) {
   const { user } = useAuth()
   const { t, formatDate, formatNumber } = useI18n()
@@ -271,7 +267,7 @@ export function DashboardPage({
 
     <div className="dashboard-grid dashboard-grid--recent">
       <section className="dashboard-card dashboard-recent">
-        <header><div><p>{t('dashboard.recent')}</p><h2>{t('dashboard.recentPlaces')}</h2></div><button type="button" className="dashboard-text-action" onClick={onViewAllPlaces}>{t('dashboard.viewAll')}</button></header>
+        <header><div><p>{t('dashboard.recent')}</p><h2>{t('dashboard.recentPlaces')}</h2></div></header>
         {dashboard.recent_places.length === 0 ? <DashboardEmpty /> : <ul>{dashboard.recent_places.map((place) => <li key={place.id}>
           <button type="button" onClick={() => onOpenPlace(place.id, place.map_id)}>
             <span className="dashboard-recent-icon">{place.primary_photo_id ? <img src={getPhotoFileUrl(place.primary_photo_id)} alt="" /> : <MapPin />}</span>
@@ -283,7 +279,7 @@ export function DashboardPage({
         </li>)}</ul>}
       </section>
       <section className="dashboard-card dashboard-recent">
-        <header><div><p>{t('dashboard.recent')}</p><h2>{t('dashboard.recentTrips')}</h2></div><button type="button" className="dashboard-text-action" onClick={onViewAllTrips}>{t('dashboard.viewAll')}</button></header>
+        <header><div><p>{t('dashboard.recent')}</p><h2>{t('dashboard.recentTrips')}</h2></div></header>
         {dashboard.recent_trips.length === 0 ? <DashboardEmpty /> : <ul>{dashboard.recent_trips.map((trip) => <li key={trip.id}>
           <button type="button" onClick={() => onOpenTrip(trip.id, trip.map_id)}>
             <span className="dashboard-recent-icon"><Route /></span>
