@@ -62,6 +62,16 @@ describe('MainNavigation', () => {
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('hides map-dependent entries when the user has no accessible maps', () => {
+    render(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={vi.fn()} isAdmin hasMaps={false} /></MemoryRouter>)
+
+    expect(screen.getByRole('button', { name: 'Cartes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Corbeille' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Lieux' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sorties' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tags' })).not.toBeInTheDocument()
+  })
+
   it('delegates a repeated Places click to the panel collapse toggle', () => {
     const onPanelChange = vi.fn()
     const onPlacesPanelToggle = vi.fn()

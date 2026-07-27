@@ -387,7 +387,7 @@ function WorkspaceApp() {
     navigate(withMap('/dashboard', activeMapId, activeStatusId))
   }
 
-  return <main className={`app-shell${dashboardOpen ? ' dashboard-shell' : ''}`}><MainNavigation activePanel={dashboardOpen ? null : workspacePanel} dashboardActive={dashboardOpen} tripPlanningActive={!dashboardOpen && tripPlannerOpen} onOpenDashboard={openDashboard} onPanelChange={handleWorkspacePanelChange} onWorkspacePanelToggle={toggleWorkspacePanelCollapsed} onPlacesPanelToggle={() => setPlacesPanelCollapsed((collapsed) => !collapsed)} onOpenTrips={() => openTrips()} isAdmin={user?.is_admin === true} /><div className="app-body">
+  return <main className={`app-shell${dashboardOpen ? ' dashboard-shell' : ''}`}><MainNavigation activePanel={dashboardOpen ? null : workspacePanel} dashboardActive={dashboardOpen} tripPlanningActive={!dashboardOpen && tripPlannerOpen} onOpenDashboard={openDashboard} onPanelChange={handleWorkspacePanelChange} onWorkspacePanelToggle={toggleWorkspacePanelCollapsed} onPlacesPanelToggle={() => setPlacesPanelCollapsed((collapsed) => !collapsed)} onOpenTrips={() => openTrips()} isAdmin={user?.is_admin === true} hasMaps={maps.length > 0} /><div className="app-body">
     <TopBar isMapWorkspace={isMapWorkspace} contextLabel={dashboardOpen ? t('dashboard.title') : undefined} markerCount={places.length} onMapAccessChanged={() => setRefreshVersion((value) => value + 1)} onOpenAdmin={openAdmin} onOpenRegistrationRequests={openRegistrationRequests} />
     <Routes>
       <Route path="/dashboard" element={<Suspense fallback={<div className="dashboard-page dashboard-page--state" role="status">Loading…</div>}><DashboardPage

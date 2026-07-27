@@ -14,13 +14,14 @@ interface Props {
   tripPlanningActive?: boolean
   dashboardActive?: boolean
   onOpenDashboard?: () => void
+  hasMaps?: boolean
 }
 
 function navClass(active: boolean): string {
   return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
 }
 
-export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, dashboardActive = false, onOpenDashboard }: Props) {
+export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, dashboardActive = false, onOpenDashboard, hasMaps = true }: Props) {
   const { t } = useI18n()
   const togglePanel = (panel: Exclude<WorkspacePanel, null>) => activePanel === panel ? onWorkspacePanelToggle(panel) : onPanelChange(panel)
   const placesActive = activePanel === 'places' && !tripPlanningActive
@@ -34,18 +35,18 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
       <div className="cv-main-navigation__separator" role="separator" />
       <div className="cv-main-navigation__group" aria-label="Cartographie">
         <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={23} /><span>{t('nav.maps')}</span></button>
-        <button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => placesActive ? onPlacesPanelToggle() : onPanelChange('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>
-        <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={23} /><span>{t('nav.trips')}</span></button>
+        {hasMaps && <><button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => placesActive ? onPlacesPanelToggle() : onPanelChange('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>
+        <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={23} /><span>{t('nav.trips')}</span></button></>}
       </div>
-      <div className="cv-main-navigation__separator" role="separator" aria-label="Médias" />
+      {hasMaps && <><div className="cv-main-navigation__separator" role="separator" aria-label="Médias" />
       <div className="cv-main-navigation__group" aria-label="Médias">
         <button type="button" className={navClass(activePanel === 'media')} aria-label={t('nav.media')} aria-pressed={activePanel === 'media'} onClick={() => togglePanel('media')}><Images size={23} /><span>{t('nav.media')}</span></button>
-      </div>
+      </div></>}
       <div className="cv-main-navigation__separator" role="separator" aria-label="Organisation" />
       <div className="cv-main-navigation__group" aria-label="Organisation">
-        <button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>
+        {hasMaps && <><button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>
         <button type="button" className={navClass(activePanel === 'tags')} aria-label={t('nav.tags')} aria-pressed={activePanel === 'tags'} onClick={() => togglePanel('tags')}><Tag size={23} /><span>{t('nav.tags')}</span></button>
-        {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}
+        {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}</>}
         <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => togglePanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
       </div>
     </div>
