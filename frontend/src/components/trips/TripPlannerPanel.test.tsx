@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDay, addTripDeparture, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTripDay, updateTripDeparture } from '../../api/trips'
+import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -35,6 +35,9 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripSummary).mockResolvedValue(emptySummary)
     vi.mocked(getTripDaySummary).mockImplementation(async (id) => ({ ...emptyDaySummary, day_id: id }))
     vi.mocked(addTripStop).mockResolvedValue({} as never)
+    vi.mocked(addTripNight).mockResolvedValue({} as never)
+    vi.mocked(updateTripNight).mockResolvedValue({} as never)
+    vi.mocked(deleteTripNight).mockResolvedValue(undefined)
     vi.mocked(addTripDay).mockResolvedValue({ ...trip.days[0], id: 'day-new', day_number: 2, sort_order: 1 })
     vi.mocked(deleteTripStop).mockResolvedValue(undefined)
     vi.mocked(moveTripStop).mockResolvedValue(trip)
@@ -336,7 +339,7 @@ describe('TripPlannerPanel', () => {
     expect(moveTripStop).not.toHaveBeenCalledWith('place:place-42', expect.anything(), expect.anything())
   })
 
-  it('opens the night modal prefilled when a POI is dropped between two days', async () => {
+  it('creates a night directly when a POI is dropped between two days', async () => {
     const twoDays = { ...trip, days: [{ ...trip.days[0], color: '#e11d48' }, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563eb' }] }
     vi.mocked(listTrips).mockResolvedValue([twoDays])
     vi.mocked(getTrip).mockResolvedValue(twoDays)
@@ -345,11 +348,16 @@ describe('TripPlannerPanel', () => {
     expect(await screen.findByText('N1')).toBeVisible()
     const nightBadge = container.querySelector<HTMLElement>('.trip-timeline-night-badge')
     expect(nightBadge?.querySelector('.lucide-moon')).toBeInTheDocument()
-    expect(nightBadge?.style.getPropertyValue('--trip-night-previous-color')).toBe('#e11d48')
-    expect(nightBadge?.style.getPropertyValue('--trip-night-next-color')).toBe('#2563eb')
-    fireEvent.drop(container.querySelector('.trip-panel-night:not(.trip-panel-departure)')!, { dataTransfer: { getData: () => 'place:hotel-poi' } })
-    expect(await screen.findByRole('dialog', { name: 'Ajouter un hébergement' })).toBeVisible()
-    expect(await screen.findByText('Hôtel POI')).toBeVisible()
+    const nightCard = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')
+    expect(nightCard?.style.getPropertyValue('--trip-night-previous-color')).toBe('#e11d48')
+    expect(nightCard?.style.getPropertyValue('--trip-night-next-color')).toBe('#2563eb')
+    const nightDropTarget = container.querySelector('.trip-panel-night:not(.trip-panel-departure)')!
+    const dataTransfer = { types: ['text/plain'], getData: () => 'place:hotel-poi' }
+    fireEvent.dragEnter(nightDropTarget, { dataTransfer })
+    expect(screen.getByText('Déposer ici')).toBeVisible()
+    fireEvent.drop(nightDropTarget, { dataTransfer })
+    await waitFor(() => expect(addTripNight).toHaveBeenCalledWith('trip-1', { previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-poi', source_type: 'place' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('adds a fixed departure before day one from a dropped POI', async () => {
@@ -544,7 +552,7 @@ describe('TripPlannerPanel', () => {
       days: [trip.days[0], secondDay],
       departure: { id: 'departure-1', trip_id: trip.id, place_id: null, name: 'Maison', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
       arrival: { id: 'arrival-1', trip_id: trip.id, place_id: null, name: 'Retour maison', latitude: 48, longitude: 2, address: null, notes: null },
-      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, name: 'Hôtel', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: '20:00:00', check_out_time: '08:00:00' }],
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map', name: 'Hôtel', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: '20:00:00', check_out_time: '08:00:00' }],
     } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([anchoredTrip])
     vi.mocked(getTrip).mockResolvedValue(anchoredTrip)
@@ -553,11 +561,48 @@ describe('TripPlannerPanel', () => {
 
     expect(await screen.findByRole('button', { name: 'Modifier le point de départ' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Modifier le point d’arrivée' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Modifier l’hébergement' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Modifier l’hébergement' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Supprimer le point de départ' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Utiliser le point de départ comme arrivée' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Supprimer l’hébergement' })).not.toBeInTheDocument()
     expect(container.querySelector('.trip-night-metrics')).not.toBeInTheDocument()
+    expect(container.querySelector('.trip-night-kind')).not.toBeInTheDocument()
+    expect(container.querySelector('.trip-night-stop')).toHaveAttribute('aria-label', 'Point cartographique')
+  })
+
+  it('selects a night as the active itinerary target without opening its editor', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-hotel', source_type: 'place' as const, name: 'Hôtel central', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([withNight])
+    vi.mocked(getTrip).mockResolvedValue(withNight)
+    const onActiveDayChange = vi.fn()
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onClose={vi.fn()} />)
+
+    const night = await screen.findByText('Hôtel central')
+    fireEvent.click(night)
+
+    expect(container.querySelector('.trip-panel-night.is-active')).toBeInTheDocument()
+    expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('renders an overnight POI as a compact stop row with only a remove action', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-hotel', source_type: 'place' as const, name: 'Hôtel central', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([withNight])
+    vi.mocked(getTrip).mockResolvedValue(withNight)
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByText('Hôtel central')).toBeVisible()
+    const nightStop = container.querySelector('.trip-night-stop')
+    expect(nightStop).toBeInTheDocument()
+    expect(nightStop).toHaveAccessibleName('POI')
+    expect(within(nightStop as HTMLElement).getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
+    expect(container.querySelector('.trip-panel-night .trip-anchor-actions')).not.toBeInTheDocument()
+
+    fireEvent.click(within(nightStop as HTMLElement).getByRole('button', { name: 'Retirer le lieu de la nuit' }))
+    await waitFor(() => expect(deleteTripNight).toHaveBeenCalledWith('night-1'))
   })
 
   it('presents the free location action as a ghost stop entry', () => {

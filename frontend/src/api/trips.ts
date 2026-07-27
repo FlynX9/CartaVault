@@ -1,10 +1,10 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripOptimization, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
+import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
 
 const empty = new URLSearchParams()
 export interface TripCreatePayload { name: string; description?: string; start_date?: string; end_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
-export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; check_in_time?: string; check_out_time?: string }
+export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; check_in_time?: string; check_out_time?: string }
 export interface TripDepartureCreatePayload { place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; departure_time?: string }
 export type TripArrivalCreatePayload = Omit<TripDepartureCreatePayload, 'departure_time'>
 export const listTrips = (mapId: string, signal?: AbortSignal) => getJson(`/maps/${mapId}/trips`, empty, signal) as Promise<Trip[]>

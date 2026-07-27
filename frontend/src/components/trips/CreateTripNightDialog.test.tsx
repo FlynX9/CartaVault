@@ -20,7 +20,7 @@ describe('CreateTripNightDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
     fireEvent.click(await screen.findByRole('option', { name: /Hôtel Central/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ previous_day_id: 'day-1', next_day_id: 'day-2', name: 'Hôtel Central', latitude: 50.4669, longitude: 4.8675, address: '1 rue Centrale, Namur' })))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ previous_day_id: 'day-1', next_day_id: 'day-2', source_type: 'map', name: 'Hôtel Central', latitude: 50.4669, longitude: 4.8675, address: '1 rue Centrale, Namur' })))
     expect(geocodingService.search).toHaveBeenCalledWith('Namur', expect.objectContaining({ countryCode: 'BE', focus: [50.5, 4.8] }))
   })
 
@@ -31,7 +31,7 @@ describe('CreateTripNightDialog', () => {
     fireEvent.drop(document.querySelector('.trip-night-drop')!, { dataTransfer: { getData: () => 'place:place-1' } })
     expect(await screen.findByText('Gîte du Lac')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-1' })))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-1', source_type: 'place' })))
   })
 
   it('extracts a pasted reservation with GPS coordinates for a night', async () => {
@@ -41,7 +41,7 @@ describe('CreateTripNightDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyser le texte' }))
     expect(await screen.findByText('Hôtel des Alpes')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Hôtel des Alpes', address: '12 rue du Lac, Annecy', latitude: 45.8992, longitude: 6.1294 })))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ source_type: 'imported_text', name: 'Hôtel des Alpes', address: '12 rue du Lac, Annecy', latitude: 45.8992, longitude: 6.1294 })))
   })
 
   it('creates the departure without night day identifiers', async () => {

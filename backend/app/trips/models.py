@@ -154,6 +154,7 @@ class TripNight(Base):
         UniqueConstraint("next_day_id", name="trip_nights_next_day_key"),
         CheckConstraint("previous_day_id <> next_day_id", name="trip_nights_distinct_days_check"),
         CheckConstraint("latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180", name="trip_nights_coordinates_check"),
+        CheckConstraint("source_type IN ('place', 'map', 'imported_text')", name="trip_nights_source_type_check"),
         Index("trip_nights_trip_id_idx", "trip_id"),
     )
 
@@ -162,6 +163,7 @@ class TripNight(Base):
     previous_day_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("trip_days.id", ondelete="CASCADE"), nullable=False)
     next_day_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("trip_days.id", ondelete="CASCADE"), nullable=False)
     place_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("places.id", ondelete="SET NULL"))
+    source_type: Mapped[str] = mapped_column(String(24), nullable=False, server_default=text("'map'"))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)

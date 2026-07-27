@@ -8,6 +8,7 @@ import { formatCoordinates } from '../../geocoding/coordinates'
 import { geocodingService } from '../../geocoding/geocodingService'
 import type { GeocodingResult } from '../../geocoding/types'
 import type { PlaceDetails } from '../../types/place'
+import type { TripNightSourceType } from '../../types/trip'
 import { useModalFocus } from '../../hooks/useModalFocus'
 
 interface CommonProps {
@@ -19,6 +20,7 @@ interface CommonProps {
   initialNotes?: string | null
   initialCheckInTime?: string | null
   initialCheckOutTime?: string | null
+  initialSourceType?: TripNightSourceType
   initialDepartureTime?: string | null
   mode?: 'create' | 'edit'
   onClose: () => void
@@ -85,6 +87,7 @@ export function CreateTripNightDialog(props: Props) {
   const placeController = useRef<AbortController | null>(null)
   const [query, setQuery] = useState('')
   const [reservationText, setReservationText] = useState('')
+  const [locationSourceType, setLocationSourceType] = useState<TripNightSourceType>(props.initialSourceType ?? (initialPlaceId ? 'place' : 'map'))
   const [results, setResults] = useState<GeocodingResult[]>([])
   const [selectedResult, setSelectedResult] = useState<GeocodingResult | null>(initialLocation ? { id: 'current-anchor', name: initialLocation.name, formattedAddress: initialLocation.address ?? '', latitude: initialLocation.latitude, longitude: initialLocation.longitude, source: 'current' } : null)
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null)
@@ -99,7 +102,7 @@ export function CreateTripNightDialog(props: Props) {
     try {
       const place = await getPlaceDetails(placeId, controller.signal)
       if (place.latitude === null || place.longitude === null) throw new Error('Ce POI ne possède pas de coordonnées utilisables.')
-      if (!controller.signal.aborted) { setSelectedPlace(place); setSelectedResult(null); setResults([]); setQuery('') }
+      if (!controller.signal.aborted) { setSelectedPlace(place); setLocationSourceType('place'); setSelectedResult(null); setResults([]); setQuery('') }
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Impossible de charger ce POI.')
     } finally { if (!controller.signal.aborted) setLoading(false) }
@@ -129,7 +132,7 @@ export function CreateTripNightDialog(props: Props) {
     setLoading(true); setError(null); setSelectedPlace(null); setResults([])
     try {
       if (extracted.latitude !== null && extracted.longitude !== null) {
-        setSelectedResult({ id: 'reservation-coordinates', name: extracted.name, formattedAddress: extracted.address, latitude: extracted.latitude, longitude: extracted.longitude, source: 'reservation' })
+        setSelectedResult({ id: 'reservation-coordinates', name: extracted.name, formattedAddress: extracted.address, latitude: extracted.latitude, longitude: extracted.longitude, source: 'reservation' }); setLocationSourceType('imported_text')
         setQuery(extracted.address || extracted.name)
         return
       }
@@ -137,7 +140,7 @@ export function CreateTripNightDialog(props: Props) {
       const found = await geocodingService.search(lookup, { focus, countryCode, limit: 6 })
       if (!found.length) { setError('Aucun emplacement n’a pu être déduit de ce texte. Vérifiez l’adresse ou ajoutez des coordonnées.'); return }
       const preferred = { ...found[0], name: extracted.name || found[0].name, formattedAddress: extracted.address || found[0].formattedAddress }
-      setSelectedResult(preferred); setQuery(lookup)
+      setSelectedResult(preferred); setLocationSourceType('imported_text'); setQuery(lookup)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'L’analyse de la confirmation est indisponible.')
     } finally { setLoading(false) }
@@ -179,6 +182,7 @@ export function CreateTripNightDialog(props: Props) {
         previous_day_id: props.previousDayId,
         next_day_id: props.nextDayId,
         ...location,
+        source_type: selectedPlace ? 'place' : locationSourceType,
         notes: String(data.get('notes') ?? '').trim() || undefined,
         check_in_time: String(data.get('check_in_time') ?? '') || undefined,
         check_out_time: String(data.get('check_out_time') ?? '') || undefined,
@@ -202,7 +206,7 @@ export function CreateTripNightDialog(props: Props) {
         <div className="create-trip-night-dialog__body">
           {error && <p className="form-alert" role="alert">{error}</p>}
           <section className="trip-night-location"><h3>Emplacement</h3><div className="trip-night-search"><label><span className="visually-hidden">Adresse ou coordonnées GPS</span><Search size={16} /><input ref={input} type="search" value={query} placeholder="Adresse ou coordonnées GPS…" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void search() } }} /></label><button type="button" disabled={loading} onClick={() => void search()}>{loading ? 'Recherche…' : 'Rechercher'}</button></div>
-            {results.length > 0 && <div className="trip-night-results" role="listbox" aria-label="Résultats géographiques">{results.map((result) => <button key={result.id} type="button" role="option" aria-selected={selectedResult?.id === result.id} onClick={() => { setSelectedResult(result); setSelectedPlace(null); setResults([]); setQuery(result.formattedAddress) }}><MapPin size={15} /><span><strong>{result.name}</strong><small>{result.formattedAddress} · {formatCoordinates(result.latitude, result.longitude)}</small></span></button>)}</div>}
+            {results.length > 0 && <div className="trip-night-results" role="listbox" aria-label="Résultats géographiques">{results.map((result) => <button key={result.id} type="button" role="option" aria-selected={selectedResult?.id === result.id} onClick={() => { setSelectedResult(result); setLocationSourceType('map'); setSelectedPlace(null); setResults([]); setQuery(result.formattedAddress) }}><MapPin size={15} /><span><strong>{result.name}</strong><small>{result.formattedAddress} · {formatCoordinates(result.latitude, result.longitude)}</small></span></button>)}</div>}
             <div className={`trip-night-drop${selectedPlace ? ' selected' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={drop}><Upload size={19} /><span><strong>Ou glissez un POI ici</strong><small>Depuis le panneau Lieux</small></span></div>
             {!isStop && !isDeparture && !isArrival && <section className="trip-night-reservation"><h4><ClipboardPaste size={14} />Coller une confirmation</h4><textarea aria-label="Texte de confirmation de réservation" value={reservationText} onChange={(event) => setReservationText(event.target.value)} rows={4} maxLength={10000} placeholder="Collez une réservation d’hôtel ou un e-mail : le nom, l’adresse ou les coordonnées seront proposés." /><div><small>Les coordonnées GPS sont détectées directement. Sinon, CartaVault recherche l’adresse extraite.</small><button type="button" disabled={loading || !reservationText.trim()} onClick={() => void analyzeReservation()}>Analyser le texte</button></div></section>}
             {selectionName && <article className="trip-night-selection">{isDeparture || isArrival || isStop ? <MapPin size={20} /> : <BedDouble size={20} />}<span><strong>{selectionName}</strong><small>{selectionAddress}</small><small>{selectionCoordinates}</small></span><button type="button" onClick={() => { setSelectedPlace(null); setSelectedResult(null); setQuery('') }}>Changer</button></article>}

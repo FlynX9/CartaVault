@@ -129,6 +129,7 @@ class NightCreate(BaseModel):
     previous_day_id: UUID
     next_day_id: UUID
     place_id: UUID | None = None
+    source_type: Literal["place", "map", "imported_text"] = "map"
     name: str | None = Field(default=None, max_length=255)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -145,6 +146,7 @@ class NightCreate(BaseModel):
 
 class NightUpdate(BaseModel):
     place_id: UUID | None = None
+    source_type: Literal["place", "map", "imported_text"] | None = None
     name: str | None = Field(default=None, min_length=1, max_length=255)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -229,7 +231,7 @@ class StopRead(ORMRead):
 
 class NightRead(ORMRead):
     id: UUID; trip_id: UUID; previous_day_id: UUID; next_day_id: UUID; place_id: UUID | None; name: str; latitude: float; longitude: float
-    address: str | None; notes: str | None; check_in_time: TimeValue | None; check_out_time: TimeValue | None; created_at: datetime; updated_at: datetime
+    address: str | None; source_type: Literal["place", "map", "imported_text"]; notes: str | None; check_in_time: TimeValue | None; check_out_time: TimeValue | None; created_at: datetime; updated_at: datetime
 
 
 class DepartureRead(ORMRead):

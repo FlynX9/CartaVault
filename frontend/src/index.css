@@ -9341,3 +9341,195 @@ html[data-theme='dark'] .geocoding-marker {
     width: min(21rem, calc(100vw - 9rem));
   }
 }
+
+/* An overnight stay is a small transition card: its own header first, then a
+   full-width stop row matching a day stop. */
+.trip-planner-panel .trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival) {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-content {
+  display: grid;
+  min-width: 0;
+  gap: .38rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-row {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: .55rem;
+  margin: -.55rem -.65rem 0;
+  padding: .48rem .65rem;
+  background: var(--cv-surface, #fff);
+  border-bottom: 1px solid var(--cv-border-subtle, #e9eef1);
+  border-radius: 10px 10px 0 0;
+  transition: background 150ms ease;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-row > strong {
+  color: transparent;
+  background: linear-gradient(90deg, var(--trip-night-previous-color, var(--cv-color-teal)), var(--trip-night-next-color, var(--cv-color-teal)));
+  background-clip: text;
+  -webkit-background-clip: text;
+  font-size: .79rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop {
+  display: grid;
+  min-width: 0;
+  min-height: 44px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .38rem;
+  padding: .42rem .5rem;
+  background: #fff;
+  border: 1px solid #e6ecef;
+  border-radius: 8px;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop > svg {
+  color: var(--cv-color-slate);
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop-copy {
+  display: grid;
+  min-width: 0;
+  gap: .05rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop-copy strong {
+  overflow: hidden;
+  color: var(--cv-color-navy);
+  font-size: .78rem;
+  font-weight: 720;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop-copy small {
+  overflow: hidden;
+  color: var(--cv-color-gray);
+  font-size: .55rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop button {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0;
+  color: var(--cv-color-gray);
+  background: transparent;
+  border: 0;
+  border-radius: .3rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-stop button:hover,
+.trip-planner-panel .trip-panel-night .trip-night-stop button:focus-visible {
+  color: var(--cv-color-danger);
+  background: color-mix(in srgb, var(--cv-color-danger) 10%, transparent);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-stop {
+  background: var(--cv-surface-muted, var(--cv-color-slate));
+  border-color: var(--cv-color-border);
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-placeholder {
+  display: grid;
+  width: 100%;
+  min-height: 27px;
+  place-items: center;
+  padding: .18rem .42rem;
+  color: var(--cv-color-gray);
+  background: #fff !important;
+  border: 1px dashed rgb(43 62 89 / 18%);
+  border-radius: .32rem;
+  font-size: .55rem;
+  text-align: center;
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeholder {
+  background: var(--cv-color-slate) !important;
+  border-color: var(--cv-color-border);
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
+  position: absolute;
+  z-index: 3;
+  right: .65rem;
+  bottom: -.68rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-source::before {
+  content: '·';
+  margin-right: .22rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-anchor-recommended {
+  width: fit-content !important;
+  min-width: 0;
+  min-height: 21px;
+  justify-self: end;
+  align-self: center;
+  padding: .14rem .42rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-anchor-recommended > span {
+  font-size: .54rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-anchor-recommended strong {
+  font-size: .61rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-drop-indicator {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: .28rem;
+  padding: .16rem .42rem;
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface, #fff));
+  border: 1px dashed color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-subtle, #dfe7ec));
+  border-radius: .38rem;
+  font-size: .59rem;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.trip-planner-panel .trip-panel-night.is-drop-target {
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 62%, var(--cv-border-subtle, #dfe7ec));
+}
+
+.trip-planner-panel .trip-panel-night.is-active {
+  background: var(--cv-surface, #fff);
+  border-color: color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 42%, var(--cv-border-subtle, #dfe7ec));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, transparent);
+}
+
+.trip-planner-panel .trip-panel-night.is-active .trip-night-header-row {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff)),
+    color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff))
+  );
+  border-bottom-color: color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 18%, var(--cv-border-subtle, #e9eef1));
+}
+
+.trip-planner-panel .trip-panel-night:focus-visible {
+  outline: 2px solid var(--cv-color-teal);
+  outline-offset: 2px;
+}
