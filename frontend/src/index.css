@@ -9780,54 +9780,102 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   }
 }
 
-/* Compact readiness signal displayed beside every day and night title. */
-.trip-planner-panel .trip-panel-timeline-title {
-  display: flex;
+/* Shared preparation state shown in day and night headers. */
+.trip-planner-panel .trip-panel-timeline-heading {
+  display: grid;
   min-width: 0;
   align-items: center;
-  gap: .34rem;
+  justify-content: flex-start;
+  grid-template-columns: 4.55rem max-content;
+  column-gap: .35rem;
 }
 
-.trip-planner-panel .trip-panel-timeline-title > strong {
+.trip-planner-panel .trip-panel-timeline-heading > strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.trip-planner-panel .trip-night-title > strong {
+.trip-planner-panel .trip-night-header-row > .trip-panel-timeline-heading > strong {
   color: var(--trip-night-previous-color, var(--cv-color-teal));
-  background: none;
   font-size: .79rem;
   font-weight: 820;
   text-transform: uppercase;
 }
 
-.trip-planner-panel .trip-timeline-readiness {
-  --trip-readiness-color: var(--cv-color-teal);
-  display: inline-grid;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  color: var(--trip-readiness-color);
-  background: color-mix(in srgb, var(--trip-readiness-color) 16%, var(--cv-surface, #fff));
-  border: 1px solid color-mix(in srgb, var(--trip-readiness-color) 38%, transparent);
-  border-radius: 50%;
-  place-items: center;
+.trip-planner-panel .trip-anchor-copy .trip-panel-timeline-heading > strong {
+  font-size: .76rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
-.trip-planner-panel .trip-timeline-readiness > svg {
-  stroke-width: 2.6;
+.trip-planner-panel .trip-panel-day > summary,
+.trip-planner-panel .trip-night-header-row,
+.trip-planner-panel .trip-panel-departure,
+.trip-planner-panel .trip-panel-arrival {
+  position: relative;
 }
 
-.trip-planner-panel .trip-timeline-readiness--ready {
-  --trip-readiness-color: var(--cv-color-teal);
+.trip-planner-panel .trip-panel-day-heading .trip-timeline-status,
+.trip-planner-panel .trip-night-header-row .trip-timeline-status,
+.trip-planner-panel .trip-anchor-copy .trip-timeline-status {
+  position: absolute;
+  top: 50%;
+  left: 5.45rem;
+  transform: translateY(-50%);
 }
 
-.trip-planner-panel .trip-timeline-readiness--empty {
-  --trip-readiness-color: #c53b32;
+.trip-planner-panel .trip-timeline-status {
+  display: inline-flex;
+  width: 5.1rem;
+  min-height: 22px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: .16rem .48rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .61rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.trip-planner-panel .trip-timeline-readiness--warning {
-  --trip-readiness-color: #c77b18;
+.trip-planner-panel .trip-timeline-status--valid {
+  color: color-mix(in srgb, var(--cv-color-teal) 82%, black);
+  background: color-mix(in srgb, var(--cv-color-teal) 12%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 25%, transparent);
+}
+
+.trip-planner-panel .trip-timeline-status--pending {
+  color: #a55b0b;
+  background: color-mix(in srgb, #d97706 12%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, #d97706 25%, transparent);
+}
+
+.trip-planner-panel .trip-timeline-status--empty {
+  color: #b42318;
+  background: color-mix(in srgb, #d92d20 10%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, #d92d20 23%, transparent);
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--valid {
+  color: #75ddcb;
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--pending {
+  color: #f0b35d;
+}
+
+html[data-theme='dark'] .trip-planner-panel .trip-timeline-status--empty {
+  color: #f08b83;
+}
+
+@media (max-width: 560px) {
+  .trip-planner-panel .trip-panel-day-heading .trip-timeline-status,
+  .trip-planner-panel .trip-night-header-row .trip-timeline-status,
+  .trip-planner-panel .trip-anchor-copy .trip-timeline-status {
+    left: 5.05rem;
+  }
 }
