@@ -632,6 +632,16 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByText('Retour maison')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Développer l’arrivée' }))
     expect(screen.getByText('Retour maison')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tout replier' }))
+    expect(screen.queryByText('Maison')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hôtel')).not.toBeInTheDocument()
+    expect(screen.queryByText('Retour maison')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tout déplier' }))
+    expect(screen.getByText('Maison')).toBeVisible()
+    expect(screen.getByText('Hôtel')).toBeVisible()
+    expect(screen.getByText('Retour maison')).toBeVisible()
   })
 
   it('selects a night as the active itinerary target without opening its editor', async () => {

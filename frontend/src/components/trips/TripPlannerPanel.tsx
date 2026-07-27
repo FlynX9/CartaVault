@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Car, Check, ChevronDown, Clock3, Copy, Download, Eye, EyeOff, Flag, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sparkles, Sun, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, Clock3, Copy, Download, Eye, EyeOff, Flag, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, SlidersHorizontal, Sparkles, Sun, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
 import { getAccountPreferences } from '../../api/account'
@@ -38,6 +38,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [preferredRoutingProvider, setPreferredRoutingProvider] = useState<'osrm' | 'google'>('osrm')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set())
+  const [timelineCollapseRequest, setTimelineCollapseRequest] = useState({ collapsed: false, version: 0 })
   const [openDaySettingsIds, setOpenDaySettingsIds] = useState<Set<string>>(() => new Set())
   const [activeNightTarget, setActiveNightTarget] = useState<TripNightTarget | null>(null)
   const activeDayIdRef = useRef(activeDayId)
@@ -205,6 +206,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     return next
   })
   const activateDay = (dayId: string) => { setActiveNightTarget(null); onActiveDayChange(dayId) }
+  const setAllTimelineCollapsed = (nextCollapsed: boolean) => {
+    setCollapsedDayIds(nextCollapsed ? new Set(trip?.days.map((day) => day.id) ?? []) : new Set())
+    setTimelineCollapseRequest((current) => ({ collapsed: nextCollapsed, version: current.version + 1 }))
+  }
 
   const tripName = trip?.name ?? 'Préparation'
 
@@ -218,10 +223,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     {!trip ? <div className="trip-panel-empty"><Route size={28} /><strong>Aucune sortie préparée</strong><span>Créez un voyage puis ajoutez les POI depuis le panneau Lieux.</span></div> : <>
       {settingsOpen && <TripSettings trip={trip} canEdit={canEditTrip} canDelete={canEditTrip && poiMap.can_delete === true} busy={busy} draftName={draftName} dirty={dirty} loadSettings={loadSettingsDraft ?? readLoadSettings(trip)} routingProviderLabel={summary?.route_provider_labels?.join(', ') || (preferredRoutingProvider === 'google' ? 'Google Routes' : 'OSRM')} countryConstraintName={summary?.country_constraint_enabled ? summary.constraint_country_name ?? poiMap.country.name : null} onNameChange={(value) => { setDraftName(value); setDirty(value !== trip.name) }} onLoadSettingsChange={setLoadSettingsDraft} onSave={() => void run(async () => { if (draftName !== trip.name) await updateTrip(trip.id, { name: draftName }); if (loadSettingsDraft) await updateTripLoadSettings(trip.id, loadSettingsDraft); await reload(trip.id) })} onDuplicate={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })} onDelete={() => void confirm({ title: 'Placer cette sortie dans la corbeille ?', message: `La sortie « ${trip.name} » et toute sa planification pourront être restaurées pendant votre délai de conservation.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTrip(trip.id); await reload('') }) })} />}
       {summary && <TripSummaryMetrics summary={summary} />}
-      <details className="trip-panel-section trip-panel-journeys" open><summary><span>Trajets</span><small>{trip.days.length} {trip.days.length > 1 ? 'journées' : 'journée'}</small><ChevronDown className="trip-panel-chevron" size={15} /></summary>
+      <section className="trip-panel-section trip-panel-journeys"><header className="trip-panel-journeys-header"><span>Trajets</span><small>{trip.days.length} {trip.days.length > 1 ? 'journées' : 'journée'}</small><span className="trip-panel-journeys-toggle-actions"><button type="button" aria-label="Tout déplier" title="Tout déplier" onClick={() => setAllTimelineCollapsed(false)}><ChevronsDown size={13} />Tout déplier</button><button type="button" aria-label="Tout replier" title="Tout replier" onClick={() => setAllTimelineCollapsed(true)}><ChevronsUp size={13} />Tout replier</button></span></header>
         <DayCollapseContext.Provider value={{ collapsedDayIds, onToggle: toggleDayCollapsed }}><div className="trip-panel-days">{trip.days.map((day, dayIndex) => <div key={day.id} style={{ '--trip-day-color': day.color ?? '#0FA68A' } as CSSProperties}>
-          {dayIndex === 0 && <Departure trip={trip} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} canEdit={canEditTrip} reload={reload} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
-          {dayIndex > 0 && <Night previous={trip.days[dayIndex - 1]} next={day} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} onSelect={(target) => { setActiveNightTarget(target); onActiveDayChange(day.id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
+          {dayIndex === 0 && <Departure trip={trip} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
+          {dayIndex > 0 && <Night previous={trip.days[dayIndex - 1]} next={day} recommendedStart={daySummaries[day.id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[day.id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onSelect={(target) => { setActiveNightTarget(target); onActiveDayChange(day.id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
           <details className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? ' is-active' : ''}`} open={!collapsedDayIds.has(day.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea, a')) return; activateDay(day.id); if (target.closest('.trip-panel-day > summary')) event.preventDefault() }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, day)}>
             <summary><span className="trip-panel-day-number"><Sun aria-hidden="true" size={12} /><b>J{day.day_number}</b></span><span className="trip-panel-day-heading"><span className="trip-panel-timeline-heading"><strong>{day.title || `Jour ${day.day_number}`}</strong><TimelineStatusBadge status={getDayTimelineStatus(day, daySummaries[day.id])} /></span><small>{day.stops.length} {day.stops.length > 1 ? 'étapes' : 'étape'}</small></span><DayHeaderMetrics summary={daySummaries[day.id]} /><span className="trip-panel-day-actions"><DayVisibilityToggle day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />{canEdit && <><button type="button" aria-label="Monter la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, -1) }}><ArrowUp size={12} /></button><button type="button" aria-label="Descendre la journée" onClick={(event) => { event.preventDefault(); reorderDays(dayIndex, 1) }}><ArrowDown size={12} /></button><button type="button" aria-label="Dupliquer la journée" onClick={(event) => { event.preventDefault(); void run(async () => { await duplicateTripDay(day.id); await reload(trip.id) }) }}><Copy size={12} /></button><button type="button" aria-label="Supprimer la journée" onClick={(event) => { event.preventDefault(); void confirm({ title: 'Supprimer cette journée ?', message: `Le jour ${day.day_number}, ses étapes et son itinéraire seront définitivement supprimés.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripDay(day.id); await reload(trip.id) }) }) }}><Trash2 size={12} /></button></>}</span></summary>
             <div className="trip-panel-day-content">{day.route_status === 'stale' && <p>Itinéraire à recalculer</p>}{daySummaries[day.id]?.country_constraint_status === 'unchecked' && <p className="trip-metrics-warning">Itinéraire à vérifier avec la contrainte pays.</p>}{daySummaries[day.id]?.country_constraint_status === 'invalid' && <p className="trip-panel-error">Itinéraire refusé : passage hors de {daySummaries[day.id]?.constraint_country_name}.</p>}
@@ -229,14 +234,14 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
               {day.stops.length === 0 && <p className="trip-panel-drop">Glissez des POI depuis le panneau Lieux</p>}{canEdit && <FreeStop day={day} poiMap={poiMap} reload={() => reload(trip.id)} />}<div className="trip-panel-route-actions"><div className="trip-panel-route-actions__main"><button className={routeFeedback === day.id ? 'route-success' : undefined} type="button" disabled={!canCalculateRoute(trip, day, dayIndex)} onClick={() => recalculateRoute(day)}>{routeFeedback === day.id ? <><Check size={13} />Itinéraire rafraîchi</> : <><Route size={13} />Itinéraire</>}</button><button type="button" disabled={day.stops.length < 2} onClick={() => void run(async () => setOptimization({ dayId: day.id, value: await optimizeTripDay(day.id) }))}><Sparkles size={13} />Optimiser</button></div><button className="trip-day-settings-trigger" type="button" aria-expanded={openDaySettingsIds.has(day.id)} aria-controls={`trip-day-settings-${day.id}`} onClick={() => toggleDaySettings(day.id)}><SlidersHorizontal size={13} />Paramètres du jour</button></div>{optimization?.dayId === day.id && <div className="trip-panel-optimization"><OptimizationMetrics value={optimization.value} /><button type="button" onClick={() => setOptimization(null)}>Refuser</button><button type="button" onClick={() => void run(async () => { await confirmTripOptimization(day.id, optimization.value.optimized_stop_ids); setOptimization(null); await reload(trip.id) })}><Check size={11} />Accepter</button></div>}<DaySettings open={openDaySettingsIds.has(day.id)} day={day} summary={daySummaries[day.id]} canEdit={canEdit} busy={busy} endsAtHotel={trip.nights.some((night) => night.previous_day_id === day.id)} onTimingSave={async (payload) => { await updateTripDayTiming(day.id, payload); await reload(trip.id) }} onColorSave={(color) => void run(async () => { await updateTripDay(day.id, { color }); await reload(trip.id) })} /></div>
           </details>
           {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
-          {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEditTrip} reload={reload} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
+          {dayIndex === trip.days.length - 1 && <Arrival trip={trip} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
         </div>)}</div></DayCollapseContext.Provider>
         {canEdit && <div className="trip-panel-journeys-actions trip-panel-route-actions" aria-label="Actions globales des trajets">
           <button className={routeFeedback === 'all' ? 'route-success' : undefined} type="button" disabled={busy || !trip.days.some((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))} onClick={recalculateAllRoutes}>{routeFeedback === 'all' ? <><Check size={13} />Itinéraires rafraîchis</> : <><Route size={13} />Calculer les itinéraires</>}</button>
           <button type="button" disabled={busy || globalOptimization !== null || !trip.days.some((day) => day.stops.length >= 2)} onClick={optimizeAllDays}><Sparkles size={13} />Optimiser le voyage</button>
         </div>}
         {globalOptimization && <GlobalOptimizationReview proposals={globalOptimization} busy={busy} onCancel={() => setGlobalOptimization(null)} onApply={applyGlobalOptimization} />}
-      </details>
+      </section>
     </>}</>}</>}
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
     {confirmationDialog}
@@ -332,12 +337,15 @@ function FreeStop({ day, poiMap, reload }: { day: TripDay; poiMap: PoiMap; reloa
   return <><button className="trip-panel-free-stop" type="button" aria-label="Ajouter un Lieu libre" title="Ajouter un lieu libre" onClick={() => setOpen(true)}><span aria-hidden="true" /><i aria-hidden="true"><Plus size={14} /></i><span aria-hidden="true" /></button>{open && <CreateTripNightDialog kind="stop" mapName={poiMap.name} countryCode={poiMap.country.iso_alpha2} focus={[anchor?.latitude ?? poiMap.effective_center_latitude, anchor?.longitude ?? poiMap.effective_center_longitude]} onClose={() => setOpen(false)} onCreate={async (payload) => { await addTripStop(day.id, { ...payload }); await reload(); setOpen(false) }} />}</>
 }
 
-function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, reload, onStopFocus, onStopPlaceSelect }: { trip: Trip; recommendedStart: string | null; recommendedStartOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+type TimelineCollapseRequest = { collapsed: boolean; version: number }
+
+function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; recommendedStart: string | null; recommendedStartOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const anchor = trip.days[0]?.stops[0]
   const departure = trip.departure
+  useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest])
   const drop = (event: DragEvent) => {
     event.preventDefault()
     setDropActive(false)
@@ -384,13 +392,14 @@ function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, re
   </>
 }
 
-function Arrival({ trip, canEdit, reload, onStopFocus, onStopPlaceSelect }: { trip: Trip; canEdit: boolean; reload: (id?: string) => Promise<void>; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+function Arrival({ trip, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const anchor = trip.days.at(-1)?.stops.at(-1) ?? trip.departure
   const arrival = trip.arrival
   const effectiveArrival = arrival ?? trip.departure
+  useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest])
   const drop = (event: DragEvent) => {
     event.preventDefault()
     setDropActive(false)
@@ -435,13 +444,14 @@ function Arrival({ trip, canEdit, reload, onStopFocus, onStopPlaceSelect }: { tr
   </>
 }
 
-function Night({ trip, previous, next, recommendedStart, recommendedStartOffset, activeTarget, canEdit, reload, onSelect, onStopFocus, onStopPlaceSelect }: { trip: Trip; previous: TripDay; next: TripDay; recommendedStart: string | null; recommendedStartOffset: number | null; activeTarget: TripNightTarget | null; canEdit: boolean; reload: (id?: string) => Promise<void>; onSelect: (target: TripNightTarget) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+function Night({ trip, previous, next, recommendedStart, recommendedStartOffset, activeTarget, canEdit, reload, collapseRequest, onSelect, onStopFocus, onStopPlaceSelect }: { trip: Trip; previous: TripDay; next: TripDay; recommendedStart: string | null; recommendedStartOffset: number | null; activeTarget: TripNightTarget | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onSelect: (target: TripNightTarget) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
   const night = trip.nights.find((item) => item.previous_day_id === previous.id && item.next_day_id === next.id)
   const [dialog, setDialog] = useState<{ edit?: boolean } | null>(null)
   const [dropError, setDropError] = useState<string | null>(null)
   const [dropping, setDropping] = useState(false)
   const [dropActive, setDropActive] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest])
   const anchor = previous.stops.at(-1) ?? next.stops[0]
   const drop = (event: DragEvent) => {
     event.preventDefault(); setDropActive(false)

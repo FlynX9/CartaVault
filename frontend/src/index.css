@@ -10050,3 +10050,76 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
   padding: .16rem .42rem;
   font-size: .58rem;
 }
+
+/* The journey timeline itself is always visible. These compact controls only
+   coordinate the expansion state of its departure, days, nights and arrival. */
+.trip-planner-panel .trip-panel-journeys {
+  display: block;
+  min-height: auto;
+  flex: 0 0 auto;
+}
+
+.trip-planner-panel .trip-panel-journeys-header {
+  display: grid;
+  min-height: 42px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: .55rem;
+  padding: .55rem 1rem;
+  color: var(--cv-color-navy);
+  background: var(--cv-surface, #fff);
+  border-bottom: 1px solid var(--cv-border-subtle, #e6ecef);
+  font-size: .76rem;
+  font-weight: 680;
+}
+
+.trip-planner-panel .trip-panel-journeys-header > small {
+  color: var(--cv-color-gray);
+  font-size: .63rem;
+  font-weight: 500;
+}
+
+.trip-planner-panel .trip-panel-journeys-toggle-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+}
+
+.trip-planner-panel .trip-panel-journeys-toggle-actions button {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  gap: .25rem;
+  padding: .25rem .45rem;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface, #fff);
+  border: 1px solid var(--cv-border-subtle, #dfe7ec);
+  border-radius: .4rem;
+  font: inherit;
+  font-size: .59rem;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.trip-planner-panel .trip-panel-journeys-toggle-actions button:is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 42%, var(--cv-border-subtle, #dfe7ec));
+}
+
+@media (max-width: 560px) {
+  .trip-planner-panel .trip-panel-journeys-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .trip-planner-panel .trip-panel-journeys-header > small {
+    display: none;
+  }
+
+  .trip-planner-panel .trip-panel-journeys-toggle-actions button {
+    width: 27px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+}
