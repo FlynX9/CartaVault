@@ -577,14 +577,33 @@ describe('TripPlannerPanel', () => {
     vi.mocked(listTrips).mockResolvedValue([withNight])
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const onActiveDayChange = vi.fn()
-    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onClose={vi.fn()} />)
+    const onStopFocus = vi.fn()
+    const onStopPlaceSelect = vi.fn()
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
 
     const night = await screen.findByText('Hôtel central')
     fireEvent.click(night)
 
     expect(container.querySelector('.trip-panel-night.is-active')).toBeInTheDocument()
     expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
+    expect(onStopFocus).toHaveBeenCalledWith(49, 3)
+    expect(onStopPlaceSelect).toHaveBeenCalledWith('place-hotel')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('centers the map on a free night address without opening a POI', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Adresse de nuit', latitude: 48.8566, longitude: 2.3522, address: 'Paris', notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([withNight])
+    vi.mocked(getTrip).mockResolvedValue(withNight)
+    const onStopFocus = vi.fn()
+    const onStopPlaceSelect = vi.fn()
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByText('Adresse de nuit'))
+
+    expect(onStopFocus).toHaveBeenCalledWith(48.8566, 2.3522)
+    expect(onStopPlaceSelect).not.toHaveBeenCalled()
   })
 
   it('renders an overnight POI as a compact stop row with only a remove action', async () => {
