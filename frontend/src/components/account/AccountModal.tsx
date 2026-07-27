@@ -16,6 +16,9 @@ type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'danger'
 
 const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
 
+const fallbackTimeZones = ['Europe/Paris', 'Europe/London', 'Europe/Brussels', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Zurich', 'America/New_York', 'America/Los_Angeles', 'America/Toronto', 'Asia/Tbilisi', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney', 'Pacific/Auckland', 'UTC']
+const supportedTimeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : fallbackTimeZones
+
 export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpenAdmin?: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
   const { t } = useI18n()
@@ -151,7 +154,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
       <label>{t('account.preferences.basemap')}<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label>
       <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select></label>
       <label>{t('account.preferences.startup')}<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select></label>
-      <label>{t('account.preferences.timezone')}<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label>
+      <TimezoneCombobox value={preferences.timezone} label={t('account.preferences.timezone')} onChange={(timezone) => update('timezone', timezone)} />
       <div className="account-field-with-help"><div><label htmlFor="account-trash-retention" id="account-trash-retention-label">{t('account.preferences.trashRetention')}</label><FieldHelp>{t('account.preferences.trashRetentionHelp')}</FieldHelp></div><select id="account-trash-retention" aria-labelledby="account-trash-retention-label" value={preferences.trash_retention_days} onChange={(event) => update('trash_retention_days', Number(event.target.value))}>{[7, 14, 30, 60, 90, 180, 365].map((days) => <option key={days} value={days}>{days} {t('account.preferences.days')}</option>)}</select></div>
     </div></section>
     <section className="account-preferences-section account-preferences-section--routing"><h3>{t('account.preferences.routing')}</h3>
@@ -164,6 +167,32 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={savePreferences}>{t('common.save')}</button>
     <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
     </div></div></>
+}
+
+function TimezoneCombobox({ value, label, onChange }: { value: string; label: string; onChange: (timezone: string) => void }) {
+  const [query, setQuery] = useState(value)
+  const matches = supportedTimeZones.filter((timeZone) => timeZone.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 100)
+  useEffect(() => setQuery(value), [value])
+
+  return <div className="account-timezone-combobox">
+    <label htmlFor="account-timezone">{label}</label>
+    <input
+      id="account-timezone"
+      list="account-timezone-options"
+      value={query}
+      placeholder="Europe/Paris"
+      autoComplete="off"
+      onChange={(event) => {
+        const nextValue = event.target.value
+        setQuery(nextValue)
+        if (supportedTimeZones.includes(nextValue)) onChange(nextValue)
+      }}
+      onBlur={() => setQuery(value)}
+    />
+    <datalist id="account-timezone-options">
+      {(matches.length > 0 ? matches : [value]).map((timeZone) => <option key={timeZone} value={timeZone} />)}
+    </datalist>
+  </div>
 }
 
 function DangerSection({ profile, run }: { profile: AccountProfile; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {

@@ -3448,6 +3448,9 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-preferences-section > h3 { margin: 0; color: var(--cv-color-navy); font-size: .76rem; }
 .account-preferences-section__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .6rem; }
 .account-preferences-section__fields > label { min-width: 0; align-content: start; }
+.account-timezone-combobox { display: grid; min-width: 0; gap: .2rem; }
+.account-timezone-combobox > label { color: var(--cv-color-slate); font-size: var(--account-text-size); font-weight: 500; }
+.account-timezone-combobox input { width: 100%; font-weight: 400; }
 .account-field-with-help { display: grid; min-width: 0; gap: .2rem; }
 .account-field-with-help > div { display: inline-flex; align-items: center; width: fit-content; }
 .account-field-with-help > div > label { color: var(--cv-color-slate); font-size: .64rem; font-weight: 700; }
