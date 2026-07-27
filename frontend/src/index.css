@@ -3354,6 +3354,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-routing-options { display: grid; gap: .48rem; margin-top: .2rem; padding-top: .62rem; border-top: 1px solid rgb(100 112 122 / 18%); }
 .account-credential { display: grid; max-width: 34rem; gap: .55rem; margin: .8rem 0; padding: .8rem; background: var(--cv-color-mist); border: 1px solid rgb(43 62 89 / 12%); border-radius: .65rem; }
 .account-credential__heading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .55rem; color: var(--cv-color-slate); }
+.account-credential__heading > svg { color: var(--cv-color-teal); }
 .account-credential__heading h3, .account-credential__heading p { margin: 0; }.account-credential__heading h3 { color: var(--cv-color-navy); font-size: .82rem; }.account-credential__heading p { margin-top: .1rem; font-size: .72rem; font-weight: 500; }
 .account-credential__status { padding: .25rem .45rem; color: #08725f; background: rgb(15 166 138 / 12%); border-radius: 999px; font-size: .65rem; font-weight: 800; }
 .account-credential__help, .account-credential__warning { margin: 0; color: var(--cv-color-gray); font-size: .69rem; line-height: 1.45; }.account-credential__warning { color: #9a6700; }
