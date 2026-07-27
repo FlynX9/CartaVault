@@ -35,6 +35,18 @@ class FailingGoogleRoutingProvider(StubGoogleRoutingProvider):
         raise RoutingError("Google timeout", "GOOGLE_ROUTES_TIMEOUT")
 
 
+def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_client, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "À terminer"}).json()
+
+    archived = integration_client.post(f"/trips/{trip['id']}/archive")
+
+    assert archived.status_code == 200
+    assert archived.json()["status"] == "completed"
+    assert archived.json()["completed_at"] is not None
+    assert archived.json()["archived_at"] is None
+    assert trip["id"] in {item["id"] for item in integration_client.get(f"/maps/{poi_map.id}/trips").json()}
+
+
 def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_client, database_session, poi_map, auth_user, france_country) -> None:
     created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Road trip", "start_date": "2026-08-01", "end_date": "2026-08-03"})
     assert created.status_code == 201

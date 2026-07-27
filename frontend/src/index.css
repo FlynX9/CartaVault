@@ -5105,6 +5105,11 @@ body {
 .trip-planner-panel { color: var(--cv-color-navy); background: #f7f9fb; }
 .trip-planner-panel .trip-panel-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; min-width: 0; min-height: 5.7rem; padding: 1rem; background: var(--cv-surface); border-bottom: 1px solid var(--cv-border-subtle); }
 .trip-planner-panel .trip-panel-header .cv-workspace-panel__title { max-width: 23rem; overflow: hidden; margin: 0.15rem 0 0; color: var(--cv-color-navy); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 1.15rem; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.trip-planner-panel .trip-panel-title-row { display: flex; min-width: 0; align-items: center; gap: 0.45rem; }
+.trip-planner-panel .trip-panel-title-row .cv-workspace-panel__title { min-width: 0; }
+.trip-planner-panel .trip-panel-trip-status { flex: 0 0 auto; padding: 0.18rem 0.42rem; border-radius: 999px; font-size: 0.62rem; font-weight: 720; line-height: 1.1; }
+.trip-planner-panel .trip-panel-trip-status--active { color: #087d6a; background: rgb(15 166 138 / 12%); }
+.trip-planner-panel .trip-panel-trip-status--completed { color: #53616c; background: rgb(100 112 122 / 12%); }
 .trip-planner-panel .trip-panel-selector { gap: 0.55rem; padding: 0.7rem 1rem; background: #fff; }
 .trip-planner-panel .trip-panel-selector select { min-height: 40px; padding: 0.45rem 0.7rem; border-radius: 8px; font-size: 0.78rem; }
 .trip-planner-panel .trip-panel-selector .panel-icon-button,
@@ -6726,6 +6731,14 @@ html[data-theme='dark'] :is(
 html[data-theme='dark'] .trip-planner-panel .trip-metrics dl > div,
 html[data-theme='dark'] .trip-panel-day-content > ul > li:nth-child(even) {
   background-color: var(--cv-surface-muted);
+}
+html[data-theme='dark'] .trip-planner-panel .trip-panel-trip-status--active {
+  color: #67d6c0;
+  background: rgb(15 166 138 / 20%);
+}
+html[data-theme='dark'] .trip-planner-panel .trip-panel-trip-status--completed {
+  color: #c4cbd1;
+  background: rgb(148 163 184 / 18%);
 }
 
 html[data-theme='dark'] :is(

@@ -128,7 +128,12 @@ def remove_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = 
 
 @router.post("/trips/{trip_id}/archive", response_model=TripRead)
 def archive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip; trip.status = "archived"; trip.archived_at = datetime.now(UTC).replace(tzinfo=None); session.commit(); return _trip_read(session, trip_id)
+    trip = require_trip_editor(session, trip_id, user).trip
+    trip.status = "completed"
+    trip.completed_at = datetime.now(UTC).replace(tzinfo=None)
+    trip.archived_at = None
+    session.commit()
+    return _trip_read(session, trip_id)
 
 
 @router.post("/trips/{trip_id}/duplicate", response_model=TripRead, status_code=201)

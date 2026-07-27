@@ -68,7 +68,7 @@ export const dashboardFr = {
   'dashboard.activity.link_added': 'Lien ajouté',
   'dashboard.activity.link_updated': 'Lien modifié',
   'dashboard.activity.link_removed': 'Lien supprimé',
-  'dashboard.tripStatus.draft': 'Brouillon',
+  'dashboard.tripStatus.draft': 'En cours',
   'dashboard.tripStatus.planned': 'Planifiée',
   'dashboard.tripStatus.in_progress': 'En cours',
   'dashboard.tripStatus.completed': 'Terminée',

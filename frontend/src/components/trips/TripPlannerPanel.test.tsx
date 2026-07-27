@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDay, addTripDeparture, addTripStop, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDay, updateTripDeparture } from '../../api/trips'
+import { addTripDay, addTripDeparture, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, updateTripDay, updateTripDeparture } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), addTripStop: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -38,6 +38,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(addTripDay).mockResolvedValue({ ...trip.days[0], id: 'day-new', day_number: 2, sort_order: 1 })
     vi.mocked(deleteTripStop).mockResolvedValue(undefined)
     vi.mocked(moveTripStop).mockResolvedValue(trip)
+    vi.mocked(archiveTrip).mockResolvedValue({ ...trip, status: 'completed', completed_at: '2026-07-27T12:00:00' })
     vi.mocked(calculateTripDayRoute).mockResolvedValue(trip.days[0])
     vi.mocked(confirmTripOptimization).mockResolvedValue(trip.days[0])
     vi.mocked(exportTripGpx).mockResolvedValue({ export_id: 'export-1', file_name: 'voyage.gpx', download_url: '/trips/exports/export-1', expires_at: '' })
@@ -102,6 +103,16 @@ describe('TripPlannerPanel', () => {
 
     fireEvent.click(screen.getByLabelText('Masquer les paramètres du voyage'))
     expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+  })
+
+  it('archives an active trip as completed while keeping its lifecycle visible', async () => {
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByText('En cours')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Archiver la sortie' }))
+
+    await waitFor(() => expect(archiveTrip).toHaveBeenCalledWith('trip-1'))
+    expect(screen.getByRole('combobox', { name: 'Voyage actif' })).toHaveValue('trip-1')
   })
 
   it('inserts a day at the selected boundary and exposes one insertion point per day', async () => {

@@ -11,6 +11,7 @@ export const listTrips = (mapId: string, signal?: AbortSignal) => getJson(`/maps
 export const getTrip = (id: string, signal?: AbortSignal) => getJson(`/trips/${id}`, empty, signal) as Promise<Trip>
 export const createTrip = (mapId: string, body: TripCreatePayload) => sendJson(`/maps/${mapId}/trips`, 'POST', body) as Promise<Trip>
 export const updateTrip = (id: string, body: Partial<Pick<Trip, 'name' | 'description' | 'start_date' | 'end_date' | 'status'>>) => sendJson(`/trips/${id}`, 'PATCH', body) as Promise<Trip>
+export const archiveTrip = (id: string) => sendJson(`/trips/${id}/archive`, 'POST', {}) as Promise<Trip>
 export const updateTripLoadSettings = (id: string, body: TripLoadSettings) => sendJson(`/trips/${id}/load-settings`, 'PATCH', body) as Promise<Trip>
 export const deleteTrip = (id: string) => sendWithoutResponse(`/trips/${id}`, 'DELETE')
 export const duplicateTrip = (id: string) => sendJson(`/trips/${id}/duplicate`, 'POST', {}) as Promise<Trip>
