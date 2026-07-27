@@ -9371,10 +9371,8 @@ html[data-theme='dark'] .geocoding-marker {
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-header-row > strong {
-  color: transparent;
-  background: linear-gradient(90deg, var(--trip-night-previous-color, var(--cv-color-teal)), var(--trip-night-next-color, var(--cv-color-teal)));
-  background-clip: text;
-  -webkit-background-clip: text;
+  color: var(--trip-night-previous-color, var(--cv-color-teal));
+  background: none;
   font-size: .79rem;
   font-weight: 820;
   text-transform: uppercase;
@@ -9555,7 +9553,11 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 .trip-planner-panel .trip-panel-night.is-empty.drop-enabled:not(.is-drop-target):not(.is-active):hover .trip-night-header-row {
-  background: var(--cv-surface, #fff);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff)),
+    color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff))
+  );
   border-bottom-color: var(--cv-border-subtle, #e9eef1);
 }
 
@@ -9627,7 +9629,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 .trip-planner-panel .trip-panel-night.is-active .trip-night-header-row {
   background: linear-gradient(
-    90deg,
+    180deg,
     color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff)),
     color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff))
   );
@@ -9652,7 +9654,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 .trip-planner-panel .trip-panel-night .trip-night-header-row {
   background: linear-gradient(
-    90deg,
+    180deg,
     color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff)),
     color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff))
   );
