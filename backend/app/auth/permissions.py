@@ -35,9 +35,9 @@ class MapAccess:
         return self.role in {"admin", "owner"}
 
 
-def get_map_access(database_session: Session, map_id: UUID, user: User) -> MapAccess:
+def get_map_access(database_session: Session, map_id: UUID, user: User, *, include_deleted: bool = False) -> MapAccess:
     poi_map = database_session.get(PoiMap, map_id)
-    if poi_map is None:
+    if poi_map is None or (poi_map.deleted_at is not None and not include_deleted):
         raise HTTPException(status_code=404, detail="Map not found")
     if user.is_admin:
         return MapAccess(poi_map, "admin")

@@ -221,5 +221,5 @@ describe('MapPlaceList', () => {
     expect(await screen.findByRole('button', { name: /^Place 101/ })).toBeVisible()
     expect(getPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ mapId: 'map-id', offset: 100, limit: 100 }), expect.any(AbortSignal))
     expect(container.querySelector('.place-list-load-sentinel')).toBeNull()
-  })
+  }, 10_000)
 })

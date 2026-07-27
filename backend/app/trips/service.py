@@ -26,7 +26,7 @@ def next_day_color(days: list[TripDay]) -> str:
 def load_trip(session: Session, trip_id: UUID) -> Trip:
     trip = session.scalar(
         select(Trip)
-        .where(Trip.id == trip_id)
+        .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
         .options(
             selectinload(Trip.days).selectinload(TripDay.stops),
             selectinload(Trip.nights),

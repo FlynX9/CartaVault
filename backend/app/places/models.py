@@ -31,6 +31,7 @@ class Place(Base):
         Index("places_map_id_idx", "map_id"),
         Index("places_status_id_idx", "status_id"),
         Index("places_deleted_at_idx", "deleted_at"),
+        Index("places_purge_after_idx", "purge_after"),
         Index("places_map_favorite_idx", "map_id", "is_favorite"),
         Index("places_map_interest_rating_idx", "map_id", "interest_rating"),
         Index("places_map_visit_rating_idx", "map_id", "visit_rating"),
@@ -117,6 +118,7 @@ class Place(Base):
     deleted_by_user_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )
+    purge_after: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     custom_fields: Mapped[dict[str, str | list[str]]] = mapped_column(
         JSONB,

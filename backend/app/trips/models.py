@@ -25,6 +25,8 @@ class Trip(Base):
         CheckConstraint("low_load_color ~ '^#[0-9A-Fa-f]{6}$' AND medium_load_color ~ '^#[0-9A-Fa-f]{6}$' AND high_load_color ~ '^#[0-9A-Fa-f]{6}$'", name="trips_load_colors_check"),
         Index("trips_map_id_idx", "map_id"),
         Index("trips_created_by_user_id_idx", "created_by_user_id"),
+        Index("trips_deleted_at_idx", "deleted_at"),
+        Index("trips_purge_after_idx", "purge_after"),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -45,9 +47,14 @@ class Trip(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime)
+    deleted_by_user_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"),
+    )
+    purge_after: Mapped[datetime | None] = mapped_column(DateTime)
 
     map: Mapped["PoiMap"] = relationship(back_populates="trips")
-    created_by: Mapped["User"] = relationship(back_populates="created_trips")
+    created_by: Mapped["User"] = relationship(back_populates="created_trips", foreign_keys=[created_by_user_id])
     days: Mapped[list["TripDay"]] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True, order_by="TripDay.sort_order")
     nights: Mapped[list["TripNight"]] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True)
     departure: Mapped["TripDeparture | None"] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True, uselist=False)

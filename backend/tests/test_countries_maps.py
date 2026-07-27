@@ -29,10 +29,16 @@ def test_map_crud_conflict_and_empty_delete(integration_client: TestClient, fran
     assert integration_client.delete(f"/maps/{map_id}").status_code == 204
 
 
-def test_map_with_place_cannot_be_deleted(integration_client: TestClient, poi_map: PoiMap) -> None:
+def test_map_with_place_moves_to_trash_and_restores_with_its_content(integration_client: TestClient, poi_map: PoiMap) -> None:
     place = integration_client.post("/places", json={"name": "Protected", "map_id": str(poi_map.id), "latitude": 48, "longitude": 2})
     assert place.status_code == 201
-    assert integration_client.delete(f"/maps/{poi_map.id}").status_code == 409
+    place_id = place.json()["id"]
+    assert integration_client.delete(f"/maps/{poi_map.id}").status_code == 204
+    assert integration_client.get(f"/maps/{poi_map.id}").status_code == 404
+    assert integration_client.get(f"/places/{place_id}").status_code == 404
+    assert integration_client.post(f"/trash/map/{poi_map.id}/restore").status_code == 204
+    assert integration_client.get(f"/maps/{poi_map.id}").status_code == 200
+    assert integration_client.get(f"/places/{place_id}").status_code == 200
     assert integration_client.get(f"/places/{place.json()['id']}").status_code == 200
 
 

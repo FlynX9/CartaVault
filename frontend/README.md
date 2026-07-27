@@ -70,7 +70,9 @@ The application shell provides:
 - a persistent map canvas beneath floating panels;
 - responsive panel behavior on tablet and mobile.
 
-Panels include Maps, Places, Categories, Tags, Statuses, Trips, Media, and Administration. The Places panel collapses to a compact header rather than unmounting its list and map state.
+Panels include Maps, Places, Categories, Tags, Statuses, Trips, Media, Trash,
+and Administration. The Places panel collapses to a compact header rather than
+unmounting its list and map state.
 
 ## Home dashboard
 
@@ -112,7 +114,18 @@ The authenticated workspace is URL-driven. Map, place, status, and filter state 
 
 ## Account
 
-The user menu opens the **Account** dialog above Leaflet. It includes Profile, Avatar, Security, Sessions, Preferences, and a danger zone. Preferences include language, display density, routing provider, map background, and theme.
+The user menu opens the **Account** dialog above Leaflet. It includes Profile,
+Avatar, Security, Sessions, Preferences, and a danger zone. Preferences include
+language, display density, routing provider, map background, theme, and the
+retention period used for newly deleted resources.
+
+## Trash workspace
+
+The **Trash** entry under Organization combines deleted maps, places, and trips
+in one responsive panel. Type filters are local and immediate. Each row shows
+its source map, deletion date, remaining retention, restore action, and a
+separately confirmed permanent-delete action. Restoration refreshes the
+workspace without remounting the Leaflet map.
 
 ## Trip mode
 

@@ -28,6 +28,7 @@ from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
+from app.trash.service import trash_deadline
 
 router = APIRouter(tags=["trips"])
 
@@ -79,7 +80,7 @@ def _trip_read(session: Session, trip_id: UUID) -> TripRead: return TripRead.mod
 @router.get("/maps/{map_id}/trips", response_model=list[TripRead])
 def list_trips(map_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_map_role(session, map_id, user, "viewer")
-    ids = session.scalars(select(Trip.id).where(Trip.map_id == map_id).order_by(Trip.archived_at.is_not(None), Trip.updated_at.desc())).all()
+    ids = session.scalars(select(Trip.id).where(Trip.map_id == map_id, Trip.deleted_at.is_(None)).order_by(Trip.archived_at.is_not(None), Trip.updated_at.desc())).all()
     return [_trip_read(session, item) for item in ids]
 
 
@@ -119,7 +120,10 @@ def update_trip_load_settings(trip_id: UUID, data: TripLoadSettings, session: Se
 
 @router.delete("/trips/{trip_id}", status_code=204)
 def remove_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_owner(session, trip_id, user).trip; session.delete(trip); session.commit()
+    trip = require_trip_owner(session, trip_id, user).trip
+    trip.deleted_at, trip.purge_after = trash_deadline(user)
+    trip.deleted_by_user_id = user.id
+    session.commit()
 
 
 @router.post("/trips/{trip_id}/archive", response_model=TripRead)

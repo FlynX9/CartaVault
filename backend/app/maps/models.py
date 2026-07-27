@@ -22,7 +22,6 @@ class PoiMap(Base):
 
     __tablename__ = "poi_maps"
     __table_args__ = (
-        UniqueConstraint("owner_id", "country_id", name="poi_maps_owner_country_key"),
         CheckConstraint(
             "(center_latitude IS NULL AND center_longitude IS NULL) OR "
             "(center_latitude IS NOT NULL AND center_longitude IS NOT NULL AND "
@@ -30,6 +29,15 @@ class PoiMap(Base):
             name="poi_maps_center_consistency",
         ),
         CheckConstraint("default_zoom IS NULL OR default_zoom BETWEEN 1 AND 18", name="poi_maps_default_zoom_range"),
+        Index("poi_maps_deleted_at_idx", "deleted_at"),
+        Index("poi_maps_purge_after_idx", "purge_after"),
+        Index(
+            "poi_maps_owner_country_active_key",
+            "owner_id",
+            "country_id",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -42,6 +50,11 @@ class PoiMap(Base):
     default_zoom: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deleted_by_user_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
+    )
+    purge_after: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     place_field_config: Mapped[dict[str, bool]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     country: Mapped["Country"] = relationship(back_populates="maps")

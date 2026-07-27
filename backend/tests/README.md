@@ -111,6 +111,11 @@ Google tests use mocked HTTP responses only. They cover field masks, options, po
 
 Advanced integration scenarios cover configurable fields, favorites, both ratings, derived visited status, shared list/map filters, HTTP(S) links, history, and the trash/restore/purge lifecycle. Alembic cycles must run only after `TEST_DATABASE_URL` validation confirms that the database name contains `test` and is not `cartavault`.
 
+`test_unified_trash.py` covers the shared map/place/trip listing, immediate
+visibility rules, restoration, and user-configured retention deadlines. Apply
+revision `f2a6c8d4e915` to `cartavault_test` before running this integration
+module; never point the migration command at the development database.
+
 Status tests also cover four defaults on a new map, `functional_state` validation, immediate reclassification, favorite/state/status combinations, facets, map isolation, and owner/editor/viewer/unrelated-user roles. The targeted `d6f1a3b8c902` migration cycle verifies downgrade to `a4f9c2e7d631`, removed columns and indexes, then backfill and final schema after returning to head.
 
 ## Quota profiles

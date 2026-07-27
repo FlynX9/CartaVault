@@ -1,6 +1,8 @@
+import asyncio
 import os
 import logging
 from contextlib import asynccontextmanager
+from contextlib import suppress
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
@@ -39,6 +41,8 @@ from app.statuses.router import router as statuses_router
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
 from app.config import legacy_google_routes_api_key_configured
+from app.trash.router import router as trash_router
+from app.trash.service import purge_expired_trash
 
 
 logger = logging.getLogger(__name__)
@@ -84,17 +88,40 @@ def validate_startup_security_state(session: Session) -> None:
         raise RuntimeError("CartaVault has orphan maps. Run the administrator bootstrap/backfill before starting the application")
 
 
+async def _trash_purge_loop() -> None:
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            await asyncio.to_thread(_purge_expired_trash)
+        except SQLAlchemyError:
+            logger.exception("Unable to purge expired trash items")
+
+
+def _purge_expired_trash() -> None:
+    with SessionLocal() as session:
+        purge_expired_trash(session)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    purge_task: asyncio.Task[None] | None = None
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
         try:
             with SessionLocal() as session:
                 validate_startup_security_state(session)
+                purge_expired_trash(session)
         except SQLAlchemyError as error:
             raise RuntimeError("CartaVault authentication schema is missing. Apply the schema migration, then run: python -m app.cli create-admin") from error
-    yield
+        purge_task = asyncio.create_task(_trash_purge_loop())
+    try:
+        yield
+    finally:
+        if purge_task is not None:
+            purge_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await purge_task
 
 app = FastAPI(
     title="CartaVault API",
@@ -136,6 +163,7 @@ app.include_router(statuses_router)
 app.include_router(photos_router)
 app.include_router(media_router)
 app.include_router(trips_router)
+app.include_router(trash_router)
 
 
 @app.get(

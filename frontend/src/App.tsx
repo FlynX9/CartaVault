@@ -40,6 +40,7 @@ const MediaWorkspacePanel = lazy(async () => ({ default: (await import('./compon
 const CategoriesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).CategoriesWorkspacePanel }))
 const TagsWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).TagsWorkspacePanel }))
 const StatusesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/WorkspaceManagementPanels')).StatusesWorkspacePanel }))
+const TrashWorkspacePanel = lazy(async () => ({ default: (await import('./components/trash/TrashWorkspacePanel')).TrashWorkspacePanel }))
 const AdminConsole = lazy(async () => ({ default: (await import('./pages/admin/AdminConsole')).AdminConsole }))
 const DashboardPage = lazy(async () => ({ default: (await import('./components/dashboard/DashboardPage')).DashboardPage }))
 
@@ -238,14 +239,14 @@ function WorkspaceApp() {
     }
   }
   const deleteWorkspaceMap = async (poiMap: PoiMap) => {
-    if (!await confirm({ title: 'Supprimer cette carte ?', message: `La carte « ${poiMap.name} » et son contenu ne seront plus accessibles. Cette action est irréversible.` })) return
+    if (!await confirm({ title: 'Placer cette carte dans la corbeille ?', message: `La carte « ${poiMap.name} » et son contenu ne seront plus accessibles, mais pourront être restaurés pendant votre délai de conservation.` })) return
     try {
       await deleteMap(poiMap.id)
       const remaining = maps.filter((item) => item.id !== poiMap.id)
       setMaps(remaining)
       if (poiMap.id === activeMapId) navigate(withMap('/', remaining[0]?.id ?? null, activeStatusId))
     } catch (error) {
-      setMapsError(error instanceof ApiError && error.status === 409 ? 'Cette carte contient des POI et ne peut pas être supprimée.' : error instanceof Error ? error.message : 'Suppression impossible.')
+      setMapsError(error instanceof Error ? error.message : 'Suppression impossible.')
     }
   }
   const sidebarState = deriveMapSidebarState(
@@ -307,6 +308,7 @@ function WorkspaceApp() {
     : workspacePanel === 'categories' && activeMapId !== null ? <CategoriesWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} collapsed={collapsedWorkspacePanel === 'categories'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'categories' : null)} />
       : workspacePanel === 'tags' && activeMapId !== null ? <TagsWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} collapsed={collapsedWorkspacePanel === 'tags'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'tags' : null)} />
         : workspacePanel === 'statuses' ? <StatusesWorkspacePanel mapId={activeMapId ?? undefined} canEdit={activeMap?.can_edit === true} collapsed={collapsedWorkspacePanel === 'statuses'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'statuses' : null)} />
+          : workspacePanel === 'trash' ? <TrashWorkspacePanel collapsed={collapsedWorkspacePanel === 'trash'} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? 'trash' : null)} onChanged={() => { void loadMaps(true); setRefreshVersion((value) => value + 1) }} />
           : null}</Suspense>
 
   const handleTripStopFocus = (latitude: number, longitude: number) => {

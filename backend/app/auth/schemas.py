@@ -127,6 +127,7 @@ class AccountPreferences(BaseModel):
     density: Literal["compact", "comfortable", "spacious"] = "compact"
     startup_panel: Literal["maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
+    trash_retention_days: int = Field(default=30, ge=1, le=365)
     routing: RoutingPreferences = Field(default_factory=RoutingPreferences)
 
     @model_validator(mode="before")

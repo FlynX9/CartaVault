@@ -14,6 +14,7 @@ export interface AccountPreferences {
   density: 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'maps' | 'places' | 'last'
   timezone: string
+  trash_retention_days: number
   routing: {
     provider: 'osrm' | 'google'
     stay_in_country: boolean

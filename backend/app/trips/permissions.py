@@ -23,9 +23,9 @@ class TripAccess:
     def can_delete(self) -> bool: return self.map_access.can_delete
 
 
-def require_trip_role(session: Session, trip_id: UUID, user: User, minimum: str) -> TripAccess:
+def require_trip_role(session: Session, trip_id: UUID, user: User, minimum: str, *, include_deleted: bool = False) -> TripAccess:
     trip = session.get(Trip, trip_id)
-    if trip is None: raise HTTPException(404, "Trip not found")
+    if trip is None or (trip.deleted_at is not None and not include_deleted): raise HTTPException(404, "Trip not found")
     return TripAccess(trip, require_map_role(session, trip.map_id, user, minimum))
 
 

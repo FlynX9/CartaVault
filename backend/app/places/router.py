@@ -33,6 +33,7 @@ from app.places.models import Place
 from app.places.fields import normalize_place_field_config
 from app.places.history import add_place_history, changed_values
 from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceListPosition, PlaceRead, PlaceUpdate
+from app.trash.service import trash_deadline
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
@@ -290,7 +291,7 @@ def bulk_update_places(
     try:
         for place in places:
             if action_data.action == "delete":
-                place.deleted_at = func.now()
+                place.deleted_at, place.purge_after = trash_deadline(current_user)
                 place.deleted_by_user_id = current_user.id
                 add_place_history(database_session, place.id, current_user.id, "trashed", {})
                 continue
@@ -667,7 +668,7 @@ def delete_place(
     place = require_place_role(database_session, place_id, current_user, "editor")
 
     try:
-        place.deleted_at = func.now()
+        place.deleted_at, place.purge_after = trash_deadline(current_user)
         place.deleted_by_user_id = current_user.id
         add_place_history(database_session, place.id, current_user.id, "trashed", {})
         database_session.commit()

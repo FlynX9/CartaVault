@@ -129,7 +129,25 @@ Photos support JPEG, PNG, and WebP uploads, ordering, primary-photo selection, d
 
 ## Account preferences
 
-Account preferences include language, theme, display density, map background, routing provider, country-routing preference, and personal Google Routes credentials. Personal Google keys are Fernet-encrypted on the server, never returned in full, and are required and verified before Google Routes can be selected.
+Account preferences include language, theme, display density, map background,
+trash retention, routing provider, country-routing preference, and personal
+Google Routes credentials. Trash retention accepts 1 to 365 days and defaults
+to 30 days. Personal Google keys are Fernet-encrypted on the server, never
+returned in full, and are required and verified before Google Routes can be
+selected.
+
+## Unified trash
+
+`DELETE` on maps, places, and trips performs a soft deletion and records the
+deleting user plus a fixed `purge_after` deadline based on that user's current
+preference. `GET /trash` lists only recoverable resources the current user is
+allowed to manage. Typed restore and permanent-delete endpoints are available
+under `/trash/{map|place|trip}/{id}`.
+
+Normal reads, dashboard aggregates, and active-resource quotas exclude deleted
+resources. Child places and trips remain intact when a map is recoverable.
+Expired resources are purged transactionally during application startup and by
+an hourly maintenance task. The schema change is revision `f2a6c8d4e915`.
 
 ## Trips and routing
 

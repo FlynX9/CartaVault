@@ -103,13 +103,13 @@ describe('map URL workspace', () => {
     expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
-  it('reports refusal when deleting a map from the maps panel', async () => {
+  it('reports an API failure when moving a map to trash', async () => {
     vi.mocked(deleteMap).mockRejectedValue(new ApiError(409, 'Conflict'))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Cartes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer Carte France' }))
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Cette carte contient des POI')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Conflict')
   })
 
   it('opens a marker in the map popup and closes back to the active map URL', async () => {

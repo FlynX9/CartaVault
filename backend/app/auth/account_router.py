@@ -25,10 +25,15 @@ DEFAULT_PREFERENCES = AccountPreferences().model_dump()
 
 
 def _profile(user: User, database_session: Session) -> dict:
-    owned = database_session.scalars(select(PoiMap).where(PoiMap.owner_id == user.id).order_by(PoiMap.name)).all()
+    owned = database_session.scalars(
+        select(PoiMap).where(PoiMap.owner_id == user.id, PoiMap.deleted_at.is_(None)).order_by(PoiMap.name)
+    ).all()
+    owned_map_count = database_session.scalar(
+        select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id)
+    ) or 0
     shared_count = database_session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.user_id == user.id, MapMembership.role != "owner")) or 0
     active_sessions = database_session.scalar(select(func.count()).select_from(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None), UserSession.expires_at > datetime.now(UTC).replace(tzinfo=None))) or 0
-    return {"id": user.id, "email": user.email, "display_name": user.display_name, "is_admin": user.is_admin, "is_active": user.is_active, "created_at": user.created_at, "updated_at": user.updated_at, "last_login_at": user.last_login_at, "avatar_url": f"/account/avatar?v={user.avatar_updated_at.isoformat()}" if user.avatar_filename else None, "owned_maps": [{"id": item.id, "name": item.name} for item in owned], "shared_map_count": shared_count, "active_session_count": active_sessions, "can_delete": not owned}
+    return {"id": user.id, "email": user.email, "display_name": user.display_name, "is_admin": user.is_admin, "is_active": user.is_active, "created_at": user.created_at, "updated_at": user.updated_at, "last_login_at": user.last_login_at, "avatar_url": f"/account/avatar?v={user.avatar_updated_at.isoformat()}" if user.avatar_filename else None, "owned_maps": [{"id": item.id, "name": item.name} for item in owned], "shared_map_count": shared_count, "active_session_count": active_sessions, "can_delete": owned_map_count == 0}
 
 
 def _preferences(user: User) -> dict[str, object]:

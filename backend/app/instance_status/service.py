@@ -178,7 +178,7 @@ def _usage(session: Session, checked_at: datetime) -> UsageDiagnostic:
     now = _naive_now(); seven = now - timedelta(days=7); thirty = now - timedelta(days=30)
     scalar = lambda statement: int(session.scalar(statement) or 0)
     users = scalar(select(func.count()).select_from(User).where(User.deleted_at.is_(None)))
-    maps = scalar(select(func.count()).select_from(PoiMap))
+    maps = scalar(select(func.count()).select_from(PoiMap).where(PoiMap.deleted_at.is_(None)))
     places = scalar(select(func.count()).select_from(Place).where(Place.deleted_at.is_(None)))
     return UsageDiagnostic(
         status="operational", checked_at=checked_at, users_total=users,
@@ -186,10 +186,10 @@ def _usage(session: Session, checked_at: datetime) -> UsageDiagnostic:
         users_unverified=None,
         users_disabled=scalar(select(func.count()).select_from(User).where(User.is_active.is_(False), User.deleted_at.is_(None))),
         administrators_total=scalar(select(func.count()).select_from(User).where(User.is_admin.is_(True), User.deleted_at.is_(None))),
-        maps_total=maps, maps_private=scalar(select(func.count()).select_from(PoiMap).where(PoiMap.is_private.is_(True))),
-        maps_shared=scalar(select(func.count()).select_from(PoiMap).where(PoiMap.is_private.is_(False))),
+        maps_total=maps, maps_private=scalar(select(func.count()).select_from(PoiMap).where(PoiMap.is_private.is_(True), PoiMap.deleted_at.is_(None))),
+        maps_shared=scalar(select(func.count()).select_from(PoiMap).where(PoiMap.is_private.is_(False), PoiMap.deleted_at.is_(None))),
         places_total=places, trashed_places=scalar(select(func.count()).select_from(Place).where(Place.deleted_at.is_not(None))),
-        photos_total=scalar(select(func.count()).select_from(Photo)), trips_total=scalar(select(func.count()).select_from(Trip)),
+        photos_total=scalar(select(func.count()).select_from(Photo)), trips_total=scalar(select(func.count()).select_from(Trip).where(Trip.deleted_at.is_(None))),
         memberships_total=scalar(select(func.count()).select_from(MapMembership)),
         invitations_pending=scalar(select(func.count()).select_from(MapInvitation).where(MapInvitation.accepted_at.is_(None), MapInvitation.revoked_at.is_(None), MapInvitation.expires_at > now)),
         storage_average_per_user_bytes=None,

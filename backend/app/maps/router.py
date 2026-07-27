@@ -31,6 +31,7 @@ from app.maps.schemas import (
 from app.places.models import Place
 from app.places.fields import normalize_place_field_config
 from app.statuses.service import create_default_statuses
+from app.trash.service import trash_deadline
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 logger = logging.getLogger(__name__)
@@ -67,13 +68,16 @@ def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
     )
 
 
-def read_map(database_session: Session, map_id: UUID) -> PoiMap | None:
-    return database_session.scalar(select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships)).where(PoiMap.id == map_id))
+def read_map(database_session: Session, map_id: UUID, *, include_deleted: bool = False) -> PoiMap | None:
+    statement = select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships)).where(PoiMap.id == map_id)
+    if not include_deleted:
+        statement = statement.where(PoiMap.deleted_at.is_(None))
+    return database_session.scalar(statement)
 
 
 @router.get("", response_model=list[MapRead])
 def get_maps(q: str | None = Query(default=None, min_length=1, max_length=120), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[MapRead]:
-    statement = select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships))
+    statement = select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships)).where(PoiMap.deleted_at.is_(None))
     if not current_user.is_admin:
         statement = statement.join(MapMembership).where(MapMembership.user_id == current_user.id)
     if q is not None:
@@ -153,9 +157,8 @@ def update_place_field_config(map_id: UUID, data: MapPlaceFieldConfig, database_
 @router.delete("/{map_id}", status_code=204)
 def delete_map(map_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Response:
     access = require_map_role(database_session, map_id, current_user, "owner")
-    if database_session.scalar(select(func.count()).select_from(Place).where(Place.map_id == map_id)):
-        raise HTTPException(status_code=409, detail="The map cannot be deleted while it contains places")
-    database_session.delete(access.map)
+    access.map.deleted_at, access.map.purge_after = trash_deadline(current_user)
+    access.map.deleted_by_user_id = current_user.id
     database_session.commit()
     return Response(status_code=204)
 

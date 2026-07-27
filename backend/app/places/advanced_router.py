@@ -39,6 +39,7 @@ def restore_place(place_id: UUID, database_session: Session = Depends(get_db), c
         raise HTTPException(status_code=409, detail="The place is not in the trash")
     place.deleted_at = None
     place.deleted_by_user_id = None
+    place.purge_after = None
     add_place_history(database_session, place.id, current_user.id, "restored", {})
     database_session.commit()
     place, longitude, latitude = database_session.execute(build_place_read_statement().where(Place.id == place_id)).one()

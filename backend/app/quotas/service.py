@@ -75,16 +75,16 @@ class QuotaService:
     def usage(self, owner_id: UUID, key: QuotaKey, scope_id: UUID | None = None) -> int:
         now = datetime.now(UTC).replace(tzinfo=None)
         statements = {
-            QuotaKey.MAPS_MAX: select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == owner_id),
-            QuotaKey.TRIPS_TOTAL_MAX: select(func.count()).select_from(Trip).join(PoiMap).where(PoiMap.owner_id == owner_id),
+            QuotaKey.MAPS_MAX: select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == owner_id, PoiMap.deleted_at.is_(None)),
+            QuotaKey.TRIPS_TOTAL_MAX: select(func.count()).select_from(Trip).join(PoiMap).where(PoiMap.owner_id == owner_id, PoiMap.deleted_at.is_(None), Trip.deleted_at.is_(None)),
             QuotaKey.PHOTOS_TOTAL_MAX: select(func.count()).select_from(Photo).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id),
             QuotaKey.MEMBERSHIPS_TOTAL_MAX: select(func.count()).select_from(MapMembership).where(MapMembership.user_id == owner_id),
             QuotaKey.PENDING_INVITATIONS_MAX: select(func.count()).select_from(MapInvitation).join(PoiMap).where(PoiMap.owner_id == owner_id, MapInvitation.accepted_at.is_(None), MapInvitation.revoked_at.is_(None), MapInvitation.expires_at > now),
-            QuotaKey.PLACES_PER_MAP_MAX: select(func.count()).select_from(Place).where(Place.map_id == scope_id),
+            QuotaKey.PLACES_PER_MAP_MAX: select(func.count()).select_from(Place).where(Place.map_id == scope_id, Place.deleted_at.is_(None)),
             QuotaKey.TAGS_PER_MAP_MAX: select(func.count()).select_from(Tag).where(Tag.map_id == scope_id),
             QuotaKey.CATEGORIES_PER_MAP_MAX: select(func.count()).select_from(Category).where(Category.map_id == scope_id),
             QuotaKey.STATUSES_PER_MAP_MAX: select(func.count()).select_from(PlaceStatus).where(PlaceStatus.map_id == scope_id),
-            QuotaKey.TRIPS_PER_MAP_MAX: select(func.count()).select_from(Trip).where(Trip.map_id == scope_id),
+            QuotaKey.TRIPS_PER_MAP_MAX: select(func.count()).select_from(Trip).where(Trip.map_id == scope_id, Trip.deleted_at.is_(None)),
             QuotaKey.MEMBERS_PER_MAP_MAX: select(func.count()).select_from(MapMembership).where(MapMembership.map_id == scope_id),
             QuotaKey.PENDING_INVITATIONS_PER_MAP_MAX: select(func.count()).select_from(MapInvitation).where(MapInvitation.map_id == scope_id, MapInvitation.accepted_at.is_(None), MapInvitation.revoked_at.is_(None), MapInvitation.expires_at > now),
             QuotaKey.PHOTOS_PER_PLACE_MAX: select(func.count()).select_from(Photo).where(Photo.place_id == scope_id),

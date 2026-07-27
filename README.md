@@ -339,6 +339,15 @@ results. New maps receive four editable defaults: To do, To review, Visited
 and À refaire. The main Places filters stay stable (All, Not visited, Visited,
 Favorites), while advanced filters expose the real statuses of the active map.
 
+### Unified trash
+
+Deleting a map, place, or trip now moves it to the permission-scoped **Trash**
+workspace under Organization. Deleted resources immediately disappear from
+normal lists and API reads, but owners or editors with the required resource
+permission can restore them before their purge deadline. Users choose a
+retention period from 7 to 365 days in Account preferences; the default is
+30 days. Expired resources are purged at startup and by an hourly backend job.
+
 ### Already available
 
 - maps and places;
@@ -349,7 +358,7 @@ Favorites), while advanced filters expose the real statuses of the active map.
 - outing planning and optimization;
 - OSRM and Google Routes routing;
 - advanced filters and bulk actions;
-- place trash and history;
+- unified map, place, and trip trash with configurable retention;
 - Account area and user preferences.
 - reusable per-user quota profiles with administrator assignment and backend enforcement;
 

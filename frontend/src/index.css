@@ -2341,6 +2341,150 @@ button {
   }
 }
 
+/* Unified trash panel. */
+.trash-workspace-panel {
+  background: var(--cv-surface);
+}
+
+.trash-workspace-content {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.8rem var(--cv-panel-padding-x, 0.9rem);
+}
+
+.trash-filter {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.trash-filter button {
+  min-width: 0;
+  min-height: 2.15rem;
+  padding: 0.35rem;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface-muted);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: 0.55rem;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.trash-filter button[aria-pressed='true'] {
+  color: white;
+  background: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+
+.trash-retention-note {
+  margin: 0;
+  color: var(--cv-color-gray);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.trash-list {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 0.2rem;
+  overflow: auto;
+  list-style: none;
+}
+
+.trash-list li {
+  display: grid;
+  grid-template-columns: 2.15rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem;
+  background: var(--cv-surface-muted);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: 0.7rem;
+}
+
+.trash-item-icon {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  color: var(--cv-color-gray);
+  background: color-mix(in srgb, var(--cv-color-gray) 10%, var(--cv-surface));
+  border-radius: 0.55rem;
+  place-items: center;
+}
+
+.trash-item-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.trash-item-copy strong {
+  overflow: hidden;
+  color: var(--cv-text, var(--cv-color-navy));
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trash-item-copy small {
+  color: var(--cv-color-gray);
+  font-size: 0.64rem;
+}
+
+.trash-item-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.trash-item-actions button {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  place-items: center;
+}
+
+.trash-item-actions button:hover {
+  color: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+
+.trash-item-actions button.danger:hover {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.trash-item-actions button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+html[data-theme='dark'] .trash-filter button,
+html[data-theme='dark'] .trash-list li,
+html[data-theme='dark'] .trash-item-actions button {
+  color: var(--cv-text);
+  background: var(--cv-surface-raised);
+  border-color: var(--cv-border);
+}
+
+html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
+  color: white;
+  background: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+
 /* The workspace rule intentionally comes last: legacy layouts used a fixed 310px track. */
 .map-workspace.place-list-open,
 .map-workspace.place-list-open.sidebar-open {

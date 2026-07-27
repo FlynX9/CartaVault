@@ -13,7 +13,7 @@ import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 
 type Section = 'profile' | 'avatar' | 'security' | 'sessions' | 'preferences' | 'danger'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
 
 export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpenAdmin?: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
@@ -151,6 +151,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select></label>
     <label>{t('account.preferences.startup')}<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select></label>
     <label>{t('account.preferences.timezone')}<input value={preferences.timezone} maxLength={64} onChange={(event) => update('timezone', event.target.value)} /></label>
+    <label>{t('account.preferences.trashRetention')}<select value={preferences.trash_retention_days} onChange={(event) => update('trash_retention_days', Number(event.target.value))}>{[7, 14, 30, 60, 90, 180, 365].map((days) => <option key={days} value={days}>{days} {t('account.preferences.days')}</option>)}</select><small>{t('account.preferences.trashRetentionHelp')}</small></label>
     <fieldset className="account-routing-preferences"><legend>{t('account.preferences.routing')}</legend>
       <label>{t('account.preferences.engine')}<select value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select></label>
       <small>{storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')}</small>

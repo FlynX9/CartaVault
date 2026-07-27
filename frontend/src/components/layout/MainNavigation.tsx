@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag } from 'lucide-react'
+import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag, Trash2 } from 'lucide-react'
 import { useI18n } from '../../i18n/useI18n'
 
-export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | null
+export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | null
 
 interface Props {
   activePanel: WorkspacePanel
@@ -46,6 +46,7 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
         <button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>
         <button type="button" className={navClass(activePanel === 'tags')} aria-label={t('nav.tags')} aria-pressed={activePanel === 'tags'} onClick={() => togglePanel('tags')}><Tag size={23} /><span>{t('nav.tags')}</span></button>
         {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}
+        <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => togglePanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
       </div>
     </div>
   </nav>

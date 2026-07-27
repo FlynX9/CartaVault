@@ -27,8 +27,12 @@ from app.trips.models import Trip, TripDay
 
 def _accessible_map_ids(user: User):
     if user.is_admin:
-        return select(PoiMap.id)
-    return select(MapMembership.map_id).where(MapMembership.user_id == user.id)
+        return select(PoiMap.id).where(PoiMap.deleted_at.is_(None))
+    return (
+        select(MapMembership.map_id)
+        .join(PoiMap, PoiMap.id == MapMembership.map_id)
+        .where(MapMembership.user_id == user.id, PoiMap.deleted_at.is_(None))
+    )
 
 
 def build_dashboard(session: Session, user: User) -> DashboardRead:
@@ -47,14 +51,14 @@ def build_dashboard(session: Session, user: User) -> DashboardRead:
     ).one()
     map_totals = session.execute(
         select(func.count(PoiMap.id), func.count(distinct(PoiMap.country_id)))
-        .where(PoiMap.id.in_(map_ids))
+        .where(PoiMap.id.in_(map_ids), PoiMap.deleted_at.is_(None))
     ).one()
     trip_totals = session.execute(
         select(
             func.count(Trip.id),
             func.count(Trip.id).filter(Trip.status.in_(("draft", "planned", "in_progress"))),
             func.count(Trip.id).filter(Trip.status == "completed"),
-        ).where(Trip.map_id.in_(map_ids), Trip.archived_at.is_(None))
+        ).where(Trip.map_id.in_(map_ids), Trip.archived_at.is_(None), Trip.deleted_at.is_(None))
     ).one()
     photo_total = session.scalar(
         select(func.count(Photo.id))
@@ -167,7 +171,7 @@ def build_dashboard(session: Session, user: User) -> DashboardRead:
             )
             .join(PoiMap, Trip.map_id == PoiMap.id)
             .outerjoin(trip_day_metrics, trip_day_metrics.c.trip_id == Trip.id)
-            .where(Trip.map_id.in_(map_ids), Trip.archived_at.is_(None))
+            .where(Trip.map_id.in_(map_ids), Trip.archived_at.is_(None), Trip.deleted_at.is_(None))
             .order_by(Trip.updated_at.desc(), Trip.id)
             .limit(6)
         )
@@ -208,12 +212,14 @@ def build_dashboard(session: Session, user: User) -> DashboardRead:
         .where(
             Trip.map_id.in_(map_ids),
             Trip.archived_at.is_(None),
+            Trip.deleted_at.is_(None),
             TripDay.route_status.in_(("stale", "failed")),
         )
     ) or 0
     incomplete_maps = session.scalar(
         select(func.count(PoiMap.id)).where(
             PoiMap.id.in_(map_ids),
+            PoiMap.deleted_at.is_(None),
             or_(
                 PoiMap.center_latitude.is_(None),
                 PoiMap.center_longitude.is_(None),

@@ -49,7 +49,7 @@ class User(Base):
     owned_maps: Mapped[list["PoiMap"]] = relationship(back_populates="owner", foreign_keys="PoiMap.owner_id")
     memberships: Mapped[list["MapMembership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     created_invitations: Mapped[list["MapInvitation"]] = relationship(back_populates="created_by", foreign_keys="MapInvitation.created_by_user_id")
-    created_trips: Mapped[list["Trip"]] = relationship(back_populates="created_by")
+    created_trips: Mapped[list["Trip"]] = relationship(back_populates="created_by", foreign_keys="Trip.created_by_user_id")
     quota_profile: Mapped["QuotaProfile"] = relationship(back_populates="users")
 
 
