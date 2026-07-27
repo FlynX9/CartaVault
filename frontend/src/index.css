@@ -9692,8 +9692,34 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 /* The day segment reaches the following night/arrival marker even while the
    insertion control temporarily opens between both cards. */
-.trip-planner-panel .trip-panel-day::after {
+.trip-planner-panel .trip-panel-day::after,
+.trip-planner-panel .trip-panel-night::after {
+  top: 2.5rem;
   bottom: -1.45rem;
+  left: var(--trip-timeline-x);
+  width: 2px;
+  border: 0;
+}
+
+.trip-planner-panel .trip-panel-day::after {
+  background: var(--trip-day-color, var(--cv-color-teal));
+}
+
+.trip-planner-panel .trip-panel-night::after {
+  --trip-night-line-color: var(--trip-night-next-color, var(--cv-color-teal));
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--trip-night-line-color) 0 5px,
+    transparent 5px 9px
+  );
+}
+
+.trip-planner-panel .trip-panel-departure::after {
+  background: var(--cv-color-teal);
+}
+
+.trip-planner-panel .trip-panel-arrival::after {
+  display: none;
 }
 
 .trip-planner-panel .trip-panel-days > div:has(.trip-panel-insert-day:hover) .trip-panel-day::after,
