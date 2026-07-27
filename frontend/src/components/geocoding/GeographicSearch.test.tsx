@@ -41,4 +41,27 @@ describe('GeographicSearch', () => {
     expect(screen.getByRole('option', { name: /Unter den Linden 1/ })).toBeInTheDocument()
     expect(geocodingService.search).toHaveBeenCalledWith('Berlin', expect.objectContaining({ countryCode: 'DE', focus: [51, 11] }))
   })
+
+  it('keeps the selected location card available after the search field collapses', () => {
+    const onClear = vi.fn()
+    const onCreate = vi.fn()
+    const { container } = render(<GeographicSearch
+      focus={[48, 2]}
+      selected={{ id: 'epinal', name: 'Épinal', formattedAddress: 'Épinal, France', latitude: 48.180424, longitude: 6.461278, source: 'test' }}
+      onSelect={vi.fn()}
+      onClear={onClear}
+      onCreate={onCreate}
+    />)
+
+    const input = screen.getByRole('searchbox', { name: 'Rechercher une adresse ou des coordonnées' })
+    fireEvent.focus(input)
+    fireEvent.pointerDown(document.body)
+
+    expect(container.querySelector('.geographic-search')).not.toHaveClass('is-pinned-open')
+    expect(screen.getByLabelText('Emplacement géographique sélectionné')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter ici' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Effacer' }))
+    expect(onCreate).toHaveBeenCalledTimes(1)
+    expect(onClear).toHaveBeenCalledTimes(1)
+  })
 })

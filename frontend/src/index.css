@@ -9111,3 +9111,188 @@ html[data-theme='dark'] .status-marker.selected {
     flex-basis: min(14rem, calc(100vw - 9rem));
   }
 }
+
+/* CartaVault geocoding surfaces. These rules intentionally live after the
+   historical map styles so results keep the same contrast in both themes. */
+.map-workspace .map-overlay-control-slot--search .geocoding-results,
+.map-workspace .map-overlay-control-slot--search .geocoding-selection {
+  position: absolute;
+  z-index: 4;
+  top: calc(var(--cv-map-overlay-control-size) + .4rem);
+  right: 0;
+  width: min(24rem, calc(100vw - 10rem));
+  box-sizing: border-box;
+  margin: 0;
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: .72rem;
+  box-shadow: var(--cv-shadow-float);
+}
+
+.map-workspace .map-overlay-control-slot--search .geocoding-results {
+  max-height: min(18rem, calc(100dvh - 8rem));
+  gap: .2rem;
+  padding: .35rem;
+  overflow-y: auto;
+}
+
+.map-workspace .geocoding-results button {
+  display: grid;
+  min-height: 0;
+  gap: .08rem;
+  padding: .48rem .55rem;
+  color: var(--cv-color-navy);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: .5rem;
+  font-family: inherit;
+  font-size: .7rem;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.map-workspace .geocoding-results button > strong {
+  overflow: hidden;
+  color: var(--cv-color-navy);
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-workspace .geocoding-results button > span,
+.map-workspace .geocoding-results button > small {
+  overflow: hidden;
+  color: var(--cv-text-muted);
+  font-size: .68rem;
+  font-weight: 400;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-workspace .geocoding-results button.active,
+.map-workspace .geocoding-results button:hover,
+.map-workspace .geocoding-results button:focus-visible {
+  color: var(--cv-color-navy);
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 42%, var(--cv-border-subtle));
+  outline: 0;
+}
+
+.map-workspace .map-overlay-control-slot--search .geocoding-selection {
+  display: grid;
+  gap: .15rem;
+  padding: .65rem .7rem;
+}
+
+.map-workspace .geocoding-selection > strong {
+  overflow: hidden;
+  color: var(--cv-color-navy);
+  font-size: .82rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-workspace .geocoding-selection > span,
+.map-workspace .geocoding-selection > small {
+  color: var(--cv-text-muted);
+  font-size: .7rem;
+  line-height: 1.35;
+}
+
+.map-workspace .geocoding-selection > div {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .4rem;
+}
+
+.map-workspace .geocoding-selection button,
+.map-workspace .geocoding-selection .primary-button {
+  min-height: 2rem;
+  padding: .35rem .65rem;
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: .45rem;
+  font-family: inherit;
+  font-size: .7rem;
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.map-workspace .geocoding-selection button {
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+}
+
+.map-workspace .geocoding-selection .primary-button {
+  color: white;
+  background: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+
+.map-workspace .geocoding-selection button:hover,
+.map-workspace .geocoding-selection button:focus-visible {
+  color: var(--cv-color-teal);
+  background: var(--cv-surface-muted);
+  border-color: color-mix(in srgb, var(--cv-color-teal) 45%, transparent);
+  outline: 0;
+}
+
+.map-workspace .geocoding-selection .primary-button:hover,
+.map-workspace .geocoding-selection .primary-button:focus-visible {
+  color: white;
+  background: color-mix(in srgb, var(--cv-color-teal) 86%, black);
+}
+
+.geocoding-marker {
+  display: grid;
+  width: 28px !important;
+  height: 28px !important;
+  place-items: center;
+  color: var(--cv-color-teal);
+  background: rgb(250 250 248 / 88%);
+  border: 1px solid rgb(15 166 138 / 42%);
+  border-radius: 50%;
+  box-shadow: 0 3px 10px rgb(13 27 42 / 24%);
+  backdrop-filter: blur(3px);
+}
+
+.geocoding-marker svg {
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.geocoding-marker svg circle:nth-child(2) {
+  fill: currentColor;
+  stroke: none;
+}
+
+html[data-theme='dark'] .map-workspace .geocoding-results button.active,
+html[data-theme='dark'] .map-workspace .geocoding-results button:hover,
+html[data-theme='dark'] .map-workspace .geocoding-results button:focus-visible {
+  background: color-mix(in srgb, var(--cv-color-teal) 13%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 48%, var(--cv-border-subtle));
+}
+
+html[data-theme='dark'] .geocoding-marker {
+  background: rgb(13 27 42 / 86%);
+  border-color: rgb(46 211 181 / 52%);
+}
+
+@media (max-width: 760px) {
+  .map-workspace .map-overlay-control-slot--search .geocoding-results,
+  .map-workspace .map-overlay-control-slot--search .geocoding-selection {
+    width: min(21rem, calc(100vw - 9rem));
+  }
+}

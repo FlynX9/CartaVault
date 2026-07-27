@@ -112,7 +112,7 @@ export function PoiMap({
       <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} onMapClick={onPopupClose} />
       <MapDoubleClickZoomController disabled={trip !== null} />
 
-      {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<span aria-hidden="true">●</span>', iconSize: [24, 24], iconAnchor: [12, 12] })} />}
+      {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="8.5"/><circle cx="14" cy="14" r="2.75"/><path d="M14 1.5v4M14 22.5v4M1.5 14h4M22.5 14h4"/></svg>', iconSize: [28, 28], iconAnchor: [14, 14] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
       <MapClusterLayer places={standardPlaces} renderPlace={renderPlace} selectedPlaceId={selectedPlaceId} disableClusteringAtZoom={MAP_MAX_ZOOM} />
