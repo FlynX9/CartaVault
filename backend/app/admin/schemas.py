@@ -18,6 +18,7 @@ class AdminUserRead(BaseModel):
     last_login_at: datetime | None
     owned_map_count: int
     shared_map_count: int
+    place_count: int
     quota_profile_id: UUID
     quota_profile_name: str
 

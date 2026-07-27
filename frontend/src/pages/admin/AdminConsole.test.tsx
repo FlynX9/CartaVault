@@ -93,7 +93,7 @@ describe('AdminConsole', () => {
     const target = {
       id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
       role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
-      last_login_at: null, owned_map_count: 0, shared_map_count: 0,
+      last_login_at: null, owned_map_count: 0, shared_map_count: 0, place_count: 0,
       quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
     }
     vi.mocked(getAdminUsers).mockResolvedValue({ items: [target], total: 1, page: 1, page_size: 25, pages: 1 })
@@ -110,7 +110,7 @@ describe('AdminConsole', () => {
     const target = {
       id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
       role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
-      last_login_at: null, owned_map_count: 7, shared_map_count: 0,
+      last_login_at: null, owned_map_count: 7, shared_map_count: 0, place_count: 0,
       quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
     }
     const restricted = { ...unlimitedProfile, id: '22222222-2222-4222-8222-222222222222', name: 'Standard', is_default: false, is_system: false, assigned_users_count: 0, limits: { ...unlimitedProfile.limits, maps_max: 5 } }

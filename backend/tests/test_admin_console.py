@@ -45,6 +45,7 @@ def test_admin_users_are_paginated_searchable_and_self_protected(integration_cli
     assert page.status_code == 200
     assert page.json()["total"] == 1
     assert page.json()["items"][0]["email"] == matching.email
+    assert page.json()["items"][0]["place_count"] == 0
     assert self_demotion.status_code == 409
     assert self_demotion.json()["detail"]["code"] == "ADMIN_SELF_PROTECTION"
     assert activation.status_code == 200

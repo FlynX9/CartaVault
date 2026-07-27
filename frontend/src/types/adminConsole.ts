@@ -5,7 +5,7 @@ export type AdminUserState = 'active' | 'inactive' | 'deleted'
 export interface AdminUser {
   id: string; email: string; display_name: string; role: AdminRole; state: AdminUserState
   created_at: string; updated_at: string; last_login_at: string | null
-  owned_map_count: number; shared_map_count: number
+  owned_map_count: number; shared_map_count: number; place_count: number
   quota_profile_id: string; quota_profile_name: string
 }
 export interface AdminUserPage { items: AdminUser[]; total: number; page: number; page_size: number; pages: number }

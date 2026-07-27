@@ -21,21 +21,27 @@ from app.emails.providers.base import EmailDeliveryError
 from app.emails.providers.resend import ResendEmailProvider
 from app.emails.service import EmailService
 from app.maps.models import MapMembership, PoiMap
+from app.places.models import Place
 
 
 router = APIRouter(prefix="/admin/console", tags=["admin-console"], dependencies=[Depends(require_admin)])
 
 
 def _user_read(session: Session, user: User) -> AdminUserRead:
-    owned = session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id)) or 0
+    owned = session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id, PoiMap.deleted_at.is_(None))) or 0
     shared = session.scalar(select(func.count()).select_from(MapMembership).where(MapMembership.user_id == user.id, MapMembership.role != "owner")) or 0
+    places = session.scalar(
+        select(func.count()).select_from(Place).join(PoiMap, Place.map_id == PoiMap.id).where(
+            PoiMap.owner_id == user.id, PoiMap.deleted_at.is_(None), Place.deleted_at.is_(None),
+        )
+    ) or 0
     state = "deleted" if user.deleted_at else "active" if user.is_active else "inactive"
     profile = user.quota_profile
     return AdminUserRead(
         id=user.id, email=user.email, display_name=user.display_name,
         role="admin" if user.is_admin else "user", state=state,
         created_at=user.created_at, updated_at=user.updated_at, last_login_at=user.last_login_at,
-        owned_map_count=owned, shared_map_count=shared,
+        owned_map_count=owned, shared_map_count=shared, place_count=places,
         quota_profile_id=user.quota_profile_id, quota_profile_name=profile.name,
     )
 

@@ -5591,6 +5591,35 @@ body.cv-panel-resizing {
 
 .admin-console__profile-select { display: grid; min-width: 9rem; gap: .2rem; color: var(--cv-color-gray); font-size: .6rem; font-weight: 700; text-align: left; }
 .admin-console__profile-select select { min-height: 2rem; padding: .3rem .5rem; font-size: .67rem; }
+
+/* Administration users: compact activity cards aligned with the CartaVault panels. */
+.admin-console__user-grid > li { grid-template-columns: 2.4rem minmax(12rem, 1fr) minmax(10.5rem, auto) auto; align-items: center; gap: .75rem; padding: .7rem .78rem; border-radius: .7rem; }
+.admin-console__user-identity { min-width: 0; }
+.admin-console__user-name-row { display: flex; min-width: 0; align-items: center; gap: .42rem; }
+.admin-console__user-name-row > strong { color: var(--cv-color-navy); font-size: .82rem; line-height: 1.15; }
+.admin-console__user-name-row > strong { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-console__user-identity > small { margin-top: .12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-console__user-identity > p { margin: .24rem 0 0; font-size: .61rem; }
+.admin-console__user-metrics { display: flex; flex-wrap: wrap; gap: .18rem .48rem; margin-top: .32rem; color: var(--cv-color-gray); font-size: .62rem; line-height: 1.2; }
+.admin-console__user-metrics span { white-space: nowrap; }
+.admin-console__user-metrics b { margin-right: .1rem; color: var(--cv-color-slate); font-size: .7rem; }
+.admin-console__badges { justify-content: flex-start; gap: .28rem; }
+.admin-console__badges span { padding: .17rem .38rem; font-size: .59rem; line-height: 1.2; }
+.admin-console__user-quota { width: 10.5rem; min-width: 0; gap: .14rem; font-size: .58rem; }
+.admin-console__user-quota select { min-height: 1.9rem; padding: .25rem .45rem; font-size: .64rem; }
+.admin-console__user-actions { flex-wrap: nowrap; gap: .35rem; }
+.admin-console__user-quota, .admin-console__user-actions { align-self: end; }
+.admin-console__user-actions button { min-height: 1.85rem; padding: .26rem .48rem; border-radius: .48rem; font-size: .62rem; white-space: nowrap; }
+@media (max-width: 900px) {
+  .admin-console__user-grid > li { grid-template-columns: 2.4rem minmax(0, 1fr); }
+  .admin-console__user-quota, .admin-console__user-actions { grid-column: 2; }
+}
+@media (max-width: 700px) {
+  .admin-console__user-grid > li { grid-template-columns: 2.2rem minmax(0, 1fr); }
+  .admin-console__user-quota { width: 100%; }
+  .admin-console__user-actions { flex-wrap: wrap; }
+  .admin-console__user-actions button { min-height: 2.2rem; }
+}
 .quota-profiles__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .quota-profile { display: flex; min-width: 0; flex-direction: column; gap: .6rem; }
 .quota-profile.is-archived { opacity: .7; }
