@@ -3411,7 +3411,8 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-credential__heading p { font-size: .66rem; }
 .account-credential__status { font-size: .6rem; }
 .account-profile-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(14rem, .8fr); max-width: 36rem; gap: .65rem; }
-.account-profile-section .account-form { max-width: none; margin: 0; }
+.account-profile-section .account-form { max-width: none; align-content: start; margin: 0; }
+.account-profile-section .account-form > .account-button { align-self: start; min-height: var(--account-control-height); }
 .account-avatar-editor { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .7rem; padding: .75rem; background: white; border: 1px solid rgb(43 62 89 / 10%); }
 .account-avatar-editor > div:last-child { display: grid; min-width: 0; gap: .35rem; }
 .account-avatar-editor strong { color: var(--cv-color-navy); font-size: .76rem; }
