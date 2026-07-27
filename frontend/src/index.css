@@ -9779,3 +9779,55 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
     --trip-timeline-x: -1.42rem;
   }
 }
+
+/* Compact readiness signal displayed beside every day and night title. */
+.trip-planner-panel .trip-panel-timeline-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .34rem;
+}
+
+.trip-planner-panel .trip-panel-timeline-title > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-planner-panel .trip-night-title > strong {
+  color: var(--trip-night-previous-color, var(--cv-color-teal));
+  background: none;
+  font-size: .79rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.trip-planner-panel .trip-timeline-readiness {
+  --trip-readiness-color: var(--cv-color-teal);
+  display: inline-grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: var(--trip-readiness-color);
+  background: color-mix(in srgb, var(--trip-readiness-color) 16%, var(--cv-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--trip-readiness-color) 38%, transparent);
+  border-radius: 50%;
+  place-items: center;
+}
+
+.trip-planner-panel .trip-timeline-readiness > svg {
+  stroke-width: 2.6;
+}
+
+.trip-planner-panel .trip-timeline-readiness--ready {
+  --trip-readiness-color: var(--cv-color-teal);
+}
+
+.trip-planner-panel .trip-timeline-readiness--empty {
+  --trip-readiness-color: #c53b32;
+}
+
+.trip-planner-panel .trip-timeline-readiness--warning {
+  --trip-readiness-color: #c77b18;
+}

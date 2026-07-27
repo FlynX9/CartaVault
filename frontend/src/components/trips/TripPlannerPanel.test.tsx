@@ -60,6 +60,39 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByRole('dialog', { name: 'Préparer une sortie' })).toBeVisible()
   })
 
+  it('shows red readiness indicators for empty days and unconfigured nights', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const twoDays = { ...trip, days: [trip.days[0], secondDay] }
+    vi.mocked(listTrips).mockResolvedValue([twoDays])
+    vi.mocked(getTrip).mockResolvedValue(twoDays)
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('img', { name: 'Jour 1 sans étape associée' })).toHaveClass('trip-timeline-readiness--empty')
+    expect(screen.getByRole('img', { name: 'Jour 2 sans étape associée' })).toHaveClass('trip-timeline-readiness--empty')
+    expect(screen.getByRole('img', { name: 'Nuit 1 sans lieu associé' })).toHaveClass('trip-timeline-readiness--empty')
+  })
+
+  it('shows green for a ready day and orange when its route needs attention', async () => {
+    const stop = { id: 'visit-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Visite', latitude: 48, longitude: 2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }
+    const readyTrip = { ...trip, days: [{ ...trip.days[0], route_status: 'ready', stops: [stop] }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([readyTrip])
+    vi.mocked(getTrip).mockResolvedValue(readyTrip)
+    vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'ready', has_current_route: true })
+
+    const rendered = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={readyTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    expect(await screen.findByRole('img', { name: 'Jour 1 prêt' })).toHaveClass('trip-timeline-readiness--ready')
+
+    rendered.unmount()
+    const staleTrip = { ...readyTrip, days: [{ ...readyTrip.days[0], route_status: 'stale' }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([staleTrip])
+    vi.mocked(getTrip).mockResolvedValue(staleTrip)
+    vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'stale', route_is_stale: true })
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={staleTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('img', { name: 'Jour 1 : itinéraire à calculer ou vérifier' })).toHaveClass('trip-timeline-readiness--warning')
+  })
+
   it('organizes the workspace into summary, settings and journeys without lifecycle actions', async () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true, can_delete: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
