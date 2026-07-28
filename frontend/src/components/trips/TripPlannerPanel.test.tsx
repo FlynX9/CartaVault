@@ -433,7 +433,7 @@ describe('TripPlannerPanel', () => {
     await waitFor(() => expect(addTripDeparture).toHaveBeenCalledWith('trip-1', expect.objectContaining({ place_id: 'departure-poi' })))
   })
 
-  it('removes a stop and reloads the active trip', async () => {
+  it('removes a stop and refreshes the active trip without reloading the panel', async () => {
     const withStop = {
       ...trip,
       days: [{
@@ -445,15 +445,29 @@ describe('TripPlannerPanel', () => {
         }],
       }],
     } satisfies Trip
+    const withoutStop = {
+      ...withStop,
+      days: [{ ...withStop.days[0], stops: [] }],
+    } satisfies Trip
+    const onTripChange = vi.fn()
     vi.mocked(listTrips).mockResolvedValue([withStop])
     vi.mocked(getTrip).mockResolvedValue(withStop)
-    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStop} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStop} activeDayId="day-1" onTripChange={onTripChange} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    await waitFor(() => expect(onTripChange).toHaveBeenCalledWith(withStop))
+    vi.mocked(listTrips).mockClear()
+    vi.mocked(getTrip).mockClear()
+    onTripChange.mockClear()
+    vi.mocked(getTrip).mockResolvedValue(withoutStop)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer l’étape' }))
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
 
     await waitFor(() => expect(deleteTripStop).toHaveBeenCalledWith('stop-1'))
-    await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1', expect.any(AbortSignal)))
+    await waitFor(() => expect(onTripChange).toHaveBeenCalledWith(withoutStop))
+    expect(getTrip).toHaveBeenCalledWith('trip-1')
+    expect(listTrips).not.toHaveBeenCalled()
+    expect(screen.queryByText('Chargement du voyage…')).not.toBeInTheDocument()
   })
 
   it('focuses the map when a stop is selected and hides visit status controls', async () => {
