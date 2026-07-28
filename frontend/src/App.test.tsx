@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter, useLocation } from 'react-router-dom'
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from './api/client'
 import { deleteMap, getMaps } from './api/maps'
@@ -17,16 +17,40 @@ vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ place
 vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
 vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button></aside> }))
 vi.mock('./pages/MapPage', () => ({ MapPage: ({ placeList, sidebar, popupContent, focusRequest, selectedPlaceId, onPlaceSelect }: { placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button>{placeList}{popupContent}{sidebar}</div> }))
+vi.mock('./components/dashboard/DashboardPage', () => ({ DashboardPage: () => <div>Dashboard</div> }))
 
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const MAP = { id: MAP_ID, name: 'Carte France', country_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', country: { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' }, center_latitude: null, center_longitude: null, default_zoom: null, effective_center_latitude: 46.2, effective_center_longitude: 2.2, effective_default_zoom: 5, min_latitude: null, max_latitude: null, min_longitude: null, max_longitude: null, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00' }
 
 function Path() { const location = useLocation(); return <output data-testid="path">{location.pathname}{location.search}</output> }
+function BrowserBack() { const navigate = useNavigate(); return <button type="button" onClick={() => navigate(-1)}>Précédent</button> }
 
 beforeEach(() => vi.mocked(getMaps).mockResolvedValue([MAP]))
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('map URL workspace', () => {
+  it('keeps authenticated users away from authentication pages in browser history', async () => {
+    render(
+      <MemoryRouter initialEntries={['/login', '/dashboard']} initialIndex={1}>
+        <App />
+        <Path />
+        <BrowserBack />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Dashboard')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Précédent' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/dashboard'))
+    expect(screen.queryByRole('heading', { name: 'Connexion à CartaVault' })).not.toBeInTheDocument()
+  })
+
+  it('redirects an authenticated user away from registration pages', async () => {
+    render(<MemoryRouter initialEntries={['/register']}><App /><Path /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/dashboard'))
+    expect(screen.queryByRole('heading', { name: /Créer un compte/ })).not.toBeInTheDocument()
+  })
+
   it('restores a map UUID without the former top bar selector', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     expect(screen.queryByRole('combobox', { name: 'Carte' })).not.toBeInTheDocument()

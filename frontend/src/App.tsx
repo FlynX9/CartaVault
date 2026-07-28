@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from './api/client'
 import { deleteMap, getMaps } from './api/maps'
@@ -27,6 +27,7 @@ import { RequireAdmin } from './auth/RequireAdmin'
 import { useAuth } from './auth/useAuth'
 import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages'
+import { LoginPage } from './pages/LoginPage'
 import { useConfirmDialog } from './components/common/useConfirmDialog'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { useI18n } from './i18n/useI18n'
@@ -441,11 +442,18 @@ function WorkspaceApp() {
 }
 
 function AppContent() {
+  const { user, loading } = useAuth()
   const location = useLocation()
+  const isAuthenticationPage = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname)
+
+  if (loading) return <main className="auth-loading" aria-live="polite">Chargement de CartaVault…</main>
   if (location.pathname.startsWith('/invitations/')) return <Routes><Route path="/invitations/:token" element={<InvitationPage />} /></Routes>
+  if (user && isAuthenticationPage) return <Navigate to="/dashboard" replace />
+  if (user === null && location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/register') return <RegisterPage />
   if (location.pathname === '/forgot-password') return <ForgotPasswordPage />
   if (location.pathname === '/reset-password') return <ResetPasswordPage />
+  if (user === null) return <Navigate to="/login" replace />
   return <RequireAuth><WorkspaceApp /></RequireAuth>
 }
 
