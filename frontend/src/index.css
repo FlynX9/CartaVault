@@ -8471,36 +8471,71 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 
 /* Direct assignment from the Places list to the selected trip day/night. */
 .places-place-card.has-trip-add-action {
-  grid-template-columns: minmax(0, 1fr) auto 2.65rem;
+  grid-template-columns: minmax(0, 1fr) auto 0;
   align-items: stretch;
+  overflow: hidden;
+  transition: grid-template-columns 190ms ease;
 }
 
 .places-place-card.has-selection.has-trip-add-action {
+  grid-template-columns: auto minmax(0, 1fr) auto 0;
+}
+
+.places-place-card.has-trip-add-action:hover,
+.places-place-card.has-trip-add-action:focus-within {
+  grid-template-columns: minmax(0, 1fr) auto 2.65rem;
+}
+
+.places-place-card.has-selection.has-trip-add-action:hover,
+.places-place-card.has-selection.has-trip-add-action:focus-within {
   grid-template-columns: auto minmax(0, 1fr) auto 2.65rem;
 }
 
 .places-redesign-list.compact .places-place-card.has-trip-add-action {
-  grid-template-columns: minmax(0, 1fr) 2.45rem;
+  grid-template-columns: minmax(0, 1fr) 0;
 }
 
 .places-redesign-list.compact .places-place-card.has-selection.has-trip-add-action {
+  grid-template-columns: auto minmax(0, 1fr) 0;
+}
+
+.places-redesign-list.compact .places-place-card.has-trip-add-action:hover,
+.places-redesign-list.compact .places-place-card.has-trip-add-action:focus-within {
+  grid-template-columns: minmax(0, 1fr) 2.45rem;
+}
+
+.places-redesign-list.compact .places-place-card.has-selection.has-trip-add-action:hover,
+.places-redesign-list.compact .places-place-card.has-selection.has-trip-add-action:focus-within {
   grid-template-columns: auto minmax(0, 1fr) 2.45rem;
 }
 
 .places-trip-add-button {
   display: grid;
   width: 100%;
-  min-width: 2.45rem;
+  min-width: 0;
   min-height: 100%;
   padding: 0;
+  overflow: hidden;
   color: #fff;
   background: var(--cv-color-teal);
   border: 1px solid color-mix(in srgb, var(--cv-color-teal) 78%, #0d1b2a);
   border-radius: .55rem;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--cv-color-teal) 18%, transparent);
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
   place-items: center;
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  transform: translateX(100%) scaleX(.35);
+  transform-origin: right center;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, opacity 140ms ease, transform 190ms ease;
+}
+
+.places-place-card:hover .places-trip-add-button,
+.places-place-card:focus-within .places-trip-add-button {
+  min-width: 2.45rem;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scaleX(1);
 }
 
 .places-trip-add-button:hover {
@@ -8516,6 +8551,31 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 .places-trip-add-button:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 42%, transparent);
   outline-offset: 2px;
+}
+
+@media (hover: none) {
+  .places-place-card.has-trip-add-action {
+    grid-template-columns: minmax(0, 1fr) auto 2.65rem;
+  }
+
+  .places-place-card.has-selection.has-trip-add-action {
+    grid-template-columns: auto minmax(0, 1fr) auto 2.65rem;
+  }
+
+  .places-redesign-list.compact .places-place-card.has-trip-add-action {
+    grid-template-columns: minmax(0, 1fr) 2.45rem;
+  }
+
+  .places-redesign-list.compact .places-place-card.has-selection.has-trip-add-action {
+    grid-template-columns: auto minmax(0, 1fr) 2.45rem;
+  }
+
+  .places-trip-add-button {
+    min-width: 2.45rem;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
 }
 
 /* Dashboard -------------------------------------------------------------- */
