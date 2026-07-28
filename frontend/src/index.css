@@ -4077,7 +4077,16 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
   animation: cv-route-success .65s ease both;
 }
 
+.trip-action-spinner {
+  flex: 0 0 auto;
+  animation: cv-trip-action-spin .75s linear infinite;
+}
+
 .trip-anchor-actions { display: flex !important; align-items: center; gap: .18rem; }
+
+@keyframes cv-trip-action-spin {
+  to { transform: rotate(360deg); }
+}
 
 @keyframes cv-route-success {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgb(15 166 138 / 45%); }
@@ -4086,6 +4095,7 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .trip-action-spinner,
   .trip-panel-route-actions .route-success { animation: none; }
 }
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
@@ -25,6 +25,11 @@ const trip: Trip = {
 
 const emptySummary = { trip_id: 'trip-1', days: 1, nights: 0, stops: 0, unique_places: 0, distance_meters: 0, route_duration_seconds: 0, visit_duration_minutes: 0, total_duration_minutes: 0, visit_status_counts: {}, total_route_distance_meters: 0, total_route_distance_km: 0, total_route_duration_seconds: 0, total_route_duration_minutes: 0, total_visit_duration_minutes: 0, total_pause_duration_minutes: 0, total_buffer_duration_minutes: 0, total_safety_margin_minutes: 0, total_estimated_duration_minutes: 0, total_planned_duration_minutes: 0, days_with_route: 0, days_without_route: 1, stale_route_days: 0, is_route_summary_complete: false, low_load_days: 0, medium_load_days: 0, high_load_days: 0, days_with_complete_time_summary: 0, days_with_incomplete_time_summary: 1, is_time_summary_complete: false }
 const emptyDaySummary = { day_id: 'day-1', stops: 0, required_stops: 0, optional_stops: 0, distance_meters: null, route_distance_meters: null, route_distance_km: null, route_duration_seconds: null, route_duration_minutes: null, visit_duration_minutes: 0, pause_duration_minutes: 0 as const, buffer_duration_minutes: 0, safety_margin_minutes: null, total_duration_minutes: null, overload_minutes: 0, unroutable_segments: 0, route_status: null, route_is_stale: false, has_current_route: false, planned_start_time: null, target_arrival_time: null, recommended_start_time: null, recommended_start_day_offset: null, estimated_arrival_time: null, estimated_arrival_day_offset: null, schedule_delta_minutes: null, schedule_status: 'unavailable' as const, load_level: 'unavailable' as const, load_color: null, is_time_summary_complete: false }
+const deferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((promiseResolve) => { resolve = promiseResolve })
+  return { promise, resolve }
+}
 
 describe('TripPlannerPanel', () => {
   afterEach(cleanup)
@@ -506,6 +511,85 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStops} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Itinéraire' }))
     expect(await screen.findByRole('button', { name: 'Itinéraire rafraîchi' })).toHaveClass('route-success')
+  })
+
+  it('shows action-specific loading indicators for daily route actions', async () => {
+    const stops = [0, 1].map((index) => ({ id: `loading-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
+    const routable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
+    const routeRequest = deferred<Trip['days'][number]>()
+    const optimizationRequest = deferred<Awaited<ReturnType<typeof optimizeTripDay>>>()
+    vi.mocked(listTrips).mockResolvedValue([routable])
+    vi.mocked(getTrip).mockResolvedValue(routable)
+    vi.mocked(calculateTripDayRoute).mockReturnValueOnce(routeRequest.promise)
+    vi.mocked(optimizeTripDay).mockReturnValueOnce(optimizationRequest.promise)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={routable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Itinéraire' }))
+    const pendingRoute = screen.getByRole('button', { name: 'Calcul de l’itinéraire en cours' })
+    expect(pendingRoute).toBeDisabled()
+    expect(pendingRoute.querySelector('.trip-action-spinner')).toBeInTheDocument()
+    await act(async () => routeRequest.resolve(routable.days[0]))
+    await screen.findByRole('button', { name: 'Itinéraire rafraîchi' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Optimiser' }))
+    const pendingOptimization = screen.getByRole('button', { name: 'Optimisation de la journée en cours' })
+    expect(pendingOptimization).toBeDisabled()
+    expect(pendingOptimization.querySelector('.trip-action-spinner')).toBeInTheDocument()
+    await act(async () => optimizationRequest.resolve({
+      manual_stop_ids: ['loading-0', 'loading-1'],
+      optimized_stop_ids: ['loading-1', 'loading-0'],
+      before: 120,
+      after: 100,
+      gain: 20,
+      metric: 'duration',
+      before_distance_meters: 1_000,
+      after_distance_meters: 900,
+      distance_gain_meters: 100,
+      before_duration_seconds: 120,
+      after_duration_seconds: 100,
+      duration_gain_seconds: 20,
+    }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Optimiser' })).toBeEnabled())
+  })
+
+  it('shows action-specific loading indicators for global route actions', async () => {
+    const stops = [0, 1].map((index) => ({ id: `global-loading-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
+    const routable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
+    const routeRequest = deferred<Trip['days'][number]>()
+    const optimizationRequest = deferred<Awaited<ReturnType<typeof optimizeTripDay>>>()
+    vi.mocked(listTrips).mockResolvedValue([routable])
+    vi.mocked(getTrip).mockResolvedValue(routable)
+    vi.mocked(calculateTripDayRoute).mockReturnValueOnce(routeRequest.promise)
+    vi.mocked(optimizeTripDay).mockReturnValueOnce(optimizationRequest.promise)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={routable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Calculer les itinéraires' }))
+    const pendingRoutes = screen.getByRole('button', { name: 'Calcul des itinéraires en cours' })
+    expect(pendingRoutes).toBeDisabled()
+    expect(pendingRoutes.querySelector('.trip-action-spinner')).toBeInTheDocument()
+    await act(async () => routeRequest.resolve(routable.days[0]))
+    await screen.findByRole('button', { name: 'Itinéraires rafraîchis' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Optimiser le voyage' }))
+    const pendingOptimization = screen.getByRole('button', { name: 'Optimisation du voyage en cours' })
+    expect(pendingOptimization).toBeDisabled()
+    expect(pendingOptimization.querySelector('.trip-action-spinner')).toBeInTheDocument()
+    await act(async () => optimizationRequest.resolve({
+      manual_stop_ids: ['global-loading-0', 'global-loading-1'],
+      optimized_stop_ids: ['global-loading-1', 'global-loading-0'],
+      before: 120,
+      after: 100,
+      gain: 20,
+      metric: 'duration',
+      before_distance_meters: 1_000,
+      after_distance_meters: 900,
+      distance_gain_meters: 100,
+      before_duration_seconds: 120,
+      after_duration_seconds: 100,
+      duration_gain_seconds: 20,
+    }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Optimiser le voyage' })).toBeDisabled())
+    expect(screen.getByRole('heading', { name: 'Résultat pour 1 journée' })).toBeVisible()
   })
 
   it('separates daily and global route metrics from visits', async () => {
