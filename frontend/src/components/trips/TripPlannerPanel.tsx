@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BadgeCheck, Calculator, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Plus, Route, Save, ScanEye, SlidersHorizontal, Sparkles, Sun, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BadgeCheck, Calculator, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GripVertical, Lock, MapPin, Minus, Moon, Navigation, Pencil, Play, Plus, Route, Save, ScanEye, SlidersHorizontal, Sparkles, Sun, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
 import { getAccountPreferences } from '../../api/account'
@@ -385,7 +385,7 @@ function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, re
       onDragOver={(event) => { if (!departure && canEdit) event.preventDefault() }}
       onDrop={drop}
     >
-      <span className="trip-timeline-anchor-badge"><MapPin aria-hidden="true" size={15} /></span>
+      <span className="trip-timeline-anchor-badge"><Play aria-hidden="true" size={15} /></span>
       <div className="trip-night-content">
         <div className="trip-night-header-row">
           <span className="trip-panel-timeline-heading"><strong>Départ</strong><TimelineStatusBadge status={departure ? 'valid' : 'empty'} /></span>
