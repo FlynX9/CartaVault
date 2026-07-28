@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select, update
 
-from app.auth.models import User, UserSession
+from app.auth.models import RegistrationRequest, User, UserSession
 
 
 pytestmark = pytest.mark.integration
@@ -46,6 +46,45 @@ def test_login_session_me_csrf_logout(integration_client, database_session, monk
     assert integration_client.post("/auth/logout", headers={"X-CSRF-Token": "wrong"}).status_code == 403
     assert integration_client.post("/auth/logout", headers={"X-CSRF-Token": csrf_token}).status_code == 204
     assert integration_client.get("/auth/me").status_code == 401
+
+
+def test_pending_registration_login_reports_admin_approval_without_leaking_on_wrong_password(
+    integration_client,
+    database_session,
+    monkeypatch,
+) -> None:
+    email = f"pending-{uuid4()}@example.test"
+    database_session.add(
+        RegistrationRequest(
+            email=email,
+            display_name="Pending user",
+            password_hash="pending::correct password",
+            locale="fr",
+            status="pending",
+        )
+    )
+    database_session.flush()
+    monkeypatch.setattr(
+        "app.auth.router.verify_password",
+        lambda stored, password: (stored == f"pending::{password}", False),
+    )
+
+    pending = integration_client.post(
+        "/auth/login",
+        json={"email": email, "password": "correct password"},
+    )
+    assert pending.status_code == 403
+    assert pending.json()["detail"] == (
+        "Votre compte est en attente de validation par un administrateur. "
+        "Vous recevrez un email dès qu’il sera activé."
+    )
+
+    wrong_password = integration_client.post(
+        "/auth/login",
+        json={"email": email, "password": "wrong password"},
+    )
+    assert wrong_password.status_code == 401
+    assert wrong_password.json()["detail"] == "Invalid email or password"
 
 
 def test_inactive_and_expired_sessions_are_rejected(integration_client, database_session, monkeypatch) -> None:

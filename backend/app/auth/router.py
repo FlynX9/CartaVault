@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_session
-from app.auth.models import User, UserSession
+from app.auth.models import RegistrationRequest, User, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
 from app.auth.schemas import LoginRequest, PasswordChange, UserSelfRead
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email, verify_password
@@ -15,6 +15,10 @@ from app.config import security_settings
 from app.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+PENDING_REGISTRATION_MESSAGES = {
+    "en": "Your account is awaiting administrator approval. You will receive an email once it is activated.",
+    "fr": "Votre compte est en attente de validation par un administrateur. Vous recevrez un email dès qu’il sera activé.",
+}
 
 
 def _self_read(user: User, csrf_token: str) -> UserSelfRead:
@@ -45,7 +49,22 @@ def login(data: LoginRequest, request: Request, response: Response, database_ses
     public_auth_rate_limiter.check(rate_limit_key("login", client_host, email))
     user = database_session.scalar(select(User).where(User.email == email))
     valid, needs_rehash = verify_password(user.password_hash, data.password) if user else (False, False)
-    if user is None or not valid:
+    if user is None:
+        pending_registration = database_session.scalar(
+            select(RegistrationRequest).where(
+                RegistrationRequest.email == email,
+                RegistrationRequest.status == "pending",
+            )
+        )
+        pending_password_is_valid = (
+            pending_registration is not None
+            and verify_password(pending_registration.password_hash, data.password)[0]
+        )
+        if pending_password_is_valid:
+            locale = pending_registration.locale if pending_registration.locale in PENDING_REGISTRATION_MESSAGES else "fr"
+            raise HTTPException(status_code=403, detail=PENDING_REGISTRATION_MESSAGES[locale])
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not valid:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is inactive")
