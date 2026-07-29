@@ -21,6 +21,7 @@ import { CategoryIconPreview } from "../icons/CategoryIconPreview";
 import { PlacePopupActions } from "./PlacePopupActions";
 import { PlacePopupGallery } from "./PlacePopupGallery";
 import { useConfirmDialog } from "../common/useConfirmDialog";
+import { SkeletonList } from "../common/Skeleton";
 import { getTagColorStyle } from "../../tags/tagColors";
 
 interface Props {
@@ -130,9 +131,7 @@ export function PlaceMapPopup({
 
   if (detailsLoading)
     return (
-      <div className="place-map-popup" role="status">
-        Chargement du POI…
-      </div>
+      <div className="place-map-popup"><SkeletonList rows={3} label="Chargement du POI" /></div>
     );
   if (detailsError || !place)
     return (

@@ -7,6 +7,7 @@ import { EntityForm, type EntityFormValues } from '../../components/admin/Entity
 import { EntityList, type ManagedEntity } from '../../components/admin/EntityList'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
+import { SkeletonList } from '../../components/common/Skeleton'
 import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
 import { DEFAULT_TAG_COLOR } from '../../tags/tagColors'
 
@@ -112,6 +113,6 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
     {!readOnly && editing !== undefined && <EntityForm key={editing?.id ?? 'new'} title={editing === null ? `Créer ${config.singularLabel}` : `Modifier ${editing.name}`} initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : DEFAULT_CATEGORY_ICON_ID, marksAsVisited: 'marks_as_visited' in (editing ?? {}) ? editing?.marks_as_visited === true : false, color: editing?.color ?? DEFAULT_TAG_COLOR }} supportsDescription={config.supportsDescription} supportsIcon={config.supportsIcon} supportsVisited={config.supportsVisited} supportsColor={config.supportsColor} isSubmitting={isSubmitting} fieldErrors={fieldErrors} onCancel={() => setEditing(undefined)} onSubmit={submit} />}
     {!readOnly && deleting && <DeleteConfirmation entityName={deleting.name} isDeleting={isDeleting} onCancel={() => setDeleting(null)} onConfirm={() => void confirmDelete()} />}
     {!isPanel && <div className="admin-list-heading"><h3>Liste</h3><span aria-live="polite">{entities.length} résultat{entities.length > 1 ? 's' : ''}</span></div>}
-    {isLoading ? <p role="status">Chargement…</p> : <EntityList variant={variant} entities={entities} emptyMessage={`Aucun élément dans les ${config.pluralLabel.toLowerCase()}.`} onEdit={setEditing} onDelete={setDeleting} readOnly={readOnly} />}
+    {isLoading ? <SkeletonList rows={5} label={`Chargement des ${config.pluralLabel.toLowerCase()}`} /> : <EntityList variant={variant} entities={entities} emptyMessage={`Aucun élément dans les ${config.pluralLabel.toLowerCase()}.`} onEdit={setEditing} onDelete={setDeleting} readOnly={readOnly} />}
   </section>
 }

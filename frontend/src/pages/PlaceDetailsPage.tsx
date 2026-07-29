@@ -10,6 +10,7 @@ import { buildGoogleMapsUrl } from '../utils/googleMaps'
 import { withMap } from '../utils/map'
 import { useConfirmDialog } from '../components/common/useConfirmDialog'
 import { getTagColorStyle } from '../tags/tagColors'
+import { SkeletonList } from '../components/common/Skeleton'
 
 interface Props { placeId?: string; embedded?: boolean; activeMapId?: string | null; onPlaceDeleted?: (placeId: string) => void }
 const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
@@ -20,7 +21,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, a
   const { placeId: routePlaceId } = useParams<{ placeId: string }>(); const placeId = providedPlaceId ?? routePlaceId; const navigate = useNavigate()
   const [place, setPlace] = useState<PlaceDetails | null>(null); const [photos, setPhotos] = useState<Photo[]>([]); const [loading, setLoading] = useState(true); const [photosLoading, setPhotosLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [photosError, setPhotosError] = useState<string | null>(null); const [notFound, setNotFound] = useState(false); const [deleteError, setDeleteError] = useState<string | null>(null)
   useEffect(() => { if (!placeId) { setError('Identifiant absent.'); setLoading(false); return }; const controller = new AbortController(); void getPlaceDetails(placeId, controller.signal).then(setPlace).catch((caught: unknown) => { if (caught instanceof ApiError && caught.status === 404) setNotFound(true); else if (!isAbortError(caught)) setError(caught instanceof Error ? caught.message : 'Chargement impossible.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) }); setPhotosLoading(true); setPhotosError(null); void getPlacePhotos(placeId, controller.signal).then(setPhotos).catch((caught: unknown) => { if (!isAbortError(caught)) { setPhotos([]); setPhotosError(caught instanceof Error ? caught.message : 'Photos indisponibles.') } }).finally(() => { if (!controller.signal.aborted) setPhotosLoading(false) }); return () => controller.abort() }, [placeId])
-  if (loading) return <section className="details-state" role="status">Chargement de la fiche…</section>
+  if (loading) return <section className="details-state"><SkeletonList rows={5} label="Chargement de la fiche" /></section>
   if (notFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withMap('/', activeMapId)}>← Retour à la carte</Link></section>
   if (!place) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher ce POI</h2><p>{error}</p></section>
   const externalUrl = buildGoogleMapsUrl(place.latitude, place.longitude)

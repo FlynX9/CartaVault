@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n/useI18n'
 import type { PendingMapInvitation, PoiMap } from '../../types/map'
 import { CountryFlag } from './CountryFlag'
 import { CreateMapDialog } from './CreateMapDialog'
+import { SkeletonList } from '../common/Skeleton'
 
 interface MapsWorkspacePanelProps {
   maps: PoiMap[]
@@ -95,7 +96,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
     <div className="maps-workspace-panel__content">
       <label className="workspace-search-field"><Search aria-hidden="true" size={17} /><span className="visually-hidden">{t('maps.search')}</span><input type="search" placeholder={t('maps.search')} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
       {(errorMessage || invitationError) && <p className="form-alert" role="alert">{errorMessage ?? invitationError}</p>}
-      {isLoading && <p className="maps-panel-state" role="status">{t('maps.loading')}</p>}
+      {isLoading && totalCount === 0 && <SkeletonList rows={4} label={t('maps.loading')} />}
       {!isLoading && totalCount === 0 && <div className="maps-panel-empty"><p>{t('maps.empty')}</p><button type="button" className="primary-button" onClick={() => setCreating(true)}>{t('maps.create')}</button></div>}
       {!isLoading && totalCount > 0 && filteredMaps.length === 0 && filteredInvitations.length === 0 && <p className="place-list-message">{t('maps.noResult')}</p>}
       <ul className="maps-catalog" aria-label={t('maps.available')}>

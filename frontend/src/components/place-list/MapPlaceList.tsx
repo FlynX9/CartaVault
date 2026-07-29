@@ -62,6 +62,7 @@ import { useI18n } from "../../i18n/useI18n";
 import { CountryFlag } from "../maps/CountryFlag";
 import { getTagColorStyle } from "../../tags/tagColors";
 import { VirtualPlaceRows } from "./VirtualPlaceRows";
+import { SkeletonList } from "../common/Skeleton";
 
 const PAGE_SIZE = 50;
 const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000;
@@ -1277,7 +1278,7 @@ export function MapPlaceList({
             Sélectionnez une carte pour afficher ses POI.
           </p>
         )}
-        {loading && <p role="status">Chargement…</p>}
+        {loading && visible.length === 0 && <SkeletonList rows={6} label="Chargement des lieux" />}
         {error && (
           <p role="alert" className="place-list-load-error">
             {error}

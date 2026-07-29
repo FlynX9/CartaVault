@@ -5,6 +5,7 @@ import { createMapInvitation, getMapInvitations, getMapMembers, removeMapMember,
 import type { MapInvitation, MapMember, PoiMap } from '../../types/map'
 import { useModalFocus } from '../../hooks/useModalFocus'
 import { useConfirmDialog } from '../common/useConfirmDialog'
+import { SkeletonList } from '../common/Skeleton'
 
 interface MapMembersDialogProps {
   poiMap: PoiMap
@@ -66,7 +67,7 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
           {lastLink && <div className="invitation-link"><input readOnly value={lastLink} aria-label="Lien d’invitation" /><button className="panel-icon-button" type="button" aria-label="Copier le lien" title="Copier le lien" onClick={() => void navigator.clipboard.writeText(lastLink)}><Copy size={15} /></button></div>}
         </section>
 
-        {loading ? <p className="map-members-dialog__loading" role="status">Chargement…</p> : <>
+        {loading && members.length === 0 && invitations.length === 0 ? <SkeletonList rows={3} label="Chargement des membres" /> : <>
           <section className="map-members-section" aria-labelledby="current-members-title">
             <div className="map-members-section__title"><h3 id="current-members-title">Membres</h3><span>{members.length}</span></div>
             <ul className="members-list">{members.map((membership) => <li key={membership.user.id}>

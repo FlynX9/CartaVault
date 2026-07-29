@@ -5,6 +5,7 @@ import { getPhotoFileUrl } from '../../api/photos'
 import type { Photo } from '../../types/photo'
 import { PhotoViewer } from './PhotoViewer'
 import { photoViewerMessages } from './photoViewerI18n'
+import { SkeletonGallery } from '../common/Skeleton'
 
 interface PhotoGalleryProps {
   placeName: string
@@ -29,8 +30,8 @@ export function PhotoGallery({
   const [viewerPhotoId, setViewerPhotoId] = useState<string | null>(null)
   const t = photoViewerMessages()
 
-  if (isLoading) {
-    return <p role="status">Chargement des photos…</p>
+  if (isLoading && photos.length === 0) {
+    return <SkeletonGallery label="Chargement des photos" />
   }
 
   if (errorMessage !== null) {

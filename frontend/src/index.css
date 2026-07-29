@@ -10660,3 +10660,16 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
     margin-inline: 1rem;
   }
 }
+
+/* Reusable content-shaped loading placeholders. */
+.cv-skeleton { display: block; width: var(--skeleton-width, 100%); height: var(--skeleton-height, .7rem); background: linear-gradient(90deg, var(--cv-surface-muted, #edf2f5) 25%, color-mix(in srgb, var(--cv-surface, #fff) 72%, var(--cv-surface-muted, #edf2f5)) 50%, var(--cv-surface-muted, #edf2f5) 75%); background-size: 220% 100%; border-radius: .35rem; animation: cv-skeleton-shimmer 1.5s ease-in-out infinite; }
+.cv-skeleton-text { display: grid; min-width: 0; gap: .42rem; flex: 1; }
+.cv-skeleton-list { display: grid; gap: .5rem; padding: .75rem; }
+.cv-skeleton-row { display: flex; min-height: 4rem; align-items: center; gap: .7rem; padding: .7rem; background: var(--cv-surface, #fff); border: 1px solid var(--cv-border-subtle, #dfe7ec); border-radius: .7rem; }
+.cv-skeleton-avatar { width: 2.35rem; height: 2.35rem; flex: 0 0 2.35rem; border-radius: .55rem; }
+.cv-skeleton-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: .75rem; }
+.cv-skeleton-gallery-item { display: grid; gap: .55rem; }
+.cv-skeleton-thumbnail { height: 8rem; border-radius: .7rem; }
+html[data-theme='dark'] .cv-skeleton-row { background: var(--cv-surface-raised, var(--cv-surface)); border-color: var(--cv-border); }
+@keyframes cv-skeleton-shimmer { to { background-position: -220% 0; } }
+@media (prefers-reduced-motion: reduce) { .cv-skeleton { animation: none; } }
