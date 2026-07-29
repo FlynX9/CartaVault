@@ -8139,6 +8139,11 @@ html[data-theme='dark'] :is(
   box-shadow: 0 2px 7px rgb(0 0 0 / 34%);
 }
 
+/* Anchor badges use a dark glyph against their teal/navy theme-aware fills. */
+html[data-theme='dark'] .trip-timeline-anchor-badge {
+  color: var(--cv-surface-muted);
+}
+
 html[data-theme='dark'] .trip-planner-panel .trip-panel-day-content li > i {
   color: var(--trip-day-color, var(--cv-color-teal));
   background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 16%, var(--cv-surface-muted));
