@@ -20,7 +20,7 @@ from app.imports.schemas import (
     KmzImportReport,
     KmzPreviewRead,
 )
-from app.imports.service import cache_preview, confirm_import, get_cached_import, mark_duplicate_items
+from app.imports.service import cache_preview, confirm_import, get_cached_import, mark_duplicate_items, mark_outside_country_items
 from app.maps.models import PoiMap
 
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ archive"), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> KmzPreviewRead:
     """Validate and parse a KMZ archive without creating any data."""
 
-    require_map_role(database_session, map_id, current_user, "editor")
+    access = require_map_role(database_session, map_id, current_user, "editor")
     payload = file.file.read(KMZ_MAX_UPLOAD_SIZE + 1)
     try:
         validated = validate_kmz_upload(file.filename, payload)
@@ -53,6 +53,9 @@ def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ ar
             detail="Unable to analyze the KMZ archive",
         ) from error
     mark_duplicate_items(database_session, map_id, items)
+    boundary_warning = mark_outside_country_items(access.map, items)
+    if boundary_warning:
+        warnings.append(boundary_warning)
     return cache_preview(map_id, current_user.id, file.filename or "import.kmz", items, warnings)
 
 

@@ -31,6 +31,7 @@ class PlaceCreate(BaseModel):
     is_favorite: bool = False
     interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
     visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    confirm_outside_country: bool = False
 
 
 class PlaceUpdate(BaseModel):
@@ -49,6 +50,7 @@ class PlaceUpdate(BaseModel):
     is_favorite: bool | None = None
     interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
     visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    confirm_outside_country: bool = False
 
     @model_validator(mode="after")
     def validate_partial_update(self) -> Self:

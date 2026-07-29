@@ -30,6 +30,7 @@ class KmzImportItemPreview(BaseModel):
     importable: bool
     already_imported: bool
     duplicate_reason: Literal["within_file", "existing_map"] | None = None
+    outside_map_country: bool = False
 
 
 class KmzPreviewRead(BaseModel):

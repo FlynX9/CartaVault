@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { getCategories } from '../api/categories'
+import { ApiError } from '../api/client'
 import { createPlace, getPlaceDetails, updatePlace } from '../api/places'
 import type { PlaceFormValues } from '../types/place'
 import { PlaceEditorPage } from './PlaceEditorPage'
@@ -23,5 +24,37 @@ describe('PlaceEditorPage maps', () => {
   })
 
   it('creates with the active map', async () => { vi.mocked(createPlace).mockResolvedValue(PLACE); render(<MemoryRouter><PlaceEditorPage mode="create" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>); expect(await screen.findByTestId('initial-map')).toHaveTextContent('map-a'); fireEvent.click(screen.getByText('Envoyer')); await waitFor(() => expect(createPlace).toHaveBeenCalledWith(expect.objectContaining({ map_id: 'map-a' }))) })
+  it('asks for confirmation then retries an out-of-country creation explicitly', async () => {
+    vi.mocked(createPlace)
+      .mockRejectedValueOnce(new ApiError(409, 'Ces coordonnées semblent situées hors de France.', {}, 'PLACE_OUTSIDE_MAP_COUNTRY'))
+      .mockResolvedValueOnce(PLACE)
+    render(<MemoryRouter><PlaceEditorPage mode="create" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByText('Envoyer'))
+    expect(await screen.findByRole('heading', { name: 'POI hors du pays de la carte' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer quand même' }))
+
+    await waitFor(() => expect(createPlace).toHaveBeenCalledTimes(2))
+    expect(createPlace).toHaveBeenLastCalledWith(expect.objectContaining({
+      map_id: 'map-a',
+      confirm_outside_country: true,
+    }))
+  })
   it('moves an existing POI using a minimal map_id PATCH', async () => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(updatePlace).mockResolvedValue({ ...PLACE, map_id: 'map-b' }); render(<MemoryRouter><PlaceEditorPage mode="edit" placeId="place-id" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>); fireEvent.click(await screen.findByText('Déplacer')); await waitFor(() => expect(updatePlace).toHaveBeenCalledWith('place-id', { map_id: 'map-b' })) })
+  it('asks for confirmation then retries an out-of-country update explicitly', async () => {
+    vi.mocked(getPlaceDetails).mockResolvedValue(PLACE)
+    vi.mocked(updatePlace)
+      .mockRejectedValueOnce(new ApiError(409, 'Ces coordonnées semblent situées hors de France.', {}, 'PLACE_OUTSIDE_MAP_COUNTRY'))
+      .mockResolvedValueOnce({ ...PLACE, map_id: 'map-b' })
+    render(<MemoryRouter><PlaceEditorPage mode="edit" placeId="place-id" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByText('Déplacer'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Enregistrer quand même' }))
+
+    await waitFor(() => expect(updatePlace).toHaveBeenCalledTimes(2))
+    expect(updatePlace).toHaveBeenLastCalledWith('place-id', {
+      map_id: 'map-b',
+      confirm_outside_country: true,
+    })
+  })
 })

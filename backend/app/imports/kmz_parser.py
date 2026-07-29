@@ -56,6 +56,7 @@ class ParsedPlacemark:
     errors: list[str] = field(default_factory=list)
     duplicate_place_id: str | None = None
     duplicate_reason: str | None = None
+    outside_map_country: bool = False
 
 
 class _DescriptionTextExtractor(HTMLParser):

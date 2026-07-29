@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.categories.associations import place_categories_table
 from app.categories.icon_catalog import DEFAULT_CATEGORY_ICON_ID
 from app.categories.models import Category
+from app.countries.point_validator import validate_point_country
 from app.imports.kmz_mapping import map_extended_data
 from app.imports.kmz_parser import ParsedImage, ParsedPlacemark
 from app.imports.schemas import (
@@ -92,6 +93,34 @@ def mark_duplicate_items(database_session: Session, map_id: UUID, items: list[Pa
             item.duplicate_place_id = str(existing_id)
             item.duplicate_reason = "existing_map"
             item.warnings.append("Already imported or existing on this map; skipped by default")
+
+
+def mark_outside_country_items(poi_map: PoiMap, items: list[ParsedPlacemark]) -> str | None:
+    """Annotate out-of-country placemarks and report unavailable boundaries."""
+
+    boundary_unavailable = False
+    for item in items:
+        if item.latitude is None or item.longitude is None:
+            continue
+        result = validate_point_country(
+            item.latitude,
+            item.longitude,
+            poi_map.country.iso_alpha3,
+        )
+        if result.status == "boundary_unavailable":
+            boundary_unavailable = True
+        elif result.requires_confirmation:
+            item.outside_map_country = True
+            item.warnings.append(
+                f"Ce point semble situé hors de {poi_map.country.name}; "
+                "sélectionnez-le explicitement pour confirmer son import."
+            )
+    if boundary_unavailable:
+        return (
+            f"La frontière locale de {poi_map.country.name} n’est pas disponible ; "
+            "la compatibilité géographique n’a pas pu être vérifiée."
+        )
+    return None
 
 
 def get_cached_import(import_id: UUID, map_id: UUID, user_id: UUID) -> CachedKmzImport:
@@ -186,6 +215,11 @@ def confirm_import(
     remote_images_unavailable = 0
     skipped_count = 0
     import_warnings = list(cached.global_warnings)
+    import_warnings.extend(
+        f"{item.name or f'Point {item.source_index + 1}'} a été importé hors du pays de la carte."
+        for item in selected
+        if item.outside_map_country
+    )
     image_assignments: list[tuple[Place, list[ParsedImage]]] = []
     image_total = sum(
         sum(
@@ -406,7 +440,7 @@ def _item_preview(item: ParsedPlacemark) -> KmzImportItemPreview:
     importable = item.latitude is not None and item.longitude is not None and not errors and not already_imported
     return KmzImportItemPreview(
         source_index=item.source_index,
-        selected_by_default=importable,
+        selected_by_default=importable and not item.outside_map_country,
         name=mapped_fields.get("name"),
         latitude=item.latitude,
         longitude=item.longitude,
@@ -419,6 +453,7 @@ def _item_preview(item: ParsedPlacemark) -> KmzImportItemPreview:
         importable=importable,
         already_imported=already_imported,
         duplicate_reason=item.duplicate_reason,
+        outside_map_country=item.outside_map_country,
     )
 
 

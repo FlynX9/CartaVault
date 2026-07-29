@@ -65,6 +65,44 @@ def test_place_rejects_missing_map(integration_client: TestClient) -> None:
     assert response.status_code == 404
 
 
+def test_place_outside_map_country_requires_explicit_confirmation(
+    integration_client: TestClient,
+    poi_map: PoiMap,
+) -> None:
+    payload = {
+        "name": f"Outside France {uuid4().hex}",
+        "map_id": str(poi_map.id),
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+    }
+
+    warning = integration_client.post("/places", json=payload)
+
+    assert warning.status_code == 409
+    assert warning.json()["detail"]["code"] == "PLACE_OUTSIDE_MAP_COUNTRY"
+    assert warning.json()["detail"]["country_code"] == "FRA"
+    confirmed = integration_client.post(
+        "/places",
+        json={**payload, "confirm_outside_country": True},
+    )
+    assert confirmed.status_code == 201
+
+    moved = integration_client.patch(
+        f"/places/{confirmed.json()['id']}",
+        json={"latitude": 52.52, "longitude": 13.405},
+    )
+    assert moved.status_code == 409
+    confirmed_move = integration_client.patch(
+        f"/places/{confirmed.json()['id']}",
+        json={
+            "latitude": 52.52,
+            "longitude": 13.405,
+            "confirm_outside_country": True,
+        },
+    )
+    assert confirmed_move.status_code == 200
+
+
 def test_place_status_update_is_audited_as_json(integration_client: TestClient, poi_map: PoiMap) -> None:
     statuses = integration_client.get("/statuses", params={"map_id": str(poi_map.id)}).json()
     initial_status, target_status = statuses[:2]

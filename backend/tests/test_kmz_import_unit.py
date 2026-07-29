@@ -7,7 +7,7 @@ import pytest
 from app.imports.kmz_mapping import map_extended_data
 from app.imports.kmz_parser import KmzParseError, ParsedPlacemark, parse_kmz
 from app.imports.kmz_security import KmzSecurityError, validate_kmz_upload
-from app.imports.service import mark_duplicate_items, preview_to_read
+from app.imports.service import mark_duplicate_items, mark_outside_country_items, preview_to_read
 
 
 def make_kmz(files: dict[str, bytes]) -> bytes:
@@ -127,3 +127,31 @@ def test_kmz_preview_marks_map_and_file_duplicates(monkeypatch: pytest.MonkeyPat
     assert preview.items[2].duplicate_reason == "within_file"
     assert preview.items[1].selected_by_default is False
     assert preview.items[2].selected_by_default is False
+
+
+def test_kmz_preview_reports_and_deselects_outside_country_items(monkeypatch: pytest.MonkeyPatch) -> None:
+    inside = ParsedPlacemark(0, "Paris", None, 48.8566, 2.3522)
+    outside = ParsedPlacemark(1, "London", None, 51.5074, -0.1278)
+    poi_map = type("Map", (), {
+        "country": type("Country", (), {"iso_alpha3": "FRA", "name": "France"})(),
+    })()
+    monkeypatch.setattr(
+        "app.imports.service.validate_point_country",
+        lambda latitude, _longitude, _code: type("Validation", (), {
+            "status": "outside" if latitude > 50 else "inside",
+            "requires_confirmation": latitude > 50,
+        })(),
+    )
+
+    assert mark_outside_country_items(poi_map, [inside, outside]) is None
+    preview = preview_to_read(type("Cached", (), {
+        "import_id": uuid4(),
+        "file_name": "places.kmz",
+        "items": (inside, outside),
+        "global_warnings": (),
+    })())
+
+    assert preview.items[0].selected_by_default is True
+    assert preview.items[1].outside_map_country is True
+    assert preview.items[1].selected_by_default is False
+    assert "hors de France" in preview.items[1].warnings[0]

@@ -15,4 +15,16 @@ describe('API errors', () => {
       fieldErrors: { latitude: 'Input should be less than 90' },
     })
   })
+
+  it('exposes structured conflict codes', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({
+      detail: { code: 'PLACE_OUTSIDE_MAP_COUNTRY', message: 'Point hors pays.' },
+    }), { status: 409, headers: { 'Content-Type': 'application/json' } }))))
+
+    await expect(sendJson('/places', 'POST', {})).rejects.toMatchObject({
+      status: 409,
+      code: 'PLACE_OUTSIDE_MAP_COUNTRY',
+      message: 'Point hors pays.',
+    })
+  })
 })

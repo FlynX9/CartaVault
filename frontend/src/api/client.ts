@@ -5,16 +5,19 @@ export type ApiFieldErrors = Record<string, string>
 export class ApiError extends Error {
   readonly status: number
   readonly fieldErrors: ApiFieldErrors
+  readonly code: string | null
 
   constructor(
     status: number,
     message: string,
     fieldErrors: ApiFieldErrors = {},
+    code: string | null = null,
   ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
+    this.code = code
   }
 }
 
@@ -28,25 +31,30 @@ export function setCsrfToken(value: string | null): void {
 interface ParsedErrorPayload {
   message: string | null
   fieldErrors: ApiFieldErrors
+  code: string | null
 }
 
 function parseApiErrorPayload(payload: unknown): ParsedErrorPayload {
   if (typeof payload !== 'object' || payload === null || !('detail' in payload)) {
-    return { message: null, fieldErrors: {} }
+    return { message: null, fieldErrors: {}, code: null }
   }
 
   const detail = payload.detail
 
   if (typeof detail === 'string') {
-    return { message: detail, fieldErrors: {} }
+    return { message: detail, fieldErrors: {}, code: null }
   }
 
   if (typeof detail === 'object' && detail !== null && 'message' in detail && typeof detail.message === 'string') {
-    return { message: detail.message, fieldErrors: {} }
+    return {
+      message: detail.message,
+      fieldErrors: {},
+      code: 'code' in detail && typeof detail.code === 'string' ? detail.code : null,
+    }
   }
 
   if (!Array.isArray(detail)) {
-    return { message: null, fieldErrors: {} }
+    return { message: null, fieldErrors: {}, code: null }
   }
 
   const messages: string[] = []
@@ -76,6 +84,7 @@ function parseApiErrorPayload(payload: unknown): ParsedErrorPayload {
   return {
     message: messages.length > 0 ? messages.join(', ') : null,
     fieldErrors,
+    code: null,
   }
 }
 
@@ -88,10 +97,11 @@ async function getResponseError(response: Response): Promise<ParsedErrorPayload>
     return {
       message: parsed.message ?? fallback,
       fieldErrors: parsed.fieldErrors,
+      code: parsed.code,
     }
   } catch {
     const text = (await response.text()).trim()
-    return { message: text || fallback, fieldErrors: {} }
+    return { message: text || fallback, fieldErrors: {}, code: null }
   }
 }
 
@@ -140,6 +150,7 @@ async function request(
       response.status,
       error.message ?? 'Erreur API.',
       error.fieldErrors,
+      error.code,
     )
   }
 
@@ -209,7 +220,7 @@ export async function sendFormData(
       setCsrfToken(null)
       window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
     }
-    throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors)
+    throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors, error.code)
   }
   return response.json()
 }

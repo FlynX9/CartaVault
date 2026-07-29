@@ -24,6 +24,7 @@ from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.database import get_db
 from app.countries.schemas import CountrySummary
+from app.countries.point_validator import validate_point_country
 from app.maps.models import PoiMap
 from app.maps.models import MapMembership
 from app.maps.schemas import MapSummary
@@ -48,6 +49,35 @@ router = APIRouter(
     prefix="/places",
     tags=["places"],
 )
+
+
+def require_country_confirmation(
+    poi_map: PoiMap,
+    latitude: float,
+    longitude: float,
+    confirmed: bool,
+) -> None:
+    """Require an explicit client retry before persisting an out-of-country POI."""
+
+    result = validate_point_country(
+        latitude,
+        longitude,
+        poi_map.country.iso_alpha3,
+    )
+    if result.requires_confirmation and not confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "PLACE_OUTSIDE_MAP_COUNTRY",
+                "message": (
+                    f"Ces coordonnées semblent situées hors de {poi_map.country.name}. "
+                    "Vérifiez-les ou confirmez l’enregistrement."
+                ),
+                "country_code": poi_map.country.iso_alpha3,
+                "country_name": poi_map.country.name,
+                "tolerance_meters": result.tolerance_meters,
+            },
+        )
 
 
 def build_place_read_statement():
@@ -562,6 +592,12 @@ def create_place(
     """Create a new point of interest."""
 
     access = require_map_role(database_session, place_data.map_id, current_user, "editor")
+    require_country_confirmation(
+        access.map,
+        place_data.latitude,
+        place_data.longitude,
+        place_data.confirm_outside_country,
+    )
     QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.PLACES_PER_MAP_MAX, scope_id=place_data.map_id)
 
     if place_data.status_id is None:
@@ -643,12 +679,14 @@ def update_place(
     place = require_place_role(database_session, place_id, current_user, "editor")
 
     supplied_data = place_data.model_dump(exclude_unset=True)
+    confirmed_outside_country = supplied_data.pop("confirm_outside_country", False)
     audited_fields = {"name", "map_id", "status_id", "description", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "is_favorite", "interest_rating", "visit_rating"}
     before = {field: getattr(place, field) for field in audited_fields}
 
     requested_map_id = supplied_data.get("map_id")
+    target_map = place.map
     if requested_map_id is not None:
-        require_map_role(database_session, requested_map_id, current_user, "editor")
+        target_map = require_map_role(database_session, requested_map_id, current_user, "editor").map
         if requested_map_id != place.map_id and (place.categories or place.tags):
             raise HTTPException(status_code=409, detail="Remove map-scoped categories and tags before moving the place")
 
@@ -668,6 +706,22 @@ def update_place(
 
     latitude = supplied_data.pop("latitude", None)
     longitude = supplied_data.pop("longitude", None)
+
+    if latitude is not None and longitude is not None:
+        target_latitude, target_longitude = latitude, longitude
+    elif requested_map_id is not None:
+        target_longitude, target_latitude = database_session.execute(
+            select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(Place.id == place.id)
+        ).one()
+    else:
+        target_latitude = target_longitude = None
+    if target_latitude is not None and target_longitude is not None:
+        require_country_confirmation(
+            target_map,
+            float(target_latitude),
+            float(target_longitude),
+            confirmed_outside_country,
+        )
 
     for field_name, field_value in supplied_data.items():
         setattr(place, field_name, field_value)
