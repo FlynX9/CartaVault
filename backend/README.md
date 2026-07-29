@@ -35,8 +35,8 @@ python -m alembic upgrade heads
 python -m app.cli create-admin
 ```
 
-The interactive command masks the password and creates the first active
-administrator. Automated deployments use:
+The interactive command masks the password and is intended for local
+development or recovery. Automated deployments use:
 
 ```powershell
 python -m app.deployment migrate-and-bootstrap
@@ -44,11 +44,13 @@ python -m app.deployment migrate-and-bootstrap
 
 The deployment command waits for a stable database connection, holds a
 PostgreSQL advisory lock, prepares the authentication schema when upgrading a
-pre-authentication database, performs the explicit administrator bootstrap,
-and then applies every Alembic head. A final idempotence check confirms the
-administrator after the upgrade. Bootstrap values come from the
-`CARTAVAULT_BOOTSTRAP_ADMIN_*` variables and are never printed. Remove those
-variables after the first successful deployment.
+pre-authentication database, and applies every Alembic head. On a clean
+installation it deliberately allows the administrator bootstrap to be
+deferred to the one-time `/setup` web wizard. The wizard is protected by
+`CARTAVAULT_SETUP_TOKEN`, rate limited, and becomes unavailable as soon as an
+active administrator exists. The optional `CARTAVAULT_BOOTSTRAP_ADMIN_*`
+variables remain supported for legacy unattended upgrades and are never
+printed.
 
 Legacy ownership validation remains strict when historical maps exist:
 orphaned maps or divergent owner memberships stop the migration rather than
@@ -56,7 +58,12 @@ being modified partially.
 
 ## Security configuration
 
-In addition to `DATABASE_URL`, configure the environment-specific `CARTAVAULT_SESSION_*`, `CARTAVAULT_CSRF_COOKIE_NAME`, `CARTAVAULT_INVITATION_HOURS`, `CARTAVAULT_COOKIE_SECURE`, `CARTAVAULT_PASSWORD_MIN_LENGTH`, and Argon2 settings. In production, set `CARTAVAULT_COOKIE_SECURE=true` behind HTTPS.
+In addition to `DATABASE_URL`, configure the persistent
+`CARTAVAULT_SESSION_SECRET`, `CARTAVAULT_SETUP_TOKEN`,
+`CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`, the environment-specific session and
+CSRF cookie names, `CARTAVAULT_INVITATION_HOURS`,
+`CARTAVAULT_COOKIE_SECURE`, `CARTAVAULT_PASSWORD_MIN_LENGTH`, and Argon2
+settings. In production, set `CARTAVAULT_COOKIE_SECURE=true` behind HTTPS.
 
 Invitations are valid for seven days by default. Ownership transfer is transactional: the new owner must already be a member and the former owner becomes an `editor`.
 

@@ -164,7 +164,7 @@ def run_administrator_bootstrap() -> None:
     from app.cli import bootstrap_from_environment
 
     print("[bootstrap] Verifying the first administrator.")
-    result = bootstrap_from_environment()
+    result = bootstrap_from_environment(allow_missing=True)
     if result != 0:
         raise DeploymentError(
             f"Administrator bootstrap failed with exit code {result}."

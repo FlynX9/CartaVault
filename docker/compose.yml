@@ -8,9 +8,12 @@ x-backend-environment: &backend-environment
   FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:?FRONTEND_PUBLIC_URL is required}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
   CARTAVAULT_COOKIE_SECURE: ${CARTAVAULT_COOKIE_SECURE:-true}
+  CARTAVAULT_SESSION_SECRET: ${CARTAVAULT_SESSION_SECRET:?CARTAVAULT_SESSION_SECRET is required}
+  CARTAVAULT_SETUP_TOKEN: ${CARTAVAULT_SETUP_TOKEN:?CARTAVAULT_SETUP_TOKEN is required}
   CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: ${CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY:?CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY is required}
   PHOTO_STORAGE_PATH: /app/storage/photos
   AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
   OSRM_BASE_URL: ${OSRM_BASE_URL:-https://router.project-osrm.org}
   EMAIL_PROVIDER: ${EMAIL_PROVIDER:-resend}
   EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-CartaVault}
@@ -18,6 +21,21 @@ x-backend-environment: &backend-environment
   EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
 
 services:
+  setup:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      args:
+        CARTAVAULT_VERSION: ${CARTAVAULT_VERSION:-1.0.0}
+    image: cartavault-backend:${CARTAVAULT_VERSION:-1.0.0}
+    user: "0:0"
+    entrypoint: ["python", "-m", "app.setup_cli"]
+    environment:
+      CARTAVAULT_ENV_FILE: /config/.env
+    volumes:
+      - ${CARTAVAULT_ENV_FILE:-./.env}:/config/.env
+
   postgres:
     build:
       context: ..
@@ -70,6 +88,7 @@ services:
     volumes:
       - photos_data:/app/storage/photos
       - avatars_data:/app/storage/avatars
+      - exports_data:/app/storage/exports
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -110,6 +129,7 @@ volumes:
   postgres_data:
   photos_data:
   avatars_data:
+  exports_data:
 
 networks:
   cartavault_private:

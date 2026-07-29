@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.models import SystemCredential
+from app.admin.models import SystemSetting
 from app.config import email_settings
 from app.emails.providers.base import EmailDeliveryError, EmailMessage, EmailProvider
 from app.emails.providers.resend import ResendEmailProvider
@@ -46,7 +47,14 @@ def provider_from_database(session: Session) -> EmailProvider:
         api_key = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
     except CredentialEncryptionError as error:
         raise EmailDeliveryError(error.code, "Le service d’email n’est pas disponible.") from error
-    return ResendEmailProvider(api_key)
+    configured = session.get(SystemSetting, "email")
+    values = configured.value if configured is not None else {}
+    return ResendEmailProvider(
+        api_key,
+        from_name=str(values.get("sender_name") or email_settings.from_name),
+        from_address=str(values.get("sender_address") or email_settings.from_address),
+        reply_to=str(values.get("reply_to_address") or email_settings.reply_to or ""),
+    )
 
 
 class EmailService:

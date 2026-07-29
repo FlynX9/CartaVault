@@ -28,6 +28,8 @@ import { useAuth } from './auth/useAuth'
 import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages'
 import { LoginPage } from './pages/LoginPage'
+import { SetupPage } from './pages/SetupPage'
+import { getSetupStatus, type SetupStatus } from './api/setup'
 import { useConfirmDialog } from './components/common/useConfirmDialog'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { useI18n } from './i18n/useI18n'
@@ -450,7 +452,35 @@ function WorkspaceApp() {
 function AppContent() {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
+  const [setupError, setSetupError] = useState<string | null>(null)
   const isAuthenticationPage = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getSetupStatus(controller.signal)
+      .then(setSetupStatus)
+      .catch((caught: unknown) => {
+        if (!isAbortError(caught)) {
+          setSetupError(caught instanceof Error ? caught.message : 'Initial setup status is unavailable.')
+        }
+      })
+    return () => controller.abort()
+  }, [])
+
+  if (setupStatus === null) {
+    return <main className="auth-loading" aria-live="polite">{setupError ?? 'Chargement de CartaVault…'}</main>
+  }
+  if (setupStatus.required) {
+    return <SetupPage
+      status={setupStatus}
+      onCompleted={() => {
+        setSetupStatus({ required: false, locked: true, checks: [] })
+        navigate('/login', { replace: true })
+      }}
+    />
+  }
 
   if (loading) return <main className="auth-loading" aria-live="polite">Chargement de CartaVault…</main>
   if (location.pathname.startsWith('/invitations/')) return <Routes><Route path="/invitations/:token" element={<InvitationPage />} /></Routes>

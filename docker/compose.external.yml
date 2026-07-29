@@ -21,54 +21,46 @@ x-backend-environment: &backend-environment
   EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
 
 services:
-  postgres:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-postgres:${CARTAVAULT_VERSION}
-    platform: linux/amd64
-    restart: unless-stopped
+  setup:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      args:
+        CARTAVAULT_VERSION: ${CARTAVAULT_VERSION:-1.0.0}
+    image: cartavault-backend:${CARTAVAULT_VERSION:-1.0.0}
+    user: "0:0"
+    entrypoint: ["python", "-m", "app.setup_cli"]
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      CARTAVAULT_ENV_FILE: /config/.env
     volumes:
-      - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "test \"$$(cat /proc/1/comm)\" = postgres && pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 15s
-    networks:
-      - cartavault_private
+      - ${CARTAVAULT_ENV_FILE:-./.env}:/config/.env
 
   migrate:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-backend:${CARTAVAULT_VERSION}
-    platform: linux/amd64
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      args:
+        CARTAVAULT_VERSION: ${CARTAVAULT_VERSION}
+    image: cartavault-backend:${CARTAVAULT_VERSION}
     restart: "no"
     environment:
       <<: *backend-environment
-      CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: ${CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL:-}
-      CARTAVAULT_BOOTSTRAP_ADMIN_NAME: ${CARTAVAULT_BOOTSTRAP_ADMIN_NAME:-}
-      CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: ${CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD:-}
       CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS: ${CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS:-120}
       CARTAVAULT_DATABASE_STABLE_CHECKS: ${CARTAVAULT_DATABASE_STABLE_CHECKS:-3}
       CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS: ${CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS:-300}
-    depends_on:
-      postgres:
-        condition: service_healthy
     command: ["python", "-m", "app.deployment", "migrate-and-bootstrap"]
-    networks:
-      - cartavault_private
+    networks: [cartavault_private]
 
   backend:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-backend:${CARTAVAULT_VERSION}
-    platform: linux/amd64
+    image: cartavault-backend:${CARTAVAULT_VERSION}
     restart: unless-stopped
     environment:
       <<: *backend-environment
     volumes:
-      - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/photos:/app/storage/photos
-      - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/avatars:/app/storage/avatars
-      - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/exports:/app/storage/exports
+      - photos_data:/app/storage/photos
+      - avatars_data:/app/storage/avatars
+      - exports_data:/app/storage/exports
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -78,20 +70,29 @@ services:
       timeout: 5s
       retries: 8
       start_period: 15s
-    networks:
-      - cartavault_private
+    networks: [cartavault_private]
 
   frontend:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-frontend:${CARTAVAULT_VERSION}
-    platform: linux/amd64
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        CARTAVAULT_VERSION: ${CARTAVAULT_VERSION}
+        VITE_API_BASE_URL: /api
+        VITE_STADIA_MAPS_API_KEY: ${VITE_STADIA_MAPS_API_KEY:-}
+    image: cartavault-frontend:${CARTAVAULT_VERSION}
     restart: unless-stopped
     ports:
       - "${CARTAVAULT_HTTP_PORT:-8088}:80"
     depends_on:
       backend:
         condition: service_healthy
-    networks:
-      - cartavault_private
+    networks: [cartavault_private]
+
+volumes:
+  photos_data:
+  avatars_data:
+  exports_data:
 
 networks:
   cartavault_private:

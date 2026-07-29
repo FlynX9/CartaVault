@@ -9,24 +9,34 @@ from app.emails.providers.base import EmailDeliveryError, EmailMessage
 
 
 class ResendEmailProvider:
-    def __init__(self, api_key: str) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        from_name: str | None = None,
+        from_address: str | None = None,
+        reply_to: str | None = None,
+    ) -> None:
         self.api_key = api_key
+        self.from_name = from_name if from_name is not None else email_settings.from_name
+        self.from_address = from_address if from_address is not None else email_settings.from_address
+        self.reply_to = reply_to if reply_to is not None else email_settings.reply_to
 
     def send(self, message: EmailMessage) -> str | None:
-        if not email_settings.from_address:
+        if not self.from_address:
             raise EmailDeliveryError(
                 "EMAIL_SENDER_NOT_CONFIGURED",
                 "L’adresse d’expédition Resend n’est pas configurée.",
             )
         payload = {
-            "from": f"{email_settings.from_name} <{email_settings.from_address}>",
+            "from": f"{self.from_name} <{self.from_address}>",
             "to": message.recipients,
             "subject": message.subject,
             "html": message.html,
             "text": message.text,
         }
-        if email_settings.reply_to:
-            payload["reply_to"] = email_settings.reply_to
+        if self.reply_to:
+            payload["reply_to"] = self.reply_to
         request = Request(
             "https://api.resend.com/emails", data=json.dumps(payload).encode("utf-8"), method="POST",
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "User-Agent": "CartaVault/1.0"},

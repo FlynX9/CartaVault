@@ -23,7 +23,7 @@ COPY --chown=cartavault:cartavault backend/app ./app
 COPY --chown=cartavault:cartavault backend/migrations ./migrations
 COPY --chown=cartavault:cartavault shared /shared
 
-RUN mkdir -p /app/storage/photos /app/storage/avatars \
+RUN mkdir -p /app/storage/photos /app/storage/avatars /app/storage/exports \
     && chown -R cartavault:cartavault /app/storage
 
 USER cartavault

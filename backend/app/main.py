@@ -39,6 +39,8 @@ from app.places.map_router import router as places_map_router
 from app.places.advanced_router import router as places_advanced_router
 from app.places.router import router as places_router
 from app.statuses.router import router as statuses_router
+from app.setup.router import router as setup_router
+from app.setup.service import setup_token
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
 from app.config import legacy_google_routes_api_key_configured
@@ -103,8 +105,13 @@ def validate_startup_security_state(session: Session) -> None:
     orphan_maps = session.scalar(
         select(func.count()).select_from(PoiMap).where(PoiMap.owner_id.is_(None))
     ) or 0
-    if active_admins == 0:
+    if active_admins == 0 and not setup_token():
         raise RuntimeError("No active CartaVault administrator exists. Run: python -m app.cli create-admin")
+    if active_admins == 0 and orphan_maps:
+        raise RuntimeError(
+            "CartaVault has legacy maps but no active administrator. "
+            "Run the administrator bootstrap/backfill before starting the application"
+        )
     if orphan_maps:
         raise RuntimeError("CartaVault has orphan maps. Run the administrator bootstrap/backfill before starting the application")
 
@@ -157,9 +164,15 @@ app.add_middleware(
     allow_origins=get_cors_allowed_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Accept", "Content-Type", "X-CSRF-Token"],
+    allow_headers=[
+        "Accept",
+        "Content-Type",
+        "X-CSRF-Token",
+        "X-CartaVault-Setup-Token",
+    ],
 )
 
+app.include_router(setup_router)
 app.include_router(auth_router)
 app.include_router(public_auth_router)
 app.include_router(account_router)

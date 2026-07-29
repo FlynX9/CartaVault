@@ -2,12 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import os
 from pathlib import Path
 from threading import Lock
 from uuid import UUID, uuid4
 
 EXPORT_TTL = timedelta(minutes=15)
-EXPORT_ROOT = Path(__file__).resolve().parents[2] / "storage" / "exports"
+DEFAULT_EXPORT_ROOT = Path(__file__).resolve().parents[2] / "storage" / "exports"
+EXPORT_ROOT = Path(os.getenv("EXPORT_STORAGE_PATH", str(DEFAULT_EXPORT_ROOT))).expanduser().resolve()
+
+
+def export_root() -> Path:
+    return EXPORT_ROOT
 
 
 @dataclass(frozen=True)
@@ -26,11 +32,12 @@ _lock = Lock()
 
 def create(map_id: UUID, user_id: UUID, file_name: str) -> TemporaryExport:
     purge()
-    EXPORT_ROOT.mkdir(parents=True, exist_ok=True)
+    root = export_root()
+    root.mkdir(parents=True, exist_ok=True)
     suffix = Path(file_name).suffix.lower()
     if suffix not in {".gpx", ".kmz"}:
         suffix = ".bin"
-    item = TemporaryExport(uuid4(), map_id, user_id, EXPORT_ROOT / f"{uuid4()}{suffix}", file_name, datetime.now(UTC) + EXPORT_TTL)
+    item = TemporaryExport(uuid4(), map_id, user_id, root / f"{uuid4()}{suffix}", file_name, datetime.now(UTC) + EXPORT_TTL)
     with _lock:
         _exports[item.export_id] = item
     return item

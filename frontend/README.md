@@ -2,6 +2,17 @@
 
 The CartaVault frontend is a Vite, React, and TypeScript application built around a persistent Leaflet map. Workspace panels, dialogs, menus, and overlays reuse the CartaVault visual system and support light and dark themes.
 
+## Initial instance setup
+
+Before the first administrator exists, the application displays the protected
+six-step setup wizard instead of authentication or workspace routes. It
+verifies the one-time infrastructure token and backend prerequisites, then
+configures the administrator, instance defaults, optional Resend delivery, and
+mapping defaults. Once complete, the backend reports a locked setup state and
+the wizard cannot be reopened. See
+[`../docker/README.md`](../docker/README.md) for secret generation and
+deployment instructions.
+
 ## Authentication and private sharing
 
 Authentication uses server sessions and CSRF protection. The app provides login, administrator-approved registration, password reset, account management, notification inboxes, map invitations, and map sharing. The user menu exposes account options, API documentation, administration for administrators, theme controls, and logout.

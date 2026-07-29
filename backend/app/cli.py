@@ -73,7 +73,7 @@ def create_admin(email: str | None = None, name: str | None = None, password: st
     return 0
 
 
-def bootstrap_from_environment() -> int:
+def bootstrap_from_environment(*, allow_missing: bool = False) -> int:
     with SessionLocal() as session:
         users, _, _ = _bootstrap_tables(session.get_bind())
         active_administrator_count = session.scalar(
@@ -96,6 +96,12 @@ def bootstrap_from_environment() -> int:
         os.getenv("CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD"),
     )
     if not all(values):
+        if allow_missing:
+            print(
+                "Bootstrap deferred: no active administrator exists and the "
+                "initial setup wizard will create one."
+            )
+            return 0
         print(
             "Bootstrap variables are required when no active administrator exists.",
             file=sys.stderr,

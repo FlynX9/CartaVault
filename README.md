@@ -258,9 +258,11 @@ python -m alembic upgrade heads
 python -m app.cli create-admin
 ```
 
-The `create-admin` command is interactive and hides the password. Container
-deployments use the deterministic, non-interactive migration/bootstrap job
-documented in [`docker/README.md`](docker/README.md).
+The `create-admin` command is retained for local development and recovery.
+Container installations use automatic migrations followed by the protected
+six-step web setup wizard documented in
+[`docker/README.md`](docker/README.md). The wizard creates the first
+administrator and locks itself permanently afterwards.
 
 Then start the API:
 

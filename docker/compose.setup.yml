@@ -1,0 +1,16 @@
+name: cartavault-setup
+
+services:
+  setup:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      args:
+        CARTAVAULT_VERSION: ${CARTAVAULT_VERSION:-1.0.0}
+    image: cartavault-backend:${CARTAVAULT_VERSION:-1.0.0}
+    user: "0:0"
+    entrypoint: ["python", "-m", "app.setup_cli"]
+    environment:
+      CARTAVAULT_ENV_FILE: /config/.env
+    volumes:
+      - ${CARTAVAULT_ENV_FILE:-./.env}:/config/.env

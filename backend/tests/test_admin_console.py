@@ -94,7 +94,7 @@ def test_resend_verification_sends_a_test_email_to_the_admin(
         messages.append(message)
         return "test-email-id"
 
-    monkeypatch.setattr("app.admin.router.ResendEmailProvider.send", record_message)
+    monkeypatch.setattr("app.emails.providers.resend.ResendEmailProvider.send", record_message)
 
     verified = integration_client.post("/admin/console/credentials/resend/verify")
 
@@ -117,7 +117,7 @@ def test_resend_verification_reports_a_provider_failure(integration_client, monk
     def reject_test_email(*_args, **_kwargs):
         raise EmailDeliveryError("EMAIL_PROVIDER_REJECTED")
 
-    monkeypatch.setattr("app.admin.router.ResendEmailProvider.send", reject_test_email)
+    monkeypatch.setattr("app.emails.providers.resend.ResendEmailProvider.send", reject_test_email)
 
     verified = integration_client.post("/admin/console/credentials/resend/verify")
 

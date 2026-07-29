@@ -18,8 +18,7 @@ from app.auth.models import SystemCredential, User, UserApiCredential, UserSessi
 from app.config import credential_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
-from app.emails.providers.resend import ResendEmailProvider
-from app.emails.service import EmailService
+from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
 
@@ -201,9 +200,8 @@ def verify_resend(
     if credential is None:
         raise HTTPException(404, "Aucune clé Resend n’est configurée.")
     try:
-        value = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
         locale = str((admin.preferences or {}).get("language") or "fr")
-        EmailService(ResendEmailProvider(value)).send_resend_verification(
+        EmailService(provider_from_database(session)).send_resend_verification(
             admin.email,
             admin.display_name,
             locale,
