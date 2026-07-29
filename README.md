@@ -230,7 +230,9 @@ Copy-Item .env.example .env
 docker compose up -d postgres
 ```
 
-The Docker initialization script sets up PostgreSQL/PostGIS and the CartaVault schema only when a new volume is created. Make sure the container is running before continuing:
+The Docker initialization script installs only the PostgreSQL extensions.
+Alembic creates and upgrades the complete CartaVault schema. Make sure the
+container is running before continuing:
 
 ```powershell
 docker compose ps
@@ -248,15 +250,17 @@ Copy-Item .env.example .env
 
 Then configure the required variables in `backend/.env`, especially `DATABASE_URL`. Never commit this file.
 
-For a new installation, first apply migrations up to the revision that allows creation of the initial administrator:
+For a local installation, apply every migration and then create the first
+administrator:
 
 ```powershell
-python -m alembic upgrade d8f4a2c7e910
+python -m alembic upgrade heads
 python -m app.cli create-admin
-python -m alembic upgrade head
 ```
 
-The `create-admin` command is interactive and hides the password. It creates the first active administrator required by later migrations.
+The `create-admin` command is interactive and hides the password. Container
+deployments use the deterministic, non-interactive migration/bootstrap job
+documented in [`docker/README.md`](docker/README.md).
 
 Then start the API:
 
@@ -266,8 +270,10 @@ python -m uvicorn app.main:app --reload
 
 Swagger is available at <http://127.0.0.1:8000/docs>.
 
-> [!WARNING]
-> The first Alembic revision is an empty baseline derived from a pre-existing schema. By itself, it does not create tables in an empty database. The initial schema is provided by `database/init/001_initial_schema.sql` when a new Docker volume is created. For an existing database or volume, read the detailed migration procedure in [`backend/README.md`](backend/README.md) before running the commands above.
+> [!IMPORTANT]
+> Back up the database and media before an upgrade. Production deployments
+> must use the version-matched one-shot migration job; do not run ad hoc
+> migration sequences during rollout.
 
 ### 3. Frontend
 

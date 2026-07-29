@@ -5,17 +5,22 @@ import getpass
 import os
 import sys
 
-from sqlalchemy import func, select
+from sqlalchemy import MetaData, Table, func, insert, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
-import app.models  # noqa: F401
-
-from app.auth.models import User
 from app.auth.security import hash_password, normalize_email
 from app.config import security_settings
 from app.database import SessionLocal
-from app.maps.models import MapMembership, PoiMap
 from app.quotas.models import UNLIMITED_PROFILE_ID
+
+
+def _bootstrap_tables(bind):
+    metadata = MetaData()
+    return (
+        Table("users", metadata, autoload_with=bind),
+        Table("poi_maps", metadata, autoload_with=bind),
+        Table("map_memberships", metadata, autoload_with=bind),
+    )
 
 
 def create_admin(email: str | None = None, name: str | None = None, password: str | None = None) -> int:
@@ -27,38 +32,75 @@ def create_admin(email: str | None = None, name: str | None = None, password: st
         return 2
     with SessionLocal() as session:
         try:
-            if session.scalar(select(User).where(User.email == email)) is not None:
+            users, poi_maps, map_memberships = _bootstrap_tables(session.get_bind())
+            if session.scalar(select(users.c.id).where(users.c.email == email)) is not None:
                 print("A user with this email already exists.", file=sys.stderr)
                 return 1
-            user = User(email=email, display_name=name, password_hash=hash_password(password), is_admin=True, is_active=True, quota_profile_id=UNLIMITED_PROFILE_ID)
-            session.add(user)
-            session.flush()
-            orphan_maps = session.scalars(select(PoiMap).where(PoiMap.owner_id.is_(None))).all()
-            for poi_map in orphan_maps:
-                poi_map.owner_id = user.id
-                session.add(MapMembership(map_id=poi_map.id, user_id=user.id, role="owner"))
+            user_values = {
+                "email": email,
+                "display_name": name,
+                "password_hash": hash_password(password),
+                "is_admin": True,
+                "is_active": True,
+            }
+            if "quota_profile_id" in users.c:
+                user_values["quota_profile_id"] = UNLIMITED_PROFILE_ID
+            user_id = session.scalar(
+                insert(users).values(**user_values).returning(users.c.id)
+            )
+            orphan_map_ids = session.scalars(
+                select(poi_maps.c.id).where(poi_maps.c.owner_id.is_(None))
+            ).all()
+            for map_id in orphan_map_ids:
+                session.execute(
+                    update(poi_maps)
+                    .where(poi_maps.c.id == map_id)
+                    .values(owner_id=user_id)
+                )
+                session.execute(
+                    insert(map_memberships).values(
+                        map_id=map_id,
+                        user_id=user_id,
+                        role="owner",
+                    )
+                )
             session.commit()
         except SQLAlchemyError:
             session.rollback()
             print("Administrator creation failed; no changes were saved.", file=sys.stderr)
             return 1
-        print(f"Administrator created: {email}; {len(orphan_maps)} orphan map(s) assigned.")
+        print(f"Administrator created: {email}; {len(orphan_map_ids)} orphan map(s) assigned.")
     return 0
 
 
 def bootstrap_from_environment() -> int:
+    with SessionLocal() as session:
+        users, _, _ = _bootstrap_tables(session.get_bind())
+        active_administrator_count = session.scalar(
+            select(func.count())
+            .select_from(users)
+            .where(users.c.is_admin.is_(True), users.c.is_active.is_(True))
+        ) or 0
+        if active_administrator_count > 0:
+            print("Bootstrap skipped: an active administrator already exists.")
+            return 0
+        if (session.scalar(select(func.count()).select_from(users)) or 0) > 0:
+            print(
+                "Bootstrap refused: users exist but no active administrator is available.",
+                file=sys.stderr,
+            )
+            return 1
     values = (
         os.getenv("CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL"),
         os.getenv("CARTAVAULT_BOOTSTRAP_ADMIN_NAME"),
         os.getenv("CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD"),
     )
     if not all(values):
-        print("Bootstrap variables are incomplete.", file=sys.stderr)
+        print(
+            "Bootstrap variables are required when no active administrator exists.",
+            file=sys.stderr,
+        )
         return 2
-    with SessionLocal() as session:
-        if (session.scalar(select(func.count()).select_from(User)) or 0) > 0:
-            print("Bootstrap skipped: at least one user already exists.")
-            return 0
     return create_admin(*values)
 
 

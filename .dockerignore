@@ -1,0 +1,17 @@
+.git
+.github
+.local
+.pytest*
+.venv
+**/.env
+**/.env.*
+!**/.env.example
+**/.pytest_cache
+**/__pycache__
+**/*.py[cod]
+backend/.venv
+backend/storage
+docker-exports
+frontend/dist
+frontend/node_modules
+node_modules

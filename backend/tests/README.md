@@ -58,7 +58,11 @@ The suite requires PostgreSQL, verifies PostGIS, requires a database name contai
 
 ## Temporary schema preparation
 
-The first Alembic migration is an empty baseline, so `alembic upgrade head` cannot build the historical schema alone on a fresh database. For the current suite, the session fixture:
+The first Alembic migration creates the historical base schema, so `alembic
+upgrade heads` can build a clean database without an external SQL snapshot.
+`test_fresh_database_deployment.py` validates this in an isolated schema inside
+the guarded `cartavault_test` database and verifies idempotent administrator
+bootstrap. For the rest of the suite, the session fixture:
 
 1. strictly validates `TEST_DATABASE_URL`;
 2. verifies that PostGIS is installed;

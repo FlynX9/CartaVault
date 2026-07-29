@@ -15,6 +15,13 @@ services:
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d
+      - ./database/init/010_extensions.sql:/docker-entrypoint-initdb.d/010_extensions.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 volumes:
   postgres_data:

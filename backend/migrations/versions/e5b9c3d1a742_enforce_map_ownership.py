@@ -15,7 +15,8 @@ depends_on = None
 
 def upgrade() -> None:
     connection = op.get_bind()
-    if not connection.scalar(sa.text("SELECT EXISTS (SELECT 1 FROM users WHERE is_admin AND is_active)")):
+    map_count = connection.scalar(sa.text("SELECT count(*) FROM poi_maps")) or 0
+    if map_count and not connection.scalar(sa.text("SELECT EXISTS (SELECT 1 FROM users WHERE is_admin AND is_active)")):
         raise RuntimeError("Create an active administrator with 'python -m app.cli create-admin' before applying this revision")
     if connection.scalar(sa.text("SELECT count(*) FROM poi_maps WHERE owner_id IS NULL")):
         raise RuntimeError("Backfill every map owner with 'python -m app.cli create-admin' before applying this revision")

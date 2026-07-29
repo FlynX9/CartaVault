@@ -17,6 +17,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 database_url = os.getenv("DATABASE_URL")
+version_table_schema = os.getenv("CARTAVAULT_ALEMBIC_VERSION_SCHEMA") or None
 
 if not database_url:
     raise RuntimeError("DATABASE_URL is not defined")
@@ -58,6 +59,7 @@ def run_migrations_offline() -> None:
         },
         compare_type=True,
         include_object=include_object,
+        version_table_schema=version_table_schema,
     )
 
     with context.begin_transaction():
@@ -82,6 +84,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             include_object=include_object,
+            version_table_schema=version_table_schema,
         )
 
         with context.begin_transaction():

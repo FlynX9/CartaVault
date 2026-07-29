@@ -27,17 +27,32 @@ An inaccessible private resource returns `404` to avoid revealing its existence;
 
 ## First administrator and upgrade sequence
 
-Do not start an existing instance between the security migrations. Back up first, then run:
+Alembic is the sole application-schema source. A clean database is upgraded
+directly to all heads:
 
 ```powershell
-python -m alembic upgrade d8f4a2c7e910
+python -m alembic upgrade heads
 python -m app.cli create-admin
-python -m alembic upgrade head
 ```
 
-The interactive command masks the password, creates an active administrator, and assigns orphan maps with `owner` membership. It rejects an existing email. For automated deployment, temporarily set `CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL`, `CARTAVAULT_BOOTSTRAP_ADMIN_NAME`, and `CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD`, run `python -m app.cli bootstrap-admin`, then remove those secrets.
+The interactive command masks the password and creates the first active
+administrator. Automated deployments use:
 
-The final migration rejects a missing active administrator, orphan maps, or divergence between `maps.owner_id` and the owner membership. Historical categories and tags are copied per map to retain their previous availability and associations are remapped; new constraints and triggers reject cross-map associations. Statuses remain map-scoped.
+```powershell
+python -m app.deployment migrate-and-bootstrap
+```
+
+The deployment command waits for a stable database connection, holds a
+PostgreSQL advisory lock, prepares the authentication schema when upgrading a
+pre-authentication database, performs the explicit administrator bootstrap,
+and then applies every Alembic head. A final idempotence check confirms the
+administrator after the upgrade. Bootstrap values come from the
+`CARTAVAULT_BOOTSTRAP_ADMIN_*` variables and are never printed. Remove those
+variables after the first successful deployment.
+
+Legacy ownership validation remains strict when historical maps exist:
+orphaned maps or divergent owner memberships stop the migration rather than
+being modified partially.
 
 ## Security configuration
 
@@ -77,7 +92,9 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Configure `DATABASE_URL` in `backend/.env`, then follow the first-administrator sequence when installing a fresh instance.
+Configure `DATABASE_URL` in `backend/.env`, run `python -m alembic upgrade
+heads`, then create the first administrator when installing a fresh local
+instance.
 
 ## Environment variables
 
@@ -112,7 +129,10 @@ schema cannot calculate one reliably. No schema migration is required.
 
 ## Database and Alembic
 
-The initial Alembic revision is a baseline for an existing schema. A fresh Docker volume is initialized through `database/init/001_initial_schema.sql`; Alembic then evolves the schema. Do not assume `alembic upgrade head` alone can recreate a historic fresh database.
+The initial Alembic revision creates the historical base tables when applied to
+an empty database. Later revisions evolve them to the current schema. Existing
+databases already stamped with that revision do not replay it. PostgreSQL
+initialization owns extensions only.
 
 Use:
 
@@ -122,6 +142,11 @@ python -m alembic check
 ```
 
 Apply migrations to a development or production database only when authorized and after a verified backup. Test all upgrade/downgrade cycles exclusively against `cartavault_test`.
+
+Production rollout, backup, restore, rollback, Portainer, and Synology
+procedures are documented in [`../docker/README.md`](../docker/README.md).
+Schema changes must follow expand/deploy/contract so the previous application
+image remains usable until a later contract release.
 
 ## Photos and media
 
@@ -187,4 +212,4 @@ backend/
 - Local filesystem storage is the default; distributed deployments may need object storage.
 - The instance-status dashboard is operational guidance, not a replacement for observability or backups.
 - Google Routes availability, limits, and pricing remain controlled by the user's Google Cloud configuration.
-- Historical baseline migrations need the documented bootstrap process for a completely new database.
+- Production schema upgrades must use the documented one-shot deployment job.
