@@ -70,7 +70,7 @@ const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectio
     <Marker
       ref={markerRef}
       position={[place.latitude, place.longitude]}
-      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected || bulkSelected, muted)}
+      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected || bulkSelected, muted, place.is_favorite === true)}
       eventHandlers={{
         click: selectionMode ? onSelectionToggle : onSelect,
       }}

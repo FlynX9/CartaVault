@@ -15,6 +15,8 @@ describe('status marker icons', () => {
     expect(selected.options.html).toContain('status-marker selected')
     expect(selected.options.html).toContain('--marker-color:#D97706')
     expect(muted.options.html).toContain('status-marker muted')
+    const favorite = getStatusMarkerIcon('#D97706', 'mdi:factory', false, false, true)
+    expect(favorite.options.html).toContain('status-marker favorite')
   })
 
   it('uses the local MDI and Material Symbol bodies without a network request', () => {
@@ -34,5 +36,9 @@ describe('status marker icons', () => {
 
     expect(fallback.options.html).toContain(getCategoryIconData(FALLBACK_CATEGORY_ICON_ID).body)
     expect(fallback.options.html).not.toContain('untrusted-url')
+  })
+
+  it('falls back to a safe status color for invalid input', () => {
+    expect(getStatusMarkerIcon('url(javascript:bad)', 'mdi:factory', false).options.html).toContain('--marker-color:#64707A')
   })
 })

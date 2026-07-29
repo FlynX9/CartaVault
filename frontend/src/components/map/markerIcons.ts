@@ -14,15 +14,15 @@ function buildSafeIconSvg(icon: string | null | undefined): string {
   return `<svg class="status-marker-glyph" viewBox="${left} ${top} ${width} ${height}" width="18" height="18" fill="currentColor" stroke="currentColor" aria-hidden="true">${iconData.body}</svg>`
 }
 
-export function getStatusMarkerIcon(color: string, icon: string | null | undefined, selected: boolean, muted = false): DivIcon {
+export function getStatusMarkerIcon(color: string, icon: string | null | undefined, selected: boolean, muted = false, favorite = false): DivIcon {
   const safeColor = /^#[0-9A-F]{6}$/i.test(color) ? color : '#64707A'
-  const key = `${safeColor}:${icon ?? 'fallback'}:${selected}:${muted}`
+  const key = `${safeColor}:${icon ?? 'fallback'}:${selected}:${muted}:${favorite}`
   const cached = cache.get(key)
   if (cached) return cached
   const size = selected ? 34 : 28
   const markerIcon = new DivIcon({
     className: 'status-marker-container',
-    html: `<span class="status-marker${selected ? ' selected' : ''}${muted ? ' muted' : ''}" style="--marker-color:${safeColor}"><span class="status-marker-glyph-wrap">${buildSafeIconSvg(icon)}</span></span>`,
+    html: `<span class="status-marker${selected ? ' selected' : ''}${muted ? ' muted' : ''}${favorite ? ' favorite' : ''}" style="--marker-color:${safeColor}"><span class="status-marker-glyph-wrap">${buildSafeIconSvg(icon)}</span></span>`,
     iconSize: [size, size + 10],
     iconAnchor: [size / 2, size + 8],
     popupAnchor: [0, -(size + 4)],
