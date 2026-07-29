@@ -13,7 +13,8 @@ compose() {
   fi
 }
 
-if [ -z "$backup_directory" ] || [ ! -f "$backup_directory/database.dump" ]; then
+if [ -z "$backup_directory" ] || [ ! -f "$backup_directory/database.dump" ] \
+  || [ ! -f "$backup_directory/photos.tar.gz" ] || [ ! -f "$backup_directory/avatars.tar.gz" ]; then
   echo "Usage: CARTAVAULT_RESTORE_CONFIRM=restore $0 /absolute/backup/directory" >&2
   exit 2
 fi
@@ -39,6 +40,16 @@ compose run --rm --no-deps \
   -v "$backup_directory:/backup:ro" \
   --entrypoint sh backend \
   -c 'find /app/storage/photos -mindepth 1 -delete; find /app/storage/avatars -mindepth 1 -delete; tar -xzf /backup/photos.tar.gz -C /app/storage/photos; tar -xzf /backup/avatars.tar.gz -C /app/storage/avatars'
+
+if [ -f "$backup_directory/exports.tar.gz" ]; then
+  echo "[restore] Restoring temporary exports."
+else
+  echo "[restore] Clearing temporary exports not included in this backup."
+fi
+compose run --rm --no-deps \
+  -v "$backup_directory:/backup:ro" \
+  --entrypoint sh backend \
+  -c 'find /app/storage/exports -mindepth 1 -delete; if [ -f /backup/exports.tar.gz ]; then tar -xzf /backup/exports.tar.gz -C /app/storage/exports; fi'
 
 echo "[restore] Migrating the restored database and restarting CartaVault."
 compose run --rm migrate

@@ -27,6 +27,7 @@ It combines a **FastAPI** backend, a **PostgreSQL/PostGIS** database, and a **Re
 - [Architecture and technical stack](#architecture-and-technical-stack)
 - [Quick start on Windows](#quick-start-on-windows)
 - [Google Routes configuration](#google-routes-configuration)
+- [Backup and restore](#backup-and-restore)
 - [Security](#security)
 - [Continuous integration](#continuous-integration)
 - [Project status](#project-status)
@@ -313,6 +314,10 @@ This key is not required to start CartaVault with OSRM. It becomes mandatory whe
 Store this value in a deployment secret or an untracked `.env` file. Losing it makes previously stored Google keys impossible to decrypt.
 
 Restrict the Google key to the Routes API and, whenever possible, to the server IP addresses. Also configure quotas and budget alerts in Google Cloud.
+
+## Backup and restore
+
+For production Docker deployments, follow the [backup and restore runbook](docs/backup-and-restore.md). It covers the PostgreSQL/PostGIS database, media, optional temporary exports, secret handling, automated backups, integrity checks, restore tests, and retention.
 
 ## Security
 

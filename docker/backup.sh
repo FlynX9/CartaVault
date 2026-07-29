@@ -42,15 +42,23 @@ compose run --rm --no-deps \
   --entrypoint sh backend \
   -c 'tar -czf /backup/photos.tar.gz -C /app/storage/photos . && tar -czf /backup/avatars.tar.gz -C /app/storage/avatars .'
 
+set -- "$destination/database.dump" "$destination/photos.tar.gz" "$destination/avatars.tar.gz"
+if [ "${CARTAVAULT_BACKUP_EXPORTS:-false}" = "true" ]; then
+  echo "[backup] Exporting temporary exports."
+  compose run --rm --no-deps \
+    -v "$destination:/backup" \
+    --entrypoint sh backend \
+    -c 'tar -czf /backup/exports.tar.gz -C /app/storage/exports .'
+  set -- "$@" "$destination/exports.tar.gz"
+fi
+
 cat > "$destination/manifest.txt" <<EOF
 created_at=$timestamp
 cartavault_version=${CARTAVAULT_VERSION:-unknown}
 database_format=postgresql-custom
+exports_included=${CARTAVAULT_BACKUP_EXPORTS:-false}
 EOF
 
-sha256sum "$destination/database.dump" \
-  "$destination/photos.tar.gz" \
-  "$destination/avatars.tar.gz" \
-  > "$destination/SHA256SUMS"
+sha256sum "$@" > "$destination/SHA256SUMS"
 
 echo "[backup] Completed: $destination"

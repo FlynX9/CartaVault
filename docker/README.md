@@ -117,6 +117,10 @@ deployments serialize on the advisory lock.
 
 ## Backup
 
+The complete operational runbook, including automation, integrity checks,
+retention, recovery on a new host, and the encryption-key warning, is in
+[`docs/backup-and-restore.md`](../docs/backup-and-restore.md).
+
 Standard Compose:
 
 ```sh
@@ -132,9 +136,10 @@ CARTAVAULT_COMPOSE_FILE=/path/to/compose.portainer.yml \
 ```
 
 The timestamped directory contains a custom-format PostgreSQL dump, photo and
-avatar archives, checksums, and a version manifest. Copy the encryption key and
-other deployment secrets separately to a protected secret store; they are
-intentionally never written into the backup.
+avatar archives, checksums, and a version manifest. Set
+`CARTAVAULT_BACKUP_EXPORTS=true` only when temporary exports must be kept.
+Copy the encryption key and other deployment secrets separately to a protected
+secret store; they are intentionally never written into the backup.
 
 ## Restore test and disaster recovery
 
