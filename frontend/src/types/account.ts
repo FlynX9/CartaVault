@@ -15,6 +15,10 @@ export interface AccountPreferences {
   startup_panel: 'maps' | 'places' | 'last'
   timezone: string
   trash_retention_days: number
+  onboarding: {
+    dismissed: boolean
+    completed_steps: Array<'map' | 'place' | 'import' | 'trip' | 'organization'>
+  }
   routing: {
     provider: 'osrm' | 'google'
     stay_in_country: boolean

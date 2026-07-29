@@ -32,6 +32,7 @@ import { formatRouteDistance, formatRouteDuration } from '../trips/tripMetrics'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { CountryFlag } from '../maps/CountryFlag'
 import { DashboardMapPreview } from './DashboardMapPreview'
+import { OnboardingCard } from './OnboardingCard'
 
 interface DashboardPageProps {
   maps: PoiMap[]
@@ -212,6 +213,8 @@ export function DashboardPage({
         <button type="button" disabled={!canEditTargetMap} title={!canEditTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onCreateTrip(targetMap.id)}><Route /><span>{t('dashboard.action.trip')}</span></button>
       </div>
     </header>
+
+    <OnboardingCard maps={maps} dashboard={dashboard} onCreateMap={onCreateMap} onCreatePlace={onCreatePlace} onImportKmz={onImportKmz} onCreateTrip={onCreateTrip} />
 
     <section className="dashboard-primary-kpis" aria-label={t('dashboard.overview')}>
       {([

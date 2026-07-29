@@ -121,6 +121,11 @@ class RoutingPreferences(BaseModel):
     traffic_mode: Literal["traffic_unaware", "traffic_aware", "traffic_aware_optimal"] = "traffic_unaware"
 
 
+class OnboardingPreferences(BaseModel):
+    dismissed: bool = False
+    completed_steps: list[Literal["map", "place", "import", "trip", "organization"]] = Field(default_factory=list)
+
+
 class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
     preferred_basemap: Literal["cartavault-light", "cartavault-dark", "satellite", "osm"] = "cartavault-light"
@@ -129,6 +134,7 @@ class AccountPreferences(BaseModel):
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
     trash_retention_days: int = Field(default=30, ge=1, le=365)
     routing: RoutingPreferences = Field(default_factory=RoutingPreferences)
+    onboarding: OnboardingPreferences = Field(default_factory=OnboardingPreferences)
 
     @model_validator(mode="before")
     @classmethod
