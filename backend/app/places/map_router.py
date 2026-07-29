@@ -14,7 +14,6 @@ from app.places.filters import MapBounds, get_required_map_bounds
 from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
 from app.places.map_schemas import (
     MapCategoryRead,
-    PrimaryCategoryRead,
     MapStatusRead,
     MapTagRead,
     PlaceMapPageRead,
@@ -181,7 +180,6 @@ def get_map_places(
                 color=place.status.color,
                 functional_state=place.status.functional_state,
             ),
-            primary_category=next((PrimaryCategoryRead(id=category.id, name=category.name, icon=category.icon) for category in place.categories if primary_categories.get((place.id, category.id), False)), None),
             categories=[MapCategoryRead(id=category.id, name=category.name, icon=category.icon, is_primary=primary_categories.get((place.id, category.id), False)) for category in place.categories],
             tags=[
                 MapTagRead(

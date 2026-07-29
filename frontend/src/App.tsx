@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import { ApiError } from './api/client'
 import { deleteMap, getMaps } from './api/maps'
 import { getMapPlaces, getPlaceDetails } from './api/places'
+import { areMapPlacesEqual } from './components/map/mapPlaceEquality'
 import { getStatuses } from './api/statuses'
 import { addTripNight, addTripStop, getTrip } from './api/trips'
 import { TopBar } from './components/layout/TopBar'
@@ -185,7 +186,7 @@ function WorkspaceApp() {
     const controller = new AbortController(); const sequence = ++requestSequence.current
     const timeout = window.setTimeout(async () => {
       setIsLoading(true); setErrorMessage(null)
-      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, filters: placeFilters, limit: 2000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces(visible.items); setErrorMessage(visible.truncated ? 'Trop de lieux sont visibles. Zoomez pour affiner l’affichage.' : null); setSelectedPlace((current) => current === null ? null : visible.items.find((item) => item.id === current.id) ?? current) } }
+      try { const visible = await getMapPlaces({ bounds, mapId: activeMapId, filters: placeFilters, limit: 2000 }, controller.signal); if (sequence === requestSequence.current) { setPlaces((current) => areMapPlacesEqual(current, visible.items) ? current : visible.items); setErrorMessage(visible.truncated ? 'Trop de lieux sont visibles. Zoomez pour affiner l’affichage.' : null); setSelectedPlace((current) => current === null ? null : visible.items.find((item) => item.id === current.id) ?? current) } }
       catch (error) {
         if (!isAbortError(error) && sequence === requestSequence.current) {
           if (error instanceof ApiError && error.status === 404) {
