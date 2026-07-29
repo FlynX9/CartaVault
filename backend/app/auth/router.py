@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_session
 from app.auth.models import RegistrationRequest, User, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
 from app.auth.schemas import LoginRequest, PasswordChange, UserSelfRead
-from app.auth.security import generate_token, hash_password, hash_token, normalize_email, verify_password
+from app.auth.security import hash_password, hash_token, normalize_email, verify_password
+from app.auth.sessions import issue_session, revoke_user_sessions
 from app.config import security_settings
 from app.database import get_db
 
@@ -70,15 +71,13 @@ def login(data: LoginRequest, request: Request, response: Response, database_ses
         raise HTTPException(status_code=403, detail="Account is inactive")
     if needs_rehash:
         user.password_hash = hash_password(data.password)
-    raw_token, csrf_token = generate_token(), generate_token()
     now = datetime.now(UTC).replace(tzinfo=None)
-    expires_at = now + timedelta(days=security_settings.session_days)
-    user_session = UserSession(
-        user_id=user.id, token_hash=hash_token(raw_token), csrf_token_hash=hash_token(csrf_token),
-        expires_at=expires_at, last_used_at=now, user_agent=(request.headers.get("user-agent") or "")[:512] or None,
+    raw_token, csrf_token = issue_session(
+        database_session,
+        user.id,
+        user_agent=request.headers.get("user-agent"),
     )
     user.last_login_at = now
-    database_session.add(user_session)
     database_session.commit()
     _set_session_cookies(response, raw_token, csrf_token, security_settings.session_days * 86400)
     return _self_read(user, csrf_token)
@@ -103,14 +102,14 @@ def logout(response: Response, database_session: Session = Depends(get_db), user
 
 
 @router.post("/change-password", status_code=204)
-def change_password(data: PasswordChange, database_session: Session = Depends(get_db), user_session: UserSession = Depends(get_current_session)) -> Response:
+def change_password(data: PasswordChange, response: Response, database_session: Session = Depends(get_db), user_session: UserSession = Depends(get_current_session)) -> Response:
     valid, _ = verify_password(user_session.user.password_hash, data.current_password)
     if not valid:
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     user_session.user.password_hash = hash_password(data.new_password)
-    now = datetime.now(UTC).replace(tzinfo=None)
-    database_session.execute(
-        update(UserSession).where(UserSession.user_id == user_session.user_id, UserSession.id != user_session.id).values(revoked_at=now)
-    )
+    revoke_user_sessions(database_session, user_session.user_id)
+    raw_token, csrf_token = issue_session(database_session, user_session.user_id)
     database_session.commit()
-    return Response(status_code=204)
+    _set_session_cookies(response, raw_token, csrf_token, security_settings.session_days * 86400)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from app.auth.dependencies import get_current_user
-from app.auth.models import User, UserSession
+from app.auth.models import RegistrationRequest, User, UserSession
 from app.auth.rate_limit import PublicAuthRateLimiter
 from app.auth.security import hash_token
 from app.main import app
@@ -239,3 +239,92 @@ def test_login_is_rate_limited_and_sessions_are_csrf_protected_and_revocable(
     integration_client.cookies.set("cartavault_session", "expired-session")
     integration_client.cookies.set("cartavault_csrf", "expired-csrf")
     assert integration_client.get("/auth/me").status_code == 401
+
+
+def test_registration_response_does_not_enumerate_existing_accounts(
+    integration_client: TestClient,
+    database_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    existing = _user(database_session, "registration-existing")
+    pending_email = f"registration-pending-{uuid4()}@example.test"
+    database_session.add(
+        RegistrationRequest(
+            email=pending_email,
+            display_name="Pending registration",
+            password_hash="pending-password-hash",
+            locale="fr",
+        )
+    )
+    database_session.commit()
+    hash_calls: list[str] = []
+    monkeypatch.setattr(
+        "app.auth.public_router.hash_password",
+        lambda password: hash_calls.append(password) or "test-password-hash",
+    )
+    monkeypatch.setattr(
+        "app.auth.public_router.public_auth_rate_limiter",
+        PublicAuthRateLimiter(limit=10, window_seconds=3600),
+    )
+
+    def register(email: str) -> object:
+        return integration_client.post(
+            "/auth/register",
+            json={
+                "email": email,
+                "password": "a sufficiently long password",
+                "confirmation": "a sufficiently long password",
+                "locale": "fr",
+            },
+        )
+
+    unseen_email = f"registration-unseen-{uuid4()}@example.test"
+    existing_response = register(existing.email)
+    pending_response = register(pending_email)
+    unseen_response = register(unseen_email)
+
+    assert [response.status_code for response in (existing_response, pending_response, unseen_response)] == [202, 202, 202]
+    assert existing_response.json() == pending_response.json() == unseen_response.json()
+    assert hash_calls == ["a sufficiently long password"] * 3
+    assert database_session.scalar(
+        select(RegistrationRequest).where(RegistrationRequest.email == unseen_email)
+    ) is not None
+
+
+def test_password_change_rotates_the_current_session(
+    integration_client: TestClient,
+    database_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = _user(database_session, "password-rotation")
+    monkeypatch.setattr(
+        "app.auth.router.verify_password",
+        lambda stored, password: (password == "current password", False),
+    )
+    monkeypatch.setattr("app.auth.router.hash_password", lambda password: f"hash::{password}")
+
+    login = integration_client.post(
+        "/auth/login",
+        json={"email": user.email, "password": "current password"},
+    )
+    assert login.status_code == 200
+    old_session_token = integration_client.cookies.get("cartavault_session")
+    assert old_session_token is not None
+
+    changed = integration_client.post(
+        "/auth/change-password",
+        headers={"X-CSRF-Token": login.json()["csrf_token"]},
+        json={"current_password": "current password", "new_password": "a new sufficiently long password"},
+    )
+    assert changed.status_code == 204
+    assert integration_client.cookies.get("cartavault_session") != old_session_token
+    assert integration_client.get("/auth/me").status_code == 200
+
+    database_session.expire_all()
+    sessions = database_session.scalars(
+        select(UserSession).where(UserSession.user_id == user.id)
+    ).all()
+    assert len([item for item in sessions if item.revoked_at is None]) == 1
+    assert database_session.scalar(
+        select(UserSession).where(UserSession.token_hash == hash_token(old_session_token))
+    ).revoked_at is not None

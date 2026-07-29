@@ -14,6 +14,7 @@ from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
 from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
 from app.auth.security import hash_password, normalize_email, verify_password
+from app.auth.sessions import issue_session, revoke_user_sessions
 from app.config import security_settings
 from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
@@ -22,6 +23,23 @@ from app.maps.models import MapInvitation, MapMembership, PoiMap
 router = APIRouter(prefix="/account", tags=["account"])
 
 DEFAULT_PREFERENCES = AccountPreferences().model_dump()
+
+
+def _set_session_cookies(response: Response, token: str, csrf_token: str) -> None:
+    max_age = security_settings.session_days * 86400
+    response.set_cookie(
+        security_settings.session_cookie_name, token, max_age=max_age,
+        httponly=True, secure=security_settings.cookie_secure, samesite="lax", path="/",
+    )
+    response.set_cookie(
+        security_settings.csrf_cookie_name, csrf_token, max_age=max_age,
+        httponly=False, secure=security_settings.cookie_secure, samesite="lax", path="/",
+    )
+
+
+def _rotate_session(database_session: Session, current: UserSession) -> tuple[str, str]:
+    revoke_user_sessions(database_session, current.user_id)
+    return issue_session(database_session, current.user_id, user_agent=current.user_agent)
 
 
 def _profile(user: User, database_session: Session) -> dict:
@@ -79,24 +97,27 @@ def reset_preferences(database_session: Session = Depends(get_db), current: User
 
 
 @router.post("/change-email")
-def change_email(data: EmailChange, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict:
+def change_email(data: EmailChange, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict:
     if not verify_password(current.user.password_hash, data.current_password)[0]:
         raise HTTPException(400, "Unable to change email with the supplied credentials")
     current.user.email = normalize_email(data.new_email)
-    now = datetime.now(UTC).replace(tzinfo=None)
-    database_session.execute(update(UserSession).where(UserSession.user_id == current.user_id, UserSession.id != current.id, UserSession.revoked_at.is_(None)).values(revoked_at=now))
+    raw_token, csrf_token = _rotate_session(database_session, current)
     try: database_session.commit()
     except IntegrityError as error:
         database_session.rollback(); raise HTTPException(409, "Unable to use this email address") from error
+    _set_session_cookies(response, raw_token, csrf_token)
     return _profile(current.user, database_session)
 
 
 @router.post("/change-password", status_code=204)
-def account_password(data: AccountPasswordChange, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> Response:
+def account_password(data: AccountPasswordChange, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> Response:
     if not verify_password(current.user.password_hash, data.current_password)[0]: raise HTTPException(400, "Current password is incorrect")
     current.user.password_hash = hash_password(data.new_password)
-    database_session.execute(update(UserSession).where(UserSession.user_id == current.user_id, UserSession.id != current.id, UserSession.revoked_at.is_(None)).values(revoked_at=datetime.now(UTC).replace(tzinfo=None)))
-    database_session.commit(); return Response(status_code=204)
+    raw_token, csrf_token = _rotate_session(database_session, current)
+    database_session.commit()
+    _set_session_cookies(response, raw_token, csrf_token)
+    response.status_code = 204
+    return response
 
 
 @router.get("/sessions")

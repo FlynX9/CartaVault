@@ -20,6 +20,7 @@ from app.emails.service import EmailService, provider_from_database
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
+GENERIC_REGISTRATION_MESSAGE = "Votre demande a été transmise aux administrateurs."
 GENERIC_RESET_MESSAGE = "Si un compte correspond à cette adresse, un email de réinitialisation a été envoyé."
 
 
@@ -29,14 +30,16 @@ def register(data: RegistrationCreate, request: Request, database_session: Sessi
     public_auth_rate_limiter.check(rate_limit_key("register", client_host))
     email = normalize_email(str(data.email))
     if database_session.scalar(select(User.id).where(User.email == email)) is not None or database_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.email == email)) is not None:
-        raise HTTPException(409, "Une inscription existe déjà pour cette adresse email.")
+        # Preserve comparable Argon2 work before returning the generic response.
+        hash_password(data.password)
+        return {"status": "pending", "message": GENERIC_REGISTRATION_MESSAGE}
     request = RegistrationRequest(email=email, display_name=email.split("@", 1)[0][:120], password_hash=hash_password(data.password), locale=data.locale)
     try:
         database_session.add(request)
         database_session.commit()
-    except IntegrityError as error:
+    except IntegrityError:
         database_session.rollback()
-        raise HTTPException(409, "Une inscription existe déjà pour cette adresse email.") from error
+        return {"status": "pending", "message": GENERIC_REGISTRATION_MESSAGE}
     admins = list(database_session.scalars(select(User).where(User.is_admin.is_(True), User.is_active.is_(True))))
     try:
         if admins:
@@ -51,7 +54,7 @@ def register(data: RegistrationCreate, request: Request, database_session: Sessi
         request.notification_error_code = error.code
         logger.warning("registration_admin_email_failed request_id=%s code=%s", request.id, error.code)
     database_session.commit()
-    return {"status": "pending", "message": "Votre demande a été transmise aux administrateurs."}
+    return {"status": "pending", "message": GENERIC_REGISTRATION_MESSAGE}
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)

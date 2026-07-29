@@ -29,6 +29,7 @@ def test_account_profile_email_password_and_sessions(integration_client, databas
     changed_email = integration_client.post("/account/change-email", json={"current_password": "current password", "new_email": f"NEW-{uuid4()}@Example.Test"}, headers=headers)
     assert changed_email.status_code == 200 and changed_email.json()["email"].endswith("@example.test")
     database_session.refresh(extra); assert extra.revoked_at is not None
+    headers = {"X-CSRF-Token": integration_client.cookies.get("cartavault_csrf")}
 
     extra2 = UserSession(user_id=auth_user.id, token_hash="e" * 64, csrf_token_hash="f" * 64, expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=1), last_used_at=datetime.now(UTC).replace(tzinfo=None))
     database_session.add(extra2); database_session.flush()
