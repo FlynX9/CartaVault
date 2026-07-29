@@ -5018,6 +5018,17 @@ body {
 .place-map-popup .popup-actions a { text-decoration: none; }
 .place-map-popup .popup-actions button:hover, .place-map-popup .popup-actions a:hover { border-color: color-mix(in srgb, var(--cv-color-teal) 45%, #e0e7ed); color: var(--cv-color-teal); }
 .place-map-popup .popup-actions .popup-action-delete:hover { border-color: #f3b5b5; color: #c72c2c; }
+.place-map-popup .popup-actions .popup-action-add-to-trip {
+  border-color: color-mix(in srgb, var(--cv-color-teal) 74%, var(--cv-border-strong));
+  background: var(--cv-color-teal);
+  color: #fff;
+}
+.place-map-popup .popup-actions .popup-action-add-to-trip:hover,
+.place-map-popup .popup-actions .popup-action-add-to-trip:focus-visible {
+  border-color: color-mix(in srgb, var(--cv-color-teal) 70%, #0d1b2a);
+  background: color-mix(in srgb, var(--cv-color-teal) 86%, #0d1b2a);
+  color: #fff;
+}
 @media (max-width: 560px) {
   .place-map-popup { width: min(420px, calc(100vw - 24px)); }
   .popup-hero { grid-template-columns: 112px minmax(0, 1fr); gap: 0.75rem; padding: 0.75rem 0.75rem 0.6rem; }

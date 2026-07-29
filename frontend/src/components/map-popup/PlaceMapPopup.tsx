@@ -13,7 +13,7 @@ import { PlacePopupGallery } from './PlacePopupGallery'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 import { getTagColorStyle } from '../../tags/tagColors'
 
-interface Props { placeId: string; canEdit?: boolean; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
+interface Props { placeId: string; canEdit?: boolean; tripAddTargetLabel?: string | null; onAddToTrip?: (place: PlaceDetails) => Promise<void> | void; onEdit: () => void; onDeleted: (placeId: string) => void; onClose: () => void }
 
 function formatLocation(result: GeocodingResult | null, fallback: string | null): string | null {
   if (result?.locality) return [result.locality, result.postalCode].filter(Boolean).join(', ')
@@ -28,7 +28,7 @@ function ratingFillPercentage(rating: number, star: number): number {
   return Math.max(0, Math.min(100, (rating - (star - 1)) * 100))
 }
 
-export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onClose }: Props) {
+export function PlaceMapPopup({ placeId, canEdit = true, tripAddTargetLabel = null, onAddToTrip = () => undefined, onEdit, onDeleted, onClose }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const [place, setPlace] = useState<PlaceDetails | null>(null)
   const [photos, setPhotos] = useState<Photo[]>([])
@@ -37,6 +37,7 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [photosError, setPhotosError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [addingToTrip, setAddingToTrip] = useState(false)
   const [reverseLocation, setReverseLocation] = useState<GeocodingResult | null>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
 
@@ -76,6 +77,11 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
   const ratingLabel = isVisited ? 'Évaluation après visite' : 'Envie avant visite'
   const remove = async () => { if (!await confirm({ title: 'Supprimer ce lieu ?', message: `« ${place.name} » sera placé dans la corbeille.` })) return; setDeleting(true); try { await deletePlace(place.id); onDeleted(place.id) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Suppression impossible.'); setDeleting(false) } }
   const toggleFavorite = async () => { try { setPlace(await updatePlace(place.id, { is_favorite: !(place.is_favorite === true) })) } catch (error) { setDetailsError(error instanceof Error ? error.message : 'Modification du favori impossible.') } }
+  const addToTrip = async () => {
+    if (!tripAddTargetLabel || addingToTrip) return
+    setAddingToTrip(true)
+    try { await onAddToTrip(place) } finally { setAddingToTrip(false) }
+  }
 
   return <article className="place-map-popup" aria-labelledby={`popup-title-${place.id}`}>
     <section className="popup-hero">
@@ -111,7 +117,7 @@ export function PlaceMapPopup({ placeId, canEdit = true, onEdit, onDeleted, onCl
       <article><CalendarDays aria-hidden="true" /><p><b>Ajouté le</b><span>{formatDate(place.created_at)}</span></p></article>
       <article><History aria-hidden="true" /><p><b>Modifié le</b><span>{formatDate(place.updated_at)}</span></p></article>
     </div>
-    <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} canEdit={canEdit} showClose={false} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
+    <PlacePopupActions googleMapsUrl={googleUrl} isDeleting={deleting} canEdit={canEdit} showClose={false} tripAddTargetLabel={tripAddTargetLabel} isAddingToTrip={addingToTrip} onAddToTrip={() => void addToTrip()} onEdit={onEdit} onDelete={() => void remove()} onClose={onClose} />
     {confirmationDialog}
   </article>
 }

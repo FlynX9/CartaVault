@@ -1,7 +1,8 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import { getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
+import { bulkAddPlacesToTrip, getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
+import { getTrip, listTrips } from '../../api/trips'
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
 import { MapPlaceList } from './MapPlaceList'
 
@@ -179,6 +180,56 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.places-place-card')).toHaveClass('has-selection')
     expect(screen.getByRole('checkbox', { name: 'Sélectionner Sélection' })).toBeVisible()
     expect(screen.getByRole('region', { name: 'Actions groupées' })).toBeVisible()
+  })
+
+  it('announces the shared selection count to assistive technologies', async () => {
+    const place = { id: 'place-id', name: 'Sélection annoncée', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const onSelectedPlaceIdsChange = vi.fn()
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set()} onSelectedPlaceIdsChange={onSelectedPlaceIdsChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('checkbox', { name: 'Sélectionner Sélection annoncée' })
+    const liveCounter = screen.getByText('0 lieu sélectionné').parentElement
+    expect(liveCounter).toHaveAttribute('aria-live', 'polite')
+    expect(liveCounter).toHaveAttribute('aria-atomic', 'true')
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Sélectionner Sélection annoncée' }))
+    expect(onSelectedPlaceIdsChange).toHaveBeenCalledWith(new Set(['place-id']))
+
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set(['place-id'])} onSelectedPlaceIdsChange={onSelectedPlaceIdsChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByText('1 lieu sélectionné')).toBeVisible()
+  })
+
+  it('offers only editable active trips and refreshes the active trip after a bulk add', async () => {
+    const place = { id: 'place-id', name: 'Étape groupée', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    const day = { id: 'day-id', day_number: 1, stops: [] }
+    const activeTrip = { id: 'active-trip', name: 'Sortie active', status: 'draft', days: [day] }
+    const completedTrip = { id: 'completed-trip', name: 'Sortie terminée', status: 'completed', days: [day] }
+    const archivedTrip = { id: 'archived-trip', name: 'Sortie archivée', status: 'archived', days: [day] }
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    vi.mocked(listTrips).mockResolvedValue([activeTrip, completedTrip, archivedTrip] as never)
+    vi.mocked(getTrip).mockResolvedValue(activeTrip as never)
+    vi.mocked(bulkAddPlacesToTrip).mockResolvedValue({ selected_count: 1, added_count: 1, duplicate_count: 0 } as never)
+    const onBulkChanged = vi.fn()
+    const onBulkTripChanged = vi.fn()
+
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} onBulkChanged={onBulkChanged} onBulkTripChanged={onBulkTripChanged} /></MemoryRouter>)
+
+    await screen.findByRole('checkbox', { name: 'Sélectionner Étape groupée' })
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter à une sortie' }))
+    const tripSelect = await screen.findByRole('combobox', { name: 'Sortie' })
+    expect(within(tripSelect).getByRole('option', { name: 'Sortie active' })).toBeVisible()
+    expect(within(tripSelect).queryByRole('option', { name: 'Sortie terminée' })).not.toBeInTheDocument()
+    expect(within(tripSelect).queryByRole('option', { name: 'Sortie archivée' })).not.toBeInTheDocument()
+
+    fireEvent.change(tripSelect, { target: { value: 'active-trip' } })
+    const daySelect = await screen.findByRole('combobox', { name: 'Journée' })
+    fireEvent.change(daySelect, { target: { value: 'day-id' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter à la sortie' }))
+
+    await waitFor(() => expect(bulkAddPlacesToTrip).toHaveBeenCalledWith({ place_ids: ['place-id'], trip_id: 'active-trip', day_id: 'day-id' }))
+    expect(onBulkChanged).toHaveBeenCalled()
+    expect(onBulkTripChanged).toHaveBeenCalledWith('active-trip')
   })
   it('starts a fresh request after the places panel is closed and reopened', async () => {
     const place = { id: 'place-after-reopen', name: 'Visible after reopen', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never

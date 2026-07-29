@@ -26,7 +26,7 @@ const nearbyPlace: MapPlace = {
 
 afterEach(cleanup)
 
-function MapHarness({ initiallySelected = false, markerFilter, onTripPlaceAdd }: { initiallySelected?: boolean; markerFilter?: { query: string; categoryId: string; statusId: string | null; tagId: string }; onTripPlaceAdd?: (place: MapPlace) => void }) {
+function MapHarness({ initiallySelected = false, markerFilter }: { initiallySelected?: boolean; markerFilter?: { query: string; categoryId: string; statusId: string | null; tagId: string } }) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
     initiallySelected ? place.id : null,
   )
@@ -46,7 +46,6 @@ function MapHarness({ initiallySelected = false, markerFilter, onTripPlaceAdd }:
         basemapId="cartavault-light"
         onBasemapTileError={vi.fn()}
         markerFilter={markerFilter}
-        onTripPlaceAdd={onTripPlaceAdd}
       />
       {selectedPlaceId && (
         <article>
@@ -141,11 +140,16 @@ describe('PoiMap selection lifecycle', () => {
     await waitFor(() => expect(container.querySelector('.status-marker.muted')).toBeInTheDocument())
   })
 
-  it('adds a marker to the active trip day on double click in trip mode', async () => {
-    const add = vi.fn()
-    render(<MapHarness onTripPlaceAdd={add} />)
-    fireEvent.doubleClick(await screen.findByTitle('Manufacture'))
-    expect(add).toHaveBeenCalledWith(place)
+  it('makes map markers keyboard-focusable and reuses the shared multi-selection', async () => {
+    const toggleSelection = vi.fn()
+    render(<PoiMap places={[place]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 13 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="selection" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} selectionMode selectedPlaceIds={new Set()} onPlaceSelectionToggle={toggleSelection} />)
+
+    const marker = await screen.findByTitle('Manufacture — non sélectionné')
+    expect(marker).toHaveAttribute('tabindex', '0')
+    expect(marker).toHaveAttribute('aria-label', 'Manufacture, non sélectionné')
+    expect(marker).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.keyDown(marker, { key: ' ' })
+    expect(toggleSelection).toHaveBeenCalledWith(place.id)
   })
 
   it('hides both the route and the stops of a disabled trip day in trip view', async () => {

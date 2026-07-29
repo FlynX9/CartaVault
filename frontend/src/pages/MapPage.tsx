@@ -74,7 +74,9 @@ interface MapPageProps {
   tripViewOnly?: boolean
   hiddenTripDayIds?: ReadonlySet<string>
   activeTripDayId?: string | null
-  onTripPlaceAdd?: (place: MapPlace) => void
+  placeSelectionMode?: boolean
+  selectedPlaceIds?: ReadonlySet<string>
+  onPlaceSelectionToggle?: (placeId: string) => void
   tripNotice?: string | null
   onTripCoordinateAdd?: (dayId: string, latitude: number, longitude: number) => void
 }
@@ -114,7 +116,9 @@ export function MapPage({
   tripViewOnly = false,
   hiddenTripDayIds = new Set<string>(),
   activeTripDayId = null,
-  onTripPlaceAdd,
+  placeSelectionMode = false,
+  selectedPlaceIds = new Set<string>(),
+  onPlaceSelectionToggle = () => undefined,
   tripNotice = null,
   onTripCoordinateAdd,
 }: MapPageProps) {
@@ -258,7 +262,9 @@ export function MapPage({
           tripViewOnly={tripViewOnly}
           hiddenTripDayIds={hiddenTripDayIds}
           activeTripDayId={activeTripDayId}
-          onTripPlaceAdd={onTripPlaceAdd}
+          selectionMode={placeSelectionMode}
+          selectedPlaceIds={selectedPlaceIds}
+          onPlaceSelectionToggle={onPlaceSelectionToggle}
         />
         {popupContent && (
           <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">

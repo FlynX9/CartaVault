@@ -55,6 +55,18 @@ describe('PlaceMapPopup', () => {
     expect(screen.getByRole('region', { name: 'Note' })).toBeVisible()
   })
 
+  it('adds the displayed POI to the selected trip day from the popup', async () => {
+    const onAddToTrip = vi.fn().mockResolvedValue(undefined)
+    render(<PlaceMapPopup placeId={PLACE_ID} tripAddTargetLabel="Ajouter au jour 2" onAddToTrip={onAddToTrip} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    await screen.findByRole('heading', { name: 'Manufacture' })
+    const addButton = screen.getByRole('button', { name: 'Ajouter au jour 2' })
+    expect(addButton).toHaveTextContent('Ajouter à la sortie')
+    fireEvent.click(addButton)
+
+    await waitFor(() => expect(onAddToTrip).toHaveBeenCalledWith(PLACE))
+  })
+
   it('shows only the rating that matches the status visit classification', async () => {
     vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, interest_rating: 3.5, visit_rating: 2 })
     const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)

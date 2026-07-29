@@ -1,5 +1,5 @@
-import { Fragment, memo, useCallback, useMemo } from 'react'
-import { divIcon, DomEvent, LatLngBounds } from 'leaflet'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { divIcon, LatLngBounds, type Marker as LeafletMarker } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, Tooltip } from 'react-leaflet'
 
 import type { BasemapId } from '../../map/basemaps'
@@ -44,19 +44,38 @@ interface PoiMapProps {
   tripViewOnly?: boolean
   hiddenTripDayIds?: ReadonlySet<string>
   activeTripDayId?: string | null
-  onTripPlaceAdd?: (place: MapPlace) => void
+  selectionMode?: boolean
+  selectedPlaceIds?: ReadonlySet<string>
+  onPlaceSelectionToggle?: (placeId: string) => void
 }
 
-const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, onSelect, onDoubleClick }: { place: MapPlace; selected: boolean; muted: boolean; onSelect: () => void; onDoubleClick?: () => void }) {
+const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: () => void; onSelectionToggle: () => void }) {
+  const markerRef = useRef<LeafletMarker | null>(null)
+  useEffect(() => {
+    const element = markerRef.current?.getElement()
+    if (!element) return
+    element.setAttribute('aria-label', selectionMode ? `${place.name}, ${bulkSelected ? 'sélectionné' : 'non sélectionné'}` : place.name)
+    if (selectionMode) element.setAttribute('aria-pressed', String(bulkSelected))
+    else element.removeAttribute('aria-pressed')
+    if (!selectionMode) return
+    const selectWithSpace = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return
+      event.preventDefault()
+      onSelectionToggle()
+    }
+    element.addEventListener('keydown', selectWithSpace)
+    return () => element.removeEventListener('keydown', selectWithSpace)
+  }, [bulkSelected, onSelectionToggle, place.name, selectionMode])
   return (
     <Marker
+      ref={markerRef}
       position={[place.latitude, place.longitude]}
-      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected, muted)}
+      icon={getStatusMarkerIcon(place.status.color, place.categories.find((category) => category.is_primary)?.icon, selected || bulkSelected, muted)}
       eventHandlers={{
-        click: onSelect,
-        dblclick: (event) => { if (onDoubleClick) { DomEvent.stop(event.originalEvent); onDoubleClick() } },
+        click: selectionMode ? onSelectionToggle : onSelect,
       }}
-      title={place.name}
+      keyboard
+      title={selectionMode ? `${place.name} — ${bulkSelected ? 'sélectionné' : 'non sélectionné'}` : place.name}
     />
   )
 })
@@ -84,13 +103,15 @@ export function PoiMap({
   tripViewOnly = false,
   hiddenTripDayIds = new Set<string>(),
   activeTripDayId = null,
-  onTripPlaceAdd,
+  selectionMode = false,
+  selectedPlaceIds = new Set<string>(),
+  onPlaceSelectionToggle = () => undefined,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const tripPlaceIds = useMemo(() => new Set(trip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? []), [trip])
   const matchesMarkerFilter = useCallback((place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.categories.some((category) => category.id === markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tags.some((tag) => tag.id === markerFilter.tagId)), [markerFilter])
   const standardPlaces = useMemo(() => places.filter((place) => place.id !== draftPlaceId && (!tripViewOnly || tripPlaceIds.has(place.id)) && (trip === null || !tripPlaceIds.has(place.id) || place.id === selectedPlaceId)), [draftPlaceId, places, selectedPlaceId, trip, tripPlaceIds, tripViewOnly])
-  const renderPlace = useCallback((place: MapPlace) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} onSelect={() => onPlaceSelect(place)} onDoubleClick={onTripPlaceAdd ? () => onTripPlaceAdd(place) : undefined} />, [hasMarkerFilter, matchesMarkerFilter, onPlaceSelect, onTripPlaceAdd, selectedPlaceId])
+  const renderPlace = useCallback((place: MapPlace) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} selectionMode={selectionMode} bulkSelected={selectedPlaceIds.has(place.id)} onSelect={() => onPlaceSelect(place)} onSelectionToggle={() => onPlaceSelectionToggle(place.id)} />, [hasMarkerFilter, matchesMarkerFilter, onPlaceSelect, onPlaceSelectionToggle, selectedPlaceId, selectedPlaceIds, selectionMode])
   return (
     <MapContainer
       center={initialView.center}
