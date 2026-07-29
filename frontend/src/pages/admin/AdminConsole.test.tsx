@@ -5,19 +5,21 @@ import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
 import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
+import { getPublicRegistrationSettings } from '../../api/registration'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
   getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
   saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
-vi.mock('../../api/registration', () => ({ getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn() }))
+vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
 
 beforeEach(() => {
   vi.mocked(getAdminUsers).mockResolvedValue({ items: [], total: 0, page: 1, page_size: 25, pages: 1 })
   vi.mocked(getAdminCredentials).mockResolvedValue([])
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
+  vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false })
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)

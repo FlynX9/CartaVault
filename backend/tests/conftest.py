@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from app.database import Base, get_db
+from app.admin.models import SystemSetting
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.countries.catalog import load_country_catalog
@@ -237,6 +238,12 @@ def integration_client(
     """Inject the isolated SQLAlchemy session into the FastAPI app."""
 
     del photo_storage
+
+    # Existing registration-flow tests exercise an explicitly enabled instance.
+    # Production still defaults to disabled when this setting is absent.
+    if database_session.get(SystemSetting, "instance") is None:
+        database_session.add(SystemSetting(key="instance", value={"public_registration_enabled": True}))
+        database_session.commit()
 
     def override_get_db() -> Generator[Session, None, None]:
         yield database_session

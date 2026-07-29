@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -8,9 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.admin.schemas import PublicRegistrationSettings
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.models import RegistrationRequest, SystemCredential, User
+from app.auth.registration_settings import public_registration_enabled, set_public_registration_enabled
 from app.auth.schemas import RegistrationRequestRead
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
@@ -19,7 +22,21 @@ from app.quotas.schemas import RegistrationApproval
 from app.quotas.service import QuotaService
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["administration"], dependencies=[Depends(require_admin)])
+
+
+@router.get("/public-registration", response_model=PublicRegistrationSettings)
+def get_public_registration_settings(database_session: Session = Depends(get_db)) -> PublicRegistrationSettings:
+    return PublicRegistrationSettings(enabled=public_registration_enabled(database_session))
+
+
+@router.put("/public-registration", response_model=PublicRegistrationSettings)
+def update_public_registration_settings(payload: PublicRegistrationSettings, database_session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> PublicRegistrationSettings:
+    enabled = set_public_registration_enabled(database_session, payload.enabled)
+    database_session.commit()
+    logger.info("public_registration_updated admin_id=%s enabled=%s", admin.id, enabled)
+    return PublicRegistrationSettings(enabled=enabled)
 
 
 @router.get("/registration-requests", response_model=list[RegistrationRequestRead])

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import AuthActionToken, RegistrationRequest, User, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
+from app.auth.registration_settings import public_registration_enabled
 from app.auth.schemas import PasswordResetConfirm, PasswordResetRequest, RegistrationCreate
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email
 from app.config import email_settings
@@ -24,10 +25,18 @@ GENERIC_REGISTRATION_MESSAGE = "Votre demande a été transmise aux administrate
 GENERIC_RESET_MESSAGE = "Si un compte correspond à cette adresse, un email de réinitialisation a été envoyé."
 
 
+@router.get("/registration-status")
+def registration_status(database_session: Session = Depends(get_db)) -> dict[str, bool]:
+    return {"enabled": public_registration_enabled(database_session)}
+
+
 @router.post("/register", status_code=status.HTTP_202_ACCEPTED)
 def register(data: RegistrationCreate, request: Request, database_session: Session = Depends(get_db)) -> dict[str, str]:
     client_host = request.client.host if request.client else "unknown"
     public_auth_rate_limiter.check(rate_limit_key("register", client_host))
+    if not public_registration_enabled(database_session):
+        logger.warning("public_registration_blocked client=%s", client_host)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Les inscriptions publiques ne sont pas activees.")
     email = normalize_email(str(data.email))
     if database_session.scalar(select(User.id).where(User.email == email)) is not None or database_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.email == email)) is not None:
         # Preserve comparable Argon2 work before returning the generic response.

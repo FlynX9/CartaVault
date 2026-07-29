@@ -7,7 +7,7 @@ import {
   assignUserQuotaProfile, deleteResendCredential, getAdminCredentials, getAdminUsers, getQuotaProfiles,
   saveResendCredential, updateAdminUser, verifyResendCredential,
 } from '../../api/adminConsole'
-import { getRegistrationRequests, reviewRegistration, type RegistrationRequest } from '../../api/registration'
+import { getPublicRegistrationSettings, getRegistrationRequests, reviewRegistration, updatePublicRegistrationSettings, type RegistrationRequest } from '../../api/registration'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { InstanceStatusPage } from '../../features/admin/instance-status/InstanceStatusPage'
 import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage'
@@ -71,15 +71,17 @@ function AdminUsersSection() {
   const [q, setQ] = useState(''); const [role, setRole] = useState<AdminRole | ''>(''); const [state, setState] = useState<AdminUserState | ''>('')
   const [page, setPage] = useState(1); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null)
   const [requests, setRequests] = useState<RegistrationRequest[]>([])
+  const [publicRegistrationEnabled, setPublicRegistrationEnabled] = useState(false)
+  const [savingPublicRegistration, setSavingPublicRegistration] = useState(false)
   const [profiles, setProfiles] = useState<QuotaProfile[]>([])
   const [approvalProfiles, setApprovalProfiles] = useState<Record<string, string>>({})
   const { confirm, confirmationDialog } = useConfirmDialog()
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true); setError(null)
-    void Promise.all([getAdminUsers({ q: q.trim(), role, state, page }, signal), getRegistrationRequests(signal), getQuotaProfiles(signal)])
-      .then(([users, registrations, nextProfiles]) => {
+    void Promise.all([getAdminUsers({ q: q.trim(), role, state, page }, signal), getRegistrationRequests(signal), getQuotaProfiles(signal), getPublicRegistrationSettings(signal)])
+      .then(([users, registrations, nextProfiles, publicRegistration]) => {
         if (signal?.aborted) return
-        setResult(users); setRequests(registrations); setProfiles(nextProfiles)
+        setResult(users); setRequests(registrations); setProfiles(nextProfiles); setPublicRegistrationEnabled(publicRegistration.enabled)
         const defaultId = nextProfiles.find((profile) => profile.is_default)?.id
         if (defaultId) setApprovalProfiles((current) => Object.fromEntries(registrations.map((request) => [request.id, current[request.id] ?? defaultId])))
       })
@@ -94,6 +96,13 @@ function AdminUsersSection() {
   }
   const decide = async (item: RegistrationRequest, decision: 'approve' | 'reject') => {
     try { await reviewRegistration(item.id, decision, approvalProfiles[item.id]); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Décision impossible.') }
+  }
+  const togglePublicRegistration = async () => {
+    const enabled = !publicRegistrationEnabled
+    const accepted = await confirm({ title: enabled ? 'Activer les inscriptions publiques' : 'Désactiver les inscriptions publiques', message: enabled ? 'Les visiteurs pourront envoyer une demande, qui restera soumise à une validation administrateur.' : 'Les nouvelles demandes seront refusées. Celles déjà en attente restent à examiner.', confirmLabel: enabled ? 'Activer' : 'Désactiver' })
+    if (!accepted) return
+    setSavingPublicRegistration(true)
+    try { const updated = await updatePublicRegistrationSettings(enabled); setPublicRegistrationEnabled(updated.enabled) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Modification impossible.') } finally { setSavingPublicRegistration(false) }
   }
   const assignProfile = async (item: AdminUser, profileId: string) => {
     const profile = profiles.find((candidate) => candidate.id === profileId)
@@ -125,6 +134,7 @@ function AdminUsersSection() {
   return <section>
     <SectionHeading eyebrow="Accès" title="Utilisateurs" description="Comptes, rôles et état d’accès à CartaVault." />
     {error && <div className="form-alert" role="alert">{error}</div>}
+    <section className="admin-console__card"><h3>Inscriptions publiques</h3><p>Par défaut, aucune demande extérieure n’est acceptée. Chaque demande reçue reste inactive jusqu’à sa validation par un administrateur.</p><label className="trip-view-toggle"><input type="checkbox" checked={publicRegistrationEnabled} disabled={savingPublicRegistration} onChange={() => void togglePublicRegistration()} /><i aria-hidden="true" /><span>{publicRegistrationEnabled ? 'Inscriptions autorisées' : 'Inscriptions désactivées'}</span></label></section>
     {pending.length > 0 && <section className="admin-console__card"><h3 id="registration-requests-title" ref={registrationHeading} tabIndex={-1}>Demandes d’inscription <span>{pending.length}</span></h3><ul className="admin-console__rows">{pending.map((item) => <li key={item.id}><div><strong>{item.display_name}</strong><small>{item.email}</small></div><label className="admin-console__profile-select">Profil de quotas<select aria-label={`Profil de quotas pour ${item.email}`} value={approvalProfiles[item.id] ?? ''} onChange={(event) => setApprovalProfiles({ ...approvalProfiles, [item.id]: event.target.value })}>{profiles.filter((profile) => profile.is_active).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}{profile.is_default ? ' — par défaut' : ''}</option>)}</select></label><div className="admin-console__actions"><button aria-label={`Accepter ${item.email}`} onClick={() => void decide(item, 'approve')}><Check size={16} /></button><button className="danger" aria-label={`Refuser ${item.email}`} onClick={() => void decide(item, 'reject')}><X size={16} /></button></div></li>)}</ul></section>}
     <section className="admin-console__card"><h3>Comptes <span>{result?.total ?? 0}</span></h3><div className="admin-console__filters"><label>Recherche<input type="search" value={q} placeholder="Nom ou adresse email" onChange={(event) => { setQ(event.target.value); setPage(1) }} /></label><label>Rôle<select value={role} onChange={(event) => { setRole(event.target.value as AdminRole | ''); setPage(1) }}><option value="">Tous</option><option value="admin">Administrateurs</option><option value="user">Utilisateurs</option></select></label><label>État<select value={state} onChange={(event) => { setState(event.target.value as AdminUserState | ''); setPage(1) }}><option value="">Tous</option><option value="active">Actifs</option><option value="inactive">Inactifs</option><option value="deleted">Supprimés</option></select></label></div>{loading ? <p role="status">Chargement…</p> : result?.items.length === 0 ? <p>Aucun utilisateur trouvé.</p> : <ul className="admin-console__user-grid">{result?.items.map((item) => <li key={item.id}>
       <div className="admin-console__avatar">{item.display_name.charAt(0).toUpperCase()}</div><div className="admin-console__user-identity"><div className="admin-console__user-name-row"><strong>{item.display_name}</strong><div className="admin-console__badges"><span className={item.role}>{item.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span><span className={item.state}>{item.state === 'active' ? 'Actif' : item.state === 'inactive' ? 'Inactif' : 'Supprimé'}</span></div></div><small>{item.email}</small><div className="admin-console__user-metrics" aria-label={`Activité de ${item.display_name}`}><span><b>{item.owned_map_count}</b> carte{item.owned_map_count === 1 ? '' : 's'}</span><span><b>{item.shared_map_count}</b> partage{item.shared_map_count === 1 ? '' : 's'}</span><span><b>{item.place_count}</b> POI</span></div><p>Dernière connexion {item.last_login_at ? new Date(item.last_login_at).toLocaleDateString('fr-FR') : 'jamais'}</p></div>

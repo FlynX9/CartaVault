@@ -7,6 +7,10 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+class PublicRegistrationSettings(BaseModel):
+    enabled: bool
+
+
 class AdminUserRead(BaseModel):
     id: UUID
     email: str

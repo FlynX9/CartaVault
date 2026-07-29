@@ -5,6 +5,7 @@ export interface RegistrationRequest {
   reviewed_at: string | null; notification_sent_at: string | null; notification_error_code: string | null
 }
 export interface EmailSettingsStatus { configured: boolean; last4: string | null }
+export interface PublicRegistrationSettings { enabled: boolean }
 
 export async function register(email: string, password: string, confirmation: string, locale: 'fr' | 'en' = 'fr'): Promise<{ status: string; message: string }> {
   return sendJson('/auth/register', 'POST', { email, password, confirmation, locale }) as Promise<{ status: string; message: string }>
@@ -17,6 +18,12 @@ export async function confirmPasswordReset(token: string, password: string, conf
 }
 export async function getRegistrationRequests(signal?: AbortSignal): Promise<RegistrationRequest[]> {
   return getJson('/admin/registration-requests', new URLSearchParams(), signal) as Promise<RegistrationRequest[]>
+}
+export async function getPublicRegistrationSettings(signal?: AbortSignal): Promise<PublicRegistrationSettings> {
+  return getJson('/admin/public-registration', new URLSearchParams(), signal) as Promise<PublicRegistrationSettings>
+}
+export async function updatePublicRegistrationSettings(enabled: boolean): Promise<PublicRegistrationSettings> {
+  return sendJson('/admin/public-registration', 'PUT', { enabled }) as Promise<PublicRegistrationSettings>
 }
 export async function reviewRegistration(id: string, decision: 'approve' | 'reject', quotaProfileId?: string): Promise<RegistrationRequest> {
   return sendJson(`/admin/registration-requests/${encodeURIComponent(id)}/${decision}`, 'POST', decision === 'approve' ? { quota_profile_id: quotaProfileId ?? null } : {}) as Promise<RegistrationRequest>
