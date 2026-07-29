@@ -1218,6 +1218,7 @@ function WorkspaceApp() {
                   focusRequest={focusRequest}
                   popupContent={popupContent}
                   activeCountryCode={activeMap?.country.iso_alpha2}
+                  activeCountryId={activeMap?.country.id}
                   temporarySearchResult={temporarySearchResult}
                   draftPosition={draftPosition}
                   draftPlaceId={

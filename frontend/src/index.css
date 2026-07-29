@@ -9151,11 +9151,43 @@ html[data-theme='dark'] .status-marker.selected {
 .map-workspace .map-overlay-controls .status-legend,
 .map-workspace .map-overlay-controls .geographic-search,
 .map-workspace .map-overlay-controls .basemap-selector,
+.map-workspace .map-overlay-controls .country-mask-toggle,
 .map-workspace .map-overlay-controls .geographic-search form > button {
   box-sizing: border-box;
   width: var(--cv-map-overlay-control-size);
   min-width: var(--cv-map-overlay-control-size);
   height: var(--cv-map-overlay-control-size);
+}
+
+.map-workspace .map-overlay-controls .country-mask-toggle {
+  display: grid;
+  padding: 0;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface, rgb(250 250 248 / 97%));
+  border: 1px solid var(--cv-border-strong, rgb(43 62 89 / 14%));
+  border-radius: .72rem;
+  box-shadow: var(--cv-shadow-sm);
+  cursor: pointer;
+  place-items: center;
+}
+
+.map-workspace .map-overlay-controls .country-mask-toggle:hover,
+.map-workspace .map-overlay-controls .country-mask-toggle:focus-visible,
+.map-workspace .map-overlay-controls .country-mask-toggle.active {
+  color: var(--cv-color-teal);
+  border-color: color-mix(in srgb, var(--cv-color-teal) 60%, var(--cv-border-strong));
+  outline: 0;
+}
+
+.country-outside-mask {
+  fill: #071521;
+  fill-opacity: .18;
+  pointer-events: none;
+}
+
+html[data-theme='dark'] .country-outside-mask {
+  fill: #00070d;
+  fill-opacity: .28;
 }
 
 .map-workspace .map-overlay-controls .geographic-search form {

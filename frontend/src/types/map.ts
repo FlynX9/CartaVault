@@ -17,6 +17,16 @@ export interface Country extends CountrySummary {
   updated_at: string
 }
 
+export interface CountryBoundary {
+  country_id: string
+  iso_alpha3: string
+  geometry: {
+    type: 'MultiPolygon'
+    coordinates: [number, number][][][]
+  }
+  point_count: number
+}
+
 export interface PoiMap {
   id: string
   name: string

@@ -15,6 +15,7 @@ import { getStatusMarkerIcon } from './markerIcons'
 import { DraftPositionMarker } from './DraftPositionMarker'
 import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
 import { MapClusterLayer } from './MapClusterLayer'
+import { CountryMaskLayer } from './CountryMaskLayer'
 import type { MapMarkerFilter } from './mapMarkerFilterContext'
 import type { Trip } from '../../types/trip'
 
@@ -47,6 +48,8 @@ interface PoiMapProps {
   selectionMode?: boolean
   selectedPlaceIds?: ReadonlySet<string>
   onPlaceSelectionToggle?: (placeId: string) => void
+  countryId?: string | null
+  countryMaskEnabled?: boolean
 }
 
 const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: () => void; onSelectionToggle: () => void }) {
@@ -106,6 +109,8 @@ export function PoiMap({
   selectionMode = false,
   selectedPlaceIds = new Set<string>(),
   onPlaceSelectionToggle = () => undefined,
+  countryId = null,
+  countryMaskEnabled = true,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const tripPlaceIds = useMemo(() => new Set(trip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? []), [trip])
@@ -123,6 +128,7 @@ export function PoiMap({
       className="poi-map"
     >
       <BasemapLayer basemapId={basemapId} onTileError={onBasemapTileError} />
+      <CountryMaskLayer countryId={countryId} enabled={countryMaskEnabled} />
 
       <MapBoundsWatcher
         onBoundsChange={onBoundsChange}

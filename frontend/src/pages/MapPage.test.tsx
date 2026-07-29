@@ -25,8 +25,8 @@ vi.mock('../api/account', () => ({
 }))
 
 vi.mock('../components/map/PoiMap', () => ({
-  PoiMap: ({ layoutKey, basemapId, onBasemapTileError }: { layoutKey: string; basemapId: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'; onBasemapTileError: (id: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm') => void }) => (
-    <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId}>
+  PoiMap: ({ layoutKey, basemapId, onBasemapTileError, countryId, countryMaskEnabled }: { layoutKey: string; basemapId: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'; onBasemapTileError: (id: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm') => void; countryId?: string | null; countryMaskEnabled?: boolean }) => (
+    <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId} data-country-id={countryId ?? ''} data-country-mask={String(countryMaskEnabled)}>
       <button type="button" onClick={() => onBasemapTileError(basemapId)}>Simuler l'erreur de tuiles</button>
     </div>
   ),
@@ -174,5 +174,24 @@ describe('MapPage', () => {
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
 
     await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark'))
+  })
+
+  it('disables the country mask without remounting the map and persists the choice', async () => {
+    const props = {
+      places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 },
+      isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [],
+      sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(),
+      onPlaceSelect: vi.fn(), activeCountryId: '11111111-1111-4111-8111-111111111111',
+    }
+    render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+    const map = await screen.findByTestId('poi-map')
+    expect(map).toHaveAttribute('data-country-mask', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Désactiver le masque hors pays' }))
+
+    expect(screen.getByTestId('poi-map')).toBe(map)
+    expect(map).toHaveAttribute('data-country-mask', 'false')
+    expect(window.localStorage.getItem('cartavault:country-mask-enabled')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Activer le masque hors pays' })).toHaveAttribute('aria-pressed', 'false')
   })
 })

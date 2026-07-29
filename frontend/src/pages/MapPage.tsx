@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
@@ -21,6 +22,7 @@ import { useTheme } from '../theme/useTheme'
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
+const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
 function resolvePreferredBasemap(value: unknown, theme: 'light' | 'dark'): BasemapId {
   return resolveAvailableBasemapId(value, theme === 'dark')
@@ -37,6 +39,14 @@ function loadPanelWidth(key: string, fallback: number): number {
 
 function savePanelWidth(key: string, width: number): void {
   try { window.localStorage.setItem(key, String(Math.round(width))) } catch { /* Storage may be unavailable in private contexts. */ }
+}
+
+function loadCountryMaskPreference(): boolean {
+  try { return window.localStorage.getItem(COUNTRY_MASK_PREFERENCE_KEY) !== 'false' } catch { return true }
+}
+
+function saveCountryMaskPreference(enabled: boolean): void {
+  try { window.localStorage.setItem(COUNTRY_MASK_PREFERENCE_KEY, String(enabled)) } catch { /* Storage may be unavailable. */ }
 }
 
 interface MapPageProps {
@@ -62,6 +72,7 @@ interface MapPageProps {
   onPlaceSelect: (place: MapPlace) => void
   onPopupClose?: () => void
   activeCountryCode?: string
+  activeCountryId?: string
   temporarySearchResult?: GeocodingResult | null
   onGeographicResultSelect?: (result: GeocodingResult) => void
   onGeographicResultClear?: () => void
@@ -104,6 +115,7 @@ export function MapPage({
   onPlaceSelect,
   onPopupClose = () => undefined,
   activeCountryCode,
+  activeCountryId,
   temporarySearchResult = null,
   onGeographicResultSelect = () => undefined,
   onGeographicResultClear = () => undefined,
@@ -140,6 +152,7 @@ export function MapPage({
   const [contextMenu, setContextMenu] = useState<MapContextMenuState | null>(null)
   const [contextNotice, setContextNotice] = useState<string | null>(null)
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
+  const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640))
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
@@ -265,6 +278,8 @@ export function MapPage({
           selectionMode={placeSelectionMode}
           selectedPlaceIds={selectedPlaceIds}
           onPlaceSelectionToggle={onPlaceSelectionToggle}
+          countryId={activeCountryId ?? null}
+          countryMaskEnabled={countryMaskEnabled}
         />
         {popupContent && (
           <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
@@ -287,6 +302,22 @@ export function MapPage({
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
             <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
           </div>
+          {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
+            <button
+              className={`country-mask-toggle${countryMaskEnabled ? ' active' : ''}`}
+              type="button"
+              aria-label={countryMaskEnabled ? 'Désactiver le masque hors pays' : 'Activer le masque hors pays'}
+              aria-pressed={countryMaskEnabled}
+              title={countryMaskEnabled ? 'Masque hors pays activé' : 'Masque hors pays désactivé'}
+              onClick={() => setCountryMaskEnabled((current) => {
+                const next = !current
+                saveCountryMaskPreference(next)
+                return next
+              })}
+            >
+              {countryMaskEnabled ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
+            </button>
+          </div>}
         </div>
 
         {basemapNotice && <div className="basemap-error" role="status">{basemapNotice}</div>}

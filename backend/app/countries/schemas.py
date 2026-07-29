@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -21,3 +22,15 @@ class CountryRead(CountrySummary):
     max_longitude: float | None
     created_at: datetime
     updated_at: datetime
+
+
+class CountryBoundaryGeometry(BaseModel):
+    type: Literal["MultiPolygon"] = "MultiPolygon"
+    coordinates: list[list[list[list[float]]]]
+
+
+class CountryBoundaryRead(BaseModel):
+    country_id: UUID
+    iso_alpha3: str
+    geometry: CountryBoundaryGeometry
+    point_count: int
