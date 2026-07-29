@@ -203,6 +203,12 @@ python -c "from app.main import app; print(app.title)"
 
 See [`tests/README.md`](tests/README.md) for the test-database safeguards and migration guidance.
 
+GitHub Actions runs the same checks with separate `cartavault_ci` and
+`cartavault_test` PostgreSQL/PostGIS databases. Python dependencies are audited
+from the pinned `requirements.txt`; see
+[`../docs/dependency-security.md`](../docs/dependency-security.md) for the
+failure policy and local reproduction command.
+
 ## Backend structure
 
 ```text

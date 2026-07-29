@@ -5,6 +5,7 @@ The administration console includes an **Instance Status** page reserved for adm
 **English**
 
 <p align="center">
+  <a href="https://github.com/FlynX9/CartaVault/actions/workflows/ci.yml"><img src="https://github.com/FlynX9/CartaVault/actions/workflows/ci.yml/badge.svg" alt="Continuous integration"></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
   <img src="https://img.shields.io/badge/Python-3.14-blue" alt="Python 3.14">
   <img src="https://img.shields.io/badge/React-TypeScript-61dafb" alt="React and TypeScript">
@@ -27,6 +28,7 @@ It combines a **FastAPI** backend, a **PostgreSQL/PostGIS** database, and a **Re
 - [Quick start on Windows](#quick-start-on-windows)
 - [Google Routes configuration](#google-routes-configuration)
 - [Security](#security)
+- [Continuous integration](#continuous-integration)
 - [Project status](#project-status)
 - [Contributing](#contributing)
 - [License](#license)
@@ -322,6 +324,21 @@ Before publishing or deploying the project:
 - use separate encryption keys and secrets for each environment;
 - configure restrictions for Stadia Maps and Google Routes keys;
 - review the Git history before making a repository public.
+
+## Continuous integration
+
+GitHub Actions validates every branch and pull request. The backend job uses
+an isolated PostgreSQL/PostGIS service, applies and checks Alembic migrations,
+compiles Python, and runs the complete pytest suite. The frontend job uses
+`npm ci`, verifies generated category icons, lints, tests, and builds the Vite
+application. A separate secret scan checks committed history.
+
+The dependency audit runs on pull requests, every Monday, and on demand.
+Frontend high and critical advisories and every confirmed Python advisory are
+blocking. Registry outages are reported separately and never interpreted as a
+clean audit. See the
+[dependency security policy](docs/dependency-security.md) for local commands
+and the temporary-exception process.
 
 ## Project status
 

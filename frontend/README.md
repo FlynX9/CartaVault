@@ -119,6 +119,12 @@ npm run test
 npm run build
 ```
 
+GitHub Actions installs this dependency tree exclusively with `npm ci`, then
+runs all four validation commands. The committed lockfile is also audited on
+pull requests and weekly. See
+[`../docs/dependency-security.md`](../docs/dependency-security.md) for the
+severity policy and local reproduction command.
+
 ## Routes
 
 The authenticated workspace is URL-driven. Map, place, status, and filter state use readable query parameters. Direct place URLs restore the popup or editor in the persistent map workspace. Public routes include registration, password reset, and invitation acceptance.

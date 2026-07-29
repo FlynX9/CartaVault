@@ -99,6 +99,11 @@ Without `TEST_DATABASE_URL`, unit tests succeed and integration tests are skippe
 
 > Never use the development database URL as `TEST_DATABASE_URL`. The suite does not delete databases, containers, or volumes.
 
+In GitHub Actions, the PostGIS service exposes two isolated databases:
+`cartavault_ci` is used only for the Alembic upgrade/check cycle, while
+`cartavault_test` is supplied as `TEST_DATABASE_URL` to pytest. All credentials
+are fixed CI-only values and no production secret is read by the workflow.
+
 ## Routing and borders
 
 `test_country_route_validator.py` uses synthetic local polygons. It verifies geometry densification, tolerance near a border, and rejection of a genuinely outside segment without relying on an external mapping service.

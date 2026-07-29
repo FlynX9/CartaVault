@@ -1,0 +1,10 @@
+[
+  {
+    "id": "GHSA-qwww-vcr4-c8h2",
+    "ecosystem": "npm",
+    "owner": "@FlynX9",
+    "rationale": "The advisory affects only unstable React Router RSC APIs, which CartaVault does not use. The advisory names 8.3.0 as patched, but npm currently publishes only the affected 7.x line.",
+    "mitigation": "CartaVault uses React Router only as a client-side SPA router. Remove this exception as soon as a supported patched release is published and validated.",
+    "expires": "2026-09-01"
+  }
+]

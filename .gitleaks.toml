@@ -1,0 +1,16 @@
+title = "CartaVault secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Alembic revision identifiers are public schema metadata, not credentials."
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = [
+  '''(?i)credential_revision\s*=\s*"[0-9a-f]{12}"''',
+]
+paths = [
+  '''backend/tests/test_user_api_credentials_migration\.py''',
+]
