@@ -10,6 +10,20 @@ from app.maps.models import PoiMap
 pytestmark = pytest.mark.integration
 
 
+def test_place_sorting_is_stable_and_missing_cities_are_last(integration_client: TestClient, poi_map: PoiMap) -> None:
+    token = uuid4().hex
+    for name, region in ((f"{token} zulu", "Zurich"), (f"{token} alpha", "Amsterdam"), (f"{token} no-city", None)):
+        response = integration_client.post("/places", json={"name": name, "map_id": str(poi_map.id), "latitude": 48.1, "longitude": 2.1, "region": region})
+        assert response.status_code == 201
+
+    by_name = integration_client.get("/places", params={"map_id": str(poi_map.id), "q": token, "sort_by": "name", "sort_direction": "desc"})
+    by_city = integration_client.get("/places", params={"map_id": str(poi_map.id), "q": token, "sort_by": "city", "sort_direction": "asc"})
+
+    assert [item["name"] for item in by_name.json()] == [f"{token} zulu", f"{token} no-city", f"{token} alpha"]
+    assert [item["region"] for item in by_city.json()] == ["Amsterdam", "Zurich", None]
+    assert integration_client.get("/places", params={"map_id": str(poi_map.id), "sort_by": "invalid"}).status_code == 422
+
+
 def test_place_crud_uses_map_and_map_filters(integration_client: TestClient, poi_map: PoiMap) -> None:
     payload = {"name": f"Pytest Place {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 48.8566, "longitude": 2.3522, "region": "Île-de-France"}
     created = integration_client.post("/places", json=payload)

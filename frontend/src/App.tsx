@@ -162,9 +162,17 @@ function WorkspaceApp() {
   const activeMapId = readMapId(location.search);
   const activeStatusId = readStatusId(location.search);
   const placeFilters = useMemo(() => {
-    const filters = deserializePlaceFilters(
-      new URLSearchParams(location.search),
-    );
+    const search = new URLSearchParams(location.search);
+    const filters = deserializePlaceFilters(search);
+    if (!search.has("sort") && !search.has("direction")) {
+      try {
+        const stored = JSON.parse(window.localStorage.getItem("cartavault:place-sort") ?? "null") as Partial<PlaceFilters> | null;
+        if (stored?.sortBy && stored.sortDirection && ["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating", "status", "country", "city"].includes(stored.sortBy)) {
+          filters.sortBy = stored.sortBy as PlaceFilters["sortBy"];
+          filters.sortDirection = stored.sortDirection === "desc" ? "desc" : "asc";
+        }
+      } catch { /* Ignore malformed local preferences. */ }
+    }
     if (activeStatusId && !filters.statusIds.includes(activeStatusId))
       filters.statusIds = [...filters.statusIds, activeStatusId];
     return filters;
@@ -816,6 +824,7 @@ function WorkspaceApp() {
           collapsed={placesPanelCollapsed}
           onCollapsedChange={setPlacesPanelCollapsed}
           onFiltersChange={(filters: PlaceFilters) => {
+            window.localStorage.setItem("cartavault:place-sort", JSON.stringify({ sortBy: filters.sortBy, sortDirection: filters.sortDirection }));
             const params = serializePlaceFilters(filters);
             if (activeMapId) params.set("map", activeMapId);
             navigate({

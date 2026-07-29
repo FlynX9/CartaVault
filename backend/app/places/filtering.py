@@ -6,7 +6,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException, Query, status
-from sqlalchemy import Select, case, func, or_
+from sqlalchemy import Select, case, func, or_, select
 
 from app.categories.models import Category
 from app.countries.models import Country
@@ -36,7 +36,7 @@ class PlaceFilters:
     is_favorite: bool | None
     functional_state: Literal["non_visited", "visited"] | None
     rating_min: float | None
-    sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"]
+    sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating", "status", "country", "city"]
     sort_direction: Literal["asc", "desc"]
 
 
@@ -60,7 +60,7 @@ def get_place_filters(
     is_visited: bool | None = Query(default=None),
     functional_state: Literal["non_visited", "visited"] | None = Query(default=None),
     rating_min: float | None = Query(default=None, ge=1, le=5, multiple_of=0.5),
-    sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating"] = Query(default="name"),
+    sort_by: Literal["name", "created_at", "updated_at", "interest_rating", "visit_rating", "favorite", "relevant_rating", "status", "country", "city"] = Query(default="name"),
     sort_direction: Literal["asc", "desc"] = Query(default="asc"),
 ) -> PlaceFilters:
     """Parse query parameters once; same-group values are ORed by SQL."""
@@ -121,10 +121,14 @@ def apply_place_filters(statement: Select[tuple[Place]], filters: PlaceFilters) 
 
 def place_ordering(filters: PlaceFilters):
     visited_expression = Place.status.has(PlaceStatus.functional_state == "visited")
+    status_name = select(PlaceStatus.name).where(PlaceStatus.id == Place.status_id).scalar_subquery()
+    country_name = select(Country.name).join(PoiMap, PoiMap.country_id == Country.id).where(PoiMap.id == Place.map_id).scalar_subquery()
     columns = {
         "name": func.lower(Place.name), "created_at": Place.created_at, "updated_at": Place.updated_at,
         "interest_rating": Place.interest_rating, "visit_rating": Place.visit_rating,
         "favorite": Place.is_favorite, "relevant_rating": case((visited_expression, Place.visit_rating), else_=Place.interest_rating),
+        "status": func.lower(status_name), "country": func.lower(country_name), "city": func.lower(Place.region),
     }
     column = columns[filters.sort_by]
-    return (column.desc().nulls_last() if filters.sort_direction == "desc" else column.asc().nulls_last(), Place.id)
+    primary = column.desc().nulls_last() if filters.sort_direction == "desc" else column.asc().nulls_last()
+    return (primary, func.lower(Place.name), Place.id)

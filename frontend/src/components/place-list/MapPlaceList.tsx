@@ -1,5 +1,6 @@
 import {
   ArrowDownAZ,
+  ArrowUpDown,
   CalendarPlus,
   CheckSquare,
   FileInput,
@@ -11,6 +12,7 @@ import {
   Pencil,
   Plus,
   Search,
+  RotateCcw,
   SlidersHorizontal,
   Trash2,
   X,
@@ -996,8 +998,13 @@ export function MapPlaceList({
                 <option value="updated_at">Trier par : Modification</option>
                 <option value="interest_rating">Trier par : Note</option>
                 <option value="favorite">Trier par : Favoris</option>
+                <option value="status">Trier par : Statut</option>
+                <option value="country">Trier par : Pays</option>
+                <option value="city">Trier par : Ville</option>
               </select>
             </label>
+            <button className="panel-icon-button" type="button" aria-label="Inverser l’ordre de tri" title="Inverser l’ordre" onClick={() => update({ sortDirection: filters.sortDirection === "asc" ? "desc" : "asc" })}><ArrowUpDown size={17} /></button>
+            <button className="panel-icon-button" type="button" aria-label="Réinitialiser le tri" title="Tri par nom" disabled={filters.sortBy === "name" && filters.sortDirection === "asc"} onClick={() => update({ sortBy: "name", sortDirection: "asc" })}><RotateCcw size={16} /></button>
             <button
               className={`places-advanced-filter${filtersOpen ? " active" : ""}`}
               type="button"

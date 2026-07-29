@@ -11,7 +11,7 @@ from app.auth.permissions import require_map_role
 from app.categories.associations import place_categories_table
 from app.database import get_db
 from app.places.filters import MapBounds, get_required_map_bounds
-from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters
+from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_ordering
 from app.places.map_schemas import (
     MapCategoryRead,
     MapStatusRead,
@@ -116,10 +116,7 @@ def get_map_places(
                 visible_area,
             ),
         )
-        .order_by(
-            Place.name,
-            Place.id,
-        )
+        .order_by(*place_ordering(filters))
         .limit(limit)
     )
 

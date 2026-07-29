@@ -54,7 +54,7 @@ export function deserializePlaceFilters(params: URLSearchParams): PlaceFilters {
   const functionalState = params.get(queryKeys.functionalState)
   result.functionalState = functionalState === 'visited' || functionalState === 'non_visited' ? functionalState : null
   result.ratingMin = Number(params.get(queryKeys.ratingMin)) || null
-  const sortBy = params.get(queryKeys.sortBy); if (sortBy && ['name', 'created_at', 'updated_at', 'interest_rating', 'visit_rating', 'favorite', 'relevant_rating'].includes(sortBy)) result.sortBy = sortBy as PlaceFilters['sortBy']
+  const sortBy = params.get(queryKeys.sortBy); if (sortBy && ['name', 'created_at', 'updated_at', 'interest_rating', 'visit_rating', 'favorite', 'relevant_rating', 'status', 'country', 'city'].includes(sortBy)) result.sortBy = sortBy as PlaceFilters['sortBy']
   result.sortDirection = params.get(queryKeys.sortDirection) === 'desc' ? 'desc' : 'asc'
   return normalizePlaceFilters(result)
 }
