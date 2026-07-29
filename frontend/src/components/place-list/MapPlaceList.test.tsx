@@ -276,7 +276,7 @@ describe('MapPlaceList', () => {
     }
     vi.stubGlobal('IntersectionObserver', IntersectionObserverMock)
     const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
-    const firstPage = Array.from({ length: 100 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
     const nextPlace = { id: 'place-101', name: 'Place 101', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockReset().mockResolvedValueOnce(firstPage).mockResolvedValueOnce([nextPlace])
 
@@ -285,8 +285,19 @@ describe('MapPlaceList', () => {
 
     await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
 
-    expect(await screen.findByRole('button', { name: /^Place 101/ })).toBeVisible()
-    expect(getPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ mapId: 'map-id', offset: 100, limit: 100 }), expect.any(AbortSignal))
+    await waitFor(() => expect(getPlaces).toHaveBeenCalledTimes(2))
+    expect(getPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ mapId: 'map-id', offset: 50, limit: 50 }), expect.any(AbortSignal))
     expect(container.querySelector('.place-list-load-sentinel')).toBeNull()
   }, 10_000)
+
+  it('keeps the mounted rich rows bounded for a 500-place page', async () => {
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    vi.mocked(getPlaces).mockResolvedValue(Array.from({ length: 500 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never)
+
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await waitFor(() => expect(container.querySelectorAll('.places-place-card').length).toBeGreaterThan(0))
+    expect(container.querySelectorAll('.places-place-card').length).toBeLessThan(50)
+    expect(container.querySelector('.country-place-list')).toHaveAttribute('aria-setsize', '500')
+  })
 })
