@@ -6,6 +6,7 @@ import type { TrashItem, TrashItemType } from '../../types/trash'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 import { useI18n } from '../../i18n/useI18n'
 import { SkeletonList } from '../common/Skeleton'
+import { EmptyState } from '../common/EmptyState'
 
 interface Props {
   collapsed?: boolean
@@ -92,7 +93,7 @@ export function TrashWorkspacePanel({ collapsed = false, onCollapsedChange = () 
       <p className="trash-retention-note">{t('trash.retention')}</p>
       {error && <p className="form-alert" role="alert">{error}</p>}
       {loading && items.length === 0 && <SkeletonList rows={4} label={t('trash.loading')} />}
-      {!loading && visibleItems.length === 0 && <p className="place-list-message">{t('trash.empty')}</p>}
+      {!loading && visibleItems.length === 0 && <EmptyState className="trash-empty-state" icon={<Trash2 size={24} />} title={t('trash.empty')} />}
       {visibleItems.length > 0 && <ul className="trash-list">
         {visibleItems.map((item) => {
           const { Icon, labelKey } = typeMeta[item.item_type]

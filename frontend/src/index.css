@@ -10673,3 +10673,10 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
 html[data-theme='dark'] .cv-skeleton-row { background: var(--cv-surface-raised, var(--cv-surface)); border-color: var(--cv-border); }
 @keyframes cv-skeleton-shimmer { to { background-position: -220% 0; } }
 @media (prefers-reduced-motion: reduce) { .cv-skeleton { animation: none; } }
+
+/* Shared empty states keep every panel's hierarchy, actions and dark theme aligned. */
+.cv-empty-state { display: grid; justify-items: center; gap: .45rem; padding: 1.5rem 1rem; color: var(--cv-color-gray); text-align: center; }
+.cv-empty-state__icon { display: grid; width: 2.8rem; height: 2.8rem; color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface, #fff)); border-radius: 50%; place-items: center; }
+.cv-empty-state__copy { display: grid; gap: .2rem; max-width: 25rem; }.cv-empty-state__copy h3, .cv-empty-state__copy p { margin: 0; }.cv-empty-state__copy h3 { color: var(--cv-text, var(--cv-color-navy)); font-size: .9rem; }.cv-empty-state__copy p { font-size: .78rem; line-height: 1.45; }
+.cv-empty-state__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem; margin-top: .2rem; }.cv-empty-state__actions button { min-height: 2.35rem; }
+html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, var(--cv-color-teal) 18%, var(--cv-surface)); }

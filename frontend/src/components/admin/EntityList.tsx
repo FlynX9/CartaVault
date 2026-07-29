@@ -1,6 +1,7 @@
-import { Pencil, Trash2 } from 'lucide-react'
+import { FolderOpen, Pencil, Trash2 } from 'lucide-react'
 
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
+import { EmptyState } from '../common/EmptyState'
 
 export interface ManagedEntity {
   id: string
@@ -22,7 +23,7 @@ interface EntityListProps {
 }
 
 export function EntityList({ entities, emptyMessage, onEdit, onDelete, variant = 'page', readOnly = false }: EntityListProps) {
-  if (entities.length === 0) return <p className="admin-empty">{emptyMessage}</p>
+  if (entities.length === 0) return <EmptyState className="admin-empty" icon={<FolderOpen size={24} />} title={emptyMessage} />
 
   return (
     <ul className={`admin-entity-list${variant === 'panel' ? ' cv-panel-entity-list' : ''}`}>

@@ -63,6 +63,7 @@ import { CountryFlag } from "../maps/CountryFlag";
 import { getTagColorStyle } from "../../tags/tagColors";
 import { VirtualPlaceRows } from "./VirtualPlaceRows";
 import { SkeletonList } from "../common/Skeleton";
+import { EmptyState } from "../common/EmptyState";
 
 const PAGE_SIZE = 50;
 const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000;
@@ -1529,11 +1530,7 @@ export function MapPlaceList({
             }}
           />
         )}
-        {!loading && poiMap && visible.length === 0 && (
-          <p className="place-list-message">
-            Aucun POI ne correspond aux filtres.
-          </p>
-        )}
+        {!loading && poiMap && visible.length === 0 && <EmptyState className="place-list-message" icon={<Search size={24} />} title="Aucun POI ne correspond aux filtres." />}
         {hasMore && (
           <div
             ref={loadMoreSentinel}
