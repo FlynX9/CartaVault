@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "bundle:report": "node scripts/bundle-report.mjs",
+    "check:bundle": "node scripts/bundle-report.mjs --check",
     "lint": "oxlint",
     "test": "vitest run",
     "generate:category-icons": "node scripts/generate-category-icon-data.mjs",

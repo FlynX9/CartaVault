@@ -237,7 +237,7 @@ export function MapPage({
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
       <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
-      {placeListOpen && <PanelResizeHandle side="left" width={leftPanelWidth} onResize={(width) => { setLeftPanelWidth(width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, width) }} />}
+      {placeListOpen && <PanelResizeHandle side="left" width={leftPanelWidth} onResize={setLeftPanelWidth} onResizeCommit={(width) => savePanelWidth(LEFT_PANEL_WIDTH_KEY, width)} />}
       <div className="map-layout" aria-label="Carte des points d'intérêt">
         <PoiMap
           places={places}
@@ -307,7 +307,7 @@ export function MapPage({
 
       </div>
       {sidebar}
-      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={(width) => { setRightPanelWidth(width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width) }} />}
+      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
     </section>
   )
 }

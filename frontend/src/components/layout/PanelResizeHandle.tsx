@@ -4,6 +4,7 @@ interface PanelResizeHandleProps {
   side: 'left' | 'right'
   width: number
   onResize: (width: number) => void
+  onResizeCommit?: (width: number) => void
 }
 
 const MIN_PANEL_WIDTH = 320
@@ -22,10 +23,38 @@ function clampWidth(width: number, workspace: HTMLElement): number {
   return Math.round(Math.min(max, Math.max(min, width)))
 }
 
-export function PanelResizeHandle({ side, width, onResize }: PanelResizeHandleProps) {
+export function PanelResizeHandle({ side, width, onResize, onResizeCommit }: PanelResizeHandleProps) {
   const drag = useRef<{ pointerId: number; startX: number; startWidth: number; scaleX: number } | null>(null)
+  const pendingWidth = useRef<number | null>(null)
+  const animationFrame = useRef<number | null>(null)
 
-  useEffect(() => () => document.body.classList.remove('cv-panel-resizing'), [])
+  const flushResize = () => {
+    if (animationFrame.current !== null) {
+      window.cancelAnimationFrame(animationFrame.current)
+      animationFrame.current = null
+    }
+    if (pendingWidth.current !== null) {
+      onResize(pendingWidth.current)
+      pendingWidth.current = null
+    }
+  }
+
+  const scheduleResize = (nextWidth: number) => {
+    pendingWidth.current = nextWidth
+    if (animationFrame.current !== null) return
+    animationFrame.current = window.requestAnimationFrame(() => {
+      animationFrame.current = null
+      if (pendingWidth.current !== null) {
+        onResize(pendingWidth.current)
+        pendingWidth.current = null
+      }
+    })
+  }
+
+  useEffect(() => () => {
+    if (animationFrame.current !== null) window.cancelAnimationFrame(animationFrame.current)
+    document.body.classList.remove('cv-panel-resizing')
+  }, [])
 
   const workspaceFor = (element: HTMLElement) => element.closest<HTMLElement>('.map-workspace')
 
@@ -49,14 +78,17 @@ export function PanelResizeHandle({ side, width, onResize }: PanelResizeHandlePr
     const workspace = workspaceFor(event.currentTarget)
     if (!current || current.pointerId !== event.pointerId || !workspace) return
     const delta = (event.clientX - current.startX) * current.scaleX * (side === 'left' ? 1 : -1)
-    onResize(clampWidth(current.startWidth + delta, workspace))
+    scheduleResize(clampWidth(current.startWidth + delta, workspace))
   }
 
   const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
     if (drag.current?.pointerId !== event.pointerId) return
+    const committedWidth = pendingWidth.current
+    flushResize()
     drag.current = null
     event.currentTarget.releasePointerCapture?.(event.pointerId)
     document.body.classList.remove('cv-panel-resizing')
+    if (committedWidth !== null) onResizeCommit?.(committedWidth)
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -71,7 +103,9 @@ export function PanelResizeHandle({ side, width, onResize }: PanelResizeHandlePr
     if (event.key === 'End') nextWidth = panelBounds(workspace).max
     if (nextWidth === null) return
     event.preventDefault()
-    onResize(clampWidth(nextWidth, workspace))
+    const clampedWidth = clampWidth(nextWidth, workspace)
+    onResize(clampedWidth)
+    onResizeCommit?.(clampedWidth)
   }
 
   return <div

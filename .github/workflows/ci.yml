@@ -136,6 +136,9 @@ jobs:
       - name: Build the frontend
         run: npm run build
 
+      - name: Check frontend bundle budget
+        run: npm run check:bundle
+
   secrets:
     name: Secret detection
     runs-on: ubuntu-latest
