@@ -76,6 +76,12 @@ Invitations are valid for seven days by default. Ownership transfer is transacti
 
 Configurable limits include `KMZ_MAX_UPLOAD_SIZE` (25 MiB), `KMZ_MAX_UNCOMPRESSED_SIZE` (100 MiB), `KMZ_MAX_ENTRIES` (750), `KMZ_MAX_PLACEMARKS` (1000), and `KMZ_MAX_IMAGES` (500). Identical references are deduplicated. Progressive confirmation downloads each remote URL once and converts image failures to warnings without cancelling created places.
 
+## Background tasks
+
+The current single-instance mode intentionally runs without Redis or a worker.
+The adoption contract, security model, and migration path for persistent KMZ
+and export jobs are documented in [`docs/async-task-architecture.md`](../docs/async-task-architecture.md).
+
 ## Place statuses, categories, and icons
 
 Statuses are scoped to a map and include a functional visit state (`unvisited` or `visited`), an active flag, a default flag, display order, and color. A map receives editable defaults when created. Inactive statuses stay attached to existing places but cannot be selected for new writes.
