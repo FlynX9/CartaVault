@@ -12,7 +12,7 @@ from app.auth.permissions import require_map_role, require_place_role
 from app.database import get_db
 from app.places.history import add_place_history
 from app.places.models import Place, PlaceHistory, PlaceLink
-from app.places.router import place_to_read, build_place_read_statement
+from app.places.router import build_place_read_statement, get_primary_category_keys, place_to_read
 from app.places.schemas import PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinkUpdate, PlaceRead
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
@@ -29,7 +29,14 @@ def _link_read(link: PlaceLink) -> PlaceLinkRead:
 def list_trashed_places(map_id: UUID = Query(), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[PlaceRead]:
     require_map_role(database_session, map_id, current_user, "editor")
     rows = database_session.execute(build_place_read_statement().where(Place.map_id == map_id, Place.deleted_at.is_not(None)).order_by(Place.deleted_at.desc(), Place.id)).all()
-    return [place_to_read(place, longitude, latitude, database_session) for place, longitude, latitude in rows]
+    primary_categories = get_primary_category_keys(
+        database_session,
+        [place.id for place, _, _ in rows],
+    )
+    return [
+        place_to_read(place, longitude, latitude, database_session, primary_categories)
+        for place, longitude, latitude in rows
+    ]
 
 
 @router.post("/{place_id}/restore", response_model=PlaceRead)
@@ -43,7 +50,13 @@ def restore_place(place_id: UUID, database_session: Session = Depends(get_db), c
     add_place_history(database_session, place.id, current_user.id, "restored", {})
     database_session.commit()
     place, longitude, latitude = database_session.execute(build_place_read_statement().where(Place.id == place_id)).one()
-    return place_to_read(place, longitude, latitude, database_session)
+    return place_to_read(
+        place,
+        longitude,
+        latitude,
+        database_session,
+        get_primary_category_keys(database_session, [place.id]),
+    )
 
 
 @router.delete("/{place_id}/permanent", status_code=204)

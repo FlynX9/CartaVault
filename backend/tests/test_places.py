@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
 from starlette.testclient import TestClient
 
 from app.maps.models import PoiMap
@@ -148,3 +149,46 @@ def test_place_list_position_uses_the_same_filtered_stable_order(integration_cli
     assert filtered_out.status_code == 200
     assert filtered_out.json()["matches_filters"] is False
     assert filtered_out.json()["index"] is None
+
+
+def test_place_list_batches_primary_category_lookups(
+    integration_client: TestClient,
+    database_session,
+    poi_map: PoiMap,
+) -> None:
+    category = integration_client.post(
+        "/categories",
+        json={"map_id": str(poi_map.id), "name": f"Performance {uuid4().hex}"},
+    )
+    assert category.status_code == 201
+    places = [
+        integration_client.post(
+            "/places",
+            json={"name": f"Batched primary {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1},
+        ).json()
+        for _ in range(3)
+    ]
+    for place in places:
+        assigned = integration_client.post(
+            f"/places/{place['id']}/categories/{category.json()['id']}",
+        )
+        assert assigned.status_code == 200
+
+    statements: list[str] = []
+
+    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    event.listen(database_session.bind, "before_cursor_execute", record_statement)
+    try:
+        listed = integration_client.get("/places", params={"map_id": str(poi_map.id), "limit": 100})
+    finally:
+        event.remove(database_session.bind, "before_cursor_execute", record_statement)
+
+    assert listed.status_code == 200
+    primary_queries = [
+        statement
+        for statement in statements
+        if "place_categories" in statement and "is_primary" in statement
+    ]
+    assert len(primary_queries) == 1

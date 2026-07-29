@@ -4,6 +4,9 @@ The backend is a synchronous FastAPI application organized by feature. It uses S
 
 The `app/instance_status` module exposes cached administrative diagnostics through `GET /admin/console/instance` and a forced refresh through `POST /admin/console/instance/refresh`. It does not perform billable Google Routes or Resend calls and does not expose secrets. See [`../docs/instance-status.md`](../docs/instance-status.md).
 
+Place-list, facet, marker and query-plan baselines are documented in
+[`../docs/place-api-performance.md`](../docs/place-api-performance.md).
+
 The `/account` router manages personal profile data, email and password changes, active sessions, avatars, and controlled account deletion. JPEG/PNG/WebP avatars are decoded with Pillow, center-cropped to 256×256 WebP, stripped of metadata, and stored under `AVATAR_STORAGE_PATH` (5 MiB and 4096 px maximum). Deletion refuses map owners and the last active administrator, revokes sessions, and anonymizes the account.
 
 ## Registration and email

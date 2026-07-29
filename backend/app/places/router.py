@@ -70,14 +70,41 @@ def build_place_read_statement():
     )
 
 
+def get_primary_category_keys(
+    database_session: Session,
+    place_ids: list[UUID],
+) -> set[tuple[UUID, UUID]]:
+    """Return primary category relationships for a bounded list of places."""
+
+    if not place_ids:
+        return set()
+    return set(
+        database_session.execute(
+            select(
+                place_categories_table.c.place_id,
+                place_categories_table.c.category_id,
+            ).where(
+                place_categories_table.c.place_id.in_(place_ids),
+                place_categories_table.c.is_primary.is_(True),
+            )
+        ).all()
+    )
+
+
 def place_to_read(
     place: Place,
     longitude: float | None,
     latitude: float | None,
     database_session: Session,
+    primary_category_keys: set[tuple[UUID, UUID]] | None = None,
 ) -> PlaceRead:
     """Convert a SQLAlchemy place and its coordinates to an API schema."""
 
+    primary_categories = (
+        get_primary_category_keys(database_session, [place.id])
+        if primary_category_keys is None
+        else primary_category_keys
+    )
     return PlaceRead(
         id=place.id,
         name=place.name,
@@ -119,7 +146,7 @@ def place_to_read(
                 description=category.description,
                 icon=category.icon,
                 marks_as_visited=category.marks_as_visited,
-                is_primary=bool(database_session.scalar(select(place_categories_table.c.is_primary).where(place_categories_table.c.place_id == place.id, place_categories_table.c.category_id == category.id))),
+                is_primary=(place.id, category.id) in primary_categories,
             )
             for category in place.categories
         ],
@@ -165,6 +192,7 @@ def read_place(
         longitude=longitude,
         latitude=latitude,
         database_session=database_session,
+        primary_category_keys=get_primary_category_keys(database_session, [place.id]),
     )
 
 
@@ -237,6 +265,10 @@ def get_places(
     )
 
     rows = database_session.execute(statement).all()
+    primary_categories = get_primary_category_keys(
+        database_session,
+        [place.id for place, _, _ in rows],
+    )
 
     return [
         place_to_read(
@@ -244,6 +276,7 @@ def get_places(
             longitude=longitude,
             latitude=latitude,
             database_session=database_session,
+            primary_category_keys=primary_categories,
         )
         for place, longitude, latitude in rows
     ]
@@ -380,7 +413,6 @@ def get_place_facets(
     require_map_role(database_session, map_id, current_user, "viewer")
     base = apply_place_filters(select(Place.id).where(Place.map_id == map_id), filters).subquery()
     ids = select(base.c.id)
-    def total(predicate): return int(database_session.scalar(select(func.count()).select_from(Place).where(Place.id.in_(ids), predicate)) or 0)
     categories = [PlaceFacetItem(id=row.id, name=row.name, icon=row.icon, count=row.count) for row in database_session.execute(select(Category.id, Category.name, Category.icon, func.count(func.distinct(place_categories_table.c.place_id)).label("count")).join(place_categories_table, Category.id == place_categories_table.c.category_id).where(place_categories_table.c.place_id.in_(ids)).group_by(Category.id, Category.name, Category.icon).order_by(Category.name)).all()]
     tags = [PlaceFacetItem(id=row.id, name=row.name, color=row.color, count=row.count) for row in database_session.execute(select(Tag.id, Tag.name, Tag.color, func.count(func.distinct(place_tags_table.c.place_id)).label("count")).join(place_tags_table, Tag.id == place_tags_table.c.tag_id).where(place_tags_table.c.place_id.in_(ids)).group_by(Tag.id, Tag.name, Tag.color).order_by(Tag.name)).all()]
     statuses = [PlaceFacetItem(id=row.id, name=row.name, color=row.color, count=row.count) for row in database_session.execute(select(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color, func.count(Place.id).label("count")).join(Place, Place.status_id == PlaceStatus.id).where(Place.id.in_(ids), PlaceStatus.is_active.is_(True)).group_by(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color).order_by(PlaceStatus.sort_order, PlaceStatus.name)).all()]
@@ -400,15 +432,30 @@ def get_place_facets(
         replace(filters, functional_state=None, is_favorite=None),
     ).subquery()
     quick_ids = select(quick_base.c.id)
-    quick_total = lambda predicate: int(
-        database_session.scalar(select(func.count()).select_from(Place).where(Place.id.in_(quick_ids), predicate)) or 0
-    )
+    quick_counts = database_session.execute(
+        select(
+            func.count(Place.id).label("total"),
+            func.count(Place.id).filter(Place.status.has(PlaceStatus.functional_state == "non_visited")).label("non_visited"),
+            func.count(Place.id).filter(Place.status.has(PlaceStatus.functional_state == "visited")).label("visited"),
+            func.count(Place.id).filter(Place.is_favorite.is_(True)).label("favorites"),
+        ).where(Place.id.in_(quick_ids))
+    ).one()
+    filtered_counts = database_session.execute(
+        select(
+            func.count(Place.id).filter(Place.photos.any()).label("with_photos"),
+            func.count(Place.id).filter(~Place.photos.any()).label("without_photos"),
+            func.count(Place.id).filter(Place.location.is_not(None)).label("with_coordinates"),
+            func.count(Place.id).filter(Place.location.is_(None)).label("without_coordinates"),
+            func.count(Place.id).filter(Place.trip_stops.any()).label("in_trip"),
+            func.count(Place.id).filter(~Place.trip_stops.any()).label("not_in_trip"),
+        ).where(Place.id.in_(ids))
+    ).one()
 
     return PlaceFacets(
-        total=quick_total(True),
-        non_visited=quick_total(Place.status.has(PlaceStatus.functional_state == "non_visited")),
-        visited=quick_total(Place.status.has(PlaceStatus.functional_state == "visited")),
-        favorites=quick_total(Place.is_favorite.is_(True)),
+        total=int(quick_counts.total or 0),
+        non_visited=int(quick_counts.non_visited or 0),
+        visited=int(quick_counts.visited or 0),
+        favorites=int(quick_counts.favorites or 0),
         categories=categories,
         tags=tags,
         statuses=statuses,
@@ -416,12 +463,12 @@ def get_place_facets(
         access_values=value_facets(Place.access),
         danger_levels=value_facets(Place.danger_level),
         condition_values=value_facets(Place.condition),
-        with_photos=total(Place.photos.any()),
-        without_photos=total(~Place.photos.any()),
-        with_coordinates=total(Place.location.is_not(None)),
-        without_coordinates=total(Place.location.is_(None)),
-        in_trip=total(Place.trip_stops.any()),
-        not_in_trip=total(~Place.trip_stops.any()),
+        with_photos=int(filtered_counts.with_photos or 0),
+        without_photos=int(filtered_counts.without_photos or 0),
+        with_coordinates=int(filtered_counts.with_coordinates or 0),
+        without_coordinates=int(filtered_counts.without_coordinates or 0),
+        in_trip=int(filtered_counts.in_trip or 0),
+        not_in_trip=int(filtered_counts.not_in_trip or 0),
     )
 
 
@@ -498,6 +545,7 @@ def get_place(
         longitude=longitude,
         latitude=latitude,
         database_session=database_session,
+        primary_category_keys=get_primary_category_keys(database_session, [place.id]),
     )
 
 
