@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { deletePlace, getPlaceDetails } from '../../api/places'
+import { deletePlace, getPlaceDetails, getPlaceHistory } from '../../api/places'
 import { getPlacePhotos } from '../../api/photos'
 import { geocodingService } from '../../geocoding/geocodingService'
 import { PlaceMapPopup } from './PlaceMapPopup'
 
-vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), deletePlace: vi.fn() }))
+vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaceHistory: vi.fn(), deletePlace: vi.fn() }))
 vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/photos')>()), getPlacePhotos: vi.fn() }))
 vi.mock('../../geocoding/geocodingService', () => ({ geocodingService: { reverse: vi.fn() } }))
 const PLACE_ID = '11111111-1111-4111-8111-111111111111'
@@ -14,10 +14,18 @@ const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MA
 const PHOTO = { id: '22222222-2222-4222-8222-222222222222', place_id: PLACE_ID, filename: 'photo.jpg', original_name: null, path: 'must-not-be-used.jpg', description: 'Façade', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
 const SECOND_PHOTO = { ...PHOTO, id: '33333333-3333-4333-8333-333333333333', filename: 'second.jpg', description: 'Cour intérieure', sort_order: 1, is_primary: false }
 
-beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(deletePlace).mockResolvedValue(); vi.mocked(geocodingService.reverse).mockResolvedValue([]) })
+beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlaceHistory).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(deletePlace).mockResolvedValue(); vi.mocked(geocodingService.reverse).mockResolvedValue([]) })
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('PlaceMapPopup', () => {
+  it('reveals the history directly inside the quick card', async () => {
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher l’historique' }))
+    expect(await screen.findByRole('heading', { name: 'Historique' })).toBeVisible()
+    expect(screen.getByText('Aucun changement enregistré.')).toBeVisible()
+  })
+
   it('uses the compact card hierarchy and shows the first image from the file endpoint', async () => {
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     expect(await screen.findByRole('heading', { name: 'Manufacture' })).toBeVisible()

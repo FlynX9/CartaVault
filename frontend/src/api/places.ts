@@ -16,7 +16,7 @@ import type {
   PlaceBulkTripResult,
   PlaceFacets,
   PlaceListPosition,
-  PlaceHistoryEvent,
+  PlaceHistoryPage,
   PlaceLink,
 } from '../types/place'
 import { buildPlaceFilterSearchParams, DEFAULT_PLACE_FILTERS } from '../places/placeFilters'
@@ -325,8 +325,9 @@ export async function deletePlaceLink(placeId: string, linkId: string): Promise<
   await sendWithoutResponse(`/places/${encodeURIComponent(placeId)}/links/${encodeURIComponent(linkId)}`, 'DELETE')
 }
 
-export async function getPlaceHistory(placeId: string, signal?: AbortSignal): Promise<PlaceHistoryEvent[]> {
-  return getJson(`/places/${encodeURIComponent(placeId)}/history`, new URLSearchParams(), signal) as Promise<PlaceHistoryEvent[]>
+export async function getPlaceHistory(placeId: string, options: { offset?: number; actions?: string[] } = {}, signal?: AbortSignal): Promise<PlaceHistoryPage> {
+  const params = new URLSearchParams(); if (options.offset) params.set('offset', String(options.offset)); for (const action of options.actions ?? []) params.append('actions', action)
+  return getJson(`/places/${encodeURIComponent(placeId)}/history`, params, signal) as Promise<PlaceHistoryPage>
 }
 
 export async function bulkUpdatePlaces(payload: PlaceBulkPayload, signal?: AbortSignal): Promise<PlaceBulkResult> {

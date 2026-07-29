@@ -91,7 +91,7 @@ def test_place_status_update_is_audited_as_json(integration_client: TestClient, 
     assert history.status_code == 200
     status_change = next(
         event["changes"]["status_id"]
-        for event in history.json()
+        for event in history.json()["items"]
         if "status_id" in event["changes"]
     )
     assert status_change == {"old": initial_status["id"], "new": target_status["id"]}

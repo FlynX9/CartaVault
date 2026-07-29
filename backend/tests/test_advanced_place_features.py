@@ -112,7 +112,7 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
 
     history = integration_client.get(f"/places/{place_id}/history")
     assert history.status_code == 200
-    assert {event["action"] for event in history.json()} >= {"created", "link_added"}
+    assert {event["action"] for event in history.json()["items"]} >= {"created", "link_added"}
 
 
 def test_map_field_configuration_and_trash_lifecycle(integration_client, poi_map) -> None:

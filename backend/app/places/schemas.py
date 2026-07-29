@@ -123,13 +123,20 @@ class PlaceLinkRead(BaseModel):
 
 
 class PlaceHistoryRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: UUID
     user_id: UUID | None
+    actor_label: str
     action: str
+    object_label: str
     changes: dict
     created_at: datetime
+
+
+class PlaceHistoryPage(BaseModel):
+    items: list[PlaceHistoryRead]
+    total: int
+    offset: int
+    limit: int
 
 
 class PlaceRead(BaseModel):

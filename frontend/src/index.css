@@ -1955,6 +1955,8 @@ button {
 .photo-card__open:focus-visible > span,
 .photo-manager-card__preview:hover > span,
 .photo-manager-card__preview:focus-visible > span,
+.popup-history-toggle { display:grid; width:2rem; height:2rem; padding:0; color:var(--cv-color-slate); background:white; border:1px solid rgb(43 62 89 / 15%); border-radius:.45rem; cursor:pointer; place-items:center; }.popup-history-toggle.active,.popup-history-toggle:hover { color:var(--cv-color-teal); border-color:var(--cv-color-teal); }.popup-history { display:grid; gap:.45rem; padding:.65rem 1rem; border-top:1px solid rgb(43 62 89 / 12%); }.popup-history h3,.popup-history p { margin:0; font-size:.76rem; }.popup-history ol { display:grid; gap:.36rem; padding:0; margin:0; list-style:none; }.popup-history li { display:flex; justify-content:space-between; gap:.5rem; font-size:.7rem; }.popup-history li span { color:var(--cv-color-gray); }
+
 .popup-gallery__open:hover > span,
 .popup-gallery__open:focus-visible > span {
   opacity: 1;
@@ -5126,7 +5128,7 @@ body {
 .place-map-popup .popup-summary-coordinate-row > span { min-width: 0; overflow: hidden; flex: 1 1 auto; text-overflow: ellipsis; white-space: nowrap; }
 .place-map-popup .popup-summary-copy { display: inline-grid; width: 1.55rem; min-width: 1.55rem; height: 1.55rem; min-height: 1.55rem; align-self: center; flex: 0 0 1.55rem; padding: 0; color: var(--cv-color-slate); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: 0.38rem; cursor: pointer; place-items: center; transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease; }
 .place-map-popup .popup-summary-copy:hover, .place-map-popup .popup-summary-copy:focus-visible { color: var(--cv-color-teal); background: var(--cv-surface-muted); border-color: var(--cv-color-teal); outline: 0; }
-.place-map-popup > .popup-details, .place-map-popup > .popup-links, .place-map-popup > .popup-history, .place-map-popup > .popup-imported-data { display: none; }
+.place-map-popup > .popup-details, .place-map-popup > .popup-links, .place-map-popup > .popup-imported-data { display: none; }
 .place-map-popup .popup-actions { padding: 0.7rem 1rem 0.85rem; }
 .place-map-popup .popup-actions button, .place-map-popup .popup-actions a { height: 34px; padding: 0 0.62rem; font-size: 0.74rem; }
 @media (max-width: 560px) {

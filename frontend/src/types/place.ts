@@ -7,7 +7,8 @@ export interface PlaceCategory { id: string; name: string; description: string |
 export interface PlaceTag { id: string; name: string; color?: string }
 export interface PlaceMapSummary { id: string; name: string; country: CountrySummary }
 export interface PlaceLink { id: string; url: string; label: string | null; sort_order: number; created_at: string; updated_at: string }
-export interface PlaceHistoryEvent { id: string; user_id: string | null; action: string; changes: Record<string, unknown>; created_at: string }
+export interface PlaceHistoryEvent { id: string; user_id: string | null; actor_label: string; action: string; object_label: string; changes: Record<string, unknown>; created_at: string }
+export interface PlaceHistoryPage { items: PlaceHistoryEvent[]; total: number; offset: number; limit: number }
 
 export interface PlaceDetails {
   id: string

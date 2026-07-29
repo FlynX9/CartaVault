@@ -10,12 +10,12 @@ import {
   Star,
   TriangleAlert,
 } from "lucide-react";
-import { deletePlace, getPlaceDetails, updatePlace } from "../../api/places";
+import { deletePlace, getPlaceDetails, getPlaceHistory, updatePlace } from "../../api/places";
 import { getPlacePhotos } from "../../api/photos";
 import { geocodingService } from "../../geocoding/geocodingService";
 import type { GeocodingResult } from "../../geocoding/types";
 import type { Photo } from "../../types/photo";
-import type { PlaceDetails } from "../../types/place";
+import type { PlaceDetails, PlaceHistoryEvent } from "../../types/place";
 import { buildGoogleMapsUrl } from "../../utils/googleMaps";
 import { CategoryIconPreview } from "../icons/CategoryIconPreview";
 import { PlacePopupActions } from "./PlacePopupActions";
@@ -67,6 +67,9 @@ export function PlaceMapPopup({
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [place, setPlace] = useState<PlaceDetails | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [history, setHistory] = useState<PlaceHistoryEvent[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(true);
   const [photosLoading, setPhotosLoading] = useState(true);
   const [detailsError, setDetailsError] = useState<string | null>(null);
@@ -110,6 +113,13 @@ export function PlaceMapPopup({
       });
     return () => controller.abort();
   }, [placeId]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const controller = new AbortController(); setHistoryLoading(true);
+    void getPlaceHistory(placeId, {}, controller.signal).then((page) => { if (!controller.signal.aborted) setHistory(page.items ?? []) }).catch(() => { if (!controller.signal.aborted) setHistory([]) }).finally(() => { if (!controller.signal.aborted) setHistoryLoading(false) });
+    return () => controller.abort();
+  }, [historyOpen, placeId]);
 
   useEffect(() => {
     if (place) titleRef.current?.focus();
@@ -250,6 +260,7 @@ export function PlaceMapPopup({
                   />
                 </button>
               )}
+              <button className={`popup-history-toggle${historyOpen ? " active" : ""}`} type="button" aria-label="Afficher l’historique" aria-pressed={historyOpen} title="Historique" onClick={() => setHistoryOpen((value) => !value)}><History size={17} /></button>
               <button
                 className="popup-close"
                 type="button"
@@ -371,6 +382,7 @@ export function PlaceMapPopup({
           {detailsError}
         </p>
       )}
+      {historyOpen && <section className="popup-history" aria-label="Historique"><h3>Historique</h3>{historyLoading ? <p>Chargement…</p> : history.length === 0 ? <p>Aucun changement enregistré.</p> : <ol>{history.map((event) => <li key={event.id}><strong>{popupHistoryAction(event.action)}</strong><span>{event.actor_label} · {formatDate(event.created_at)}</span></li>)}</ol>}</section>}
       {displayLocation && (
         <div className="popup-location">
           <span>
@@ -500,3 +512,5 @@ export function PlaceMapPopup({
     </article>
   );
 }
+
+const popupHistoryAction = (action: string) => ({ created: 'Lieu créé', updated: 'Lieu modifié', trashed: 'Déplacé dans la corbeille', restored: 'Lieu restauré', photo_added: 'Photo ajoutée', photo_removed: 'Photo supprimée' }[action] ?? action.replaceAll('_', ' '));

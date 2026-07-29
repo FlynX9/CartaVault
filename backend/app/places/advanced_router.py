@@ -13,7 +13,7 @@ from app.database import get_db
 from app.places.history import add_place_history
 from app.places.models import Place, PlaceHistory, PlaceLink
 from app.places.router import build_place_read_statement, get_primary_category_keys, place_to_read
-from app.places.schemas import PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinkUpdate, PlaceRead
+from app.places.schemas import PlaceHistoryPage, PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinkUpdate, PlaceRead
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 
@@ -121,8 +121,12 @@ def delete_place_link(place_id: UUID, link_id: UUID, database_session: Session =
     return Response(status_code=204)
 
 
-@router.get("/{place_id}/history", response_model=list[PlaceHistoryRead])
-def get_place_history(place_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[PlaceHistoryRead]:
-    require_place_role(database_session, place_id, current_user, "viewer")
-    events = database_session.scalars(select(PlaceHistory).where(PlaceHistory.place_id == place_id).order_by(PlaceHistory.created_at.desc(), PlaceHistory.id.desc()).limit(200)).all()
-    return [PlaceHistoryRead.model_validate(event, from_attributes=True) for event in events]
+@router.get("/{place_id}/history", response_model=PlaceHistoryPage)
+def get_place_history(place_id: UUID, actions: list[str] = Query(default=[]), offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> PlaceHistoryPage:
+    place = require_place_role(database_session, place_id, current_user, "viewer")
+    statement = select(PlaceHistory, User.display_name).outerjoin(User, PlaceHistory.user_id == User.id).where(PlaceHistory.place_id == place_id)
+    if actions:
+        statement = statement.where(PlaceHistory.action.in_(tuple(dict.fromkeys(actions))))
+    total = database_session.scalar(select(func.count()).select_from(statement.subquery())) or 0
+    rows = database_session.execute(statement.order_by(PlaceHistory.created_at.desc(), PlaceHistory.id.desc()).offset(offset).limit(limit)).all()
+    return PlaceHistoryPage(items=[PlaceHistoryRead(id=event.id, user_id=event.user_id, actor_label=actor_label or "Système", action=event.action, object_label=place.name, changes=event.changes, created_at=event.created_at) for event, actor_label in rows], total=total, offset=offset, limit=limit)
