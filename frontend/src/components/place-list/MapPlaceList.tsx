@@ -59,12 +59,12 @@ import { CategoryIconPreview } from "../icons/CategoryIconPreview";
 import { withMap } from "../../utils/map";
 import { MapMarkerFilterContext } from "../map/mapMarkerFilterContext";
 import { KmzImportDialog } from "../imports/KmzImportDialog";
-import { getPhotoFileUrl } from "../../api/photos";
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { useI18n } from "../../i18n/useI18n";
 import { CountryFlag } from "../maps/CountryFlag";
 import { getTagColorStyle } from "../../tags/tagColors";
 import { VirtualPlaceRows } from "./VirtualPlaceRows";
+import { PlaceListThumbnail } from "./PlaceListThumbnail";
 import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
 
@@ -196,6 +196,7 @@ export function MapPlaceList({
   const [displayMode, setDisplayMode] = useState<"compact" | "expanded">(
     "expanded",
   );
+  const [queryInput, setQueryInput] = useState(filters.query);
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
   const refs = useRef(new Map<string, HTMLButtonElement>());
   const listBodyRef = useRef<HTMLDivElement>(null);
@@ -221,8 +222,11 @@ export function MapPlaceList({
     setInternalSelectionMode(active);
     onSelectionModeChange?.(active);
   };
-  const update = (partial: Partial<PlaceFilters>) =>
-    onFiltersChange(normalizePlaceFilters({ ...filters, ...partial }));
+  const update = useCallback(
+    (partial: Partial<PlaceFilters>) =>
+      onFiltersChange(normalizePlaceFilters({ ...filters, ...partial })),
+    [filters, onFiltersChange],
+  );
 
   useEffect(() => {
     setMarkerFilter({
@@ -379,12 +383,30 @@ export function MapPlaceList({
   ).length;
   const activeCount = countActivePlaceFilters(filters);
   useEffect(() => {
-    const index = selectedPlaceId === null ? -1 : visible.findIndex((place) => place.id === selectedPlaceId);
-    const root = listBodyRef.current;
-    if (index < 0 || root === null) return;
-    const frame = window.requestAnimationFrame(() => root.scrollTo({ top: Math.max(0, index * (displayMode === 'expanded' ? 156 : 64) - root.clientHeight / 3), behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
-    return () => window.cancelAnimationFrame(frame);
-  }, [displayMode, selectedPlaceId, visible]);
+    setQueryInput(filters.query);
+  }, [filters.query]);
+  useEffect(() => {
+    if (queryInput === filters.query) return;
+    const timeout = window.setTimeout(
+      () => update({ query: queryInput }),
+      300,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [filters.query, queryInput, update]);
+  const selectedPlaceIndex =
+    selectedPlaceId === null
+      ? -1
+      : visible.findIndex((place) => place.id === selectedPlaceId);
+  const placeRowsVersion = [
+    displayMode,
+    selectedPlaceId ?? "",
+    selectionMode ? "selection" : "",
+    [...selectedIds].sort().join(","),
+    [...tripPlaceIds].sort().join(","),
+    tripPlanningActive ? "planning" : "",
+    tripAddTargetLabel ?? "",
+    poiMap?.can_edit === false ? "readonly" : "editable",
+  ].join("|");
   useEffect(() => {
     if (
       !listReady ||
@@ -869,15 +891,18 @@ export function MapPlaceList({
             <span className="visually-hidden">{t("places.search")}</span>
             <input
               type="search"
-              value={filters.query}
+              value={queryInput}
               placeholder={t("places.search")}
-              onChange={(event) => update({ query: event.target.value })}
+              onChange={(event) => setQueryInput(event.target.value)}
             />
-            {filters.query && (
+            {queryInput && (
               <button
                 type="button"
                 aria-label={t("places.clearSearch")}
-                onClick={() => update({ query: "" })}
+                onClick={() => {
+                  setQueryInput("");
+                  update({ query: "" });
+                }}
               >
                 <X size={15} />
               </button>
@@ -1305,6 +1330,9 @@ export function MapPlaceList({
             scrollRoot={listBodyRef}
             estimatedRowHeight={displayMode === 'expanded' ? 156 : 64}
             className={`country-place-list cv-workspace-panel__list places-redesign-list ${displayMode}`}
+            getItemKey={(place) => place.id}
+            scrollToIndex={selectedPlaceIndex >= 0 ? selectedPlaceIndex : undefined}
+            renderVersion={placeRowsVersion}
             renderRow={(place) => {
               const primary =
                 place.categories.find((item) => item.is_primary) ??
@@ -1314,13 +1342,9 @@ export function MapPlaceList({
               const rating = formatRating(place);
               const canAddToTripTarget = tripAddTargetLabel !== null && !inTrip;
               return (
-                <li
-                  key={place.id}
-                  className={isSelected ? "selected" : undefined}
+                <article
+                  className={`places-place-card${isSelected ? " selected" : ""}${inTrip ? " trip-added" : ""}${selectionMode ? " has-selection" : ""}${canAddToTripTarget ? " has-trip-add-action" : ""}`}
                 >
-                  <article
-                    className={`places-place-card${isSelected ? " selected" : ""}${inTrip ? " trip-added" : ""}${selectionMode ? " has-selection" : ""}${canAddToTripTarget ? " has-trip-add-action" : ""}`}
-                  >
                     {selectionMode && (
                       <input
                         className="place-list-select"
@@ -1336,6 +1360,7 @@ export function MapPlaceList({
                         else refs.current.delete(place.id);
                       }}
                       type="button"
+                      data-place-row-focus
                       draggable={tripPlanningActive && !inTrip}
                       className="places-place-main"
                       onDragStart={(event) => {
@@ -1349,28 +1374,11 @@ export function MapPlaceList({
                     >
                       {displayMode === "expanded" && (
                         <span className="places-place-photo">
-                          {place.primary_photo_id ? (
-                            <img
-                              src={getPhotoFileUrl(place.primary_photo_id)}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <span
-                              className="place-list-category-bubble"
-                              style={{
-                                backgroundColor: place.status.color,
-                                borderColor: place.status.color,
-                              }}
-                            >
-                              <CategoryIconPreview
-                                iconId={primary?.icon}
-                                size={22}
-                                showLabel={false}
-                              />
-                            </span>
-                          )}
+                          <PlaceListThumbnail
+                            photoId={place.primary_photo_id}
+                            statusColor={place.status.color}
+                            categoryIcon={primary?.icon}
+                          />
                         </span>
                       )}
                       {displayMode === "compact" && (
@@ -1532,8 +1540,7 @@ export function MapPlaceList({
                         <Plus size={20} aria-hidden="true" />
                       </button>
                     )}
-                  </article>
-                </li>
+                </article>
               );
             }}
           />

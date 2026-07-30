@@ -312,14 +312,74 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.place-list-load-sentinel')).toBeNull()
   }, 10_000)
 
-  it('keeps the mounted rich rows bounded for a 500-place page', async () => {
+  it('loads the matching page when the selected place is not mounted yet', async () => {
     const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
-    vi.mocked(getPlaces).mockResolvedValue(Array.from({ length: 500 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never)
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
+    const selectedPlace = { id: 'selected-place', name: 'Selected remote place', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockReset().mockResolvedValueOnce(firstPage).mockResolvedValueOnce([selectedPlace])
+    vi.mocked(getPlaceListPosition).mockResolvedValueOnce({ place_id: 'selected-place', matches_filters: true, index: 150, page: 3, page_size: 50 })
+
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={DEFAULT_PLACE_FILTERS} selectedPlaceId="selected-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await waitFor(() => expect(getPlaceListPosition).toHaveBeenCalledWith('selected-place', 'map-id', DEFAULT_PLACE_FILTERS, expect.any(AbortSignal)))
+    await waitFor(() => expect(getPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 150, limit: 50 }), expect.any(AbortSignal)))
+    await waitFor(() => expect(container.querySelector('.places-place-card.selected')).toHaveTextContent('Selected remote place'))
+  })
+
+  it.each([500, 2_000])('keeps the mounted rich rows bounded for %i loaded places', async (placeCount) => {
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    vi.mocked(getPlaces).mockResolvedValue(Array.from({ length: placeCount }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never)
 
     const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     await waitFor(() => expect(container.querySelectorAll('.places-place-card').length).toBeGreaterThan(0))
     expect(container.querySelectorAll('.places-place-card').length).toBeLessThan(50)
-    expect(container.querySelector('.country-place-list')).toHaveAttribute('aria-setsize', '500')
+    expect(container.querySelector('.country-place-list')).toHaveAttribute('aria-setsize', String(placeCount))
+  })
+
+  it('debounces free-text search while keeping the current rows visible', async () => {
+    const place = { id: 'place-id', name: 'Current place', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const onFiltersChange = vi.fn()
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={DEFAULT_PLACE_FILTERS} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByRole('button', { name: /^Current place/ })).toBeVisible()
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'museum' } })
+
+    expect(onFiltersChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /^Current place/ })).toBeVisible()
+    await waitFor(() => expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ query: 'museum' })), { timeout: 1_000 })
+  })
+
+  it('keeps keyboard focus while navigating virtual rows', async () => {
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    vi.mocked(getPlaces).mockResolvedValue([
+      { id: 'first', name: 'First place', latitude: 48, longitude: 2, status, categories: [], tags: [] },
+      { id: 'second', name: 'Second place', latitude: 48, longitude: 2, status, categories: [], tags: [] },
+    ] as never)
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    const first = await screen.findByRole('button', { name: /^First place/ })
+    const second = screen.getByRole('button', { name: /^Second place/ })
+    first.focus()
+    fireEvent.keyDown(first, { key: 'ArrowDown' })
+
+    await waitFor(() => expect(second).toHaveFocus())
+  })
+
+  it('replaces a failed list thumbnail with the lightweight category fallback', async () => {
+    const place = { id: 'photo-place', name: 'Broken photo', latitude: 48, longitude: 2, primary_photo_id: 'missing-photo', status: { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }, categories: [{ id: 'category-id', name: 'Museum', icon: 'mdi:church', is_primary: true }], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('button', { name: /^Broken photo/ })
+    const image = container.querySelector('.places-place-photo img')
+    expect(image).toHaveAttribute('loading', 'lazy')
+    expect(image).toHaveAttribute('decoding', 'async')
+    expect(image).toHaveAttribute('width', '78')
+    fireEvent.error(image as HTMLImageElement)
+
+    expect(container.querySelector('.places-place-photo img')).not.toBeInTheDocument()
+    expect(container.querySelector('.places-place-photo .place-list-category-bubble')).toBeVisible()
   })
 })
