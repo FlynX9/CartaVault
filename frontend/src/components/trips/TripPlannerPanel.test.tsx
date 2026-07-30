@@ -383,6 +383,10 @@ describe('TripPlannerPanel', () => {
     const target = await screen.findByRole('button', { name: /Étape existante/ })
     const dataTransfer = { getData: () => 'place:place-42' }
     fireEvent.dragOver(target.closest('li')!, { dataTransfer, clientY: 0 })
+    expect(target.closest('li')).toHaveClass('drop-before')
+    fireEvent.dragEnd(window)
+    expect(target.closest('li')).not.toHaveClass('drop-before')
+    fireEvent.dragOver(target.closest('li')!, { dataTransfer, clientY: 0 })
     fireEvent.drop(target.closest('li')!, { dataTransfer })
 
     await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
