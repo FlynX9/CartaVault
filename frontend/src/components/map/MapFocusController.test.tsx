@@ -81,4 +81,42 @@ describe('MapFocusController', () => {
     expect(setView).toHaveBeenCalledWith([48.123, 6.456], 13)
     expect(panBy).toHaveBeenCalledWith([200, 0], { animate: false })
   })
+
+  it('uses the changing free-map center when the trip panel is expanded or collapsed', () => {
+    const workspace = document.createElement('section')
+    workspace.className = 'map-workspace trip-planning-open'
+    const placesPanel = document.createElement('aside')
+    placesPanel.className = 'country-place-panel'
+    const tripPanel = document.createElement('aside')
+    tripPanel.className = 'map-sidebar trip-planner-panel'
+    const detailOverlay = document.createElement('aside')
+    detailOverlay.className = 'map-place-detail-overlay'
+    const container = map.getContainer()
+    workspace.append(placesPanel, tripPanel, container, detailOverlay)
+    document.body.append(workspace)
+
+    Object.defineProperty(container, 'offsetWidth', { configurable: true, value: 1600 })
+    container.getBoundingClientRect = () => ({ top: 0, right: 1600, bottom: 900, left: 0, width: 1600, height: 900, x: 0, y: 0, toJSON: () => undefined })
+    placesPanel.getBoundingClientRect = () => ({ top: 16, right: 320, bottom: 884, left: 16, width: 304, height: 868, x: 16, y: 16, toJSON: () => undefined })
+    tripPanel.getBoundingClientRect = () => ({ top: 16, right: 850, bottom: 884, left: 330, width: 520, height: 868, x: 330, y: 16, toJSON: () => undefined })
+    detailOverlay.getBoundingClientRect = () => ({ top: 16, right: 1584, bottom: 650, left: 1180, width: 404, height: 634, x: 1180, y: 16, toJSON: () => undefined })
+
+    const { rerender } = render(<MapFocusController request={{
+      id: 4,
+      view: { center: [48.123, 6.456], zoom: 13 },
+      centerInVisibleWorkspace: true,
+    }} />)
+
+    expect(panBy).toHaveBeenLastCalledWith([-215, 0], { animate: false })
+
+    tripPanel.classList.add('is-collapsed')
+    tripPanel.getBoundingClientRect = () => ({ top: 16, right: 538, bottom: 72, left: 330, width: 208, height: 56, x: 330, y: 16, toJSON: () => undefined })
+    rerender(<MapFocusController request={{
+      id: 5,
+      view: { center: [48.123, 6.456], zoom: 13 },
+      centerInVisibleWorkspace: true,
+    }} />)
+
+    expect(panBy).toHaveBeenLastCalledWith([-59, 0], { animate: false })
+  })
 })

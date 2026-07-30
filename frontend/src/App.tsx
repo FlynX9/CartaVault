@@ -509,6 +509,7 @@ function WorkspaceApp() {
           center: [place.latitude, place.longitude],
           zoom: revealClusteredPlace ? 19 : Math.max(mapView.zoom, 13),
         },
+        centerInVisibleWorkspace: tripPlannerOpen,
       });
   };
   const showTripNotice = (message: string) => {

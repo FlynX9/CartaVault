@@ -9,6 +9,27 @@ interface MapFocusControllerProps {
 
 const PANEL_GAP = 16
 
+interface HorizontalInterval {
+  left: number
+  right: number
+}
+
+function mergeIntervals(intervals: HorizontalInterval[]): HorizontalInterval[] {
+  const sorted = intervals.toSorted((first, second) => first.left - second.left)
+  const merged: HorizontalInterval[] = []
+
+  for (const interval of sorted) {
+    const previous = merged.at(-1)
+    if (previous === undefined || interval.left > previous.right) {
+      merged.push({ ...interval })
+    } else {
+      previous.right = Math.max(previous.right, interval.right)
+    }
+  }
+
+  return merged
+}
+
 function getVisibleWorkspacePan(mapContainer: HTMLElement): [number, number] {
   const workspace = mapContainer.closest<HTMLElement>('.map-workspace')
   if (workspace === null) return [0, 0]
@@ -16,34 +37,55 @@ function getVisibleWorkspacePan(mapContainer: HTMLElement): [number, number] {
   const mapBounds = mapContainer.getBoundingClientRect()
   if (mapBounds.width <= 0 || mapBounds.height <= 0) return [0, 0]
 
-  let availableLeft = 0
-  let availableRight = mapBounds.width
-  const panels = [
-    workspace.querySelector<HTMLElement>('.country-place-panel'),
-    workspace.querySelector<HTMLElement>('.map-sidebar'),
-  ]
+  const occupiedIntervals: HorizontalInterval[] = []
+  const panels = workspace.querySelectorAll<HTMLElement>(
+    '.country-place-panel, .map-sidebar, .map-place-detail-overlay',
+  )
 
   for (const panel of panels) {
-    if (panel === null || window.getComputedStyle(panel).visibility === 'hidden') continue
+    const style = window.getComputedStyle(panel)
+    if (style.visibility === 'hidden' || style.display === 'none') continue
     const panelBounds = panel.getBoundingClientRect()
+    const isWorkspaceDock = panel.matches('.country-place-panel, .map-sidebar')
     const coversMapCenter = panelBounds.top <= mapBounds.top + mapBounds.height / 2
       && panelBounds.bottom >= mapBounds.top + mapBounds.height / 2
-    if (!coversMapCenter || panelBounds.width <= 0) continue
+    if ((!isWorkspaceDock && !coversMapCenter) || panelBounds.width <= 0) continue
 
-    const relativeLeft = panelBounds.left - mapBounds.left
-    const relativeRight = panelBounds.right - mapBounds.left
-    const relativeCenter = (relativeLeft + relativeRight) / 2
-    if (relativeCenter < mapBounds.width / 2) {
-      availableLeft = Math.max(availableLeft, Math.min(mapBounds.width, relativeRight + PANEL_GAP))
-    } else {
-      availableRight = Math.min(availableRight, Math.max(0, relativeLeft - PANEL_GAP))
+    const relativeLeft = Math.max(0, panelBounds.left - mapBounds.left - PANEL_GAP)
+    const relativeRight = Math.min(
+      mapBounds.width,
+      panelBounds.right - mapBounds.left + PANEL_GAP,
+    )
+    if (relativeRight > relativeLeft) {
+      occupiedIntervals.push({ left: relativeLeft, right: relativeRight })
     }
   }
 
-  if (availableRight <= availableLeft) return [0, 0]
-  const visibleCenterX = (availableLeft + availableRight) / 2
+  const freeIntervals: HorizontalInterval[] = []
+  let freeLeft = 0
+  for (const occupied of mergeIntervals(occupiedIntervals)) {
+    if (occupied.left > freeLeft) {
+      freeIntervals.push({ left: freeLeft, right: occupied.left })
+    }
+    freeLeft = Math.max(freeLeft, occupied.right)
+  }
+  if (freeLeft < mapBounds.width) {
+    freeIntervals.push({ left: freeLeft, right: mapBounds.width })
+  }
+  if (freeIntervals.length === 0) return [0, 0]
+
+  const mapCenterX = mapBounds.width / 2
+  const visibleInterval = freeIntervals.reduce((best, candidate) => {
+    const bestWidth = best.right - best.left
+    const candidateWidth = candidate.right - candidate.left
+    if (candidateWidth !== bestWidth) return candidateWidth > bestWidth ? candidate : best
+    const bestDistance = Math.abs((best.left + best.right) / 2 - mapCenterX)
+    const candidateDistance = Math.abs((candidate.left + candidate.right) / 2 - mapCenterX)
+    return candidateDistance < bestDistance ? candidate : best
+  })
+  const visibleCenterX = (visibleInterval.left + visibleInterval.right) / 2
   const scaleX = mapContainer.offsetWidth > 0 ? mapBounds.width / mapContainer.offsetWidth : 1
-  return [(mapBounds.width / 2 - visibleCenterX) / scaleX, 0]
+  return [(mapCenterX - visibleCenterX) / scaleX, 0]
 }
 
 export function MapFocusController({ request }: MapFocusControllerProps) {
