@@ -117,12 +117,19 @@ def bootstrap_from_environment(*, allow_missing: bool = False) -> int:
     return create_admin(*values)
 
 
-def refresh_missing_regions(limit: int) -> int:
-    """Progressively enrich unresolved places; safe to run repeatedly."""
+def refresh_missing_regions(limit: int, *, include_existing: bool = False) -> int:
+    """Progressively enrich places that have not been resolved; safe to rerun."""
 
     geocoder = get_reverse_geocoder()
     resolved = failed = 0
     with SessionLocal() as session:
+        pending_resolution = Place.region_resolved_at.is_(None)
+        if not include_existing:
+            pending_resolution = (
+                pending_resolution
+                & Place.region_manually_overridden.is_(False)
+                & or_(Place.region.is_(None), func.btrim(Place.region) == "")
+            )
         rows = session.execute(
             select(
                 Place,
@@ -132,8 +139,7 @@ def refresh_missing_regions(limit: int) -> int:
             .where(
                 Place.deleted_at.is_(None),
                 Place.location.is_not(None),
-                Place.region_manually_overridden.is_(False),
-                or_(Place.region.is_(None), func.btrim(Place.region) == ""),
+                pending_resolution,
             )
             .order_by(Place.created_at, Place.id)
             .limit(limit)
@@ -166,6 +172,14 @@ def main() -> int:
     subcommands.add_parser("bootstrap-admin")
     refresh = subcommands.add_parser("refresh-regions")
     refresh.add_argument("--limit", type=int, default=100)
+    refresh.add_argument(
+        "--all",
+        action="store_true",
+        help=(
+            "also resolve legacy/manual regions that have never been resolved "
+            "automatically"
+        ),
+    )
     args = parser.parse_args()
     if args.command == "create-admin":
         return create_admin(args.email, args.name)
@@ -173,7 +187,7 @@ def main() -> int:
         if args.limit <= 0:
             print("--limit must be a positive integer", file=sys.stderr)
             return 2
-        return refresh_missing_regions(args.limit)
+        return refresh_missing_regions(args.limit, include_existing=args.all)
     return bootstrap_from_environment()
 
 

@@ -70,6 +70,19 @@ manual override. It commits each successful result, is safe to rerun, and uses
 the same rate limit as interactive resolution. Failures remain eligible for a
 later run.
 
+After installing the region-resolution migration, administrators can backfill
+every legacy place that has never been resolved automatically, including
+places whose old region value was preserved as manual:
+
+```powershell
+python -m app.cli refresh-regions --all --limit 1000
+```
+
+Successful places receive a resolution timestamp, so this full backfill is
+safe to rerun and does not request the same place twice. The per-place
+“Recalculate from coordinates” action remains available to deliberately
+refresh an already resolved or manually corrected value.
+
 ## Known limits
 
 - Administrative quality depends on OpenStreetMap coverage and tagging.

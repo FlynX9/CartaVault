@@ -254,3 +254,43 @@ def test_refresh_regions_cli_is_bounded_and_rerunnable(
     assert len(geocoder.calls) == 2
     assert refresh_missing_regions(10) == 0
     assert len(geocoder.calls) == 2
+
+
+def test_refresh_regions_cli_can_backfill_legacy_manual_values(
+    database_session: Session,
+    poi_map: PoiMap,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    status = next(item for item in poi_map.statuses if item.is_default)
+    place = Place(
+        name="Legacy manual region",
+        map_id=poi_map.id,
+        status_id=status.id,
+        location=WKTElement("POINT(2.3522 48.8566)", srid=4326),
+        region="Ancienne valeur",
+        region_manually_overridden=True,
+    )
+    database_session.add(place)
+    database_session.commit()
+    geocoder = RecordingGeocoder("Île-de-France")
+
+    def test_session_factory() -> Session:
+        return Session(
+            bind=database_session.get_bind(),
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+
+    monkeypatch.setattr("app.cli.SessionLocal", test_session_factory)
+    monkeypatch.setattr("app.cli.get_reverse_geocoder", lambda: geocoder)
+
+    assert refresh_missing_regions(10) == 0
+    assert geocoder.calls == []
+    assert refresh_missing_regions(10, include_existing=True) == 0
+    assert len(geocoder.calls) == 1
+    assert refresh_missing_regions(10, include_existing=True) == 0
+    assert len(geocoder.calls) == 1
+
+    database_session.refresh(place)
+    assert place.region == "Île-de-France"
+    assert place.region_manually_overridden is False
