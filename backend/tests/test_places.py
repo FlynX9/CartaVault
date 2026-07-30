@@ -135,6 +135,79 @@ def test_place_status_update_is_audited_as_json(integration_client: TestClient, 
     assert status_change == {"old": initial_status["id"], "new": target_status["id"]}
 
 
+def test_place_rename_refreshes_all_linked_trip_names(
+    integration_client: TestClient,
+    poi_map: PoiMap,
+) -> None:
+    previous_name = f"Original place {uuid4().hex}"
+    current_name = f"Renamed place {uuid4().hex}"
+    place = integration_client.post(
+        "/places",
+        json={
+            "name": previous_name,
+            "map_id": str(poi_map.id),
+            "latitude": 48.8566,
+            "longitude": 2.3522,
+        },
+    ).json()
+    trip = integration_client.post(
+        f"/maps/{poi_map.id}/trips",
+        json={"name": f"Rename synchronization {uuid4().hex}"},
+    ).json()
+    first_day = trip["days"][0]
+    second_day = integration_client.post(
+        f"/trips/{trip['id']}/days",
+        json={},
+    ).json()
+
+    linked_stop = integration_client.post(
+        f"/trip-days/{first_day['id']}/stops",
+        json={"place_id": place["id"]},
+    ).json()
+    stale_stop = integration_client.post(
+        f"/trip-days/{first_day['id']}/stops",
+        json={"place_id": place["id"]},
+    ).json()
+    assert integration_client.patch(
+        f"/trip-stops/{stale_stop['id']}",
+        json={"name": "Previously stale snapshot"},
+    ).status_code == 200
+    assert integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={
+            "previous_day_id": first_day["id"],
+            "next_day_id": second_day["id"],
+            "place_id": place["id"],
+        },
+    ).status_code == 201
+    assert integration_client.post(
+        f"/trips/{trip['id']}/departure",
+        json={"place_id": place["id"]},
+    ).status_code == 201
+    assert integration_client.post(
+        f"/trips/{trip['id']}/arrival",
+        json={"place_id": place["id"]},
+    ).status_code == 201
+
+    renamed = integration_client.patch(
+        f"/places/{place['id']}",
+        json={"name": current_name},
+    )
+
+    assert renamed.status_code == 200
+    refreshed_trip = integration_client.get(f"/trips/{trip['id']}").json()
+    refreshed_stops = {
+        stop["id"]: stop["name"]
+        for day in refreshed_trip["days"]
+        for stop in day["stops"]
+    }
+    assert refreshed_stops[linked_stop["id"]] == current_name
+    assert refreshed_stops[stale_stop["id"]] == current_name
+    assert refreshed_trip["nights"][0]["name"] == current_name
+    assert refreshed_trip["departure"]["name"] == current_name
+    assert refreshed_trip["arrival"]["name"] == current_name
+
+
 def test_bulk_place_delete_and_validated_filters(integration_client: TestClient, poi_map: PoiMap) -> None:
     first = integration_client.post("/places", json={"name": f"Bulk alpha {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1})
     second = integration_client.post("/places", json={"name": f"Bulk beta {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.2, "longitude": 2.2})

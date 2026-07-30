@@ -472,6 +472,20 @@ function WorkspaceApp() {
     setSelectedPlace(null);
     setRemovedPlaceId(null);
     setRefreshVersion((value) => value + 1);
+    if (activeTrip !== null) {
+      const tripId = activeTrip.id;
+      void getTrip(tripId)
+        .then((loaded) =>
+          setActiveTrip((current) => (current?.id === tripId ? loaded : current)),
+        )
+        .catch((error: unknown) =>
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "La sortie active n’a pas pu être actualisée.",
+          ),
+        );
+    }
     if (mutation.mapId !== activeMapId)
       navigate(withMap("/", mutation.mapId, activeStatusId));
   };

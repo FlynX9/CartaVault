@@ -40,7 +40,7 @@ from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
 from app.statuses.schemas import PlaceStatusSummary
 from app.tags.associations import place_tags_table
-from app.trips.models import TripDay, TripStop
+from app.trips.models import TripArrival, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.permissions import require_trip_editor
 from app.trips.service import stale
 
@@ -49,6 +49,21 @@ router = APIRouter(
     prefix="/places",
     tags=["places"],
 )
+
+
+def synchronize_place_name_references(
+    database_session: Session,
+    place_id: UUID,
+    current_name: str,
+) -> None:
+    """Keep every trip location linked to a place on its canonical name."""
+
+    for model in (TripStop, TripNight, TripDeparture, TripArrival):
+        database_session.execute(
+            update(model)
+            .where(model.place_id == place_id, model.name != current_name)
+            .values(name=current_name)
+        )
 
 
 def require_country_confirmation(
@@ -725,6 +740,12 @@ def update_place(
 
     for field_name, field_value in supplied_data.items():
         setattr(place, field_name, field_value)
+
+    synchronize_place_name_references(
+        database_session,
+        place.id,
+        place.name,
+    )
 
     if latitude is not None and longitude is not None:
         place.location = WKTElement(
