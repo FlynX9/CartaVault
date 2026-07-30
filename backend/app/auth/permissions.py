@@ -24,23 +24,21 @@ class MapAccess:
 
     @property
     def can_edit(self) -> bool:
-        return self.role in {"admin", "owner", "editor"}
+        return self.role in {"owner", "editor"}
 
     @property
     def can_delete(self) -> bool:
-        return self.role in {"admin", "owner"}
+        return self.role == "owner"
 
     @property
     def can_manage_members(self) -> bool:
-        return self.role in {"admin", "owner"}
+        return self.role == "owner"
 
 
 def get_map_access(database_session: Session, map_id: UUID, user: User, *, include_deleted: bool = False) -> MapAccess:
     poi_map = database_session.get(PoiMap, map_id)
     if poi_map is None or (poi_map.deleted_at is not None and not include_deleted):
         raise HTTPException(status_code=404, detail="Map not found")
-    if user.is_admin:
-        return MapAccess(poi_map, "admin")
     membership = database_session.scalar(
         select(MapMembership).where(MapMembership.map_id == map_id, MapMembership.user_id == user.id)
     )
@@ -51,7 +49,7 @@ def get_map_access(database_session: Session, map_id: UUID, user: User, *, inclu
 
 def require_map_role(database_session: Session, map_id: UUID, user: User, minimum: str) -> MapAccess:
     access = get_map_access(database_session, map_id, user)
-    if access.role != "admin" and ROLE_RANK[access.role] < ROLE_RANK[minimum]:
+    if ROLE_RANK[access.role] < ROLE_RANK[minimum]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient map permission")
     return access
 

@@ -26,8 +26,6 @@ from app.trips.models import Trip, TripDay
 
 
 def _accessible_map_ids(user: User):
-    if user.is_admin:
-        return select(PoiMap.id).where(PoiMap.deleted_at.is_(None))
     return (
         select(MapMembership.map_id)
         .join(PoiMap, PoiMap.id == MapMembership.map_id)

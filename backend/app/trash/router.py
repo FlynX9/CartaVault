@@ -6,7 +6,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import select, true
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -64,8 +64,7 @@ def list_trash(
 
     if item_type in {"all", "map"}:
         statement = select(PoiMap).where(PoiMap.deleted_at.is_not(None))
-        if not user.is_admin:
-            statement = statement.where(PoiMap.owner_id == user.id)
+        statement = statement.where(PoiMap.owner_id == user.id)
         for poi_map in session.scalars(statement).all():
             if poi_map.deleted_at and poi_map.purge_after:
                 items.append(_item(item_id=poi_map.id, item_type="map", name=poi_map.name, map_id=poi_map.id, map_name=poi_map.name, deleted_at=poi_map.deleted_at, purge_after=poi_map.purge_after))
@@ -78,8 +77,8 @@ def list_trash(
         MapMembership.user_id == user.id,
         MapMembership.role == "owner",
     )
-    place_access = true() if user.is_admin else PoiMap.id.in_(editable_map_ids)
-    trip_access = true() if user.is_admin else PoiMap.id.in_(owned_map_ids)
+    place_access = PoiMap.id.in_(editable_map_ids)
+    trip_access = PoiMap.id.in_(owned_map_ids)
 
     if item_type in {"all", "place"}:
         rows = session.execute(
@@ -108,7 +107,7 @@ def _deleted_map(session: Session, item_id: UUID, user: User) -> PoiMap:
     poi_map = session.get(PoiMap, item_id)
     if poi_map is None or poi_map.deleted_at is None:
         raise HTTPException(404, "Deleted map not found")
-    if not user.is_admin and poi_map.owner_id != user.id:
+    if poi_map.owner_id != user.id:
         raise HTTPException(404, "Deleted map not found")
     return poi_map
 

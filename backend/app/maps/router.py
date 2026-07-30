@@ -76,8 +76,6 @@ def read_map(database_session: Session, map_id: UUID, *, include_deleted: bool =
 
 
 def _loaded_map_access(poi_map: PoiMap, current_user: User) -> MapAccess:
-    if current_user.is_admin:
-        return MapAccess(poi_map, "admin")
     membership = next(
         (item for item in poi_map.memberships if item.user_id == current_user.id),
         None,
@@ -90,8 +88,7 @@ def _loaded_map_access(poi_map: PoiMap, current_user: User) -> MapAccess:
 @router.get("", response_model=list[MapRead])
 def get_maps(q: str | None = Query(default=None, min_length=1, max_length=120), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[MapRead]:
     statement = select(PoiMap).options(joinedload(PoiMap.country), joinedload(PoiMap.owner), selectinload(PoiMap.memberships)).where(PoiMap.deleted_at.is_(None))
-    if not current_user.is_admin:
-        statement = statement.join(MapMembership).where(MapMembership.user_id == current_user.id)
+    statement = statement.join(MapMembership).where(MapMembership.user_id == current_user.id)
     if q is not None:
         statement = statement.where(PoiMap.name.ilike(f"%{q.strip()}%"))
     maps = database_session.scalars(statement.order_by(func.lower(PoiMap.name), PoiMap.id)).unique().all()
@@ -128,7 +125,7 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
         database_session.commit()
         result = read_map(database_session, poi_map.id)
         assert result is not None
-        return map_to_read(result, MapAccess(result, "owner" if not current_user.is_admin else "admin"))
+        return map_to_read(result, MapAccess(result, "owner"))
     except IntegrityError as error:
         database_session.rollback()
         raise HTTPException(status_code=409, detail="A map already exists for this owner and country") from error

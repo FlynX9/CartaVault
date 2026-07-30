@@ -180,6 +180,67 @@ def test_private_resources_and_mutations_are_scoped_to_map_membership(
     assert integration_client.delete(f"/photos/{photo_id}").status_code == 204
 
 
+def test_global_administrator_has_no_implicit_access_to_private_maps(
+    integration_client: TestClient,
+    database_session: Session,
+    france_country,
+) -> None:
+    administrator = _user(database_session, "administrator")
+    administrator.is_admin = True
+    owner = _user(database_session, "private-owner")
+    private_map = _map(
+        database_session,
+        owner=owner,
+        country_id=france_country.id,
+        name=f"Administrator must not see {uuid4()}",
+    )
+
+    _use_user(owner)
+    place = integration_client.post(
+        "/places",
+        json={
+            "name": "Administrator secret place",
+            "map_id": str(private_map.id),
+            "latitude": 48.8566,
+            "longitude": 2.3522,
+        },
+    )
+    assert place.status_code == 201
+    place_id = place.json()["id"]
+    trip = integration_client.post(
+        f"/maps/{private_map.id}/trips",
+        json={"name": "Administrator secret trip"},
+    )
+    assert trip.status_code == 201
+
+    _use_user(administrator)
+    assert integration_client.get("/admin/users").status_code == 200
+    assert all(
+        item["id"] != str(private_map.id)
+        for item in integration_client.get("/maps").json()
+    )
+    assert integration_client.get(f"/maps/{private_map.id}").status_code == 404
+    assert integration_client.get(f"/places/{place_id}").status_code == 404
+    assert integration_client.get(f"/trips/{trip.json()['id']}").status_code == 404
+    assert integration_client.patch(
+        f"/places/{place_id}",
+        json={"name": "Forbidden administrator mutation"},
+    ).status_code == 404
+    assert integration_client.get(
+        "/places",
+        params={"map_id": str(private_map.id)},
+    ).json() == []
+    dashboard = integration_client.get("/dashboard").json()
+    assert dashboard["summary"]["maps"] == 0
+    assert dashboard["summary"]["places"] == 0
+
+    _use_user(owner)
+    assert integration_client.delete(f"/places/{place_id}").status_code == 204
+    _use_user(administrator)
+    assert all(item["id"] != place_id for item in integration_client.get("/trash").json())
+    assert integration_client.post(f"/trash/place/{place_id}/restore").status_code == 404
+
+
 def test_login_is_rate_limited_and_sessions_are_csrf_protected_and_revocable(
     integration_client: TestClient,
     database_session: Session,

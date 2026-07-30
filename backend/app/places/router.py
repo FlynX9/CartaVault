@@ -303,10 +303,9 @@ def get_places(
     """Return places using optional search, filters and pagination."""
 
     statement = build_place_read_statement()
-    if not current_user.is_admin:
-        statement = statement.where(
-            Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
-        )
+    statement = statement.where(
+        Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
+    )
 
     if map_id is not None:
         statement = statement.where(Place.map_id == map_id)

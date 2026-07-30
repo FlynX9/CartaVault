@@ -122,7 +122,7 @@ def get_map_places(
 
     if map_id is not None:
         require_map_role(database_session, map_id, current_user, "viewer")
-    elif not current_user.is_admin:
+    else:
         statement = statement.where(
             Place.map_id.in_(select(MapMembership.map_id).where(MapMembership.user_id == current_user.id))
         )
