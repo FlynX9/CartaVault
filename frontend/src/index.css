@@ -26,7 +26,6 @@
   --cv-z-toast: 1600;
   --cv-display-scale: 0.8;
   --cv-display-shell-size: 125%;
-  --cv-display-navigation-height: 156.25dvh;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -60,13 +59,11 @@ html[data-theme='dark'] {
 html[data-density='comfortable'] {
   --cv-display-scale: 0.9;
   --cv-display-shell-size: 111.111112%;
-  --cv-display-navigation-height: 123.45679dvh;
 }
 
 html[data-density='spacious'] {
   --cv-display-scale: 1;
   --cv-display-shell-size: 100%;
-  --cv-display-navigation-height: 100dvh;
 }
 
 .cv-overlay {
@@ -133,11 +130,6 @@ body,
     transform-origin: top left;
   }
 
-  /* The navigation has an explicit viewport height. Compensate it too so
-     it still reaches the visual bottom after the shell is scaled. */
-  .cv-main-navigation {
-    height: var(--cv-display-navigation-height);
-  }
 }
 
 button {
@@ -147,10 +139,12 @@ button {
 .app-shell {
   display: grid;
   grid-template-columns: var(--cv-nav-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
+  overflow: hidden;
   background: #edf1ec;
 }
-.app-body { display: grid; grid-template-rows: var(--cv-topbar-height) minmax(0, 1fr); min-width: 0; min-height: 0; }
+.app-body { display: grid; width: 100%; height: 100%; min-width: 0; min-height: 0; grid-template-rows: var(--cv-topbar-height) minmax(0, 1fr); overflow: hidden; }
 .main-navigation { z-index: var(--cv-z-topbar); display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 0.8rem 0.55rem; color: #dce4eb; background: var(--cv-color-navy); }
 .main-navigation-brand { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 0.75rem; }
 .main-navigation-brand img { width: 36px; max-height: 40px; object-fit: contain; }
@@ -2251,7 +2245,7 @@ button {
 }
 
 .main-navigation-bottom a { min-height: 56px; }
-.cv-main-navigation { width: var(--cv-nav-width); min-width: var(--cv-nav-width); height: 100dvh; overflow: hidden; }.cv-main-navigation__items { display: flex; flex-direction: column; gap: .48rem; }.cv-main-navigation__group { display: grid; gap: .38rem; }.cv-main-navigation__separator { width: calc(100% - 1.25rem); height: 1px; margin: .02rem auto; background: rgb(198 213 222 / 18%); }.cv-main-navigation__item { width: 100%; min-width: 0; box-sizing: border-box; }.cv-main-navigation__item span { max-width: 100%; overflow: visible; text-align: center; text-overflow: clip; white-space: normal; }
+.cv-main-navigation { width: var(--cv-nav-width); min-width: var(--cv-nav-width); height: 100%; min-height: 0; overflow: hidden; }.cv-main-navigation__items { display: flex; flex-direction: column; gap: .48rem; }.cv-main-navigation__group { display: grid; gap: .38rem; }.cv-main-navigation__separator { width: calc(100% - 1.25rem); height: 1px; margin: .02rem auto; background: rgb(198 213 222 / 18%); }.cv-main-navigation__item { width: 100%; min-width: 0; box-sizing: border-box; }.cv-main-navigation__item span { max-width: 100%; overflow: visible; text-align: center; text-overflow: clip; white-space: normal; }
 @media (max-width: 760px) { .cv-main-navigation__items { flex-direction: row; gap: .3rem; }.cv-main-navigation__group { display: contents; }.cv-main-navigation__separator { display: none; } }
 .map-selector-actions { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }.map-selector-actions .country-selector { margin: 0; }.map-action-button { display: grid; width: var(--cv-control-height); height: var(--cv-control-height); flex: 0 0 auto; place-items: center; color: var(--cv-color-navy); background: var(--cv-color-off-white); border: 1px solid rgb(43 62 89 / 18%); border-radius: 0.55rem; cursor: pointer; }.map-action-button:hover, .map-action-button:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 18%); }.map-action-button.danger:hover { color: #b42318; border-color: #b42318; }.map-action-button:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -4966,15 +4960,6 @@ body {
 .place-rating-fields label:first-of-type select { border-color: color-mix(in srgb, var(--cv-color-gold) 45%, #d8e0e8); }
 .place-rating-fields label:last-of-type select { border-color: color-mix(in srgb, var(--cv-color-teal) 45%, #d8e0e8); }
 @media (max-width: 520px) { .place-rating-fields { grid-template-columns: 1fr; } .place-rating-fields > span { grid-column: auto; } }
-
-/* Keep the navigation flush with the viewport after the compact shell scale.
-   This must remain in the final visual layer because older navigation rules
-   define their own 100dvh height. */
-@media (min-width: 761px) {
-  .cv-main-navigation {
-    height: 125dvh;
-  }
-}
 
 /* Place editing is intentionally unavailable while assigning places to a trip. */
 .places-redesign-panel.is-trip-planning .places-place-actions a[aria-label^='Éditer'],
@@ -10206,11 +10191,42 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
 
 /* The journey timeline itself is always visible. These compact controls only
    coordinate the expansion state of its departure, days, nights and arrival. */
+.map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
+  height: calc(100% - var(--cv-canvas-padding) - var(--cv-canvas-padding));
+  max-height: none;
+  overflow: hidden;
+}
+
+.trip-planner-panel > .trip-panel-header {
+  flex: 0 0 auto;
+}
+
+.trip-planner-panel .trip-panel-scroll {
+  display: flex;
+  height: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--cv-color-slate) 52%, transparent) var(--cv-surface-muted, #f1f5f7);
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+}
+
+@media (max-width: 760px) {
+  .map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
+    height: 100%;
+  }
+}
+
 .trip-planner-panel .trip-panel-journeys {
   display: flex;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   flex-direction: column;
+  overflow: visible;
 }
 
 .trip-planner-panel .trip-panel-journeys > :not(.trip-panel-days) {
@@ -10219,9 +10235,22 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
 
 .trip-planner-panel .trip-panel-journeys .trip-panel-days {
   min-height: 0;
-  flex: 1 1 auto;
-  overflow-x: hidden;
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.trip-planner-panel .trip-panel-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.trip-planner-panel .trip-panel-scroll::-webkit-scrollbar-track {
+  background: var(--cv-surface-muted, #f1f5f7);
+}
+
+.trip-planner-panel .trip-panel-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--cv-color-slate) 52%, transparent);
+  border: 3px solid var(--cv-surface-muted, #f1f5f7);
+  border-radius: 999px;
 }
 
 .trip-planner-panel .trip-panel-journeys-header {

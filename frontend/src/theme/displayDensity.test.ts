@@ -1,3 +1,6 @@
+/// <reference types="node" />
+
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -7,6 +10,8 @@ import {
   parseDisplayDensity,
   saveDisplayDensity,
 } from './displayDensity'
+
+const stylesheet = readFileSync('src/index.css', 'utf8')
 
 describe('CartaVault display density', () => {
   it('normalizes unknown values to the existing compact scale', () => {
@@ -31,6 +36,17 @@ describe('CartaVault display density', () => {
     applyDisplayDensity('comfortable', root)
 
     expect(root).toHaveAttribute('data-density', 'comfortable')
+  })
+
+  it('keeps the scaled application grid constrained to the viewport', () => {
+    const navigationDeclarations = [...stylesheet.matchAll(/\.cv-main-navigation\s*\{([^}]*)\}/g)]
+      .map((match) => match[1])
+      .join('\n')
+
+    expect(stylesheet).toMatch(/\.app-shell\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\)/s)
+    expect(stylesheet).toMatch(/\.app-body\s*\{[^}]*height:\s*100%[^}]*overflow:\s*hidden/s)
+    expect(navigationDeclarations).toMatch(/height:\s*100%/)
+    expect(navigationDeclarations).not.toMatch(/height:\s*\d+(?:\.\d+)?dvh/)
   })
 })
 
