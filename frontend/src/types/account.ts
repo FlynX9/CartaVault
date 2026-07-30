@@ -12,7 +12,7 @@ export interface AccountPreferences {
   language: 'fr' | 'en'
   preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'
   density: 'compact' | 'comfortable' | 'spacious'
-  startup_panel: 'maps' | 'places' | 'last'
+  startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string
   trash_retention_days: number
   onboarding: {

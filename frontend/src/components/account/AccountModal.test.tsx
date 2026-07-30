@@ -68,6 +68,16 @@ describe('AccountModal', () => {
     await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, trash_retention_days: 60 }))
   })
 
+  it('offers the dashboard as a startup screen and persists it', async () => {
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
+    const startupScreen = screen.getByLabelText('Écran au démarrage')
+    expect(screen.getByRole('option', { name: 'Tableau de bord' })).toBeVisible()
+    fireEvent.change(startupScreen, { target: { value: 'dashboard' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, startup_panel: 'dashboard' }))
+  })
+
   it('lets a user select Google Routes when personal credential storage is available', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))

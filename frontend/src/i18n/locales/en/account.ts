@@ -24,7 +24,7 @@ export const accountEn = {
   'account.preferences.comfortable': 'Comfortable (90%)',
   'account.preferences.compact': 'Compact (80%)',
   'account.preferences.spacious': 'Spacious (100%)',
-  'account.preferences.startup': 'Startup panel',
+  'account.preferences.startup': 'Startup screen',
   'account.preferences.lastView': 'Last used view',
   'account.preferences.timezone': 'Time zone',
   'account.preferences.trashRetention': 'Trash retention',

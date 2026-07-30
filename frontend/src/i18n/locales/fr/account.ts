@@ -22,7 +22,7 @@ export const accountFr = {
   'account.preferences.comfortable': 'Confortable (90 %)',
   'account.preferences.compact': 'Compacte (80 %)',
   'account.preferences.spacious': 'Spacieuse (100 %)',
-  'account.preferences.startup': 'Panneau au démarrage',
+  'account.preferences.startup': 'Écran au démarrage',
   'account.preferences.lastView': 'Dernière vue utilisée',
   'account.preferences.timezone': 'Fuseau horaire',
   'account.preferences.trashRetention': 'Conservation de la corbeille',
