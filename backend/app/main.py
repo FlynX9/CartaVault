@@ -155,6 +155,7 @@ app = FastAPI(
     title="CartaVault API",
     description="API for managing geographic points of interest",
     version="0.1.0",
+    root_path=os.getenv("CARTAVAULT_API_ROOT_PATH", "").strip().rstrip("/"),
     lifespan=lifespan,
     dependencies=[Depends(require_csrf)],
 )

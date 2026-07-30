@@ -17,6 +17,17 @@ def test_health_endpoint(api_client: TestClient) -> None:
     }
 
 
+def test_docs_use_the_proxy_root_path_for_the_openapi_schema(
+    api_client: TestClient,
+) -> None:
+    proxied_client = TestClient(api_client.app, root_path="/api")
+
+    response = proxied_client.get("/docs")
+
+    assert response.status_code == 200
+    assert "/api/openapi.json" in response.text
+
+
 def test_invalid_uuid_is_rejected_without_database(
     api_client: TestClient,
 ) -> None:
