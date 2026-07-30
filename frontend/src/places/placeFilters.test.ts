@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_PLACE_FILTERS, buildPlaceFilterSearchParams, deserializePlaceFilters, serializePlaceFilters } from './placeFilters'
+import { DEFAULT_PLACE_FILTERS, buildPlaceFilterSearchParams, countActivePlaceFilters, deserializePlaceFilters, hasActivePlaceFilters, resetPlaceFilters, serializePlaceFilters } from './placeFilters'
 
 describe('place filters', () => {
   it('normalizes, serializes and restores stable multi-value filters', () => {
@@ -20,5 +20,14 @@ describe('place filters', () => {
     expect(params.toString()).toBe('favorite=true&visit_state=non_visited&rating_min=4&sort=relevant_rating&direction=desc')
     expect(deserializePlaceFilters(params)).toMatchObject({ isFavorite: true, functionalState: 'non_visited', ratingMin: 4, sortBy: 'relevant_rating', sortDirection: 'desc' })
     expect(buildPlaceFilterSearchParams(deserializePlaceFilters(params)).toString()).toContain('rating_min=4')
+  })
+
+  it('does not count sorting as a filter and preserves it when filters are reset', () => {
+    const sorted = { ...DEFAULT_PLACE_FILTERS, sortBy: 'updated_at' as const, sortDirection: 'desc' as const }
+    expect(countActivePlaceFilters(sorted)).toBe(0)
+    expect(hasActivePlaceFilters(sorted)).toBe(false)
+
+    const reset = resetPlaceFilters({ ...sorted, query: 'église', categoryIds: ['category-id'], isFavorite: true })
+    expect(reset).toEqual({ ...DEFAULT_PLACE_FILTERS, sortBy: 'updated_at', sortDirection: 'desc' })
   })
 })

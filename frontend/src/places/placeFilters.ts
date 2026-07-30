@@ -63,10 +63,24 @@ export function countActivePlaceFilters(filters: PlaceFilters): number {
   const value = normalizePlaceFilters(filters)
   return Number(Boolean(value.query)) + listKeys.reduce((count, key) => count + Number(value[key].length > 0), 0)
     + ['hasPhotos', 'createdFrom', 'createdTo', 'updatedFrom', 'updatedTo', 'hasValidCoordinates', 'inTrip', 'isFavorite', 'functionalState', 'ratingMin'].reduce((count, key) => count + Number(value[key as keyof PlaceFilters] !== null && value[key as keyof PlaceFilters] !== ''), 0)
-    + Number(value.sortBy !== 'name' || value.sortDirection !== 'asc')
 }
 
 export const hasActivePlaceFilters = (filters: PlaceFilters) => countActivePlaceFilters(filters) > 0
+
+export function resetPlaceFilters(filters: PlaceFilters): PlaceFilters {
+  return {
+    ...DEFAULT_PLACE_FILTERS,
+    categoryIds: [],
+    tagIds: [],
+    statusIds: [],
+    regions: [],
+    accessValues: [],
+    dangerLevels: [],
+    conditionValues: [],
+    sortBy: filters.sortBy,
+    sortDirection: filters.sortDirection,
+  }
+}
 
 export function buildPlaceFilterSearchParams(filters: PlaceFilters): URLSearchParams {
   const value = normalizePlaceFilters(filters); const params = new URLSearchParams()

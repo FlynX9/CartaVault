@@ -35,6 +35,28 @@ describe('MapPlaceList', () => {
     expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ functionalState: 'non_visited', isFavorite: true }))
   })
 
+  it('resets every filter without changing the selected sort', async () => {
+    const onFiltersChange = vi.fn()
+    const filters = {
+      ...DEFAULT_PLACE_FILTERS,
+      query: 'église',
+      categoryIds: ['category-id'],
+      functionalState: 'visited' as const,
+      isFavorite: true,
+      sortBy: 'updated_at' as const,
+      sortDirection: 'desc' as const,
+    }
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={filters} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Réinitialiser tous les filtres' }))
+
+    expect(onFiltersChange).toHaveBeenCalledWith({
+      ...DEFAULT_PLACE_FILTERS,
+      sortBy: 'updated_at',
+      sortDirection: 'desc',
+    })
+  })
+
   it('collapses to a summary row and restores the full places panel', async () => {
     const onCollapsedChange = vi.fn()
     const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn(), onCollapsedChange }

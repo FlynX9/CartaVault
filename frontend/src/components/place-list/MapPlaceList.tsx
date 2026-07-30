@@ -44,6 +44,7 @@ import {
   countActivePlaceFilters,
   hasActivePlaceFilters,
   normalizePlaceFilters,
+  resetPlaceFilters,
 } from "../../places/placeFilters";
 import type { PoiMap } from "../../types/map";
 import type {
@@ -1004,7 +1005,7 @@ export function MapPlaceList({
               </select>
             </label>
             <button className="panel-icon-button" type="button" aria-label="Inverser l’ordre de tri" title="Inverser l’ordre" onClick={() => update({ sortDirection: filters.sortDirection === "asc" ? "desc" : "asc" })}><ArrowUpDown size={17} /></button>
-            <button className="panel-icon-button" type="button" aria-label="Réinitialiser le tri" title="Tri par nom" disabled={filters.sortBy === "name" && filters.sortDirection === "asc"} onClick={() => update({ sortBy: "name", sortDirection: "asc" })}><RotateCcw size={16} /></button>
+            <button className="panel-icon-button" type="button" aria-label="Réinitialiser tous les filtres" title="Réinitialiser tous les filtres" disabled={!hasActivePlaceFilters(filters)} onClick={() => onFiltersChange(resetPlaceFilters(filters))}><RotateCcw size={16} /></button>
             <button
               className={`places-advanced-filter${filtersOpen ? " active" : ""}`}
               type="button"
@@ -1088,7 +1089,7 @@ export function MapPlaceList({
               <button
                 className="place-list-reset"
                 type="button"
-                onClick={() => onFiltersChange(DEFAULT_PLACE_FILTERS)}
+                onClick={() => onFiltersChange(resetPlaceFilters(filters))}
                 disabled={!hasActivePlaceFilters(filters)}
               >
                 Réinitialiser tous les filtres
