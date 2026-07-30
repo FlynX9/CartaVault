@@ -51,6 +51,7 @@ def test_create_admin_is_normalized_unique_and_satisfies_startup_guard(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    monkeypatch.setattr("app.main.setup_token", lambda: "")
     database_session.execute(update(User).values(is_admin=False))
     database_session.flush()
     with pytest.raises(RuntimeError, match="No active CartaVault administrator"):
