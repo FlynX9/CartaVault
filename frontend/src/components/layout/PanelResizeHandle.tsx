@@ -2,6 +2,7 @@ import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react'
 
 interface PanelResizeHandleProps {
   side: 'left' | 'right'
+  growDirection?: 'left' | 'right'
   width: number
   onResize: (width: number) => void
   onResizeCommit?: (width: number) => void
@@ -23,7 +24,13 @@ function clampWidth(width: number, workspace: HTMLElement): number {
   return Math.round(Math.min(max, Math.max(min, width)))
 }
 
-export function PanelResizeHandle({ side, width, onResize, onResizeCommit }: PanelResizeHandleProps) {
+export function PanelResizeHandle({
+  side,
+  growDirection = side === 'left' ? 'right' : 'left',
+  width,
+  onResize,
+  onResizeCommit,
+}: PanelResizeHandleProps) {
   const drag = useRef<{ pointerId: number; startX: number; startWidth: number; scaleX: number } | null>(null)
   const pendingWidth = useRef<number | null>(null)
   const animationFrame = useRef<number | null>(null)
@@ -77,7 +84,7 @@ export function PanelResizeHandle({ side, width, onResize, onResizeCommit }: Pan
     const current = drag.current
     const workspace = workspaceFor(event.currentTarget)
     if (!current || current.pointerId !== event.pointerId || !workspace) return
-    const delta = (event.clientX - current.startX) * current.scaleX * (side === 'left' ? 1 : -1)
+    const delta = (event.clientX - current.startX) * current.scaleX * (growDirection === 'right' ? 1 : -1)
     scheduleResize(clampWidth(current.startWidth + delta, workspace))
   }
 
@@ -94,8 +101,8 @@ export function PanelResizeHandle({ side, width, onResize, onResizeCommit }: Pan
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const workspace = workspaceFor(event.currentTarget)
     if (!workspace) return
-    const growKey = side === 'left' ? 'ArrowRight' : 'ArrowLeft'
-    const shrinkKey = side === 'left' ? 'ArrowLeft' : 'ArrowRight'
+    const growKey = growDirection === 'right' ? 'ArrowRight' : 'ArrowLeft'
+    const shrinkKey = growDirection === 'right' ? 'ArrowLeft' : 'ArrowRight'
     let nextWidth: number | null = null
     if (event.key === growKey) nextWidth = width + KEYBOARD_STEP
     if (event.key === shrinkKey) nextWidth = width - KEYBOARD_STEP

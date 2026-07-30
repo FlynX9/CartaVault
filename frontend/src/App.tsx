@@ -978,7 +978,10 @@ function WorkspaceApp() {
     tripPlannerOpen && activeMap ? (
       <Suspense
         fallback={
-          <aside className="map-sidebar" role="status">
+          <aside
+            className={`map-sidebar trip-planner-panel trip-planner-panel--loading${tripPlannerCollapsed ? " is-collapsed" : ""}`}
+            role="status"
+          >
             Chargement de la préparation de sortieâ€¦
           </aside>
         }

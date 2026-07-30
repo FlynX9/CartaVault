@@ -8,8 +8,13 @@ afterEach(() => {
   document.body.classList.remove('cv-panel-resizing')
 })
 
-function renderHandle(side: 'left' | 'right', width: number, onResize = vi.fn()) {
-  const result = render(<div className="map-workspace"><PanelResizeHandle side={side} width={width} onResize={onResize} /></div>)
+function renderHandle(
+  side: 'left' | 'right',
+  width: number,
+  onResize = vi.fn(),
+  growDirection?: 'left' | 'right',
+) {
+  const result = render(<div className="map-workspace"><PanelResizeHandle side={side} growDirection={growDirection} width={width} onResize={onResize} /></div>)
   const workspace = result.container.querySelector<HTMLElement>('.map-workspace')!
   Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1200 })
   return { ...result, onResize, workspace }
@@ -36,11 +41,20 @@ describe('PanelResizeHandle', () => {
     expect(onResize).toHaveBeenCalledWith(664)
   })
 
-  it('coalesces pointer moves into one animation-frame update and commits the final width', () => {
-    const { onResize } = renderHandle('left', 430)
+  it('grows a left-docked trip panel when its right edge moves right', () => {
+    const { onResize } = renderHandle('right', 640, vi.fn(), 'right')
+    const separator = screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' })
+
+    fireEvent.keyDown(separator, { key: 'ArrowRight' })
+    expect(onResize).toHaveBeenCalledWith(664)
+    fireEvent.keyDown(separator, { key: 'ArrowLeft' })
+    expect(onResize).toHaveBeenLastCalledWith(616)
+  })
+
+  it('grows the left-docked trip panel to the right and coalesces pointer updates', () => {
+    const onResize = vi.fn()
     const onResizeCommit = vi.fn()
-    cleanup()
-    const result = render(<div className="map-workspace"><PanelResizeHandle side="left" width={430} onResize={onResize} onResizeCommit={onResizeCommit} /></div>)
+    const result = render(<div className="map-workspace"><PanelResizeHandle side="right" growDirection="right" width={430} onResize={onResize} onResizeCommit={onResizeCommit} /></div>)
     const workspace = result.container.querySelector<HTMLElement>('.map-workspace')!
     Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1200 })
     vi.spyOn(workspace, 'getBoundingClientRect').mockReturnValue({ width: 1200 } as DOMRect)
@@ -50,7 +64,7 @@ describe('PanelResizeHandle', () => {
       return 1
     })
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
-    const separator = screen.getByRole('separator', { name: 'Redimensionner le panneau de navigation' })
+    const separator = screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' })
 
     fireEvent.pointerDown(separator, { pointerId: 1, clientX: 100 })
     fireEvent.pointerMove(separator, { pointerId: 1, clientX: 130 })

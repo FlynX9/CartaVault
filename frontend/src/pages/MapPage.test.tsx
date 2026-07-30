@@ -122,7 +122,7 @@ describe('MapPage', () => {
     const map = screen.getByTestId('poi-map')
 
     fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau de navigation' }), { key: 'ArrowRight' })
-    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' }), { key: 'ArrowLeft' })
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' }), { key: 'ArrowRight' })
 
     expect(workspace.style.getPropertyValue('--cv-left-panel-width')).toBe('454px')
     expect(workspace.style.getPropertyValue('--cv-right-panel-width')).toBe('664px')

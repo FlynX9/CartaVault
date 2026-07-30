@@ -338,7 +338,7 @@ export function MapPage({
 
       </div>
       {sidebar}
-      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
+      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" growDirection={tripPlanningActive ? 'right' : undefined} width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
     </section>
   )
 }
