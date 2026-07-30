@@ -1,74 +1,71 @@
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MapResizeWatcher } from './MapResizeWatcher'
 
-const { invalidateSize, getContainer } = vi.hoisted(() => ({
-  invalidateSize: vi.fn(),
-  getContainer: vi.fn(),
-}))
+const invalidateSize = vi.fn()
+const container = document.createElement('div')
+let resizeCallback: ResizeObserverCallback
 
 vi.mock('react-leaflet', () => ({
-  useMap: () => ({ invalidateSize, getContainer }),
+  useMap: () => ({
+    invalidateSize,
+    getContainer: () => container,
+  }),
 }))
 
-let resizeCallback: ResizeObserverCallback | null = null
-
 class ResizeObserverMock {
-  constructor(callback: ResizeObserverCallback) { resizeCallback = callback }
+  constructor(callback: ResizeObserverCallback) {
+    resizeCallback = callback
+  }
   observe = vi.fn()
   disconnect = vi.fn()
+  unobserve = vi.fn()
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
-  getContainer.mockReturnValue(document.createElement('div'))
   vi.stubGlobal('ResizeObserver', ResizeObserverMock)
 })
 
 afterEach(() => {
   cleanup()
-  vi.clearAllMocks()
-  vi.unstubAllGlobals()
-  resizeCallback = null
   vi.useRealTimers()
+  vi.unstubAllGlobals()
+  vi.clearAllMocks()
 })
 
 describe('MapResizeWatcher', () => {
-  it('invalidates Leaflet after the sidebar layout transition', () => {
-    const { rerender } = render(<MapResizeWatcher layoutKey="false-false" />)
-    vi.advanceTimersByTime(220)
-    invalidateSize.mockClear()
+  it('coalesces repeated panel resize observations into one animation frame', () => {
+    let scheduledFrame: FrameRequestCallback | null = null
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      scheduledFrame = callback
+      return 1
+    }))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    render(<MapResizeWatcher layoutKey="places-open" />)
 
-    rerender(<MapResizeWatcher layoutKey="true-false" />)
-    vi.advanceTimersByTime(219)
+    act(() => {
+      resizeCallback([], {} as ResizeObserver)
+      resizeCallback([], {} as ResizeObserver)
+      resizeCallback([], {} as ResizeObserver)
+    })
+
+    expect(requestAnimationFrame).toHaveBeenCalledTimes(3)
+    expect(cancelAnimationFrame).toHaveBeenCalledTimes(2)
     expect(invalidateSize).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(1)
-
+    act(() => scheduledFrame?.(0))
+    expect(invalidateSize).toHaveBeenCalledTimes(1)
     expect(invalidateSize).toHaveBeenCalledWith({ pan: false })
   })
 
-  it('invalidates Leaflet after a responsive viewport change', () => {
-    render(<MapResizeWatcher layoutKey="true-false" />)
-    vi.advanceTimersByTime(220)
-    invalidateSize.mockClear()
+  it('performs one final invalidation after a panel layout transition', () => {
+    vi.stubGlobal('requestAnimationFrame', vi.fn())
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    render(<MapResizeWatcher layoutKey="places-open" />)
 
-    fireEvent(window, new Event('resize'))
-    vi.advanceTimersByTime(120)
+    act(() => vi.advanceTimersByTime(220))
 
-    expect(invalidateSize).toHaveBeenCalledWith({ pan: false })
-  })
-
-  it('invalidates Leaflet when a resizable panel changes the map container', () => {
-    render(<MapResizeWatcher layoutKey="true-true" />)
-    vi.advanceTimersByTime(220)
-    invalidateSize.mockClear()
-
-    resizeCallback?.([], {} as ResizeObserver)
-    vi.advanceTimersByTime(119)
-    expect(invalidateSize).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(1)
-
-    expect(invalidateSize).toHaveBeenCalledWith({ pan: false })
+    expect(invalidateSize).toHaveBeenCalledTimes(1)
   })
 })

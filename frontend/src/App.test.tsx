@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError } from './api/client'
 import { deleteMap, getMaps } from './api/maps'
-import { getPlaceDetails } from './api/places'
+import { getMapPlaces, getPlaceDetails } from './api/places'
 import App from './App'
 
 vi.mock('./api/maps', () => ({ getMaps: vi.fn(), deleteMap: vi.fn(), getPendingMapInvitations: vi.fn(() => Promise.resolve([])), acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn() }))
@@ -13,11 +13,11 @@ vi.mock('./api/setup', () => ({ getSetupStatus: vi.fn(() => Promise.resolve({ re
 vi.mock('./api/users', () => ({ getUsers: vi.fn(() => Promise.resolve([])), createUser: vi.fn(), updateUser: vi.fn(), resetUserPassword: vi.fn() }))
 vi.mock('./auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-id', email: 'admin@example.test', display_name: 'Admin', is_admin: true, is_active: true }, loading: false, logout: vi.fn(), refresh: vi.fn(), login: vi.fn() }) }))
 vi.mock('./auth/RequireAuth', () => ({ RequireAuth: ({ children }: { children: ReactNode }) => children }))
-vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve([])), getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: false, index: null, page: null, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn(), getPlaceDetails: vi.fn(() => Promise.resolve({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] })) }))
+vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve({ items: [], total: 0, returned: 0, truncated: false })), getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: false, index: null, page: null, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn(), getPlaceDetails: vi.fn(() => Promise.resolve({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] })) }))
 vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ placeId, onClose }: { placeId: string; onClose: () => void }) => <div role="dialog">Popup {placeId}<button onClick={onClose}>Fermer popup</button></div> }))
 vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
 vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button></aside> }))
-vi.mock('./pages/MapPage', () => ({ MapPage: ({ placeList, sidebar, popupContent, focusRequest, selectedPlaceId, onPlaceSelect }: { placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button>{placeList}{popupContent}{sidebar}</div> }))
+vi.mock('./pages/MapPage', () => ({ MapPage: ({ places, errorMessage, placeList, sidebar, popupContent, focusRequest, selectedPlaceId, onPlaceSelect, onBoundsChange }: { places: Array<{ id: string; name: string }>; errorMessage: string | null; placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void; onBoundsChange: (bounds: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''} data-markers={places.map((place) => place.name).join(',')}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button><button onClick={() => onBoundsChange({ minLatitude: 40, maxLatitude: 50, minLongitude: -5, maxLongitude: 5 })}>Bounds A</button><button onClick={() => onBoundsChange({ minLatitude: 41, maxLatitude: 49, minLongitude: -4, maxLongitude: 4 })}>Bounds B</button>{errorMessage && <p data-testid="map-error">{errorMessage}</p>}{placeList}{popupContent}{sidebar}</div> }))
 vi.mock('./components/dashboard/DashboardPage', () => ({ DashboardPage: () => <div>Dashboard</div> }))
 
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -30,6 +30,40 @@ beforeEach(() => vi.mocked(getMaps).mockResolvedValue([MAP]))
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('map URL workspace', () => {
+  it('cancels obsolete bounds requests and retains usable markers during refresh failures', async () => {
+    let resolveFirst!: (value: never) => void
+    let resolveSecond!: (value: never) => void
+    let rejectThird!: (reason: Error) => void
+    vi.mocked(getMapPlaces)
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectThird = reject }))
+
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByTestId('workspace')).toHaveAttribute('data-focus', '1'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bounds A' }))
+    await waitFor(() => expect(getMapPlaces).toHaveBeenCalledTimes(1))
+    const firstSignal = vi.mocked(getMapPlaces).mock.calls[0]?.[1]
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bounds B' }))
+    await waitFor(() => expect(getMapPlaces).toHaveBeenCalledTimes(2))
+    expect(firstSignal?.aborted).toBe(true)
+
+    await act(async () => {
+      resolveFirst({ items: [{ id: 'old', name: 'Ancien' }], total: 1, returned: 1, truncated: false } as never)
+      resolveSecond({ items: [{ id: 'current', map_id: MAP_ID, name: 'Actuel', latitude: 48, longitude: 2, status: { id: 'status', color: '#2563EB' }, primary_category_icon: null, category_ids: [], tag_ids: [], is_favorite: false }], total: 1, returned: 1, truncated: false } as never)
+    })
+    await waitFor(() => expect(screen.getByTestId('workspace')).toHaveAttribute('data-markers', 'Actuel'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bounds A' }))
+    await waitFor(() => expect(getMapPlaces).toHaveBeenCalledTimes(3))
+    expect(screen.getByTestId('workspace')).toHaveAttribute('data-markers', 'Actuel')
+    await act(async () => rejectThird(new Error('Marker API unavailable')))
+
+    expect(await screen.findByTestId('map-error')).toHaveTextContent('Marker API unavailable')
+    expect(screen.getByTestId('workspace')).toHaveAttribute('data-markers', 'Actuel')
+  })
+
   it('keeps authenticated users away from authentication pages in browser history', async () => {
     render(
       <MemoryRouter initialEntries={['/login', '/dashboard']} initialIndex={1}>

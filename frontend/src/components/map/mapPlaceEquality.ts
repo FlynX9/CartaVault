@@ -11,15 +11,10 @@ export function areMapPlacesEqual(previous: readonly MapPlace[], next: readonly 
 
   return previous.every((place, index) => {
     const candidate = next[index]
-    if (candidate === undefined || place.id !== candidate.id || place.map_id !== candidate.map_id || place.name !== candidate.name || place.latitude !== candidate.latitude || place.longitude !== candidate.longitude || place.is_favorite !== candidate.is_favorite || place.is_visited !== candidate.is_visited || place.interest_rating !== candidate.interest_rating || place.visit_rating !== candidate.visit_rating) return false
-    if (place.status.id !== candidate.status.id || place.status.name !== candidate.status.name || place.status.slug !== candidate.status.slug || place.status.color !== candidate.status.color || place.status.functional_state !== candidate.status.functional_state) return false
-    if (place.categories.length !== candidate.categories.length || place.tags.length !== candidate.tags.length) return false
-    return place.categories.every((category, categoryIndex) => {
-      const nextCategory = candidate.categories[categoryIndex]
-      return nextCategory !== undefined && category.id === nextCategory.id && category.name === nextCategory.name && category.icon === nextCategory.icon && category.is_primary === nextCategory.is_primary
-    }) && place.tags.every((tag, tagIndex) => {
-      const nextTag = candidate.tags[tagIndex]
-      return nextTag !== undefined && tag.id === nextTag.id && tag.name === nextTag.name && tag.color === nextTag.color
-    })
+    if (candidate === undefined || place.id !== candidate.id || place.map_id !== candidate.map_id || place.name !== candidate.name || place.latitude !== candidate.latitude || place.longitude !== candidate.longitude || place.is_favorite !== candidate.is_favorite || place.primary_category_icon !== candidate.primary_category_icon) return false
+    if (place.status.id !== candidate.status.id || place.status.color !== candidate.status.color) return false
+    if (place.category_ids.length !== candidate.category_ids.length || place.tag_ids.length !== candidate.tag_ids.length) return false
+    return place.category_ids.every((id, categoryIndex) => id === candidate.category_ids[categoryIndex])
+      && place.tag_ids.every((id, tagIndex) => id === candidate.tag_ids[tagIndex])
   })
 }

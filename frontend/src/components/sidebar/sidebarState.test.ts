@@ -9,9 +9,11 @@ const place: MapPlace = {
   name: 'Manufacture',
   latitude: 48.17,
   longitude: 6.45,
-  status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', functional_state: 'non_visited' },
-  categories: [],
-  tags: [],
+  status: { id: 'status-id', color: '#2563EB' },
+  primary_category_icon: null,
+  category_ids: [],
+  tag_ids: [],
+  is_favorite: false,
 }
 
 describe('deriveMapSidebarState', () => {

@@ -4,25 +4,20 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, load_only, selectinload
 
-from app.categories.models import Category
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_map_role
 from app.categories.associations import place_categories_table
+from app.categories.models import Category
 from app.database import get_db
-from app.places.filters import MapBounds, get_required_map_bounds
-from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_ordering
-from app.places.map_schemas import (
-    MapCategoryRead,
-    MapStatusRead,
-    MapTagRead,
-    PlaceMapPageRead,
-    PlaceMapRead,
-)
-from app.places.models import Place
 from app.maps.models import MapMembership
-from app.tags.models import Tag
+from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_ordering
+from app.places.filters import MapBounds, get_required_map_bounds
+from app.places.map_schemas import MapStatusRead, PlaceMapPageRead, PlaceMapRead
+from app.places.models import Place
 from app.statuses.models import PlaceStatus
+from app.tags.associations import place_tags_table
+from app.tags.models import Tag
 
 
 router = APIRouter(
@@ -86,27 +81,10 @@ def get_map_places(
                 Place.name,
                 Place.map_id,
                 Place.is_favorite,
-                Place.interest_rating,
-                Place.visit_rating,
-            ),
-            selectinload(Place.categories).load_only(
-                Category.id,
-                Category.name,
-                Category.icon,
-            ),
-            selectinload(Place.tags).load_only(
-                Tag.id,
-                Tag.name,
-                Tag.color,
             ),
             selectinload(Place.status).load_only(
                 PlaceStatus.id,
-                PlaceStatus.map_id,
-                PlaceStatus.name,
-                PlaceStatus.slug,
                 PlaceStatus.color,
-                PlaceStatus.is_active,
-                PlaceStatus.functional_state,
             ),
         )
         .where(
@@ -152,16 +130,32 @@ def get_map_places(
     total = database_session.scalar(statement.with_only_columns(func.count()).order_by(None).limit(None)) if include_meta else 0
     rows = database_session.execute(statement).all()
     place_ids = [place.id for place, _, _ in rows]
-    primary_categories = {
-        (place_id, category_id): is_primary
-        for place_id, category_id, is_primary in database_session.execute(
+    category_rows = database_session.execute(
             select(
                 place_categories_table.c.place_id,
                 place_categories_table.c.category_id,
                 place_categories_table.c.is_primary,
-            ).where(place_categories_table.c.place_id.in_(place_ids))
-        )
-    } if place_ids else {}
+                Category.icon,
+            )
+            .join(Category, Category.id == place_categories_table.c.category_id)
+            .where(place_categories_table.c.place_id.in_(place_ids))
+            .order_by(place_categories_table.c.place_id, place_categories_table.c.category_id)
+        ).all() if place_ids else []
+    category_ids: dict[UUID, list[UUID]] = {}
+    primary_category_icons: dict[UUID, str] = {}
+    for place_id, category_id, is_primary, icon in category_rows:
+        category_ids.setdefault(place_id, []).append(category_id)
+        if is_primary:
+            primary_category_icons[place_id] = icon
+
+    tag_ids: dict[UUID, list[UUID]] = {}
+    tag_rows = database_session.execute(
+        select(place_tags_table.c.place_id, place_tags_table.c.tag_id)
+        .where(place_tags_table.c.place_id.in_(place_ids))
+        .order_by(place_tags_table.c.place_id, place_tags_table.c.tag_id)
+    ).all() if place_ids else []
+    for place_id, tag_id in tag_rows:
+        tag_ids.setdefault(place_id, []).append(tag_id)
 
     items = [
         PlaceMapRead(
@@ -172,24 +166,12 @@ def get_map_places(
             latitude=latitude,
             status=MapStatusRead(
                 id=place.status.id,
-                name=place.status.name,
-                slug=place.status.slug,
                 color=place.status.color,
-                functional_state=place.status.functional_state,
             ),
-            categories=[MapCategoryRead(id=category.id, name=category.name, icon=category.icon, is_primary=primary_categories.get((place.id, category.id), False)) for category in place.categories],
-            tags=[
-                MapTagRead(
-                    id=tag.id,
-                    name=tag.name,
-                    color=tag.color,
-                )
-                for tag in place.tags
-            ],
+            primary_category_icon=primary_category_icons.get(place.id),
+            category_ids=category_ids.get(place.id, []),
+            tag_ids=tag_ids.get(place.id, []),
             is_favorite=place.is_favorite,
-            is_visited=place.status.functional_state == "visited",
-            interest_rating=place.interest_rating,
-            visit_rating=place.visit_rating,
         )
         for place, longitude, latitude in rows
     ]

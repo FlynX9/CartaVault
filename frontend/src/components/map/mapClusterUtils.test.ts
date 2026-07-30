@@ -9,9 +9,11 @@ const place = (id: string, latitude: number, longitude: number): MapPlace => ({
   name: id,
   latitude,
   longitude,
-  status: { id: '00000000-0000-4000-8000-000000000002', name: 'À faire', slug: 'a-faire', color: '#0FA68A', functional_state: 'non_visited' },
-  categories: [],
-  tags: [],
+  status: { id: '00000000-0000-4000-8000-000000000002', color: '#0FA68A' },
+  primary_category_icon: null,
+  category_ids: [],
+  tag_ids: [],
+  is_favorite: false,
 })
 
 describe('clusterMapPlaces', () => {
@@ -35,4 +37,25 @@ describe('clusterMapPlaces', () => {
     expect(clusters).toHaveLength(2)
     expect(clusters.map((cluster) => cluster.places[0].id)).toEqual(['a', 'b'])
   })
+
+  it.each([500, 2_000, 10_000])(
+    'clusters %i deterministic markers without blocking navigation',
+    (size) => {
+      const places = Array.from({ length: size }, (_, index) => place(
+        String(index),
+        41 + (index % 250) * 0.008,
+        -5 + Math.floor(index / 250) * 0.008,
+      ))
+      const startedAt = performance.now()
+      const clusters = clusterMapPlaces(
+        places,
+        (item) => ({ x: item.longitude * 256, y: item.latitude * 256 }),
+      )
+      const elapsedMilliseconds = performance.now() - startedAt
+
+      console.info(`[map-cluster-benchmark] markers=${size} clusters=${clusters.length} duration_ms=${elapsedMilliseconds.toFixed(2)}`)
+      expect(clusters.length).toBeLessThan(size)
+      expect(elapsedMilliseconds).toBeLessThan(250)
+    },
+  )
 })

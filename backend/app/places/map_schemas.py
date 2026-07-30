@@ -1,33 +1,13 @@
 from uuid import UUID
-from typing import Literal
 
 from pydantic import BaseModel
-
-class MapCategoryRead(BaseModel):
-    """Minimal category representation used by map markers."""
-
-    id: UUID
-    name: str
-    icon: str
-    is_primary: bool
-
-
-class MapTagRead(BaseModel):
-    """Minimal tag representation used by map markers."""
-
-    id: UUID
-    name: str
-    color: str
 
 
 class MapStatusRead(BaseModel):
     """Minimal tracking-status representation used by map markers."""
 
     id: UUID
-    name: str
-    slug: str
     color: str
-    functional_state: Literal["non_visited", "visited"]
 
 
 class PlaceMapRead(BaseModel):
@@ -39,12 +19,10 @@ class PlaceMapRead(BaseModel):
     longitude: float
     latitude: float
     status: MapStatusRead
-    categories: list[MapCategoryRead]
-    tags: list[MapTagRead]
+    primary_category_icon: str | None
+    category_ids: list[UUID]
+    tag_ids: list[UUID]
     is_favorite: bool
-    is_visited: bool
-    interest_rating: float | None
-    visit_rating: float | None
 
 
 class PlaceMapPageRead(BaseModel):

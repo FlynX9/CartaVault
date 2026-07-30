@@ -12,9 +12,11 @@ const place: MapPlace = {
   name: 'Manufacture',
   latitude: 48,
   longitude: 2,
-  status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', functional_state: 'non_visited' },
-  categories: [],
-  tags: [],
+  status: { id: 'status-id', color: '#2563EB' },
+  primary_category_icon: null,
+  category_ids: ['category-id'],
+  tag_ids: ['tag-id'],
+  is_favorite: false,
 }
 const nearbyPlace: MapPlace = {
   ...place,
@@ -58,6 +60,27 @@ function MapHarness({ initiallySelected = false, markerFilter }: { initiallySele
 }
 
 describe('PoiMap selection lifecycle', () => {
+  it('preserves the Leaflet map instance across panel layout changes', () => {
+    const props = {
+      places: [place],
+      selectedPlaceId: null,
+      initialView: { center: [48, 2] as [number, number], zoom: 13 },
+      onBoundsChange: vi.fn(),
+      onViewChange: vi.fn(),
+      onPlaceSelect: vi.fn(),
+      focusRequest: null,
+      onPopupClose: vi.fn(),
+      basemapId: 'cartavault-light' as const,
+      onBasemapTileError: vi.fn(),
+    }
+    const { container, rerender } = render(<PoiMap {...props} layoutKey="closed-closed" />)
+    const mapContainer = container.querySelector('.leaflet-container')
+
+    rerender(<PoiMap {...props} layoutKey="open-open" />)
+
+    expect(container.querySelector('.leaflet-container')).toBe(mapContainer)
+  })
+
   it('keeps the selected POI outside its cluster and marks it as selected', async () => {
     const { container } = render(
       <PoiMap
@@ -103,6 +126,35 @@ describe('PoiMap selection lifecycle', () => {
     expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
   })
 
+  it('keeps clustering enabled for very large marker sets at maximum zoom', async () => {
+    const places = Array.from({ length: 751 }, (_, index) => ({
+      ...place,
+      id: `place-${index}`,
+      name: `Lieu ${index}`,
+      latitude: 48 + index * 0.0000001,
+      longitude: 2 + index * 0.0000001,
+    }))
+    const { container } = render(
+      <PoiMap
+        places={places}
+        selectedPlaceId={null}
+        initialView={{ center: [48, 2], zoom: 19 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={vi.fn()}
+        focusRequest={null}
+        layoutKey="large-maximum-zoom"
+        onPopupClose={vi.fn()}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => expect(container.querySelectorAll('.cv-map-cluster-container').length).toBeGreaterThan(0))
+    expect(container.querySelectorAll('.cv-map-cluster-container').length).toBeLessThan(751)
+    expect(screen.queryByTitle('Lieu 0')).not.toBeInTheDocument()
+  })
+
   it('selects the marker and exposes its enriched detail on the first real marker click', async () => {
     render(<MapHarness />)
 
@@ -138,6 +190,13 @@ describe('PoiMap selection lifecycle', () => {
     const { container } = render(<MapHarness markerFilter={{ query: 'Absent', categoryId: '', statusId: null, tagId: '' }} />)
 
     await waitFor(() => expect(container.querySelector('.status-marker.muted')).toBeInTheDocument())
+  })
+
+  it('filters lightweight category and tag identifiers without full associations', async () => {
+    const { container } = render(<MapHarness markerFilter={{ query: '', categoryId: 'category-id', statusId: 'status-id', tagId: 'tag-id' }} />)
+
+    await waitFor(() => expect(container.querySelector('.status-marker')).toBeInTheDocument())
+    expect(container.querySelector('.status-marker.muted')).not.toBeInTheDocument()
   })
 
   it('makes map markers keyboard-focusable and reuses the shared multi-selection', async () => {

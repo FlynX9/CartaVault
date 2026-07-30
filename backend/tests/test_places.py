@@ -40,7 +40,22 @@ def test_place_crud_uses_map_and_map_filters(integration_client: TestClient, poi
 
     markers = integration_client.get("/places/map", params={"map_id": str(poi_map.id), "min_latitude": 48, "max_latitude": 49, "min_longitude": 2, "max_longitude": 3})
     assert markers.status_code == 200
-    assert markers.json()[0]["map_id"] == str(poi_map.id)
+    marker = markers.json()[0]
+    assert marker["map_id"] == str(poi_map.id)
+    assert set(marker) == {
+        "id",
+        "map_id",
+        "name",
+        "longitude",
+        "latitude",
+        "status",
+        "primary_category_icon",
+        "category_ids",
+        "tag_ids",
+        "is_favorite",
+    }
+    assert set(marker["status"]) == {"id", "color"}
+    assert len(markers.content) < len(created.content)
 
     markers_with_meta = integration_client.get(
         "/places/map",

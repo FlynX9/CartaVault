@@ -49,7 +49,18 @@ export interface PlaceDetails {
 }
 
 export interface PreviewPlace { id: string; name: string; longitude: number | null; latitude: number | null; status: MapStatusSummary; categories: MapCategory[]; tags: MapTag[]; is_favorite?: boolean; is_visited?: boolean; interest_rating?: number | null; visit_rating?: number | null }
-export interface MapPlace extends PreviewPlace { map_id: string; longitude: number; latitude: number }
+export interface MapPlace {
+  id: string
+  map_id: string
+  name: string
+  longitude: number
+  latitude: number
+  status: { id: string; color: string }
+  primary_category_icon: string | null
+  category_ids: string[]
+  tag_ids: string[]
+  is_favorite: boolean
+}
 export interface MapBounds { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }
 export interface PlaceFilters { query: string; categoryIds: string[]; tagIds: string[]; statusIds: string[]; regions: string[]; hasPhotos: boolean | null; createdFrom: string | null; createdTo: string | null; updatedFrom: string | null; updatedTo: string | null; accessValues: string[]; dangerLevels: string[]; conditionValues: string[]; hasValidCoordinates: boolean | null; inTrip: boolean | null; isFavorite: boolean | null; functionalState: 'non_visited' | 'visited' | null; ratingMin: number | null; sortBy: 'name' | 'created_at' | 'updated_at' | 'interest_rating' | 'visit_rating' | 'favorite' | 'relevant_rating' | 'status' | 'country' | 'city'; sortDirection: 'asc' | 'desc' }
 export interface MapView { center: [number, number]; zoom: number }

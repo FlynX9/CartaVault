@@ -48,5 +48,7 @@ def test_category_icons_and_primary_category_lifecycle(integration_client, poi_m
     detail = integration_client.get(f"/places/{place_id}").json()
     assert next(item for item in detail["categories"] if item["is_primary"])["id"] == first.json()["id"]
     markers = integration_client.get("/places/map", params={"map_id": str(poi_map.id), "category_id": first.json()["id"], "min_latitude": 48, "max_latitude": 49, "min_longitude": 2, "max_longitude": 3}).json()
-    assert next(category for category in markers[0]["categories"] if category["is_primary"])["icon"] == "mdi:church"
+    assert markers[0]["primary_category_icon"] == "mdi:church"
+    assert first.json()["id"] in markers[0]["category_ids"]
+    assert tag.json()["id"] in markers[0]["tag_ids"]
     assert database_session.execute(text("SELECT count(*) FROM place_categories WHERE place_id = :id AND is_primary"), {"id": place_id}).scalar() == 1

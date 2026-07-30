@@ -54,6 +54,12 @@ def test_role_matrix_private_visibility_and_cross_map_associations(integration_c
     app.dependency_overrides[get_current_user] = lambda: viewer
     assert integration_client.get(f"/maps/{map_a.id}").status_code == 200
     assert integration_client.get(f"/places/{place_a.json()['id']}").status_code == 200
+    visible_markers = integration_client.get(
+        "/places/map",
+        params={"min_latitude": -89, "max_latitude": 89, "min_longitude": -179, "max_longitude": 179},
+    )
+    assert visible_markers.status_code == 200
+    assert {item["id"] for item in visible_markers.json()} == {place_a.json()["id"]}
     assert integration_client.patch(f"/places/{place_a.json()['id']}", json={"name": "Forbidden"}).status_code == 403
     assert integration_client.post("/categories", json={"map_id": str(map_a.id), "name": "Forbidden"}).status_code == 403
     assert integration_client.post(f"/maps/{map_a.id}/imports/kmz/preview", files={"file": ("empty.kmz", b"invalid", "application/vnd.google-earth.kmz")}).status_code == 403
@@ -72,6 +78,14 @@ def test_role_matrix_private_visibility_and_cross_map_associations(integration_c
     assert integration_client.get(f"/places/{place_a.json()['id']}").status_code == 404
     assert integration_client.get(f"/categories/{category_a.json()['id']}").status_code == 404
     assert integration_client.get(f"/tags/{tag_a.json()['id']}").status_code == 404
+    assert integration_client.get(
+        "/places/map",
+        params={"map_id": str(map_a.id), "min_latitude": -89, "max_latitude": 89, "min_longitude": -179, "max_longitude": 179},
+    ).status_code == 404
+    assert integration_client.get(
+        "/places/map",
+        params={"min_latitude": -89, "max_latitude": 89, "min_longitude": -179, "max_longitude": 179},
+    ).json() == []
 
     item = get_temporary_export(UUID(viewer_export.json()["export_id"]), map_a.id, viewer.id)
     if item is not None: item.path.unlink(missing_ok=True)

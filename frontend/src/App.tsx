@@ -188,7 +188,7 @@ function WorkspaceApp() {
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [mapView, setMapView] = useState<MapView>(INITIAL_MAP_VIEW);
   const [places, setPlaces] = useState<MapPlace[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<PreviewPlace | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<PreviewPlace | MapPlace | null>(null);
   const [placeSelectionMode, setPlaceSelectionMode] = useState(false);
   const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<string>>(
     () => new Set(),
@@ -437,9 +437,12 @@ function WorkspaceApp() {
           name: place.name,
           latitude: place.latitude,
           longitude: place.longitude,
-          status: place.status,
-          categories: place.categories,
-          tags: place.tags,
+          status: { id: place.status.id, color: place.status.color },
+          primary_category_icon:
+            place.categories.find((category) => category.is_primary)?.icon ?? null,
+          category_ids: place.categories.map((category) => category.id),
+          tag_ids: place.tags.map((tag) => tag.id),
+          is_favorite: place.is_favorite === true,
         };
         setPlaces((current) =>
           current.some((item) => item.id === marker.id)
@@ -495,7 +498,7 @@ function WorkspaceApp() {
     setRemovedPlaceId(id);
     setRefreshVersion((value) => value + 1);
   };
-  const handleSelect = (place: PreviewPlace, revealClusteredPlace = false) => {
+  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false) => {
     setSelectedPlace(place);
     setWorkspacePanel("places");
     navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
@@ -949,9 +952,12 @@ function WorkspaceApp() {
         name: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
-        status: place.status,
-        categories: place.categories,
-        tags: place.tags,
+        status: { id: place.status.id, color: place.status.color },
+        primary_category_icon:
+          place.categories.find((category) => category.is_primary)?.icon ?? null,
+        category_ids: place.categories.map((category) => category.id),
+        tag_ids: place.tags.map((tag) => tag.id),
+        is_favorite: place.is_favorite === true,
       };
       setPlaces((current) =>
         current.some((item) => item.id === marker.id)

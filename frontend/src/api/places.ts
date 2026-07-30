@@ -1,9 +1,7 @@
 import type {
-  MapCategory,
   MapPlace,
   MapPlaceResult,
   MapPlaceQuery,
-  MapTag,
   PlaceCategory,
   PlaceListQuery,
   PlaceDetails,
@@ -21,7 +19,7 @@ import type {
 } from '../types/place'
 import { buildPlaceFilterSearchParams, DEFAULT_PLACE_FILTERS } from '../places/placeFilters'
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import { parseMapStatusSummary, parseStatusSummary } from './statuses'
+import { parseStatusSummary } from './statuses'
 import { normalizeTagColor } from '../tags/tagColors'
 import {
   isRecord,
@@ -33,25 +31,6 @@ import {
   readString,
   readUuid,
 } from './validation'
-
-function parseNamedEntity(value: unknown, label: string): MapCategory | MapTag {
-  const context = `La réponse de l'API pour ${label}`
-
-  if (!isRecord(value)) {
-    throw new Error(`${context} est invalide.`)
-  }
-
-  return {
-    id: readUuid(value, 'id', context),
-    name: readString(value, 'name', context),
-  }
-}
-
-function parseMapCategory(value: unknown): MapCategory {
-  const category = parseNamedEntity(value, 'la catégorie')
-  if (!isRecord(value)) throw new Error("La catégorie cartographique est invalide.")
-  return { ...category, icon: readString(value, 'icon', 'La catégorie cartographique'), is_primary: value.is_primary === true }
-}
 
 function parsePlaceCategory(value: unknown): PlaceCategory {
   const context = "La catégorie détaillée du POI"
@@ -71,15 +50,13 @@ function parsePlaceCategory(value: unknown): PlaceCategory {
 }
 
 function parsePlaceTag(value: unknown): PlaceTag {
-  const tag = parseNamedEntity(value, 'le tag')
-  if (!isRecord(value)) throw new Error("Le tag du POI est invalide.")
-  return { ...tag, color: normalizeTagColor(readString(value, 'color', 'Le tag du POI')) }
-}
-
-function parseMapTag(value: unknown): MapTag {
-  const tag = parseNamedEntity(value, 'le tag')
-  if (!isRecord(value)) throw new Error("Le tag cartographique est invalide.")
-  return { ...tag, color: normalizeTagColor(readString(value, 'color', 'Le tag cartographique')) }
+  const context = 'Le tag du POI'
+  if (!isRecord(value)) throw new Error(`${context} est invalide.`)
+  return {
+    id: readUuid(value, 'id', context),
+    name: readString(value, 'name', context),
+    color: normalizeTagColor(readString(value, 'color', context)),
+  }
 }
 
 function parsePlaceMap(value: unknown): PlaceMapSummary {
@@ -118,13 +95,23 @@ function parseMapPlace(value: unknown): MapPlace {
     name: readString(value, 'name', context),
     longitude: readNumber(value, 'longitude', context),
     latitude: readNumber(value, 'latitude', context),
-    status: parseMapStatusSummary(value.status),
-    categories: readArray(value, 'categories', context).map(parseMapCategory),
-    tags: readArray(value, 'tags', context).map(parseMapTag),
+    status: (() => {
+      if (!isRecord(value.status)) throw new Error(`${context} contient un statut invalide.`)
+      return {
+        id: readUuid(value.status, 'id', context),
+        color: readString(value.status, 'color', context),
+      }
+    })(),
+    primary_category_icon: readNullableString(value, 'primary_category_icon', context),
+    category_ids: readArray(value, 'category_ids', context).map((id) => {
+      if (typeof id !== 'string') throw new Error(`${context} contient une catégorie invalide.`)
+      return id
+    }),
+    tag_ids: readArray(value, 'tag_ids', context).map((id) => {
+      if (typeof id !== 'string') throw new Error(`${context} contient un tag invalide.`)
+      return id
+    }),
     is_favorite: value.is_favorite === true,
-    is_visited: value.is_visited === true,
-    interest_rating: typeof value.interest_rating === 'number' ? readNumber(value, 'interest_rating', context) : null,
-    visit_rating: typeof value.visit_rating === 'number' ? readNumber(value, 'visit_rating', context) : null,
   }
 }
 

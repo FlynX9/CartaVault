@@ -14,15 +14,15 @@ export function MapResizeWatcher({ layoutKey }: MapResizeWatcherProps) {
   }, [layoutKey, map])
 
   useEffect(() => {
-    let timeout: number | undefined
+    let frame: number | undefined
     const handleResize = () => {
-      window.clearTimeout(timeout)
-      timeout = window.setTimeout(() => map.invalidateSize({ pan: false }), 120)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => map.invalidateSize({ pan: false }))
     }
     window.addEventListener('resize', handleResize)
     return () => {
       window.removeEventListener('resize', handleResize)
-      window.clearTimeout(timeout)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
     }
   }, [map])
 
@@ -31,15 +31,15 @@ export function MapResizeWatcher({ layoutKey }: MapResizeWatcherProps) {
     const container = mapWithContainer.getContainer?.()
     if (!container || typeof ResizeObserver === 'undefined') return
 
-    let timeout: number | undefined
+    let frame: number | undefined
     const observer = new ResizeObserver(() => {
-      window.clearTimeout(timeout)
-      timeout = window.setTimeout(() => map.invalidateSize({ pan: false }), 120)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(() => map.invalidateSize({ pan: false }))
     })
     observer.observe(container)
     return () => {
       observer.disconnect()
-      window.clearTimeout(timeout)
+      if (frame !== undefined) window.cancelAnimationFrame(frame)
     }
   }, [map])
 

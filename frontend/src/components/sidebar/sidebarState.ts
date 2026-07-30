@@ -1,15 +1,13 @@
-import type { PreviewPlace } from '../../types/place'
-
 export type MapSidebarState =
   | { mode: 'closed' }
-  | { mode: 'preview'; place: PreviewPlace }
+  | { mode: 'preview'; place: { id: string } }
   | { mode: 'details'; placeId: string }
   | { mode: 'create' }
   | { mode: 'edit'; placeId: string }
 
 export function deriveMapSidebarState(
   pathname: string,
-  selectedPlace: PreviewPlace | null,
+  selectedPlace: { id: string } | null,
 ): MapSidebarState {
   if (pathname === '/places/new') return { mode: 'create' }
 

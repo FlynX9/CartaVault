@@ -1,8 +1,9 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { Map as LeafletMap } from 'leaflet'
 import { useMap, useMapEvents } from 'react-leaflet'
 
 import type { MapBounds, MapView } from '../../types/place'
+import { hasSignificantBoundsChange } from './mapBoundsChange'
 
 interface MapBoundsWatcherProps {
   onBoundsChange: (bounds: MapBounds) => void
@@ -37,12 +38,14 @@ export function MapBoundsWatcher({
   onViewChange,
 }: MapBoundsWatcherProps) {
   const map = useMap()
+  const publishedBounds = useRef<MapBounds | null>(null)
 
   const publishBounds = useCallback(
     (sourceMap: LeafletMap) => {
       const bounds = readValidBounds(sourceMap)
 
-      if (bounds !== null) {
+      if (bounds !== null && hasSignificantBoundsChange(publishedBounds.current, bounds)) {
+        publishedBounds.current = bounds
         onBoundsChange(bounds)
       }
 
