@@ -9793,7 +9793,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 }
 
 /* Day and night colors identify the timeline permanently. Selection lifts the
-   card above the timeline instead of thickening its border. */
+   active card and reinforces its border. */
 .trip-planner-panel .trip-panel-day > summary {
   background: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 7%, var(--cv-surface, #fff));
   border-radius: 10px 10px 0 0;
@@ -9805,6 +9805,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 .trip-planner-panel .trip-panel-day.is-active {
   z-index: 2;
+  border-width: 2px;
   border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, var(--cv-border-subtle, #dfe7ec));
   box-shadow:
     0 5px 11px color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 14%, transparent),
