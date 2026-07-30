@@ -5,6 +5,7 @@ import {
   type Range,
 } from '@tanstack/react-virtual'
 import { memo, useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react'
+import { measureVirtualRowHeight } from './virtualRowMeasurement'
 
 const OVERSCAN = 8
 const LIST_PADDING = 10
@@ -59,7 +60,7 @@ function VirtualPlaceRowsComponent<T>({
     initialRect: { width: 0, height: 640 },
     getItemKey: (index) => getItemKey(items[index]),
     measureElement: (element) =>
-      element.getBoundingClientRect().height || estimatedRowHeight,
+      measureVirtualRowHeight(element, estimatedRowHeight),
     observeElementRect: (instance, callback) =>
       observeElementRect(instance, (rect) =>
         callback({ ...rect, height: rect.height || 640 }),
