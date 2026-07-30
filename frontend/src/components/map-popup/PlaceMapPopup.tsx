@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { deletePlace, getPlaceDetails, getPlaceHistory, updatePlace } from "../../api/places";
 import { getPlacePhotos } from "../../api/photos";
-import { geocodingService } from "../../geocoding/geocodingService";
-import type { GeocodingResult } from "../../geocoding/types";
 import type { Photo } from "../../types/photo";
 import type { PlaceDetails, PlaceHistoryEvent } from "../../types/place";
 import { buildGoogleMapsUrl } from "../../utils/googleMaps";
@@ -34,15 +32,6 @@ interface Props {
   onEdit: () => void;
   onDeleted: (placeId: string) => void;
   onClose: () => void;
-}
-
-function formatLocation(
-  result: GeocodingResult | null,
-  fallback: string | null,
-): string | null {
-  if (result?.locality)
-    return [result.locality, result.postalCode].filter(Boolean).join(", ");
-  return result?.formattedAddress || fallback;
 }
 
 function formatDate(value: string): string {
@@ -79,8 +68,6 @@ export function PlaceMapPopup({
   const [addingToTrip, setAddingToTrip] = useState(false);
   const [tripDayPickerOpen, setTripDayPickerOpen] = useState(false);
   const [targetDayId, setTargetDayId] = useState("");
-  const [reverseLocation, setReverseLocation] =
-    useState<GeocodingResult | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -89,7 +76,6 @@ export function PlaceMapPopup({
     setPhotosLoading(true);
     setDetailsError(null);
     setPhotosError(null);
-    setReverseLocation(null);
     void getPlaceDetails(placeId, controller.signal)
       .then(setPlace)
       .catch((error: unknown) => {
@@ -126,20 +112,6 @@ export function PlaceMapPopup({
     if (place) titleRef.current?.focus();
   }, [place]);
 
-  useEffect(() => {
-    if (place?.latitude == null || place.longitude == null) return;
-    const controller = new AbortController();
-    void geocodingService
-      .reverse(place.latitude, place.longitude, { signal: controller.signal })
-      .then((results) => {
-        if (!controller.signal.aborted) setReverseLocation(results[0] ?? null);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setReverseLocation(null);
-      });
-    return () => controller.abort();
-  }, [place?.id, place?.latitude, place?.longitude]);
-
   if (detailsLoading)
     return (
       <div className="place-map-popup"><SkeletonList rows={3} label="Chargement du POI" /></div>
@@ -162,7 +134,6 @@ export function PlaceMapPopup({
       : null;
   const fieldEnabled = (field: string) => place.field_config?.[field] !== false;
   const primaryCategory = place.categories.find((item) => item.is_primary);
-  const displayLocation = formatLocation(reverseLocation, place.region);
   const isVisited = place.status.functional_state === "visited";
   const rating = isVisited ? place.visit_rating : place.interest_rating;
   const ratingLabel = isVisited
@@ -384,14 +355,6 @@ export function PlaceMapPopup({
         </p>
       )}
       {historyOpen && <section className="popup-history" aria-label="Historique"><h3>Historique</h3>{historyLoading ? <p>Chargement…</p> : history.length === 0 ? <p>Aucun changement enregistré.</p> : <ol>{history.map((event) => <li key={event.id}><strong>{popupHistoryAction(event.action)}</strong><span>{event.actor_label} · {formatDate(event.created_at)}</span></li>)}</ol>}</section>}
-      {displayLocation && (
-        <div className="popup-location">
-          <span>
-            <MapPin size={17} aria-hidden="true" />
-            {displayLocation}
-          </span>
-        </div>
-      )}
       {fieldEnabled("description") && (
         <section className="popup-description">
           <h3>
