@@ -37,6 +37,7 @@ describe('PlaceMapPopup', () => {
     expect(screen.getAllByRole('button', { name: 'Copier les coordonnées GPS' })).toHaveLength(1)
     expect(screen.getByText('Tags')).toBeVisible(); expect(screen.getByText('Non noté')).toBeVisible()
     expect(screen.getByText('Coordonnées')).toBeVisible()
+    expect(within(screen.getByRole('article', { name: 'Région administrative' })).getByText('Non déterminée')).toBeVisible()
     expect(screen.getByText('Accès')).toBeVisible()
     expect(screen.getByText('Danger')).toBeVisible()
     expect(screen.getByText('Ajouté le')).toBeVisible()
@@ -47,6 +48,13 @@ describe('PlaceMapPopup', () => {
     expect(image).toHaveAttribute('src', expect.stringContaining(`/photos/${PHOTO.id}/file`))
     expect(image).not.toHaveAttribute('src', expect.stringContaining('must-not-be-used'))
     expect(getPlaceDetails).toHaveBeenCalledWith(PLACE_ID, expect.any(AbortSignal)); expect(getPlacePhotos).toHaveBeenCalledWith(PLACE_ID, expect.any(AbortSignal))
+  })
+
+  it('displays the resolved administrative region', async () => {
+    vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, region: 'Grand Est' })
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    const region = await screen.findByRole('article', { name: 'Région administrative' })
+    expect(within(region).getByText('Grand Est')).toBeVisible()
   })
 
   it('renders the primary category icon in the overview area', async () => {

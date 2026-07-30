@@ -43,7 +43,7 @@ def test_role_matrix_private_visibility_and_cross_map_associations(integration_c
     assert owner_maps[str(map_a.id)]["is_shared"] is True
     assert owner_maps[str(map_b.id)]["is_shared"] is False
     place_a = integration_client.post("/places", json={"name": "Owned place", "map_id": str(map_a.id), "latitude": 48, "longitude": 2})
-    place_b = integration_client.post("/places", json={"name": "Other map place", "map_id": str(map_b.id), "latitude": 49, "longitude": 3})
+    place_b = integration_client.post("/places", json={"name": "Other map place", "map_id": str(map_b.id), "latitude": 49, "longitude": 3, "confirm_outside_country": True})
     assert place_a.status_code == place_b.status_code == 201
     category_a = integration_client.post("/categories", json={"map_id": str(map_a.id), "name": f"Category {uuid4()}"})
     tag_a = integration_client.post("/tags", json={"map_id": str(map_a.id), "name": f"Tag {uuid4()}"})

@@ -10,9 +10,9 @@ describe('normalized place API', () => {
   it('accepts explicit map truncation metadata', () => {
     expect(parseMapPlacesResult({ items: [base], total: 2, returned: 1, truncated: true })).toMatchObject({ total: 2, returned: 1, truncated: true })
   })
-  it('validates detailed map and country summaries without free country', () => {
+  it('validates detailed map and country summaries with optional resolved country', () => {
     const place = parsePlaceDetailsResponse({ ...base, status: { ...base.status, map_id: MAP_ID, is_active: true }, description: null, map: { id: MAP_ID, name: 'France', country: { id: COUNTRY_ID, iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, region: null, construction_date: null, abandonment_date: null, condition: null, access: null, danger_level: null, created_at: '2026-07-13T10:00:00', updated_at: '2026-07-13T10:00:00' })
-    expect(place.map.country.iso_alpha3).toBe('FRA'); expect(place).not.toHaveProperty('country')
+    expect(place.map.country.iso_alpha3).toBe('FRA'); expect(place.country).toBeNull()
   })
   it('sends map_id and status_id to marker and list endpoints', async () => {
     const fetchMock = vi.fn((_input: RequestInfo | URL) => Promise.resolve(new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }))); vi.stubGlobal('fetch', fetchMock)

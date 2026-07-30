@@ -5,12 +5,19 @@ import getpass
 import os
 import sys
 
-from sqlalchemy import MetaData, Table, func, insert, select, update
+from sqlalchemy import MetaData, Table, func, insert, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
+import app.models  # noqa: F401
 from app.auth.security import hash_password, normalize_email
 from app.config import security_settings
 from app.database import SessionLocal
+from app.places.models import Place
+from app.places.reverse_geocoding import (
+    ReverseGeocodingError,
+    apply_region_resolution,
+    get_reverse_geocoder,
+)
 from app.quotas.models import UNLIMITED_PROFILE_ID
 
 
@@ -110,6 +117,46 @@ def bootstrap_from_environment(*, allow_missing: bool = False) -> int:
     return create_admin(*values)
 
 
+def refresh_missing_regions(limit: int) -> int:
+    """Progressively enrich unresolved places; safe to run repeatedly."""
+
+    geocoder = get_reverse_geocoder()
+    resolved = failed = 0
+    with SessionLocal() as session:
+        rows = session.execute(
+            select(
+                Place,
+                func.ST_Y(Place.location).label("latitude"),
+                func.ST_X(Place.location).label("longitude"),
+            )
+            .where(
+                Place.deleted_at.is_(None),
+                Place.location.is_not(None),
+                Place.region_manually_overridden.is_(False),
+                or_(Place.region.is_(None), func.btrim(Place.region) == ""),
+            )
+            .order_by(Place.created_at, Place.id)
+            .limit(limit)
+        ).all()
+        for place, latitude, longitude in rows:
+            try:
+                apply_region_resolution(
+                    place,
+                    geocoder.reverse(float(latitude), float(longitude)),
+                )
+                session.commit()
+                resolved += 1
+            except ReverseGeocodingError as error:
+                session.rollback()
+                failed += 1
+                print(
+                    f"Region refresh skipped for {place.id}: {error.code}",
+                    file=sys.stderr,
+                )
+    print(f"Region refresh complete: {resolved} resolved, {failed} failed.")
+    return 0 if failed == 0 else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -117,9 +164,16 @@ def main() -> int:
     create.add_argument("--email")
     create.add_argument("--name")
     subcommands.add_parser("bootstrap-admin")
+    refresh = subcommands.add_parser("refresh-regions")
+    refresh.add_argument("--limit", type=int, default=100)
     args = parser.parse_args()
     if args.command == "create-admin":
         return create_admin(args.email, args.name)
+    if args.command == "refresh-regions":
+        if args.limit <= 0:
+            print("--limit must be a positive integer", file=sys.stderr)
+            return 2
+        return refresh_missing_regions(args.limit)
     return bootstrap_from_environment()
 
 

@@ -85,6 +85,18 @@ class Place(Base):
         String(100),
         nullable=True,
     )
+    country: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    region_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    region_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    region_admin_level: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    region_source: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    region_resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    region_manually_overridden: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("false"),
+    )
 
     construction_date: Mapped[str | None] = mapped_column(
         String(100),

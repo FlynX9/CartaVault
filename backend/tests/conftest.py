@@ -1,6 +1,7 @@
 import os
 import shutil
 from collections.abc import Generator
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -19,6 +20,7 @@ from app.countries.catalog import load_country_catalog
 from app.countries.models import Country
 from app.maps.models import MapMembership, PoiMap
 from app.main import app
+from app.places.reverse_geocoding import ReverseGeocodingResult, get_reverse_geocoder
 from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
 from app.statuses.service import create_default_statuses
 
@@ -36,6 +38,23 @@ class DatabaseAccessForbidden:
         raise AssertionError(
             "A database-free test attempted to use a database session: "
             f"{attribute_name}"
+        )
+
+
+class EmptyTestReverseGeocoder:
+    """Keep unrelated tests deterministic and completely offline."""
+
+    def reverse(self, latitude: float, longitude: float) -> ReverseGeocodingResult:
+        del latitude, longitude
+        return ReverseGeocodingResult(
+            country=None,
+            country_code=None,
+            region_name=None,
+            region_type=None,
+            region_code=None,
+            admin_level=None,
+            source="test",
+            resolved_at=datetime.now(UTC).replace(tzinfo=None),
         )
 
 
@@ -220,6 +239,7 @@ def api_client() -> Generator[TestClient, None, None]:
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=uuid4(), is_admin=True, is_active=True)
+    app.dependency_overrides[get_reverse_geocoder] = EmptyTestReverseGeocoder
 
     try:
         with TestClient(app) as client:
@@ -227,6 +247,7 @@ def api_client() -> Generator[TestClient, None, None]:
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_reverse_geocoder, None)
 
 
 @pytest.fixture
@@ -250,6 +271,7 @@ def integration_client(
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = lambda: auth_user
+    app.dependency_overrides[get_reverse_geocoder] = EmptyTestReverseGeocoder
 
     try:
         with TestClient(app) as client:
@@ -257,3 +279,4 @@ def integration_client(
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_reverse_geocoder, None)

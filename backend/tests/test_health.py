@@ -53,7 +53,11 @@ def test_place_openapi_and_extra_field_policy_exclude_removed_fields(
         properties = schemas[schema_name]["properties"]
         assert "address" not in properties
         assert "owner" not in properties
-        assert "country" not in properties
+        if schema_name == "PlaceRead":
+            assert "country" in properties
+            assert "country_code" in properties
+        else:
+            assert "country" not in properties
 
     parsed = PlaceCreate.model_validate(
         {

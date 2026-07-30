@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
   Copy,
+  Earth,
   FileText,
   Heart,
   History,
@@ -401,6 +402,13 @@ export function PlaceMapPopup({
         </section>
       )}
       <div className="popup-summary">
+        <article aria-label="Région administrative">
+          <Earth aria-hidden="true" />
+          <p>
+            <b>Région</b>
+            <span>{place.region || "Non déterminée"}</span>
+          </p>
+        </article>
         {coordinates && (
           <article aria-label="Coordonnées GPS">
             <MapPin aria-hidden="true" />

@@ -33,6 +33,13 @@ from app.places.filtering import PlaceFilters, apply_place_filters, get_place_fi
 from app.places.models import Place
 from app.places.fields import normalize_place_field_config
 from app.places.history import add_place_history, changed_values
+from app.places.reverse_geocoding import (
+    ReverseGeocoder,
+    ReverseGeocodingError,
+    apply_region_resolution,
+    get_reverse_geocoder,
+    log_resolution_failure,
+)
 from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceListPosition, PlaceRead, PlaceUpdate
 from app.trash.service import trash_deadline
 from app.tags.models import Tag
@@ -49,6 +56,21 @@ router = APIRouter(
     prefix="/places",
     tags=["places"],
 )
+
+
+def resolve_region_without_blocking_save(
+    place: Place,
+    latitude: float,
+    longitude: float,
+    reverse_geocoder: ReverseGeocoder,
+) -> None:
+    try:
+        apply_region_resolution(
+            place,
+            reverse_geocoder.reverse(latitude, longitude),
+        )
+    except ReverseGeocodingError as error:
+        log_resolution_failure(place.id, error)
 
 
 def synchronize_place_name_references(
@@ -175,6 +197,14 @@ def place_to_read(
         ),
         description=place.description,
         region=place.region,
+        country=place.country,
+        country_code=place.country_code,
+        region_type=place.region_type,
+        region_code=place.region_code,
+        region_admin_level=place.region_admin_level,
+        region_source=place.region_source,
+        region_resolved_at=place.region_resolved_at,
+        region_manually_overridden=place.region_manually_overridden,
         construction_date=place.construction_date,
         abandonment_date=place.abandonment_date,
         condition=place.condition,
@@ -603,6 +633,7 @@ def create_place(
     place_data: PlaceCreate,
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    reverse_geocoder: ReverseGeocoder = Depends(get_reverse_geocoder),
 ) -> PlaceRead:
     """Create a new point of interest."""
 
@@ -657,6 +688,16 @@ def create_place(
         interest_rating=place_data.interest_rating,
         visit_rating=place_data.visit_rating,
     )
+    if place_data.region is not None:
+        place.region_manually_overridden = True
+        place.region_source = "manual"
+    else:
+        resolve_region_without_blocking_save(
+            place,
+            place_data.latitude,
+            place_data.longitude,
+            reverse_geocoder,
+        )
 
     try:
         database_session.add(place)
@@ -688,6 +729,7 @@ def update_place(
     place_data: PlaceUpdate,
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    reverse_geocoder: ReverseGeocoder = Depends(get_reverse_geocoder),
 ) -> PlaceRead:
     """Partially update an existing place."""
 
@@ -697,6 +739,11 @@ def update_place(
     confirmed_outside_country = supplied_data.pop("confirm_outside_country", False)
     audited_fields = {"name", "map_id", "status_id", "description", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "is_favorite", "interest_rating", "visit_rating"}
     before = {field: getattr(place, field) for field in audited_fields}
+    current_longitude, current_latitude = database_session.execute(
+        select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(
+            Place.id == place.id
+        )
+    ).one()
 
     requested_map_id = supplied_data.get("map_id")
     target_map = place.map
@@ -725,9 +772,7 @@ def update_place(
     if latitude is not None and longitude is not None:
         target_latitude, target_longitude = latitude, longitude
     elif requested_map_id is not None:
-        target_longitude, target_latitude = database_session.execute(
-            select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(Place.id == place.id)
-        ).one()
+        target_longitude, target_latitude = current_longitude, current_latitude
     else:
         target_latitude = target_longitude = None
     if target_latitude is not None and target_longitude is not None:
@@ -741,6 +786,15 @@ def update_place(
     for field_name, field_value in supplied_data.items():
         setattr(place, field_name, field_value)
 
+    region_was_supplied = "region" in supplied_data
+    if region_was_supplied:
+        place.region_manually_overridden = True
+        place.region_source = "manual"
+        place.region_type = None
+        place.region_code = None
+        place.region_admin_level = None
+        place.region_resolved_at = None
+
     synchronize_place_name_references(
         database_session,
         place.id,
@@ -752,6 +806,23 @@ def update_place(
             f"POINT({longitude} {latitude})",
             srid=4326,
         )
+        coordinates_changed = (
+            current_latitude is None
+            or current_longitude is None
+            or float(current_latitude) != latitude
+            or float(current_longitude) != longitude
+        )
+        if (
+            coordinates_changed
+            and not region_was_supplied
+            and not place.region_manually_overridden
+        ):
+            resolve_region_without_blocking_save(
+                place,
+                latitude,
+                longitude,
+                reverse_geocoder,
+            )
 
     changes = changed_values(before, {field: getattr(place, field) for field in audited_fields})
     if latitude is not None and longitude is not None:
@@ -775,6 +846,60 @@ def update_place(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to update the place",
         ) from error
+
+
+@router.post(
+    "/{place_id}/refresh-region",
+    response_model=PlaceRead,
+)
+def refresh_place_region(
+    place_id: UUID,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    reverse_geocoder: ReverseGeocoder = Depends(get_reverse_geocoder),
+) -> PlaceRead:
+    """Explicitly replace regional data from the configured provider."""
+
+    place = require_place_role(database_session, place_id, current_user, "editor")
+    longitude, latitude = database_session.execute(
+        select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(
+            Place.id == place.id
+        )
+    ).one()
+    if latitude is None or longitude is None:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "PLACE_COORDINATES_REQUIRED",
+                "message": "Des coordonnées valides sont nécessaires pour recalculer la région.",
+            },
+        )
+    try:
+        result = reverse_geocoder.reverse(float(latitude), float(longitude))
+    except ReverseGeocodingError as error:
+        log_resolution_failure(place.id, error)
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": error.code,
+                "message": (
+                    "La région n’a pas pu être recalculée. "
+                    "Le service de géocodage est momentanément indisponible."
+                ),
+            },
+        ) from error
+
+    previous_region = place.region
+    apply_region_resolution(place, result)
+    add_place_history(
+        database_session,
+        place.id,
+        current_user.id,
+        "region_refreshed",
+        {"region": {"old": previous_region, "new": place.region}},
+    )
+    database_session.commit()
+    return read_place(database_session, place.id)
 
 
 @router.delete(

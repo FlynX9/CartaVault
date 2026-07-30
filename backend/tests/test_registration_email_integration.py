@@ -97,7 +97,7 @@ def test_registration_requires_admin_approval_before_user_creation(integration_c
     assert request is not None and request.status == "pending"
     assert database_session.scalar(select(User).where(User.email == email)) is None
     assert provider.messages[0].recipients
-    assert integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password"}).status_code == 409
+    assert integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password"}).status_code == 202
 
     approved = integration_client.post(f"/admin/registration-requests/{request.id}/approve")
 

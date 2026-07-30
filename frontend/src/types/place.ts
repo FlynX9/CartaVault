@@ -18,6 +18,14 @@ export interface PlaceDetails {
   status: PlaceStatusSummary
   description: string | null
   region: string | null
+  country?: string | null
+  country_code?: string | null
+  region_type?: string | null
+  region_code?: string | null
+  region_admin_level?: number | null
+  region_source?: string | null
+  region_resolved_at?: string | null
+  region_manually_overridden?: boolean
   construction_date: string | null
   abandonment_date: string | null
   condition: string | null

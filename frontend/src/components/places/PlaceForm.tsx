@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { ChevronDown, Star, X } from 'lucide-react'
+import { Check, ChevronDown, LoaderCircle, RefreshCw, Star, X } from 'lucide-react'
 
 import { validatePlaceForm } from '../../forms/placeForm'
 import type {
@@ -29,6 +29,8 @@ interface PlaceFormProps {
   onSubmit: (values: PlaceFormValues) => Promise<void>
   draftPosition?: DraftPosition | null
   onDraftPositionChange?: (position: DraftPosition) => void
+  regionMetadata?: { manuallyOverridden: boolean; resolvedAt: string | null } | null
+  onRefreshRegion?: () => Promise<string | null>
   afterLocation?: ReactNode
 }
 
@@ -116,6 +118,8 @@ export function PlaceForm({
   onSubmit,
   draftPosition = null,
   onDraftPositionChange = () => undefined,
+  regionMetadata = null,
+  onRefreshRegion,
   afterLocation = null,
 }: PlaceFormProps) {
   const [values, setValues] = useState(initialValues)
@@ -124,10 +128,16 @@ export function PlaceForm({
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
   const [tagQuery, setTagQuery] = useState('')
+  const [regionEdited, setRegionEdited] = useState(false)
+  const [regionRefreshState, setRegionRefreshState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [regionRefreshError, setRegionRefreshError] = useState<string | null>(null)
   const errors = { ...localErrors, ...serverErrors }
 
   useEffect(() => {
     setValues(initialValues)
+    setRegionEdited(false)
+    setRegionRefreshState('idle')
+    setRegionRefreshError(null)
   }, [initialValues])
 
   useEffect(() => {
@@ -145,6 +155,11 @@ export function PlaceForm({
       }
       return next
     })
+    if (field === 'region') {
+      setRegionEdited(true)
+      setRegionRefreshState('idle')
+      setRegionRefreshError(null)
+    }
     setLocalErrors((current) => ({ ...current, [field]: undefined }))
   }
 
@@ -171,6 +186,20 @@ export function PlaceForm({
   const selectableStatuses = statuses.filter((item) => item.slug !== 'importe')
   const selectableCategories = categories.filter((item) => item.name !== 'Importé')
   const visibleTags = tags.filter((tag) => tag.name.toLocaleLowerCase().includes(tagQuery.trim().toLocaleLowerCase())).slice(0, 10)
+  const refreshRegion = async () => {
+    if (!onRefreshRegion) return
+    setRegionRefreshState('loading')
+    setRegionRefreshError(null)
+    try {
+      const region = await onRefreshRegion()
+      setValues((current) => ({ ...current, region: region ?? '' }))
+      setRegionEdited(false)
+      setRegionRefreshState('success')
+    } catch (caught) {
+      setRegionRefreshState('error')
+      setRegionRefreshError(caught instanceof Error ? caught.message : 'La région n’a pas pu être recalculée.')
+    }
+  }
 
   return (
     <form className="place-form" onSubmit={handleSubmit} noValidate>
@@ -207,8 +236,23 @@ export function PlaceForm({
                 maxLength={maxLength}
                 onChange={(event) => setValue(field, event.target.value)}
                 aria-invalid={Boolean(errors[field])}
+                aria-label={field === 'region' ? 'Région' : undefined}
               />
               {errors[field] && <small className="field-error">{errors[field]}</small>}
+              {field === 'region' && <>
+                <small className="form-hint region-source-hint">
+                  {regionEdited || regionMetadata?.manuallyOverridden
+                    ? 'Valeur corrigée manuellement'
+                    : regionMetadata?.resolvedAt
+                      ? 'Déterminée automatiquement depuis les coordonnées'
+                      : 'Région non déterminée'}
+                </small>
+                {onRefreshRegion && <button className="region-refresh-button" type="button" disabled={regionRefreshState === 'loading'} onClick={() => void refreshRegion()}>
+                  {regionRefreshState === 'loading' ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : regionRefreshState === 'success' ? <Check size={15} aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
+                  {regionRefreshState === 'loading' ? 'Recalcul en cours…' : regionRefreshState === 'success' ? 'Région recalculée' : 'Recalculer depuis les coordonnées'}
+                </button>}
+                {regionRefreshError && <small className="field-error" role="alert">{regionRefreshError}</small>}
+              </>}
             </label>
           ))}
           {fieldEnabled('description') && <label className="form-field form-field-wide general-description">

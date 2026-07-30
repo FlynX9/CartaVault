@@ -68,6 +68,34 @@ routing_settings = RoutingSettings()
 
 
 @dataclass(frozen=True)
+class ReverseGeocodingSettings:
+    base_url: str = os.getenv(
+        "CARTAVAULT_REVERSE_GEOCODING_URL",
+        "https://nominatim.openstreetmap.org",
+    ).strip().rstrip("/")
+    user_agent: str = os.getenv(
+        "CARTAVAULT_REVERSE_GEOCODING_USER_AGENT",
+        "CartaVault/0.1 (self-hosted POI manager)",
+    ).strip()
+    timeout_seconds: int = _positive_int(
+        "CARTAVAULT_REVERSE_GEOCODING_TIMEOUT_SECONDS",
+        8,
+    )
+    minimum_interval_seconds: int = _positive_int(
+        "CARTAVAULT_REVERSE_GEOCODING_MIN_INTERVAL_SECONDS",
+        1,
+    )
+    def __post_init__(self) -> None:
+        if not self.base_url.startswith(("http://", "https://")):
+            raise RuntimeError("CARTAVAULT_REVERSE_GEOCODING_URL must be an HTTP(S) URL")
+        if not self.user_agent:
+            raise RuntimeError("CARTAVAULT_REVERSE_GEOCODING_USER_AGENT cannot be empty")
+
+
+reverse_geocoding_settings = ReverseGeocodingSettings()
+
+
+@dataclass(frozen=True)
 class GoogleRoutesSettings:
     base_url: str = os.getenv("GOOGLE_MAPS_ROUTES_BASE_URL", "https://routes.googleapis.com")
     timeout_seconds: int = _positive_int("GOOGLE_MAPS_ROUTES_TIMEOUT_SECONDS", 15)

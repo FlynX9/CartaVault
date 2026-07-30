@@ -149,6 +149,14 @@ class PlaceRead(BaseModel):
     status: PlaceStatusSummary
     description: str | None
     region: str | None
+    country: str | None
+    country_code: str | None
+    region_type: str | None
+    region_code: str | None
+    region_admin_level: int | None
+    region_source: str | None
+    region_resolved_at: datetime | None
+    region_manually_overridden: bool
     construction_date: str | None
     abandonment_date: str | None
     condition: str | None

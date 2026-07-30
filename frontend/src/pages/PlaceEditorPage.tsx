@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCategories } from '../api/categories'
 import { ApiError } from '../api/client'
-import { addPlaceCategory, addPlaceTag, createPlace, getPlaceDetails, removePlaceCategory, removePlaceTag, setPrimaryPlaceCategory, updatePlace } from '../api/places'
+import { addPlaceCategory, addPlaceTag, createPlace, getPlaceDetails, refreshPlaceRegion, removePlaceCategory, removePlaceTag, setPrimaryPlaceCategory, updatePlace } from '../api/places'
 import { getTags } from '../api/tags'
 import { getStatuses } from '../api/statuses'
 import { uploadPlacePhoto } from '../api/photos'
@@ -11,7 +11,7 @@ import { PhotoUploader } from '../components/photos/PhotoUploader'
 import { PlaceForm } from '../components/places/PlaceForm'
 import { buildCreatePayload, buildMinimalUpdatePayload, calculateAssociationDiff, EMPTY_PLACE_FORM_VALUES, mergeApiFieldErrors, placeDetailsToFormValues } from '../forms/placeForm'
 import type { PoiMap } from '../types/map'
-import type { DraftPosition, PlaceCategory, PlaceFormErrors, PlaceFormValues, PlaceMutation, PlaceTag } from '../types/place'
+import type { DraftPosition, PlaceCategory, PlaceDetails, PlaceFormErrors, PlaceFormValues, PlaceMutation, PlaceTag } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
 import { withMap } from '../utils/map'
@@ -25,6 +25,8 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
   const { placeId: routePlaceId } = useParams<{ placeId: string }>(); const placeId = providedPlaceId ?? routePlaceId; const navigate = useNavigate()
   const { confirm, confirmationDialog } = useConfirmDialog()
   const [initialValues, setInitialValues] = useState<PlaceFormValues | null>(null); const [categories, setCategories] = useState<PlaceCategory[]>([]); const [tags, setTags] = useState<PlaceTag[]>([]); const [statuses, setStatuses] = useState<PlaceStatusSummary[]>([]); const [pendingPhotos, setPendingPhotos] = useState<File[]>([]); const [createdPlaceId, setCreatedPlaceId] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [submitting, setSubmitting] = useState(false); const [notFound, setNotFound] = useState(false); const [error, setError] = useState<string | null>(null); const [fieldErrors, setFieldErrors] = useState<PlaceFormErrors>({})
+  const [regionDetails, setRegionDetails] = useState<PlaceDetails | null>(null)
+  const [refreshedRegionBaseline, setRefreshedRegionBaseline] = useState<string | null | undefined>(undefined)
   useEffect(() => { if (mode !== 'create' || (geographicPrefill === null && coordinatePrefill === null)) return; setInitialValues((current) => { if (current === null) return current; if (coordinatePrefill !== null) { const latitude = String(coordinatePrefill.latitude); const longitude = String(coordinatePrefill.longitude); if (current.latitude === latitude && current.longitude === longitude) return current; return { ...current, latitude, longitude } } const latitude = geographicPrefill!.latitude.toFixed(6); const longitude = geographicPrefill!.longitude.toFixed(6); if (current.name === geographicPrefill!.name && current.latitude === latitude && current.longitude === longitude) return current; return { ...current, name: geographicPrefill!.name, latitude, longitude } }) }, [coordinatePrefill, geographicPrefill, initialValues, mode])
   useEffect(() => { if (mode !== 'edit' || initialValues === null) return; const latitude = Number(initialValues.latitude); const longitude = Number(initialValues.longitude); if (Number.isFinite(latitude) && Number.isFinite(longitude)) onDraftPositionChange({ latitude, longitude }) }, [initialValues, mode, onDraftPositionChange])
   useEffect(() => {
@@ -50,6 +52,8 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
         selectableStatuses.push(place.status)
       }
       setStatuses(selectableStatuses)
+      setRegionDetails(place)
+      setRefreshedRegionBaseline(undefined)
       setInitialValues(place
         ? placeDetailsToFormValues(place)
         : { ...EMPTY_PLACE_FORM_VALUES, mapId: activeMapId ?? '', statusId: loadedStatuses.find((item) => item.is_default)?.id ?? '' })
@@ -91,7 +95,10 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
         savedId = created.id
         setCreatedPlaceId(savedId)
       } else if (mode === 'edit' && placeId) {
-        const payload = buildMinimalUpdatePayload(initialValues, values)
+        const updateBaseline = refreshedRegionBaseline === undefined
+          ? initialValues
+          : { ...initialValues, region: refreshedRegionBaseline ?? '' }
+        const payload = buildMinimalUpdatePayload(updateBaseline, values)
         if (Object.keys(payload).length) {
           await updatePlace(placeId, {
             ...payload,
@@ -145,8 +152,15 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
       setSubmitting(false)
     }
   }
+  const recalculateRegion = async (): Promise<string | null> => {
+    if (!placeId) throw new Error('Enregistrez d’abord le POI avant de recalculer sa région.')
+    const refreshed = await refreshPlaceRegion(placeId)
+    setRegionDetails(refreshed)
+    setRefreshedRegionBaseline(refreshed.region)
+    return refreshed.region
+  }
   if (loading) return <section className="details-state"><SkeletonList rows={5} label="Chargement du formulaire" /></section>
   if (notFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withMap('/', activeMapId)}>← Retour à la carte</Link></section>
   if (!initialValues) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher le formulaire</h2><p>{error}</p></section>
-  return <><article className={`editor-page${embedded ? ' embedded' : ''}`}>{!embedded && <Link className="back-link" to={withMap('/', activeMapId)}>← Annuler</Link>}<header className="editor-header"><p className="details-kicker">{mode === 'create' ? 'Nouveau point d’intérêt' : 'Modification'}</p><h2>{mode === 'create' ? 'Ajouter un POI' : initialValues.name}</h2></header><PlaceForm initialValues={initialValues} maps={maps} allowMapChange={mode === 'edit'} categories={categories} tags={tags} statuses={statuses} submitLabel={mode === 'create' ? 'Créer le POI' : 'Enregistrer les modifications'} isSubmitting={submitting} serverErrors={fieldErrors} globalError={error} draftPosition={draftPosition} onDraftPositionChange={onDraftPositionChange} afterLocation={mode === 'create' ? <PhotoUploader files={pendingPhotos} onChange={setPendingPhotos} disabled={submitting} /> : mode === 'edit' && placeId ? <PhotoGalleryManager placeId={placeId} onChanged={() => onPlaceMutated({ placeId, mapId: initialValues.mapId })} /> : null} onSubmit={submit} /></article>{confirmationDialog}</>
+  return <><article className={`editor-page${embedded ? ' embedded' : ''}`}>{!embedded && <Link className="back-link" to={withMap('/', activeMapId)}>← Annuler</Link>}<header className="editor-header"><p className="details-kicker">{mode === 'create' ? 'Nouveau point d’intérêt' : 'Modification'}</p><h2>{mode === 'create' ? 'Ajouter un POI' : initialValues.name}</h2></header><PlaceForm initialValues={initialValues} maps={maps} allowMapChange={mode === 'edit'} categories={categories} tags={tags} statuses={statuses} submitLabel={mode === 'create' ? 'Créer le POI' : 'Enregistrer les modifications'} isSubmitting={submitting} serverErrors={fieldErrors} globalError={error} draftPosition={draftPosition} onDraftPositionChange={onDraftPositionChange} regionMetadata={regionDetails ? { manuallyOverridden: regionDetails.region_manually_overridden === true, resolvedAt: regionDetails.region_resolved_at ?? null } : null} onRefreshRegion={mode === 'edit' ? recalculateRegion : undefined} afterLocation={mode === 'create' ? <PhotoUploader files={pendingPhotos} onChange={setPendingPhotos} disabled={submitting} /> : mode === 'edit' && placeId ? <PhotoGalleryManager placeId={placeId} onChanged={() => onPlaceMutated({ placeId, mapId: initialValues.mapId })} /> : null} onSubmit={submit} /></article>{confirmationDialog}</>
 }

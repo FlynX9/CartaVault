@@ -92,6 +92,12 @@ Categories and tags are map-scoped. Categories use the shared closed icon catalo
 
 Countries come from the local catalog. Each map belongs to one country, and every place, category, tag, trip, photo, import, and export is constrained to a compatible map. Country boundaries are used for map focus and optional route-country validation.
 
+Place regions can be resolved server-side from GPS coordinates through
+Nominatim, persisted without replacing legacy manual values, and refreshed by
+map editors. Configuration, normalization order, failure behavior and the
+rerunnable backfill command are documented in
+[`../docs/reverse-geocoding.md`](../docs/reverse-geocoding.md).
+
 ## Prerequisites
 
 - Python 3.14;

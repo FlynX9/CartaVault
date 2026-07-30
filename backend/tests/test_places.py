@@ -31,11 +31,12 @@ def test_place_crud_uses_map_and_map_filters(integration_client: TestClient, poi
     place = created.json()
     assert place["map_id"] == str(poi_map.id)
     assert place["map"]["country"]["iso_alpha3"] == "FRA"
-    assert "country" not in place
+    assert place["country"] is None
+    assert place["country_code"] is None
 
     listed = integration_client.get("/places", params={"map_id": str(poi_map.id)})
     assert place["id"] in {item["id"] for item in listed.json()}
-    assert all("country" not in item for item in listed.json())
+    assert all(item["country"] is None for item in listed.json())
 
     markers = integration_client.get("/places/map", params={"map_id": str(poi_map.id), "min_latitude": 48, "max_latitude": 49, "min_longitude": 2, "max_longitude": 3})
     assert markers.status_code == 200

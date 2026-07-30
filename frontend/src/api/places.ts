@@ -97,6 +97,14 @@ function parsePlaceMap(value: unknown): PlaceMapSummary {
   }
 }
 
+function readOptionalNullableString(
+  value: Record<string, unknown>,
+  field: string,
+  context: string,
+): string | null {
+  return field in value ? readNullableString(value, field, context) : null
+}
+
 function parseMapPlace(value: unknown): MapPlace {
   const context = "La réponse cartographique de l'API"
 
@@ -153,6 +161,14 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     status: parseStatusSummary(payload.status),
     description: readNullableString(payload, 'description', context),
     region: readNullableString(payload, 'region', context),
+    country: readOptionalNullableString(payload, 'country', context),
+    country_code: readOptionalNullableString(payload, 'country_code', context),
+    region_type: readOptionalNullableString(payload, 'region_type', context),
+    region_code: readOptionalNullableString(payload, 'region_code', context),
+    region_admin_level: typeof payload.region_admin_level === 'number' ? payload.region_admin_level : null,
+    region_source: readOptionalNullableString(payload, 'region_source', context),
+    region_resolved_at: typeof payload.region_resolved_at === 'string' ? readDateTime(payload, 'region_resolved_at', context) : null,
+    region_manually_overridden: payload.region_manually_overridden === true,
     construction_date: readNullableString(
       payload,
       'construction_date',
@@ -328,6 +344,20 @@ export async function deletePlaceLink(placeId: string, linkId: string): Promise<
 export async function getPlaceHistory(placeId: string, options: { offset?: number; actions?: string[] } = {}, signal?: AbortSignal): Promise<PlaceHistoryPage> {
   const params = new URLSearchParams(); if (options.offset) params.set('offset', String(options.offset)); for (const action of options.actions ?? []) params.append('actions', action)
   return getJson(`/places/${encodeURIComponent(placeId)}/history`, params, signal) as Promise<PlaceHistoryPage>
+}
+
+export async function refreshPlaceRegion(
+  placeId: string,
+  signal?: AbortSignal,
+): Promise<PlaceDetails> {
+  return parsePlaceDetailsResponse(
+    await sendJson(
+      `/places/${encodeURIComponent(placeId)}/refresh-region`,
+      'POST',
+      {},
+      signal,
+    ),
+  )
 }
 
 export async function bulkUpdatePlaces(payload: PlaceBulkPayload, signal?: AbortSignal): Promise<PlaceBulkResult> {

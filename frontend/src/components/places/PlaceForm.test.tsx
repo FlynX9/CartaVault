@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { EMPTY_PLACE_FORM_VALUES } from '../../forms/placeForm'
@@ -67,5 +67,29 @@ describe('PlaceForm', () => {
     fireEvent.click(thirdStar, { clientX: 2 })
 
     expect(screen.getByText('2.5 / 5')).toBeVisible()
+  })
+
+  it('shows manual state and replaces the region after an explicit recalculation', async () => {
+    const refresh = vi.fn().mockResolvedValue('Grand Est')
+    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', region: 'Correction locale' }} maps={[MAP]} allowMapChange categories={[]} tags={[]} submitLabel="Créer" isSubmitting={false} regionMetadata={{ manuallyOverridden: true, resolvedAt: null }} onRefreshRegion={refresh} onSubmit={vi.fn()} />)
+
+    expect(screen.getByText('Valeur corrigée manuellement')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Recalculer depuis les coordonnées' }))
+
+    expect(await screen.findByRole('button', { name: 'Région recalculée' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Région' })).toHaveValue('Grand Est')
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a readable error when region recalculation fails', async () => {
+    let rejectRefresh: (error: Error) => void = () => undefined
+    const refresh = vi.fn(() => new Promise<string | null>((_, reject) => { rejectRefresh = reject }))
+    render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id' }} maps={[MAP]} allowMapChange categories={[]} tags={[]} submitLabel="Créer" isSubmitting={false} onRefreshRegion={refresh} onSubmit={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recalculer depuis les coordonnées' }))
+    expect(screen.getByRole('button', { name: 'Recalcul en cours…' })).toBeDisabled()
+    rejectRefresh(new Error('Service temporairement indisponible'))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Service temporairement indisponible'))
   })
 })

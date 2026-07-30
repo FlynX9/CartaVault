@@ -81,6 +81,7 @@ It combines a **FastAPI** backend, a **PostgreSQL/PostGIS** database, and a **Re
 - local clustering of standard markers;
 - place creation from the map, geographic search, or GPS coordinates;
 - detailed place records with descriptions, coordinates, categories, tags, status, photos, and links;
+- automatic international administrative-region resolution with manual correction;
 - optional fields configurable per map;
 - favorites, pre-visit and post-visit ratings, sorting, and advanced filters;
 - bulk actions, trash, restore, and audit history;
