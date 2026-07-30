@@ -3851,10 +3851,10 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .trip-panel-night strong { font-size: .7rem; }
 .trip-panel-night small { font-size: .57rem; }
 
-/* Final alignment pass for the trip-planning sidebar. */
-.trip-planner-panel { overflow-y: auto; }
-.trip-panel-section[open].trip-panel-journeys { display: block; min-height: auto; flex: 0 0 auto; }
-.trip-panel-journeys .trip-panel-days { overflow: visible; }
+/* Keep the itinerary header in view while its potentially long timeline scrolls. */
+.trip-planner-panel { overflow: hidden; }
+.trip-panel-section.trip-panel-journeys { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+.trip-panel-journeys .trip-panel-days { min-height: 0; flex: 1 1 auto; overflow-x: hidden; overflow-y: auto; }
 .trip-panel-journeys-actions { display: flex; align-items: center; justify-content: flex-start; gap: .5rem; padding: .5rem; border-top: 1px solid var(--cv-border-subtle, rgb(43 62 89 / 10%)); }
 .trip-panel-add-day-ghost { display: grid; width: 100%; min-height: 3.4rem; place-items: center; margin: 0 0 .4rem; padding: .45rem; color: var(--cv-color-gray); background: rgb(242 245 248 / 76%); border: 1px dashed rgb(100 112 122 / 32%); border-radius: .6rem; cursor: pointer; }
 .trip-panel-add-day-ghost__plus { display: grid; width: 2rem; height: 2rem; place-items: center; color: var(--cv-color-gray); background: white; border: 1px dashed rgb(100 112 122 / 48%); border-radius: .42rem; }
@@ -5203,7 +5203,7 @@ body {
 .trip-planner-panel .trip-panel-section { margin: 0; background: #fff; border-top: 1px solid #e6ecef; border-bottom: 0; }
 .trip-planner-panel .trip-panel-section > summary { min-height: 42px; padding: 0.55rem 1rem; font-size: 0.76rem; font-weight: 680; }
 .trip-planner-panel .trip-panel-section > summary small { font-size: 0.63rem; }
-.trip-planner-panel .trip-panel-days { position: relative; padding: 0.9rem 1rem 1.1rem 3.2rem; overflow: visible; }
+.trip-planner-panel .trip-panel-days { position: relative; padding: 0.9rem 1rem 1.1rem 3.2rem; overflow-x: hidden; overflow-y: auto; }
 .trip-planner-panel .trip-panel-days::before { position: absolute; top: 1.4rem; bottom: 1.5rem; left: 1.9rem; width: 2px; background: linear-gradient(var(--cv-color-teal) 0 72%, var(--cv-color-navy) 72% 100%); content: ''; }
 .trip-planner-panel .trip-panel-days > div { position: relative; }
 .trip-planner-panel .trip-panel-day { position: relative; margin: 0 0 0.8rem; overflow: visible; background: #fff; border: 1px solid #dfe7ec; border-radius: 11px; box-shadow: 0 2px 8px rgb(13 27 42 / 5%); }
@@ -10269,9 +10269,21 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
 /* The journey timeline itself is always visible. These compact controls only
    coordinate the expansion state of its departure, days, nights and arrival. */
 .trip-planner-panel .trip-panel-journeys {
-  display: block;
-  min-height: auto;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.trip-planner-panel .trip-panel-journeys > :not(.trip-panel-days) {
   flex: 0 0 auto;
+}
+
+.trip-planner-panel .trip-panel-journeys .trip-panel-days {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .trip-planner-panel .trip-panel-journeys-header {
