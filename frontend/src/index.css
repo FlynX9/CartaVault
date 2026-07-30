@@ -136,6 +136,34 @@ button {
   font: inherit;
 }
 
+@keyframes cv-button-click-feedback {
+  0% {
+    filter: brightness(1);
+    box-shadow: 0 0 0 0 rgb(15 166 138 / 0%);
+  }
+
+  38% {
+    filter: brightness(1.16);
+    box-shadow: 0 0 0 0.24rem rgb(15 166 138 / 24%);
+  }
+
+  100% {
+    filter: brightness(1);
+    box-shadow: 0 0 0 0.42rem rgb(15 166 138 / 0%);
+  }
+}
+
+button.cv-button-click-feedback {
+  animation: cv-button-click-feedback 320ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.cv-button-click-feedback {
+    animation: none;
+    filter: brightness(.92);
+  }
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: var(--cv-nav-width) minmax(0, 1fr);

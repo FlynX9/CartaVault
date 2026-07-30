@@ -5,6 +5,10 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { I18nProvider } from './i18n/I18nProvider.tsx'
+import { installButtonFeedback } from './ui/buttonFeedback.ts'
+
+const uninstallButtonFeedback = installButtonFeedback()
+if (import.meta.hot) import.meta.hot.dispose(uninstallButtonFeedback)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
