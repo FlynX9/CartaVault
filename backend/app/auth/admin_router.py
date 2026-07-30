@@ -18,7 +18,11 @@ router = APIRouter(prefix="/admin/users", tags=["admin-users"], dependencies=[De
 
 
 def _read(user: User) -> UserRead:
-    return UserRead.model_validate(user, from_attributes=True)
+    result = UserRead.model_validate(user, from_attributes=True)
+    return result.model_copy(update={
+        "avatar_url": f"/admin/console/users/{user.id}/avatar?v={user.avatar_updated_at.isoformat()}"
+        if user.avatar_filename else None,
+    })
 
 
 def _active_admin_count(database_session: Session) -> int:

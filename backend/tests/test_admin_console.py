@@ -1,3 +1,4 @@
+from datetime import datetime
 from urllib.error import URLError
 from uuid import uuid4
 
@@ -50,6 +51,31 @@ def test_admin_users_are_paginated_searchable_and_self_protected(integration_cli
     assert self_demotion.json()["detail"]["code"] == "ADMIN_SELF_PROTECTION"
     assert activation.status_code == 200
     assert activation.json()["state"] == "inactive"
+
+
+def test_admin_users_include_and_can_load_private_avatars(
+    integration_client,
+    database_session,
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setenv("AVATAR_STORAGE_PATH", str(tmp_path))
+    user = _user(database_session, "Avatar Person")
+    user.avatar_filename = "admin-user-avatar.webp"
+    user.avatar_updated_at = datetime(2026, 7, 30, 12, 0, 0)
+    database_session.flush()
+    avatar_content = b"private-avatar"
+    (tmp_path / user.avatar_filename).write_bytes(avatar_content)
+
+    page = integration_client.get("/admin/console/users", params={"q": "Avatar Person"})
+
+    assert page.status_code == 200
+    avatar_url = page.json()["items"][0]["avatar_url"]
+    assert avatar_url.startswith(f"/admin/console/users/{user.id}/avatar?v=")
+    avatar = integration_client.get(avatar_url)
+    assert avatar.status_code == 200
+    assert avatar.headers["content-type"] == "image/webp"
+    assert avatar.content == avatar_content
 
 
 def test_admin_credentials_never_expose_secrets(integration_client, database_session) -> None:

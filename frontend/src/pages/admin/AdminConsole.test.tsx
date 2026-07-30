@@ -94,6 +94,7 @@ describe('AdminConsole', () => {
   it('shows user promotion confirmation above the administration dialog', async () => {
     const target = {
       id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
+      avatar_url: null,
       role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
       last_login_at: null, owned_map_count: 0, shared_map_count: 0, place_count: 0,
       quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
@@ -111,6 +112,7 @@ describe('AdminConsole', () => {
   it('warns before assigning a profile that is below current map usage', async () => {
     const target = {
       id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
+      avatar_url: null,
       role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
       last_login_at: null, owned_map_count: 7, shared_map_count: 0, place_count: 0,
       quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
@@ -125,6 +127,24 @@ describe('AdminConsole', () => {
     expect(screen.getByText(/possède 7 cartes pour une limite de 5/)).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Affecter' }))
     await waitFor(() => expect(assignUserQuotaProfile).toHaveBeenCalledWith(target.id, restricted.id))
+  })
+
+  it('renders a user avatar when the administration API provides one', async () => {
+    const target = {
+      id: '11111111-1111-4111-8111-111111111111', email: 'avatar@example.test', display_name: 'Avatar User',
+      avatar_url: '/admin/console/users/11111111-1111-4111-8111-111111111111/avatar?v=1',
+      role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
+      last_login_at: null, owned_map_count: 0, shared_map_count: 0, place_count: 0,
+      quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
+    }
+    vi.mocked(getAdminUsers).mockResolvedValue({ items: [target], total: 1, page: 1, page_size: 25, pages: 1 })
+
+    render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
+
+    await screen.findByText(target.display_name)
+    const avatar = document.querySelector<HTMLImageElement>('.admin-console__avatar img')
+    expect(avatar).not.toBeNull()
+    expect(avatar).toHaveAttribute('src', expect.stringContaining(target.avatar_url))
   })
 
   it('renders normalized instance diagnostics and refreshes them explicitly', async () => {

@@ -15,6 +15,7 @@ class AdminUserRead(BaseModel):
     id: UUID
     email: str
     display_name: str
+    avatar_url: str | None
     role: Literal["admin", "user"]
     state: Literal["active", "inactive", "deleted"]
     created_at: datetime

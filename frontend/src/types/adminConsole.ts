@@ -3,7 +3,7 @@ export type AdminRole = 'admin' | 'user'
 export type AdminUserState = 'active' | 'inactive' | 'deleted'
 
 export interface AdminUser {
-  id: string; email: string; display_name: string; role: AdminRole; state: AdminUserState
+  id: string; email: string; display_name: string; avatar_url: string | null; role: AdminRole; state: AdminUserState
   created_at: string; updated_at: string; last_login_at: string | null
   owned_map_count: number; shared_map_count: number; place_count: number
   quota_profile_id: string; quota_profile_name: string

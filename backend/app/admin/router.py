@@ -5,6 +5,7 @@ from math import ceil
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
@@ -14,6 +15,7 @@ from app.admin.schemas import (
 )
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
+from app.auth.avatar_storage import resolve_avatar
 from app.auth.models import SystemCredential, User, UserApiCredential, UserSession
 from app.config import credential_settings
 from app.database import get_db
@@ -70,11 +72,23 @@ def _user_read(session: Session, user: User, counts: UserCounts | None = None) -
     profile = user.quota_profile
     return AdminUserRead(
         id=user.id, email=user.email, display_name=user.display_name,
+        avatar_url=f"/admin/console/users/{user.id}/avatar?v={user.avatar_updated_at.isoformat()}" if user.avatar_filename else None,
         role="admin" if user.is_admin else "user", state=state,
         created_at=user.created_at, updated_at=user.updated_at, last_login_at=user.last_login_at,
         owned_map_count=owned, shared_map_count=shared, place_count=places,
         quota_profile_id=user.quota_profile_id, quota_profile_name=profile.name,
     )
+
+
+@router.get("/users/{user_id}/avatar")
+def user_avatar(user_id: UUID, session: Session = Depends(get_db)) -> FileResponse:
+    user = session.get(User, user_id)
+    if user is None or not user.avatar_filename:
+        raise HTTPException(404, "Avatar not found")
+    path = resolve_avatar(user.avatar_filename)
+    if not path.is_file():
+        raise HTTPException(404, "Avatar not found")
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.get("/users", response_model=AdminUserPage)

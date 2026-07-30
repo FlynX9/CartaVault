@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, KeyRound, Mail, Pencil, Plus, ShieldCheck, UserRoundCheck, UserRoundX, X } from 'lucide-react'
 
 import { getEmailSettings, getRegistrationRequests, reviewRegistration, saveEmailSettings, type EmailSettingsStatus, type RegistrationRequest } from '../../api/registration'
+import { accountAvatarUrl } from '../../api/account'
 import { createUser, getUsers, resetUserPassword, updateUser, type AdminUser, type UpdateUserPayload } from '../../api/users'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
@@ -152,7 +153,7 @@ function ResendSettingsPanel() {
 function UserCard({ user, onEdit, onReset }: { user: AdminUser; onEdit: () => void; onReset: () => void }) {
   const initials = user.display_name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'CV'
   return <li className="cv-user-card cv-workspace-panel__card">
-    <span className="cv-user-card__avatar" aria-hidden="true">{initials}</span>
+    <span className="cv-user-card__avatar" aria-hidden="true">{user.avatar_url ? <img src={accountAvatarUrl(user.avatar_url) ?? undefined} alt="" /> : initials}</span>
     <div className="entity-summary cv-user-card__summary"><strong>{user.display_name}</strong><p>{user.email}</p><div className="cv-user-card__badges">{user.is_admin && <span className="admin"><ShieldCheck size={12} />Admin</span>}<span className={user.is_active ? 'active' : 'inactive'}>{user.is_active ? <UserRoundCheck size={12} /> : <UserRoundX size={12} />}{user.is_active ? 'Actif' : 'Inactif'}</span></div></div>
     <div className="entity-actions"><button className="panel-icon-button" type="button" aria-label={`Modifier ${user.display_name}`} title="Modifier" onClick={onEdit}><Pencil size={16} /></button><button className="panel-icon-button" type="button" aria-label={`Réinitialiser le mot de passe de ${user.display_name}`} title="Réinitialiser le mot de passe" onClick={onReset}><KeyRound size={16} /></button></div>
   </li>
