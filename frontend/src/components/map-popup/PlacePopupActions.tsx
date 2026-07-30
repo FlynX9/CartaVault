@@ -39,7 +39,11 @@ export function PlacePopupActions({
           onClick={onAddToTrip}
         >
           <CalendarPlus aria-hidden="true" size={17} />
-          <span>{isAddingToTrip ? "Ajout…" : "Ajouter à la sortie"}</span>
+          <span>
+            {isAddingToTrip
+              ? "Ajout…"
+              : (tripAddTargetLabel ?? "Choisir une journée")}
+          </span>
         </button>
       )}
       {canEdit && (

@@ -75,7 +75,7 @@ describe('PlaceMapPopup', () => {
 
     await screen.findByRole('heading', { name: 'Manufacture' })
     const addButton = screen.getByRole('button', { name: 'Ajouter au jour 2' })
-    expect(addButton).toHaveTextContent('Ajouter à la sortie')
+    expect(addButton).toHaveTextContent('Ajouter au jour 2')
     fireEvent.click(addButton)
 
     await waitFor(() => expect(onAddToTrip).toHaveBeenCalledWith(PLACE))

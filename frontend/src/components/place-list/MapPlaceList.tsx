@@ -1343,7 +1343,7 @@ export function MapPlaceList({
               const canAddToTripTarget = tripAddTargetLabel !== null && !inTrip;
               return (
                 <article
-                  className={`places-place-card${isSelected ? " selected" : ""}${inTrip ? " trip-added" : ""}${selectionMode ? " has-selection" : ""}${canAddToTripTarget ? " has-trip-add-action" : ""}`}
+                  className={`places-place-card${isSelected ? " selected" : ""}${inTrip ? " trip-added" : ""}${selectionMode ? " has-selection" : ""}`}
                 >
                     {selectionMode && (
                       <input
@@ -1493,6 +1493,33 @@ export function MapPlaceList({
                           />
                         </button>
                         <div>
+                          <span className="places-map-actions">
+                            {canAddToTripTarget && (
+                              <span className="places-trip-add-slot">
+                                <button
+                                  className="places-trip-add-button"
+                                  type="button"
+                                  aria-label={tripAddTargetLabel}
+                                  title={tripAddTargetLabel}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    onTripPlaceAdd(place);
+                                  }}
+                                >
+                                  <Plus size={16} aria-hidden="true" />
+                                </button>
+                              </span>
+                            )}
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Ouvrir ${place.name} dans Google Maps`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <MapPinned size={16} />
+                            </a>
+                          </span>
                           {poiMap?.can_edit !== false && (
                             <Link
                               to={withMap(
@@ -1505,15 +1532,6 @@ export function MapPlaceList({
                               <Pencil size={16} />
                             </Link>
                           )}
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`Ouvrir ${place.name} dans Google Maps`}
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <MapPinned size={16} />
-                          </a>
                           {poiMap?.can_edit !== false && (
                             <button
                               type="button"
@@ -1525,20 +1543,6 @@ export function MapPlaceList({
                           )}
                         </div>
                       </aside>
-                    )}
-                    {canAddToTripTarget && (
-                      <button
-                        className="places-trip-add-button"
-                        type="button"
-                        aria-label={`${tripAddTargetLabel} : ${place.name}`}
-                        title={tripAddTargetLabel}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onTripPlaceAdd(place);
-                        }}
-                      >
-                        <Plus size={20} aria-hidden="true" />
-                      </button>
                     )}
                 </article>
               );

@@ -175,20 +175,24 @@ describe('MapPlaceList', () => {
     expect(screen.getByText('Ajouté')).toBeVisible()
   })
 
-  it('adds an available POI directly to the selected trip target', async () => {
+  it('adds an available POI from a compact action next to Google Maps', async () => {
     const place = { id: 'place-id', name: 'Étape ciblée', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
     const onTripPlaceAdd = vi.fn()
     vi.mocked(getPlaces).mockResolvedValue([place])
-    const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, tripPlanningActive: true, tripAddTargetLabel: 'Ajouter au jour 2', onTripPlaceAdd, onPlaceSelect: vi.fn() }
+    const props = { poiMap: { id: 'map-id', name: 'France', can_edit: false } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, tripPlanningActive: true, tripAddTargetLabel: 'Ajouter au jour 2', onTripPlaceAdd, onPlaceSelect: vi.fn() }
     const { rerender } = render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set()} /></MemoryRouter>)
 
-    const addButton = await screen.findByRole('button', { name: 'Ajouter au jour 2 : Étape ciblée' })
-    expect(addButton.closest('.places-place-card')).toHaveClass('has-trip-add-action')
+    const addButton = await screen.findByRole('button', { name: 'Ajouter au jour 2' })
+    const googleMaps = screen.getByRole('link', { name: 'Ouvrir Étape ciblée dans Google Maps' })
+    expect(addButton).toHaveAttribute('title', 'Ajouter au jour 2')
+    expect(addButton).not.toHaveTextContent('Ajouter au jour 2')
+    expect(addButton.closest('.places-trip-add-slot')?.nextElementSibling).toBe(googleMaps)
     fireEvent.click(addButton)
     expect(onTripPlaceAdd).toHaveBeenCalledWith(place)
 
     rerender(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
-    expect(screen.queryByRole('button', { name: 'Ajouter au jour 2 : Étape ciblée' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ajouter au jour 2' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ajouté')).toBeVisible()
   })
 
   it('keeps the rich card layout when multi-selection is enabled', async () => {
