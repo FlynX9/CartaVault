@@ -371,10 +371,24 @@ function FreeStop({ day, poiMap, reload }: { day: TripDay; poiMap: PoiMap; reloa
 
 type TimelineCollapseRequest = { collapsed: boolean; version: number }
 
+function useTransientDropState() {
+  const [dropActive, setDropActive] = useState(false)
+  useEffect(() => {
+    const clearDropState = () => setDropActive(false)
+    window.addEventListener('dragend', clearDropState)
+    window.addEventListener('drop', clearDropState)
+    return () => {
+      window.removeEventListener('dragend', clearDropState)
+      window.removeEventListener('drop', clearDropState)
+    }
+  }, [])
+  return [dropActive, setDropActive] as const
+}
+
 function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; recommendedStart: string | null; recommendedStartOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [dropActive, setDropActive] = useState(false)
+  const [dropActive, setDropActive] = useTransientDropState()
   const anchor = trip.days[0]?.stops[0]
   const departure = trip.departure
   useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest])
@@ -427,7 +441,7 @@ function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, re
 function Arrival({ trip, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [dropActive, setDropActive] = useState(false)
+  const [dropActive, setDropActive] = useTransientDropState()
   const anchor = trip.days.at(-1)?.stops.at(-1) ?? trip.departure
   const arrival = trip.arrival
   const effectiveArrival = arrival ?? trip.departure
@@ -481,7 +495,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
   const [dialog, setDialog] = useState<{ edit?: boolean } | null>(null)
   const [dropError, setDropError] = useState<string | null>(null)
   const [dropping, setDropping] = useState(false)
-  const [dropActive, setDropActive] = useState(false)
+  const [dropActive, setDropActive] = useTransientDropState()
   const [collapsed, setCollapsed] = useState(false)
   useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest])
   const anchor = previous.stops.at(-1) ?? next.stops[0]
@@ -529,7 +543,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
       onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button')) return; selectNight(); if (target.closest('.trip-night-stop')) focusNightLocation() }}
       onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectNight(); focusNightLocation() } }}
       onDragEnter={(event) => { if (canEdit && event.dataTransfer.types.includes('text/plain')) { setCollapsed(false); setDropActive(true) } }}
-      onDragLeave={(event) => { if (event.currentTarget === event.target) setDropActive(false) }}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropActive(false) }}
       onDragOver={(event) => { if (canEdit) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setDropActive(true) } }}
       onDrop={drop}
     >
