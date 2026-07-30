@@ -1,6 +1,6 @@
 import { LogIn, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -24,7 +24,7 @@ function loadRememberedEmail(): string {
 }
 
 export function LoginPage() {
-  const { login } = useAuth()
+  const { user, loading, login } = useAuth()
   const navigate = useNavigate()
   const { t } = useI18n()
   const rememberedEmail = loadRememberedEmail()
@@ -33,6 +33,11 @@ export function LoginPage() {
   const [remember, setRemember] = useState(rememberedEmail !== '')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  if (loading) {
+    return <main className="auth-loading" aria-live="polite">Chargement de CartaVault…</main>
+  }
+  if (user) return <Navigate to="/dashboard" replace />
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()

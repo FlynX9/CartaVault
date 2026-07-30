@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError, SESSION_EXPIRED_EVENT } from '../api/client'
 import { login, logout, restoreSession } from '../api/auth'
 import { ThemeContext } from '../theme/themeContext'
+import { LoginPage } from '../pages/LoginPage'
 import { AuthProvider } from './AuthProvider'
 import { RequireAuth } from './RequireAuth'
 
@@ -16,10 +16,18 @@ const theme = { preference: 'light' as const, resolvedTheme: 'light' as const, s
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
 
-function renderWithTheme(children: ReactNode) {
+function renderAuthFlow(initialEntry = '/private') {
   return render(
-    <MemoryRouter>
-      <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <ThemeContext.Provider value={theme}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/private" element={<RequireAuth><p>Carte privée</p></RequireAuth>} />
+            <Route path="/dashboard" element={<RequireAuth><p>Carte privée</p></RequireAuth>} />
+          </Routes>
+        </AuthProvider>
+      </ThemeContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -27,7 +35,7 @@ function renderWithTheme(children: ReactNode) {
 describe('AuthProvider', () => {
   it('restores a session before rendering protected content', async () => {
     vi.mocked(restoreSession).mockResolvedValue(user)
-    renderWithTheme(<AuthProvider><RequireAuth><p>Carte privée</p></RequireAuth></AuthProvider>)
+    renderAuthFlow()
     expect(screen.getByText('Chargement de CartaVault…')).toBeVisible()
     expect(await screen.findByText('Carte privée')).toBeVisible()
   })
@@ -35,7 +43,7 @@ describe('AuthProvider', () => {
   it('shows login, reports an error, then authenticates', async () => {
     vi.mocked(restoreSession).mockRejectedValue(new ApiError(401, 'Unauthenticated'))
     vi.mocked(login).mockRejectedValueOnce(new Error('Identifiants incorrects')).mockResolvedValueOnce(user)
-    renderWithTheme(<AuthProvider><RequireAuth><p>Carte privée</p></RequireAuth></AuthProvider>)
+    renderAuthFlow()
     const email = await screen.findByLabelText('Adresse email')
     fireEvent.change(email, { target: { value: user.email } })
     fireEvent.change(screen.getByLabelText('Mot de passe'), { target: { value: 'wrong' } })
@@ -48,10 +56,18 @@ describe('AuthProvider', () => {
 
   it('returns to login when the API reports an expired session', async () => {
     vi.mocked(restoreSession).mockResolvedValue(user)
-    renderWithTheme(<AuthProvider><RequireAuth><p>Carte privée</p></RequireAuth></AuthProvider>)
+    renderAuthFlow()
     await screen.findByText('Carte privée')
     window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Connexion à CartaVault' })).toBeVisible())
     expect(logout).not.toHaveBeenCalled()
+  })
+
+  it('redirects an authenticated user away from the login page', async () => {
+    vi.mocked(restoreSession).mockResolvedValue(user)
+    renderAuthFlow('/login')
+
+    expect(await screen.findByText('Carte privée')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Connexion à CartaVault' })).not.toBeInTheDocument()
   })
 })
