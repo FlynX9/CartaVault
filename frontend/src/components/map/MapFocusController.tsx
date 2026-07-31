@@ -110,7 +110,7 @@ export function MapFocusController({ request }: MapFocusControllerProps) {
           maxZoom: request.maxZoom ?? 15,
         })
       } else {
-        map.setView(request.view.center, request.view.zoom)
+        map.setView(request.view.center, request.view.zoom, { animate: false })
         if (request.centerInVisibleWorkspace) {
           const [horizontalPan, verticalPan] = getVisibleWorkspacePan(map.getContainer())
           if (Math.abs(horizontalPan) >= 1 || Math.abs(verticalPan) >= 1) {

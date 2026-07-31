@@ -31,7 +31,7 @@ describe('MapFocusController', () => {
     const request = { id: 1, view: { center: [46.6, 1.88] as [number, number], zoom: 6 } }
     const { rerender } = render(<MapFocusController request={request} />)
     expect(setView).toHaveBeenCalledTimes(1)
-    expect(setView).toHaveBeenCalledWith([46.6, 1.88], 6)
+    expect(setView).toHaveBeenCalledWith([46.6, 1.88], 6, { animate: false })
 
     rerender(<MapFocusController request={request} />)
     expect(setView).toHaveBeenCalledTimes(1)
@@ -78,8 +78,9 @@ describe('MapFocusController', () => {
       centerInVisibleWorkspace: true,
     }} />)
 
-    expect(setView).toHaveBeenCalledWith([48.123, 6.456], 13)
+    expect(setView).toHaveBeenCalledWith([48.123, 6.456], 13, { animate: false })
     expect(panBy).toHaveBeenCalledWith([200, 0], { animate: false })
+    expect(setView.mock.invocationCallOrder[0]).toBeLessThan(panBy.mock.invocationCallOrder[0])
   })
 
   it('uses the changing free-map center when the trip panel is expanded or collapsed', () => {
