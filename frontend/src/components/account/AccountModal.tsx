@@ -91,7 +91,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         <header className="account-modal__header">
           <div className="account-avatar">{avatar ? <img src={avatar} alt={`Avatar de ${profile?.display_name ?? user?.display_name}`} /> : initials}</div>
           <div><h2 id="account-title">{t('account.title')}</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />{t('account.admin')}</span>}</div>
-          <button ref={closeButton} className="panel-icon-button" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={18} /></button>
+          <button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button>
         </header>
         <nav className="account-modal__nav" aria-label={t('account.navigation')}>
           {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCheck, t('account.security') ], [ 'sessions', MonitorSmartphone, t('account.sessions') ], [ 'preferences', Settings2, t('account.preferences') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
