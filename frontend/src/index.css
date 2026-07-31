@@ -26,6 +26,10 @@
   --cv-z-toast: 1600;
   --cv-display-scale: 0.8;
   --cv-display-shell-size: 125%;
+  --cv-map-zoom-width: 2.65rem;
+  --cv-map-zoom-button-height: 2.7rem;
+  --cv-map-zoom-font-size: 1.5rem;
+  --cv-map-zoom-bottom-offset: 1.65rem;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -4509,23 +4513,54 @@ body {
 
 .map-workspace .leaflet-control-container .leaflet-top.leaflet-left {
   right: 1.15rem;
-  bottom: 1.15rem;
+  bottom: var(--cv-map-zoom-bottom-offset);
 }
 
-.leaflet-control-zoom,
-.leaflet-control-zoom a {
+.leaflet-control-container .leaflet-control-zoom {
+  width: var(--cv-map-zoom-width);
+  margin: 0 !important;
   overflow: hidden;
-  border-color: var(--cv-border-subtle) !important;
+  background: rgb(255 255 255 / 96%);
+  border: 1px solid color-mix(in srgb, var(--cv-color-teal) 62%, white) !important;
+  border-radius: 0.95rem;
+  box-shadow:
+    0 0 0 3px rgb(255 255 255 / 58%),
+    0 6px 18px rgb(13 27 42 / 18%);
 }
 
-.leaflet-control-zoom {
-  border-radius: 0.65rem;
-  box-shadow: 0 5px 16px rgb(13 27 42 / 14%);
-}
-
-.leaflet-control-zoom a {
+.leaflet-control-container .leaflet-control-zoom a {
+  display: grid;
+  width: 100%;
+  height: var(--cv-map-zoom-button-height);
+  place-items: center;
+  overflow: hidden;
   color: var(--cv-color-navy);
-  background: rgb(255 255 255 / 94%);
+  background: transparent;
+  border: 0 !important;
+  border-radius: 0 !important;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--cv-map-zoom-font-size);
+  font-weight: 500;
+  line-height: 1;
+  text-indent: 0;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease;
+}
+
+.leaflet-control-container .leaflet-control-zoom a:first-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--cv-color-teal) 34%, white) !important;
+}
+
+.leaflet-control-container .leaflet-control-zoom a:hover,
+.leaflet-control-container .leaflet-control-zoom a:focus-visible {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, white);
+  outline: 0;
+}
+
+.leaflet-control-container .leaflet-control-zoom a:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cv-color-teal) 55%, transparent);
 }
 
 .cv-workspace-panel__header,
@@ -7067,14 +7102,20 @@ html[data-theme='dark'] .maps-catalog__actions .secondary-button:not(:disabled):
 
 html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom {
   background: var(--cv-surface);
-  border-color: var(--cv-border-strong) !important;
-  box-shadow: 0 5px 16px rgb(0 0 0 / 34%);
+  border-color: color-mix(in srgb, var(--cv-color-teal) 58%, var(--cv-border-strong)) !important;
+  box-shadow:
+    0 0 0 3px rgb(8 22 31 / 48%),
+    0 6px 18px rgb(0 0 0 / 38%);
 }
 
 html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a {
   color: var(--cv-color-slate);
-  background: var(--cv-surface);
-  border-color: var(--cv-border-strong) !important;
+  background: transparent;
+  border-color: transparent !important;
+}
+
+html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a:first-child {
+  border-bottom-color: color-mix(in srgb, var(--cv-color-teal) 34%, var(--cv-border-strong)) !important;
 }
 
 html[data-theme='dark'] .leaflet-control-container .leaflet-control-zoom a:hover,
