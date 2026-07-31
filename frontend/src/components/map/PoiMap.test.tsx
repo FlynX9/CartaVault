@@ -126,7 +126,50 @@ describe('PoiMap selection lifecycle', () => {
     expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
   })
 
-  it('keeps clustering enabled for very large marker sets at maximum zoom', async () => {
+  it('groups nearby POIs only below the clustering zoom threshold', async () => {
+    render(
+      <PoiMap
+        places={[place, nearbyPlace]}
+        selectedPlaceId={null}
+        initialView={{ center: [48, 2], zoom: 10 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={vi.fn()}
+        focusRequest={null}
+        layoutKey="low-zoom-cluster"
+        onPopupClose={vi.fn()}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTitle('Cluster de 2 lieux')).toBeVisible()
+    expect(screen.queryByTitle('Manufacture')).not.toBeInTheDocument()
+  })
+
+  it('disables clustering as soon as zoom 11 is reached', async () => {
+    render(
+      <PoiMap
+        places={[place, nearbyPlace]}
+        selectedPlaceId={null}
+        initialView={{ center: [48, 2], zoom: 11 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={vi.fn()}
+        focusRequest={null}
+        layoutKey="cluster-threshold"
+        onPopupClose={vi.fn()}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTitle('Manufacture')).toBeVisible()
+    expect(await screen.findByTitle('Atelier voisin')).toBeVisible()
+    expect(screen.queryByTitle(/Cluster de/)).not.toBeInTheDocument()
+  })
+
+  it('keeps large marker sets unclustered at high zoom', async () => {
     const places = Array.from({ length: 751 }, (_, index) => ({
       ...place,
       id: `place-${index}`,
@@ -150,9 +193,9 @@ describe('PoiMap selection lifecycle', () => {
       />,
     )
 
-    await waitFor(() => expect(container.querySelectorAll('.cv-map-cluster-container').length).toBeGreaterThan(0))
-    expect(container.querySelectorAll('.cv-map-cluster-container').length).toBeLessThan(751)
-    expect(screen.queryByTitle('Lieu 0')).not.toBeInTheDocument()
+    expect(await screen.findByTitle('Lieu 0')).toBeVisible()
+    expect(container.querySelectorAll('.cv-map-cluster-container')).toHaveLength(0)
+    expect(container.querySelectorAll('.status-marker')).toHaveLength(751)
   })
 
   it('selects the marker and exposes its enriched detail on the first real marker click', async () => {

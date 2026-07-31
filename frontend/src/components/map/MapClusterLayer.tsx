@@ -12,7 +12,6 @@ function clusterClassName(count: number): string {
 }
 
 const clusterIconCache = new Map<number, DivIcon>()
-export const MAX_UNCLUSTERED_MARKERS = 750
 
 function createClusterIcon(count: number) {
   const cached = clusterIconCache.get(count)
@@ -46,7 +45,7 @@ export function MapClusterLayer({ places, renderPlace, selectedPlaceId = null, d
   useMapEvents({ zoomend: () => setZoom(map.getZoom()) })
   const selectedPlace = useMemo(() => places.find((place) => place.id === selectedPlaceId) ?? null, [places, selectedPlaceId])
   const clusteredPlaces = useMemo(() => selectedPlace === null ? places : places.filter((place) => place.id !== selectedPlace.id), [places, selectedPlace])
-  const clusteringEnabled = zoom < disableClusteringAtZoom || clusteredPlaces.length > MAX_UNCLUSTERED_MARKERS
+  const clusteringEnabled = zoom < disableClusteringAtZoom
   const clusters = useMemo(() => clusterMapPlaces(
     clusteredPlaces,
     (place) => map.project([place.latitude, place.longitude], zoom),
