@@ -5144,7 +5144,8 @@ body {
 .place-map-popup .popup-actions button, .place-map-popup .popup-actions a { display: inline-flex; width: auto; height: 38px; align-items: center; justify-content: center; gap: 0.45rem; padding: 0 0.72rem; border: 1px solid #e0e7ed; border-radius: 9px; background: #fff; color: var(--cv-color-slate); font-size: 0.79rem; font-weight: 700; }
 .place-map-popup .popup-actions a { text-decoration: none; }
 .place-map-popup .popup-actions button:hover, .place-map-popup .popup-actions a:hover { border-color: color-mix(in srgb, var(--cv-color-teal) 45%, #e0e7ed); color: var(--cv-color-teal); }
-.place-map-popup .popup-actions .popup-action-delete:hover { border-color: #f3b5b5; color: #c72c2c; }
+.place-map-popup .popup-actions .popup-action-delete:hover,
+.place-map-popup .popup-actions .popup-action-delete:focus-visible { color: #b42318; background: #fff1f0; border-color: #e87973; outline: 2px solid rgb(180 35 24 / 14%); outline-offset: 1px; }
 .place-map-popup .popup-actions .popup-action-add-to-trip {
   border-color: color-mix(in srgb, var(--cv-color-teal) 74%, var(--cv-border-strong));
   background: var(--cv-color-teal);
@@ -10926,7 +10927,7 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   .photo-delete-button,
   .place-bulk-delete,
   .places-place-actions button[aria-label^='Supprimer'],
-  .popup-actions button:nth-child(2)
+  .popup-actions .popup-action-delete
 ):not(:disabled):is(:hover, :focus-visible) {
   color: #b42318;
   background: color-mix(in srgb, #dc2626 8%, var(--cv-surface, #fff));
