@@ -33,6 +33,13 @@ describe('AccountModal', () => {
     expect(screen.getByText('Importer une image')).toBeVisible()
   })
 
+  it('marks the global session revocation action as dangerous on interaction', async () => {
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sessions' }))
+
+    expect(screen.getByRole('button', { name: 'Révoquer les autres sessions' })).toHaveClass('account-button--revoke-sessions')
+  })
+
   it('updates the display name and refreshes AuthProvider', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     const input = await screen.findByLabelText('Nom d’affichage')
