@@ -24,7 +24,7 @@ from app.trips.permissions import require_arrival_role, require_day_role, requir
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, stale, resolve_constraint_country
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, stale, resolve_constraint_country, synchronize_trip_dates
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
 from app.quotas.registry import QuotaKey
@@ -93,7 +93,7 @@ def create_trip(map_id: UUID, data: TripCreate, session: Session = Depends(get_d
     quotas.ensure_can_create(access.map.owner_id, QuotaKey.TRIPS_TOTAL_MAX)
     trip = Trip(map_id=map_id, created_by_user_id=user.id, **data.model_dump()); session.add(trip); session.flush()
     quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id)
-    session.add(TripDay(trip_id=trip.id, day_number=1, sort_order=0, color=DAY_COLOR_PALETTE[0])); session.commit()
+    session.add(TripDay(trip_id=trip.id, day_number=1, sort_order=0, color=DAY_COLOR_PALETTE[0])); session.flush(); synchronize_trip_dates(trip); session.commit()
     return _trip_read(session, trip.id)
 
 
@@ -106,9 +106,9 @@ def read_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = De
 def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = require_trip_editor(session, trip_id, user).trip
     values = data.model_dump(exclude_unset=True)
-    start_date = values.get("start_date", trip.start_date); end_date = values.get("end_date", trip.end_date)
-    if start_date and end_date and end_date < start_date: raise HTTPException(422, "End date must follow start date")
+    values.pop("end_date", None)
     for key, value in values.items(): setattr(trip, key, value)
+    synchronize_trip_dates(load_trip(session, trip.id))
     session.commit(); return _trip_read(session, trip_id)
 
 
@@ -167,6 +167,7 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
     for night in source.nights: session.add(TripNight(trip_id=copy.id, previous_day_id=days[night.previous_day_id].id, next_day_id=days[night.next_day_id].id, place_id=night.place_id, source_type=night.source_type, name=night.name, latitude=night.latitude, longitude=night.longitude, address=night.address, notes=night.notes, check_in_time=night.check_in_time, check_out_time=night.check_out_time))
     if source.departure: session.add(TripDeparture(trip_id=copy.id, place_id=source.departure.place_id, name=source.departure.name, latitude=source.departure.latitude, longitude=source.departure.longitude, address=source.departure.address, notes=source.departure.notes, departure_time=source.departure.departure_time))
     if source.arrival: session.add(TripArrival(trip_id=copy.id, place_id=source.arrival.place_id, name=source.arrival.name, latitude=source.arrival.latitude, longitude=source.arrival.longitude, address=source.arrival.address, notes=source.arrival.notes))
+    synchronize_trip_dates(load_trip(session, copy.id))
     session.commit(); return _trip_read(session, copy.id)
 
 
@@ -186,6 +187,7 @@ def add_day(trip_id: UUID, data: DayCreate, session: Session = Depends(get_db), 
     values = data.model_dump(exclude={"after_day_id", "color"})
     day = TripDay(trip_id=trip.id, day_number=insertion + 1, sort_order=insertion, color=data.color or next_day_color(trip.days), **values); session.add(day); session.flush()
     if previous is not None and previous.next_night is not None: previous.next_night.previous_day = day
+    synchronize_trip_dates(load_trip(session, trip.id))
     session.commit(); return DayRead.model_validate(day)
 
 
@@ -216,7 +218,9 @@ def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = De
     session.execute(delete(TripNight).where((TripNight.previous_day_id == day_id) | (TripNight.next_day_id == day_id)))
     session.delete(day)
     session.flush()
-    normalize_day_order(load_trip(session, trip_id))
+    loaded_trip = load_trip(session, trip_id)
+    normalize_day_order(loaded_trip)
+    synchronize_trip_dates(loaded_trip)
     session.commit()
 
 
@@ -230,6 +234,7 @@ def reorder_days(trip_id: UUID, data: IdOrder, session: Session = Depends(get_db
     for day in trip.days: day.sort_order += 10_000; day.day_number += 10_000
     session.flush(); lookup = {day.id: day for day in trip.days}
     for index, item in enumerate(data.ids): lookup[item].sort_order = index; lookup[item].day_number = index + 1
+    synchronize_trip_dates(trip)
     session.commit(); return _trip_read(session, trip_id)
 
 
@@ -246,6 +251,7 @@ def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User =
     quotas.ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=copy.id, increment=len(source.stops))
     if source.next_night is not None: source.next_night.previous_day = copy
     for stop in source.stops: session.add(TripStop(trip_day_id=copy.id, place_id=stop.place_id, stop_type=stop.stop_type, name=stop.name, latitude=stop.latitude, longitude=stop.longitude, address=stop.address, sort_order=stop.sort_order, visit_duration_minutes=stop.visit_duration_minutes, notes=stop.notes, is_required=stop.is_required, is_locked=stop.is_locked))
+    synchronize_trip_dates(load_trip(session, trip.id))
     session.commit(); return DayRead.model_validate(copy)
 
 

@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
+import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTrip: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -39,6 +39,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTrip).mockResolvedValue(trip)
     vi.mocked(getTripSummary).mockResolvedValue(emptySummary)
     vi.mocked(getTripDaySummary).mockImplementation(async (id) => ({ ...emptyDaySummary, day_id: id }))
+    vi.mocked(updateTrip).mockResolvedValue(trip)
     vi.mocked(addTripStop).mockResolvedValue({} as never)
     vi.mocked(addTripNight).mockResolvedValue({} as never)
     vi.mocked(updateTripNight).mockResolvedValue({} as never)
@@ -158,6 +159,20 @@ describe('TripPlannerPanel', () => {
 
     fireEvent.click(screen.getByLabelText('Masquer les paramètres du voyage'))
     expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+  })
+
+  it('edits the departure date and displays the automatically calculated arrival date', async () => {
+    const datedTrip = { ...trip, start_date: '2026-08-10', end_date: '2026-08-12' } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([datedTrip])
+    vi.mocked(getTrip).mockResolvedValue(datedTrip)
+    vi.mocked(updateTrip).mockResolvedValue({ ...datedTrip, start_date: '2026-09-01', end_date: '2026-09-03' })
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={datedTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByLabelText('Date de départ du voyage')).toHaveValue('2026-08-10')
+    expect(screen.getByText('12 août 2026')).toBeVisible()
+    fireEvent.change(screen.getByLabelText('Date de départ du voyage'), { target: { value: '2026-09-01' } })
+
+    await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { start_date: '2026-09-01' }))
   })
 
   it('archives an active trip as completed while keeping its lifecycle visible', async () => {

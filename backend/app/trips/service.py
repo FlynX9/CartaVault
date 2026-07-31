@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -54,6 +55,19 @@ def stale(day: TripDay) -> None:
 def normalize_day_order(trip: Trip) -> None:
     for index, day in enumerate(sorted(trip.days, key=lambda item: item.sort_order)):
         day.sort_order = index; day.day_number = index + 1
+
+
+def synchronize_trip_dates(trip: Trip) -> None:
+    """Derive the trip and day dates from the selected departure date."""
+    ordered_days = sorted(trip.days, key=lambda item: item.sort_order)
+    if trip.start_date is None:
+        trip.end_date = None
+        for day in ordered_days:
+            day.date = None
+        return
+    for index, day in enumerate(ordered_days):
+        day.date = trip.start_date + timedelta(days=index)
+    trip.end_date = trip.start_date + timedelta(days=max(len(ordered_days) - 1, 0))
 
 
 def normalize_stop_order(day: TripDay) -> None:

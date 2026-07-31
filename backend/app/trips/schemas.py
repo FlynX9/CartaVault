@@ -37,14 +37,12 @@ class TripCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=10_000)
     start_date: DateValue | None = None
-    end_date: DateValue | None = None
     routing_profile: str = Field(default="driving", pattern="^(driving|walking|cycling)$")
 
     @model_validator(mode="after")
     def dates(self) -> Self:
         self.name = self.name.strip()
         if not self.name: raise ValueError("Name cannot be empty")
-        if self.start_date and self.end_date and self.end_date < self.start_date: raise ValueError("End date must follow start date")
         return self
 
 
@@ -52,7 +50,6 @@ class TripUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=10_000)
     start_date: DateValue | None = None
-    end_date: DateValue | None = None
     status: TripStatus | None = None
     routing_profile: str | None = Field(default=None, pattern="^(driving|walking|cycling)$")
 

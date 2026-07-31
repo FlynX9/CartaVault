@@ -24,16 +24,13 @@ export function CreateTripDialog({ mapName, onClose, onCreate }: Props) {
     const data = new FormData(event.currentTarget)
     const name = String(data.get('name') ?? '').trim()
     const startDate = String(data.get('start_date') ?? '')
-    const endDate = String(data.get('end_date') ?? '')
     if (!name) { setError('Donnez un nom à la sortie.'); return }
-    if (startDate && endDate && endDate < startDate) { setError('La date de fin doit suivre la date de début.'); return }
     setBusy(true); setError(null)
     try {
       await onCreate({
         name,
         description: String(data.get('description') ?? '').trim() || undefined,
         start_date: startDate || undefined,
-        end_date: endDate || undefined,
         routing_profile: String(data.get('routing_profile') ?? 'driving') as TripCreatePayload['routing_profile'],
       })
     } catch (caught) {
@@ -50,7 +47,7 @@ export function CreateTripDialog({ mapName, onClose, onCreate }: Props) {
           {error && <p className="form-alert" role="alert">{error}</p>}
           <label className="form-field"><span>Nom de la sortie *</span><input ref={nameInput} name="name" maxLength={160} placeholder="Week-end en Belgique" required /></label>
           <label className="form-field"><span>Description</span><textarea name="description" maxLength={10000} rows={3} placeholder="Objectif ou notes générales…" /></label>
-          <div className="create-trip-dialog__dates"><label className="form-field"><span>Date de début</span><input name="start_date" type="date" /></label><label className="form-field"><span>Date de fin</span><input name="end_date" type="date" /></label></div>
+          <label className="form-field"><span>Date de départ</span><input name="start_date" type="date" /></label>
           <label className="form-field"><span>Mode de déplacement</span><span className="create-trip-dialog__select"><Route size={16} /><select name="routing_profile" defaultValue="driving"><option value="driving">Voiture</option><option value="walking">Marche</option><option value="cycling">Vélo</option></select></span></label>
         </div>
         <footer className="dialog-actions"><button className="secondary-button" type="button" disabled={busy} onClick={onClose}>Annuler</button><button className="primary-button" type="submit" disabled={busy}><CalendarDays size={16} />{busy ? 'Création…' : 'Créer la sortie'}</button></footer>

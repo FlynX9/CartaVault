@@ -3,7 +3,7 @@ import { getBlob, getJson, sendJson, sendWithoutResponse } from './client'
 import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
 
 const empty = new URLSearchParams()
-export interface TripCreatePayload { name: string; description?: string; start_date?: string; end_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
+export interface TripCreatePayload { name: string; description?: string; start_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
 export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; check_in_time?: string; check_out_time?: string }
 export interface TripDepartureCreatePayload { place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; departure_time?: string }
 export type TripArrivalCreatePayload = Omit<TripDepartureCreatePayload, 'departure_time'>
@@ -17,7 +17,7 @@ export interface TripPdfExportOptions {
 export const listTrips = (mapId: string, signal?: AbortSignal) => getJson(`/maps/${mapId}/trips`, empty, signal) as Promise<Trip[]>
 export const getTrip = (id: string, signal?: AbortSignal) => getJson(`/trips/${id}`, empty, signal) as Promise<Trip>
 export const createTrip = (mapId: string, body: TripCreatePayload) => sendJson(`/maps/${mapId}/trips`, 'POST', body) as Promise<Trip>
-export const updateTrip = (id: string, body: Partial<Pick<Trip, 'name' | 'description' | 'start_date' | 'end_date' | 'status'>>) => sendJson(`/trips/${id}`, 'PATCH', body) as Promise<Trip>
+export const updateTrip = (id: string, body: Partial<Pick<Trip, 'name' | 'description' | 'start_date' | 'status'>>) => sendJson(`/trips/${id}`, 'PATCH', body) as Promise<Trip>
 export const archiveTrip = (id: string) => sendJson(`/trips/${id}/archive`, 'POST', {}) as Promise<Trip>
 export const unarchiveTrip = (id: string) => sendJson(`/trips/${id}/unarchive`, 'POST', {}) as Promise<Trip>
 export const updateTripLoadSettings = (id: string, body: TripLoadSettings) => sendJson(`/trips/${id}/load-settings`, 'PATCH', body) as Promise<Trip>

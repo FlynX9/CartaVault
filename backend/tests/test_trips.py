@@ -107,10 +107,19 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     assert created.status_code == 201
     created_trip = created.json()
     trip_id = created_trip["id"]
+    assert created_trip["end_date"] == "2026-08-01"
+    assert created_trip["days"][0]["date"] == "2026-08-01"
     # A trip owns its first day on creation; add only the two extra days.
     days = [created_trip["days"][0], *[integration_client.post(f"/trips/{trip_id}/days", json={"title": f"Étape {index}"}).json() for index in range(2, 4)]]
     assert [item["day_number"] for item in days] == [1, 2, 3]
-    assert integration_client.patch(f"/trips/{trip_id}", json={"end_date": "2026-07-31"}).status_code == 422
+    dated_trip = integration_client.get(f"/trips/{trip_id}").json()
+    assert dated_trip["end_date"] == "2026-08-03"
+    assert [item["date"] for item in dated_trip["days"]] == ["2026-08-01", "2026-08-02", "2026-08-03"]
+    manual_end = integration_client.patch(f"/trips/{trip_id}", json={"end_date": "2026-07-31"})
+    assert manual_end.status_code == 200 and manual_end.json()["end_date"] == "2026-08-03"
+    shifted = integration_client.patch(f"/trips/{trip_id}", json={"start_date": "2026-08-10"})
+    assert shifted.status_code == 200 and shifted.json()["end_date"] == "2026-08-12"
+    assert [item["date"] for item in shifted.json()["days"]] == ["2026-08-10", "2026-08-11", "2026-08-12"]
     assert integration_client.patch(f"/trips/{trip_id}", json={"name": None}).status_code == 422
 
     place = integration_client.post("/places", json={"name": "POI voyage", "map_id": str(poi_map.id), "latitude": 48.2, "longitude": 6.4}).json()
@@ -142,6 +151,8 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     assert removed_day.status_code == 204
     after_removal = integration_client.get(f"/trips/{trip_id}").json()
     assert [item["day_number"] for item in after_removal["days"]] == [1, 2]
+    assert after_removal["end_date"] == "2026-08-11"
+    assert [item["date"] for item in after_removal["days"]] == ["2026-08-10", "2026-08-11"]
     assert after_removal["nights"] == []
 
     viewer = User(email=f"viewer-{uuid4()}@example.test", display_name="Viewer", password_hash="x", is_active=True, is_admin=False)

@@ -12,11 +12,10 @@ describe('CreateTripDialog', () => {
     expect(screen.getByRole('dialog', { name: 'Préparer une sortie' })).toBeVisible()
     expect(screen.getByText('Carte : Belgique')).toBeVisible()
     fireEvent.change(screen.getByLabelText('Nom de la sortie *'), { target: { value: 'Ardennes' } })
-    fireEvent.change(screen.getByLabelText('Date de début'), { target: { value: '2026-08-10' } })
-    fireEvent.change(screen.getByLabelText('Date de fin'), { target: { value: '2026-08-12' } })
+    fireEvent.change(screen.getByLabelText('Date de départ'), { target: { value: '2026-08-10' } })
     fireEvent.change(screen.getByLabelText('Mode de déplacement'), { target: { value: 'walking' } })
     fireEvent.click(screen.getByRole('button', { name: 'Créer la sortie' }))
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({ name: 'Ardennes', description: undefined, start_date: '2026-08-10', end_date: '2026-08-12', routing_profile: 'walking' }))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({ name: 'Ardennes', description: undefined, start_date: '2026-08-10', routing_profile: 'walking' }))
   })
 
   it('keeps the modal open and shows a compact error if creation fails', async () => {

@@ -5459,6 +5459,16 @@ body {
 .trip-summary-primary span { display: grid; min-width: 0; }
 .trip-summary-primary strong { color: var(--cv-color-navy); font-size: 0.9rem; line-height: 1.2; }
 .trip-summary-primary small { color: var(--cv-color-slate); font-size: 0.58rem; line-height: 1.3; }
+.trip-summary-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0.55rem 0.8rem; background: rgb(15 166 138 / 4%); border-top: 1px solid #e5ebef; }
+.trip-summary-dates > label,
+.trip-summary-dates > div { display: flex; min-width: 0; align-items: center; gap: 0.5rem; padding: 0.15rem 0.65rem; color: var(--cv-color-teal); }
+.trip-summary-dates > label { border-right: 1px solid #e5ebef; }
+.trip-summary-dates span { display: grid; min-width: 0; flex: 1; gap: 0.12rem; }
+.trip-summary-dates small { color: var(--cv-color-slate); font-size: 0.56rem; font-weight: 500; }
+.trip-summary-dates strong { color: var(--cv-color-navy); font-size: 0.68rem; font-weight: 700; }
+.trip-summary-dates input { width: 100%; min-width: 0; min-height: 1.85rem; box-sizing: border-box; padding: 0.25rem 0.4rem; color: var(--cv-color-navy); background: #fff; border: 1px solid rgb(43 62 89 / 16%); border-radius: 0.4rem; font: inherit; font-size: 0.65rem; font-weight: 400; }
+.trip-summary-dates input:focus { border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 14%); }
+.trip-summary-dates input:disabled { cursor: wait; opacity: 0.65; }
 .trip-planner-panel .trip-metrics__body { gap: 0.6rem; padding: 0.2rem 0.8rem 0.8rem; border-top: 1px solid #edf1f3; }
 .trip-planner-panel .trip-metrics-group { gap: 0.3rem; }
 .trip-planner-panel .trip-metrics-group > strong { font-size: 0.62rem; }
@@ -7072,6 +7082,9 @@ html[data-theme='dark'] .trip-planner-panel .trip-metrics dl > div,
 html[data-theme='dark'] .trip-panel-day-content > ul > li:nth-child(even) {
   background-color: var(--cv-surface-muted);
 }
+html[data-theme='dark'] .trip-summary-dates { background: rgb(37 198 170 / 5%); border-color: var(--cv-border-subtle); }
+html[data-theme='dark'] .trip-summary-dates > label { border-color: var(--cv-border-subtle); }
+html[data-theme='dark'] .trip-summary-dates input { color: var(--cv-color-navy); background: var(--cv-surface-muted); border-color: var(--cv-border-subtle); }
 html[data-theme='dark'] .trip-planner-panel .trip-panel-trip-status--active {
   color: #67d6c0;
   background: rgb(15 166 138 / 20%);
