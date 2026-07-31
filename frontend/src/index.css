@@ -6397,10 +6397,10 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
   padding: .15rem;
   overflow: hidden;
   color: var(--cv-color-gray);
-  background: var(--cv-surface-muted);
-  border: 1px solid var(--cv-border-subtle);
+  background: color-mix(in srgb, var(--cv-brand-navy) 7%, var(--cv-surface-muted));
+  border: 1px solid color-mix(in srgb, var(--cv-color-slate) 18%, transparent);
   border-radius: .7rem;
-  box-shadow: 0 1px 3px rgb(13 27 42 / 8%);
+  box-shadow: inset 0 1px 2px rgb(13 27 42 / 6%), 0 1px 3px rgb(13 27 42 / 7%);
   cursor: pointer;
 }
 .topbar-theme-toggle > span {
@@ -6410,9 +6410,9 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
   transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 .topbar-theme-toggle > span.is-active {
-  color: var(--cv-color-navy);
-  background: var(--cv-surface);
-  box-shadow: 0 1px 3px rgb(13 27 42 / 10%);
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 22%, transparent), 0 1px 3px rgb(13 27 42 / 10%);
 }
 .topbar-theme-toggle:hover > span:not(.is-active) { color: var(--cv-color-slate); }
 .topbar-theme-toggle:focus-visible {
