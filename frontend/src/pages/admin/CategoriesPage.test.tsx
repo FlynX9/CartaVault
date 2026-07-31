@@ -92,6 +92,15 @@ describe('CategoriesPage', () => {
     expect(screen.queryByText('Industrie')).not.toBeInTheDocument()
   })
 
+  it('does not expose a delete button for the imported system category', async () => {
+    vi.mocked(getCategories).mockResolvedValue([{ ...CATEGORY, id: 'imported-category', name: 'Importé' }])
+    render(<CategoriesPage />)
+
+    expect(await screen.findByText('Importé')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Supprimer Importé' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Modifier Importé' })).toBeVisible()
+  })
+
   it('rejects an empty name without calling the API', async () => {
     render(<CategoriesPage />)
     await screen.findByText('Industrie')

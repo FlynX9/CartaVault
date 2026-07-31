@@ -25,6 +25,7 @@ export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
     return Object.keys(payload).length === 0 ? entity : updateCategory(entity.id, payload)
   },
   remove: deleteCategory,
+  canDelete: (entity) => entity.name.trim().toLocaleLowerCase('fr-FR') !== 'importé',
 })
 
 export const tagsConfig = (mapId?: string): EntityManagementConfig => ({

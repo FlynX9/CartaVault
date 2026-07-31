@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.categories.associations import place_categories_table
 from app.categories.icon_catalog import DEFAULT_CATEGORY_ICON_ID
-from app.categories.models import Category
+from app.categories.models import IMPORTED_CATEGORY_NAME, Category
 from app.countries.point_validator import validate_point_country
 from app.imports.kmz_mapping import map_extended_data
 from app.imports.kmz_parser import ParsedImage, ParsedPlacemark
@@ -409,7 +409,7 @@ def _get_or_create_import_category(database_session: Session, map_id: UUID) -> C
     database_session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"cartavault:import-category:{map_id}"))))
     category = database_session.scalar(select(Category).where(Category.map_id == map_id, func.lower(Category.name) == "importé").with_for_update())
     if category is None:
-        category = Category(map_id=map_id, name="Importé", description="POI importés depuis un fichier externe", icon=DEFAULT_CATEGORY_ICON_ID)
+        category = Category(map_id=map_id, name=IMPORTED_CATEGORY_NAME, description="POI importés depuis un fichier externe", icon=DEFAULT_CATEGORY_ICON_ID)
         database_session.add(category)
         database_session.flush()
     return category

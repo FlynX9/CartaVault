@@ -7,6 +7,19 @@ from sqlalchemy import text
 pytestmark = pytest.mark.integration
 
 
+def test_imported_category_cannot_be_deleted(integration_client, poi_map) -> None:
+    created = integration_client.post(
+        "/categories",
+        json={"map_id": str(poi_map.id), "name": "Importé"},
+    )
+    assert created.status_code == 201
+
+    deleted = integration_client.delete(f"/categories/{created.json()['id']}")
+
+    assert deleted.status_code == 409
+    assert integration_client.get(f"/categories/{created.json()['id']}").status_code == 200
+
+
 def test_category_icons_and_primary_category_lifecycle(integration_client, poi_map, database_session) -> None:
     map_id = str(poi_map.id)
     first = integration_client.post("/categories", json={"map_id": map_id, "name": f"Factory {uuid4().hex}", "icon": "mdi:church"})

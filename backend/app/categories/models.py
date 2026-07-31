@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     from app.places.models import Place
 
 
+IMPORTED_CATEGORY_NAME = "Importé"
+
+
 class Category(Base):
     """Database representation of a place category."""
 

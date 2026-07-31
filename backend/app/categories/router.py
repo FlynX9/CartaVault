@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_category_role, require_map_role
-from app.categories.models import Category
+from app.categories.models import IMPORTED_CATEGORY_NAME, Category
 from app.categories.schemas import CategoryCreate, CategoryRead, CategoryUpdate
 from app.database import get_db
 from app.places.models import Place
@@ -90,6 +90,8 @@ def update_category(category_id: UUID, data: CategoryUpdate, database_session: S
 @router.delete("/{category_id}", status_code=204)
 def delete_category(category_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Response:
     category = require_category_role(database_session, category_id, current_user, "editor")
+    if category.name.strip().casefold() == IMPORTED_CATEGORY_NAME.casefold():
+        raise HTTPException(status_code=409, detail="The imported category is protected and cannot be deleted")
     database_session.delete(category)
     database_session.commit()
     return Response(status_code=204)
