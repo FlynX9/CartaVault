@@ -1,0 +1,7 @@
+CartaVault — A map is waiting for you
+
+$owner_email wants to transfer ownership of the “$map_name” map to you.
+
+Create your account and approve the transfer: $invitation_url
+
+Ownership changes only after your approval. This private link expires.

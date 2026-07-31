@@ -13,7 +13,7 @@ interface MapMembersDialogProps {
   onMapUpdated: (map: PoiMap) => void
 }
 
-export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDialogProps) {
+export function MapMembersDialog({ poiMap, onClose }: MapMembersDialogProps) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const dialog = useRef<HTMLElement>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
@@ -44,6 +44,23 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
 
   const pendingInvitations = invitations.filter((item) => item.accepted_at === null && item.revoked_at === null)
 
+  const requestOwnershipTransfer = async (email: string) => {
+    const confirmed = await confirm({
+      title: 'Proposer la propriété ?',
+      message: `Un e-mail sera envoyé à ${email}. Vous resterez propriétaire jusqu’à sa validation.`,
+      confirmLabel: 'Envoyer la demande',
+    })
+    if (!confirmed) return
+    setError(null)
+    try {
+      const invitation = await transferMapOwnership(poiMap.id, email)
+      setInvitations((current) => [invitation, ...current.filter((item) => item.role !== 'owner' || item.accepted_at !== null || item.revoked_at !== null)])
+      setLastLink(`${window.location.origin}${invitation.invitation_url}`)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Transfert impossible.')
+    }
+  }
+
   return <div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section ref={dialog} className="cv-modal map-action-dialog map-members-dialog" role="dialog" aria-modal="true" aria-labelledby="members-title">
       <header className="map-action-dialog__header map-members-dialog__header">
@@ -67,6 +84,11 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
           {lastLink && <div className="invitation-link"><input readOnly value={lastLink} aria-label="Lien d’invitation" /><button className="panel-icon-button" type="button" aria-label="Copier le lien" title="Copier le lien" onClick={() => void navigator.clipboard.writeText(lastLink)}><Copy size={15} /></button></div>}
         </section>
 
+        {poiMap.can_transfer_ownership && <section className="map-members-section map-members-section--invite" aria-labelledby="transfer-owner-title">
+          <div className="map-members-section__heading"><span className="map-members-section__icon"><Crown size={17} /></span><div><h3 id="transfer-owner-title">Transférer la propriété</h3><p>Le destinataire devra accepter avant que la propriété ne change.</p></div></div>
+          <OwnershipTransferForm onSubmit={requestOwnershipTransfer} />
+        </section>}
+
         {loading && members.length === 0 && invitations.length === 0 ? <SkeletonList rows={3} label="Chargement des membres" /> : <>
           <section className="map-members-section" aria-labelledby="current-members-title">
             <div className="map-members-section__title"><h3 id="current-members-title">Membres</h3><span>{members.length}</span></div>
@@ -78,7 +100,7 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
                   const role = event.target.value as 'editor' | 'viewer'
                   void updateMapMember(poiMap.id, membership.user.id, role).then((updated) => setMembers((current) => current.map((item) => item.user.id === updated.user.id ? updated : item))).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Modification impossible.'))
                 }}><option value="editor">Éditeur</option><option value="viewer">Lecteur</option></select>
-                {poiMap.can_transfer_ownership && <button className="panel-icon-button" type="button" aria-label={`Transférer à ${membership.user.display_name}`} title="Transférer la propriété" onClick={() => { if (window.confirm(`Transférer la propriété à ${membership.user.email} ?`)) void transferMapOwnership(poiMap.id, membership.user.id).then(onMapUpdated).then(onClose).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Transfert impossible.')) }}><Crown size={15} /></button>}
+                {poiMap.can_transfer_ownership && <button className="panel-icon-button" type="button" aria-label={`Transférer à ${membership.user.display_name}`} title="Proposer la propriété" onClick={() => void requestOwnershipTransfer(membership.user.email)}><Crown size={15} /></button>}
                 <button className="panel-icon-button danger" type="button" aria-label={`Retirer ${membership.user.display_name}`} title="Retirer le membre" onClick={() => void confirm({ title: 'Retirer ce membre ?', message: `${membership.user.email} perdra immédiatement son accès à la carte « ${poiMap.name} ».`, confirmLabel: 'Retirer' }).then((confirmed) => { if (confirmed) void removeMapMember(poiMap.id, membership.user.id).then(() => setMembers((current) => current.filter((item) => item.user.id !== membership.user.id))).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Retrait impossible.')) })}><Trash2 size={15} /></button>
               </div>}
             </li>)}</ul>
@@ -88,7 +110,7 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
             <div className="map-members-section__title"><h3 id="pending-invitations-title">Invitations en attente</h3><span>{pendingInvitations.length}</span></div>
             {pendingInvitations.length === 0 ? <p className="map-members-empty">Aucune invitation en attente.</p> : <ul className="members-list invitation-list">{pendingInvitations.map((invitation) => <li key={invitation.id}>
               <span className="member-avatar pending" aria-hidden="true"><MailPlus size={16} /></span>
-              <div className="member-summary"><strong>{invitation.email}</strong><span>{invitation.role === 'editor' ? 'Éditeur' : 'Lecteur'} · expire le {new Date(invitation.expires_at).toLocaleDateString('fr-FR')}</span></div>
+              <div className="member-summary"><strong>{invitation.email}</strong><span>{invitation.role === 'owner' ? 'Transfert de propriété' : invitation.role === 'editor' ? 'Éditeur' : 'Lecteur'} · expire le {new Date(invitation.expires_at).toLocaleDateString('fr-FR')}</span></div>
               <button className="panel-icon-button danger" type="button" aria-label={`Révoquer l’invitation de ${invitation.email}`} title="Révoquer" onClick={() => void revokeMapInvitation(poiMap.id, invitation.id).then(() => setInvitations((current) => current.filter((item) => item.id !== invitation.id))).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Révocation impossible.'))}><X size={15} /></button>
             </li>)}</ul>}
           </section>
@@ -97,6 +119,20 @@ export function MapMembersDialog({ poiMap, onClose, onMapUpdated }: MapMembersDi
       {confirmationDialog}
     </section>
   </div>
+}
+
+function OwnershipTransferForm({ onSubmit }: { onSubmit: (email: string) => Promise<void> }) {
+  const [submitting, setSubmitting] = useState(false)
+  return <form className="invitation-form ownership-transfer-form" onSubmit={(event) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    setSubmitting(true)
+    void onSubmit(String(data.get('email'))).then(() => form.reset()).finally(() => setSubmitting(false))
+  }}>
+    <label><span>Email du futur propriétaire</span><input name="email" type="email" placeholder="utilisateur@exemple.com" required /></label>
+    <button className="primary-button" type="submit" disabled={submitting}><Crown size={15} />{submitting ? 'Envoi…' : 'Proposer'}</button>
+  </form>
 }
 
 function InvitationForm({ onSubmit }: { onSubmit: (email: string, role: 'editor' | 'viewer') => Promise<void> }) {

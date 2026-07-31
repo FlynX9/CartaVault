@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createMapInvitation, getMapInvitations, getMapMembers, transferMapOwnership } from '../../api/maps'
@@ -22,14 +22,14 @@ describe('MapMembersDialog', () => {
   it('uses compact sections, creates a copyable invitation and transfers ownership', async () => {
     const writeText = vi.fn(() => Promise.resolve())
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    vi.stubGlobal('confirm', vi.fn(() => true))
-    vi.mocked(transferMapOwnership).mockResolvedValue(poiMap)
+    vi.mocked(transferMapOwnership).mockResolvedValue({ id: 'transfer', map_id: poiMap.id, email: viewer.user.email, role: 'owner', created_at: '', expires_at: '2026-12-31', accepted_at: null, revoked_at: null, invitation_url: '/invitations/transfer-token' })
     const updated = vi.fn()
     render(<MapMembersDialog poiMap={poiMap} onClose={vi.fn()} onMapUpdated={updated} />)
     expect(await screen.findByText('Propriétaire')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Inviter un membre' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Membres' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Invitations en attente' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Transférer la propriété' })).toBeVisible()
 
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'new@example.test' } })
     fireEvent.change(screen.getByLabelText('Rôle'), { target: { value: 'editor' } })
@@ -39,6 +39,19 @@ describe('MapMembersDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copier le lien' }))
     expect(writeText).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Transférer à Viewer' }))
-    expect(transferMapOwnership).toHaveBeenCalledWith(poiMap.id, 'viewer')
+    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer la demande' }))
+    await waitFor(() => expect(transferMapOwnership).toHaveBeenCalledWith(poiMap.id, viewer.user.email))
+    expect(await screen.findByText(/Transfert de propriété/)).toBeVisible()
+  })
+
+  it('can offer ownership to an email without an existing member', async () => {
+    vi.mocked(transferMapOwnership).mockResolvedValue({ id: 'transfer', map_id: poiMap.id, email: 'future@example.test', role: 'owner', created_at: '', expires_at: '2026-12-31', accepted_at: null, revoked_at: null, invitation_url: '/invitations/transfer-token' })
+    render(<MapMembersDialog poiMap={poiMap} onClose={vi.fn()} onMapUpdated={vi.fn()} />)
+
+    fireEvent.change(await screen.findByLabelText('Email du futur propriétaire'), { target: { value: 'future@example.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Proposer' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer la demande' }))
+
+    await waitFor(() => expect(transferMapOwnership).toHaveBeenCalledWith(poiMap.id, 'future@example.test'))
   })
 })

@@ -3647,6 +3647,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .map-members-section__title h3 { margin: 0; }
 .map-members-section__title > span { padding: 0.15rem 0.4rem; color: var(--cv-color-slate); background: var(--cv-color-mist); border-radius: 999px; font-size: 0.65rem; font-weight: 700; }
 .invitation-form { display: grid; grid-template-columns: minmax(0, 1fr) 7.25rem auto; align-items: end; gap: 0.55rem; margin: 0; }
+.ownership-transfer-form { grid-template-columns: minmax(0, 1fr) auto; }
 .invitation-form label { display: grid; min-width: 0; gap: 0.25rem; color: var(--cv-color-slate); font-size: 0.72rem; font-weight: 700; }
 .invitation-form input, .invitation-form select { width: 100%; min-height: 2.3rem; padding: 0.4rem 0.55rem; color: var(--cv-color-navy); background: white; border: 1px solid rgb(43 62 89 / 18%); border-radius: 0.5rem; font: inherit; font-size: 0.78rem; }
 .invitation-form .primary-button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.3rem; gap: 0.35rem; padding: 0.4rem 0.7rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; }
@@ -4897,7 +4898,7 @@ body {
 .map-members-dialog .invitation-link input { min-height: 2.3rem; padding: 0.4rem 0.55rem; border-color: var(--cv-border-strong); border-radius: 0.5rem; font-size: 0.75rem; }
 .map-members-dialog .invitation-form input:focus,
 .map-members-dialog .invitation-form select:focus { border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 14%); outline-offset: 0; }
-.map-members-dialog .invitation-form .primary-button { min-height: 2.3rem; padding: 0.4rem 0.7rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: 0.5rem; font-size: 0.75rem; }
+.map-members-dialog .invitation-form .primary-button { width: 6.25rem; min-height: 2.3rem; padding: 0.4rem 0.7rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: 0.5rem; font-size: 0.75rem; }
 .map-members-dialog .members-list li { background: var(--cv-color-off-white); border-color: var(--cv-border-subtle); }
 
 .confirmation-overlay { z-index: calc(var(--cv-z-modal) + 50); }
@@ -8252,6 +8253,7 @@ html[data-theme='dark'] :is(.map-members-dialog .invitation-form input, .map-mem
   background: var(--cv-surface-muted);
   border-color: var(--cv-border-strong);
 }
+
 
 /* Category icon field and picker must use the same dark panel surfaces. */
 html[data-theme='dark'] .category-icon-field > div {

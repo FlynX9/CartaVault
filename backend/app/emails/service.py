@@ -25,6 +25,8 @@ SUBJECTS = {
         "email_changed": "Votre adresse email CartaVault a été modifiée",
         "map_share": "Une carte CartaVault vous a été partagée",
         "map_share_registration": "Une carte CartaVault vous attend",
+        "map_ownership": "Validez le transfert d’une carte CartaVault",
+        "map_ownership_registration": "Une carte CartaVault vous est proposée",
         "resend_verification": "Votre configuration email CartaVault fonctionne",
     },
     "en": {
@@ -35,6 +37,8 @@ SUBJECTS = {
         "email_changed": "Your CartaVault email address was changed",
         "map_share": "A CartaVault map has been shared with you",
         "map_share_registration": "A CartaVault map has been shared with you",
+        "map_ownership": "Approve a CartaVault map ownership transfer",
+        "map_ownership_registration": "A CartaVault map is waiting for you",
         "resend_verification": "Your CartaVault email configuration works",
     },
 }
@@ -111,6 +115,23 @@ class EmailService:
 
     def notify_password_changed(self, recipient: str, display_name: str, locale: str = "fr") -> str | None:
         return self._send("password_changed", [recipient], {"display_name": display_name}, locale)
+
+    def send_map_ownership_invitation(
+        self,
+        recipient: str,
+        owner_email: str,
+        map_name: str,
+        token: str,
+        requires_account: bool,
+        locale: str = "fr",
+    ) -> str | None:
+        invitation_url = f"{email_settings.frontend_public_url}/invitations/{token}"
+        return self._send(
+            "map_ownership_registration" if requires_account else "map_ownership",
+            [recipient],
+            {"owner_email": owner_email, "map_name": map_name, "invitation_url": invitation_url},
+            locale,
+        )
 
     def notify_email_changed(
         self,

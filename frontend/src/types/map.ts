@@ -91,7 +91,7 @@ export interface MapInvitation {
   id: string
   map_id: string
   email: string
-  role: Exclude<MapRole, 'owner'>
+  role: MapRole
   created_at: string
   expires_at: string
   accepted_at: string | null
@@ -102,7 +102,7 @@ export interface MapInvitation {
 export interface PublicInvitation {
   map_name: string
   email: string
-  role: Exclude<MapRole, 'owner'>
+  role: MapRole
   expires_at: string
   requires_account: boolean
 }
@@ -111,7 +111,7 @@ export interface PendingMapInvitation {
   id: string
   map_id: string
   map_name: string
-  role: Exclude<MapRole, 'owner'>
+  role: MapRole
   invited_by_display_name: string
   created_at: string
   expires_at: string

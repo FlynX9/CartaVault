@@ -146,4 +146,4 @@ class InvitationAccept(BaseModel):
 
 
 class TransferOwnership(BaseModel):
-    new_owner_user_id: UUID
+    email: str = Field(min_length=3, max_length=320)

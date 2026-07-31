@@ -142,7 +142,8 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
       return <><UserRoundPlus className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><button type="button" className="notification-center__registration-link" onClick={() => openRegistrationRequests(request)}><p><strong>{request.display_name}</strong> demande à créer un compte avec <strong>{request.email}</strong>.</p><span className="secondary-button notification-center__review">Examiner la demande</span></button></div></>
     }
     const invitation = notification.item
-    return <><MapPinned className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>{invitation.invited_by_display_name}</strong> partage la carte <strong>{invitation.map_name}</strong> avec vous.</p><small>Accès {invitation.role === 'editor' ? 'éditeur' : 'lecteur'}</small>{invitationActions(invitation)}</div></>
+    const ownershipTransfer = invitation.role === 'owner'
+    return <><MapPinned className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>{invitation.invited_by_display_name}</strong> {ownershipTransfer ? 'vous propose la propriété de' : 'partage'} la carte <strong>{invitation.map_name}</strong>{ownershipTransfer ? '.' : ' avec vous.'}</p><small>{ownershipTransfer ? 'Transfert de propriété' : `Accès ${invitation.role === 'editor' ? 'éditeur' : 'lecteur'}`}</small>{invitationActions(invitation)}</div></>
   }
 
   return <div className="notification-center" ref={container}>

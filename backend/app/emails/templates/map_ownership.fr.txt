@@ -1,0 +1,7 @@
+CartaVault — Transfert de propriété
+
+$owner_email souhaite vous transférer la propriété de la carte « $map_name ».
+
+Valider ou refuser le transfert : $invitation_url
+
+La propriété ne changera qu’après votre validation. Ce lien privé expire.

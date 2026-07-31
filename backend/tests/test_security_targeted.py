@@ -155,7 +155,7 @@ def test_private_resources_and_mutations_are_scoped_to_map_membership(
     ).status_code == 422
     assert integration_client.post(
         f"/maps/{map_a.id}/transfer-ownership",
-        json={"new_owner_user_id": str(editor.id)},
+        json={"email": editor.email},
     ).status_code == 403
     assert integration_client.get("/admin/users").status_code == 403
 

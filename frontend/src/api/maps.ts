@@ -71,8 +71,8 @@ export async function revokeMapInvitation(mapId: string, invitationId: string): 
   await sendWithoutResponse(`/maps/${encodeURIComponent(mapId)}/invitations/${encodeURIComponent(invitationId)}`, 'DELETE')
 }
 
-export async function transferMapOwnership(mapId: string, userId: string): Promise<PoiMap> {
-  return parseMap(await sendJson(`/maps/${encodeURIComponent(mapId)}/transfer-ownership`, 'POST', { new_owner_user_id: userId }))
+export async function transferMapOwnership(mapId: string, email: string): Promise<MapInvitation> {
+  return sendJson(`/maps/${encodeURIComponent(mapId)}/transfer-ownership`, 'POST', { email }) as Promise<MapInvitation>
 }
 
 export async function getInvitation(token: string, signal?: AbortSignal): Promise<PublicInvitation> {

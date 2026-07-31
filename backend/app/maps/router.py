@@ -265,24 +265,71 @@ def leave_map(map_id: UUID, database_session: Session = Depends(get_db), current
     return Response(status_code=204)
 
 
-@router.post("/{map_id}/transfer-ownership", response_model=MapRead)
-def transfer_ownership(map_id: UUID, data: TransferOwnership, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> MapRead:
+@router.post("/{map_id}/transfer-ownership", response_model=InvitationRead, status_code=201)
+def transfer_ownership(map_id: UUID, data: TransferOwnership, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> InvitationRead:
     access = require_map_role(database_session, map_id, current_user, "owner")
-    new_owner = database_session.scalar(select(MapMembership).where(MapMembership.map_id == map_id, MapMembership.user_id == data.new_owner_user_id))
-    old_owner = database_session.scalar(select(MapMembership).where(MapMembership.map_id == map_id, MapMembership.user_id == access.map.owner_id))
-    if new_owner is None:
-        raise HTTPException(status_code=409, detail="The new owner must already be a map member")
-    if old_owner is None or old_owner.role != "owner":
-        raise HTTPException(status_code=409, detail="Current ownership is inconsistent")
-    QuotaService(database_session).ensure_can_create(new_owner.user_id, QuotaKey.MAPS_MAX)
-    old_owner.role = "editor"
+    email = normalize_email(data.email)
+    if email == access.map.owner.email:
+        raise HTTPException(status_code=409, detail="The map owner cannot receive a transfer request")
+    existing_user = database_session.scalar(select(User).where(User.email == email))
+    if existing_user is not None and not existing_user.is_active:
+        raise HTTPException(status_code=409, detail="The recipient account is inactive")
+    if existing_user is not None and database_session.scalar(
+        select(PoiMap.id).where(
+            PoiMap.owner_id == existing_user.id,
+            PoiMap.country_id == access.map.country_id,
+            PoiMap.deleted_at.is_(None),
+            PoiMap.id != map_id,
+        )
+    ) is not None:
+        raise HTTPException(status_code=409, detail="The recipient already owns an active map for this country")
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    for pending in database_session.scalars(
+        select(MapInvitation).where(
+            MapInvitation.map_id == map_id,
+            MapInvitation.role == "owner",
+            MapInvitation.accepted_at.is_(None),
+            MapInvitation.revoked_at.is_(None),
+        )
+    ):
+        pending.revoked_at = now
     database_session.flush()
-    new_owner.role = "owner"
-    access.map.owner_id = new_owner.user_id
-    database_session.commit()
-    result = read_map(database_session, map_id)
-    assert result is not None
-    return map_to_read_with_counts(database_session, result, get_map_access(database_session, map_id, current_user))
+    quotas = QuotaService(database_session)
+    quotas.ensure_can_create(access.map.owner_id, QuotaKey.PENDING_INVITATIONS_PER_MAP_MAX, scope_id=map_id)
+    quotas.ensure_can_create(access.map.owner_id, QuotaKey.PENDING_INVITATIONS_MAX)
+
+    raw_token = generate_token()
+    invitation = MapInvitation(
+        map_id=map_id,
+        email=email,
+        role="owner",
+        token_hash=hash_token(raw_token),
+        created_by_user_id=current_user.id,
+        expires_at=now + timedelta(hours=security_settings.invitation_hours),
+    )
+    database_session.add(invitation)
+    try:
+        database_session.commit()
+        database_session.refresh(invitation)
+    except IntegrityError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=409, detail="An ownership transfer is already pending") from error
+
+    try:
+        locale_source = existing_user if existing_user is not None else current_user
+        locale = str((locale_source.preferences or {}).get("language", "fr"))
+        EmailService(provider_from_database(database_session)).send_map_ownership_invitation(
+            recipient=email,
+            owner_email=current_user.email,
+            map_name=access.map.name,
+            token=raw_token,
+            requires_account=existing_user is None,
+            locale=locale,
+        )
+    except EmailDeliveryError as error:
+        logger.warning("map_ownership_email_failed map_id=%s invitation_id=%s code=%s", map_id, invitation.id, error.code)
+    return InvitationRead.model_validate(invitation, from_attributes=True).model_copy(update={"invitation_url": f"/invitations/{raw_token}"})
 
 
 @router.post("/{map_id}/invitations", response_model=InvitationRead, status_code=201)

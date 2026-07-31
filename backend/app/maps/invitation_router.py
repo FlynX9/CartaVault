@@ -15,6 +15,7 @@ from app.auth.security import generate_token, hash_password, hash_token, normali
 from app.config import security_settings
 from app.database import get_db
 from app.maps.models import MapInvitation, MapMembership
+from app.maps.ownership import accept_ownership_transfer
 from app.quotas.service import QuotaService
 from app.quotas.registry import QuotaKey
 from app.maps.schemas import InvitationAccept, InvitationPublicRead, PendingInvitationRead
@@ -45,6 +46,10 @@ def _pending_invitation_for_user(
 
 
 def _accept_for_user(database_session: Session, invitation: MapInvitation, user: User) -> None:
+    if invitation.role == "owner":
+        accept_ownership_transfer(database_session, invitation, user)
+        invitation.accepted_at = datetime.now(UTC).replace(tzinfo=None)
+        return
     membership = database_session.scalar(
         select(MapMembership).where(
             MapMembership.map_id == invitation.map_id,

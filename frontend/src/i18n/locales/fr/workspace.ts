@@ -16,6 +16,7 @@ export const workspaceFr = {
   'maps.invitation.shared': 'Invitation de partage',
   'maps.invitation.by': 'Partagée par {{name}}',
   'maps.invitation.editor': 'Accès éditeur',
+  'maps.invitation.owner': 'Transfert de propriété',
   'maps.invitation.viewer': 'Accès lecteur',
   'maps.invitation.pending': 'Invitation en attente',
   'maps.invitation.accept': 'Accepter',

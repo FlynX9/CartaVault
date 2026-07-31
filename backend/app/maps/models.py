@@ -88,9 +88,15 @@ class MapMembership(Base):
 class MapInvitation(Base):
     __tablename__ = "map_invitations"
     __table_args__ = (
-        CheckConstraint("role IN ('editor', 'viewer')", name="map_invitations_role_check"),
+        CheckConstraint("role IN ('owner', 'editor', 'viewer')", name="map_invitations_role_check"),
         Index("map_invitations_token_hash_key", "token_hash", unique=True),
         Index("map_invitations_map_id_idx", "map_id"),
+        Index(
+            "map_invitations_one_pending_owner_idx",
+            "map_id",
+            unique=True,
+            postgresql_where=text("role = 'owner' AND accepted_at IS NULL AND revoked_at IS NULL"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))

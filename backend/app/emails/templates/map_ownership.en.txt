@@ -1,0 +1,7 @@
+CartaVault — Ownership transfer
+
+$owner_email wants to transfer ownership of the “$map_name” map to you.
+
+Approve or decline the transfer: $invitation_url
+
+Ownership changes only after your approval. This private link expires.

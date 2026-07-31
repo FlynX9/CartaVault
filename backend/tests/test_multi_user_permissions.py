@@ -115,14 +115,57 @@ def test_owner_members_invitations_transfer_and_token_hashing(integration_client
     assert integration_client.post(f"/invitations/{raw_token}/accept", json={}, headers={"X-CSRF-Token": accepted.json()["csrf_token"]}).status_code == 404
     integration_client.cookies.clear()
 
-    transferred = integration_client.post(f"/maps/{poi_map.id}/transfer-ownership", json={"new_owner_user_id": str(next_owner.id)})
-    assert transferred.status_code == 200
+    transferred = integration_client.post(f"/maps/{poi_map.id}/transfer-ownership", json={"email": next_owner.email.upper()})
+    assert transferred.status_code == 201
+    assert transferred.json()["role"] == "owner"
+    database_session.refresh(poi_map)
+    assert poi_map.owner_id == owner.id
+
+    app.dependency_overrides[get_current_user] = lambda: next_owner
+    accepted_transfer = integration_client.post(f"/invitations/pending/{transferred.json()['id']}/accept")
+    assert accepted_transfer.status_code == 204
     database_session.refresh(poi_map)
     roles = {membership.user_id: membership.role for membership in database_session.query(MapMembership).filter_by(map_id=poi_map.id)}
     assert poi_map.owner_id == next_owner.id
     assert roles[next_owner.id] == "owner"
     assert roles[owner.id] == "editor"
     assert list(roles.values()).count("owner") == 1
+    app.dependency_overrides[get_current_user] = lambda: auth_user
+
+
+def test_unknown_recipient_creates_account_then_accepts_ownership(integration_client, database_session, auth_user, monkeypatch) -> None:
+    from app.countries.models import Country
+
+    country = database_session.query(Country).filter_by(iso_alpha3="BEL").one()
+    owner = _user(database_session, "owner-registration-transfer")
+    poi_map = _map(database_session, country, owner, "Map for future owner")
+    target_email = f"future-owner-{uuid4()}@example.test"
+    app.dependency_overrides[get_current_user] = lambda: owner
+
+    transfer = integration_client.post(f"/maps/{poi_map.id}/transfer-ownership", json={"email": target_email.upper()})
+    assert transfer.status_code == 201
+    raw_token = transfer.json()["invitation_url"].rsplit("/", 1)[-1]
+    public = integration_client.get(f"/invitations/{raw_token}")
+    assert public.status_code == 200
+    assert public.json()["requires_account"] is True
+    assert public.json()["role"] == "owner"
+    database_session.refresh(poi_map)
+    assert poi_map.owner_id == owner.id
+
+    monkeypatch.setattr("app.maps.invitation_router.hash_password", lambda password: f"invited::{password}")
+    accepted = integration_client.post(
+        f"/invitations/{raw_token}/accept",
+        json={"display_name": "Future owner", "password": "a sufficiently long password"},
+    )
+    assert accepted.status_code == 200
+    new_owner = database_session.scalar(select(User).where(User.email == target_email))
+    assert new_owner is not None
+    database_session.refresh(poi_map)
+    assert poi_map.owner_id == new_owner.id
+    roles = {membership.user_id: membership.role for membership in database_session.query(MapMembership).filter_by(map_id=poi_map.id)}
+    assert roles[new_owner.id] == "owner"
+    assert roles[owner.id] == "editor"
+    integration_client.cookies.clear()
     app.dependency_overrides[get_current_user] = lambda: auth_user
 
 

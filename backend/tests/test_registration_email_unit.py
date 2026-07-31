@@ -31,11 +31,13 @@ def test_each_email_function_uses_a_repository_template() -> None:
     service.send_password_reset("candidate@example.test", "Candidate", "opaque-token")
     service.send_map_share_invitation("new@example.test", "owner@example.test", "New account map", "new-token", True)
     service.send_map_share_invitation("member@example.test", "owner@example.test", "Member map", "member-token", False)
+    service.send_map_ownership_invitation("future@example.test", "owner@example.test", "Future map", "owner-new-token", True)
+    service.send_map_ownership_invitation("member@example.test", "owner@example.test", "Owned map", "owner-token", False)
     service.notify_password_changed("candidate@example.test", "Candidate")
     service.notify_email_changed("old@example.test", "Candidate", "old@example.test", "new@example.test")
     service.send_resend_verification("admin@example.test", "Admin")
 
-    assert len(provider.messages) == 8
+    assert len(provider.messages) == 10
     assert all("Carta" in message.html and "Vault" in message.html for message in provider.messages)
     assert all("#0FA68A" in message.html for message in provider.messages)
     assert "candidate@example.test" in provider.messages[0].text
@@ -45,10 +47,14 @@ def test_each_email_function_uses_a_repository_template() -> None:
     assert "New account map" in provider.messages[3].text
     assert "/invitations/new-token" in provider.messages[3].text
     assert "/invitations/member-token" in provider.messages[4].text
-    assert "mot de passe" in provider.messages[5].subject.lower()
-    assert "old@example.test" in provider.messages[6].text
-    assert "new@example.test" in provider.messages[6].text
-    assert "Admin" in provider.messages[7].text
+    assert "Future map" in provider.messages[5].text
+    assert "/invitations/owner-new-token" in provider.messages[5].text
+    assert "Owned map" in provider.messages[6].text
+    assert "/invitations/owner-token" in provider.messages[6].text
+    assert "mot de passe" in provider.messages[7].subject.lower()
+    assert "old@example.test" in provider.messages[8].text
+    assert "new@example.test" in provider.messages[8].text
+    assert "Admin" in provider.messages[9].text
 
 
 def test_email_templates_are_localized_without_changing_their_security_content() -> None:
@@ -59,20 +65,23 @@ def test_email_templates_are_localized_without_changing_their_security_content()
     service.notify_registration_approved("candidate@example.test", "Candidate", "en")
     service.send_password_reset("candidate@example.test", "Candidate", "opaque-token", "en")
     service.send_map_share_invitation("invited@example.test", "owner@example.test", "Shared map", "invite-token", False, "en")
+    service.send_map_ownership_invitation("recipient@example.test", "owner@example.test", "Owned map", "owner-token", False, "en")
     service.notify_password_changed("candidate@example.test", "Candidate", "en")
     service.notify_email_changed("old@example.test", "Candidate", "old@example.test", "new@example.test", "en")
     service.send_resend_verification("admin@example.test", "Admin", "en")
 
-    assert len(provider.messages) == 7
+    assert len(provider.messages) == 8
     assert provider.messages[0].subject == "New CartaVault registration request"
     assert "registration request" in provider.messages[0].text.lower()
     assert "approved" in provider.messages[1].text.lower()
     assert "opaque-token" in provider.messages[2].text
     assert provider.messages[3].subject == "A CartaVault map has been shared with you"
     assert "owner@example.test" in provider.messages[3].text
-    assert provider.messages[4].subject == "Your CartaVault password was changed"
-    assert provider.messages[5].subject == "Your CartaVault email address was changed"
-    assert provider.messages[6].subject == "Your CartaVault email configuration works"
+    assert provider.messages[4].subject == "Approve a CartaVault map ownership transfer"
+    assert "owner-token" in provider.messages[4].text
+    assert provider.messages[5].subject == "Your CartaVault password was changed"
+    assert provider.messages[6].subject == "Your CartaVault email address was changed"
+    assert provider.messages[7].subject == "Your CartaVault email configuration works"
     assert all("#0FA68A" in message.html for message in provider.messages)
 
 
