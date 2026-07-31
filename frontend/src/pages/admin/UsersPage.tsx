@@ -144,7 +144,7 @@ function ResendSettingsPanel() {
     <p className="cv-admin-section__description">La clé est chiffrée avant stockage et n’est jamais renvoyée par l’API.</p>
     <form className="cv-resend-form" onSubmit={(event) => void submit(event)}>
       <label><span>Clé API Resend</span><input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="re_••••••••" autoComplete="off" required /></label>
-      <button className="primary-button" type="submit" disabled={busy || !apiKey.trim()}>{busy ? 'Enregistrement…' : status?.configured ? 'Remplacer la clé' : 'Enregistrer la clé'}</button>
+      <button className="primary-button" data-cv-save={!status?.configured ? 'true' : undefined} type="submit" disabled={busy || !apiKey.trim()}>{busy ? 'Enregistrement…' : status?.configured ? 'Remplacer la clé' : 'Enregistrer la clé'}</button>
     </form>
     {message && <p className="cv-admin-section__message" role="status">{message}</p>}
   </section>
@@ -172,7 +172,7 @@ function EditUserForm({ user, onCancel, onSubmit }: { user: AdminUser; onCancel:
   const [name, setName] = useState(user.display_name)
   const [isAdmin, setIsAdmin] = useState(user.is_admin)
   const [isActive, setIsActive] = useState(user.is_active)
-  return <form className="admin-form cv-workspace-panel__form" onSubmit={(event) => { event.preventDefault(); onSubmit({ display_name: name.trim(), is_admin: isAdmin, is_active: isActive }) }}><h3>Modifier {user.display_name}</h3><label className="form-field"><span>Nom affiché *</span><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label><div className="cv-user-flags"><label className="checkbox-field"><input type="checkbox" checked={isAdmin} onChange={(event) => setIsAdmin(event.target.checked)} /><span>Administrateur</span></label><label className="checkbox-field"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /><span>Compte actif</span></label></div><div className="admin-form-actions"><button type="submit" className="primary-button">Enregistrer</button><button type="button" className="secondary-button" onClick={onCancel}>Annuler</button></div></form>
+  return <form className="admin-form cv-workspace-panel__form" onSubmit={(event) => { event.preventDefault(); onSubmit({ display_name: name.trim(), is_admin: isAdmin, is_active: isActive }) }}><h3>Modifier {user.display_name}</h3><label className="form-field"><span>Nom affiché *</span><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label><div className="cv-user-flags"><label className="checkbox-field"><input type="checkbox" checked={isAdmin} onChange={(event) => setIsAdmin(event.target.checked)} /><span>Administrateur</span></label><label className="checkbox-field"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /><span>Compte actif</span></label></div><div className="admin-form-actions"><button type="submit" className="primary-button" data-cv-save="true">Enregistrer</button><button type="button" className="secondary-button" onClick={onCancel}>Annuler</button></div></form>
 }
 
 function ResetPasswordForm({ user, onCancel, onDone, onError }: { user: AdminUser; onCancel: () => void; onDone: () => void; onError: (message: string | null) => void }) {

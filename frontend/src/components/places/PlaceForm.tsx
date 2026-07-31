@@ -365,7 +365,7 @@ export function PlaceForm({
       {afterLocation && <div className="place-form__photos">{afterLocation}</div>}
 
       <div className="place-form-submit">
-        <button className="primary-button" type="submit" disabled={isSubmitting}>
+        <button className="primary-button" data-cv-save={submitLabel.toLocaleLowerCase().startsWith('enregistrer') ? 'true' : undefined} type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Enregistrement…' : submitLabel}
         </button>
       </div>

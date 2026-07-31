@@ -10812,3 +10812,80 @@ html[data-theme='dark'] .cv-skeleton-row { background: var(--cv-surface-raised, 
 .cv-empty-state__copy { display: grid; gap: .2rem; max-width: 25rem; }.cv-empty-state__copy h3, .cv-empty-state__copy p { margin: 0; }.cv-empty-state__copy h3 { color: var(--cv-text, var(--cv-color-navy)); font-size: .9rem; }.cv-empty-state__copy p { font-size: .78rem; line-height: 1.45; }
 .cv-empty-state__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem; margin-top: .2rem; }.cv-empty-state__actions button { min-height: 2.35rem; }
 html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, var(--cv-color-teal) 18%, var(--cv-surface)); }
+
+/*
+ * Unified action feedback: save actions keep their solid treatment, while
+ * every other shared action uses its semantic border and a lightly tinted
+ * surface on hover/focus. Filter and navigation controls remain untouched.
+ */
+:is(
+  .primary-button:not([data-cv-save='true']),
+  .secondary-button,
+  .panel-icon-button,
+  .account-button--secondary,
+  .map-action-button,
+  .workspace-panel-close,
+  .close-button,
+  .details-button,
+  .setup-button--secondary,
+  .photo-manager-card .photo-card-actions button,
+  .popup-actions :is(button, a),
+  .maps-catalog__actions button,
+  .places-selection-actions button,
+  .dashboard-quick-actions button:not(.primary),
+  .admin-console__actions button:not(.primary-button),
+  .admin-form-actions button:not(.primary-button),
+  .admin-console__credential-form button:not(.primary-button),
+  .trip-planner-panel .trip-panel-primary-actions button,
+  .trip-planner-panel .trip-panel-route-actions button,
+  .trip-planner-panel .trip-panel-day-actions button,
+  .trip-planner-panel .trip-panel-stop-actions button,
+  .trip-planner-panel .trip-panel-journeys-actions button,
+  .trip-planner-panel .trip-panel-settings-actions button:not(.primary)
+):not(:disabled):is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff));
+  border-color: var(--cv-color-teal);
+  outline-color: color-mix(in srgb, var(--cv-color-teal) 24%, transparent);
+  box-shadow: none;
+}
+
+:is(
+  .danger-button,
+  .account-button--danger,
+  .account-button--danger-hover,
+  .account-button--danger-quiet,
+  .panel-icon-button.danger,
+  .map-action-button.danger,
+  button.danger,
+  .photo-delete-button,
+  .place-bulk-delete,
+  .places-place-actions button[aria-label^='Supprimer'],
+  .popup-actions button:nth-child(2)
+):not(:disabled):is(:hover, :focus-visible) {
+  color: #b42318;
+  background: color-mix(in srgb, #dc2626 8%, var(--cv-surface, #fff));
+  border-color: #dc2626;
+  outline-color: rgb(220 38 38 / 22%);
+  box-shadow: none;
+}
+
+.popup-actions button:first-child:is(:hover, :focus-visible) {
+  color: var(--cv-color-gold);
+  background: color-mix(in srgb, var(--cv-color-gold) 10%, var(--cv-surface, #fff));
+  border-color: var(--cv-color-gold);
+}
+
+.popup-actions a:is(:hover, :focus-visible),
+.trip-planner-panel .trip-panel-route-actions button:nth-child(2):not(:disabled):is(:hover, :focus-visible) {
+  color: #2563eb;
+  background: color-mix(in srgb, #2563eb 8%, var(--cv-surface, #fff));
+  border-color: #2563eb;
+}
+
+.trip-planner-panel :is(.trip-global-optimize-button, .trip-panel-global-optimization button):not(:disabled):is(:hover, :focus-visible) {
+  color: #8a6200;
+  background: color-mix(in srgb, var(--cv-color-gold) 12%, var(--cv-surface, #fff));
+  border-color: var(--cv-color-gold);
+  box-shadow: none;
+}

@@ -220,7 +220,7 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
               </div>
             </fieldset>
           </div>
-          <div className="admin-form-actions"><button className="primary-button" type="submit">Enregistrer</button>{(editing || isPanel) && <button className="secondary-button" type="button" onClick={reset}>Annuler</button>}</div>
+          <div className="admin-form-actions"><button className="primary-button" data-cv-save="true" type="submit">Enregistrer</button>{(editing || isPanel) && <button className="secondary-button" type="button" onClick={reset}>Annuler</button>}</div>
         </form>
       )}
       <ul className={`admin-entity-list${isPanel ? ' cv-panel-status-list cv-workspace-panel__list' : ''}`}>

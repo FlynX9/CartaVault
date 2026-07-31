@@ -103,7 +103,7 @@ export function EntityForm({
       )}
       {supportsVisited && <label className="checkbox-field"><input type="checkbox" checked={values.marksAsVisited === true} onChange={(event) => setValues((current) => ({ ...current, marksAsVisited: event.target.checked }))} /><span>Cette catégorie marque le lieu comme visité</span></label>}
       <div className="admin-form-actions">
-        <button className="primary-button" type="submit" disabled={isSubmitting}>
+        <button className="primary-button" data-cv-save="true" type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}
         </button>
         <button className="secondary-button" type="button" disabled={isSubmitting} onClick={onCancel}>

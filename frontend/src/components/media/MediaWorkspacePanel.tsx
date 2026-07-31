@@ -125,7 +125,7 @@ function MediaDetails({ media, onClose, onChanged, onOpenPlace }: DetailsProps) 
       <footer>
         <button type="button" className="secondary-button" onClick={() => onOpenPlace(media)}><MapPin size={16} />Ouvrir le lieu</button>
         <a className="secondary-button" href={getMediaDownloadUrl(media.id)}><Download size={16} />Télécharger</a>
-        {media.can_edit && <button type="button" className="primary-button" disabled={busy} onClick={() => void save()}>Enregistrer</button>}
+        {media.can_edit && <button type="button" className="primary-button" data-cv-save="true" disabled={busy} onClick={() => void save()}>Enregistrer</button>}
       </footer>
     </section>
   </div>
