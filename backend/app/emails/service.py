@@ -48,8 +48,8 @@ def _render(name: str, values: dict[str, str]) -> str:
     return Template((TEMPLATES / name).read_text(encoding="utf-8")).safe_substitute(values)
 
 
-def provider_from_database(session: Session) -> EmailProvider:
-    if email_settings.provider == "none":
+def provider_from_database(session: Session, *, allow_disabled: bool = False) -> EmailProvider:
+    if email_settings.provider == "none" and not allow_disabled:
         raise EmailDeliveryError("EMAIL_DELIVERY_DISABLED", "L’envoi d’emails est désactivé.")
     credential = session.get(SystemCredential, "resend")
     if credential is None:

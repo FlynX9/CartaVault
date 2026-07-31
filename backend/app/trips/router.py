@@ -104,11 +104,15 @@ def read_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = De
 
 @router.patch("/trips/{trip_id}", response_model=TripRead)
 def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip
+    require_trip_editor(session, trip_id, user)
+    # Load the days before changing the dates. Loading them afterwards triggers
+    # an autoflush where the new start date is still paired with the old derived
+    # end date, which can violate the database date constraint.
+    trip = load_trip(session, trip_id)
     values = data.model_dump(exclude_unset=True)
     values.pop("end_date", None)
     for key, value in values.items(): setattr(trip, key, value)
-    synchronize_trip_dates(load_trip(session, trip.id))
+    synchronize_trip_dates(trip)
     session.commit(); return _trip_read(session, trip_id)
 
 

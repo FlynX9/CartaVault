@@ -215,7 +215,9 @@ def verify_resend(
         raise HTTPException(404, "Aucune clé Resend n’est configurée.")
     try:
         locale = str((admin.preferences or {}).get("language") or "fr")
-        EmailService(provider_from_database(session)).send_resend_verification(
+        # An administrator must be able to validate the stored credential before
+        # enabling transactional delivery for the rest of the application.
+        EmailService(provider_from_database(session, allow_disabled=True)).send_resend_verification(
             admin.email,
             admin.display_name,
             locale,
