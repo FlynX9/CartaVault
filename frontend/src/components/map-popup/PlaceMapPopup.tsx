@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
+  Clock3,
   Copy,
   Earth,
   FileText,
   Heart,
   History,
-  LockKeyhole,
   MapPin,
   Star,
   TriangleAlert,
@@ -22,6 +22,7 @@ import { PlacePopupGallery } from "./PlacePopupGallery";
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { SkeletonList } from "../common/Skeleton";
 import { getTagColorStyle } from "../../tags/tagColors";
+import { formatMinutes } from "../trips/tripMetrics";
 
 interface Props {
   placeId: string;
@@ -394,15 +395,13 @@ export function PlaceMapPopup({
             </p>
           </article>
         )}
-        {fieldEnabled("access") && (
-          <article>
-            <LockKeyhole aria-hidden="true" />
-            <p>
-              <b>Accès</b>
-              <span>{place.access || "Non renseigné"}</span>
-            </p>
-          </article>
-        )}
+        <article aria-label="Durée de visite">
+          <Clock3 aria-hidden="true" />
+          <p>
+            <b>Durée de visite</b>
+            <span>{formatMinutes(place.default_visit_duration_minutes ?? 30)}</span>
+          </p>
+        </article>
         {fieldEnabled("danger_level") && (
           <article className="popup-summary-danger">
             <TriangleAlert aria-hidden="true" />

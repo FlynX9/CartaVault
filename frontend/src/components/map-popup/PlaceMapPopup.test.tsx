@@ -36,7 +36,7 @@ describe('PlaceMapPopup', () => {
     expect(screen.getByText('Tags')).toBeVisible(); expect(screen.getByText('Non noté')).toBeVisible()
     expect(screen.getByText('Coordonnées')).toBeVisible()
     expect(within(screen.getByRole('article', { name: 'Région administrative' })).getByText('Non déterminée')).toBeVisible()
-    expect(screen.getByText('Accès')).toBeVisible()
+    expect(within(screen.getByRole('article', { name: 'Durée de visite' })).getByText('30 min')).toBeVisible()
     expect(screen.getByText('Danger')).toBeVisible()
     expect(screen.getByText('Ajouté le')).toBeVisible()
     expect(screen.getByText('Modifié le')).toBeVisible()
@@ -53,6 +53,13 @@ describe('PlaceMapPopup', () => {
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     const region = await screen.findByRole('article', { name: 'Région administrative' })
     expect(within(region).getByText('Grand Est')).toBeVisible()
+  })
+
+  it('displays the configured POI visit duration', async () => {
+    vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, default_visit_duration_minutes: 75 })
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    const duration = await screen.findByRole('article', { name: 'Durée de visite' })
+    expect(within(duration).getByText('1 h 15')).toBeVisible()
   })
 
   it('renders the primary category icon in the overview area', async () => {
