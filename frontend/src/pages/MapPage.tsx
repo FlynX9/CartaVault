@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { SquareDashed } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
@@ -315,7 +315,7 @@ export function MapPage({
                 return next
               })}
             >
-              {countryMaskEnabled ? <Eye size={18} aria-hidden="true" /> : <EyeOff size={18} aria-hidden="true" />}
+              <SquareDashed size={18} aria-hidden="true" />
             </button>
           </div>}
         </div>

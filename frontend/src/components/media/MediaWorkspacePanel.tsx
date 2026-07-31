@@ -9,9 +9,9 @@ import {
   Image as ImageIcon,
   List,
   MapPin,
-  Minus,
   MoreHorizontal,
-  Plus,
+  SquareChevronDown,
+  SquareChevronUp,
   Search,
   Star,
   Trash2,
@@ -208,7 +208,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
   return <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? ' is-collapsed' : ''}`} aria-label="Médiathèque" tabIndex={-1}>
     <header className="cv-workspace-panel__header">
       <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Bibliothèque</p><h1 className="cv-workspace-panel__title">{t.title}</h1></div>
-      <div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span><button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <Plus size={18} /> : <Minus size={18} />}</button></div>
+      <div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span><button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <SquareChevronDown size={18} /> : <SquareChevronUp size={18} />}</button></div>
     </header>
     <div className="media-toolbar">
       <label className="media-search"><Search size={17} /><input value={query.query} onChange={(event) => change('query', event.target.value)} placeholder={t.search} /></label>

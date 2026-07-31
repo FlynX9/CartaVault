@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArchiveRestore, MapPinned, MapPin, Minus, Plus, Route, Trash2 } from 'lucide-react'
+import { ArchiveRestore, MapPinned, MapPin, Route, SquareChevronDown, SquareChevronUp, Trash2 } from 'lucide-react'
 
 import { getTrash, permanentlyDeleteTrashItem, restoreTrashItem } from '../../api/trash'
 import type { TrashItem, TrashItemType } from '../../types/trash'
@@ -83,7 +83,7 @@ export function TrashWorkspacePanel({ collapsed = false, onCollapsedChange = () 
         </div>
       </div>
       <button className="panel-icon-button" type="button" aria-label={collapsed ? t('trash.expand') : t('trash.collapse')} onClick={() => onCollapsedChange(!collapsed)}>
-        {collapsed ? <Plus size={18} /> : <Minus size={18} />}
+        {collapsed ? <SquareChevronDown size={18} /> : <SquareChevronUp size={18} />}
       </button>
     </header>
     {!collapsed && <div className="trash-workspace-content cv-workspace-panel__content">

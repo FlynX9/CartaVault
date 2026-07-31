@@ -3,17 +3,18 @@ import {
   ArrowUpDown,
   CalendarPlus,
   CheckSquare,
-  FileInput,
+  Import,
   Heart,
   LayoutList,
   List,
   MapPinned,
-  Minus,
   Pencil,
   Plus,
   Search,
   RotateCcw,
   SlidersHorizontal,
+  SquareChevronDown,
+  SquareChevronUp,
   Trash2,
   X,
 } from "lucide-react";
@@ -849,7 +850,7 @@ export function MapPlaceList({
                 aria-label={t("places.import")}
                 onClick={() => setImporting(true)}
               >
-                <FileInput size={17} />
+                <Import size={17} />
               </button>
             )}
           {!collapsed &&
@@ -877,7 +878,11 @@ export function MapPlaceList({
             aria-expanded={!collapsed}
             onClick={() => onCollapsedChange(!collapsed)}
           >
-            {collapsed ? <Plus size={18} /> : <Minus size={18} />}
+            {collapsed ? (
+              <SquareChevronDown size={18} />
+            ) : (
+              <SquareChevronUp size={18} />
+            )}
           </button>
         </div>
       </header>
