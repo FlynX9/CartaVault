@@ -10533,6 +10533,12 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
   scrollbar-width: auto;
 }
 
+.trip-planner-panel.trip-planner-panel--trip-view .trip-panel-scroll {
+  height: auto;
+  flex: 0 1 auto;
+  overflow-y: auto;
+}
+
 @media (max-width: 760px) {
   .map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view):not(.is-collapsed) {
     height: 100%;
