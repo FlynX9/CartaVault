@@ -14,6 +14,9 @@ x-backend-environment: &backend-environment
   PHOTO_STORAGE_PATH: /app/storage/photos
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: ${CARTAVAULT_PDF_MAP_TILES_ENABLED:-true}
+  CARTAVAULT_PDF_MAP_TILE_URL: ${CARTAVAULT_PDF_MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+  CARTAVAULT_PDF_MAP_TILE_CACHE: /app/storage/exports/pdf-map-tiles
   OSRM_BASE_URL: ${OSRM_BASE_URL:-https://router.project-osrm.org}
   CARTAVAULT_REVERSE_GEOCODING_URL: ${CARTAVAULT_REVERSE_GEOCODING_URL:-https://nominatim.openstreetmap.org}
   CARTAVAULT_REVERSE_GEOCODING_USER_AGENT: ${CARTAVAULT_REVERSE_GEOCODING_USER_AGENT:-CartaVault/1.0 (self-hosted POI manager)}

@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, time
+from hashlib import sha256
 from html import escape
 from io import BytesIO
-from math import cos, radians
+import logging
+from math import atan, cos, degrees, floor, isfinite, log, pi, radians, sinh, tan
+import os
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 from uuid import UUID
 
 import qrcode
-from PIL import Image as PillowImage
-from reportlab.graphics.shapes import Circle, Drawing, Line, Path as DrawingPath, Rect, String
+from PIL import Image as PillowImage, ImageDraw
+from reportlab.graphics.shapes import Circle, Drawing, Image as DrawingImage, Line, Path as DrawingPath, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -20,7 +24,17 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFError, TTFont
-from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    HRFlowable,
+    Image,
+    KeepTogether,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -30,6 +44,8 @@ from app.photos.models import Photo
 from app.photos.storage import PhotoStorageError, get_photo_thumbnail
 from app.places.models import PlaceLink
 from app.trips.models import Trip, TripDay
+from app.trips.navigation_links import InvalidNavigationCoordinates, NavigationProvider, build_navigation_url
+from app.trips.schemas import TripPdfExportOptions
 from app.trips.summary_service import day_summary, trip_summary
 
 
@@ -107,11 +123,31 @@ _MONTHS = {
     "en": ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"),
 }
 
+_NAVY = colors.HexColor("#0D1B2A")
+_NAVY_SOFT = colors.HexColor("#2B3E59")
+_EMERALD = colors.HexColor("#0FA68A")
+_EMERALD_DARK = colors.HexColor("#087F6C")
+_MINT = colors.HexColor("#E8F7F3")
+_GOLD = colors.HexColor("#C8A14A")
+_GOLD_PALE = colors.HexColor("#FFF6E3")
+_INK = colors.HexColor("#15243A")
+_SLATE = colors.HexColor("#5E6F85")
+_MIST = colors.HexColor("#F3F6F8")
+_LINE = colors.HexColor("#DCE4EA")
+_LOGGER = logging.getLogger(__name__)
 
-def create_pdf(session: Session, trip: Trip, user_id: UUID, locale: str) -> TemporaryExport:
+
+def create_pdf(
+    session: Session,
+    trip: Trip,
+    user_id: UUID,
+    locale: str,
+    options: TripPdfExportOptions | None = None,
+) -> TemporaryExport:
+    export_options = options or TripPdfExportOptions()
     language = locale if locale in _TEXT else "fr"
     item = create(trip.map_id, user_id, f"{_safe_name(trip.name)}.pdf")
-    photos, links = _place_assets(session, trip)
+    photos, links = _place_assets(session, trip, include_photos=export_options.include_place_images)
     font, bold_font = _register_fonts()
     styles = _styles(font, bold_font)
     labels = _TEXT[language]
@@ -128,29 +164,28 @@ def create_pdf(session: Session, trip: Trip, user_id: UUID, locale: str) -> Temp
         author="CartaVault",
         subject=labels["booklet"],
     )
-    story: list[object] = [
-        Spacer(1, 18 * mm),
-        Paragraph(escape(labels["booklet"]), styles["eyebrow"]),
-        Paragraph(escape(trip.name), styles["cover_title"]),
-    ]
-    if trip.description:
-        story.extend((Spacer(1, 4 * mm), Paragraph(_multiline(trip.description), styles["lead"])))
-    story.extend((Spacer(1, 10 * mm), _summary_table(trip, summary, language, styles), PageBreak()))
-    story.extend((Paragraph(escape(labels["overview"]), styles["h1"]), Spacer(1, 3 * mm), _overview_map(trip, language), Spacer(1, 5 * mm)))
-    story.append(_summary_table(trip, summary, language, styles))
+    story: list[object] = []
+    story.extend(_trip_cover_page(trip, summary, language, styles, include_overview_map=export_options.include_overview_map))
+    if export_options.include_overview_map:
+        story.extend((PageBreak(), *_trip_overview_page(trip, summary, language, styles)))
 
     for day in sorted(trip.days, key=lambda value: value.sort_order):
         story.append(PageBreak())
-        story.extend(_day_section(trip, day, photos, links, language, styles))
+        story.extend(_day_section(trip, day, photos, links, language, styles, export_options))
 
     def decorate(canvas, _document) -> None:
         canvas.saveState()
         canvas.setTitle(trip.name)
         canvas.setAuthor("CartaVault")
-        canvas.setFont(font, 8)
-        canvas.setFillColor(colors.HexColor("#64748B"))
-        canvas.drawString(15 * mm, 9 * mm, labels["generated"])
-        canvas.drawRightString(A4[0] - 15 * mm, 9 * mm, f'{labels["page"]} {canvas.getPageNumber()}')
+        page_number = canvas.getPageNumber()
+        if page_number > 1:
+            canvas.setStrokeColor(_LINE)
+            canvas.setLineWidth(0.45)
+            canvas.line(15 * mm, 13 * mm, A4[0] - 15 * mm, 13 * mm)
+            canvas.setFont(font, 7.4)
+            canvas.setFillColor(_SLATE)
+            canvas.drawString(15 * mm, 8.5 * mm, labels["generated"])
+            canvas.drawRightString(A4[0] - 15 * mm, 8.5 * mm, f'{labels["page"]} {page_number}')
         canvas.restoreState()
 
     try:
@@ -161,19 +196,20 @@ def create_pdf(session: Session, trip: Trip, user_id: UUID, locale: str) -> Temp
     return item
 
 
-def _place_assets(session: Session, trip: Trip) -> tuple[dict[UUID, Photo], dict[UUID, list[PlaceLink]]]:
+def _place_assets(session: Session, trip: Trip, *, include_photos: bool = True) -> tuple[dict[UUID, Photo], dict[UUID, list[PlaceLink]]]:
     place_ids = {stop.place_id for day in trip.days for stop in day.stops if stop.place_id is not None}
     if not place_ids:
         return {}, {}
-    photo_rows = session.scalars(
-        select(Photo)
-        .where(Photo.place_id.in_(place_ids), Photo.path.is_not(None))
-        .order_by(Photo.place_id, Photo.is_primary.desc(), Photo.sort_order, Photo.id)
-    ).all()
     photos: dict[UUID, Photo] = {}
-    for photo in photo_rows:
-        if photo.place_id is not None:
-            photos.setdefault(photo.place_id, photo)
+    if include_photos:
+        photo_rows = session.scalars(
+            select(Photo)
+            .where(Photo.place_id.in_(place_ids), Photo.path.is_not(None))
+            .order_by(Photo.place_id, Photo.is_primary.desc(), Photo.sort_order, Photo.id)
+        ).all()
+        for photo in photo_rows:
+            if photo.place_id is not None:
+                photos.setdefault(photo.place_id, photo)
     links: dict[UUID, list[PlaceLink]] = defaultdict(list)
     for link in session.scalars(
         select(PlaceLink).where(PlaceLink.place_id.in_(place_ids)).order_by(PlaceLink.place_id, PlaceLink.sort_order, PlaceLink.id)
@@ -185,39 +221,147 @@ def _place_assets(session: Session, trip: Trip) -> tuple[dict[UUID, Photo], dict
 def _styles(font: str, bold_font: str) -> dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
     return {
-        "body": ParagraphStyle("CVBody", parent=base["BodyText"], fontName=font, fontSize=9, leading=12, textColor=colors.HexColor("#334155")),
-        "small": ParagraphStyle("CVSmall", parent=base["BodyText"], fontName=font, fontSize=7.5, leading=10, textColor=colors.HexColor("#475569")),
-        "lead": ParagraphStyle("CVLead", parent=base["BodyText"], fontName=font, fontSize=11, leading=16, textColor=colors.HexColor("#475569"), alignment=TA_CENTER),
-        "eyebrow": ParagraphStyle("CVEyebrow", parent=base["BodyText"], fontName=bold_font, fontSize=10, leading=12, textColor=colors.HexColor("#0F9F8B"), alignment=TA_CENTER, spaceAfter=4),
-        "cover_title": ParagraphStyle("CVCover", parent=base["Title"], fontName=bold_font, fontSize=28, leading=34, textColor=colors.HexColor("#10213A"), alignment=TA_CENTER),
-        "h1": ParagraphStyle("CVH1", parent=base["Heading1"], fontName=bold_font, fontSize=18, leading=22, textColor=colors.HexColor("#10213A"), spaceAfter=5),
-        "h2": ParagraphStyle("CVH2", parent=base["Heading2"], fontName=bold_font, fontSize=12, leading=15, textColor=colors.HexColor("#10213A"), spaceBefore=6, spaceAfter=4),
+        "body": ParagraphStyle("CVBody", parent=base["BodyText"], fontName=font, fontSize=9, leading=12.5, textColor=_INK),
+        "small": ParagraphStyle("CVSmall", parent=base["BodyText"], fontName=font, fontSize=7.5, leading=10.2, textColor=_SLATE),
+        "micro": ParagraphStyle("CVMicro", parent=base["BodyText"], fontName=bold_font, fontSize=6.5, leading=8, textColor=_SLATE, uppercase=True),
+        "lead": ParagraphStyle("CVLead", parent=base["BodyText"], fontName=font, fontSize=10.5, leading=15.5, textColor=colors.HexColor("#DCE8F1")),
+        "eyebrow": ParagraphStyle("CVEyebrow", parent=base["BodyText"], fontName=bold_font, fontSize=8, leading=10, textColor=_EMERALD, spaceAfter=5),
+        "cover_eyebrow": ParagraphStyle("CVCoverEyebrow", parent=base["BodyText"], fontName=bold_font, fontSize=8, leading=10, textColor=colors.HexColor("#55D6BD"), spaceAfter=7),
+        "cover_title": ParagraphStyle("CVCover", parent=base["Title"], fontName=bold_font, fontSize=29, leading=33, textColor=colors.white, alignment=TA_LEFT),
+        "cover_meta": ParagraphStyle("CVCoverMeta", parent=base["BodyText"], fontName=bold_font, fontSize=10, leading=13, textColor=colors.HexColor("#F4D395")),
+        "h1": ParagraphStyle("CVH1", parent=base["Heading1"], fontName=bold_font, fontSize=20, leading=24, textColor=_NAVY, spaceAfter=4),
+        "h2": ParagraphStyle("CVH2", parent=base["Heading2"], fontName=bold_font, fontSize=11, leading=14, textColor=_NAVY, spaceBefore=5, spaceAfter=4),
+        "section_lead": ParagraphStyle("CVSectionLead", parent=base["BodyText"], fontName=font, fontSize=9, leading=13, textColor=_SLATE),
         "table_header": ParagraphStyle("CVTableHeader", parent=base["BodyText"], fontName=bold_font, fontSize=8, leading=10, textColor=colors.white, alignment=TA_LEFT),
-        "poi": ParagraphStyle("CVPoi", parent=base["BodyText"], fontName=bold_font, fontSize=9, leading=12, textColor=colors.HexColor("#10213A")),
+        "poi": ParagraphStyle("CVPoi", parent=base["BodyText"], fontName=bold_font, fontSize=9, leading=11.5, textColor=_NAVY),
+        "metric": ParagraphStyle("CVMetric", parent=base["BodyText"], fontName=bold_font, fontSize=13, leading=15, textColor=_NAVY),
+        "metric_label": ParagraphStyle("CVMetricLabel", parent=base["BodyText"], fontName=font, fontSize=6.8, leading=8.5, textColor=_SLATE),
+        "metric_missing": ParagraphStyle("CVMetricMissing", parent=base["BodyText"], fontName=bold_font, fontSize=8.5, leading=10.5, textColor=_GOLD),
+        "day_number": ParagraphStyle("CVDayNumber", parent=base["BodyText"], fontName=bold_font, fontSize=8, leading=10, textColor=colors.white, alignment=TA_CENTER),
+        "badge": ParagraphStyle("CVBadge", parent=base["BodyText"], fontName=bold_font, fontSize=7, leading=8.5, textColor=_GOLD),
+        "empty": ParagraphStyle("CVEmpty", parent=base["BodyText"], fontName=font, fontSize=7, leading=9, textColor=colors.HexColor("#8795A7"), alignment=TA_CENTER),
     }
 
 
-def _summary_table(trip: Trip, summary: dict, locale: str, styles: dict[str, ParagraphStyle]) -> Table:
+def _trip_cover_page(
+    trip: Trip,
+    summary: dict,
+    locale: str,
+    styles: dict[str, ParagraphStyle],
+    *,
+    include_overview_map: bool,
+) -> list[object]:
     t = _TEXT[locale]
-    date_value = _date_range(trip.start_date, trip.end_date, locale)
+    year = str((trip.start_date or trip.end_date).year) if trip.start_date or trip.end_date else ""
+    meta = "  /  ".join(value for value in (year, _date_range(trip.start_date, trip.end_date, locale)) if value)
+    copy = trip.description or ("Votre itineraire, organise jour apres jour." if locale == "fr" else "Your itinerary, organized day by day.")
+    hero_copy = [
+        Paragraph(escape(t["booklet"]).upper(), styles["cover_eyebrow"]),
+        Paragraph(_rich(trip.name), styles["cover_title"]),
+        Spacer(1, 5 * mm),
+        Paragraph(escape(meta), styles["cover_meta"]),
+        Spacer(1, 5 * mm),
+        Paragraph(_multiline(copy), styles["lead"]),
+    ]
+    hero_visual = _overview_map(trip, locale, width=67 * mm, height=96 * mm, dark=True, inset=False) if include_overview_map else _brand_cover_visual(67 * mm, 96 * mm)
+    hero = Table(
+        [[hero_copy, hero_visual]],
+        colWidths=[103 * mm, 67 * mm],
+        rowHeights=[112 * mm],
+    )
+    hero.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _NAVY),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (0, 0), 12 * mm),
+        ("RIGHTPADDING", (0, 0), (0, 0), 8 * mm),
+        ("LEFTPADDING", (1, 0), (1, 0), 0),
+        ("RIGHTPADDING", (1, 0), (1, 0), 5 * mm),
+        ("ROUNDEDCORNERS", [10]),
+    ]))
+    return [
+        Spacer(1, 7 * mm),
+        hero,
+        Spacer(1, 11 * mm),
+        Paragraph(t["summary"].upper(), styles["eyebrow"]),
+        Paragraph(escape(_date_range(trip.start_date, trip.end_date, locale)), styles["h1"]),
+        Spacer(1, 5 * mm),
+        _kpi_cards(summary, locale, styles, cover=True),
+        Spacer(1, 11 * mm),
+        HRFlowable(width="100%", thickness=0.6, color=_LINE),
+        Spacer(1, 5 * mm),
+        Paragraph("CARTAVAULT  /  TRAVEL EDITION", styles["micro"]),
+    ]
+
+
+def _brand_cover_visual(width: float, height: float) -> Drawing:
+    drawing = Drawing(width, height)
+    drawing.add(Rect(0, 0, width, height, fillColor=_NAVY, strokeColor=None))
+    path = DrawingPath()
+    path.moveTo(8 * mm, 21 * mm)
+    path.curveTo(21 * mm, 43 * mm, 36 * mm, 34 * mm, 58 * mm, 70 * mm)
+    path.strokeColor = colors.HexColor("#2B5063")
+    path.strokeWidth = 2.2
+    path.fillColor = None
+    drawing.add(path)
+    for x, y, color in ((8, 21, _EMERALD), (29, 39, _GOLD), (58, 70, _EMERALD)):
+        drawing.add(Circle(x * mm, y * mm, 4.5, fillColor=color, strokeColor=colors.white, strokeWidth=1.2))
+    return drawing
+
+
+def _trip_overview_page(trip: Trip, summary: dict, locale: str, styles: dict[str, ParagraphStyle]) -> list[object]:
+    t = _TEXT[locale]
+    subtitle = "Le voyage en un coup d'oeil" if locale == "fr" else "The whole trip at a glance"
+    return [
+        Paragraph(t["summary"].upper(), styles["eyebrow"]),
+        Paragraph(escape(t["overview"]), styles["h1"]),
+        Paragraph(escape(subtitle), styles["section_lead"]),
+        Spacer(1, 5 * mm),
+        _overview_map(trip, locale, width=180 * mm, height=110 * mm),
+        Spacer(1, 5 * mm),
+        _day_legend(trip, locale, styles),
+        Spacer(1, 7 * mm),
+        _kpi_cards(summary, locale, styles),
+    ]
+
+
+def _kpi_cards(summary: dict, locale: str, styles: dict[str, ParagraphStyle], cover: bool = False) -> Table:
+    t = _TEXT[locale]
     values = (
-        (t["dates"], date_value),
         (t["days"], str(summary["days"])),
         (t["stops"], str(summary["stops"])),
         (t["distance"], _distance(summary["total_route_distance_meters"], t)),
         (t["driving"], _duration(summary["total_route_duration_minutes"], t)),
         (t["total"], _duration(summary["total_planned_duration_minutes"], t)),
     )
-    cells = [[Paragraph(escape(label), styles["small"]), Paragraph(escape(value), styles["poi"])] for label, value in values]
-    table = Table(cells, colWidths=[35 * mm, 55 * mm], hAlign="CENTER", rowHeights=10 * mm)
+    cells = [[Paragraph(escape(value), styles["metric"]), Spacer(1, 1.2 * mm), Paragraph(escape(label).upper(), styles["metric_label"])] for label, value in values]
+    table = Table([cells], colWidths=[36 * mm] * 5, rowHeights=[24 * mm])
     table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F1F5F9")),
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#CBD5E1")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#DDE5ED")),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white if cover else _MIST),
+        ("BOX", (0, 0), (-1, -1), 0.6, _LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.45, _LINE),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4.5 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3 * mm),
     ]))
     return table
+
+
+def _day_legend(trip: Trip, locale: str, styles: dict[str, ParagraphStyle]) -> Table:
+    cells: list[object] = []
+    for day in sorted(trip.days, key=lambda value: value.sort_order):
+        color = colors.HexColor(day.color or "#0FA68A")
+        title = f'{_TEXT[locale]["day"]} {day.day_number}' + (f" - {day.title}" if day.title else "")
+        marker = Table([[Paragraph(str(day.day_number), styles["day_number"])]], colWidths=[8 * mm], rowHeights=[8 * mm])
+        marker.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+        cells.append([marker, Paragraph(escape(title), styles["small"])])
+    if not cells:
+        return Table([[Paragraph(escape(_TEXT[locale]["not_available"]), styles["small"])]], colWidths=[180 * mm])
+    rows = [cells[index:index + 3] for index in range(0, len(cells), 3)]
+    normalized = []
+    for row in rows:
+        row += [["", ""]] * (3 - len(row))
+        normalized.append([Table([cell], colWidths=[10 * mm, 47 * mm], style=[("VALIGN", (0, 0), (-1, -1), "MIDDLE")]) for cell in row])
+    return Table(normalized, colWidths=[60 * mm] * 3, rowHeights=11 * mm)
 
 
 def _day_section(
@@ -227,63 +371,89 @@ def _day_section(
     links: dict[UUID, list[PlaceLink]],
     locale: str,
     styles: dict[str, ParagraphStyle],
+    options: TripPdfExportOptions,
 ) -> list[object]:
     t = _TEXT[locale]
-    title = f'{t["day"]} {day.day_number}' + (f" - {day.title}" if day.title else "")
-    elements: list[object] = [Paragraph(escape(title), styles["h1"])]
-    if day.date:
-        elements.append(Paragraph(f'<b>{escape(t["date"])}:</b> {escape(_format_date(day.date, locale))}', styles["body"]))
-    if day.notes:
-        elements.extend((Spacer(1, 2 * mm), Paragraph(_multiline(day.notes), styles["body"])))
+    elements: list[object] = [_day_header(day, locale, styles)]
     metrics = day_summary(day)
-    elements.extend((Spacer(1, 4 * mm), _day_metrics(metrics, locale, styles)))
+    elements.extend((Spacer(1, 5 * mm), _day_metrics(metrics, locale, styles)))
     if not metrics["has_current_route"]:
-        elements.extend((Spacer(1, 2 * mm), Paragraph(escape(t["route_missing"]), styles["small"])))
+        elements.extend((Spacer(1, 2.5 * mm), _status_badge(t["route_missing"], styles)))
+    elements.extend((Spacer(1, 4 * mm), _day_map_section(trip, day, locale, styles)))
 
     accommodation = next((night for night in trip.nights if night.previous_day_id == day.id), None)
     if accommodation:
-        detail = escape(accommodation.name)
-        if accommodation.address:
-            detail += f" - {escape(accommodation.address)}"
-        elements.extend((Spacer(1, 4 * mm), Paragraph(escape(t["accommodation"]), styles["h2"]), Paragraph(detail, styles["body"])))
+        elements.extend((Spacer(1, 4 * mm), _accommodation_card(accommodation, locale, styles)))
 
-    elements.extend((Spacer(1, 5 * mm), Paragraph(escape(t["schedule"]), styles["h2"])))
-    rows: list[list[object]] = [[
-        Paragraph("#", styles["table_header"]),
-        Paragraph(escape(t["poi"]), styles["table_header"]),
-        Paragraph(escape(t["photo"]), styles["table_header"]),
-        Paragraph(escape(t["qr"]), styles["table_header"]),
-    ]]
     entries: list[tuple[str, object, str | None]] = []
     if day.day_number == 1 and trip.departure is not None:
         entries.append(("D", trip.departure, t["departure"]))
     entries.extend((str(index), stop, None) for index, stop in enumerate(day.stops, 1))
     if day.day_number == len(trip.days) and trip.arrival is not None:
         entries.append(("A", trip.arrival, t["arrival"]))
-    for order, stop, kind in entries:
+    schedule_title = [Paragraph(escape(t["schedule"]).upper(), styles["eyebrow"]), Paragraph(_schedule_subtitle(len(entries), locale), styles["h2"])]
+    if not entries:
+        elements.extend((Spacer(1, 6 * mm), *schedule_title, _empty_timeline(locale, styles)))
+        return elements
+    cards = []
+    for entry_index, (order, stop, kind) in enumerate(entries):
         place_id = getattr(stop, "place_id", None)
-        rows.append([
-            Paragraph(order, styles["poi"]),
-            _stop_description(stop, links.get(place_id, []) if place_id else [], locale, styles, kind),
-            _photo(photos.get(place_id) if place_id else None, t, styles),
-            _qr(_maps_url(stop)),
-        ])
-    if len(rows) == 1:
-        rows.append(["", Paragraph(escape(t["not_available"]), styles["body"]), "", ""])
-    table = Table(rows, colWidths=[10 * mm, 95 * mm, 43 * mm, 27 * mm], repeatRows=1, hAlign="LEFT")
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(day.color or "#0FA68A")),
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#CBD5E1")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#E2E8F0")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 1), (0, -1), "CENTER"),
-        ("ALIGN", (2, 1), (-1, -1), "CENTER"),
-        ("TOPPADDING", (0, 1), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
-    ]))
-    elements.append(table)
+        card = _stop_timeline_card(
+            order,
+            stop,
+            links.get(place_id, []) if place_id else [],
+            photos.get(place_id) if place_id else None,
+            locale,
+            styles,
+            day.color or "#0FA68A",
+            kind,
+            options,
+        )
+        if entry_index:
+            cards.append(KeepTogether([
+                _route_connector(_route_segment_before_entry(day, stop, kind, entry_index), locale, styles),
+                Spacer(1, 1 * mm),
+                card,
+            ]))
+        else:
+            cards.append(card)
+    if len(cards) <= 3:
+        grouped: list[object] = [*schedule_title, Spacer(1, 1.5 * mm)]
+        for index, card in enumerate(cards):
+            if index:
+                grouped.append(Spacer(1, 2.2 * mm))
+            grouped.append(card)
+        elements.extend((Spacer(1, 6 * mm), KeepTogether(grouped)))
+        return elements
+    elements.extend((Spacer(1, 6 * mm), KeepTogether([*schedule_title, Spacer(1, 1.5 * mm), cards[0]])))
+    if len(cards) > 2:
+        for card in cards[1:-2]:
+            elements.extend((Spacer(1, 2.2 * mm), card))
+        elements.extend((Spacer(1, 2.2 * mm), KeepTogether([cards[-2], Spacer(1, 2.2 * mm), cards[-1]])))
     return elements
+
+
+def _day_header(day: TripDay, locale: str, styles: dict[str, ParagraphStyle]) -> Table:
+    color = colors.HexColor(day.color or "#0FA68A")
+    title = day.title or f'{_TEXT[locale]["day"]} {day.day_number}'
+    date_value = _format_date(day.date, locale) if day.date else _TEXT[locale]["not_available"]
+    badge = Table([[Paragraph(str(day.day_number), styles["day_number"])]], colWidths=[13 * mm], rowHeights=[13 * mm])
+    badge.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    copy = [Paragraph(f'{escape(_TEXT[locale]["day"]).upper()} {day.day_number}', styles["eyebrow"]), Paragraph(_rich(title), styles["h1"]), Paragraph(escape(date_value), styles["section_lead"])]
+    if day.notes:
+        copy.extend((Spacer(1, 2 * mm), Paragraph(_multiline(day.notes), styles["body"])))
+    header = Table([[badge, copy]], colWidths=[19 * mm, 161 * mm])
+    header.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _MIST),
+        ("LINEBEFORE", (0, 0), (0, -1), 3.5, color),
+        ("BOX", (0, 0), (-1, -1), 0.5, _LINE),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (0, 0), 5 * mm),
+        ("LEFTPADDING", (1, 0), (1, 0), 2 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 5 * mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5 * mm),
+    ]))
+    return header
 
 
 def _day_metrics(summary: dict, locale: str, styles: dict[str, ParagraphStyle]) -> Table:
@@ -298,32 +468,232 @@ def _day_metrics(summary: dict, locale: str, styles: dict[str, ParagraphStyle]) 
         (t["estimated_arrival"], _clock(summary["estimated_arrival_time"], summary["estimated_arrival_day_offset"], t)),
         (t["total"], _duration(summary["total_duration_minutes"], t)),
     ]
-    cells = []
-    for index in range(0, len(values), 2):
-        first, second = values[index], values[index + 1]
-        cells.append([
-            Paragraph(escape(first[0]), styles["small"]),
-            Paragraph(escape(first[1]), styles["poi"]),
-            Paragraph(escape(second[0]), styles["small"]),
-            Paragraph(escape(second[1]), styles["poi"]),
-        ])
-    table = Table(cells, colWidths=[33 * mm, 52 * mm, 38 * mm, 52 * mm])
+    missing_label = "À recalculer" if locale == "fr" else "Recalculate"
+    cells = [
+        [
+            Paragraph(escape(missing_label if value == t["not_available"] else value), styles["metric_missing"] if value == t["not_available"] else styles["metric"]),
+            Spacer(1, 0.8 * mm),
+            Paragraph(escape(label), styles["metric_label"]),
+        ]
+        for label, value in values
+    ]
+    rows = [cells[:4], cells[4:]]
+    table = Table(rows, colWidths=[45 * mm] * 4, rowHeights=[19 * mm, 19 * mm])
     table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F1F5F9")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#DDE5ED")),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.5, _LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.35, _LINE),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4 * mm),
     ]))
     return table
 
 
-def _stop_description(stop: object, links: list[PlaceLink], locale: str, styles: dict[str, ParagraphStyle], kind: str | None = None) -> list[object]:
+def _status_badge(text: str, styles: dict[str, ParagraphStyle]) -> Table:
+    table = Table([[Paragraph(escape(text), styles["badge"])]], colWidths=[180 * mm], rowHeights=[9 * mm])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _GOLD_PALE),
+        ("LINEBEFORE", (0, 0), (0, 0), 2.5, _GOLD),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4 * mm),
+    ]))
+    return table
+
+
+def _day_map_section(trip: Trip, day: TripDay, locale: str, styles: dict[str, ParagraphStyle]) -> KeepTogether:
+    title = "Itinéraire du jour" if locale == "fr" else "Day route"
+    subtitle = "Tracé et étapes de la journée" if locale == "fr" else "Route and stops for the day"
+    return KeepTogether([
+        Paragraph(escape(title).upper(), styles["eyebrow"]),
+        Paragraph(escape(subtitle), styles["h2"]),
+        Spacer(1, 1.5 * mm),
+        _overview_map(
+            trip,
+            locale,
+            width=180 * mm,
+            height=55 * mm,
+            inset=False,
+            selected_days=(day,),
+            selected_points=_day_trip_points(trip, day),
+            label=f'{_TEXT[locale]["day"]} {day.day_number}',
+        ),
+    ])
+
+
+def _route_segment_before_entry(day: TripDay, stop: object, kind: str | None, entry_index: int) -> dict | None:
+    segments = day.route_segments or []
+    stop_id = getattr(stop, "id", "")
+    target_suffix = f":{stop_id}"
+    for segment in segments:
+        target = segment.get("to")
+        if isinstance(target, str) and target.endswith(target_suffix):
+            return segment
+    ordered_stops = sorted(day.stops, key=lambda item: getattr(item, "sort_order", 0))
+    trip = getattr(day, "trip", None)
+    has_start_anchor = trip is not None and _day_start_anchor(trip, day) is not None
+    if kind is None:
+        try:
+            stop_index = ordered_stops.index(stop)
+        except ValueError:
+            return None
+        segment_index = stop_index if has_start_anchor else stop_index - 1
+    else:
+        segment_index = len(ordered_stops) if has_start_anchor else len(ordered_stops) - 1
+    if not any(isinstance(segment.get("to"), str) for segment in segments):
+        segment_index = entry_index - 1
+    if segment_index < 0 or segment_index >= len(segments):
+        return None
+    return segments[segment_index]
+
+
+def _segment_duration(segment: dict) -> float | None:
+    if segment.get("routable") is False:
+        return None
+    try:
+        value = float(segment["duration_seconds"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return value if isfinite(value) and value >= 0 else None
+
+
+def _segment_distance(segment: dict) -> float | None:
+    if segment.get("routable") is False:
+        return None
+    try:
+        value = float(segment["distance_meters"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return value if isfinite(value) and value >= 0 else None
+
+
+def _route_connector(segment: dict | None, locale: str, styles: dict[str, ParagraphStyle]) -> Table:
+    t = _TEXT[locale]
+    distance = _distance(_segment_distance(segment), t) if segment is not None else t["not_available"]
+    duration_seconds = _segment_duration(segment) if segment is not None else None
+    duration = _duration(duration_seconds / 60, t) if duration_seconds is not None else t["not_available"]
+    car = Drawing(8 * mm, 5 * mm)
+    car.add(Rect(5, 5, 15, 7, rx=2, ry=2, fillColor=_EMERALD, strokeColor=None))
+    car.add(Rect(8, 10, 9, 5, rx=2, ry=2, fillColor=_EMERALD, strokeColor=None))
+    car.add(Circle(8, 5, 2, fillColor=_NAVY_SOFT, strokeColor=None))
+    car.add(Circle(17, 5, 2, fillColor=_NAVY_SOFT, strokeColor=None))
+    label = Paragraph(f"{escape(distance)} &nbsp;·&nbsp; {escape(duration)}", styles["small"])
+    pill = Table([[car, label]], colWidths=[10 * mm, 35 * mm], rowHeights=[7 * mm])
+    pill.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), _MINT),
+        ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#B7DED5")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2 * mm),
+    ]))
+    line_top = Drawing(180 * mm, 2.5 * mm)
+    line_top.add(Line(90 * mm, 0, 90 * mm, 2.5 * mm, strokeColor=colors.HexColor("#9CB1BE"), strokeWidth=0.8, strokeDashArray=[1.5, 1.5]))
+    line_bottom = Drawing(180 * mm, 2.5 * mm)
+    line_bottom.add(Line(90 * mm, 0, 90 * mm, 2.5 * mm, strokeColor=colors.HexColor("#9CB1BE"), strokeWidth=0.8, strokeDashArray=[1.5, 1.5]))
+    connector = Table([[line_top], [pill], [line_bottom]], colWidths=[180 * mm], rowHeights=[2.5 * mm, 7 * mm, 2.5 * mm])
+    connector.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return connector
+
+
+def _accommodation_card(accommodation: object, locale: str, styles: dict[str, ParagraphStyle]) -> Table:
+    t = _TEXT[locale]
+    address = getattr(accommodation, "address", None)
+    detail = [Paragraph(escape(t["accommodation"]).upper(), styles["eyebrow"]), Paragraph(_rich(getattr(accommodation, "name")), styles["poi"])]
+    if address:
+        detail.append(Paragraph(_rich(address), styles["small"]))
+    night_badge = Table([[Paragraph("N", styles["day_number"])]], colWidths=[11 * mm], rowHeights=[11 * mm])
+    night_badge.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), _NAVY_SOFT), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    card = Table([[night_badge, detail]], colWidths=[17 * mm, 163 * mm])
+    card.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EEF3F8")),
+        ("BOX", (0, 0), (-1, -1), 0.5, _LINE),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (0, 0), 4 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 3.5 * mm),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5 * mm),
+    ]))
+    return card
+
+
+def _schedule_subtitle(count: int, locale: str) -> str:
+    if locale == "fr":
+        return f"{count} etape{'s' if count != 1 else ''} dans l'ordre du parcours"
+    return f"{count} stop{'s' if count != 1 else ''} in route order"
+
+
+def _empty_timeline(locale: str, styles: dict[str, ParagraphStyle]) -> Table:
+    text = "Aucune etape planifiee pour cette journee." if locale == "fr" else "No stops planned for this day."
+    table = Table([[Paragraph(escape(text), styles["empty"])]], colWidths=[180 * mm], rowHeights=[22 * mm])
+    table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), _MIST), ("BOX", (0, 0), (-1, -1), 0.5, _LINE), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    return table
+
+
+def _stop_timeline_card(
+    order: str,
+    stop: object,
+    links: list[PlaceLink],
+    photo: Photo | None,
+    locale: str,
+    styles: dict[str, ParagraphStyle],
+    day_color: str,
+    kind: str | None,
+    options: TripPdfExportOptions,
+) -> Table:
+    color = colors.HexColor(day_color)
+    marker = Table([[Paragraph(order, styles["day_number"])]], colWidths=[10 * mm], rowHeights=[10 * mm])
+    marker.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    cells: list[object] = [marker, _stop_description(stop, links, locale, styles, kind)]
+    if options.include_place_images:
+        cells.append(_photo(photo, _TEXT[locale], styles))
+    provider_count = len(options.navigation_providers) if options.include_navigation_qr_codes else 0
+    if provider_count:
+        cells.append(_navigation_blocks(stop, options.navigation_providers, locale, styles))
+    if options.include_place_images and provider_count > 1:
+        widths, row_height = [15, 74, 40, 51], 37
+    elif options.include_place_images and provider_count == 1:
+        widths, row_height = [15, 91, 45, 29], 37
+    elif options.include_place_images:
+        widths, row_height = [15, 120, 45], 37
+    elif provider_count > 1:
+        widths, row_height = [15, 114, 51], 34
+    elif provider_count == 1:
+        widths, row_height = [15, 136, 29], 34
+    else:
+        widths, row_height = [15, 165], 29
+    card = Table([cells], colWidths=[value * mm for value in widths], rowHeights=[row_height * mm])
+    card.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.6, _LINE),
+        ("LINEBEFORE", (0, 0), (0, 0), 3, color),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "CENTER"),
+        ("ALIGN", (2, 0), (-1, 0), "CENTER"),
+        ("LEFTPADDING", (0, 0), (0, 0), 2.5 * mm),
+        ("LEFTPADDING", (1, 0), (1, 0), 3 * mm),
+        ("RIGHTPADDING", (1, 0), (1, 0), 3 * mm),
+        ("LEFTPADDING", (2, 0), (-1, 0), 2 * mm),
+        ("RIGHTPADDING", (2, 0), (-1, 0), 2 * mm),
+    ]))
+    return card
+
+
+def _stop_description(
+    stop: object,
+    links: list[PlaceLink],
+    locale: str,
+    styles: dict[str, ParagraphStyle],
+    kind: str | None = None,
+) -> list[object]:
     t = _TEXT[locale]
     name = f"{kind}: {getattr(stop, 'name')}" if kind else str(getattr(stop, "name"))
-    blocks: list[object] = [Paragraph(escape(name), styles["poi"])]
+    blocks: list[object] = [Paragraph(_rich(name), styles["poi"])]
     details = []
     planned_time = getattr(stop, "planned_arrival", None) or getattr(stop, "departure_time", None)
     if planned_time:
@@ -332,11 +702,17 @@ def _stop_description(stop: object, links: list[PlaceLink], locale: str, styles:
         details.append(f'{t["visit_duration"]}: {_duration(getattr(stop, "visit_duration_minutes"), t)}')
     if getattr(stop, "address", None):
         details.append(str(getattr(stop, "address")))
-    details.append(f'{t["coordinates"]}: {getattr(stop, "latitude"):.5f}, {getattr(stop, "longitude"):.5f}')
-    blocks.append(Paragraph("<br/>".join(escape(value) for value in details), styles["small"]))
+    try:
+        latitude = float(getattr(stop, "latitude"))
+        longitude = float(getattr(stop, "longitude"))
+        build_navigation_url(NavigationProvider.GOOGLE_MAPS, latitude, longitude)
+        details.append(f'{t["coordinates"]}: {latitude:.5f}, {longitude:.5f}')
+    except (AttributeError, TypeError, ValueError, InvalidNavigationCoordinates):
+        details.append(f'{t["coordinates"]}: {t["not_available"]}')
+    blocks.append(Paragraph("<br/>".join(_rich(value) for value in details), styles["small"]))
     if links:
         rendered = " · ".join(
-            f'<link href="{escape(link.url, quote=True)}">{escape(link.label or link.url)}</link>'
+            f'<link href="{escape(link.url, quote=True)}">{_rich(link.label or link.url)}</link>'
             for link in links[:4]
         )
         blocks.append(Paragraph(f'{escape(t["links"])}: {rendered}', styles["small"]))
@@ -345,7 +721,7 @@ def _stop_description(stop: object, links: list[PlaceLink], locale: str, styles:
 
 def _photo(photo: Photo | None, labels: dict[str, str], styles: dict[str, ParagraphStyle]) -> object:
     if photo is None or photo.path is None or photo.place_id is None:
-        return Paragraph(escape(labels["no_photo"]), styles["small"])
+        return _empty_photo_state(labels, styles)
     try:
         path = get_photo_thumbnail(photo.path, photo.place_id, photo.id)
         with PillowImage.open(path) as source:
@@ -353,32 +729,149 @@ def _photo(photo: Photo | None, labels: dict[str, str], styles: dict[str, Paragr
         ratio = min((39 * mm) / width, (27 * mm) / height)
         return Image(str(path), width=width * ratio, height=height * ratio)
     except (PhotoStorageError, OSError, ValueError):
-        return Paragraph(escape(labels["no_photo"]), styles["small"])
+        return _empty_photo_state(labels, styles)
 
 
-def _qr(url: str) -> Image:
-    image = qrcode.make(url, border=1, box_size=4)
+def _empty_photo_state(labels: dict[str, str], styles: dict[str, ParagraphStyle]) -> Table:
+    icon = Drawing(12 * mm, 7 * mm)
+    icon.add(Rect(1, 1, 31, 18, rx=3, ry=3, fillColor=None, strokeColor=colors.HexColor("#A9B5C2"), strokeWidth=0.8))
+    icon.add(Circle(25, 14, 2.2, fillColor=colors.HexColor("#A9B5C2"), strokeColor=None))
+    path = DrawingPath()
+    path.moveTo(5, 5)
+    path.lineTo(13, 12)
+    path.lineTo(19, 7)
+    path.lineTo(29, 5)
+    path.strokeColor = colors.HexColor("#A9B5C2")
+    path.strokeWidth = 0.8
+    icon.add(path)
+    table = Table([[icon], [Paragraph(escape(labels["no_photo"]), styles["empty"])]], colWidths=[39 * mm], rowHeights=[10 * mm, 8 * mm])
+    table.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), _MIST), ("BOX", (0, 0), (-1, -1), 0.4, _LINE), ("ALIGN", (0, 0), (-1, -1), "CENTER"), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    return table
+
+
+def _navigation_block(
+    stop: object,
+    provider: NavigationProvider,
+    locale: str,
+    styles: dict[str, ParagraphStyle],
+) -> list[object]:
+    unavailable = "Navigation indisponible" if locale == "fr" else "Navigation unavailable"
+    try:
+        url = build_navigation_url(provider, float(getattr(stop, "latitude")), float(getattr(stop, "longitude")))
+        label = "Google Maps" if provider is NavigationProvider.GOOGLE_MAPS else "Waze"
+        return [_qr(url, provider), Paragraph(escape(label), styles["empty"])]
+    except (AttributeError, TypeError, InvalidNavigationCoordinates, ValueError):
+        return [Paragraph(escape(unavailable), styles["empty"])]
+    except Exception:
+        _LOGGER.exception("QR generation failed for a trip stop")
+        return [Paragraph(escape(unavailable), styles["empty"])]
+
+
+def _navigation_blocks(
+    stop: object,
+    providers: list[NavigationProvider],
+    locale: str,
+    styles: dict[str, ParagraphStyle],
+) -> object:
+    blocks = [_navigation_block(stop, provider, locale, styles) for provider in providers]
+    if len(blocks) == 1:
+        return blocks[0]
+    table = Table([blocks], colWidths=[24 * mm] * len(blocks))
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1 * mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 1 * mm),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    return table
+
+
+def _qr(url: str, provider: NavigationProvider) -> Image:
+    image = _qr_image(url, provider)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     buffer.seek(0)
     return Image(buffer, width=20 * mm, height=20 * mm)
 
 
-def _overview_map(trip: Trip, locale: str) -> Drawing:
-    width, height = 175 * mm, 82 * mm
+def _qr_image(url: str, provider: NavigationProvider) -> PillowImage.Image:
+    code = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=8,
+        border=4,
+    )
+    code.add_data(url)
+    code.make(fit=True)
+    image = code.make_image(fill_color="#0D1B2A", back_color="white").convert("RGB")
+    draw = ImageDraw.Draw(image)
+    center = image.width // 2
+    backdrop_size = round(image.width * 0.20)
+    icon_size = round(image.width * 0.16)
+    backdrop = (center - backdrop_size // 2, center - backdrop_size // 2, center + backdrop_size // 2, center + backdrop_size // 2)
+    draw.rounded_rectangle(backdrop, radius=max(3, backdrop_size // 5), fill="white")
+    _draw_provider_pictogram(draw, provider, center, icon_size)
+    return image
+
+
+def _draw_provider_pictogram(draw: ImageDraw.ImageDraw, provider: NavigationProvider, center: int, size: int) -> None:
+    left, top = center - size // 2, center - size // 2
+    right, bottom = center + size // 2, center + size // 2
+    stroke = max(2, size // 10)
+    if provider is NavigationProvider.GOOGLE_MAPS:
+        draw.polygon(((center, bottom - stroke), (left + stroke, center), (right - stroke, center)), fill="#0FA68A")
+        draw.ellipse((left + stroke, top, right - stroke, bottom - size // 4), fill="#0FA68A")
+        hole = max(2, size // 6)
+        draw.ellipse((center - hole, top + size // 5, center + hole, top + size // 5 + hole * 2), fill="white")
+        return
+    bubble_bottom = bottom - size // 5
+    draw.rounded_rectangle((left, top, right, bubble_bottom), radius=max(3, size // 4), fill="#2B3E59")
+    draw.polygon(((left + size // 4, bubble_bottom - stroke), (left + size // 5, bottom), (center, bubble_bottom - stroke)), fill="#2B3E59")
+    wheel = max(2, size // 9)
+    draw.ellipse((left + size // 5, bubble_bottom - wheel, left + size // 5 + wheel * 2, bubble_bottom + wheel), fill="white")
+    draw.ellipse((right - size // 5 - wheel * 2, bubble_bottom - wheel, right - size // 5, bubble_bottom + wheel), fill="white")
+
+
+def _overview_map(
+    trip: Trip,
+    locale: str,
+    *,
+    width: float = 175 * mm,
+    height: float = 82 * mm,
+    dark: bool = False,
+    inset: bool = True,
+    selected_days: Iterable[TripDay] | None = None,
+    selected_points: list[tuple[float, float]] | None = None,
+    label: str | None = None,
+) -> Drawing:
     drawing = Drawing(width, height)
-    drawing.add(Rect(0, 0, width, height, rx=8, ry=8, fillColor=colors.HexColor("#F4F7F8"), strokeColor=colors.HexColor("#CBD5E1"), strokeWidth=0.6))
-    points = _trip_points(trip)
+    background = _NAVY if dark else colors.HexColor("#F4F7F8")
+    border = _NAVY if dark else _LINE
+    drawing.add(Rect(0, 0, width, height, rx=8, ry=8, fillColor=background, strokeColor=border, strokeWidth=0.6))
+    days = tuple(selected_days) if selected_days is not None else tuple(trip.days)
+    points = selected_points if selected_points is not None else _trip_points(trip)
     if not points:
         return drawing
-    min_lon, max_lon, min_lat, max_lat = _map_bounds(points)
-    mean_lat = (min_lat + max_lat) / 2
-    longitude_scale = max(0.2, cos(radians(mean_lat)))
+    min_lon, max_lon, min_lat, max_lat = _fit_map_bounds(_map_bounds(points), width, height)
+
+    has_basemap = False
+    if not dark:
+        basemap = _basemap_background((min_lon, max_lon, min_lat, max_lat), width, height)
+        if basemap is not None:
+            has_basemap = True
+            drawing.add(DrawingImage(0, 0, width, height, str(basemap)))
+            drawing.add(Rect(0, 0, width, height, rx=8, ry=8, fillColor=None, strokeColor=border, strokeWidth=0.7))
 
     def project(longitude: float, latitude: float) -> tuple[float, float]:
-        x = 8 * mm + ((longitude - min_lon) * longitude_scale) / ((max_lon - min_lon) * longitude_scale) * (width - 16 * mm)
-        y = 8 * mm + (latitude - min_lat) / (max_lat - min_lat) * (height - 16 * mm)
-        return x, y
+        left, top = _mercator_world(min_lon, max_lat, 0)
+        right, bottom = _mercator_world(max_lon, min_lat, 0)
+        point_x, point_y = _mercator_world(longitude, latitude, 0)
+        return (
+            (point_x - left) / max(right - left, 1e-9) * width,
+            height - (point_y - top) / max(bottom - top, 1e-9) * height,
+        )
 
     country_code = getattr(getattr(trip.map, "country", None), "iso_alpha3", None)
     boundary = load_display_boundaries().get(country_code) if country_code else None
@@ -398,13 +891,14 @@ def _overview_map(trip: Trip, locale: str) -> Drawing:
                     else:
                         path.moveTo(x, y)
                         active = True
-                path.strokeColor = colors.HexColor("#94A3B8")
+                path.strokeColor = colors.HexColor("#536B84") if dark else colors.HexColor("#94A3B8")
                 path.strokeWidth = 0.45
                 path.fillColor = None
                 drawing.add(path)
 
-    for day in sorted(trip.days, key=lambda value: value.sort_order):
-        route = (day.route_geometry or {}).get("coordinates") or [(stop.longitude, stop.latitude) for stop in day.stops]
+    for day in sorted(days, key=lambda value: value.sort_order):
+        raw_route = (day.route_geometry or {}).get("coordinates") or [(stop.longitude, stop.latitude) for stop in day.stops]
+        route = [pair for longitude, latitude in raw_route if (pair := _valid_coordinate_pair(longitude, latitude)) is not None]
         if len(route) >= 2:
             path = DrawingPath()
             for index, (longitude, latitude) in enumerate(route):
@@ -414,16 +908,187 @@ def _overview_map(trip: Trip, locale: str) -> Drawing:
             path.strokeWidth = 2.2
             path.fillColor = None
             drawing.add(path)
-        for stop in day.stops:
-            x, y = project(stop.longitude, stop.latitude)
+        for stop_number, stop in enumerate(day.stops, start=1):
+            pair = _valid_coordinate_pair(stop.longitude, stop.latitude)
+            if pair is None:
+                continue
+            x, y = project(*pair)
             color = colors.HexColor(day.color or "#0FA68A")
             drawing.add(Circle(x, y, 5, fillColor=color, strokeColor=colors.white, strokeWidth=1.2))
-            drawing.add(String(x, y - 2.2, str(day.day_number), fontName="Helvetica-Bold", fontSize=6, textAnchor="middle", fillColor=colors.white))
-    if boundary:
+            drawing.add(String(x, y - 2.2, str(stop_number), fontName="Helvetica-Bold", fontSize=6, textAnchor="middle", fillColor=colors.white))
+        if selected_days is not None and len(days) == 1:
+            anchor_labels = ("D", "A") if locale == "fr" else ("S", "E")
+            for anchor_index, anchor in enumerate((_day_start_anchor(trip, day), _day_end_anchor(trip, day))):
+                if anchor is None:
+                    continue
+                pair = _valid_coordinate_pair(getattr(anchor, "longitude", None), getattr(anchor, "latitude", None))
+                if pair is None:
+                    continue
+                x, y = project(*pair)
+                anchor_color = _NAVY_SOFT if anchor_index == 0 else _GOLD
+                drawing.add(Circle(x, y, 6, fillColor=anchor_color, strokeColor=colors.white, strokeWidth=1.4))
+                drawing.add(String(x, y - 2.2, anchor_labels[anchor_index], fontName="Helvetica-Bold", fontSize=6, textAnchor="middle", fillColor=colors.white))
+    if boundary and inset:
         _country_inset(drawing, boundary, points, width, height)
-    label = "CartaVault - aperçu géographique local" if locale == "fr" else "CartaVault - local geographic overview"
-    drawing.add(String(7 * mm, 4 * mm, label, fontName="CVSans", fontSize=6, fillColor=colors.HexColor("#64748B")))
+    if not dark:
+        map_label = label or ("CartaVault - aperçu géographique local" if locale == "fr" else "CartaVault - local geographic overview")
+        drawing.add(Rect(4 * mm, 3 * mm, 62 * mm, 6 * mm, rx=3, ry=3, fillColor=colors.white, fillOpacity=0.82, strokeColor=None))
+        drawing.add(String(7 * mm, 5 * mm, map_label, fontName="CVSans", fontSize=6, fillColor=_SLATE))
+        attribution = "© OpenStreetMap contributors" if has_basemap else "CartaVault"
+        drawing.add(String(width - 5 * mm, 5 * mm, attribution, fontName="CVSans", fontSize=5.5, textAnchor="end", fillColor=_SLATE))
     return drawing
+
+
+def _basemap_background(
+    bounds: tuple[float, float, float, float],
+    width: float,
+    height: float,
+) -> Path | None:
+    if not _map_tiles_enabled():
+        return None
+    min_lon, max_lon, min_lat, max_lat = bounds
+    target_width = max(480, round(width * 1.8))
+    target_height = max(260, round(height * 1.8))
+    template = os.getenv("CARTAVAULT_PDF_MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+    cache_key = sha256(f"{bounds}|{target_width}|{target_height}|{template}".encode()).hexdigest()[:24]
+    rendered_path = _map_tile_cache_root() / "renders" / f"{cache_key}.png"
+    if rendered_path.is_file():
+        return rendered_path
+    zoom = _map_tile_zoom(bounds, target_width, target_height)
+    left, top = _mercator_world(min_lon, max_lat, zoom)
+    right, bottom = _mercator_world(max_lon, min_lat, zoom)
+    first_x, last_x = floor(left / 256), floor((right - 1e-6) / 256)
+    first_y, last_y = floor(top / 256), floor((bottom - 1e-6) / 256)
+    coordinates = [(x, y) for y in range(first_y, last_y + 1) for x in range(first_x, last_x + 1)]
+    if not coordinates or len(coordinates) > 36:
+        return None
+
+    with ThreadPoolExecutor(max_workers=min(6, len(coordinates))) as executor:
+        tiles = list(executor.map(lambda coordinate: (coordinate, _map_tile_bytes(zoom, *coordinate)), coordinates))
+    available = [(coordinate, content) for coordinate, content in tiles if content is not None]
+    if len(available) < max(1, len(coordinates) // 2):
+        return None
+
+    mosaic = PillowImage.new("RGB", ((last_x - first_x + 1) * 256, (last_y - first_y + 1) * 256), "#E9EEF1")
+    for (x, y), content in available:
+        try:
+            with PillowImage.open(BytesIO(content)) as tile:
+                mosaic.paste(tile.convert("RGB"), ((x - first_x) * 256, (y - first_y) * 256))
+        except OSError:
+            continue
+    crop = (
+        max(0, round(left - first_x * 256)),
+        max(0, round(top - first_y * 256)),
+        min(mosaic.width, round(right - first_x * 256)),
+        min(mosaic.height, round(bottom - first_y * 256)),
+    )
+    if crop[2] <= crop[0] or crop[3] <= crop[1]:
+        return None
+    rendered = mosaic.crop(crop).resize((target_width, target_height), PillowImage.Resampling.LANCZOS)
+    rendered_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = rendered_path.with_suffix(f".{os.getpid()}.{id(rendered)}.tmp")
+    rendered.save(temporary, format="PNG", optimize=True)
+    temporary.replace(rendered_path)
+    return rendered_path
+
+
+def _map_tiles_enabled() -> bool:
+    return os.getenv("CARTAVAULT_PDF_MAP_TILES_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _map_tile_zoom(bounds: tuple[float, float, float, float], target_width: int, target_height: int) -> int:
+    min_lon, max_lon, min_lat, max_lat = bounds
+    for zoom in range(16, 2, -1):
+        left, top = _mercator_world(min_lon, max_lat, zoom)
+        right, bottom = _mercator_world(max_lon, min_lat, zoom)
+        if right - left <= target_width * 1.45 and bottom - top <= target_height * 1.45:
+            return zoom
+    return 3
+
+
+def _mercator_world(longitude: float, latitude: float, zoom: int) -> tuple[float, float]:
+    scale = 256 * (2**zoom)
+    clamped_latitude = max(-85.05112878, min(85.05112878, latitude))
+    latitude_radians = radians(clamped_latitude)
+    return (
+        (longitude + 180) / 360 * scale,
+        (1 - log(tan(latitude_radians) + 1 / cos(latitude_radians)) / pi) / 2 * scale,
+    )
+
+
+def _fit_map_bounds(
+    bounds: tuple[float, float, float, float],
+    width: float,
+    height: float,
+) -> tuple[float, float, float, float]:
+    """Expand Web Mercator bounds to the exact drawing ratio without stretching tiles."""
+    min_lon, max_lon, min_lat, max_lat = bounds
+    left, top = _mercator_world(min_lon, max_lat, 0)
+    right, bottom = _mercator_world(max_lon, min_lat, 0)
+    target_ratio = max(float(width) / max(float(height), 1e-9), 1e-9)
+    content_width = max(right - left, 1e-9)
+    content_height = max(bottom - top, 1e-9)
+    center_x = (left + right) / 2
+    center_y = (top + bottom) / 2
+    if content_width / content_height < target_ratio:
+        content_width = content_height * target_ratio
+    else:
+        content_height = content_width / target_ratio
+    left, right = _bounded_world_window(center_x, content_width)
+    top, bottom = _bounded_world_window(center_y, content_height)
+    fitted_min_lon, fitted_max_lat = _inverse_mercator_world(left, top)
+    fitted_max_lon, fitted_min_lat = _inverse_mercator_world(right, bottom)
+    return fitted_min_lon, fitted_max_lon, fitted_min_lat, fitted_max_lat
+
+
+def _bounded_world_window(center: float, span: float) -> tuple[float, float]:
+    span = min(span, 256.0)
+    start = center - span / 2
+    end = center + span / 2
+    if start < 0:
+        end -= start
+        start = 0
+    if end > 256:
+        start -= end - 256
+        end = 256
+    return max(0.0, start), min(256.0, end)
+
+
+def _inverse_mercator_world(x: float, y: float) -> tuple[float, float]:
+    longitude = x / 256 * 360 - 180
+    latitude = degrees(atan(sinh(pi * (1 - 2 * y / 256))))
+    return longitude, latitude
+
+
+def _map_tile_bytes(zoom: int, x: int, y: int) -> bytes | None:
+    cache_file = _map_tile_cache_root() / str(zoom) / str(x) / f"{y}.png"
+    if cache_file.is_file():
+        try:
+            return cache_file.read_bytes()
+        except OSError:
+            pass
+    template = os.getenv("CARTAVAULT_PDF_MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+    url = template.format(z=zoom, x=x, y=y)
+    request = Request(url, headers={"User-Agent": "CartaVault/1.0 PDF export"})
+    try:
+        with urlopen(request, timeout=3) as response:
+            content = response.read(2_000_001)
+        if len(content) > 2_000_000:
+            return None
+        with PillowImage.open(BytesIO(content)) as tile:
+            tile.verify()
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = cache_file.with_suffix(f".{os.getpid()}.{id(content)}.tmp")
+        temporary.write_bytes(content)
+        temporary.replace(cache_file)
+        return content
+    except (OSError, ValueError):
+        return None
+
+
+def _map_tile_cache_root() -> Path:
+    default_cache = "/app/storage/exports/pdf-map-tiles" if Path("/app/app").is_dir() else "backend/storage/exports/pdf-map-tiles"
+    return Path(os.getenv("CARTAVAULT_PDF_MAP_TILE_CACHE", default_cache))
 
 
 def _country_inset(drawing: Drawing, boundary: list, points: list[tuple[float, float]], width: float, height: float) -> None:
@@ -484,13 +1149,65 @@ def _trip_points(trip: Trip) -> list[tuple[float, float]]:
     points: list[tuple[float, float]] = []
     for anchor in (trip.departure, trip.arrival):
         if anchor is not None:
-            points.append((anchor.longitude, anchor.latitude))
-    points.extend((night.longitude, night.latitude) for night in trip.nights)
+            if pair := _valid_coordinate_pair(anchor.longitude, anchor.latitude):
+                points.append(pair)
+    points.extend(pair for night in trip.nights if (pair := _valid_coordinate_pair(night.longitude, night.latitude)) is not None)
     for day in trip.days:
         geometry = (day.route_geometry or {}).get("coordinates") or []
-        points.extend((float(longitude), float(latitude)) for longitude, latitude in geometry)
-        points.extend((stop.longitude, stop.latitude) for stop in day.stops)
+        points.extend(pair for longitude, latitude in geometry if (pair := _valid_coordinate_pair(longitude, latitude)) is not None)
+        points.extend(pair for stop in day.stops if (pair := _valid_coordinate_pair(stop.longitude, stop.latitude)) is not None)
     return points
+
+
+def _day_trip_points(trip: Trip, day: TripDay) -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    for anchor in (_day_start_anchor(trip, day), _day_end_anchor(trip, day)):
+        if anchor is not None and (pair := _valid_coordinate_pair(anchor.longitude, anchor.latitude)):
+            points.append(pair)
+    geometry = (day.route_geometry or {}).get("coordinates") or []
+    points.extend(pair for longitude, latitude in geometry if (pair := _valid_coordinate_pair(longitude, latitude)) is not None)
+    points.extend(pair for stop in day.stops if (pair := _valid_coordinate_pair(stop.longitude, stop.latitude)) is not None)
+    return points
+
+
+def _day_start_anchor(trip: Trip, day: TripDay) -> object | None:
+    previous_night = getattr(day, "previous_night", None) or next(
+        (night for night in trip.nights if night.next_day_id == day.id),
+        None,
+    )
+    if previous_night is not None:
+        return previous_night
+    ordered_days = sorted(trip.days, key=lambda value: value.sort_order)
+    if ordered_days and day.id == ordered_days[0].id:
+        return trip.departure
+    previous_days = [candidate for candidate in ordered_days if candidate.sort_order < day.sort_order]
+    if not previous_days:
+        return None
+    previous_day = previous_days[-1]
+    return max(previous_day.stops, key=lambda stop: stop.sort_order, default=None)
+
+
+def _day_end_anchor(trip: Trip, day: TripDay) -> object | None:
+    next_night = getattr(day, "next_night", None) or next(
+        (night for night in trip.nights if night.previous_day_id == day.id),
+        None,
+    )
+    if next_night is not None:
+        return next_night
+    ordered_days = sorted(trip.days, key=lambda value: value.sort_order)
+    if ordered_days and day.id == ordered_days[-1].id:
+        return trip.arrival or trip.departure
+    return None
+
+
+def _valid_coordinate_pair(longitude: object, latitude: object) -> tuple[float, float] | None:
+    try:
+        lon, lat = float(longitude), float(latitude)
+    except (TypeError, ValueError):
+        return None
+    if not isfinite(lon) or not isfinite(lat) or not -180 <= lon <= 180 or not -90 <= lat <= 90:
+        return None
+    return lon, lat
 
 
 def _map_bounds(points: Iterable[tuple[float, float]]) -> tuple[float, float, float, float]:
@@ -506,6 +1223,8 @@ def _map_bounds(points: Iterable[tuple[float, float]]) -> tuple[float, float, fl
 
 def _register_fonts() -> tuple[str, str]:
     regular_candidates = (
+        Path("/usr/local/share/fonts/cartavault/Inter-Regular.ttf"),
+        Path("/usr/share/fonts/opentype/inter/Inter-Regular.otf"),
         Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
         Path("C:/Windows/Fonts/msyh.ttc"),
         Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
@@ -513,6 +1232,9 @@ def _register_fonts() -> tuple[str, str]:
         Path(__import__("reportlab").__file__).parent / "fonts" / "Vera.ttf",
     )
     bold_candidates = (
+        Path("/usr/local/share/fonts/cartavault/Inter-SemiBold.ttf"),
+        Path("/usr/share/fonts/opentype/inter/Inter-SemiBold.otf"),
+        Path("/usr/share/fonts/opentype/inter/Inter-Bold.otf"),
         Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
         Path("C:/Windows/Fonts/msyhbd.ttc"),
         Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
@@ -521,6 +1243,16 @@ def _register_fonts() -> tuple[str, str]:
     )
     _register_first_supported_font("CVSans", regular_candidates)
     _register_first_supported_font("CVSans-Bold", bold_candidates)
+    _register_first_supported_font(
+        "CVCJK",
+        (
+            Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
+            Path("C:/Windows/Fonts/msyh.ttc"),
+            Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+            Path("C:/Windows/Fonts/arial.ttf"),
+            Path(__import__("reportlab").__file__).parent / "fonts" / "Vera.ttf",
+        ),
+    )
     return "CVSans", "CVSans-Bold"
 
 
@@ -536,10 +1268,6 @@ def _register_first_supported_font(name: str, candidates: tuple[Path, ...]) -> N
         except TTFError:
             continue
     raise RuntimeError("A supported Unicode TrueType font is required for PDF exports")
-
-
-def _maps_url(stop: object) -> str:
-    return "https://www.google.com/maps/search/?" + urlencode({"api": "1", "query": f"{getattr(stop, 'latitude')},{getattr(stop, 'longitude')}"})
 
 
 def _safe_name(value: str) -> str:
@@ -586,4 +1314,15 @@ def _clock(value: time | None, offset: int | None, labels: dict[str, str]) -> st
 
 
 def _multiline(value: str) -> str:
-    return escape(value).replace("\n", "<br/>")
+    return _rich(value).replace("\n", "<br/>")
+
+
+def _rich(value: object) -> str:
+    import re
+
+    escaped = escape(str(value))
+    return re.sub(
+        r"([\u2E80-\u2EFF\u3000-\u303F\u3040-\u30FF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]+)",
+        r'<font name="CVCJK">\1</font>',
+        escaped,
+    )

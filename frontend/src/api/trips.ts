@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '../config'
-import { getJson, sendJson, sendWithoutResponse } from './client'
+import { getBlob, getJson, sendJson, sendWithoutResponse } from './client'
 import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
 
 const empty = new URLSearchParams()
@@ -7,6 +7,13 @@ export interface TripCreatePayload { name: string; description?: string; start_d
 export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; check_in_time?: string; check_out_time?: string }
 export interface TripDepartureCreatePayload { place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; departure_time?: string }
 export type TripArrivalCreatePayload = Omit<TripDepartureCreatePayload, 'departure_time'>
+export type TripPdfNavigationProvider = 'google_maps' | 'waze'
+export interface TripPdfExportOptions {
+  include_overview_map: boolean
+  include_place_images: boolean
+  include_navigation_qr_codes: boolean
+  navigation_providers: TripPdfNavigationProvider[]
+}
 export const listTrips = (mapId: string, signal?: AbortSignal) => getJson(`/maps/${mapId}/trips`, empty, signal) as Promise<Trip[]>
 export const getTrip = (id: string, signal?: AbortSignal) => getJson(`/trips/${id}`, empty, signal) as Promise<Trip>
 export const createTrip = (mapId: string, body: TripCreatePayload) => sendJson(`/maps/${mapId}/trips`, 'POST', body) as Promise<Trip>
@@ -45,5 +52,6 @@ export const setTripVisitStatus = (id: string, visitStatus: TripVisitStatus) => 
 export const exportTripGoogleMaps = (id: string) => sendJson(`/trips/${id}/exports/google-maps`, 'POST', {}) as Promise<{ links: Array<{ day_number: number; part: number; url: string }>; warnings: string[] }>
 export const exportTripGpx = (id: string) => sendJson(`/trips/${id}/exports/gpx`, 'POST', {}) as Promise<TripExport>
 export const exportTripKmz = (id: string) => sendJson(`/trips/${id}/exports/kmz`, 'POST', {}) as Promise<TripExport>
-export const exportTripPdf = (id: string) => sendJson(`/trips/${id}/exports/pdf`, 'POST', {}) as Promise<TripExport>
+export const exportTripPdf = (id: string, options: TripPdfExportOptions) => sendJson(`/trips/${id}/exports/pdf`, 'POST', options) as Promise<TripExport>
+export const downloadTripExport = (path: string, signal?: AbortSignal) => getBlob(path, signal)
 export const tripExportUrl = (path: string) => `${API_BASE_URL}${path}`

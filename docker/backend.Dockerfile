@@ -1,3 +1,12 @@
+FROM python:3.14-slim-bookworm AS font-builder
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes fonts-inter-variable \
+    && pip install --no-cache-dir fonttools \
+    && fonttools varLib.instancer /usr/share/fonts/truetype/inter-vf/Inter.var.ttf wght=400 --output /tmp/Inter-Regular.ttf \
+    && fonttools varLib.instancer /usr/share/fonts/truetype/inter-vf/Inter.var.ttf wght=600 --output /tmp/Inter-SemiBold.ttf \
+    && rm -rf /var/lib/apt/lists/*
+
 FROM python:3.14-slim-bookworm AS runtime
 
 ARG CARTAVAULT_VERSION=development
@@ -13,6 +22,9 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes fonts-dejavu-core fonts-wqy-zenhei \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=font-builder /tmp/Inter-Regular.ttf /usr/local/share/fonts/cartavault/Inter-Regular.ttf
+COPY --from=font-builder /tmp/Inter-SemiBold.ttf /usr/local/share/fonts/cartavault/Inter-SemiBold.ttf
 
 RUN groupadd --system cartavault \
     && useradd --system --gid cartavault --create-home \

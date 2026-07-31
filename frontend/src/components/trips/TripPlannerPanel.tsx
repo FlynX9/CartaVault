@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BadgeCheck, Calculator, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Route, Save, ScanEye, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Trash2 } from 'lucide-react'
 
-import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop } from '../../api/trips'
+import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, reorderTripStops, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
 import { getAccountPreferences } from '../../api/account'
 import type { PoiMap } from '../../types/map'
 import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripSummary } from '../../types/trip'
@@ -11,6 +11,7 @@ import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } 
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from './TripTimePlanning'
 import { useConfirmDialog } from '../common/useConfirmDialog'
 import { EmptyState } from '../common/EmptyState'
+import { TripPdfExportDialog } from './TripPdfExportDialog'
 
 interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onActiveNightTargetChange?: (target: TripNightTarget | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onClose: () => void }
 
@@ -31,6 +32,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [pendingAction, setPendingAction] = useState<TripActionKey | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [pdfExportOpen, setPdfExportOpen] = useState(false)
+  const [pdfExportTrigger, setPdfExportTrigger] = useState<HTMLElement | null>(null)
   const [draggedStopId, setDraggedStopId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<{ dayId: string; index: number } | null>(null)
   const [routeFeedback, setRouteFeedback] = useState<string | null>(null)
@@ -241,9 +244,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     const item = await exportTripGpx(trip!.id)
     window.open(tripExportUrl(item.download_url), '_blank', 'noopener,noreferrer')
   }
-  const exportPdf = async () => {
-    const item = await exportTripPdf(trip!.id)
-    window.open(tripExportUrl(item.download_url), '_blank', 'noopener,noreferrer')
+  const exportPdf = async (options: TripPdfExportOptions) => {
+    const item = await exportTripPdf(trip!.id, options)
+    const blob = await downloadTripExport(item.download_url)
+    downloadFile(blob, item.file_name)
   }
   const toggleDayCollapsed = (dayId: string) => setCollapsedDayIds((current) => {
     const next = new Set(current)
@@ -271,7 +275,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     <div className="trip-panel-scroll" role="region" aria-label="Contenu de la sortie" tabIndex={0}>
     {tripViewOnly ? <div className="trip-panel-compact-summary">{summary ? <TripSummaryMetrics summary={summary} defaultOpen /> : <div className="trip-panel-empty" role="status"><Route size={24} /><strong>Chargement du résumé…</strong></div>}</div> : <>
     {error && <p className="trip-panel-error" role="alert">{error === 'Internal Server Error' ? 'Une erreur serveur empêche cette opération.' : error}</p>}
-    <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => void selectTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && canEdit && <button className="panel-icon-button" type="button" aria-label="Dupliquer cette sortie" title="Dupliquer la sortie" onClick={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })}><Copy size={16} /></button>}{trip && canEdit && (isArchivedTrip ? <button className="panel-icon-button trip-unarchive-button" type="button" aria-label="Réactiver la sortie" title="Réactiver la sortie" disabled={busy} onClick={() => void run(async () => { await unarchiveTrip(trip.id); await reload(trip.id) })}><ArchiveRestore size={16} /></button> : <button className="panel-icon-button trip-archive-button" type="button" aria-label="Archiver la sortie" title="Archiver la sortie" disabled={busy} onClick={() => void run(async () => { await archiveTrip(trip.id); await reload(trip.id) })}><Archive size={16} /></button>)}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres du voyage' : 'Afficher les paramètres du voyage'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres du voyage" onClick={() => setSettingsOpen((current) => !current)}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} onPdf={() => void run(exportPdf)} />}</div>
+    <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => void selectTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && canEdit && <button className="panel-icon-button" type="button" aria-label="Dupliquer cette sortie" title="Dupliquer la sortie" onClick={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })}><Copy size={16} /></button>}{trip && canEdit && (isArchivedTrip ? <button className="panel-icon-button trip-unarchive-button" type="button" aria-label="Réactiver la sortie" title="Réactiver la sortie" disabled={busy} onClick={() => void run(async () => { await unarchiveTrip(trip.id); await reload(trip.id) })}><ArchiveRestore size={16} /></button> : <button className="panel-icon-button trip-archive-button" type="button" aria-label="Archiver la sortie" title="Archiver la sortie" disabled={busy} onClick={() => void run(async () => { await archiveTrip(trip.id); await reload(trip.id) })}><Archive size={16} /></button>)}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres du voyage' : 'Afficher les paramètres du voyage'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres du voyage" onClick={() => setSettingsOpen((current) => !current)}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} onPdf={(trigger) => { setPdfExportTrigger(trigger); setPdfExportOpen(true) }} />}</div>
     {loadingTripId ? <div className="trip-panel-empty" role="status"><Route size={28} /><strong>Chargement du voyage…</strong></div> : <>
     {!trip ? <EmptyState className="trip-panel-empty" icon={<Route size={28} />} title="Aucune sortie préparée" description="Créez un voyage puis ajoutez les POI depuis le panneau Lieux." /> : <>
       {settingsOpen && <TripSettings trip={trip} canEdit={canEditTrip} canDelete={canEditTrip && poiMap.can_delete === true} busy={busy} draftName={draftName} dirty={dirty} loadSettings={loadSettingsDraft ?? readLoadSettings(trip)} routingProviderLabel={summary?.route_provider_labels?.join(', ') || (preferredRoutingProvider === 'google' ? 'Google Routes' : 'OSRM')} countryConstraintName={summary?.country_constraint_enabled ? summary.constraint_country_name ?? poiMap.country.name : null} onNameChange={(value) => { setDraftName(value); setDirty(value !== trip.name) }} onLoadSettingsChange={setLoadSettingsDraft} onSave={() => void run(async () => { if (draftName !== trip.name) await updateTrip(trip.id, { name: draftName }); if (loadSettingsDraft) await updateTripLoadSettings(trip.id, loadSettingsDraft); await reload(trip.id) })} onDuplicate={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })} onDelete={() => void confirm({ title: 'Placer cette sortie dans la corbeille ?', message: `La sortie « ${trip.name} » et toute sa planification pourront être restaurées pendant votre délai de conservation.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTrip(trip.id); await reload('') }) })} />}
@@ -294,6 +298,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     </>}</>}</>}
     </div>
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
+    {pdfExportOpen && <TripPdfExportDialog trigger={pdfExportTrigger} onClose={() => setPdfExportOpen(false)} onExport={exportPdf} />}
     {confirmationDialog}
     </>}
   </aside>
@@ -344,9 +349,20 @@ function GlobalOptimizationReview({ proposals, busy, onCancel, onApply }: { prop
   </section>
 }
 function Metric({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd aria-label={`${label} : ${value}`}>{value}</dd></div> }
-function TripExportMenu({ onGpx, onPdf }: { onGpx: () => void; onPdf: () => void }) {
+function downloadFile(blob: Blob, fileName: string) {
+  const href = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = href
+  link.download = fileName
+  link.hidden = true
+  document.body.append(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(href), 1_000)
+}
+function TripExportMenu({ onGpx, onPdf }: { onGpx: () => void; onPdf: (trigger: HTMLButtonElement) => void }) {
   const menuRef = useRef<HTMLDetailsElement>(null)
-  return <details ref={menuRef} className="trip-export-menu"><summary className="panel-icon-button" aria-label="Exporter la sortie" title="Exporter la sortie"><Download size={16} /></summary><div role="menu" aria-label="Options d’export"><button type="button" role="menuitem" onClick={() => { menuRef.current?.removeAttribute('open'); onPdf() }}><Download size={14} />Exporter en PDF</button><button type="button" role="menuitem" onClick={() => { menuRef.current?.removeAttribute('open'); onGpx() }}><Download size={14} />Exporter en GPX</button></div></details>
+  return <details ref={menuRef} className="trip-export-menu"><summary className="panel-icon-button" aria-label="Exporter la sortie" title="Exporter la sortie"><Download size={16} /></summary><div role="menu" aria-label="Options d’export"><button type="button" role="menuitem" onClick={(event) => { menuRef.current?.removeAttribute('open'); onPdf(event.currentTarget) }}><Download size={14} />Exporter en PDF</button><button type="button" role="menuitem" onClick={() => { menuRef.current?.removeAttribute('open'); onGpx() }}><Download size={14} />Exporter en GPX</button></div></details>
 }
 
 function InsertDayControl({ day, onInsert }: { day: TripDay; onInsert: () => void }) {

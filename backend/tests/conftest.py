@@ -31,6 +31,12 @@ MISSING_TEST_DATABASE_REASON = (
 )
 
 
+@pytest.fixture(autouse=True)
+def keep_pdf_exports_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Network-backed PDF maps are covered separately with deterministic tiles."""
+    monkeypatch.setenv("CARTAVAULT_PDF_MAP_TILES_ENABLED", "false")
+
+
 class DatabaseAccessForbidden:
     """Fail loudly if a database-free API test reaches its endpoint body."""
 

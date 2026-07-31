@@ -1,14 +1,18 @@
 import json
 from datetime import date, time
+from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 from zipfile import ZipFile
 
 import pytest
+from PIL import Image as PillowImage
 
 from app.exports import temporary_exports
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
 from app.trips.pdf_export import create_pdf
+from app.trips import pdf_export
 from app.trips.routing.osrm import OsrmRoutingProvider
 
 
@@ -86,3 +90,21 @@ def test_trip_pdf_export_builds_an_a4_unicode_booklet(tmp_path, monkeypatch) -> 
     assert exported.path.suffix == ".pdf"
     assert exported.path.read_bytes().startswith(b"%PDF-1.4")
     assert exported.path.stat().st_size > 20_000
+
+
+def test_pdf_basemap_composes_and_reuses_cached_tiles(tmp_path, monkeypatch) -> None:
+    tile_buffer = BytesIO()
+    PillowImage.new("RGB", (256, 256), "#D9E7DD").save(tile_buffer, format="PNG")
+    tile_bytes = tile_buffer.getvalue()
+    requests = []
+    monkeypatch.setenv("CARTAVAULT_PDF_MAP_TILES_ENABLED", "true")
+    monkeypatch.setenv("CARTAVAULT_PDF_MAP_TILE_CACHE", str(tmp_path))
+    monkeypatch.setattr(pdf_export, "_map_tile_bytes", lambda zoom, x, y: requests.append((zoom, x, y)) or tile_bytes)
+
+    first = pdf_export._basemap_background((2.20, 2.45, 48.80, 48.95), 510, 312)
+
+    assert isinstance(first, Path)
+    assert first.is_file()
+    assert requests
+    monkeypatch.setattr(pdf_export, "_map_tile_bytes", lambda *_args: pytest.fail("render cache was not reused"))
+    assert pdf_export._basemap_background((2.20, 2.45, 48.80, 48.95), 510, 312) == first

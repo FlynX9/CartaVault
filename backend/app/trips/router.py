@@ -23,7 +23,7 @@ from app.trips.optimizer import optimize_matrix, path_cost
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
-from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripRead, TripSummaryRead, TripUpdate
+from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
 from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, stale, resolve_constraint_country
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
@@ -616,12 +616,12 @@ def export_kmz(trip_id: UUID, session: Session = Depends(get_db), user: User = D
 
 
 @router.post("/trips/{trip_id}/exports/pdf", status_code=201)
-def export_pdf(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def export_pdf(trip_id: UUID, options: TripPdfExportOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_trip_viewer(session, trip_id, user)
     trip = load_trip(session, trip_id)
     _assert_export_routes(session, user, trip)
     locale = str((user.preferences or {}).get("language") or "fr")
-    item = create_pdf(session, trip, user.id, locale)
+    item = create_pdf(session, trip, user.id, locale, options)
     return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
 
 

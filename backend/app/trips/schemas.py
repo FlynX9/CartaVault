@@ -6,12 +6,31 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.trips.navigation_links import NavigationProvider
+
 TripStatus = Literal["draft", "planned", "in_progress", "completed", "archived"]
 StopType = Literal["place", "free_location", "hotel", "restaurant", "parking", "station", "airport", "other"]
 VisitStatus = Literal["planned", "visited", "skipped", "inaccessible", "postponed"]
 SafetyMarginType = Literal["fixed", "percentage"]
 LoadLevel = Literal["low", "medium", "high", "unavailable"]
 HEX_COLOR_PATTERN = r"^#[0-9A-Fa-f]{6}$"
+
+
+class TripPdfExportOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    include_overview_map: bool = True
+    include_place_images: bool = True
+    include_navigation_qr_codes: bool = True
+    navigation_providers: list[NavigationProvider] = Field(default_factory=lambda: [NavigationProvider.GOOGLE_MAPS], max_length=2)
+
+    @model_validator(mode="after")
+    def navigation_selection(self) -> Self:
+        selected = set(self.navigation_providers)
+        self.navigation_providers = [provider for provider in NavigationProvider if provider in selected]
+        if self.include_navigation_qr_codes and not self.navigation_providers:
+            raise ValueError("At least one navigation provider is required when QR codes are enabled")
+        return self
 
 
 class TripCreate(BaseModel):
