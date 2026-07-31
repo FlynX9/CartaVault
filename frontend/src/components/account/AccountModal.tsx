@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, Clock3, Languages, List, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, Clock3, Image as ImageIcon, Info, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGoogleRoutesCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
@@ -99,7 +99,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         </nav>
         <main className="account-modal__content">
           {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
-          {section === 'profile' && profile && <><AccountHeading title="Profil" description="Gérez votre identité CartaVault et votre avatar." /><div className="account-profile-section"><form className="account-form" onSubmit={saveProfile}><label>Nom d’affichage<input name="display_name" value={draftName} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></label><button className="account-button account-button--primary" type="submit" disabled={!dirty}>Enregistrer</button></form><div className="account-avatar-editor"><div className="account-avatar large">{avatar ? <img src={avatar} alt="Aperçu de l’avatar" /> : initials}</div><div><strong>Avatar</strong><p>Une image carrée, traitée et stockée séparément de vos photos de lieux.</p><div><label className="account-button account-button--secondary"><Upload size={15} />Importer une image<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')}><Trash2 size={15} />Supprimer</button>}</div><small>JPEG, PNG ou WebP · 5 Mio maximum.</small></div></div></div><dl className="account-metadata"><dt>Adresse e-mail</dt><dd>{profile.email}</dd><dt>Compte créé</dt><dd>{formatDate(profile.created_at)}</dd><dt>Dernière connexion</dt><dd>{profile.last_login_at ? formatDate(profile.last_login_at, true) : 'Non disponible'}</dd><dt>Cartes possédées</dt><dd>{profile.owned_maps.length}</dd></dl></>}
+          {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} dirty={dirty} setDraftName={setDraftName} saveProfile={saveProfile} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
@@ -110,8 +110,59 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   )
 }
 
+function ProfileSection({ profile, avatar, initials, draftName, dirty, setDraftName, saveProfile, uploadAvatar, removeAvatar }: { profile: AccountProfile; avatar: string | null; initials: string; draftName: string; dirty: boolean; setDraftName: (name: string) => void; saveProfile: (event: FormEvent<HTMLFormElement>) => Promise<void>; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
+  return <><AccountHeading title="Profil" description="Gérez votre identité CartaVault et votre avatar." />
+    <div className="account-profile-grid">
+      <form className="account-form account-preference-card account-profile-card" onSubmit={saveProfile}>
+        <PreferenceCardHeading icon={UserRound} title="Informations de profil" />
+        <div className="account-profile-field"><label htmlFor="account-display-name">Nom d’affichage</label><input id="account-display-name" name="display_name" value={draftName} placeholder="Votre nom d’affichage" required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></div>
+        <button className="account-button account-button--primary" type="submit" disabled={!dirty}>Enregistrer</button>
+      </form>
+      <section className="account-preference-card account-avatar-editor">
+        <PreferenceCardHeading icon={ImageIcon} title="Avatar" />
+        <p className="account-card-description">Une image carrée, traitée et stockée séparément de vos photos de lieux.</p>
+        <div className="account-avatar-editor__content">
+          <div className="account-avatar large">{avatar ? <img src={avatar} alt="Aperçu de l’avatar" /> : initials}</div>
+          <div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />Importer une image<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />Supprimer</button>}</div>
+        </div>
+        <small>JPEG, PNG ou WebP · 5 Mio maximum.</small>
+      </section>
+    </div>
+    <section className="account-preference-card account-profile-metadata-card">
+      <PreferenceCardHeading icon={Info} title="Informations du compte" />
+      <dl className="account-metadata">
+        <div><dt><Mail size={15} aria-hidden="true" />Adresse e-mail</dt><dd>{profile.email}</dd></div>
+        <div><dt><CalendarDays size={15} aria-hidden="true" />Compte créé</dt><dd>{formatDate(profile.created_at)}</dd></div>
+        <div><dt><Clock3 size={15} aria-hidden="true" />Dernière connexion</dt><dd>{profile.last_login_at ? formatDate(profile.last_login_at, true) : 'Non disponible'}</dd></div>
+        <div><dt><MapIcon size={15} aria-hidden="true" />Cartes possédées</dt><dd>{profile.owned_maps.length}</dd></div>
+      </dl>
+    </section>
+  </>
+}
+
 function SecuritySection({ profile, run, refreshProfile }: { profile: AccountProfile; run: (action: () => Promise<void>, success: string) => Promise<boolean>; refreshProfile: () => Promise<void> }) {
-  return <><AccountHeading title="Sécurité" description="Les autres appareils sont déconnectés après une modification sensible." /><form className="account-form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(async () => { await changeAccountEmail(String(data.get('current_password')), String(data.get('new_email'))); await refreshProfile() }, 'Adresse e-mail mise à jour.').then((ok) => { if (ok) form.reset() }) }}><h3>Changer l’adresse e-mail</h3><label>Nouvelle adresse<input name="new_email" type="email" required /></label><label>Mot de passe actuel<input name="current_password" type="password" required autoComplete="current-password" /></label><button className="account-button account-button--primary" type="submit">Modifier l’e-mail</button></form><form className="account-form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(() => changeAccountPassword(String(data.get('current_password')), String(data.get('new_password')), String(data.get('confirmation'))), 'Mot de passe mis à jour.').then((ok) => { if (ok) form.reset() }) }}><h3>Changer le mot de passe</h3><label>Mot de passe actuel<input name="current_password" type="password" required autoComplete="current-password" /></label><label>Nouveau mot de passe<input name="new_password" type="password" minLength={12} required autoComplete="new-password" /></label><label>Confirmation<input name="confirmation" type="password" minLength={12} required autoComplete="new-password" /></label><button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button></form><div className="account-info"><strong>{profile.active_session_count}</strong> sessions actives · Compte {profile.is_active ? 'actif' : 'inactif'}. L’authentification à deux facteurs n’est pas encore disponible.</div></>
+  return <><AccountHeading title="Sécurité" description="Les autres appareils sont déconnectés après une modification sensible." /><div className="account-security-layout">
+    <form className="account-form account-preference-card account-security-card" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(async () => { await changeAccountEmail(String(data.get('current_password')), String(data.get('new_email'))); await refreshProfile() }, 'Adresse e-mail mise à jour.').then((ok) => { if (ok) form.reset() }) }}>
+      <PreferenceCardHeading icon={Mail} title="Changer l’adresse e-mail" />
+      <p className="account-card-description">Mettez à jour l’adresse e-mail associée à votre compte.</p>
+      <label>Nouvelle adresse<input name="new_email" type="email" placeholder="exemple@domaine.com" required /></label><label>Mot de passe actuel<input name="current_password" type="password" placeholder="Saisissez votre mot de passe actuel" required autoComplete="current-password" /></label>
+      <button className="account-button account-button--primary" type="submit">Modifier l’e-mail</button>
+    </form>
+    <form className="account-form account-preference-card account-security-card" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(() => changeAccountPassword(String(data.get('current_password')), String(data.get('new_password')), String(data.get('confirmation'))), 'Mot de passe mis à jour.').then((ok) => { if (ok) form.reset() }) }}>
+      <PreferenceCardHeading icon={LockKeyhole} title="Changer le mot de passe" />
+      <p className="account-card-description">Choisissez un mot de passe fort et unique.</p>
+      <label>Mot de passe actuel<input name="current_password" type="password" placeholder="Saisissez votre mot de passe actuel" required autoComplete="current-password" /></label><label>Nouveau mot de passe<input name="new_password" type="password" placeholder="Minimum 12 caractères" minLength={12} required autoComplete="new-password" /></label><label>Confirmation<input name="confirmation" type="password" placeholder="Confirmez votre nouveau mot de passe" minLength={12} required autoComplete="new-password" /></label>
+      <button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button>
+    </form>
+    <section className="account-preference-card account-security-overview">
+      <PreferenceCardHeading icon={ShieldCheck} title="État de sécurité du compte" />
+      <div className="account-security-overview__items">
+        <div><MonitorSmartphone size={16} aria-hidden="true" /><span>Sessions actives<strong>{profile.active_session_count}</strong></span></div>
+        <div><ShieldCheck size={16} aria-hidden="true" /><span>Compte<strong>{profile.is_active ? 'Actif' : 'Inactif'}</strong></span></div>
+        <div><LockKeyhole size={16} aria-hidden="true" /><span>Authentification à deux facteurs<strong>Non disponible</strong></span></div>
+      </div>
+    </section>
+  </div></>
 }
 
 function SessionsSection({ sessions, run, reload }: { sessions: AccountSession[]; run: (action: () => Promise<void>, success: string) => Promise<boolean>; reload: () => Promise<void> }) {

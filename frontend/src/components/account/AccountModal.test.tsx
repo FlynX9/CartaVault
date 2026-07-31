@@ -49,6 +49,21 @@ describe('AccountModal', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('uses the preference card design for profile and security sections', async () => {
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    expect((await screen.findByRole('heading', { name: 'Informations de profil' })).closest('form')).toHaveClass('account-preference-card')
+    expect(screen.getByRole('heading', { name: 'Avatar' }).closest('section')).toHaveClass('account-preference-card')
+    expect(screen.getByRole('heading', { name: 'Informations du compte' }).closest('section')).toHaveClass('account-preference-card')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sécurité' }))
+    expect(screen.getByRole('heading', { name: 'Changer l’adresse e-mail' }).closest('form')).toHaveClass('account-security-card')
+    expect(screen.getByRole('heading', { name: 'Changer le mot de passe' }).closest('form')).toHaveClass('account-security-card')
+    expect(screen.getByRole('heading', { name: 'État de sécurité du compte' }).closest('section')).toHaveClass('account-security-overview')
+    expect(screen.getAllByPlaceholderText('Saisissez votre mot de passe actuel')).toHaveLength(2)
+    expect(screen.getByPlaceholderText('Minimum 12 caractères')).toBeVisible()
+    expect(screen.getByPlaceholderText('Confirmez votre nouveau mot de passe')).toBeVisible()
+  })
+
   it('persists the country-routing preference', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
