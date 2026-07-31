@@ -68,6 +68,24 @@ def test_nominatim_region_normalization_accepts_missing_region() -> None:
     assert result.admin_level is None
 
 
+def test_nominatim_region_normalization_uses_coded_city_region() -> None:
+    result = normalize_nominatim_response(
+        {
+            "address": {
+                "city": "Tbilissi",
+                "ISO3166-2-lvl4": "GE-TB",
+                "country": "Géorgie",
+                "country_code": "ge",
+            }
+        }
+    )
+
+    assert result.region_name == "Tbilissi"
+    assert result.region_type == "city"
+    assert result.region_code == "GE-TB"
+    assert result.admin_level == 4
+
+
 class RecordingGeocoder:
     def __init__(self, region: str = "Île-de-France"):
         self.region = region

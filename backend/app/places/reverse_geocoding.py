@@ -91,6 +91,17 @@ def normalize_nominatim_response(payload: dict[str, Any]) -> ReverseGeocodingRes
             admin_level = level
             break
 
+    # Some first-order administrative divisions are city-regions. Nominatim
+    # exposes their name only as `city`, while the ISO level-4 code confirms
+    # that the city itself is the relevant regional division (for example
+    # Tbilisi / GE-TB). Do not use an ordinary city without that evidence.
+    if region_name is None and _normalized_text(address.get("ISO3166-2-lvl4"), 40) is not None:
+        city = _normalized_text(address.get("city"), 100)
+        if city is not None:
+            region_name = city
+            region_type = "city"
+            admin_level = 4
+
     region_code: str | None = None
     if admin_level is not None:
         code = _normalized_text(address.get(f"ISO3166-2-lvl{admin_level}"), 40)
