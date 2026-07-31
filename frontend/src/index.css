@@ -6432,10 +6432,10 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
   padding: .15rem;
   overflow: hidden;
   color: var(--cv-color-gray);
-  background: color-mix(in srgb, var(--cv-brand-navy) 7%, var(--cv-surface-muted));
-  border: 1px solid color-mix(in srgb, var(--cv-color-slate) 18%, transparent);
+  background: color-mix(in srgb, var(--cv-color-slate) 3%, var(--cv-surface));
+  border: 1px solid color-mix(in srgb, var(--cv-color-slate) 12%, transparent);
   border-radius: .7rem;
-  box-shadow: inset 0 1px 2px rgb(13 27 42 / 6%), 0 1px 3px rgb(13 27 42 / 7%);
+  box-shadow: inset 0 1px 2px rgb(13 27 42 / 3%), 0 1px 2px rgb(13 27 42 / 4%);
   cursor: pointer;
 }
 .topbar-theme-toggle > span {
@@ -6446,13 +6446,24 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
 }
 .topbar-theme-toggle > span.is-active {
   color: var(--cv-color-teal);
-  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 22%, transparent), 0 1px 3px rgb(13 27 42 / 10%);
+  background: color-mix(in srgb, var(--cv-color-teal) 7%, var(--cv-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 18%, transparent), 0 1px 2px rgb(13 27 42 / 6%);
 }
 .topbar-theme-toggle:hover > span:not(.is-active) { color: var(--cv-color-slate); }
 .topbar-theme-toggle:focus-visible {
   outline: 2px solid var(--cv-color-teal);
   outline-offset: 2px;
+}
+
+html[data-theme='dark'] .topbar-theme-toggle {
+  background: color-mix(in srgb, var(--cv-color-slate) 7%, var(--cv-surface));
+  border-color: color-mix(in srgb, var(--cv-color-slate) 16%, transparent);
+  box-shadow: inset 0 1px 2px rgb(255 255 255 / 2%), 0 1px 2px rgb(0 0 0 / 16%);
+}
+
+html[data-theme='dark'] .topbar-theme-toggle > span.is-active {
+  background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 20%, transparent);
 }
 
 html[data-theme='dark'] body,
