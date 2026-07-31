@@ -181,6 +181,7 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     is_favorite: payload.is_favorite === true,
     interest_rating: typeof payload.interest_rating === 'number' ? readNumber(payload, 'interest_rating', context) : null,
     visit_rating: typeof payload.visit_rating === 'number' ? readNumber(payload, 'visit_rating', context) : null,
+    default_visit_duration_minutes: typeof payload.default_visit_duration_minutes === 'number' ? readNumber(payload, 'default_visit_duration_minutes', context) : null,
     is_visited: payload.is_visited === true,
     deleted_at: typeof payload.deleted_at === 'string' ? payload.deleted_at : null,
     links: (Array.isArray(payload.links) ? payload.links : []).map((value) => {

@@ -210,6 +210,7 @@ def place_to_read(
         condition=place.condition,
         access=place.access,
         danger_level=place.danger_level,
+        default_visit_duration_minutes=place.default_visit_duration_minutes,
         custom_fields=place.custom_fields,
         longitude=longitude,
         latitude=latitude,
@@ -463,7 +464,7 @@ def bulk_add_to_trip(
             latitude = database_session.scalar(select(func.ST_Y(Place.location)).where(Place.id == place.id))
             if longitude is None or latitude is None:
                 raise HTTPException(status_code=409, detail="BULK_PLACE_FORBIDDEN")
-            database_session.add(TripStop(trip_day_id=day.id, place_id=place.id, stop_type="place", name=place.name, latitude=latitude, longitude=longitude, sort_order=next_order, visit_duration_minutes=30))
+            database_session.add(TripStop(trip_day_id=day.id, place_id=place.id, stop_type="place", name=place.name, latitude=latitude, longitude=longitude, sort_order=next_order, visit_duration_minutes=place.default_visit_duration_minutes if place.default_visit_duration_minutes is not None else 30))
             next_order += 1; added += 1
         stale(day)
         database_session.commit()
@@ -686,6 +687,7 @@ def create_place(
         is_favorite=place_data.is_favorite,
         interest_rating=place_data.interest_rating,
         visit_rating=place_data.visit_rating,
+        default_visit_duration_minutes=place_data.default_visit_duration_minutes,
     )
     if place_data.region is not None:
         place.region_manually_overridden = True
@@ -736,7 +738,7 @@ def update_place(
 
     supplied_data = place_data.model_dump(exclude_unset=True)
     confirmed_outside_country = supplied_data.pop("confirm_outside_country", False)
-    audited_fields = {"name", "map_id", "status_id", "description", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "is_favorite", "interest_rating", "visit_rating"}
+    audited_fields = {"name", "map_id", "status_id", "description", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "is_favorite", "interest_rating", "visit_rating", "default_visit_duration_minutes"}
     before = {field: getattr(place, field) for field in audited_fields}
     current_longitude, current_latitude = database_session.execute(
         select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(

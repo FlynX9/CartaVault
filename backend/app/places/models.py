@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, SmallInteger, String, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,6 +42,10 @@ class Place(Base):
         CheckConstraint(
             "visit_rating IS NULL OR (visit_rating BETWEEN 1 AND 5 AND visit_rating * 2 = trunc(visit_rating * 2))",
             name="places_visit_rating_range",
+        ),
+        CheckConstraint(
+            "default_visit_duration_minutes IS NULL OR (default_visit_duration_minutes >= 0 AND default_visit_duration_minutes <= 1440)",
+            name="places_default_visit_duration_check",
         ),
         Index(
             "places_location_idx",
@@ -126,6 +130,7 @@ class Place(Base):
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     interest_rating: Mapped[Decimal | None] = mapped_column(Numeric(2, 1), nullable=True)
     visit_rating: Mapped[Decimal | None] = mapped_column(Numeric(2, 1), nullable=True)
+    default_visit_duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_by_user_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,

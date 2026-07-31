@@ -52,6 +52,32 @@ def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_cli
     assert restored.json()["completed_at"] is None
 
 
+def test_new_trip_stop_uses_place_visit_duration_or_thirty_minutes(integration_client, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Durées"}).json()
+    day_id = trip["days"][0]["id"]
+    configured = integration_client.post(
+        "/places",
+        json={"name": "Musée", "map_id": str(poi_map.id), "latitude": 48.2, "longitude": 2.2, "default_visit_duration_minutes": 75},
+    ).json()
+    fallback = integration_client.post(
+        "/places",
+        json={"name": "Belvédère", "map_id": str(poi_map.id), "latitude": 48.3, "longitude": 2.3},
+    ).json()
+
+    configured_stop = integration_client.post(f"/trip-days/{day_id}/stops", json={"place_id": configured["id"]})
+    fallback_stop = integration_client.post(f"/trip-days/{day_id}/stops", json={"place_id": fallback["id"]})
+    explicit_stop = integration_client.post(f"/trip-days/{day_id}/stops", json={"place_id": configured["id"], "visit_duration_minutes": 15})
+
+    assert configured_stop.status_code == fallback_stop.status_code == explicit_stop.status_code == 201
+    assert configured_stop.json()["visit_duration_minutes"] == 75
+    assert fallback_stop.json()["visit_duration_minutes"] == 30
+    assert explicit_stop.json()["visit_duration_minutes"] == 15
+
+    updated = integration_client.patch(f"/trip-stops/{configured_stop.json()['id']}", json={"visit_duration_minutes": 90})
+    assert updated.status_code == 200
+    assert updated.json()["visit_duration_minutes"] == 90
+
+
 def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_client, database_session, poi_map, auth_user, france_country) -> None:
     created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Road trip", "start_date": "2026-08-01", "end_date": "2026-08-03"})
     assert created.status_code == 201

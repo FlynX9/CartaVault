@@ -41,6 +41,7 @@ export interface PlaceDetails {
   is_favorite?: boolean
   interest_rating?: number | null
   visit_rating?: number | null
+  default_visit_duration_minutes?: number | null
   is_visited?: boolean
   deleted_at?: string | null
   links?: PlaceLink[]
@@ -81,8 +82,8 @@ export interface PlaceBulkTripResult { selected_count: number; added_count: numb
 export interface PlaceListPosition { place_id: string; matches_filters: boolean; index: number | null; page: number | null; page_size: number }
 
 interface PlaceNullableFields { description: string | null; region: string | null; construction_date: string | null; abandonment_date: string | null; condition: string | null; access: string | null; danger_level: string | null; custom_fields?: Record<string, unknown> }
-export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number; is_favorite?: boolean; interest_rating?: number | null; visit_rating?: number | null; confirm_outside_country?: boolean }
-export interface PlaceUpdatePayload { name?: string; map_id?: string; status_id?: string; description?: string | null; region?: string | null; construction_date?: string | null; abandonment_date?: string | null; condition?: string | null; access?: string | null; danger_level?: string | null; latitude?: number; longitude?: number; is_favorite?: boolean; interest_rating?: number | null; visit_rating?: number | null; confirm_outside_country?: boolean }
-export interface PlaceFormValues { name: string; mapId: string; statusId: string; description: string; region: string; construction_date: string; abandonment_date: string; condition: string; access: string; danger_level: string; latitude: string; longitude: string; categoryIds: string[]; primaryCategoryId: string; tagIds: string[]; isFavorite: boolean; interestRating: string; visitRating: string }
+export interface PlaceCreatePayload extends PlaceNullableFields { name: string; map_id: string; status_id?: string; latitude: number; longitude: number; is_favorite?: boolean; interest_rating?: number | null; visit_rating?: number | null; default_visit_duration_minutes?: number | null; confirm_outside_country?: boolean }
+export interface PlaceUpdatePayload { name?: string; map_id?: string; status_id?: string; description?: string | null; region?: string | null; construction_date?: string | null; abandonment_date?: string | null; condition?: string | null; access?: string | null; danger_level?: string | null; latitude?: number; longitude?: number; is_favorite?: boolean; interest_rating?: number | null; visit_rating?: number | null; default_visit_duration_minutes?: number | null; confirm_outside_country?: boolean }
+export interface PlaceFormValues { name: string; mapId: string; statusId: string; description: string; region: string; construction_date: string; abandonment_date: string; condition: string; access: string; danger_level: string; latitude: string; longitude: string; categoryIds: string[]; primaryCategoryId: string; tagIds: string[]; isFavorite: boolean; interestRating: string; visitRating: string; visitDuration: string }
 export type PlaceFormErrors = Partial<Record<keyof PlaceFormValues, string>>
 export interface AssociationDiff { added: string[]; removed: string[] }

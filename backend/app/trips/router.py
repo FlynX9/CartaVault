@@ -252,8 +252,11 @@ def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User =
 def add_stop(day_id: UUID, data: StopCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     day, access = require_day_role(session, day_id, user, "editor"); values = data.model_dump()
     QuotaService(session).ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day_id)
+    place = None
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, stop_type="place")
+    if "visit_duration_minutes" not in data.model_fields_set:
+        values["visit_duration_minutes"] = place.default_visit_duration_minutes if place is not None and place.default_visit_duration_minutes is not None else 30
     stop = TripStop(trip_day_id=day.id, sort_order=len(day.stops), **values); session.add(stop); stale(day); session.commit(); return StopRead.model_validate(stop)
 
 

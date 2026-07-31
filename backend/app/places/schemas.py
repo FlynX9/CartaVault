@@ -31,6 +31,7 @@ class PlaceCreate(BaseModel):
     is_favorite: bool = False
     interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
     visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    default_visit_duration_minutes: int | None = Field(default=None, ge=0, le=1440)
     confirm_outside_country: bool = False
 
 
@@ -50,6 +51,7 @@ class PlaceUpdate(BaseModel):
     is_favorite: bool | None = None
     interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
     visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    default_visit_duration_minutes: int | None = Field(default=None, ge=0, le=1440)
     confirm_outside_country: bool = False
 
     @model_validator(mode="after")
@@ -172,6 +174,7 @@ class PlaceRead(BaseModel):
     is_favorite: bool
     interest_rating: float | None
     visit_rating: float | None
+    default_visit_duration_minutes: int | None
     is_visited: bool
     deleted_at: datetime | None
     links: list[PlaceLinkRead]

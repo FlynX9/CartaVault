@@ -259,6 +259,12 @@ export function PlaceForm({
             <span>Description</span>
             <textarea value={values.description} rows={5} onChange={(event) => setValue('description', event.target.value)} />
           </label>}
+          <label className="form-field form-field-wide">
+            <span>Durée de visite</span>
+            <input type="number" min={0} max={1440} step={5} value={values.visitDuration} placeholder="30 minutes par défaut" title="Durée suggérée lors de l’ajout de ce POI à une journée" aria-invalid={Boolean(errors.visitDuration)} onChange={(event) => setValue('visitDuration', event.target.value)} />
+            <small className="form-hint">En minutes. Laissez vide pour utiliser 30 minutes.</small>
+            {errors.visitDuration && <small className="field-error">{errors.visitDuration}</small>}
+          </label>
           {fieldEnabled('ratings') && ratingField && <div className="form-field form-field-wide place-rating-fields">
             <span>Notation</span>
             {ratingField === 'interest' && <EditableRating label="Envie avant visite" value={values.interestRating} onChange={(rating) => setValue('interestRating', rating)} />}

@@ -178,7 +178,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const drop = (event: DragEvent, day: TripDay) => {
     if (!canEditTrip) return
     event.preventDefault(); const data = event.dataTransfer.getData('text/plain')
-    if (data.startsWith('place:')) void run(async () => { await addTripStop(day.id, { place_id: data.slice(6), stop_type: 'place', visit_duration_minutes: 30 }); await refreshTripSilently(trip!.id) })
+    if (data.startsWith('place:')) void run(async () => { await addTripStop(day.id, { place_id: data.slice(6), stop_type: 'place' }); await refreshTripSilently(trip!.id) })
     if (data.startsWith('stop:')) void run(async () => { await moveTripStop(data.slice(5), day.id, day.stops.length); await refreshTripSilently(trip!.id) })
   }
   const dropStop = (event: DragEvent, day: TripDay, index: number) => {
@@ -189,7 +189,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
       const placeId = data.slice(6)
       if (!placeId) return
       void run(async () => {
-        const created = await addTripStop(day.id, { place_id: placeId, stop_type: 'place', visit_duration_minutes: 30 })
+        const created = await addTripStop(day.id, { place_id: placeId, stop_type: 'place' })
         if (index < day.stops.length) await moveTripStop(created.id, day.id, index)
         await refreshTripSilently(trip!.id)
       })

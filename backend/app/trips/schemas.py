@@ -98,7 +98,7 @@ class StopCreate(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     address: str | None = Field(default=None, max_length=500)
-    visit_duration_minutes: int | None = Field(default=30, ge=0, le=1440)
+    visit_duration_minutes: int | None = Field(default=None, ge=0, le=1440)
     notes: str | None = Field(default=None, max_length=10_000)
     is_required: bool = True
     is_locked: bool = False

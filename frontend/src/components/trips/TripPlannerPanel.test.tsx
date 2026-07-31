@@ -344,7 +344,7 @@ describe('TripPlannerPanel', () => {
     onTripChange.mockClear()
     vi.mocked(getTripSummary).mockImplementationOnce(() => new Promise(() => undefined))
     fireEvent.drop(day!, { dataTransfer: { getData: () => 'place:place-42' } })
-    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
+    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place' }))
     await waitFor(() => expect(onTripChange).toHaveBeenCalled())
     expect(listTrips).not.toHaveBeenCalled()
     expect(screen.queryByText('Chargement du voyage…')).not.toBeInTheDocument()
@@ -393,7 +393,7 @@ describe('TripPlannerPanel', () => {
     fireEvent.dragOver(target.closest('li')!, { dataTransfer, clientY: 0 })
     fireEvent.drop(target.closest('li')!, { dataTransfer })
 
-    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place', visit_duration_minutes: 30 }))
+    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-42', stop_type: 'place' }))
     expect(moveTripStop).toHaveBeenCalledWith('stop-created', 'day-1', 0)
     expect(moveTripStop).not.toHaveBeenCalledWith('place:place-42', expect.anything(), expect.anything())
   })

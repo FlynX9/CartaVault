@@ -571,7 +571,6 @@ function WorkspaceApp() {
         await addTripStop(targetDayId, {
           place_id: place.id,
           stop_type: "place",
-          visit_duration_minutes: 30,
         });
       }
       const loaded = await getTrip(activeTrip.id);
@@ -610,7 +609,6 @@ function WorkspaceApp() {
         name: `Point ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
         latitude,
         longitude,
-        visit_duration_minutes: 30,
       });
       const loaded = await getTrip(activeTrip.id);
       setActiveTrip(loaded);

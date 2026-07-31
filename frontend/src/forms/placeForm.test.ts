@@ -7,5 +7,10 @@ describe('place form helpers', () => {
   it('requires and creates with a tracking status', () => { expect(validatePlaceForm({ ...values, statusId: '' }).statusId).toBeTruthy(); expect(buildCreatePayload(values).status_id).toBe('status-a') })
   it('sends only a changed status relationship', () => { expect(buildMinimalUpdatePayload(values, { ...values, statusId: 'status-b' })).toEqual({ status_id: 'status-b' }) })
   it('sends only a changed map relationship', () => { expect(buildMinimalUpdatePayload(values, { ...values, mapId: 'map-b' })).toEqual({ map_id: 'map-b' }) })
+  it('persists and validates an optional visit duration', () => {
+    expect(buildCreatePayload({ ...values, visitDuration: '75' }).default_visit_duration_minutes).toBe(75)
+    expect(buildMinimalUpdatePayload(values, { ...values, visitDuration: '45' })).toEqual({ default_visit_duration_minutes: 45 })
+    expect(validatePlaceForm({ ...values, visitDuration: '1441' }).visitDuration).toBeTruthy()
+  })
   it('calculates association changes', () => { expect(calculateAssociationDiff(['a', 'b'], ['b', 'c'])).toEqual({ added: ['c'], removed: ['a'] }) })
 })
