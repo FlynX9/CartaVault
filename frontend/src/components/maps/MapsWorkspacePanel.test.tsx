@@ -7,7 +7,7 @@ import { MapsWorkspacePanel } from './MapsWorkspacePanel'
 
 vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn(), getPendingMapInvitations: vi.fn() }))
 
-const map = { id: 'map-id', name: 'France historique', country: { name: 'France', iso_alpha2: 'FR' }, is_shared: false } as PoiMap
+const map = { id: 'map-id', name: 'France historique', country: { name: 'France', iso_alpha2: 'FR' }, is_shared: false, place_count: 12, trip_count: 3 } as PoiMap
 
 describe('MapsWorkspacePanel', () => {
   beforeEach(() => {
@@ -21,6 +21,8 @@ describe('MapsWorkspacePanel', () => {
     const open = vi.fn(); const remove = vi.fn()
     render(<MapsWorkspacePanel maps={[map]} activeMapId="map-id" isLoading={false} errorMessage={null} onOpen={open} onDelete={remove} onCreated={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByText('France historique')).toBeVisible()
+    expect(screen.getByText('12 POI')).toBeVisible()
+    expect(screen.getByText('3 sorties')).toBeVisible()
     const preview = screen.getByRole('img', { name: 'Drapeau France, aperçu de France historique' })
     expect(preview).toBeVisible()
     expect(preview.closest('.maps-catalog__summary')).toBeVisible()

@@ -4784,6 +4784,9 @@ body {
 .maps-catalog__summary .maps-catalog__preview { height: auto; min-height: 100%; padding: 0.65rem 0.5rem; align-content: center; background: transparent; border-right: 0; border-bottom: 0; }
 .maps-catalog__summary .maps-catalog__details { align-content: center; padding: 0.6rem 2.7rem 0.55rem 0.7rem; }
 .maps-catalog__summary .maps-catalog__flag { width: 2.85rem; height: 1.9rem; }
+.maps-catalog__metrics { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.65rem; margin: 0.12rem 0; color: var(--cv-color-gray); font-size: 0.68rem; font-style: normal; }
+.maps-catalog__metrics > span { display: inline-flex; align-items: center; gap: 0.22rem; white-space: nowrap; }
+.maps-catalog__metrics svg { color: var(--cv-color-teal); }
 .maps-catalog__summary + .maps-catalog__actions { padding-top: 0.45rem; }
 
 /* Map actions share one compact CartaVault dialog language. */

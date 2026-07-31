@@ -124,6 +124,8 @@ const editableMap: PoiMap = {
   updated_at: '2026-07-26T08:00:00Z',
   can_edit: true,
   can_import: true,
+  place_count: 0,
+  trip_count: 0,
 }
 
 const dashboardProps = { maps: [editableMap], activeMapId: editableMap.id }

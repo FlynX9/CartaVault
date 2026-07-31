@@ -40,6 +40,30 @@ def test_map_crud_conflict_and_empty_delete(integration_client: TestClient, fran
     assert integration_client.delete(f"/maps/{map_id}").status_code == 204
 
 
+def test_map_catalog_exposes_active_place_and_trip_counts(integration_client: TestClient, poi_map: PoiMap) -> None:
+    active_place = integration_client.post(
+        "/places",
+        json={"name": "Active POI", "map_id": str(poi_map.id), "latitude": 48, "longitude": 2},
+    )
+    deleted_place = integration_client.post(
+        "/places",
+        json={"name": "Deleted POI", "map_id": str(poi_map.id), "latitude": 49, "longitude": 3},
+    )
+    active_trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Active trip"})
+    deleted_trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Deleted trip"})
+    assert active_place.status_code == deleted_place.status_code == 201
+    assert active_trip.status_code == deleted_trip.status_code == 201
+    assert integration_client.delete(f"/places/{deleted_place.json()['id']}").status_code == 204
+    assert integration_client.delete(f"/trips/{deleted_trip.json()['id']}").status_code == 204
+
+    catalogue_entry = next(item for item in integration_client.get("/maps").json() if item["id"] == str(poi_map.id))
+    assert catalogue_entry["place_count"] == 1
+    assert catalogue_entry["trip_count"] == 1
+    detail = integration_client.get(f"/maps/{poi_map.id}").json()
+    assert detail["place_count"] == 1
+    assert detail["trip_count"] == 1
+
+
 def test_map_with_place_moves_to_trash_and_restores_with_its_content(integration_client: TestClient, poi_map: PoiMap) -> None:
     place = integration_client.post("/places", json={"name": "Protected", "map_id": str(poi_map.id), "latitude": 48, "longitude": 2})
     assert place.status_code == 201

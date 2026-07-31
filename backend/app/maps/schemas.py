@@ -71,6 +71,8 @@ class MapRead(BaseModel):
     can_transfer_ownership: bool
     can_import: bool
     can_export: bool
+    place_count: int = Field(ge=0)
+    trip_count: int = Field(ge=0)
     place_field_config: dict[str, bool]
 
 

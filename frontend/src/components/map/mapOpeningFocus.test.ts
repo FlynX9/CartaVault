@@ -25,6 +25,8 @@ const BASE_MAP = {
   max_longitude: 9.56,
   created_at: '2026-01-01T00:00:00',
   updated_at: '2026-01-01T00:00:00',
+  place_count: 0,
+  trip_count: 0,
 } satisfies PoiMap
 
 describe('buildMapOpeningFocusRequest', () => {

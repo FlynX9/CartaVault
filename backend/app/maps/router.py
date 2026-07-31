@@ -32,12 +32,13 @@ from app.places.models import Place
 from app.places.fields import normalize_place_field_config
 from app.statuses.service import create_default_statuses
 from app.trash.service import trash_deadline
+from app.trips.models import Trip
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 logger = logging.getLogger(__name__)
 
 
-def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
+def map_to_read(poi_map: PoiMap, access: MapAccess, *, place_count: int, trip_count: int) -> MapRead:
     country = poi_map.country
     catalogue_bounds = load_country_bounds().get(country.iso_alpha2)
     min_longitude, min_latitude, max_longitude, max_latitude = (
@@ -64,8 +65,42 @@ def map_to_read(poi_map: PoiMap, access: MapAccess) -> MapRead:
         current_user_role=access.role, can_edit=can_edit, can_delete=access.can_delete,
         can_manage_members=can_manage, can_transfer_ownership=can_manage,
         can_import=can_edit, can_export=True,
+        place_count=place_count, trip_count=trip_count,
         place_field_config=normalize_place_field_config(poi_map.place_field_config),
     )
+
+
+def _map_content_counts(database_session: Session, map_ids: list[UUID]) -> dict[UUID, tuple[int, int]]:
+    if not map_ids:
+        return {}
+    place_counts = (
+        select(Place.map_id.label("map_id"), func.count(Place.id).label("place_count"))
+        .where(Place.deleted_at.is_(None))
+        .group_by(Place.map_id)
+        .subquery()
+    )
+    trip_counts = (
+        select(Trip.map_id.label("map_id"), func.count(Trip.id).label("trip_count"))
+        .where(Trip.deleted_at.is_(None), Trip.archived_at.is_(None))
+        .group_by(Trip.map_id)
+        .subquery()
+    )
+    rows = database_session.execute(
+        select(
+            PoiMap.id,
+            func.coalesce(place_counts.c.place_count, 0),
+            func.coalesce(trip_counts.c.trip_count, 0),
+        )
+        .outerjoin(place_counts, place_counts.c.map_id == PoiMap.id)
+        .outerjoin(trip_counts, trip_counts.c.map_id == PoiMap.id)
+        .where(PoiMap.id.in_(map_ids))
+    )
+    return {map_id: (int(place_count), int(trip_count)) for map_id, place_count, trip_count in rows}
+
+
+def map_to_read_with_counts(database_session: Session, poi_map: PoiMap, access: MapAccess) -> MapRead:
+    place_count, trip_count = _map_content_counts(database_session, [poi_map.id]).get(poi_map.id, (0, 0))
+    return map_to_read(poi_map, access, place_count=place_count, trip_count=trip_count)
 
 
 def read_map(database_session: Session, map_id: UUID, *, include_deleted: bool = False) -> PoiMap | None:
@@ -92,7 +127,16 @@ def get_maps(q: str | None = Query(default=None, min_length=1, max_length=120), 
     if q is not None:
         statement = statement.where(PoiMap.name.ilike(f"%{q.strip()}%"))
     maps = database_session.scalars(statement.order_by(func.lower(PoiMap.name), PoiMap.id)).unique().all()
-    return [map_to_read(poi_map, _loaded_map_access(poi_map, current_user)) for poi_map in maps]
+    counts = _map_content_counts(database_session, [poi_map.id for poi_map in maps])
+    return [
+        map_to_read(
+            poi_map,
+            _loaded_map_access(poi_map, current_user),
+            place_count=counts.get(poi_map.id, (0, 0))[0],
+            trip_count=counts.get(poi_map.id, (0, 0))[1],
+        )
+        for poi_map in maps
+    ]
 
 
 @router.get("/{map_id}", response_model=MapRead)
@@ -100,7 +144,7 @@ def get_map(map_id: UUID, database_session: Session = Depends(get_db), current_u
     access = get_map_access(database_session, map_id, current_user)
     poi_map = read_map(database_session, map_id)
     assert poi_map is not None
-    return map_to_read(poi_map, access)
+    return map_to_read_with_counts(database_session, poi_map, access)
 
 
 @router.post("", response_model=MapRead, status_code=201)
@@ -125,7 +169,7 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
         database_session.commit()
         result = read_map(database_session, poi_map.id)
         assert result is not None
-        return map_to_read(result, MapAccess(result, "owner"))
+        return map_to_read_with_counts(database_session, result, MapAccess(result, "owner"))
     except IntegrityError as error:
         database_session.rollback()
         raise HTTPException(status_code=409, detail="A map already exists for this owner and country") from error
@@ -143,7 +187,7 @@ def update_map(map_id: UUID, map_data: MapUpdate, database_session: Session = De
         database_session.commit()
         result = read_map(database_session, map_id)
         assert result is not None
-        return map_to_read(result, access)
+        return map_to_read_with_counts(database_session, result, access)
     except SQLAlchemyError as error:
         database_session.rollback()
         raise HTTPException(status_code=500, detail="Unable to update the map") from error
@@ -238,7 +282,7 @@ def transfer_ownership(map_id: UUID, data: TransferOwnership, database_session: 
     database_session.commit()
     result = read_map(database_session, map_id)
     assert result is not None
-    return map_to_read(result, get_map_access(database_session, map_id, current_user))
+    return map_to_read_with_counts(database_session, result, get_map_access(database_session, map_id, current_user))
 
 
 @router.post("/{map_id}/invitations", response_model=InvitationRead, status_code=201)
