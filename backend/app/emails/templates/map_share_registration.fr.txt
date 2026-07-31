@@ -2,6 +2,8 @@ CartaVault — Invitation de partage
 
 $inviter_email souhaite partager la carte "$map_name" avec vous.
 
-Créez votre compte CartaVault avec cette adresse email. Une fois votre inscription approuvée, vous pourrez accepter l’invitation depuis votre espace.
+Utilisez cette invitation privée et temporaire pour créer votre compte CartaVault et rejoindre la carte.
 
-Créer mon compte : $registration_url
+Créer mon compte et rejoindre : $invitation_url
+
+Si vous n’attendiez pas cette invitation, vous pouvez ignorer cet email.

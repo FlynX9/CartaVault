@@ -14,6 +14,7 @@ from app.auth.security import hash_password, hash_token, normalize_email, verify
 from app.auth.sessions import issue_session, revoke_user_sessions
 from app.config import security_settings
 from app.database import get_db
+from app.emails.notifications import notify_password_changed
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 PENDING_REGISTRATION_MESSAGES = {
@@ -111,5 +112,6 @@ def change_password(data: PasswordChange, response: Response, database_session: 
     raw_token, csrf_token = issue_session(database_session, user_session.user_id)
     database_session.commit()
     _set_session_cookies(response, raw_token, csrf_token, security_settings.session_days * 86400)
+    notify_password_changed(database_session, user_session.user)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response

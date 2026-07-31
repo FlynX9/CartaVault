@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from html import escape
 from string import Template
-from urllib.parse import urlencode
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +21,9 @@ SUBJECTS = {
         "registration_admin": "Nouvelle demande d’inscription CartaVault",
         "registration_approved": "Votre accès CartaVault est approuvé",
         "password_reset": "Réinitialisez votre mot de passe CartaVault",
+        "password_changed": "Votre mot de passe CartaVault a été modifié",
+        "email_changed": "Votre adresse email CartaVault a été modifiée",
+        "map_share": "Une carte CartaVault vous a été partagée",
         "map_share_registration": "Une carte CartaVault vous attend",
         "resend_verification": "Votre configuration email CartaVault fonctionne",
     },
@@ -29,6 +31,9 @@ SUBJECTS = {
         "registration_admin": "New CartaVault registration request",
         "registration_approved": "Your CartaVault access has been approved",
         "password_reset": "Reset your CartaVault password",
+        "password_changed": "Your CartaVault password was changed",
+        "email_changed": "Your CartaVault email address was changed",
+        "map_share": "A CartaVault map has been shared with you",
         "map_share_registration": "A CartaVault map has been shared with you",
         "resend_verification": "Your CartaVault email configuration works",
     },
@@ -40,6 +45,8 @@ def _render(name: str, values: dict[str, str]) -> str:
 
 
 def provider_from_database(session: Session) -> EmailProvider:
+    if email_settings.provider == "none":
+        raise EmailDeliveryError("EMAIL_DELIVERY_DISABLED", "L’envoi d’emails est désactivé.")
     credential = session.get(SystemCredential, "resend")
     if credential is None:
         raise EmailDeliveryError("EMAIL_PROVIDER_NOT_CONFIGURED", "Le service d’email n’est pas configuré.")
@@ -81,22 +88,42 @@ class EmailService:
         reset_url = f"{email_settings.frontend_public_url}/reset-password?token={token}"
         return self._send("password_reset", [recipient], {"display_name": display_name, "reset_url": reset_url, "ttl_minutes": str(email_settings.password_reset_token_ttl_minutes)}, locale)
 
-    def send_map_share_registration_invitation(
+    def send_map_share_invitation(
         self,
         recipient: str,
         inviter_email: str,
         map_name: str,
+        token: str,
+        requires_account: bool,
         locale: str = "fr",
     ) -> str | None:
-        registration_url = f"{email_settings.frontend_public_url}/register?{urlencode({'email': recipient})}"
+        invitation_url = f"{email_settings.frontend_public_url}/invitations/{token}"
         return self._send(
-            "map_share_registration",
+            "map_share_registration" if requires_account else "map_share",
             [recipient],
             {
                 "inviter_email": inviter_email,
                 "map_name": map_name,
-                "registration_url": registration_url,
+                "invitation_url": invitation_url,
             },
+            locale,
+        )
+
+    def notify_password_changed(self, recipient: str, display_name: str, locale: str = "fr") -> str | None:
+        return self._send("password_changed", [recipient], {"display_name": display_name}, locale)
+
+    def notify_email_changed(
+        self,
+        recipient: str,
+        display_name: str,
+        old_email: str,
+        new_email: str,
+        locale: str = "fr",
+    ) -> str | None:
+        return self._send(
+            "email_changed",
+            [recipient],
+            {"display_name": display_name, "old_email": old_email, "new_email": new_email},
             locale,
         )
 

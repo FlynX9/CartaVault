@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from time import sleep
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -41,12 +42,20 @@ class ResendEmailProvider:
             "https://api.resend.com/emails", data=json.dumps(payload).encode("utf-8"), method="POST",
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "User-Agent": "CartaVault/1.0"},
         )
-        try:
-            with urlopen(request, timeout=email_settings.timeout_seconds) as response:  # noqa: S310 - fixed Resend endpoint
-                result = json.loads(response.read().decode("utf-8"))
-        except HTTPError as error:
-            code = "EMAIL_PROVIDER_RATE_LIMITED" if error.code == 429 else "EMAIL_PROVIDER_REJECTED"
-            raise EmailDeliveryError(code) from error
-        except (URLError, TimeoutError, json.JSONDecodeError) as error:
-            raise EmailDeliveryError("EMAIL_PROVIDER_UNAVAILABLE") from error
+        result: object = None
+        for attempt in range(email_settings.max_attempts):
+            try:
+                with urlopen(request, timeout=email_settings.timeout_seconds) as response:  # noqa: S310 - fixed Resend endpoint
+                    result = json.loads(response.read().decode("utf-8"))
+                break
+            except HTTPError as error:
+                transient = error.code == 429 or error.code >= 500
+                if not transient or attempt + 1 >= email_settings.max_attempts:
+                    code = "EMAIL_PROVIDER_RATE_LIMITED" if error.code == 429 else "EMAIL_PROVIDER_REJECTED"
+                    raise EmailDeliveryError(code) from error
+            except (URLError, TimeoutError, json.JSONDecodeError) as error:
+                if attempt + 1 >= email_settings.max_attempts:
+                    raise EmailDeliveryError("EMAIL_PROVIDER_UNAVAILABLE") from error
+            if email_settings.retry_delay_seconds:
+                sleep(email_settings.retry_delay_seconds)
         return result.get("id") if isinstance(result, dict) and isinstance(result.get("id"), str) else None

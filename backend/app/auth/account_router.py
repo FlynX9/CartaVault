@@ -18,6 +18,7 @@ from app.auth.sessions import issue_session, revoke_user_sessions
 from app.config import security_settings
 from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
+from app.emails.notifications import notify_email_changed, notify_password_changed
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -100,12 +101,14 @@ def reset_preferences(database_session: Session = Depends(get_db), current: User
 def change_email(data: EmailChange, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict:
     if not verify_password(current.user.password_hash, data.current_password)[0]:
         raise HTTPException(400, "Unable to change email with the supplied credentials")
+    old_email = current.user.email
     current.user.email = normalize_email(data.new_email)
     raw_token, csrf_token = _rotate_session(database_session, current)
     try: database_session.commit()
     except IntegrityError as error:
         database_session.rollback(); raise HTTPException(409, "Unable to use this email address") from error
     _set_session_cookies(response, raw_token, csrf_token)
+    notify_email_changed(database_session, current.user, old_email)
     return _profile(current.user, database_session)
 
 
@@ -116,6 +119,7 @@ def account_password(data: AccountPasswordChange, response: Response, database_s
     raw_token, csrf_token = _rotate_session(database_session, current)
     database_session.commit()
     _set_session_cookies(response, raw_token, csrf_token)
+    notify_password_changed(database_session, current.user)
     response.status_code = 204
     return response
 

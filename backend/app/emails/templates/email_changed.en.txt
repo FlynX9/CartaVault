@@ -1,0 +1,7 @@
+CartaVault — Security alert
+
+Hello $display_name,
+
+The email address for your CartaVault account changed from $old_email to $new_email. Your previous sessions have been revoked.
+
+If you did not make this change, contact your CartaVault administrator immediately.

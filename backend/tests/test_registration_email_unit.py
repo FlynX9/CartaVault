@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from types import SimpleNamespace
 
 from app.auth import rate_limit
 from app.auth.rate_limit import PublicAuthRateLimiter, rate_limit_key
 from app.emails.providers.base import EmailMessage
-from app.emails.service import EmailService
+from app.emails.providers.base import EmailDeliveryError
+from app.emails.service import EmailService, provider_from_database
 
 
 pytestmark = pytest.mark.unit
@@ -27,19 +29,26 @@ def test_each_email_function_uses_a_repository_template() -> None:
     service.notify_registration_admins(["admin@example.test"], "candidate@example.test")
     service.notify_registration_approved("candidate@example.test", "Candidate")
     service.send_password_reset("candidate@example.test", "Candidate", "opaque-token")
-    service.send_map_share_registration_invitation("invited@example.test", "owner@example.test", "Shared map")
+    service.send_map_share_invitation("new@example.test", "owner@example.test", "New account map", "new-token", True)
+    service.send_map_share_invitation("member@example.test", "owner@example.test", "Member map", "member-token", False)
+    service.notify_password_changed("candidate@example.test", "Candidate")
+    service.notify_email_changed("old@example.test", "Candidate", "old@example.test", "new@example.test")
     service.send_resend_verification("admin@example.test", "Admin")
 
-    assert len(provider.messages) == 5
+    assert len(provider.messages) == 8
     assert all("Carta" in message.html and "Vault" in message.html for message in provider.messages)
     assert all("#0FA68A" in message.html for message in provider.messages)
     assert "candidate@example.test" in provider.messages[0].text
     assert "Candidate" in provider.messages[1].text
     assert "opaque-token" in provider.messages[2].text
     assert "owner@example.test" in provider.messages[3].text
-    assert "Shared map" in provider.messages[3].text
-    assert "/register?email=invited%40example.test" in provider.messages[3].text
-    assert "Admin" in provider.messages[4].text
+    assert "New account map" in provider.messages[3].text
+    assert "/invitations/new-token" in provider.messages[3].text
+    assert "/invitations/member-token" in provider.messages[4].text
+    assert "mot de passe" in provider.messages[5].subject.lower()
+    assert "old@example.test" in provider.messages[6].text
+    assert "new@example.test" in provider.messages[6].text
+    assert "Admin" in provider.messages[7].text
 
 
 def test_email_templates_are_localized_without_changing_their_security_content() -> None:
@@ -49,18 +58,31 @@ def test_email_templates_are_localized_without_changing_their_security_content()
     service.notify_registration_admins(["admin@example.test"], "candidate@example.test", "en")
     service.notify_registration_approved("candidate@example.test", "Candidate", "en")
     service.send_password_reset("candidate@example.test", "Candidate", "opaque-token", "en")
-    service.send_map_share_registration_invitation("invited@example.test", "owner@example.test", "Shared map", "en")
+    service.send_map_share_invitation("invited@example.test", "owner@example.test", "Shared map", "invite-token", False, "en")
+    service.notify_password_changed("candidate@example.test", "Candidate", "en")
+    service.notify_email_changed("old@example.test", "Candidate", "old@example.test", "new@example.test", "en")
     service.send_resend_verification("admin@example.test", "Admin", "en")
 
-    assert len(provider.messages) == 5
+    assert len(provider.messages) == 7
     assert provider.messages[0].subject == "New CartaVault registration request"
     assert "registration request" in provider.messages[0].text.lower()
     assert "approved" in provider.messages[1].text.lower()
     assert "opaque-token" in provider.messages[2].text
     assert provider.messages[3].subject == "A CartaVault map has been shared with you"
     assert "owner@example.test" in provider.messages[3].text
-    assert provider.messages[4].subject == "Your CartaVault email configuration works"
+    assert provider.messages[4].subject == "Your CartaVault password was changed"
+    assert provider.messages[5].subject == "Your CartaVault email address was changed"
+    assert provider.messages[6].subject == "Your CartaVault email configuration works"
     assert all("#0FA68A" in message.html for message in provider.messages)
+
+
+def test_email_delivery_can_be_explicitly_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.emails.service.email_settings", SimpleNamespace(provider="none"))
+
+    with pytest.raises(EmailDeliveryError) as caught:
+        provider_from_database(object())  # type: ignore[arg-type]
+
+    assert caught.value.code == "EMAIL_DELIVERY_DISABLED"
 
 
 def test_public_auth_rate_limiter_rejects_a_burst() -> None:

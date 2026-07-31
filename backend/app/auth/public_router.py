@@ -17,6 +17,7 @@ from app.config import email_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
+from app.emails.notifications import notify_password_changed
 
 
 logger = logging.getLogger(__name__)
@@ -102,4 +103,5 @@ def confirm_password_reset(data: PasswordResetConfirm, database_session: Session
     database_session.execute(update(AuthActionToken).where(AuthActionToken.user_id == user.id, AuthActionToken.token_type == "password_reset", AuthActionToken.id != token.id, AuthActionToken.used_at.is_(None)).values(revoked_at=now))
     database_session.execute(update(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None)).values(revoked_at=now))
     database_session.commit()
+    notify_password_changed(database_session, user)
     return None

@@ -28,6 +28,7 @@ def _install_provider(monkeypatch: pytest.MonkeyPatch) -> RecordingProvider:
     monkeypatch.setattr("app.auth.public_router.provider_from_database", lambda _session: provider)
     monkeypatch.setattr("app.auth.registration_admin_router.provider_from_database", lambda _session: provider)
     monkeypatch.setattr("app.maps.router.provider_from_database", lambda _session: provider)
+    monkeypatch.setattr("app.emails.notifications.provider_from_database", lambda _session: provider)
     return provider
 
 
@@ -57,10 +58,11 @@ def test_unknown_map_invitee_receives_registration_email(
     assert message.recipients == [recipient]
     assert auth_user.email in message.text
     assert poi_map.name in message.text
-    assert "/register?email=" in message.text
+    raw_token = created.json()["invitation_url"].rsplit("/", 1)[-1]
+    assert f"/invitations/{raw_token}" in message.text
 
 
-def test_existing_map_invitee_uses_in_app_invitation_without_registration_email(
+def test_existing_map_invitee_receives_the_private_invitation_link(
     integration_client,
     database_session,
     auth_user,
@@ -82,7 +84,10 @@ def test_existing_map_invitee_uses_in_app_invitation_without_registration_email(
     created = integration_client.post(f"/maps/{poi_map.id}/invitations", json={"email": recipient.email, "role": "viewer"})
 
     assert created.status_code == 201
-    assert provider.messages == []
+    assert len(provider.messages) == 1
+    raw_token = created.json()["invitation_url"].rsplit("/", 1)[-1]
+    assert provider.messages[0].recipients == [recipient.email]
+    assert f"/invitations/{raw_token}" in provider.messages[0].text
 
 
 def test_registration_requires_admin_approval_before_user_creation(integration_client, database_session, monkeypatch) -> None:
@@ -151,4 +156,48 @@ def test_password_reset_is_generic_single_use_and_revokes_sessions(integration_c
     assert stored.used_at is not None
     database_session.refresh(session)
     assert session.revoked_at is not None
+    assert len(provider.messages) == 2
+    assert "mot de passe" in provider.messages[-1].subject.lower()
     assert integration_client.post("/auth/password-reset/confirm", json={"token": raw_token, "password": "another brand new password", "confirmation": "another brand new password"}).status_code == 400
+
+
+def test_account_security_changes_notify_old_and_current_addresses(
+    integration_client,
+    database_session,
+    auth_user,
+    monkeypatch,
+) -> None:
+    provider = _install_provider(monkeypatch)
+    monkeypatch.setattr("app.auth.router.verify_password", lambda _hash, _password: (True, False))
+    login = integration_client.post("/auth/login", json={"email": auth_user.email, "password": "current password"})
+    assert login.status_code == 200
+    headers = {"X-CSRF-Token": login.json()["csrf_token"]}
+    monkeypatch.setattr("app.auth.account_router.verify_password", lambda _hash, _password: (True, False))
+
+    old_email = auth_user.email
+    new_email = f"changed-{uuid4()}@example.test"
+    changed_email = integration_client.post(
+        "/account/change-email",
+        json={"current_password": "current password", "new_email": new_email},
+        headers=headers,
+    )
+
+    assert changed_email.status_code == 200
+    assert [message.recipients for message in provider.messages] == [[old_email], [new_email]]
+    assert all(old_email in message.text and new_email in message.text for message in provider.messages)
+
+    headers = {"X-CSRF-Token": integration_client.cookies.get("cartavault_csrf")}
+    monkeypatch.setattr("app.auth.account_router.hash_password", lambda password: f"changed::{password}")
+    changed_password = integration_client.post(
+        "/account/change-password",
+        json={
+            "current_password": "current password",
+            "new_password": "a new sufficiently long password",
+            "confirmation": "a new sufficiently long password",
+        },
+        headers=headers,
+    )
+
+    assert changed_password.status_code == 204
+    assert provider.messages[-1].recipients == [new_email]
+    assert "mot de passe" in provider.messages[-1].subject.lower()

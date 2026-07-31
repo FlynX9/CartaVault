@@ -134,6 +134,12 @@ class EmailSettings:
     frontend_public_url: str = os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:5173").strip().rstrip("/")
     password_reset_token_ttl_minutes: int = _positive_int("PASSWORD_RESET_TOKEN_TTL_MINUTES", 30)
     timeout_seconds: int = _positive_int("EMAIL_PROVIDER_TIMEOUT_SECONDS", 10)
+    max_attempts: int = _positive_int("EMAIL_PROVIDER_MAX_ATTEMPTS", 2)
+    retry_delay_seconds: int = _nonnegative_int("EMAIL_PROVIDER_RETRY_DELAY_SECONDS", 1)
+
+    def __post_init__(self) -> None:
+        if self.provider not in {"resend", "none"}:
+            raise RuntimeError("EMAIL_PROVIDER must be 'resend' or 'none'")
 
 
 email_settings = EmailSettings()

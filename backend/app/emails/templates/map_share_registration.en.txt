@@ -2,6 +2,8 @@ CartaVault — Sharing invitation
 
 $inviter_email would like to share the "$map_name" map with you.
 
-Create your CartaVault account with this email address. Once your registration has been approved, you will be able to accept the invitation from your workspace.
+Use this private, expiring invitation to create your CartaVault account and join the map.
 
-Create my account: $registration_url
+Create my account and join: $invitation_url
+
+If you were not expecting this invitation, you can ignore this email.

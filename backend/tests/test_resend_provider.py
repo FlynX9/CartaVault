@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from urllib.error import URLError
 
 import pytest
 
@@ -29,6 +30,8 @@ def test_resend_provider_rejects_an_empty_sender(monkeypatch) -> None:
             from_address="",
             reply_to="",
             timeout_seconds=10,
+            max_attempts=2,
+            retry_delay_seconds=0,
         ),
     )
 
@@ -62,6 +65,8 @@ def test_resend_provider_omits_an_empty_reply_to(monkeypatch) -> None:
             from_address="no-reply@example.test",
             reply_to="",
             timeout_seconds=10,
+            max_attempts=2,
+            retry_delay_seconds=0,
         ),
     )
     monkeypatch.setattr("app.emails.providers.resend.urlopen", fake_urlopen)
@@ -71,3 +76,40 @@ def test_resend_provider_omits_an_empty_reply_to(monkeypatch) -> None:
     assert message_id == "email-id"
     assert captured_payload["from"] == "CartaVault <no-reply@example.test>"
     assert "reply_to" not in captured_payload
+
+
+def test_resend_provider_retries_one_transient_failure(monkeypatch) -> None:
+    attempts = 0
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self) -> bytes:
+            return b'{"id":"retried-email"}'
+
+    def fake_urlopen(_request, **_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise URLError("temporary")
+        return Response()
+
+    monkeypatch.setattr(
+        "app.emails.providers.resend.email_settings",
+        SimpleNamespace(
+            from_name="CartaVault",
+            from_address="no-reply@example.test",
+            reply_to="",
+            timeout_seconds=10,
+            max_attempts=2,
+            retry_delay_seconds=0,
+        ),
+    )
+    monkeypatch.setattr("app.emails.providers.resend.urlopen", fake_urlopen)
+
+    assert ResendEmailProvider("re_test").send(_message()) == "retried-email"
+    assert attempts == 2

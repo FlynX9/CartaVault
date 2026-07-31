@@ -1,0 +1,7 @@
+CartaVault — Sharing invitation
+
+$inviter_email would like to share the "$map_name" map with you.
+
+View the private invitation: $invitation_url
+
+This link expires. If you were not expecting it, you can ignore this email.

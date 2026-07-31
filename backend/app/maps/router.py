@@ -306,22 +306,24 @@ def create_invitation(map_id: UUID, data: InvitationCreate, database_session: Se
     database_session.add(invitation)
     database_session.commit()
     database_session.refresh(invitation)
-    if existing_user is None:
-        try:
-            locale = str((current_user.preferences or {}).get("language", "fr"))
-            EmailService(provider_from_database(database_session)).send_map_share_registration_invitation(
-                recipient=email,
-                inviter_email=current_user.email,
-                map_name=access.map.name,
-                locale=locale,
-            )
-        except EmailDeliveryError as error:
-            logger.warning(
-                "map_share_registration_email_failed map_id=%s recipient=%s code=%s",
-                map_id,
-                email,
-                error.code,
-            )
+    try:
+        locale_source = existing_user if existing_user is not None else current_user
+        locale = str((locale_source.preferences or {}).get("language", "fr"))
+        EmailService(provider_from_database(database_session)).send_map_share_invitation(
+            recipient=email,
+            inviter_email=current_user.email,
+            map_name=access.map.name,
+            token=raw_token,
+            requires_account=existing_user is None,
+            locale=locale,
+        )
+    except EmailDeliveryError as error:
+        logger.warning(
+            "map_share_email_failed map_id=%s invitation_id=%s code=%s",
+            map_id,
+            invitation.id,
+            error.code,
+        )
     return InvitationRead.model_validate(invitation, from_attributes=True).model_copy(update={"invitation_url": f"/invitations/{raw_token}"})
 
 
