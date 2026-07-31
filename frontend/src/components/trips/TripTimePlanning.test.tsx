@@ -27,7 +27,8 @@ describe('TripTimePlanning', () => {
   it('offers visit presets and custom values', () => {
     const stop = { id: 'stop-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location', name: 'Musée', latitude: 48, longitude: 2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' } satisfies TripStop
     const onChange = vi.fn().mockResolvedValue(undefined)
-    render(<VisitDurationControl stop={stop} disabled={false} onChange={onChange} />)
+    const { container } = render(<VisitDurationControl stop={stop} disabled={false} onChange={onChange} />)
+    expect(container.querySelector('.trip-visit-duration > .lucide-clock-3')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('combobox', { name: 'Durée de visite pour Musée' }), { target: { value: '90' } })
     expect(onChange).toHaveBeenCalledWith(90)
   })

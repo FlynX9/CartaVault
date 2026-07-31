@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Clock3 } from 'lucide-react'
 
 import { FieldHelp } from '../common/FieldHelp'
 import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripStop } from '../../types/trip'
@@ -56,7 +56,7 @@ export function VisitDurationControl({ stop, disabled, onChange }: { stop: TripS
   const value = stop.visit_duration_minutes ?? 0
   const presets = [15, 30, 45, 60, 90, 120]
   const preset = presets.includes(value)
-  return <label className="trip-visit-duration"><span className="sr-only">Durée de visite pour {stop.name}</span><select aria-label={`Durée de visite pour ${stop.name}`} value={preset ? String(value) : 'custom'} disabled={disabled} onChange={(event) => { if (event.target.value !== 'custom') void onChange(Number(event.target.value)) }}>{presets.map((minutes) => <option key={minutes} value={minutes}>{formatMinutes(minutes)}</option>)}<option value="custom">Personnalisée</option></select>{!preset && <input aria-label={`Durée personnalisée pour ${stop.name}`} type="number" min="0" max="1440" value={value} disabled={disabled} onChange={(event) => void onChange(Number(event.target.value))} />}</label>
+  return <label className="trip-visit-duration"><span className="sr-only">Durée de visite pour {stop.name}</span><Clock3 aria-hidden="true" size={12} /><select aria-label={`Durée de visite pour ${stop.name}`} value={preset ? String(value) : 'custom'} disabled={disabled} onChange={(event) => { if (event.target.value !== 'custom') void onChange(Number(event.target.value)) }}>{presets.map((minutes) => <option key={minutes} value={minutes}>{formatMinutes(minutes)}</option>)}<option value="custom">Personnalisée</option></select>{!preset && <input aria-label={`Durée personnalisée pour ${stop.name}`} type="number" min="0" max="1440" value={value} disabled={disabled} onChange={(event) => void onChange(Number(event.target.value))} />}</label>
 }
 
 export function TripLoadSettingsForm({ trip, canEdit, busy, onSave, value, onChange, embedded = false }: { trip: Trip; canEdit: boolean; busy: boolean; onSave?: (settings: TripLoadSettings) => Promise<void>; value?: TripLoadSettings; onChange?: (settings: TripLoadSettings) => void; embedded?: boolean }) {
