@@ -31,6 +31,8 @@ export const accountEn = {
   'account.preferences.trashRetentionHelp': 'Newly deleted items will be permanently removed after this delay.',
   'account.preferences.days': 'days',
   'account.preferences.routing': 'Routing',
+  'account.preferences.general': 'General',
+  'account.preferences.routeOptions': 'Route options',
   'account.preferences.engine': 'Routing engine',
   'account.preferences.googlePersonalKeyHelp': 'Google Routes uses your encrypted personal key. Add and verify it before saving this engine.',
   'account.preferences.googleCredentialRequired': 'Add and verify your Google Routes key before saving this engine.',

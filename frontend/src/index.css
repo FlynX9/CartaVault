@@ -3500,35 +3500,63 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .field-help__tooltip--below { transform: translate(-50%, 0); }
 .form-section-help { display: flex; justify-content: flex-end; margin-top: -.2rem; }
 .form-section-help .field-help { margin: 0; }
-.account-preferences-form { display: grid; max-width: 36rem; gap: .65rem; }
-.account-preferences-section { display: grid; gap: .45rem; padding: .65rem; background: var(--cv-color-mist); border: 1px solid rgb(43 62 89 / 10%); border-radius: .58rem; }
-.account-preferences-section > h3 { margin: 0; color: var(--cv-color-navy); font-size: .76rem; }
-.account-preferences-section__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem .6rem; }
-.account-preferences-section__fields > label { min-width: 0; align-content: start; }
-.account-timezone-combobox { display: grid; min-width: 0; gap: .2rem; }
-.account-timezone-combobox > label { color: var(--cv-color-slate); font-size: var(--account-text-size); font-weight: 500; }
+.account-preferences-form { display: grid; width: 100%; max-width: none; gap: .85rem; margin: 0; padding: 0; background: transparent; border: 0; border-radius: 0; }
+.account-preference-card { display: grid; gap: .85rem; padding: 1rem; background: var(--cv-surface); border: 1px solid rgb(43 62 89 / 12%); border-radius: .82rem; box-shadow: 0 1px 3px rgb(13 27 42 / 5%); }
+.account-preference-card__heading { display: flex; align-items: center; gap: .65rem; }
+.account-preference-card__heading h3 { margin: 0; color: var(--cv-color-navy); font-size: .92rem; }
+.account-preference-card__icon, .account-credential__icon { display: grid; flex: 0 0 auto; width: 2.45rem; height: 2.45rem; color: var(--cv-color-slate); background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface)); border-radius: .72rem; place-items: center; }
+.account-preference-card--routing .account-preference-card__icon, .account-credential__icon { color: var(--cv-color-teal); }
+.account-preference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.account-preference-field { display: grid; min-width: 0; align-content: start; gap: .38rem; padding: .2rem .65rem .7rem; }
+.account-preference-grid > .account-preference-field:nth-child(3n + 1) { padding-left: 0; }
+.account-preference-grid > .account-preference-field:nth-child(3n) { padding-right: 0; }
+.account-preference-grid > .account-preference-field:nth-child(n + 4) { padding-top: .75rem; padding-bottom: .05rem; border-top: 1px solid rgb(43 62 89 / 11%); }
+.account-preference-field__label { display: flex; min-width: 0; align-items: center; gap: .38rem; color: var(--cv-color-slate); }
+.account-preference-field__label > svg { flex: 0 0 auto; }
+.account-preference-field__label > label { min-width: 0; color: inherit; font-size: .66rem; font-weight: 700; line-height: 1.25; }
+.account-preference-field > select, .account-preference-field > input { width: 100%; min-height: 2.45rem; font-weight: 400; }
 .account-timezone-combobox input { width: 100%; font-weight: 400; }
 .account-field-with-help { display: grid; min-width: 0; gap: .2rem; }
 .account-field-with-help > div { display: inline-flex; align-items: center; width: fit-content; }
 .account-field-with-help > div > label { color: var(--cv-color-slate); font-size: .64rem; font-weight: 700; }
 .account-field-with-help > select { width: 100%; }
-.account-preferences-section__fields small { min-height: 1.8em; line-height: 1.4; }
 .account-modal select { font-weight: 500; }
+.account-modal .account-preference-field > select { font-weight: 400; }
 .account-modal .checkbox-field { font-weight: 500; }
 .account-checkbox-with-help, .status-checkbox-help__label { display: inline-flex; align-items: center; width: fit-content; }
-.account-preferences-section:not(.account-preferences-section--routing) { background: transparent; }
-.account-preferences-section--routing { background: transparent; border-color: rgb(15 166 138 / 28%); }
-.account-preferences-section--routing > small { color: var(--cv-color-gray); font-size: .64rem; line-height: 1.4; }
-.account-preferences-section--routing .account-credential { max-width: none; margin: .15rem 0 0; background: var(--cv-surface); }
-.account-preferences-section--routing .account-credential .account-button { min-height: 1.75rem; gap: .28rem; padding: .2rem .42rem; border-radius: .44rem; font-size: .6rem; }
-.account-preferences-section--routing .account-credential .account-button svg { width: .76rem; height: .76rem; }
-.account-preferences-form__actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.account-routing-engine { padding: 0 0 .2rem; }
+.account-route-options { display: grid; margin-top: .05rem; }
+.account-route-options__heading { display: flex; align-items: center; gap: .38rem; padding: .1rem 0 .4rem; color: var(--cv-color-slate); }
+.account-route-options__heading h4 { margin: 0; color: var(--cv-color-navy); font-size: .7rem; }
+.account-route-option { display: flex; min-height: 2.35rem; align-items: center; gap: .55rem; padding: .45rem 0; color: var(--cv-color-slate); border-bottom: 1px solid rgb(43 62 89 / 11%); font-size: .7rem; font-weight: 500; cursor: pointer; }
+.account-route-option input { flex: 0 0 auto; margin: 0; }
+.account-route-traffic { padding: .7rem 0 0; }
+.account-preference-card--routing .account-credential { max-width: none; margin: 0; padding: .9rem; background: color-mix(in srgb, var(--cv-color-mist) 48%, var(--cv-surface)); border-radius: .72rem; }
+.account-preference-card--routing .account-credential__heading { gap: .7rem; }
+.account-preference-card--routing .account-credential__heading h3 { font-size: .78rem; }
+.account-preference-card--routing .account-credential__heading p { margin-top: .18rem; font-size: .68rem; }
+.account-preference-card--routing .account-credential__actions { gap: .45rem; }
+.account-preference-card--routing .account-credential .account-button { min-height: 2.15rem; gap: .34rem; padding: .34rem .62rem; border-radius: .48rem; font-size: .65rem; }
+.account-preference-card--routing .account-credential .account-button svg { width: .82rem; height: .82rem; }
+.account-preferences-form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; padding-top: .05rem; }
 .account-preferences-form__actions .account-button { justify-self: auto; }
+@media (max-width: 900px) {
+  .account-preference-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-preference-grid > .account-preference-field { padding: .7rem .65rem; border-top: 1px solid rgb(43 62 89 / 11%); }
+  .account-preference-grid > .account-preference-field:nth-child(-n + 2) { padding-top: .2rem; border-top: 0; }
+  .account-preference-grid > .account-preference-field:nth-child(odd) { padding-left: 0; }
+  .account-preference-grid > .account-preference-field:nth-child(even) { padding-right: 0; }
+}
 @media (max-width: 700px) {
   .account-modal__content { padding: .85rem; }
   .account-profile-section { grid-template-columns: 1fr; }
   .account-avatar-editor { grid-template-columns: auto minmax(0, 1fr); align-items: center; flex-direction: initial; }
-  .account-preferences-section__fields { grid-template-columns: 1fr; }
+  .account-preference-card { padding: .8rem; }
+  .account-preference-grid { grid-template-columns: 1fr; }
+  .account-preference-grid > .account-preference-field { padding: .7rem 0; border-top: 1px solid rgb(43 62 89 / 11%); }
+  .account-preference-grid > .account-preference-field:first-child { padding-top: .2rem; border-top: 0; }
+  .account-credential__heading { grid-template-columns: auto minmax(0, 1fr); }
+  .account-credential__verification { grid-column: 2; justify-self: start; }
 }
 .login-page { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; background: var(--cv-color-mist); }
 .login-card { width: min(100%, 28rem); padding: 2rem; border: 1px solid #dbe3ea; border-radius: var(--cv-radius-lg); background: var(--cv-color-off-white); box-shadow: var(--cv-shadow-md); }

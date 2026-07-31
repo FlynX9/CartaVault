@@ -52,6 +52,9 @@ describe('AccountModal', () => {
   it('persists the country-routing preference', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
+    expect(screen.getByRole('heading', { name: 'Général' }).closest('section')).toHaveClass('account-preference-card')
+    expect(screen.getByRole('heading', { name: 'Routage' }).closest('section')).toHaveClass('account-preference-card--routing')
+    expect(screen.getByRole('heading', { name: 'Options d’itinéraire' })).toBeVisible()
     const checkbox = screen.getByRole('checkbox', { name: 'Rester dans le pays' })
     expect(checkbox).not.toBeChecked()
     fireEvent.click(checkbox)

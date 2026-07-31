@@ -29,6 +29,8 @@ export const accountFr = {
   'account.preferences.trashRetentionHelp': 'Les nouveaux éléments supprimés seront définitivement effacés après ce délai.',
   'account.preferences.days': 'jours',
   'account.preferences.routing': 'Routage',
+  'account.preferences.general': 'Général',
+  'account.preferences.routeOptions': 'Options d’itinéraire',
   'account.preferences.engine': 'Moteur de calcul',
   'account.preferences.googlePersonalKeyHelp': 'Google Routes utilise votre clé personnelle chiffrée. Ajoutez-la puis vérifiez-la avant d’enregistrer ce moteur.',
   'account.preferences.googleCredentialRequired': 'Ajoutez et vérifiez votre clé Google Routes avant d’enregistrer ce moteur.',

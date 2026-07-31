@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, MonitorSmartphone, Settings2, Shield, ShieldCheck, Trash2, Upload, UserRound, X } from 'lucide-react'
+import { AlertTriangle, Clock3, Languages, List, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGoogleRoutesCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
@@ -118,6 +118,17 @@ function SessionsSection({ sessions, run, reload }: { sessions: AccountSession[]
   return <><AccountHeading title="Sessions actives" description="Contrôlez les appareils connectés à votre compte." /><button className="account-button account-button--secondary account-button--danger-hover" type="button" onClick={() => void run(async () => { await revokeOtherAccountSessions(); await reload() }, 'Autres sessions révoquées.')}>Révoquer les autres sessions</button>{sessions.length === 0 ? <p className="account-info">Aucune session active.</p> : <ul className="account-sessions">{sessions.map((item) => <li key={item.id}><MonitorSmartphone size={19} /><div><strong>{item.user_agent || 'Appareil inconnu'}</strong><span>Dernière activité : {formatDate(item.last_used_at, true)}</span>{item.is_current && <b>Session actuelle</b>}</div>{!item.is_current && <button className="panel-icon-button danger" type="button" aria-label="Révoquer cette session" onClick={() => void run(async () => { await revokeAccountSession(item.id); await reload() }, 'Session révoquée.')}><Trash2 size={15} /></button>}</li>)}</ul>}</>
 }
 
+function PreferenceCardHeading({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
+  return <header className="account-preference-card__heading"><span className="account-preference-card__icon"><Icon size={19} aria-hidden="true" /></span><h3>{title}</h3></header>
+}
+
+function PreferenceField({ icon: Icon, label, htmlFor, help, children, className = '' }: { icon?: LucideIcon; label: string; htmlFor: string; help?: ReactNode; children: ReactNode; className?: string }) {
+  return <div className={`account-preference-field ${className}`.trim()}>
+    <div className="account-preference-field__label">{Icon && <Icon size={16} aria-hidden="true" />}<label id={`${htmlFor}-label`} htmlFor={htmlFor}>{label}</label>{help && <FieldHelp>{help}</FieldHelp>}</div>
+    {children}
+  </div>
+}
+
 function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
   const { setLocale, t } = useI18n()
   const [credentialStatus, setCredentialStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
@@ -149,20 +160,41 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved'))
   }
   return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><div className="account-form account-preferences-form">
-    <section className="account-preferences-section"><h3>Générales</h3><div className="account-preferences-section__fields">
-      <div className="account-field-with-help"><div><label htmlFor="account-language" id="account-language-label">{t('common.language')}</label><FieldHelp>{t('account.preferences.languageHelp')}</FieldHelp></div><select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select></div>
-      <label>{t('account.preferences.basemap')}<select value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select></label>
-      <label>{t('account.preferences.density')}<select value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select></label>
-      <label>{t('account.preferences.startup')}<select value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="dashboard">{t('dashboard.title')}</option><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select></label>
-      <TimezoneCombobox value={preferences.timezone} label={t('account.preferences.timezone')} onChange={(timezone) => update('timezone', timezone)} />
-      <div className="account-field-with-help"><div><label htmlFor="account-trash-retention" id="account-trash-retention-label">{t('account.preferences.trashRetention')}</label><FieldHelp>{t('account.preferences.trashRetentionHelp')}</FieldHelp></div><select id="account-trash-retention" aria-labelledby="account-trash-retention-label" value={preferences.trash_retention_days} onChange={(event) => update('trash_retention_days', Number(event.target.value))}>{[7, 14, 30, 60, 90, 180, 365].map((days) => <option key={days} value={days}>{days} {t('account.preferences.days')}</option>)}</select></div>
-    </div></section>
-    <section className="account-preferences-section account-preferences-section--routing"><h3>{t('account.preferences.routing')}</h3>
-      <div className="account-field-with-help"><div><label htmlFor="account-routing-engine" id="account-routing-engine-label">{t('account.preferences.engine')}</label><FieldHelp>{storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')}</FieldHelp></div><select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select></div>
+    <section className="account-preference-card">
+      <PreferenceCardHeading icon={Settings2} title={t('account.preferences.general')} />
+      <div className="account-preference-grid">
+        <PreferenceField icon={Languages} label={t('common.language')} htmlFor="account-language" help={t('account.preferences.languageHelp')}>
+          <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
+        </PreferenceField>
+        <PreferenceField icon={MapIcon} label={t('account.preferences.basemap')} htmlFor="account-basemap">
+          <select id="account-basemap" aria-labelledby="account-basemap-label" value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select>
+        </PreferenceField>
+        <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density">
+          <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>
+        </PreferenceField>
+        <PreferenceField icon={MonitorSmartphone} label={t('account.preferences.startup')} htmlFor="account-startup">
+          <select id="account-startup" aria-labelledby="account-startup-label" value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="dashboard">{t('dashboard.title')}</option><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select>
+        </PreferenceField>
+        <TimezoneCombobox value={preferences.timezone} label={t('account.preferences.timezone')} onChange={(timezone) => update('timezone', timezone)} />
+        <PreferenceField icon={Trash2} label={t('account.preferences.trashRetention')} htmlFor="account-trash-retention" help={t('account.preferences.trashRetentionHelp')}>
+          <select id="account-trash-retention" aria-labelledby="account-trash-retention-label" value={preferences.trash_retention_days} onChange={(event) => update('trash_retention_days', Number(event.target.value))}>{[7, 14, 30, 60, 90, 180, 365].map((days) => <option key={days} value={days}>{days} {t('account.preferences.days')}</option>)}</select>
+        </PreferenceField>
+      </div>
+    </section>
+    <section className="account-preference-card account-preference-card--routing">
+      <PreferenceCardHeading icon={Route} title={t('account.preferences.routing')} />
+      <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-routing-engine">
+        <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
+      </PreferenceField>
       {googleSelected && <GoogleRoutesCredentialPanel status={credentialStatus} storageAvailable={storageAvailable} onChanged={handleCredentialChange} />}
       {routingError && <div className="form-alert" role="alert">{routingError}</div>}
-      <div className="account-checkbox-with-help"><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} />{t('account.preferences.stayInCountry')}</label><FieldHelp>{t('account.preferences.countryNotice')}</FieldHelp></div>
-      {googleSelected && <div className="account-routing-options"><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} />{t('account.preferences.avoidTolls')}</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} />{t('account.preferences.avoidHighways')}</label><label className="checkbox-field"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} />{t('account.preferences.avoidFerries')}</label><label>{t('account.preferences.traffic')}<select value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></label></div>}
+      <div className="account-route-options">
+        <header className="account-route-options__heading"><SlidersHorizontal size={16} aria-hidden="true" /><h4>{t('account.preferences.routeOptions')}</h4><FieldHelp>{t('account.preferences.countryNotice')}</FieldHelp></header>
+        <label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} /><span>{t('account.preferences.stayInCountry')}</span></label>
+        {googleSelected && <><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} /><span>{t('account.preferences.avoidTolls')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} /><span>{t('account.preferences.avoidHighways')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} /><span>{t('account.preferences.avoidFerries')}</span></label>
+          <PreferenceField label={t('account.preferences.traffic')} htmlFor="account-traffic" className="account-route-traffic"><select id="account-traffic" aria-labelledby="account-traffic-label" value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></PreferenceField>
+        </>}
+      </div>
     </section>
     <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={savePreferences}>{t('common.save')}</button>
     <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
@@ -174,8 +206,8 @@ function TimezoneCombobox({ value, label, onChange }: { value: string; label: st
   const matches = supportedTimeZones.filter((timeZone) => timeZone.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 100)
   useEffect(() => setQuery(value), [value])
 
-  return <div className="account-timezone-combobox">
-    <label htmlFor="account-timezone">{label}</label>
+  return <div className="account-preference-field account-timezone-combobox">
+    <div className="account-preference-field__label"><Clock3 size={16} aria-hidden="true" /><label htmlFor="account-timezone">{label}</label></div>
     <input
       id="account-timezone"
       list="account-timezone-options"

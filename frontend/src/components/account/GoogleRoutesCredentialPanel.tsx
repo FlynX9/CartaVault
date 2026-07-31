@@ -63,7 +63,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
 
   return <section className="account-credential" aria-labelledby="google-routes-credential-title">
     <div className="account-credential__heading">
-      <KeyRound size={18} aria-hidden="true" />
+      <span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span>
       <div><h3 id="google-routes-credential-title">Clé Google Routes<FieldHelp>La clé est chiffrée sur le serveur et n’est jamais renvoyée à votre navigateur après son enregistrement.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div>
       {status.verified && <span className="account-credential__verification"><span className="account-credential__status">Vérifiée</span>{status.verified_at && <time dateTime={status.verified_at}>{formatShortDate(status.verified_at)}</time>}</span>}
     </div>
