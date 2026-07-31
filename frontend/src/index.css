@@ -3434,7 +3434,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-button--primary:hover, .account-button--primary:focus-visible { background: #0b8f77; border-color: #0b8f77; }
 .account-button--secondary { color: var(--cv-color-slate); background: white; border-color: rgb(43 62 89 / 18%); }
 .account-button--secondary:hover, .account-button--secondary:focus-visible { color: var(--cv-color-teal); border-color: var(--cv-color-teal); }
-.account-button--revoke-sessions:hover, .account-button--revoke-sessions:focus-visible { color: white; background: #b42318; border-color: #b42318; outline-color: rgb(180 35 24 / 35%); }
+.account-button--danger-hover:hover, .account-button--danger-hover:focus-visible { color: white; background: #b42318; border-color: #b42318; outline-color: rgb(180 35 24 / 35%); }
 .account-button--danger-quiet { color: #b42318; background: white; border-color: rgb(180 35 24 / 22%); }
 .account-button--danger-quiet:hover, .account-button--danger-quiet:focus-visible { background: #fff1f0; border-color: #b42318; }
 .account-button--danger { color: white; background: #b42318; border-color: #b42318; }
@@ -6683,8 +6683,8 @@ html[data-theme='dark'] :is(
   background-color: var(--cv-surface);
   border-color: var(--cv-border-strong);
 }
-html[data-theme='dark'] .account-button--revoke-sessions:hover,
-html[data-theme='dark'] .account-button--revoke-sessions:focus-visible {
+html[data-theme='dark'] .account-button--danger-hover:hover,
+html[data-theme='dark'] .account-button--danger-hover:focus-visible {
   color: white;
   background-color: #b42318;
   border-color: #b42318;

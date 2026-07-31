@@ -37,7 +37,7 @@ describe('AccountModal', () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Sessions' }))
 
-    expect(screen.getByRole('button', { name: 'Révoquer les autres sessions' })).toHaveClass('account-button--revoke-sessions')
+    expect(screen.getByRole('button', { name: 'Révoquer les autres sessions' })).toHaveClass('account-button--danger-hover')
   })
 
   it('updates the display name and refreshes AuthProvider', async () => {
@@ -119,6 +119,7 @@ describe('AccountModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer cette clé' }))
     await waitFor(() => expect(storeGoogleRoutesCredential).toHaveBeenCalledWith('fake-user-key-not-valid'))
     expect(screen.queryByDisplayValue('fake-user-key-not-valid')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Supprimer' })).toHaveClass('account-button--secondary', 'account-button--danger-hover')
     fireEvent.click(screen.getByRole('button', { name: 'Vérifier' }))
     await waitFor(() => expect(verifyGoogleRoutesCredential).toHaveBeenCalled())
     expect(await screen.findByText('La clé Google Routes est valide.')).toBeVisible()
