@@ -72,6 +72,16 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByRole('dialog', { name: 'Préparer une sortie' })).toBeVisible()
   })
 
+  it('renders only the compact header when the panel is collapsed', () => {
+    const onCollapsedChange = vi.fn()
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" collapsed onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('is-collapsed')
+    expect(screen.queryByRole('region', { name: 'Contenu de la sortie' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Développer le panneau Sortie' }))
+    expect(onCollapsedChange).toHaveBeenCalledWith(false)
+  })
+
   it('shows an empty status for days and nights without associated places', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
     const twoDays = { ...trip, days: [trip.days[0], secondDay] }

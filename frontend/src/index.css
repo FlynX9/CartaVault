@@ -10509,7 +10509,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
 
 /* The journey timeline itself is always visible. These compact controls only
    coordinate the expansion state of its departure, days, nights and arrival. */
-.map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
+.map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view):not(.is-collapsed) {
   height: calc(100% - var(--cv-canvas-padding) - var(--cv-canvas-padding));
   max-height: none;
   overflow: hidden;
@@ -10534,7 +10534,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
 }
 
 @media (max-width: 760px) {
-  .map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
+  .map-workspace .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view):not(.is-collapsed) {
     height: 100%;
   }
 }
