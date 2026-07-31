@@ -6,9 +6,14 @@ import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { I18nProvider } from './i18n/I18nProvider.tsx'
 import { installButtonFeedback } from './ui/buttonFeedback.ts'
+import { installInteractiveTitles } from './ui/interactiveTitles.ts'
 
 const uninstallButtonFeedback = installButtonFeedback()
-if (import.meta.hot) import.meta.hot.dispose(uninstallButtonFeedback)
+const uninstallInteractiveTitles = installInteractiveTitles()
+if (import.meta.hot) import.meta.hot.dispose(() => {
+  uninstallButtonFeedback()
+  uninstallInteractiveTitles()
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
