@@ -3063,7 +3063,13 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
   border-radius: 0.55rem;
   box-shadow: inset 0 1px 0 rgb(13 27 42 / 1%);
   font-size: 0.82rem;
+  font-weight: 400;
   transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.map-editor-panel .status-picker-options input,
+.map-editor-panel .status-picker-options button {
+  font-weight: 400;
 }
 
 .map-editor-panel .form-field input:hover,
