@@ -17,6 +17,7 @@ from app.exports.temporary_exports import get as get_export
 from app.places.models import Place
 from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
+from app.trips.pdf_export import create_pdf
 from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.optimizer import optimize_matrix, path_cost
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
@@ -614,9 +615,19 @@ def export_kmz(trip_id: UUID, session: Session = Depends(get_db), user: User = D
     access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_kmz(trip, user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
 
 
+@router.post("/trips/{trip_id}/exports/pdf", status_code=201)
+def export_pdf(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    require_trip_viewer(session, trip_id, user)
+    trip = load_trip(session, trip_id)
+    _assert_export_routes(session, user, trip)
+    locale = str((user.preferences or {}).get("language") or "fr")
+    item = create_pdf(session, trip, user.id, locale)
+    return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
+
+
 @router.get("/trips/{trip_id}/exports/{export_id}/download")
 def download_trip_export(trip_id: UUID, export_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     access = require_trip_viewer(session, trip_id, user); item = get_export(export_id, access.trip.map_id, user.id)
     if item is None: raise HTTPException(404, "Trip export not found or expired")
-    media = "application/gpx+xml" if item.file_name.endswith(".gpx") else "application/vnd.google-earth.kmz"
+    media = "application/pdf" if item.file_name.endswith(".pdf") else "application/gpx+xml" if item.file_name.endswith(".gpx") else "application/vnd.google-earth.kmz"
     return FileResponse(item.path, media_type=media, filename=item.file_name)

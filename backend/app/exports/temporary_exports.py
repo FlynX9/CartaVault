@@ -35,7 +35,7 @@ def create(map_id: UUID, user_id: UUID, file_name: str) -> TemporaryExport:
     root = export_root()
     root.mkdir(parents=True, exist_ok=True)
     suffix = Path(file_name).suffix.lower()
-    if suffix not in {".gpx", ".kmz"}:
+    if suffix not in {".gpx", ".kmz", ".pdf"}:
         suffix = ".bin"
     item = TemporaryExport(uuid4(), map_id, user_id, root / f"{uuid4()}{suffix}", file_name, datetime.now(UTC) + EXPORT_TTL)
     with _lock:

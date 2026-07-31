@@ -10,6 +10,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes fonts-dejavu-core fonts-wqy-zenhei \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system cartavault \
     && useradd --system --gid cartavault --create-home \
         --home-dir /home/cartavault cartavault

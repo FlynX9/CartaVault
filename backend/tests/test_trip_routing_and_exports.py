@@ -1,4 +1,5 @@
 import json
+from datetime import date, time
 from types import SimpleNamespace
 from uuid import uuid4
 from zipfile import ZipFile
@@ -7,6 +8,7 @@ import pytest
 
 from app.exports import temporary_exports
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
+from app.trips.pdf_export import create_pdf
 from app.trips.routing.osrm import OsrmRoutingProvider
 
 
@@ -50,3 +52,37 @@ def test_trip_exports_are_valid_files_and_google_links_are_safe(tmp_path, monkey
     links = google_maps_links(trip)
     assert len(links) == 1
     assert links[0]["url"].startswith("https://www.google.com/maps/dir/?api=1&")
+
+
+def test_trip_pdf_export_builds_an_a4_unicode_booklet(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(temporary_exports, "EXPORT_ROOT", tmp_path)
+    stop = SimpleNamespace(
+        id=uuid4(), place_id=None, name="Musée 日本", latitude=48.8566, longitude=2.3522,
+        planned_arrival=time(10, 0), visit_duration_minutes=60, address="Paris", notes=None,
+        sort_order=0, is_required=True, visit_status="planned",
+    )
+    day = SimpleNamespace(
+        id=uuid4(), day_number=1, title="Découverte", date=date(2026, 8, 1), color="#0FA68A",
+        notes="Programme détaillé", stops=[stop], sort_order=0,
+        route_geometry={"type": "LineString", "coordinates": [[2.34, 48.85], [2.36, 48.86]]},
+        route_status="ready", route_distance_meters=3200.0, route_duration_seconds=900.0,
+        route_segments=[], route_provider="osrm", max_total_duration_minutes=None,
+        default_stop_buffer_minutes=10, safety_margin_type="fixed", safety_margin_value=15,
+        target_arrival_time=time(18, 0), trip=None,
+    )
+    trip = SimpleNamespace(
+        id=uuid4(), map_id=uuid4(), created_by_user_id=uuid4(), name="Été à Paris 日本",
+        description="Carnet international", start_date=date(2026, 8, 1), end_date=date(2026, 8, 1),
+        days=[day], nights=[], departure=None, arrival=None,
+        map=SimpleNamespace(country=SimpleNamespace(iso_alpha3="FRA")),
+        low_load_max_minutes=240, medium_load_max_minutes=480,
+        low_load_color="#0FA68A", medium_load_color="#D97706", high_load_color="#DC2626",
+    )
+    day.trip = trip
+
+    exported = create_pdf(None, trip, uuid4(), "fr")
+
+    assert exported.file_name == "ete-a-paris.pdf"
+    assert exported.path.suffix == ".pdf"
+    assert exported.path.read_bytes().startswith(b"%PDF-1.4")
+    assert exported.path.stat().st_size > 20_000

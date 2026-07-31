@@ -45,4 +45,5 @@ export const setTripVisitStatus = (id: string, visitStatus: TripVisitStatus) => 
 export const exportTripGoogleMaps = (id: string) => sendJson(`/trips/${id}/exports/google-maps`, 'POST', {}) as Promise<{ links: Array<{ day_number: number; part: number; url: string }>; warnings: string[] }>
 export const exportTripGpx = (id: string) => sendJson(`/trips/${id}/exports/gpx`, 'POST', {}) as Promise<TripExport>
 export const exportTripKmz = (id: string) => sendJson(`/trips/${id}/exports/kmz`, 'POST', {}) as Promise<TripExport>
+export const exportTripPdf = (id: string) => sendJson(`/trips/${id}/exports/pdf`, 'POST', {}) as Promise<TripExport>
 export const tripExportUrl = (path: string) => `${API_BASE_URL}${path}`

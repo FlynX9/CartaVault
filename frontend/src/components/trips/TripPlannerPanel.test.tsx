@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, exportTripGpx, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
+import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -51,6 +51,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(calculateTripDayRoute).mockResolvedValue(trip.days[0])
     vi.mocked(confirmTripOptimization).mockResolvedValue(trip.days[0])
     vi.mocked(exportTripGpx).mockResolvedValue({ export_id: 'export-1', file_name: 'voyage.gpx', download_url: '/trips/exports/export-1', expires_at: '' })
+    vi.mocked(exportTripPdf).mockResolvedValue({ export_id: 'export-pdf', file_name: 'voyage.pdf', download_url: '/trips/exports/export-pdf', expires_at: '' })
   })
 
   it('renders as the right workspace panel and not as a modal', async () => {
@@ -197,11 +198,23 @@ describe('TripPlannerPanel', () => {
 
     fireEvent.click(await screen.findByLabelText('Exporter la sortie'))
     expect(screen.getByRole('menu', { name: 'Options d’export' })).toBeVisible()
-    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+    expect(screen.getAllByRole('menuitem')).toHaveLength(2)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Exporter en GPX' }))
 
     await waitFor(() => expect(exportTripGpx).toHaveBeenCalledWith('trip-1'))
     expect(open).toHaveBeenCalledWith(expect.stringContaining('/trips/exports/export-1'), '_blank', 'noopener,noreferrer')
+    open.mockRestore()
+  })
+
+  it('exports a PDF travel booklet from the compact export menu', async () => {
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByLabelText('Exporter la sortie'))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Exporter en PDF' }))
+
+    await waitFor(() => expect(exportTripPdf).toHaveBeenCalledWith('trip-1'))
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('/trips/exports/export-pdf'), '_blank', 'noopener,noreferrer')
     open.mockRestore()
   })
 

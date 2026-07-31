@@ -7,6 +7,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.countries.models import Country
 from app.main import app
+from app.exports import temporary_exports
 from app.maps.models import MapMembership, PoiMap
 from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.router import get_routing_provider
@@ -76,6 +77,29 @@ def test_new_trip_stop_uses_place_visit_duration_or_thirty_minutes(integration_c
     updated = integration_client.patch(f"/trip-stops/{configured_stop.json()['id']}", json={"visit_duration_minutes": 90})
     assert updated.status_code == 200
     assert updated.json()["visit_duration_minutes"] == 90
+
+
+def test_trip_pdf_export_is_permission_aware_and_downloadable(integration_client, poi_map, tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(temporary_exports, "EXPORT_ROOT", tmp_path)
+    trip = integration_client.post(
+        f"/maps/{poi_map.id}/trips",
+        json={"name": "Séjour été", "start_date": "2026-08-01", "end_date": "2026-08-01"},
+    ).json()
+    day_id = trip["days"][0]["id"]
+    created_stop = integration_client.post(
+        f"/trip-days/{day_id}/stops",
+        json={"stop_type": "free_location", "name": "Musée 日本", "latitude": 48.8566, "longitude": 2.3522, "visit_duration_minutes": 45},
+    )
+    assert created_stop.status_code == 201
+
+    exported = integration_client.post(f"/trips/{trip['id']}/exports/pdf", json={})
+
+    assert exported.status_code == 201
+    assert exported.json()["file_name"] == "sejour-ete.pdf"
+    downloaded = integration_client.get(exported.json()["download_url"])
+    assert downloaded.status_code == 200
+    assert downloaded.headers["content-type"] == "application/pdf"
+    assert downloaded.content.startswith(b"%PDF-1.4")
 
 
 def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_client, database_session, poi_map, auth_user, france_country) -> None:
