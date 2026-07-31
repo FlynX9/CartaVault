@@ -3,11 +3,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.auth.models import User, UserSession
-from app.auth.security import hash_token, tokens_match
+from app.auth.security import tokens_match
+from app.auth.sessions import load_active_session, persist_session_activity
 from app.config import security_settings
 from app.database import get_db
 
@@ -20,19 +20,10 @@ def get_current_session(
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
     now = datetime.now(UTC).replace(tzinfo=None)
-    user_session = database_session.scalar(
-        select(UserSession)
-        .options(joinedload(UserSession.user))
-        .where(
-            UserSession.token_hash == hash_token(token),
-            UserSession.revoked_at.is_(None),
-            UserSession.expires_at > now,
-        )
-    )
+    user_session = load_active_session(database_session, token, now, load_user=True)
     if user_session is None or not user_session.user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or account inactive")
-    user_session.last_used_at = now
-    database_session.commit()
+    persist_session_activity(database_session, user_session, now)
     return user_session
 
 
@@ -44,6 +35,10 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access required")
     return current_user
+
+
+def _invalid_csrf_error() -> HTTPException:
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
 
 
 def require_csrf(
@@ -59,14 +54,8 @@ def require_csrf(
     csrf_cookie = request.cookies.get(security_settings.csrf_cookie_name)
     csrf_header = request.headers.get("X-CSRF-Token")
     if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
+        raise _invalid_csrf_error()
     now = datetime.now(UTC).replace(tzinfo=None)
-    user_session = database_session.scalar(
-        select(UserSession).where(
-            UserSession.token_hash == hash_token(session_token),
-            UserSession.revoked_at.is_(None),
-            UserSession.expires_at > now,
-        )
-    )
+    user_session = load_active_session(database_session, session_token, now)
     if user_session is None or not tokens_match(csrf_header, user_session.csrf_token_hash):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
+        raise _invalid_csrf_error()

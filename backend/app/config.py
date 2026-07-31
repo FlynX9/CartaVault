@@ -41,6 +41,10 @@ class SecuritySettings:
     session_cookie_name: str = os.getenv("CARTAVAULT_SESSION_COOKIE_NAME", "cartavault_session")
     csrf_cookie_name: str = os.getenv("CARTAVAULT_CSRF_COOKIE_NAME", "cartavault_csrf")
     session_days: int = _positive_int("CARTAVAULT_SESSION_DAYS", 14)
+    session_activity_write_interval_seconds: int = _positive_int(
+        "CARTAVAULT_SESSION_ACTIVITY_WRITE_INTERVAL_SECONDS",
+        300,
+    )
     invitation_hours: int = _positive_int("CARTAVAULT_INVITATION_HOURS", 168)
     cookie_secure: bool = _boolean("CARTAVAULT_COOKIE_SECURE", False)
     password_min_length: int = _positive_int("CARTAVAULT_PASSWORD_MIN_LENGTH", 12)

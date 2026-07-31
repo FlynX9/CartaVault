@@ -19,6 +19,34 @@ The Resend key is entered from Administration and encrypted with `CARTAVAULT_CRE
 
 The API uses opaque sessions stored in `user_sessions`. Only SHA-256 fingerprints of session, CSRF, and invitation tokens are persisted. The session cookie is `HttpOnly`, `SameSite=Lax`, scoped to `/`, and its `Secure` flag is controlled by `CARTAVAULT_COOKIE_SECURE`. The frontend sends the readable CSRF token in `X-CSRF-Token` for every write. Passwords use Argon2id and are never returned by the API.
 
+### Session activity write precision
+
+`last_used_at` is an operational activity indicator, not the source of session
+validity. Absolute expiry (`expires_at`), account activation, logout, explicit
+revocation, administrator revocation, and password-change revocation are still
+checked on every request.
+
+Activity persistence is coalesced with a five-minute precision by default,
+configured through `CARTAVAULT_SESSION_ACTIVITY_WRITE_INTERVAL_SECONDS`.
+The session list can therefore display activity up to that interval behind the
+latest request. The update is conditional and monotonic: concurrent requests
+cannot replace a newer persisted timestamp with an older observation.
+
+Representative authenticated navigation was measured with 21 consecutive
+`GET /auth/me` requests followed by `GET /account/sessions`:
+
+| Implementation | `user_sessions.last_used_at` updates |
+| --- | ---: |
+| Previous per-request persistence | 22 |
+| Coalesced persistence after an aged timestamp | 1 |
+| Further requests inside the five-minute window | 0 |
+
+The repeated active-session lookup shared by authentication and CSRF validation
+is centralized in `app.auth.sessions.load_active_session`. The two identical
+invalid-CSRF branches use one error helper; other authentication validation
+branches were reviewed and retained because their public status or message
+semantics differ.
+
 All maps are private. The V1 matrix is:
 
 - `owner`: content, import/export, members, deletion, and transfer;
