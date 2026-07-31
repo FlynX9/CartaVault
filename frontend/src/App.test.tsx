@@ -180,6 +180,22 @@ describe('map URL workspace', () => {
     expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
   })
 
+  it('centers a POI only when its popup opens and preserves manual map navigation', async () => {
+    vi.mocked(getMapPlaces).mockResolvedValue({ items: [], total: 0, returned: 0, truncated: false })
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByTestId('workspace')).toHaveAttribute('data-focus', '1'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Marqueur POI' }))
+    await waitFor(() => expect(screen.getByTestId('workspace')).toHaveAttribute('data-focus', '2'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bounds A' }))
+    await waitFor(() => expect(getMapPlaces).toHaveBeenCalled())
+    await waitFor(() => expect(getPlaceDetails).toHaveBeenCalledWith('place-id', expect.any(AbortSignal)))
+
+    expect(screen.getByTestId('workspace')).toHaveAttribute('data-focus', '2')
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
+  })
+
   it('restores a direct place URL inside the map workspace', async () => {
     render(<MemoryRouter initialEntries={[`/places/place-id?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')

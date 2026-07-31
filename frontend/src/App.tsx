@@ -208,6 +208,9 @@ function WorkspaceApp() {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const requestSequence = useRef(0);
   const focusSequence = useRef(0);
+  const focusedRoutePlaceId = useRef<string | null>(null);
+  const mapZoom = useRef(mapView.zoom);
+  mapZoom.current = mapView.zoom;
   const previousMapConfig = useRef<string | null | undefined>(undefined);
   const [temporarySearchResult, setTemporarySearchResult] =
     useState<GeocodingResult | null>(null);
@@ -352,6 +355,7 @@ function WorkspaceApp() {
       activeMap === null ? null : getMapOpeningConfigurationKey(activeMap);
     if (previousMapConfig.current === configKey) return;
     previousMapConfig.current = configKey;
+    focusedRoutePlaceId.current = null;
     setSelectedPlace(null);
     setPlaces([]);
     setBounds(null);
@@ -421,11 +425,25 @@ function WorkspaceApp() {
   ]);
 
   useEffect(() => {
-    if (
-      selectedRoutePlaceId === null ||
-      places.some((place) => place.id === selectedRoutePlaceId)
-    )
+    if (selectedRoutePlaceId === null) {
+      focusedRoutePlaceId.current = null;
       return;
+    }
+    const visiblePlace = places.find((place) => place.id === selectedRoutePlaceId);
+    if (visiblePlace) {
+      setSelectedPlace((current) => current?.id === visiblePlace.id ? current : visiblePlace);
+      if (focusedRoutePlaceId.current !== selectedRoutePlaceId) {
+        focusedRoutePlaceId.current = selectedRoutePlaceId;
+        setFocusRequest({
+          id: ++focusSequence.current,
+          view: {
+            center: [visiblePlace.latitude, visiblePlace.longitude],
+            zoom: Math.max(mapZoom.current, 13),
+          },
+        });
+      }
+      return;
+    }
     const controller = new AbortController();
     void getPlaceDetails(selectedRoutePlaceId, controller.signal)
       .then((place) => {
@@ -450,13 +468,16 @@ function WorkspaceApp() {
             : [...current, marker],
         );
         setSelectedPlace(marker);
-        setFocusRequest({
-          id: ++focusSequence.current,
-          view: {
-            center: [marker.latitude, marker.longitude],
-            zoom: Math.max(mapView.zoom, 13),
-          },
-        });
+        if (focusedRoutePlaceId.current !== selectedRoutePlaceId) {
+          focusedRoutePlaceId.current = selectedRoutePlaceId;
+          setFocusRequest({
+            id: ++focusSequence.current,
+            view: {
+              center: [marker.latitude, marker.longitude],
+              zoom: Math.max(mapZoom.current, 13),
+            },
+          });
+        }
       })
       .catch((error: unknown) => {
         if (!isAbortError(error))
@@ -467,7 +488,7 @@ function WorkspaceApp() {
           );
       });
     return () => controller.abort();
-  }, [mapView.zoom, places, selectedRoutePlaceId]);
+  }, [places, selectedRoutePlaceId]);
 
   const handleMutation = (mutation: PlaceMutation) => {
     setCoordinatePrefill(null);
@@ -502,7 +523,8 @@ function WorkspaceApp() {
     setSelectedPlace(place);
     setWorkspacePanel("places");
     navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
-    if (place.latitude !== null && place.longitude !== null)
+    if (place.latitude !== null && place.longitude !== null) {
+      focusedRoutePlaceId.current = place.id;
       setFocusRequest({
         id: ++focusSequence.current,
         view: {
@@ -511,6 +533,7 @@ function WorkspaceApp() {
         },
         centerInVisibleWorkspace: tripPlannerOpen,
       });
+    }
   };
   const showTripNotice = (message: string) => {
     setTripNotice(message);
