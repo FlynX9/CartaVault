@@ -3925,6 +3925,9 @@ html[data-theme='dark'] .trip-pdf-export-provider.is-selected { background: rgb(
 .trip-time-settings[open] > summary::after { transform: rotate(180deg); }
 
 .trip-metrics-global > summary { grid-template-columns: minmax(0, 1fr) auto auto; }
+.trip-metrics-global > summary small { grid-column: 2; }
+.trip-metrics-global > summary .trip-panel-chevron { grid-column: 3; }
+.trip-metrics-global > summary::after { display: none; }
 .trip-time-settings > summary { grid-template-columns: minmax(0, 1fr) auto auto; }
 .trip-metrics__body { display: grid; gap: .45rem; padding: 0 .6rem .6rem; }
 

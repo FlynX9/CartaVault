@@ -125,7 +125,8 @@ describe('TripPlannerPanel', () => {
   it('organizes the workspace into summary, settings and journeys without lifecycle actions', async () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true, can_delete: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    expect(await screen.findByText('Résumé du voyage')).toBeVisible()
+    expect(await screen.findByText('Afficher plus d’infos')).toBeVisible()
+    expect(screen.queryByText('Résumé du voyage')).not.toBeInTheDocument()
     expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
     expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
     const addDay = screen.getByRole('button', { name: 'Ajouter une journée après le jour 1' })
@@ -178,7 +179,7 @@ describe('TripPlannerPanel', () => {
     expect(saveButton.parentElement?.lastElementChild).toBe(saveButton)
     expect(within(settings!).queryByLabelText('Télécharger')).not.toBeInTheDocument()
     expect(settings?.querySelector('.trip-panel-chevron')).not.toBeInTheDocument()
-    const summary = screen.getByText('Résumé du voyage').closest('.trip-summary-shell')!
+    const summary = container.querySelector('.trip-summary-shell')!
     expect(settings!.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     fireEvent.click(screen.getByLabelText('Masquer les paramètres de la sortie'))
@@ -363,8 +364,8 @@ describe('TripPlannerPanel', () => {
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(container.querySelector('.trip-planner-panel')).toHaveClass('trip-planner-panel--trip-view')
     expect(screen.getByRole('button', { name: 'Quitter la vue du voyage' })).toHaveAttribute('aria-pressed', 'true')
-    expect(await screen.findByText('Résumé du voyage')).toBeVisible()
-    expect(screen.getByText('Résumé du voyage').closest('details')).toHaveAttribute('open')
+    expect(await screen.findByText('Afficher plus d’infos')).toBeVisible()
+    expect(screen.getByText('Afficher plus d’infos').closest('details')).toHaveAttribute('open')
     expect(screen.getByText('Trajet total')).toBeVisible()
     expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
     expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
@@ -763,7 +764,7 @@ describe('TripPlannerPanel', () => {
 
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={routed} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    fireEvent.click(await screen.findByText('Résumé du voyage'))
+    fireEvent.click(await screen.findByText('Afficher plus d’infos'))
     expect(await screen.findByLabelText('Distance totale de route : 184,3 km')).toBeVisible()
     expect(screen.getByLabelText('Temps total de conduite : 3 h 42')).toBeVisible()
     expect(screen.getAllByLabelText('Visites : 5 h 30')).toHaveLength(1)
@@ -819,7 +820,7 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={staleTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     expect(await screen.findByText('Itinéraire à recalculer')).toBeVisible()
-    fireEvent.click(screen.getByText('Résumé du voyage'))
+    fireEvent.click(screen.getByText('Afficher plus d’infos'))
     expect(screen.getByText(/Résumé partiel/)).toBeVisible()
     expect(screen.queryByText('184,3 km')).not.toBeInTheDocument()
   })
