@@ -126,7 +126,7 @@ describe('TripPlannerPanel', () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true, can_delete: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     expect(await screen.findByText('Résumé du voyage')).toBeVisible()
-    expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
     expect(screen.getByText('Trajets')).toBeVisible()
     const addDay = screen.getByRole('button', { name: 'Ajouter une journée après le jour 1' })
     expect(addDay).toBeVisible()
@@ -144,22 +144,29 @@ describe('TripPlannerPanel', () => {
 
     const selector = screen.getByLabelText('Voyage actif').closest<HTMLElement>('.trip-panel-selector')!
     const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })
-    const settingsButton = within(selector).getByRole('button', { name: 'Afficher les paramètres du voyage' })
+    const settingsButton = within(selector).getByRole('button', { name: 'Afficher les paramètres de la sortie' })
     const exportButton = within(selector).getByLabelText('Exporter la sortie')
     expect(within(selector).queryByRole('button', { name: 'Dupliquer cette sortie' })).not.toBeInTheDocument()
     expect(within(selector).queryByRole('button', { name: 'Archiver la sortie' })).not.toBeInTheDocument()
     expect(createButton.compareDocumentPosition(settingsButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(settingsButton.compareDocumentPosition(exportButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(settingsButton)
-    expect(screen.getByText('Paramètres du voyage')).toBeVisible()
+    expect(screen.getByText('Paramètres de la sortie')).toBeVisible()
     expect(screen.getAllByText('Charge des journées')).toHaveLength(2)
     expect(screen.getByLabelText('Nom du voyage')).toBeVisible()
     const settings = container.querySelector<HTMLElement>('.trip-panel-settings')
     expect(settings).not.toBeNull()
-    const controls = within(settings!).getByLabelText('Contrôles du voyage')
+    const controls = within(settings!).getByLabelText('Contrôles de la sortie')
     expect(within(controls).getByRole('button', { name: 'Dupliquer le voyage' })).toBeVisible()
     expect(within(controls).getByRole('button', { name: 'Archiver la sortie' })).toBeVisible()
     expect(within(controls).getByRole('button', { name: 'Supprimer le voyage' })).toBeVisible()
+    expect(within(settings!).getByLabelText('Charge faible jusqu’à (min)')).toBeVisible()
+    expect(within(settings!).getByLabelText('Charge modérée jusqu’à (min)')).toBeVisible()
+    const lowColor = within(settings!).getByLabelText('Couleur faible')
+    expect(lowColor.previousElementSibling).toHaveTextContent('Couleur faible')
+    expect(settings!.querySelectorAll('.trip-load-colors input[type="color"]')).toHaveLength(3)
+    expect(settings!.querySelectorAll('.trip-load-preview-badge')).toHaveLength(3)
+    expect(settings!.querySelectorAll('.trip-load-preview-badge .lucide-gauge')).toHaveLength(3)
     expect(within(settings!).queryByText('Options du voyage')).not.toBeInTheDocument()
     expect(within(settings!).getAllByRole('button', { name: 'Enregistrer' })).toHaveLength(1)
     expect(within(settings!).queryByLabelText('Télécharger')).not.toBeInTheDocument()
@@ -167,8 +174,8 @@ describe('TripPlannerPanel', () => {
     const summary = screen.getByText('Résumé du voyage').closest('.trip-summary-shell')!
     expect(settings!.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
-    fireEvent.click(screen.getByLabelText('Masquer les paramètres du voyage'))
-    expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Masquer les paramètres de la sortie'))
+    expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
   })
 
   it('edits the departure date and displays the automatically calculated arrival date', async () => {
@@ -180,7 +187,7 @@ describe('TripPlannerPanel', () => {
 
     expect(screen.queryByLabelText('Date de départ du voyage')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Dates du voyage')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres du voyage' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
 
     expect(await screen.findByLabelText('Date de départ du voyage')).toHaveValue('2026-08-10')
     expect(screen.getByText('12 août 2026')).toBeVisible()
@@ -195,7 +202,7 @@ describe('TripPlannerPanel', () => {
 
     expect(await screen.findByText('En cours')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Archiver la sortie' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres du voyage' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
     fireEvent.click(screen.getByRole('button', { name: 'Archiver la sortie' }))
 
     await waitFor(() => expect(archiveTrip).toHaveBeenCalledWith('trip-1'))
@@ -210,7 +217,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('trip-planner-panel--read-only')
     expect(screen.queryByRole('button', { name: 'Archiver la sortie' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Réactiver la sortie' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres du voyage' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
     expect(screen.getByRole('button', { name: 'Dupliquer le voyage' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Réactiver la sortie' }))
     await waitFor(() => expect(unarchiveTrip).toHaveBeenCalledWith('trip-1'))
@@ -286,7 +293,7 @@ describe('TripPlannerPanel', () => {
     expect(await screen.findByText('Résumé du voyage')).toBeVisible()
     expect(screen.getByText('Résumé du voyage').closest('details')).toHaveAttribute('open')
     expect(screen.getByText('Trajet total')).toBeVisible()
-    expect(screen.queryByText('Paramètres du voyage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
     expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
   })
@@ -312,7 +319,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripSummary).mockResolvedValue({ ...emptySummary, route_providers: ['google'], route_provider_labels: ['Google Routes'], country_constraint_enabled: true, constraint_country_code: 'GEO', constraint_country_name: 'Géorgie' })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Géorgie', country: { name: 'Géorgie' }, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres du voyage' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres de la sortie' }))
     expect(screen.queryByLabelText('Paramètres de routage')).not.toBeInTheDocument()
     expect(screen.queryByText('Google Routes')).not.toBeInTheDocument()
     expect(screen.queryByText('Itinéraire limité à la Géorgie')).not.toBeInTheDocument()
