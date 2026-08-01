@@ -92,6 +92,7 @@ describe('MapPage', () => {
   })
 
   it('resizes both workspace panels without remounting the map', async () => {
+    window.localStorage.setItem('cartavault:right-panel-width', '420')
     render(
       <MemoryRouter>
         <MapPage
@@ -118,8 +119,11 @@ describe('MapPage', () => {
     const loadedMap = await screen.findByTestId('poi-map')
     const workspace = loadedMap.closest('.map-workspace') as HTMLElement
     expect(workspace).toHaveClass('trip-planning-open')
+    expect(workspace.style.getPropertyValue('--cv-right-panel-width')).toBe('640px')
     Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1400 })
     const map = screen.getByTestId('poi-map')
+    expect(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' })).toHaveAttribute('aria-valuemin', '640')
+    expect(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' })).toHaveAttribute('aria-valuemax', '1600')
 
     fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau de navigation' }), { key: 'ArrowRight' })
     fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' }), { key: 'ArrowRight' })

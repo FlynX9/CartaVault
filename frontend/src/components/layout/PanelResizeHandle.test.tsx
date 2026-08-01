@@ -79,4 +79,45 @@ describe('PanelResizeHandle', () => {
     expect(onResize).toHaveBeenLastCalledWith(500)
     expect(onResizeCommit).toHaveBeenCalledWith(500)
   })
+
+  it('keeps the trip panel readable and stops at the open POI card', () => {
+    const onResize = vi.fn()
+    const result = render(<div className="map-workspace">
+      <aside className="country-place-panel" />
+      <aside className="trip-planner-panel" />
+      <aside className="map-place-detail-overlay" />
+      <PanelResizeHandle side="right" growDirection="right" width={640} minWidth={640} maxWidth={1600} reservedWidth={352} panelSelector=".trip-planner-panel" boundarySelector=".map-place-detail-overlay" gapReferenceSelector=".country-place-panel" onResize={onResize} />
+    </div>)
+    const workspace = result.container.querySelector<HTMLElement>('.map-workspace')!
+    const places = result.container.querySelector<HTMLElement>('.country-place-panel')!
+    const tripPanel = result.container.querySelector<HTMLElement>('.trip-planner-panel')!
+    const detail = result.container.querySelector<HTMLElement>('.map-place-detail-overlay')!
+    Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1920 })
+    vi.spyOn(workspace, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 1920, width: 1920 } as DOMRect)
+    vi.spyOn(places, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 430, width: 430 } as DOMRect)
+    vi.spyOn(tripPanel, 'getBoundingClientRect').mockReturnValue({ left: 440, right: 1080, width: 640 } as DOMRect)
+    vi.spyOn(detail, 'getBoundingClientRect').mockReturnValue({ left: 1300, right: 1920, width: 620 } as DOMRect)
+    const separator = screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' })
+
+    fireEvent.keyDown(separator, { key: 'Home' })
+    expect(onResize).toHaveBeenLastCalledWith(640)
+    fireEvent.keyDown(separator, { key: 'End' })
+    expect(onResize).toHaveBeenLastCalledWith(850)
+    expect(separator).toHaveAttribute('aria-valuemin', '640')
+    expect(separator).toHaveAttribute('aria-valuemax', '1600')
+  })
+
+  it('allows a trip panel to grow beyond the former fixed maximum', () => {
+    const onResize = vi.fn()
+    const result = render(<div className="map-workspace"><aside className="trip-planner-panel" /><PanelResizeHandle side="right" growDirection="right" width={640} minWidth={640} maxWidth={1600} reservedWidth={352} panelSelector=".trip-planner-panel" onResize={onResize} /></div>)
+    const workspace = result.container.querySelector<HTMLElement>('.map-workspace')!
+    const tripPanel = result.container.querySelector<HTMLElement>('.trip-planner-panel')!
+    Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1920 })
+    vi.spyOn(workspace, 'getBoundingClientRect').mockReturnValue({ left: 0, right: 1920, width: 1920 } as DOMRect)
+    vi.spyOn(tripPanel, 'getBoundingClientRect').mockReturnValue({ left: 440, right: 1080, width: 640 } as DOMRect)
+
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' }), { key: 'End' })
+
+    expect(onResize).toHaveBeenCalledWith(1128)
+  })
 })

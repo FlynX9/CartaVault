@@ -21,6 +21,8 @@ import { useTheme } from '../theme/useTheme'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
+const TRIP_PANEL_MIN_WIDTH = 640
+const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
 const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
@@ -28,10 +30,10 @@ function resolvePreferredBasemap(value: unknown, theme: 'light' | 'dark'): Basem
   return resolveAvailableBasemapId(value, theme === 'dark')
 }
 
-function loadPanelWidth(key: string, fallback: number): number {
+function loadPanelWidth(key: string, fallback: number, min = 320, max = 720): number {
   try {
     const value = Number(window.localStorage.getItem(key))
-    return Number.isFinite(value) && value >= 320 && value <= 720 ? value : fallback
+    return Number.isFinite(value) && value >= min && value <= max ? value : fallback
   } catch {
     return fallback
   }
@@ -154,7 +156,7 @@ export function MapPage({
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
   const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
-  const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640))
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
 
   useEffect(() => {
@@ -338,7 +340,7 @@ export function MapPage({
 
       </div>
       {sidebar}
-      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" growDirection={tripPlanningActive ? 'right' : undefined} width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
+      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" growDirection={tripPlanningActive ? 'right' : undefined} width={rightPanelWidth} minWidth={tripPlanningActive ? TRIP_PANEL_MIN_WIDTH : undefined} maxWidth={tripPlanningActive ? TRIP_PANEL_MAX_WIDTH : undefined} reservedWidth={tripPlanningActive ? 352 : undefined} panelSelector={tripPlanningActive ? '.trip-planner-panel' : undefined} boundarySelector={tripPlanningActive ? '.map-place-detail-overlay' : undefined} gapReferenceSelector={tripPlanningActive ? '.country-place-panel' : undefined} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
     </section>
   )
 }

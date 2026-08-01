@@ -8712,9 +8712,15 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
    planning workflow read from left to right: places, itinerary, map. */
 .map-workspace.trip-planning-open {
   --cv-trip-panel-gap: .6rem;
+  --cv-trip-panel-min-width: 40rem;
   --cv-trip-map-min-width: 22rem;
   --cv-trip-left-dock-width: var(--cv-left-panel-width, var(--cv-workspace-sidebar-width));
   --cv-trip-panel-dock-width: var(--cv-right-panel-width, 40rem);
+  --cv-trip-panel-available-width: calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-map-min-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap));
+  --cv-trip-panel-rendered-width: min(
+    max(var(--cv-trip-panel-dock-width), var(--cv-trip-panel-min-width)),
+    max(var(--cv-trip-panel-min-width), var(--cv-trip-panel-available-width))
+  );
 }
 
 .map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) {
@@ -8723,47 +8729,54 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 
 .map-workspace.trip-planning-open:has(.trip-planner-panel.is-collapsed) {
   --cv-trip-panel-dock-width: 13rem;
+  --cv-trip-panel-rendered-width: 13rem;
+}
+
+/* When a POI card is open, the trip panel may grow exactly up to that card.
+   The second gap deliberately reuses the Lieux/Sortie spacing token. */
+.map-workspace.trip-planning-open:has(.map-place-detail-overlay) {
+  --cv-trip-panel-available-width: calc(
+    100% - var(--cv-trip-left-dock-width) - min(42rem, calc(100% - 1.6rem)) -
+    (2 * var(--cv-canvas-padding)) - (2 * var(--cv-trip-panel-gap))
+  );
 }
 
 .map-workspace.trip-planning-open .map-sidebar.trip-planner-panel:not(.trip-planner-panel--trip-view) {
   right: auto;
   left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap));
-  width: min(
-    var(--cv-trip-panel-dock-width),
-    max(20rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-map-min-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap)))
-  );
+  width: var(--cv-trip-panel-rendered-width);
 }
 
 /* The second resize divider now belongs to the right edge of the itinerary,
    rather than the right edge of the map workspace. */
 .map-workspace.trip-planning-open .cv-panel-resize-handle--right {
   right: auto;
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) - 6px);
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-rendered-width) - 6px);
 }
 
 /* Geographic search belongs to the remaining map column in trip mode. It
    retains its compact/expand-on-hover behaviour, without crossing either
    left-side panel. The legend follows the same visual column. */
 .map-workspace.trip-planning-open .geographic-search {
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .8rem);
-  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-panel-dock-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-rendered-width) + .8rem);
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-panel-rendered-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
 }
 
 .map-workspace.trip-planning-open .status-legend {
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .45rem);
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-rendered-width) + .45rem);
 }
 
 /* The collapsed-Lieux rule is intentionally more specific than the normal map
    control rule. Repeat the trip selector at the same specificity so search
    remains in the map column rather than underneath either compact panel. */
 .map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) .geographic-search {
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .8rem);
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-rendered-width) + .8rem);
   width: 3.5rem;
-  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-panel-dock-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
+  --cv-geographic-search-expanded-width: min(31rem, calc(100% - var(--cv-trip-left-dock-width) - var(--cv-trip-panel-rendered-width) - (2 * var(--cv-canvas-padding)) - var(--cv-trip-panel-gap) - 1.6rem));
 }
 
 .map-workspace.trip-planning-open:has(.places-redesign-panel.is-collapsed) .status-legend {
-  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-dock-width) + .45rem);
+  left: calc(var(--cv-canvas-padding) + var(--cv-trip-left-dock-width) + var(--cv-trip-panel-gap) + var(--cv-trip-panel-rendered-width) + .45rem);
 }
 
 @media (min-width: 761px) and (max-width: 1180px) {
