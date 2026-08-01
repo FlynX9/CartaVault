@@ -127,7 +127,7 @@ describe('TripPlannerPanel', () => {
 
     expect(await screen.findByText('Résumé du voyage')).toBeVisible()
     expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
-    expect(screen.getByText('Trajets')).toBeVisible()
+    expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
     const addDay = screen.getByRole('button', { name: 'Ajouter une journée après le jour 1' })
     expect(addDay).toBeVisible()
     expect(addDay.closest('.trip-panel-insert-day')).not.toBeNull()
@@ -141,6 +141,9 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('button', { name: 'Terminer' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Calculer les itinéraires' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Optimiser le voyage' })).toBeVisible()
+    const journeyToolbar = container.querySelector<HTMLElement>('.trip-panel-journeys-header-actions')!
+    expect(journeyToolbar).not.toBeNull()
+    expect(within(journeyToolbar).getAllByRole('button')).toHaveLength(4)
 
     const selector = screen.getByLabelText('Voyage actif').closest<HTMLElement>('.trip-panel-selector')!
     const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })
