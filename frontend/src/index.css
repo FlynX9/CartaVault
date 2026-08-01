@@ -11461,3 +11461,16 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   outline-color: color-mix(in srgb, var(--cv-color-gold) 30%, transparent);
   box-shadow: 0 3px 8px color-mix(in srgb, var(--cv-color-gold) 18%, transparent);
 }
+
+/* An expanded day-settings button is a persistent active control, not a hover state. */
+.trip-planner-panel .trip-day-settings-trigger[aria-expanded='true'] {
+  color: #fff;
+  background: var(--cv-color-teal);
+  border-color: var(--cv-color-teal);
+}
+.trip-planner-panel .trip-day-settings-trigger[aria-expanded='true']:not(:disabled):is(:hover, :focus-visible) {
+  color: #fff;
+  background: #0b8f77;
+  border-color: #0b8f77;
+  outline-color: color-mix(in srgb, var(--cv-color-teal) 28%, transparent);
+}
