@@ -441,6 +441,11 @@ describe('TripPlannerPanel', () => {
     expect(hideToggle).toHaveClass('trip-panel-day-number', 'trip-day-visibility-bubble')
     expect(hideToggle.querySelector('.lucide-eye')).toBeInTheDocument()
     expect(hideToggle.closest('summary')?.querySelector('.trip-panel-day-actions')).not.toContainElement(hideToggle)
+    const dayDetails = hideToggle.closest('details')
+    const footerActions = dayDetails?.querySelector('.trip-panel-route-actions')
+    expect(dayDetails?.querySelector('summary')).not.toContainElement(screen.getByRole('button', { name: 'Dupliquer la journée' }))
+    expect(footerActions).toContainElement(screen.getByRole('button', { name: 'Dupliquer la journée' }))
+    expect(footerActions).toContainElement(screen.getByRole('button', { name: 'Supprimer la journée' }))
     fireEvent.click(hideToggle)
     expect(onDayVisibilityChange).toHaveBeenCalledWith('day-1', false)
 

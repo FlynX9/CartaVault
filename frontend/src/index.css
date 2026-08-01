@@ -10387,6 +10387,30 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 .trip-planner-panel .trip-day-bubble__default > b { color: #fff; font-size: .61rem; font-weight: 850; line-height: 1; }
 .trip-planner-panel .trip-day-visibility-bubble:not(:disabled):is(:hover, :focus-visible) .trip-day-bubble__default { opacity: 0; transform: scale(.82); }
 .trip-planner-panel .trip-day-visibility-bubble:not(:disabled):is(:hover, :focus-visible) .trip-day-bubble__visibility { opacity: 1; transform: scale(1); }
+.trip-planner-panel .trip-panel-day-content > .trip-panel-route-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: .4rem;
+}
+.trip-planner-panel .trip-panel-day-content > .trip-panel-route-actions--editable { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.trip-planner-panel .trip-panel-day-content > .trip-panel-route-actions > button {
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  white-space: nowrap;
+}
+.trip-planner-panel .trip-panel-route-actions > button[aria-label='Dupliquer la journée']:not(:disabled):is(:hover, :focus-visible) {
+  color: #2563eb;
+  background: color-mix(in srgb, #2563eb 10%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, #2563eb 42%, var(--cv-border-subtle, #dfe7ec));
+}
+.trip-planner-panel .trip-panel-route-actions > button[aria-label='Supprimer la journée']:not(:disabled):is(:hover, :focus-visible) {
+  color: #dc2626;
+  background: color-mix(in srgb, #dc2626 9%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, #dc2626 42%, var(--cv-border-subtle, #dfe7ec));
+}
 .trip-planner-panel .trip-timeline-day-block { transition: opacity 140ms ease; }
 .trip-planner-panel .trip-timeline-day-block.is-dragging { opacity: .38; }
 .trip-planner-panel .trip-timeline-day-block.drop-before::before,
