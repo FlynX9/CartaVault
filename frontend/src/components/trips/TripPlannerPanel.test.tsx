@@ -953,6 +953,7 @@ describe('TripPlannerPanel', () => {
       ...emptyDaySummary,
       day_id: id,
       recommended_start_time: id === 'day-2' ? '08:25' : '07:10',
+      estimated_arrival_time: id === 'day-2' ? '18:40' : null,
     }))
 
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={anchoredTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
@@ -979,6 +980,7 @@ describe('TripPlannerPanel', () => {
     expect(nightMetrics?.children[3]).toContainElement(within(nightHeader).getByText('Valide').closest('.trip-timeline-status'))
     const arrivalHeader = container.querySelector('.trip-panel-arrival .trip-night-header-row') as HTMLElement
     const arrivalMetrics = arrivalHeader.querySelector('.trip-anchor-header-metrics')
+    expect(arrivalMetrics?.children[0]).toBe(within(arrivalHeader).getByLabelText('Arrivée estimée : 18:40'))
     expect(arrivalMetrics?.children[3]).toContainElement(within(arrivalHeader).getByText('Valide').closest('.trip-timeline-status'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Réduire le départ' }))

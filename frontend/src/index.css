@@ -10497,6 +10497,10 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   color: var(--trip-night-previous-color, var(--cv-color-teal));
 }
 
+.trip-planner-panel .trip-arrival-estimated > strong > svg {
+  color: var(--cv-color-slate);
+}
+
 .trip-planner-panel .trip-panel-night .trip-night-header-actions {
   display: flex;
   height: 100%;

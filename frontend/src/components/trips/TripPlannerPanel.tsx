@@ -371,7 +371,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
           </details>
           {dayIndex < trip.days.length - 1 && <Night previous={day} next={trip.days[dayIndex + 1]} recommendedStart={daySummaries[trip.days[dayIndex + 1].id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[trip.days[dayIndex + 1].id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onSelect={(target) => { setActiveNightTarget(target); onActiveNightTargetChange(target); onActiveDayChange(trip.days[dayIndex + 1].id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
           {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
-        </div>)}{trip.days.length > 0 && <Arrival trip={trip} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}</div></DayCollapseContext.Provider>
+        </div>)}{trip.days.length > 0 && <Arrival trip={trip} estimatedArrival={daySummaries[trip.days.at(-1)!.id]?.estimated_arrival_time ?? null} estimatedArrivalOffset={daySummaries[trip.days.at(-1)!.id]?.estimated_arrival_day_offset ?? null} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}</div></DayCollapseContext.Provider>
       </section>
     </>}</>}</>}
     </div>
@@ -581,13 +581,14 @@ function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, re
   </>
 }
 
-function Arrival({ trip, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+function Arrival({ trip, estimatedArrival, estimatedArrivalOffset, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; estimatedArrival: string | null; estimatedArrivalOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [dropActive, setDropActive] = useTransientDropState()
   const anchor = trip.days.at(-1)?.stops.at(-1) ?? trip.departure
   const arrival = trip.arrival
   const effectiveArrival = arrival ?? trip.departure
+  const estimatedArrivalLabel = formatClock(estimatedArrival, estimatedArrivalOffset)
   useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest])
   const drop = (event: DragEvent) => {
     event.preventDefault()
@@ -615,7 +616,10 @@ function Arrival({ trip, canEdit, reload, collapseRequest, onStopFocus, onStopPl
         <div className="trip-night-header-row">
           <span className="trip-panel-timeline-heading"><strong>Arrivée</strong></span>
           <span className="trip-day-header-metrics trip-night-header-metrics trip-anchor-header-metrics" aria-label="Résumé de l’arrivée">
-            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-day-header-metric trip-arrival-estimated" aria-label={`Arrivée estimée : ${estimatedArrivalLabel}`}>
+              <strong><Clock3 aria-hidden="true" size={12} />{estimatedArrivalLabel}</strong>
+              <small>Arrivée estimée</small>
+            </span>
             <span className="trip-night-header-spacer" aria-hidden="true" />
             <span className="trip-night-header-spacer" aria-hidden="true" />
             <span className="trip-day-header-status"><TimelineStatusBadge status={effectiveArrival ? 'valid' : 'empty'} /></span>
