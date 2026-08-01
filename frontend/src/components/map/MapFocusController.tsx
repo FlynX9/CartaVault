@@ -14,6 +14,48 @@ interface HorizontalInterval {
   right: number
 }
 
+interface FitBoundsPadding {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+function getFitBoundsPadding(mapContainer: HTMLElement): FitBoundsPadding {
+  const padding: FitBoundsPadding = { top: 32, right: 32, bottom: 32, left: 32 }
+  const workspace = mapContainer.closest<HTMLElement>('.map-workspace')
+  const mapBounds = mapContainer.getBoundingClientRect()
+  if (workspace === null || mapBounds.width <= 0 || mapBounds.height <= 0) return padding
+
+  const mapCenterX = mapBounds.left + mapBounds.width / 2
+  const mapCenterY = mapBounds.top + mapBounds.height / 2
+  const panels = workspace.querySelectorAll<HTMLElement>('.country-place-panel, .map-sidebar, .map-place-detail-overlay')
+  for (const panel of panels) {
+    const style = window.getComputedStyle(panel)
+    if (style.visibility === 'hidden' || style.display === 'none') continue
+    const bounds = panel.getBoundingClientRect()
+    if (bounds.width <= 0 || bounds.height <= 0) continue
+    const coversHorizontalCenter = bounds.left <= mapCenterX && bounds.right >= mapCenterX
+    const coversVerticalCenter = bounds.top <= mapCenterY && bounds.bottom >= mapCenterY
+    const horizontalPanel = bounds.width > bounds.height
+
+    if (horizontalPanel && coversHorizontalCenter) {
+      if ((bounds.top + bounds.bottom) / 2 < mapCenterY) {
+        padding.top = Math.max(padding.top, bounds.bottom - mapBounds.top + PANEL_GAP)
+      } else {
+        padding.bottom = Math.max(padding.bottom, mapBounds.bottom - bounds.top + PANEL_GAP)
+      }
+    } else if (coversVerticalCenter) {
+      if ((bounds.left + bounds.right) / 2 < mapCenterX) {
+        padding.left = Math.max(padding.left, bounds.right - mapBounds.left + PANEL_GAP)
+      } else {
+        padding.right = Math.max(padding.right, mapBounds.right - bounds.left + PANEL_GAP)
+      }
+    }
+  }
+  return padding
+}
+
 function mergeIntervals(intervals: HorizontalInterval[]): HorizontalInterval[] {
   const sorted = intervals.toSorted((first, second) => first.left - second.left)
   const merged: HorizontalInterval[] = []
@@ -94,19 +136,13 @@ export function MapFocusController({ request }: MapFocusControllerProps) {
   useEffect(() => {
     if (request !== null) {
       if (request.bounds) {
-        const workspace = map.getContainer().closest<HTMLElement>('.map-workspace')
-        const leftPanelWidth = workspace?.classList.contains('place-list-open')
-          ? workspace.querySelector<HTMLElement>('.country-place-panel')?.getBoundingClientRect().width ?? 0
-          : 0
-        const rightPanelWidth = workspace?.classList.contains('sidebar-open')
-          ? workspace.querySelector<HTMLElement>('.map-sidebar')?.getBoundingClientRect().width ?? 0
-          : 0
+        const padding = getFitBoundsPadding(map.getContainer())
         map.fitBounds([
           [request.bounds.minLatitude, request.bounds.minLongitude],
           [request.bounds.maxLatitude, request.bounds.maxLongitude],
         ], {
-          paddingTopLeft: [leftPanelWidth + 32, 32],
-          paddingBottomRight: [rightPanelWidth + 32, 32],
+          paddingTopLeft: [padding.left, padding.top],
+          paddingBottomRight: [padding.right, padding.bottom],
           maxZoom: request.maxZoom ?? 15,
         })
       } else {

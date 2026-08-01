@@ -15,7 +15,7 @@ import type { AccountPreferences } from '../types/account'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
-import type { Trip } from '../types/trip'
+import type { Trip, TripNightTarget } from '../types/trip'
 import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
 import { useTheme } from '../theme/useTheme'
 
@@ -85,8 +85,11 @@ interface MapPageProps {
   onDraftPositionChange?: (position: DraftPosition) => void
   trip?: Trip | null
   tripViewOnly?: boolean
+  selectedTripStopId?: string | null
+  selectedTripTimelineKey?: string | null
   hiddenTripDayIds?: ReadonlySet<string>
   activeTripDayId?: string | null
+  activeTripNightTarget?: TripNightTarget | null
   placeSelectionMode?: boolean
   selectedPlaceIds?: ReadonlySet<string>
   onPlaceSelectionToggle?: (placeId: string) => void
@@ -128,8 +131,11 @@ export function MapPage({
   onDraftPositionChange = () => undefined,
   trip = null,
   tripViewOnly = false,
+  selectedTripStopId = null,
+  selectedTripTimelineKey = null,
   hiddenTripDayIds = new Set<string>(),
   activeTripDayId = null,
+  activeTripNightTarget = null,
   placeSelectionMode = false,
   selectedPlaceIds = new Set<string>(),
   onPlaceSelectionToggle = () => undefined,
@@ -275,8 +281,11 @@ export function MapPage({
           markerFilter={markerFilter}
           trip={trip}
           tripViewOnly={tripViewOnly}
+          selectedTripStopId={selectedTripStopId}
+          selectedTripTimelineKey={selectedTripTimelineKey}
           hiddenTripDayIds={hiddenTripDayIds}
           activeTripDayId={activeTripDayId}
+          activeTripNightTarget={activeTripNightTarget}
           selectionMode={placeSelectionMode}
           selectedPlaceIds={selectedPlaceIds}
           onPlaceSelectionToggle={onPlaceSelectionToggle}

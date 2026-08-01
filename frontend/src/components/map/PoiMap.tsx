@@ -1,6 +1,7 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { divIcon, LatLngBounds, type Marker as LeafletMarker } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, Tooltip } from 'react-leaflet'
+import { Flag, Play } from 'lucide-react'
 
 import type { BasemapId } from '../../map/basemaps'
 import type { GeocodingResult } from '../../geocoding/types'
@@ -17,7 +18,7 @@ import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
 import { MapClusterLayer } from './MapClusterLayer'
 import { CountryMaskLayer } from './CountryMaskLayer'
 import type { MapMarkerFilter } from './mapMarkerFilterContext'
-import type { Trip } from '../../types/trip'
+import type { Trip, TripDay, TripNightTarget } from '../../types/trip'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 const MAP_MAX_ZOOM = 19
@@ -44,8 +45,11 @@ interface PoiMapProps {
   markerFilter?: MapMarkerFilter
   trip?: Trip | null
   tripViewOnly?: boolean
+  selectedTripStopId?: string | null
+  selectedTripTimelineKey?: string | null
   hiddenTripDayIds?: ReadonlySet<string>
   activeTripDayId?: string | null
+  activeTripNightTarget?: TripNightTarget | null
   selectionMode?: boolean
   selectedPlaceIds?: ReadonlySet<string>
   onPlaceSelectionToggle?: (placeId: string) => void
@@ -107,8 +111,11 @@ export function PoiMap({
   markerFilter = { query: '', categoryId: '', statusId: null, tagId: '' },
   trip = null,
   tripViewOnly = false,
+  selectedTripStopId = null,
+  selectedTripTimelineKey = null,
   hiddenTripDayIds = new Set<string>(),
   activeTripDayId = null,
+  activeTripNightTarget = null,
   selectionMode = false,
   selectedPlaceIds = new Set<string>(),
   onPlaceSelectionToggle = () => undefined,
@@ -152,13 +159,104 @@ export function PoiMap({
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
 
       <MapClusterLayer places={standardPlaces} renderPlace={renderPlace} selectedPlaceId={selectedPlaceId} disableClusteringAtZoom={MAP_CLUSTERING_DISABLE_ZOOM} />
-      {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} showAllDays={tripViewOnly} hiddenDayIds={hiddenTripDayIds} />}
+      {trip && <TripOverlay trip={trip} activeDayId={activeTripDayId} activeNightTarget={activeTripNightTarget} selectedStopId={selectedTripStopId} selectedTimelineKey={selectedTripTimelineKey} showAllDays={tripViewOnly} hiddenDayIds={hiddenTripDayIds} />}
     </MapContainer>
   )
 }
 
 const TRIP_COLORS = ['#0FA68A', '#2563EB', '#9333EA', '#D97706', '#DC2626', '#0891B2', '#65A30D', '#DB2777']
-function TripOverlay({ trip, activeDayId, showAllDays, hiddenDayIds }: { trip: Trip; activeDayId: string | null; showAllDays: boolean; hiddenDayIds: ReadonlySet<string> }) {
+
+interface TripDayEndpoint {
+  key: string
+  latitude: number
+  longitude: number
+  roles: Array<'start' | 'end'>
+  colors: string[]
+}
+
+function tripDayStart(trip: Trip, day: TripDay, dayIndex: number) {
+  const previousNight = trip.nights.find((night) => night.next_day_id === day.id)
+  if (previousNight) return { key: `night:${previousNight.id}`, latitude: previousNight.latitude, longitude: previousNight.longitude }
+  if (dayIndex === 0 && trip.departure) return { key: `departure:${trip.departure.id}`, latitude: trip.departure.latitude, longitude: trip.departure.longitude }
+  const previousStop = trip.days[dayIndex - 1]?.stops.at(-1)
+  return previousStop ? { key: `previous-stop:${previousStop.id}`, latitude: previousStop.latitude, longitude: previousStop.longitude } : null
+}
+
+function tripDayEnd(trip: Trip, day: TripDay, dayIndex: number) {
+  const nextNight = trip.nights.find((night) => night.previous_day_id === day.id)
+  if (nextNight) return { key: `night:${nextNight.id}`, latitude: nextNight.latitude, longitude: nextNight.longitude }
+  if (dayIndex !== trip.days.length - 1) return null
+  const arrival = trip.arrival ?? trip.departure
+  return arrival ? { key: `arrival:${arrival.id}`, latitude: arrival.latitude, longitude: arrival.longitude } : null
+}
+
+function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, selectedTimelineKey, showAllDays, hiddenDayIds }: { trip: Trip; activeDayId: string | null; activeNightTarget: TripNightTarget | null; selectedStopId: string | null; selectedTimelineKey: string | null; showAllDays: boolean; hiddenDayIds: ReadonlySet<string> }) {
   const visibleDays = trip.days.filter((day) => !hiddenDayIds.has(day.id))
-  return <>{visibleDays.map((day) => { const dayIndex = trip.days.findIndex((item) => item.id === day.id); const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]; const active = showAllDays || activeDayId === null || day.id === activeDayId; return <Fragment key={day.id}>{day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 5 : 4, opacity: active ? .9 : .6 }} />}{day.stops.map((stop, index) => <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={active ? 9 : 7} pathOptions={{ color: 'white', fillColor: color, fillOpacity: active ? 1 : .65, weight: 2 }}><Tooltip permanent direction="center" className="trip-stop-number">{index + 1}</Tooltip></CircleMarker>)}</Fragment>})}{trip.departure && <CircleMarker center={[trip.departure.latitude, trip.departure.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#0FA68A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">D</Tooltip></CircleMarker>}{trip.nights.map((night) => <CircleMarker key={night.id} center={[night.latitude, night.longitude]} radius={8} pathOptions={{ color: '#0D1B2A', fillColor: '#C8A14A', fillOpacity: 1, weight: 2 }}><Tooltip permanent direction="top">H</Tooltip></CircleMarker>)}</>
+  const hasSelectedStop = selectedStopId !== null && visibleDays.some((day) => day.stops.some((stop) => stop.id === selectedStopId))
+  const activeDayIds = new Set<string>()
+  if (hasSelectedStop) {
+    const selectedDay = visibleDays.find((day) => day.stops.some((stop) => stop.id === selectedStopId))
+    if (selectedDay) activeDayIds.add(selectedDay.id)
+  } else if (activeNightTarget?.nightId) {
+    activeDayIds.add(activeNightTarget.previousDayId)
+    activeDayIds.add(activeNightTarget.nextDayId)
+  } else if (activeDayId) activeDayIds.add(activeDayId)
+
+  const endpointDayIds = new Set<string>()
+  if (hasSelectedStop) {
+    const selectedDay = visibleDays.find((day) => day.stops.some((stop) => stop.id === selectedStopId))
+    if (selectedDay) endpointDayIds.add(selectedDay.id)
+  } else if (activeNightTarget?.nightId) {
+    endpointDayIds.add(activeNightTarget.nextDayId)
+  } else if (activeDayId) endpointDayIds.add(activeDayId)
+
+  const endpoints = new Map<string, TripDayEndpoint>()
+  visibleDays.forEach((day) => {
+    if (!endpointDayIds.has(day.id)) return
+    const dayIndex = trip.days.findIndex((item) => item.id === day.id)
+    const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]
+    const addEndpoint = (endpoint: ReturnType<typeof tripDayStart>, role: 'start' | 'end', endpointColor = color) => {
+      if (!endpoint) return
+      const current = endpoints.get(endpoint.key)
+      if (current) { current.roles.push(role); current.colors.push(endpointColor); return }
+      endpoints.set(endpoint.key, { ...endpoint, roles: [role], colors: [endpointColor] })
+    }
+
+    const start = tripDayStart(trip, day, dayIndex)
+    if (activeNightTarget?.nightId && day.id === activeNightTarget.nextDayId) {
+      const previousDayIndex = trip.days.findIndex((item) => item.id === activeNightTarget.previousDayId)
+      const previousDay = trip.days[previousDayIndex]
+      const previousColor = previousDay?.color || TRIP_COLORS[Math.max(previousDayIndex, 0) % TRIP_COLORS.length]
+      addEndpoint(start, 'end', previousColor)
+    }
+    addEndpoint(start, 'start')
+    addEndpoint(tripDayEnd(trip, day, dayIndex), 'end')
+  })
+
+  const inactiveOpacity = showAllDays ? .38 : .6
+  const selectedEndpointKey = selectedTimelineKey === 'departure' && trip.departure
+    ? `departure:${trip.departure.id}`
+    : selectedTimelineKey === 'arrival' && (trip.arrival ?? trip.departure)
+      ? `arrival:${(trip.arrival ?? trip.departure)!.id}`
+      : selectedTimelineKey?.startsWith('night:')
+        ? selectedTimelineKey
+        : null
+  return <>
+    {visibleDays.map((day) => {
+      const dayIndex = trip.days.findIndex((item) => item.id === day.id)
+      const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]
+      const containsSelectedStop = day.stops.some((stop) => stop.id === selectedStopId)
+      const active = hasSelectedStop ? containsSelectedStop : activeNightTarget?.nightId ? activeDayIds.has(day.id) : activeDayId === null || day.id === activeDayId
+      return <Fragment key={day.id}>
+        {day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 6 : 3, opacity: active ? .95 : inactiveOpacity }} />}
+        {day.stops.map((stop, index) => { const selected = stop.id === selectedStopId; return <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={selected ? 14 : active ? 10 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: selected || active ? 1 : inactiveOpacity, weight: selected ? 5 : active ? 3 : 2 }}><Tooltip permanent direction="center" className={`trip-stop-number${selected ? ' trip-stop-number--selected' : ''}`}>{index + 1}</Tooltip></CircleMarker>})}
+      </Fragment>
+    })}
+    {[...endpoints.values()].map((endpoint) => {
+      const startColor = endpoint.colors[0] ?? '#0FA68A'
+      const endColor = endpoint.colors.at(-1) ?? startColor
+      const selected = endpoint.key === selectedEndpointKey
+      return <CircleMarker key={`endpoint:${endpoint.key}`} center={[endpoint.latitude, endpoint.longitude]} radius={selected ? 16 : 12} pathOptions={{ color: 'white', fillOpacity: 0, weight: selected ? 4 : 3 }}><Tooltip permanent direction="center" className={`trip-day-endpoint-icon${selected ? ' is-selected' : ''}`}><span data-endpoint-roles={endpoint.roles.join('-')} style={{ '--trip-endpoint-start-color': startColor, '--trip-endpoint-end-color': endColor } as CSSProperties}>{endpoint.roles.includes('end') && <Flag aria-label="Arrivée de la journée" size={11} />}{endpoint.roles.includes('start') && <Play aria-label="Départ de la journée" size={11} />}</span></Tooltip></CircleMarker>
+    })}
+  </>
 }

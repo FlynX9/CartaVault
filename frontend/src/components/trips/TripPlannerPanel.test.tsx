@@ -404,8 +404,8 @@ describe('TripPlannerPanel', () => {
     const onTripViewOnlyChange = vi.fn()
     const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly={false} onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const viewButton = await screen.findByRole('button', { name: 'Activer l’aperçu du voyage' })
-    expect(viewButton).toHaveAttribute('title', 'Aperçu du voyage')
+    const viewButton = await screen.findByRole('button', { name: 'Activer la chronologie du voyage' })
+    expect(viewButton).toHaveAttribute('title', 'Chronologie du voyage')
     const collapseButton = screen.getByRole('button', { name: 'Réduire le panneau Sortie' })
     expect(viewButton.compareDocumentPosition(collapseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(viewButton)
@@ -413,13 +413,166 @@ describe('TripPlannerPanel', () => {
 
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(container.querySelector('.trip-planner-panel')).toHaveClass('trip-planner-panel--trip-view')
-    expect(screen.getByRole('button', { name: 'Quitter l’aperçu du voyage' })).toHaveAttribute('aria-pressed', 'true')
-    expect(await screen.findByText('Afficher plus d’infos')).toBeVisible()
-    expect(screen.getByText('Afficher plus d’infos').closest('details')).toHaveAttribute('open')
-    expect(screen.getByText('Trajet total')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Chronologie' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Réduire le panneau Sortie' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Quitter la chronologie du voyage' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByText('Afficher plus d’infos')).not.toBeInTheDocument()
+    expect(screen.getByText('Distance totale')).toBeVisible()
+    expect(screen.getByText('Temps de trajet')).toBeVisible()
+    expect(screen.getByText('Temps total')).toBeVisible()
+    expect(screen.getByText('Temps de visite')).toBeVisible()
     expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
     expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
+  })
+
+  it('navigates the interactive preview timeline and focuses its stops on the map', async () => {
+    const firstDay = { ...trip.days[0], stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: 'place-1', stop_type: 'place' as const, name: 'Musée', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'departure:departure-1', to: 'stop:stop-1', distance_meters: 3_500, duration_seconds: 420, routable: true }, { from: 'stop:stop-1', to: 'night:night-1', distance_meters: 4_200, duration_seconds: 480, routable: true }] }
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563EB', stops: [{ id: 'stop-2', trip_day_id: 'day-2', place_id: null, stop_type: 'free_location' as const, name: 'Belvédère', latitude: 48.2, longitude: 2.2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'night:night-1', to: 'stop:stop-2', distance_meters: 6_100, duration_seconds: 720, routable: true }, { from: 'stop:stop-2', to: 'arrival:departure-1', distance_meters: 7_300, duration_seconds: 660, routable: true }] }
+    const previewTrip: Trip = {
+      ...trip,
+      days: [firstDay, secondDay],
+      departure: { id: 'departure-1', trip_id: trip.id, place_id: 'station-1', name: 'Gare', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
+      arrival: null,
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-1', source_type: 'place', name: 'Hôtel Central', latitude: 48.15, longitude: 2.15, address: null, notes: null, check_in_time: '20:30:00', check_out_time: null }],
+    }
+    vi.mocked(listTrips).mockResolvedValue([previewTrip])
+    vi.mocked(getTrip).mockResolvedValue(previewTrip)
+    vi.mocked(getTripSummary).mockResolvedValue({ ...emptySummary, days: 2, nights: 1, stops: 2 })
+    const onActiveDayChange = vi.fn()
+    const onActiveNightTargetChange = vi.fn()
+    const onStopFocus = vi.fn()
+    const onStopPlaceSelect = vi.fn()
+    const onPreviewStopSelect = vi.fn()
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={previewTrip} activeDayId="day-1" tripViewOnly onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onActiveNightTargetChange={onActiveNightTargetChange} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onPreviewStopSelect={onPreviewStopSelect} onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('heading', { name: 'Frise interactive du voyage' })).toHaveClass('visually-hidden')
+    expect(screen.getByRole('button', { name: 'Départ : Gare' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveClass('is-active')
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveStyle({ '--trip-preview-color': firstDay.color, '--trip-preview-next-color': secondDay.color })
+    expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
+    expect(document.querySelectorAll('.trip-preview-day-label')).toHaveLength(2)
+    expect(document.querySelector('.trip-preview-day-label')).toHaveTextContent('Jour 1')
+    expect(document.querySelector('.trip-preview-anchor--day')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nuit 1 : Hôtel Central' })).toHaveStyle({ '--trip-preview-night-previous-color': firstDay.color, '--trip-preview-night-next-color': secondDay.color })
+    expect(screen.queryByText('Hôtel Central')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Arrivée : Gare' })).toBeVisible()
+
+    const museum = screen.getByRole('button', { name: 'Étape 1 : Musée' })
+    fireEvent.click(museum)
+    expect(museum).toHaveAttribute('aria-current', 'step')
+    expect(museum.querySelector('.trip-preview-stop-label')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Musée vers Hôtel Central : 4,2 km, 8 min')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveClass('is-active')
+    expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
+    expect(onActiveDayChange).toHaveBeenCalledWith('day-1')
+    expect(onStopFocus).not.toHaveBeenCalled()
+    expect(onPreviewStopSelect).toHaveBeenCalledWith('stop-1')
+    expect(onStopPlaceSelect).not.toHaveBeenCalled()
+
+    onActiveDayChange.mockClear()
+    const previousPoint = screen.getByRole('button', { name: 'Sélectionner le point précédent' })
+    const nextPoint = screen.getByRole('button', { name: 'Sélectionner le point suivant' })
+    const departure = screen.getByRole('button', { name: 'Départ : Gare' })
+    const night = screen.getByRole('button', { name: 'Nuit 1 : Hôtel Central' })
+    const arrival = screen.getByRole('button', { name: 'Arrivée : Gare' })
+
+    fireEvent.click(previousPoint)
+    expect(departure).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByLabelText('Gare vers Musée : 3,5 km, 7 min')).toBeVisible()
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.click(nextPoint)
+    expect(museum).toHaveAttribute('aria-current', 'step')
+
+    fireEvent.click(nextPoint)
+    expect(night).toHaveAttribute('aria-current', 'step')
+    expect(within(night).getByText('Hôtel Central')).toBeVisible()
+    expect(screen.getByLabelText('Hôtel Central vers Belvédère : 6,1 km, 12 min')).toBeVisible()
+    expect(onStopPlaceSelect).toHaveBeenLastCalledWith('hotel-1')
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
+    expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.click(nextPoint)
+    const viewpoint = screen.getByRole('button', { name: 'Étape 1 : Belvédère' })
+    expect(viewpoint).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByLabelText('Belvédère vers Gare : 7,3 km, 11 min')).toBeVisible()
+    expect(viewpoint.querySelector('.trip-preview-stop-label')).not.toBeInTheDocument()
+    expect(within(night).queryByText('Hôtel Central')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
+    expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).toHaveClass('is-active')
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith('stop-2')
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.click(nextPoint)
+    expect(arrival).toHaveAttribute('aria-current', 'step')
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.click(previousPoint)
+    expect(viewpoint).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).toHaveClass('is-active')
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith('stop-2')
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(night).toHaveAttribute('aria-current', 'step')
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(museum).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveClass('is-active')
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith('stop-1')
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(night).toHaveAttribute('aria-current', 'step')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(viewpoint).toHaveAttribute('aria-current', 'step')
+    expect(onActiveDayChange).not.toHaveBeenCalled()
+
+    fireEvent.click(night)
+    expect(onActiveNightTargetChange).toHaveBeenCalledWith({ nightId: 'night-1', previousDayId: 'day-1', nextDayId: 'day-2' })
+    expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
+    expect(onStopFocus).not.toHaveBeenCalled()
+    expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
+    expect(onStopPlaceSelect).toHaveBeenLastCalledWith('hotel-1')
+  })
+
+  it('shows route metrics between stops only for the day opened by a stop selection', async () => {
+    const stops = [
+      { id: 'stop-a', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Alpha', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const },
+      { id: 'stop-b', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Bêta', latitude: 48.2, longitude: 2.2, address: null, sort_order: 1, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const },
+      { id: 'stop-c', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Gamma', latitude: 48.3, longitude: 2.3, address: null, sort_order: 2, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const },
+    ]
+    const previewTrip: Trip = {
+      ...trip,
+      departure: { id: 'departure-1', trip_id: trip.id, place_id: null, name: 'Départ', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
+      days: [{ ...trip.days[0], stops, route_segments: [
+        { from: 'departure:departure-1', to: 'stop:stop-a', distance_meters: 1_000, duration_seconds: 300, routable: true },
+        { from: 'stop:stop-a', to: 'stop:stop-b', distance_meters: 12_500, duration_seconds: 900, routable: true },
+        { from: 'stop:stop-b', to: 'stop:stop-c', distance_meters: 8_000, duration_seconds: 600, routable: true },
+      ] }],
+    }
+    vi.mocked(listTrips).mockResolvedValue([previewTrip])
+    vi.mocked(getTrip).mockResolvedValue(previewTrip)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={previewTrip} activeDayId="day-1" tripViewOnly onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const firstStop = await screen.findByRole('button', { name: 'Étape 1 : Alpha' })
+    expect(screen.queryByLabelText(/Alpha vers Bêta/)).not.toBeInTheDocument()
+    fireEvent.click(firstStop)
+
+    expect(screen.getByLabelText('Alpha vers Bêta : 12,5 km, 15 min')).toBeVisible()
+    expect(document.querySelectorAll('.trip-preview-route-leg')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Étape 2 : Bêta' }))
+    expect(screen.queryByLabelText(/Alpha vers Bêta/)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Bêta vers Gamma : 8,0 km, 10 min')).toBeVisible()
+    expect(document.querySelectorAll('.trip-preview-route-leg')).toHaveLength(1)
   })
 
   it('reduces independently to a compact trip identity row and restores on demand', async () => {

@@ -32,6 +32,7 @@ import {
 } from "./components/map/mapOpeningFocus";
 import { MapSidebar } from "./components/sidebar/MapSidebar";
 import { PlaceMapPopup } from "./components/map-popup/PlaceMapPopup";
+import { TripStopMapPopup } from "./components/map-popup/TripStopMapPopup";
 import {
   deriveMapSidebarState,
   getSidebarPlaceId,
@@ -210,6 +211,7 @@ function WorkspaceApp() {
   const requestSequence = useRef(0);
   const focusSequence = useRef(0);
   const focusedRoutePlaceId = useRef<string | null>(null);
+  const suppressedRouteFocusPlaceId = useRef<string | null>(null);
   const mapZoom = useRef(mapView.zoom);
   mapZoom.current = mapView.zoom;
   const previousMapConfig = useRef<string | null | undefined>(undefined);
@@ -231,6 +233,8 @@ function WorkspaceApp() {
   const [activeTripNightTarget, setActiveTripNightTarget] =
     useState<TripNightTarget | null>(null);
   const [tripViewOnly, setTripViewOnly] = useState(false);
+  const [tripPreviewStopId, setTripPreviewStopId] = useState<string | null>(null);
+  const [tripPreviewSelectionKey, setTripPreviewSelectionKey] = useState<string | null>(null);
   const [hiddenTripDayIds, setHiddenTripDayIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -262,6 +266,10 @@ function WorkspaceApp() {
     },
     [],
   );
+  useEffect(() => {
+    setTripPreviewStopId(null);
+    setTripPreviewSelectionKey(null);
+  }, [activeTrip?.id]);
 
   const loadMaps = useCallback(
     (silent = false) => {
@@ -358,6 +366,7 @@ function WorkspaceApp() {
     if (previousMapConfig.current === configKey) return;
     previousMapConfig.current = configKey;
     focusedRoutePlaceId.current = null;
+    suppressedRouteFocusPlaceId.current = null;
     setSelectedPlace(null);
     setPlaces([]);
     setBounds(null);
@@ -434,7 +443,10 @@ function WorkspaceApp() {
     const visiblePlace = places.find((place) => place.id === selectedRoutePlaceId);
     if (visiblePlace) {
       setSelectedPlace((current) => current?.id === visiblePlace.id ? current : visiblePlace);
-      if (focusedRoutePlaceId.current !== selectedRoutePlaceId) {
+      if (suppressedRouteFocusPlaceId.current === selectedRoutePlaceId) {
+        suppressedRouteFocusPlaceId.current = null;
+        focusedRoutePlaceId.current = selectedRoutePlaceId;
+      } else if (focusedRoutePlaceId.current !== selectedRoutePlaceId) {
         focusedRoutePlaceId.current = selectedRoutePlaceId;
         setFocusRequest({
           id: ++focusSequence.current,
@@ -470,7 +482,10 @@ function WorkspaceApp() {
             : [...current, marker],
         );
         setSelectedPlace(marker);
-        if (focusedRoutePlaceId.current !== selectedRoutePlaceId) {
+        if (suppressedRouteFocusPlaceId.current === selectedRoutePlaceId) {
+          suppressedRouteFocusPlaceId.current = null;
+          focusedRoutePlaceId.current = selectedRoutePlaceId;
+        } else if (focusedRoutePlaceId.current !== selectedRoutePlaceId) {
           focusedRoutePlaceId.current = selectedRoutePlaceId;
           setFocusRequest({
             id: ++focusSequence.current,
@@ -521,11 +536,12 @@ function WorkspaceApp() {
     setRemovedPlaceId(id);
     setRefreshVersion((value) => value + 1);
   };
-  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false) => {
+  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true) => {
     setSelectedPlace(place);
-    setWorkspacePanel("places");
+    setWorkspacePanel(tripViewOnly ? null : "places");
+    suppressedRouteFocusPlaceId.current = focusPlace ? null : place.id;
     navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
-    if (place.latitude !== null && place.longitude !== null) {
+    if (focusPlace && place.latitude !== null && place.longitude !== null) {
       focusedRoutePlaceId.current = place.id;
       setFocusRequest({
         id: ++focusSequence.current,
@@ -785,6 +801,7 @@ function WorkspaceApp() {
     selectedPlaceId !== null && !activeTripPlaceIds.has(selectedPlaceId)
       ? activeTripAddTargetLabel
       : null;
+  const selectedPreviewStop = activeTrip?.days.flatMap((day) => day.stops).find((stop) => stop.id === tripPreviewStopId) ?? null;
   const popupContent =
     selectedPlaceId !== null && !editorOpen ? (
       <PlaceMapPopup
@@ -820,6 +837,8 @@ function WorkspaceApp() {
         }}
         onClose={closePopup}
       />
+    ) : tripViewOnly && selectedPreviewStop && selectedPreviewStop.place_id === null ? (
+      <TripStopMapPopup stop={selectedPreviewStop} onClose={() => setTripPreviewStopId(null)} />
     ) : null;
   const workspaceContent = (
     <Suspense
@@ -957,10 +976,10 @@ function WorkspaceApp() {
       view: { center: [latitude, longitude], zoom: Math.max(mapView.zoom, 15) },
     });
   };
-  const handleTripPlaceSelect = async (placeId: string) => {
+  const handleTripPlaceSelect = async (placeId: string, focusPlace = true) => {
     const visiblePlace = places.find((item) => item.id === placeId);
     if (visiblePlace) {
-      handleSelect(visiblePlace);
+      handleSelect(visiblePlace, false, focusPlace);
       return;
     }
     try {
@@ -988,7 +1007,7 @@ function WorkspaceApp() {
           ? current
           : [...current, marker],
       );
-      handleSelect(marker);
+      handleSelect(marker, false, focusPlace);
     } catch (caught) {
       showTripNotice(
         caught instanceof Error
@@ -1020,6 +1039,8 @@ function WorkspaceApp() {
           onCollapsedChange={setTripPlannerCollapsed}
           onTripViewOnlyChange={(enabled) => {
             if (enabled) closePopup();
+            setTripPreviewStopId(null);
+            if (!enabled) setTripPreviewSelectionKey(null);
             setTripViewOnly(enabled);
             setTripPlannerCollapsed(false);
             setWorkspacePanel(enabled ? null : "places");
@@ -1046,8 +1067,15 @@ function WorkspaceApp() {
           onActiveNightTargetChange={setActiveTripNightTarget}
           onStopFocus={handleTripStopFocus}
           onStopPlaceSelect={(placeId) => {
-            void handleTripPlaceSelect(placeId);
+            void handleTripPlaceSelect(placeId, !tripViewOnly);
           }}
+          onPreviewStopSelect={(stopId) => {
+            setTripPreviewStopId(stopId);
+            const stop = activeTrip?.days.flatMap((day) => day.stops).find((item) => item.id === stopId) ?? null;
+            if (stop?.place_id) void handleTripPlaceSelect(stop.place_id, false);
+            else closePopup();
+          }}
+          onPreviewSelectionChange={setTripPreviewSelectionKey}
           onUnsavedChangesGuardChange={(guard) => {
             unsavedTripSettingsGuard.current = guard;
           }}
@@ -1058,6 +1086,7 @@ function WorkspaceApp() {
             setActiveTripDayId(null);
             setActiveTripNightTarget(null);
             setTripViewOnly(false);
+            setTripPreviewSelectionKey(null);
             setHiddenTripDayIds(new Set());
           }}
         />
@@ -1336,8 +1365,11 @@ function WorkspaceApp() {
                   sidebar={rightSidebar}
                   trip={activeTrip}
                   tripViewOnly={tripViewOnly}
+                  selectedTripStopId={tripPreviewStopId}
+                  selectedTripTimelineKey={tripPreviewSelectionKey}
                   hiddenTripDayIds={hiddenTripDayIds}
                   activeTripDayId={activeTripDayId}
+                  activeTripNightTarget={activeTripNightTarget}
                   placeSelectionMode={placeSelectionMode}
                   selectedPlaceIds={selectedPlaceIds}
                   onPlaceSelectionToggle={(placeId) =>

@@ -56,6 +56,30 @@ describe('MapFocusController', () => {
     expect(setView).not.toHaveBeenCalled()
   })
 
+  it('treats the horizontal trip preview as bottom padding instead of a right sidebar', () => {
+    const workspace = document.createElement('section')
+    workspace.className = 'map-workspace sidebar-open trip-planning-open'
+    const preview = document.createElement('aside')
+    preview.className = 'map-sidebar trip-planner-panel trip-planner-panel--trip-view'
+    const container = map.getContainer()
+    workspace.append(container, preview)
+    document.body.append(workspace)
+
+    container.getBoundingClientRect = () => ({ top: 0, right: 1200, bottom: 800, left: 0, width: 1200, height: 800, x: 0, y: 0, toJSON: () => undefined })
+    preview.getBoundingClientRect = () => ({ top: 600, right: 1184, bottom: 784, left: 16, width: 1168, height: 184, x: 16, y: 600, toJSON: () => undefined })
+
+    render(<MapFocusController request={{
+      id: 20,
+      bounds: { minLatitude: 41.1, maxLatitude: 42.2, minLongitude: 43.3, maxLongitude: 44.4 },
+      maxZoom: 15,
+    }} />)
+
+    expect(fitBounds).toHaveBeenCalledWith(
+      [[41.1, 43.3], [42.2, 44.4]],
+      { paddingTopLeft: [32, 32], paddingBottomRight: [32, 216], maxZoom: 15 },
+    )
+  })
+
   it('centers a requested point inside the map area left visible by workspace panels', () => {
     const workspace = document.createElement('section')
     workspace.className = 'map-workspace'

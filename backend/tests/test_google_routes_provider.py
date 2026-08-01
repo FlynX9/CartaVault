@@ -64,6 +64,30 @@ def test_google_compute_routes_is_backend_only_and_normalized(monkeypatch) -> No
     assert timeout == 15
 
 
+def test_google_treats_omitted_zero_leg_distance_as_zero_and_rebuilds_route_total(monkeypatch) -> None:
+    payload = route_payload()
+    route = payload["routes"][0]
+    route.pop("distanceMeters")
+    route["legs"][0].pop("distanceMeters")
+    monkeypatch.setattr("app.trips.routing.google.urlopen", lambda *_args, **_kwargs: Response(payload))
+
+    result = GoogleRoutesProvider("test-only", settings()).calculate_route([(-120.2, 38.5), (-120.95, 40.7), (-126.453, 43.252)])
+
+    assert result.distance_meters == 7_345
+    assert [leg["distance_meters"] for leg in result.segments] == [0, 7_345]
+
+
+def test_google_still_rejects_non_numeric_distances(monkeypatch) -> None:
+    payload = route_payload()
+    payload["routes"][0]["legs"][0]["distanceMeters"] = "unknown"
+    monkeypatch.setattr("app.trips.routing.google.urlopen", lambda *_args, **_kwargs: Response(payload))
+
+    with pytest.raises(RoutingError) as error:
+        GoogleRoutesProvider("test-only", settings()).calculate_route([(-120.2, 38.5), (-120.95, 40.7), (-126.453, 43.252)])
+
+    assert error.value.code == "GOOGLE_ROUTES_INVALID_RESPONSE"
+
+
 def test_google_optimization_validates_returned_permutation(monkeypatch) -> None:
     monkeypatch.setattr("app.trips.routing.google.urlopen", lambda *_args, **_kwargs: Response(route_payload([0])))
     assert GoogleRoutesProvider("test-only", settings()).optimize_waypoint_order([(2, 48), (2.5, 48.5), (3, 49)]) == [0]

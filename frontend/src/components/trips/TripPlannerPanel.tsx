@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
-import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, ScanEye, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Trash2 } from 'lucide-react'
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GitCommitHorizontal, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Timer, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
 import type { PoiMap } from '../../types/map'
@@ -15,12 +15,12 @@ import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog'
 
 export type UnsavedTripSettingsGuard = () => Promise<boolean>
 
-interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onActiveNightTargetChange?: (target: TripNightTarget | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onUnsavedChangesGuardChange?: (guard: UnsavedTripSettingsGuard | null) => void; onClose: () => void }
+interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onActiveNightTargetChange?: (target: TripNightTarget | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onPreviewStopSelect?: (stopId: string | null) => void; onPreviewSelectionChange?: (key: string | null) => void; onUnsavedChangesGuardChange?: (guard: UnsavedTripSettingsGuard | null) => void; onClose: () => void }
 
 const DayCollapseContext = createContext<{ collapsedDayIds: ReadonlySet<string>; onToggle: (dayId: string) => void } | null>(null)
 type TripActionKey = 'route-all' | 'optimize-all' | `route:${string}` | `optimize:${string}`
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveNightTargetChange = () => undefined, onStopFocus, onStopPlaceSelect = () => undefined, onUnsavedChangesGuardChange = () => undefined }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveNightTargetChange = () => undefined, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const canEdit = poiMap.can_edit === true
   const isArchivedTrip = trip?.status === 'completed' || trip?.status === 'archived'
@@ -52,6 +52,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [timelineCollapseRequest, setTimelineCollapseRequest] = useState({ collapsed: false, version: 0 })
   const [openDaySettingsIds, setOpenDaySettingsIds] = useState<Set<string>>(() => new Set())
   const [activeNightTarget, setActiveNightTarget] = useState<TripNightTarget | null>(null)
+  const [previewSelectionKey, setPreviewSelectionKey] = useState<string | null>(null)
+  useEffect(() => onPreviewSelectionChange(previewSelectionKey), [onPreviewSelectionChange, previewSelectionKey])
   const activeDayIdRef = useRef(activeDayId)
   const onTripChangeRef = useRef(onTripChange)
   const onActiveDayChangeRef = useRef(onActiveDayChange)
@@ -86,6 +88,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     setCollapsedDayIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))))
     setOpenDaySettingsIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))))
   }, [trip])
+  useEffect(() => setPreviewSelectionKey(null), [trip?.id])
   const loadTripDetails = useCallback(async (target: string, signal?: AbortSignal) => {
     const loaded = await getTrip(target, signal)
     const [loadedSummary, perDay] = await Promise.all([getTripSummary(target, signal), Promise.all(loaded.days.map((day) => getTripDaySummary(day.id, signal)))])
@@ -351,9 +354,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
 
   return <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? ' trip-planner-panel--trip-view' : ''}${isArchivedTrip ? ' trip-planner-panel--read-only' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label="Préparation de sortie">
     {collapsed ? <header className="trip-panel-header trip-panel-header--collapsed cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><h2 className="cv-workspace-panel__title">Sortie</h2><span className="trip-panel-collapsed-name" title={tripName}>{tripName}</span></div><button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Développer le panneau Sortie" aria-expanded="false" onClick={() => onCollapsedChange(false)}><SquareChevronDown size={18} /></button></header> : <>
-    <header className="trip-panel-header places-redesign-header"><div><div className="trip-panel-title-row places-redesign-title-row"><h2>Sortie</h2>{trip && <span className={`places-redesign-count trip-panel-trip-status trip-panel-trip-status--${trip.status === 'completed' || trip.status === 'archived' ? 'completed' : 'active'}`}>{trip.status === 'completed' || trip.status === 'archived' ? 'Terminée' : 'En cours'}</span>}</div>{trip && <p className="trip-panel-header-meta places-redesign-map-meta"><span className="trip-panel-header-name" title={trip.name}>{trip.name}</span><span aria-hidden="true">·</span><span>{trip.days.length} {trip.days.length > 1 ? 'jours' : 'jour'}</span></p>}</div><div className="trip-panel-header-actions places-redesign-header-actions"><button className={`panel-icon-button trip-view-button${tripViewOnly ? ' active' : ''}`} type="button" aria-label={tripViewOnly ? 'Quitter l’aperçu du voyage' : 'Activer l’aperçu du voyage'} aria-pressed={tripViewOnly} title={tripViewOnly ? 'Afficher la préparation complète' : 'Aperçu du voyage'} onClick={() => onTripViewOnlyChange(!tripViewOnly)}><ScanEye size={16} /></button><button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Réduire le panneau Sortie" aria-expanded="true" onClick={() => onCollapsedChange(true)}><SquareChevronUp size={17} /></button></div></header>
+    <header className="trip-panel-header places-redesign-header"><div><div className="trip-panel-title-row places-redesign-title-row"><h2>{tripViewOnly ? 'Chronologie' : 'Sortie'}</h2>{trip && <span className={`places-redesign-count trip-panel-trip-status trip-panel-trip-status--${trip.status === 'completed' || trip.status === 'archived' ? 'completed' : 'active'}`}>{trip.status === 'completed' || trip.status === 'archived' ? 'Terminée' : 'En cours'}</span>}</div>{trip && <p className="trip-panel-header-meta places-redesign-map-meta"><span className="trip-panel-header-name" title={trip.name}>{trip.name}</span><span aria-hidden="true">·</span><span>{trip.days.length} {trip.days.length > 1 ? 'jours' : 'jour'}</span></p>}</div><div className="trip-panel-header-actions places-redesign-header-actions"><button className={`panel-icon-button trip-view-button${tripViewOnly ? ' active' : ''}`} type="button" aria-label={tripViewOnly ? 'Quitter la chronologie du voyage' : 'Activer la chronologie du voyage'} aria-pressed={tripViewOnly} title={tripViewOnly ? 'Afficher la préparation complète' : 'Chronologie du voyage'} onClick={() => onTripViewOnlyChange(!tripViewOnly)}><GitCommitHorizontal size={16} /></button>{!tripViewOnly && <button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Réduire le panneau Sortie" aria-expanded="true" onClick={() => onCollapsedChange(true)}><SquareChevronUp size={17} /></button>}</div></header>
     <div className="trip-panel-scroll" role="region" aria-label="Contenu de la sortie" tabIndex={0}>
-    {tripViewOnly ? <div className="trip-panel-compact-summary">{summary && trip ? <TripSummaryMetrics summary={summary} defaultOpen /> : <div className="trip-panel-empty" role="status"><Route size={24} /><strong>Chargement du résumé…</strong></div>}</div> : <>
+    {tripViewOnly ? <div className="trip-panel-compact-summary">{summary && trip ? <><TripPreviewTimeline trip={trip} activeDayId={activeDayId} selectedKey={previewSelectionKey} daySummaries={daySummaries} onSelectDay={(day) => { setPreviewSelectionKey(`day:${day.id}`); onPreviewStopSelect(null); activateDay(day.id) }} onSelectNight={(night) => { setPreviewSelectionKey(`night:${night.id}`); onPreviewStopSelect(null); if (night.place_id) onStopPlaceSelect(night.place_id); const target = { nightId: night.id, previousDayId: night.previous_day_id, nextDayId: night.next_day_id }; setActiveNightTarget(target); onActiveNightTargetChange(target); onActiveDayChange(night.next_day_id) }} onSelectLocation={(key, dayId, stopId) => { setPreviewSelectionKey(key); onPreviewStopSelect(stopId); activateDay(dayId) }} onNavigateItem={(key, stopId) => { setPreviewSelectionKey(key); onPreviewStopSelect(stopId); if (key.startsWith('night:')) { const night = trip.nights.find((item) => `night:${item.id}` === key); if (night) { const target = { nightId: night.id, previousDayId: night.previous_day_id, nextDayId: night.next_day_id }; setActiveNightTarget(target); onActiveNightTargetChange(target); if (night.place_id) onStopPlaceSelect(night.place_id) } } else { setActiveNightTarget(null); onActiveNightTargetChange(null) } }} /><TripSummaryMetrics summary={summary} preview /></> : <div className="trip-panel-empty" role="status"><Route size={24} /><strong>Chargement du résumé…</strong></div>}</div> : <>
     {error && <p className="trip-panel-error" role="alert">{error === 'Internal Server Error' ? 'Une erreur serveur empêche cette opération.' : error}</p>}
     <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => changeSelectedTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres de la sortie' : 'Afficher les paramètres de la sortie'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres de la sortie" onClick={toggleSettings}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} onPdf={(trigger) => { setPdfExportTrigger(trigger); setPdfExportOpen(true) }} />}</div>
     {loadingTripId ? <div className="trip-panel-empty" role="status"><Route size={28} /><strong>Chargement du voyage…</strong></div> : <>
@@ -396,17 +399,181 @@ function sameLoadSettings(left: TripLoadSettings, right: TripLoadSettings) {
     && left.high_load_color === right.high_load_color
 }
 
-function TripSummaryMetrics({ summary, defaultOpen = false }: { summary: TripSummary; defaultOpen?: boolean }) {
+function TripSummaryMetrics({ summary, preview = false }: { summary: TripSummary; preview?: boolean }) {
   return <section className="trip-summary-shell">
-    <div className="trip-summary-primary" aria-label="Chiffres clés du voyage">
+    <div className={`trip-summary-primary${preview ? ' trip-summary-primary--preview' : ''}`} aria-label="Chiffres clés du voyage">
       <div><Road aria-hidden="true" size={24} /><span><strong>{formatRouteDistance(summary.total_route_distance_meters)}</strong><small>Distance totale</small></span></div>
       <div><Navigation aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_route_duration_minutes)}</strong><small>Temps de trajet</small></span></div>
-      <div><Clock3 aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_planned_duration_minutes)}</strong><small>Temps total avec visites</small></span></div>
+      <div><Clock3 aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_planned_duration_minutes)}</strong><small>Temps total</small></span></div>
+      {preview && <div><Timer aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_visit_duration_minutes)}</strong><small>Temps de visite</small></span></div>}
     </div>
-    <details className="trip-metrics trip-metrics-global" open={defaultOpen}>
+    {!preview && <details className="trip-metrics trip-metrics-global">
       <summary aria-label="Afficher plus d’informations sur le voyage"><small>Afficher plus d’infos</small><ChevronDown className="trip-panel-chevron" size={15} /></summary>
       <div className="trip-metrics__body" aria-label="Informations détaillées du voyage"><div className="trip-metrics-group"><strong>Trajet total</strong><dl><Metric label="Distance totale de route" value={formatRouteDistance(summary.total_route_distance_meters)} /><Metric label="Temps total de conduite" value={formatMinutes(summary.total_route_duration_minutes)} /></dl></div><div className="trip-metrics-group"><strong>Durée planifiée</strong><dl><Metric label="Visites" value={formatMinutes(summary.total_visit_duration_minutes)} /><Metric label="Temps tampon" value={formatMinutes(summary.total_buffer_duration_minutes)} /><Metric label="Marges de sécurité" value={formatMinutes(summary.total_safety_margin_minutes)} /><Metric label="Durée totale estimée" value={formatMinutes(summary.total_planned_duration_minutes)} /></dl></div><div className="trip-metrics-group"><strong>Charge des journées</strong><dl><Metric label="Légères" value={String(summary.low_load_days)} /><Metric label="Moyennes" value={String(summary.medium_load_days)} /><Metric label="Élevées" value={String(summary.high_load_days)} /></dl></div>{!summary.is_time_summary_complete && <p className="trip-metrics-warning" role="status">Résumé partiel : {summary.days_with_incomplete_time_summary} {summary.days_with_incomplete_time_summary > 1 ? 'journées sans planification complète' : 'journée sans planification complète'}.</p>}</div>
-    </details>
+    </details>}
+  </section>
+}
+
+interface TripPreviewTimelineProps {
+  trip: Trip
+  activeDayId: string | null
+  selectedKey: string | null
+  daySummaries: Record<string, TripDayTimeSummary>
+  onSelectDay: (day: TripDay) => void
+  onSelectNight: (night: Trip['nights'][number]) => void
+  onSelectLocation: (key: string, dayId: string, stopId: string | null) => void
+  onNavigateItem: (key: string, stopId: string | null) => void
+}
+
+function routeSegmentBetweenStops(trip: Trip, day: TripDay, dayIndex: number, stopIndex: number) {
+  const segments = day.route_segments ?? []
+  const fromStop = day.stops[stopIndex]
+  const toStop = day.stops[stopIndex + 1]
+  if (!fromStop || !toStop) return null
+  const labeledSegment = segments.find((segment) => segment.from === `stop:${fromStop.id}` && segment.to === `stop:${toStop.id}`)
+  if (labeledSegment) return labeledSegment
+  const hasStartAnchor = dayIndex === 0
+    ? trip.departure !== null
+    : trip.nights.some((night) => night.next_day_id === day.id) || (trip.days[dayIndex - 1]?.stops.length ?? 0) > 0
+  return segments[stopIndex + Number(hasStartAnchor)] ?? null
+}
+
+function routeSegmentFromStopToNight(day: TripDay, stopIndex: number, nightId: string) {
+  const segments = day.route_segments ?? []
+  const fromStop = day.stops[stopIndex]
+  if (!fromStop || stopIndex !== day.stops.length - 1) return null
+  const labeledSegment = segments.find((segment) => segment.from === `stop:${fromStop.id}` && segment.to === `night:${nightId}`)
+  if (labeledSegment) return labeledSegment
+  return segments.some((segment) => segment.from !== undefined || segment.to !== undefined) ? null : segments.at(-1) ?? null
+}
+
+function routeSegmentFromNightToStop(day: TripDay, nightId: string, stopId: string) {
+  const segments = day.route_segments ?? []
+  const labeledSegment = segments.find((segment) => segment.from === `night:${nightId}` && segment.to === `stop:${stopId}`)
+  if (labeledSegment) return labeledSegment
+  return segments.some((segment) => segment.from !== undefined || segment.to !== undefined) ? null : segments[0] ?? null
+}
+
+function routeSegmentFromDepartureToStop(day: TripDay, departureId: string, stopId: string) {
+  const segments = day.route_segments ?? []
+  const labeledSegment = segments.find((segment) => segment.from === `departure:${departureId}` && segment.to === `stop:${stopId}`)
+  if (labeledSegment) return labeledSegment
+  return segments.some((segment) => segment.from !== undefined || segment.to !== undefined) ? null : segments[0] ?? null
+}
+
+function routeSegmentFromStopToArrival(day: TripDay, stopIndex: number, arrivalId: string) {
+  const segments = day.route_segments ?? []
+  const fromStop = day.stops[stopIndex]
+  if (!fromStop || stopIndex !== day.stops.length - 1) return null
+  const labeledSegment = segments.find((segment) => segment.from === `stop:${fromStop.id}` && segment.to === `arrival:${arrivalId}`)
+  if (labeledSegment) return labeledSegment
+  return segments.some((segment) => segment.from !== undefined || segment.to !== undefined) ? null : segments.at(-1) ?? null
+}
+
+function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onSelectDay, onSelectNight, onSelectLocation, onNavigateItem }: TripPreviewTimelineProps) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const firstDay = trip.days[0]
+  const lastDay = trip.days.at(-1)
+  const effectiveArrival = trip.arrival ?? trip.departure
+  const arrivalTime = lastDay ? formatClock(daySummaries[lastDay.id]?.estimated_arrival_time ?? null, daySummaries[lastDay.id]?.estimated_arrival_day_offset ?? null) : '—'
+  const navigationItems = useMemo(() => {
+    const items: Array<{ key: string; stopId: string | null }> = []
+    if (trip.departure) items.push({ key: 'departure', stopId: null })
+    trip.days.forEach((day, dayIndex) => {
+      day.stops.forEach((stop) => items.push({ key: `stop:${stop.id}`, stopId: stop.id }))
+      const night = trip.nights.find((item) => item.previous_day_id === day.id)
+      if (night) items.push({ key: `night:${night.id}`, stopId: null })
+      if (dayIndex === trip.days.length - 1 && effectiveArrival) items.push({ key: 'arrival', stopId: null })
+    })
+    return items
+  }, [effectiveArrival, trip.days, trip.departure, trip.nights])
+  const selectedNavigationIndex = navigationItems.findIndex((item) => item.key === selectedKey)
+  const navigateTimeline = useCallback((direction: -1 | 1) => {
+    if (navigationItems.length === 0) return
+    const nextIndex = selectedNavigationIndex < 0
+      ? (direction === 1 ? 0 : navigationItems.length - 1)
+      : Math.min(navigationItems.length - 1, Math.max(0, selectedNavigationIndex + direction))
+    if (nextIndex === selectedNavigationIndex) return
+    const item = navigationItems[nextIndex]
+    onNavigateItem(item.key, item.stopId)
+    requestAnimationFrame(() => trackRef.current?.querySelector<HTMLElement>(`[data-preview-navigation-index="${nextIndex}"]`)?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' }))
+  }, [navigationItems, onNavigateItem, selectedNavigationIndex])
+  useEffect(() => {
+    const navigateWithKeyboard = (event: KeyboardEvent) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || target.matches('input, textarea, select'))) return
+      event.preventDefault()
+      navigateTimeline(event.key === 'ArrowLeft' ? -1 : 1)
+    }
+    window.addEventListener('keydown', navigateWithKeyboard)
+    return () => window.removeEventListener('keydown', navigateWithKeyboard)
+  }, [navigateTimeline])
+
+  return <section className="trip-preview-timeline" aria-labelledby="trip-preview-timeline-title">
+    <h3 id="trip-preview-timeline-title" className="visually-hidden">Frise interactive du voyage</h3>
+    <button className="trip-preview-scroll trip-preview-scroll--previous" type="button" aria-label="Sélectionner le point précédent" disabled={navigationItems.length === 0 || selectedNavigationIndex === 0} onClick={() => navigateTimeline(-1)}><ChevronLeft size={15} /></button>
+    <div ref={trackRef} className="trip-preview-viewport"><ol className="trip-preview-track">
+      {firstDay && <li className="trip-preview-anchor-item">
+        <button className={`trip-preview-anchor trip-preview-anchor--terminal${selectedKey === 'departure' ? ' is-selected' : ''}`} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === 'departure')} aria-label={`Départ${trip.departure ? ` : ${trip.departure.name}` : ''}`} aria-current={selectedKey === 'departure' ? 'step' : undefined} disabled={!trip.departure} onClick={() => { if (trip.departure) onSelectLocation('departure', firstDay.id, null) }}>
+          <strong>Départ</strong><span className="trip-preview-anchor-dot"><Play size={14} /></span><small>{trip.departure?.name ?? 'Non défini'}</small><em>{formatClock(trip.departure?.departure_time ?? null)}</em>
+        </button>
+      </li>}
+      {trip.days.map((day, dayIndex) => {
+        const previousNight = trip.nights.find((item) => item.next_day_id === day.id)
+        const night = trip.nights.find((item) => item.previous_day_id === day.id)
+        const nextDay = trip.days[dayIndex + 1]
+        const firstStop = day.stops[0]
+        const departureSelected = dayIndex === 0 && selectedKey === 'departure' && trip.departure !== null
+        const previousNightSelected = previousNight ? selectedKey === `night:${previousNight.id}` : false
+        const departureRouteSegment = departureSelected && trip.departure && firstStop ? routeSegmentFromDepartureToStop(day, trip.departure.id, firstStop.id) : null
+        const previousNightRouteSegment = previousNight && firstStop ? routeSegmentFromNightToStop(day, previousNight.id, firstStop.id) : null
+        const dayColor = day.color ?? '#0FA68A'
+        const nextDayColor = nextDay?.color ?? dayColor
+        const daySelected = selectedKey === `day:${day.id}` || (selectedKey === null && activeDayId === day.id)
+        const containsSelectedStop = day.stops.some((stop) => selectedKey === `stop:${stop.id}`)
+        return <Fragment key={day.id}>
+          <li className={`trip-preview-day-group${daySelected || containsSelectedStop ? ' is-active' : ''}`} style={{ '--trip-preview-color': dayColor, '--trip-preview-next-color': nextDayColor } as CSSProperties}>
+            <button className="trip-preview-day-zone" type="button" aria-label={`Jour ${day.day_number}`} aria-pressed={daySelected} title={`Afficher le tracé du jour ${day.day_number}`} onClick={() => onSelectDay(day)} />
+            <span className="trip-preview-stop-segment" aria-label={`Étapes du jour ${day.day_number}`}>
+              {departureSelected && trip.departure && firstStop && <span className="trip-preview-route-leg" aria-label={`${trip.departure.name} vers ${firstStop.name} : ${formatRouteDistance(departureRouteSegment?.distance_meters ?? null)}, ${formatRouteDuration(departureRouteSegment?.duration_seconds ?? null)}`}><span><Road aria-hidden="true" size={10} />{formatRouteDistance(departureRouteSegment?.distance_meters ?? null)}<Car aria-hidden="true" size={10} />{formatRouteDuration(departureRouteSegment?.duration_seconds ?? null)}</span></span>}
+              {previousNightSelected && previousNight && firstStop && <span className="trip-preview-route-leg" aria-label={`${previousNight.name} vers ${firstStop.name} : ${formatRouteDistance(previousNightRouteSegment?.distance_meters ?? null)}, ${formatRouteDuration(previousNightRouteSegment?.duration_seconds ?? null)}`}><span><Road aria-hidden="true" size={10} />{formatRouteDistance(previousNightRouteSegment?.distance_meters ?? null)}<Car aria-hidden="true" size={10} />{formatRouteDuration(previousNightRouteSegment?.duration_seconds ?? null)}</span></span>}
+              {day.stops.map((stop, stopIndex) => {
+                const stopKey = `stop:${stop.id}`
+                const stopSelected = selectedKey === stopKey
+                const nextStop = day.stops[stopIndex + 1]
+                const nextNight = stopIndex === day.stops.length - 1 ? night : null
+                const nextArrival = stopIndex === day.stops.length - 1 && dayIndex === trip.days.length - 1 && !nextNight ? effectiveArrival : null
+                const routeTarget = nextStop ?? nextNight ?? nextArrival
+                const routeSegment = stopSelected
+                  ? nextStop
+                    ? routeSegmentBetweenStops(trip, day, dayIndex, stopIndex)
+                    : nextNight
+                      ? routeSegmentFromStopToNight(day, stopIndex, nextNight.id)
+                      : nextArrival
+                        ? routeSegmentFromStopToArrival(day, stopIndex, nextArrival.id)
+                      : null
+                  : null
+                return <Fragment key={stop.id}>
+                  <button className={`trip-preview-stop${stopSelected ? ' is-selected' : ''}`} style={{ '--trip-preview-color': dayColor } as CSSProperties} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === stopKey)} aria-label={`Étape ${stopIndex + 1} : ${stop.name}`} aria-current={stopSelected ? 'step' : undefined} onClick={() => onSelectLocation(stopKey, day.id, stop.id)}><span aria-hidden="true" /></button>
+                  {stopSelected && routeTarget && <span className="trip-preview-route-leg" aria-label={`${stop.name} vers ${routeTarget.name} : ${formatRouteDistance(routeSegment?.distance_meters ?? null)}, ${formatRouteDuration(routeSegment?.duration_seconds ?? null)}`}><span><Road aria-hidden="true" size={10} />{formatRouteDistance(routeSegment?.distance_meters ?? null)}<Car aria-hidden="true" size={10} />{formatRouteDuration(routeSegment?.duration_seconds ?? null)}</span></span>}
+                </Fragment>
+              })}
+            </span>
+            <span className="trip-preview-day-label" aria-hidden="true">Jour {day.day_number}</span>
+          </li>
+          {night && <li className="trip-preview-anchor-item"><button className={`trip-preview-anchor trip-preview-anchor--night${selectedKey === `night:${night.id}` ? ' is-selected' : ''}`} style={{ '--trip-preview-color': nextDayColor, '--trip-preview-night-previous-color': dayColor, '--trip-preview-night-next-color': nextDayColor } as CSSProperties} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === `night:${night.id}`)} aria-label={`Nuit ${dayIndex + 1} : ${night.name}`} aria-current={selectedKey === `night:${night.id}` ? 'step' : undefined} onClick={() => onSelectNight(night)}>
+            <strong>Nuit {dayIndex + 1}</strong><span className="trip-preview-anchor-dot"><Moon size={14} /></span><small>{selectedKey === `night:${night.id}` ? night.name : ''}</small><em>{formatClock(night.check_in_time)}</em>
+          </button></li>}
+        </Fragment>
+      })}
+      {lastDay && <li className="trip-preview-anchor-item">
+        <button className={`trip-preview-anchor trip-preview-anchor--terminal${selectedKey === 'arrival' ? ' is-selected' : ''}`} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === 'arrival')} aria-label={`Arrivée${effectiveArrival ? ` : ${effectiveArrival.name}` : ''}`} aria-current={selectedKey === 'arrival' ? 'step' : undefined} disabled={!effectiveArrival} onClick={() => { if (effectiveArrival) onSelectLocation('arrival', lastDay.id, null) }}>
+          <strong>Arrivée</strong><span className="trip-preview-anchor-dot"><Flag size={14} /></span><small>{effectiveArrival?.name ?? 'Non définie'}</small><em>{arrivalTime}</em>
+        </button>
+      </li>}
+    </ol></div>
+    <button className="trip-preview-scroll trip-preview-scroll--next" type="button" aria-label="Sélectionner le point suivant" disabled={navigationItems.length === 0 || selectedNavigationIndex === navigationItems.length - 1} onClick={() => navigateTimeline(1)}><ChevronRight size={15} /></button>
   </section>
 }
 

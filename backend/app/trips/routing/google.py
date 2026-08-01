@@ -138,7 +138,6 @@ class GoogleRoutesProvider(RoutingProvider):
         if not isinstance(routes, list) or not routes or not isinstance(routes[0], dict):
             raise RoutingError("Google Routes n’a trouvé aucun itinéraire.", "GOOGLE_ROUTES_NO_ROUTE")
         route = routes[0]
-        distance = self._distance(route.get("distanceMeters"))
         duration = parse_duration(route.get("duration"))
         polyline = route.get("polyline")
         encoded = polyline.get("encodedPolyline") if isinstance(polyline, dict) else None
@@ -150,9 +149,11 @@ class GoogleRoutesProvider(RoutingProvider):
         for leg in legs_payload:
             if not isinstance(leg, dict):
                 raise RoutingError("Google Routes returned invalid route legs", "GOOGLE_ROUTES_INVALID_RESPONSE")
-            legs.append({"distance_meters": self._distance(leg.get("distanceMeters")), "duration_seconds": parse_duration(leg.get("duration"))})
+            legs.append({"distance_meters": self._distance(leg.get("distanceMeters"), allow_missing_zero=True), "duration_seconds": parse_duration(leg.get("duration"))})
         if len(legs) != len(coordinates) - 1:
             raise RoutingError("Google Routes returned an inconsistent route", "GOOGLE_ROUTES_INVALID_RESPONSE")
+        route_distance = route.get("distanceMeters")
+        distance = sum(leg["distance_meters"] for leg in legs) if route_distance is None else self._distance(route_distance)
         raw_order = route.get("optimizedIntermediateWaypointIndex", []) if optimize else []
         if not isinstance(raw_order, list) or any(not isinstance(item, int) for item in raw_order):
             raise RoutingError("Google Routes returned an invalid waypoint order", "GOOGLE_ROUTES_INVALID_RESPONSE")
@@ -217,7 +218,9 @@ class GoogleRoutesProvider(RoutingProvider):
         return {"location": {"latLng": {"latitude": latitude, "longitude": longitude}}}
 
     @staticmethod
-    def _distance(value: object) -> float:
+    def _distance(value: object, *, allow_missing_zero: bool = False) -> float:
+        if value is None and allow_missing_zero:
+            return 0.0
         if not isinstance(value, int) or isinstance(value, bool) or value < 0:
             raise RoutingError("Google Routes returned an invalid distance", "GOOGLE_ROUTES_INVALID_RESPONSE")
         return float(value)
