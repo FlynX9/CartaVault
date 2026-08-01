@@ -2299,7 +2299,6 @@ button.cv-button-click-feedback {
 .trip-planner-panel--read-only .trip-panel-optimization,
 .trip-planner-panel--read-only .trip-panel-insert-day,
 .trip-planner-panel--read-only .trip-panel-journeys-actions,
-.trip-planner-panel--read-only .trip-panel-settings .trip-panel-inline-actions,
 .trip-planner-panel--read-only .trip-day-settings-trigger,
 .trip-planner-panel--read-only .trip-day-settings {
   display: none !important;
@@ -4027,9 +4026,6 @@ details[open] > summary > .trip-panel-chevron { transform: rotate(180deg); }
 .trip-time-settings > summary::after { content: none; }
 
 .trip-panel-field-meta { display: flex !important; align-items: center !important; justify-content: space-between; gap: .45rem; }
-.trip-panel-inline-actions { display: inline-flex; align-items: center; gap: .25rem; margin-right: 0 !important; margin-left: auto; }
-.trip-panel-inline-actions > button { display: grid; width: 1.7rem; height: 1.7rem; padding: 0; color: var(--cv-color-slate); background: white; border: 1px solid rgb(43 62 89 / 13%); border-radius: .35rem; place-items: center; }
-
 .trip-panel-day-content > ul > li > span[role='button'] { display: flex; align-items: center; justify-content: flex-start; justify-self: stretch; padding-left: .25rem; text-align: left; }
 .trip-panel-day-content > ul > li > span[role='button'] strong,
 .trip-panel-day-content > ul > li > span[role='button'] small { text-align: left; }
@@ -5324,7 +5320,6 @@ body {
 .trip-planner-panel--read-only .trip-panel-optimization,
 .trip-planner-panel--read-only .trip-panel-insert-day,
 .trip-planner-panel--read-only .trip-panel-journeys-actions,
-.trip-planner-panel--read-only .trip-panel-settings .trip-panel-inline-actions { display: none; }
 .trip-planner-panel--read-only .trip-panel-day-content > ul > li { cursor: default; }
 .trip-planner-panel .trip-panel-selector { gap: 0.55rem; padding: 0.7rem 1rem; background: #fff; }
 .trip-planner-panel .trip-panel-selector select { min-height: 40px; padding: 0.45rem 0.7rem; border-radius: 8px; font-size: 0.78rem; }
@@ -5366,6 +5361,14 @@ body {
 .trip-settings-dates input { width: 100%; min-width: 0; min-height: 1.85rem; box-sizing: border-box; padding: 0.25rem 0.4rem; color: var(--cv-color-navy); background: #fff; border: 1px solid rgb(43 62 89 / 16%); border-radius: 0.4rem; font: inherit; font-size: 0.65rem; font-weight: 400; }
 .trip-settings-dates input:focus { border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 14%); }
 .trip-settings-dates input:disabled { cursor: wait; opacity: 0.65; }
+.trip-settings-controls { padding: 0.6rem; border-top: 1px solid #e5ebef; }
+.trip-settings-controls h3 { margin: 0 0 0.45rem; color: var(--cv-color-navy); font-size: 0.65rem; }
+.trip-settings-controls > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+.trip-settings-controls button { display: inline-flex; min-width: 0; min-height: 2rem; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.35rem 0.45rem; color: var(--cv-color-slate); background: var(--cv-surface, #fff); border: 1px solid var(--cv-border-strong, #dce4e9); border-radius: 0.42rem; font: inherit; font-size: 0.62rem; font-weight: 650; cursor: pointer; transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.trip-settings-controls button:not(:disabled):is(:hover, :focus-visible) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff)); border-color: var(--cv-color-teal); outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 22%, transparent); box-shadow: 0 3px 8px rgb(13 27 42 / 8%); transform: translateY(-1px); }
+.trip-settings-controls button:not(:disabled):active { box-shadow: none; transform: translateY(0); }
+.trip-settings-controls button:disabled { cursor: not-allowed; opacity: 0.5; }
+.trip-settings-controls .trip-settings-control--danger:not(:disabled):is(:hover, :focus-visible) { color: #b42318; background: color-mix(in srgb, #b42318 8%, var(--cv-surface, #fff)); border-color: #b42318; outline-color: rgb(180 35 24 / 22%); }
 .trip-planner-panel .trip-metrics__body { gap: 0.6rem; padding: 0.2rem 0.8rem 0.8rem; border-top: 1px solid #edf1f3; }
 .trip-planner-panel .trip-metrics-group { gap: 0.3rem; }
 .trip-planner-panel .trip-metrics-group > strong { font-size: 0.62rem; }
@@ -6829,7 +6832,6 @@ html[data-theme='dark'] :is(
   .trip-panel-night button,
   .trip-panel-route-actions button,
   .trip-panel-free summary,
-  .trip-panel-inline-actions > button,
   .trip-day-color-picker__actions button,
   .trip-panel-primary-actions button,
   .trip-planner-panel .trip-panel-selector .trip-export-menu > summary,
@@ -6982,6 +6984,8 @@ html[data-theme='dark'] .trip-panel-day-content > ul > li:nth-child(even) {
 html[data-theme='dark'] .trip-settings-dates { border-color: var(--cv-border-subtle); }
 html[data-theme='dark'] .trip-settings-dates label { border-color: var(--cv-border-subtle); }
 html[data-theme='dark'] .trip-settings-dates input { color: var(--cv-color-navy); background: var(--cv-surface-muted); border-color: var(--cv-border-subtle); }
+html[data-theme='dark'] .trip-settings-controls { border-color: var(--cv-border-subtle); }
+html[data-theme='dark'] .trip-settings-controls button { background: var(--cv-surface); border-color: var(--cv-border-strong); }
 html[data-theme='dark'] .trip-planner-panel .trip-panel-trip-status--active {
   color: #67d6c0;
   background: rgb(15 166 138 / 20%);
