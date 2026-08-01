@@ -168,7 +168,10 @@ describe('TripPlannerPanel', () => {
     expect(settings!.querySelectorAll('.trip-load-preview-badge')).toHaveLength(3)
     expect(settings!.querySelectorAll('.trip-load-preview-badge .lucide-gauge')).toHaveLength(3)
     expect(within(settings!).queryByText('Options du voyage')).not.toBeInTheDocument()
-    expect(within(settings!).getAllByRole('button', { name: 'Enregistrer' })).toHaveLength(1)
+    const saveButton = within(settings!).getByRole('button', { name: 'Enregistrer' })
+    expect(saveButton).toHaveClass('trip-settings-control--save')
+    expect(saveButton).toHaveTextContent('Enregistrer')
+    expect(saveButton.parentElement?.lastElementChild).toBe(saveButton)
     expect(within(settings!).queryByLabelText('Télécharger')).not.toBeInTheDocument()
     expect(settings?.querySelector('.trip-panel-chevron')).not.toBeInTheDocument()
     const summary = screen.getByText('Résumé du voyage').closest('.trip-summary-shell')!

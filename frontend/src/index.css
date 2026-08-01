@@ -3868,11 +3868,6 @@ html[data-theme='dark'] .trip-pdf-export-provider.is-selected { background: rgb(
 .trip-panel-options h3 { padding: .55rem .6rem 0; }
 .trip-load-settings-embedded { margin: 0; padding: .55rem .6rem; border: 0; border-top: 1px solid rgb(43 62 89 / 8%); border-radius: 0; }
 .trip-load-settings-embedded > .trip-load-thresholds { margin-top: .4rem; }
-.trip-panel-settings-actions { display: flex; justify-content: center; padding: 0 .6rem .6rem; }
-.trip-panel-settings-actions button { display: inline-flex; min-height: 1.9rem; align-items: center; gap: .3rem; padding: .35rem .75rem; color: white; background: var(--cv-color-teal); border: 1px solid var(--cv-color-teal); border-radius: .42rem; font-size: .62rem; font-weight: 750; transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
-.trip-panel-settings-actions button:not(:disabled):is(:hover, :focus-visible) { color: white; background: color-mix(in srgb, var(--cv-color-teal) 86%, var(--cv-color-navy)); border-color: color-mix(in srgb, var(--cv-color-teal) 86%, var(--cv-color-navy)); outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 24%, transparent); box-shadow: 0 3px 8px rgb(13 27 42 / 10%); transform: translateY(-1px); }
-.trip-panel-settings-actions button:not(:disabled):active { box-shadow: none; transform: translateY(0); }
-.trip-panel-settings-actions button:disabled { opacity: .55; }
 .trip-panel-journeys .trip-panel-days { flex: 1 1 auto; }
 
 .trip-metrics-global {
@@ -5371,7 +5366,7 @@ body {
 .trip-settings-dates input:disabled { cursor: wait; opacity: 0.65; }
 .trip-settings-controls { padding: 0.6rem; border-top: 1px solid #e5ebef; }
 .trip-settings-controls h3 { margin: 0 0 0.45rem; color: var(--cv-color-navy); font-size: 0.65rem; }
-.trip-settings-controls > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+.trip-settings-controls > div { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 0.4rem; }
 .trip-settings-controls button { display: inline-flex; min-width: 0; min-height: 2rem; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.35rem 0.45rem; color: var(--cv-color-slate); background: var(--cv-surface, #fff); border: 1px solid var(--cv-border-strong, #dce4e9); border-radius: 0.42rem; font: inherit; font-size: 0.62rem; font-weight: 650; cursor: pointer; transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
 .trip-settings-controls button:not(:disabled):is(:hover, :focus-visible) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff)); border-color: var(--cv-color-teal); outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 22%, transparent); box-shadow: 0 3px 8px rgb(13 27 42 / 8%); transform: translateY(-1px); }
 .trip-settings-controls button:not(:disabled):active { box-shadow: none; transform: translateY(0); }
@@ -5456,7 +5451,6 @@ body {
 .trip-planner-panel .trip-panel-route-actions__main { display: flex; align-items: center; gap: 0.4rem; }
 .trip-planner-panel .trip-day-settings-trigger { margin-left: auto; }
 .trip-planner-panel .trip-day-color-picker { padding: 0.4rem 0.5rem; border-radius: 7px; font-size: 0.62rem; }
-.trip-planner-panel .trip-panel-settings-actions button { min-height: 32px; border-radius: 7px; font-size: 0.64rem; }
 @media (max-width: 760px) {
   .map-workspace .map-sidebar.trip-planner-panel { width: 100%; }
 }
@@ -10976,8 +10970,7 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   .trip-planner-panel .trip-panel-route-actions button,
   .trip-planner-panel .trip-panel-day-actions button,
   .trip-planner-panel .trip-panel-stop-actions button,
-  .trip-planner-panel .trip-panel-journeys-actions button,
-  .trip-planner-panel .trip-panel-settings-actions button:not(.primary)
+  .trip-planner-panel .trip-panel-journeys-actions button
 ):not(:disabled):is(:hover, :focus-visible) {
   color: var(--cv-color-teal);
   background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff));
