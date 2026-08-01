@@ -404,7 +404,8 @@ describe('TripPlannerPanel', () => {
     const onTripViewOnlyChange = vi.fn()
     const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly={false} onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const viewButton = await screen.findByRole('button', { name: 'Activer la vue du voyage' })
+    const viewButton = await screen.findByRole('button', { name: 'Activer l’aperçu du voyage' })
+    expect(viewButton).toHaveAttribute('title', 'Aperçu du voyage')
     const collapseButton = screen.getByRole('button', { name: 'Réduire le panneau Sortie' })
     expect(viewButton.compareDocumentPosition(collapseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(viewButton)
@@ -412,7 +413,7 @@ describe('TripPlannerPanel', () => {
 
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(container.querySelector('.trip-planner-panel')).toHaveClass('trip-planner-panel--trip-view')
-    expect(screen.getByRole('button', { name: 'Quitter la vue du voyage' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Quitter l’aperçu du voyage' })).toHaveAttribute('aria-pressed', 'true')
     expect(await screen.findByText('Afficher plus d’infos')).toBeVisible()
     expect(screen.getByText('Afficher plus d’infos').closest('details')).toHaveAttribute('open')
     expect(screen.getByText('Trajet total')).toBeVisible()

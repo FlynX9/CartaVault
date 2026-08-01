@@ -139,8 +139,11 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
     expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
 
+    fireEvent.click(screen.getByRole('button', { name: 'Marqueur POI' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
     fireEvent.click(screen.getByRole('button', { name: 'Vue du voyage' }))
     expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.queryByRole('searchbox', { name: 'Rechercher un lieu' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))

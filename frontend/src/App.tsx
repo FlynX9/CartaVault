@@ -1019,6 +1019,7 @@ function WorkspaceApp() {
           createRequest={createTripRequest}
           onCollapsedChange={setTripPlannerCollapsed}
           onTripViewOnlyChange={(enabled) => {
+            if (enabled) closePopup();
             setTripViewOnly(enabled);
             setTripPlannerCollapsed(false);
             setWorkspacePanel(enabled ? null : "places");
