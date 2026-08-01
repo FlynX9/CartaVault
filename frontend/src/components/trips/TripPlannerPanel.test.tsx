@@ -178,8 +178,13 @@ describe('TripPlannerPanel', () => {
     vi.mocked(updateTrip).mockResolvedValue({ ...datedTrip, start_date: '2026-09-01', end_date: '2026-09-03' })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={datedTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
+    expect(screen.queryByLabelText('Date de départ du voyage')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Dates du voyage')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres du voyage' }))
+
     expect(await screen.findByLabelText('Date de départ du voyage')).toHaveValue('2026-08-10')
     expect(screen.getByText('12 août 2026')).toBeVisible()
+    expect(screen.getByLabelText('Dates du voyage')).toBeVisible()
     fireEvent.change(screen.getByLabelText('Date de départ du voyage'), { target: { value: '2026-09-01' } })
 
     await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { start_date: '2026-09-01' }))
