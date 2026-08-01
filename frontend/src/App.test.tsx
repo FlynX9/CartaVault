@@ -16,7 +16,7 @@ vi.mock('./auth/RequireAuth', () => ({ RequireAuth: ({ children }: { children: R
 vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve({ items: [], total: 0, returned: 0, truncated: false })), getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: false, index: null, page: null, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn(), getPlaceDetails: vi.fn(() => Promise.resolve({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] })) }))
 vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ placeId, onClose }: { placeId: string; onClose: () => void }) => <div role="dialog">Popup {placeId}<button onClick={onClose}>Fermer popup</button></div> }))
 vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
-vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button></aside> }))
+vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange, onUnsavedChangesGuardChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void; onUnsavedChangesGuardChange?: (guard: (() => Promise<boolean>) | null) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button><button type="button" onClick={() => onUnsavedChangesGuardChange?.(() => Promise.resolve(false))}>Simuler des modifications</button></aside> }))
 vi.mock('./pages/MapPage', () => ({ MapPage: ({ places, errorMessage, placeList, sidebar, popupContent, focusRequest, selectedPlaceId, onPlaceSelect, onBoundsChange }: { places: Array<{ id: string; name: string }>; errorMessage: string | null; placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void; onBoundsChange: (bounds: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''} data-markers={places.map((place) => place.name).join(',')}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button><button onClick={() => onBoundsChange({ minLatitude: 40, maxLatitude: 50, minLongitude: -5, maxLongitude: 5 })}>Bounds A</button><button onClick={() => onBoundsChange({ minLatitude: 41, maxLatitude: 49, minLongitude: -4, maxLongitude: 4 })}>Bounds B</button>{errorMessage && <p data-testid="map-error">{errorMessage}</p>}{placeList}{popupContent}{sidebar}</div> }))
 vi.mock('./components/dashboard/DashboardPage', () => ({ DashboardPage: () => <div>Dashboard</div> }))
 
@@ -160,6 +160,18 @@ describe('map URL workspace', () => {
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+  })
+
+  it('keeps the trip workspace open when unsaved settings cancel main navigation', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Simuler des modifications' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
+
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sorties' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Catégories' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('reports an API failure when moving a map to trash', async () => {

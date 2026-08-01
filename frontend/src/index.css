@@ -1123,6 +1123,11 @@ button.cv-button-click-feedback {
   background: #a52b2b;
 }
 
+.unsaved-changes-dialog footer { flex-wrap: wrap; }
+.unsaved-changes-dialog footer button { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; }
+.unsaved-changes-dialog__discard { color: #a12424; background: rgb(220 38 38 / 7%); border: 1px solid rgb(220 38 38 / 28%); }
+.unsaved-changes-dialog__discard:hover, .unsaved-changes-dialog__discard:focus-visible { color: #8f1d1d; background: rgb(220 38 38 / 12%); border-color: #dc2626; }
+
 .primary-button:disabled,
 .danger-button:disabled {
   cursor: wait;

@@ -171,6 +171,7 @@ describe('TripPlannerPanel', () => {
     const saveButton = within(settings!).getByRole('button', { name: 'Enregistrer' })
     expect(saveButton).toHaveClass('trip-settings-control--save')
     expect(saveButton).toHaveTextContent('Enregistrer')
+    expect(saveButton).toBeDisabled()
     expect(saveButton.parentElement?.lastElementChild).toBe(saveButton)
     expect(within(settings!).queryByLabelText('Télécharger')).not.toBeInTheDocument()
     expect(settings?.querySelector('.trip-panel-chevron')).not.toBeInTheDocument()
@@ -196,8 +197,74 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('12 août 2026')).toBeVisible()
     expect(screen.getByLabelText('Dates du voyage')).toBeVisible()
     fireEvent.change(screen.getByLabelText('Date de départ du voyage'), { target: { value: '2026-09-01' } })
+    const saveButton = screen.getByRole('button', { name: 'Enregistrer' })
+    expect(saveButton).toBeEnabled()
+    fireEvent.click(saveButton)
 
     await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { start_date: '2026-09-01' }))
+  })
+
+  it('warns before closing modified settings and lets the user cancel or discard them', async () => {
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres de la sortie' }))
+    const nameInput = screen.getByLabelText('Nom du voyage')
+    await waitFor(() => expect(nameInput).toHaveValue('Voyage test'))
+    fireEvent.change(nameInput, { target: { value: 'Voyage modifié' } })
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Masquer les paramètres de la sortie' }))
+    const warning = screen.getByRole('alertdialog', { name: 'Enregistrer les paramètres ?' })
+    expect(warning).toHaveTextContent('ne pas perdre vos changements')
+    fireEvent.click(within(warning).getByRole('button', { name: 'Annuler' }))
+    expect(screen.getByLabelText('Nom du voyage')).toHaveValue('Voyage modifié')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Masquer les paramètres de la sortie' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ne pas enregistrer' }))
+    await waitFor(() => expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument())
+    expect(updateTrip).not.toHaveBeenCalled()
+  })
+
+  it('saves modified settings from the warning before continuing', async () => {
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres de la sortie' }))
+    const nameInput = screen.getByLabelText('Nom du voyage')
+    await waitFor(() => expect(nameInput).toHaveValue('Voyage test'))
+    fireEvent.change(nameInput, { target: { value: 'Voyage sauvegardé' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Masquer les paramètres de la sortie' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { name: 'Voyage sauvegardé' }))
+    await waitFor(() => expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument())
+  })
+
+  it('guards trip selection and exposes the same warning to application navigation', async () => {
+    const secondTrip = { ...trip, id: 'trip-2', name: 'Second voyage' } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([trip, secondTrip])
+    vi.mocked(getTrip).mockImplementation(async (id) => id === secondTrip.id ? secondTrip : trip)
+    let navigationGuard: (() => Promise<boolean>) | null = null
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onUnsavedChangesGuardChange={(guard) => { navigationGuard = guard }} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres de la sortie' }))
+    const nameInput = screen.getByLabelText('Nom du voyage')
+    await waitFor(() => expect(nameInput).toHaveValue('Voyage test'))
+    fireEvent.change(nameInput, { target: { value: 'Brouillon' } })
+    await waitFor(() => expect(navigationGuard).not.toBeNull())
+
+    fireEvent.change(screen.getByLabelText('Voyage actif'), { target: { value: secondTrip.id } })
+    expect(screen.getByRole('alertdialog', { name: 'Enregistrer les paramètres ?' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
+    expect(screen.getByLabelText('Voyage actif')).toHaveValue(trip.id)
+    expect(vi.mocked(getTrip).mock.calls.some(([id]) => id === secondTrip.id)).toBe(false)
+
+    let canNavigate = false
+    let decision!: Promise<boolean>
+    act(() => { decision = navigationGuard!() })
+    const navigationWarning = await screen.findByRole('alertdialog')
+    fireEvent.click(within(navigationWarning).getByRole('button', { name: 'Ne pas enregistrer' }))
+    await act(async () => { canNavigate = await decision })
+    expect(canNavigate).toBe(true)
   })
 
   it('archives an active trip as completed while keeping its lifecycle visible', async () => {

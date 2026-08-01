@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import { Archive, ArchiveRestore, ArrowDown, ArrowUp, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Route, Save, ScanEye, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
@@ -11,13 +11,16 @@ import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from '.
 import { useConfirmDialog } from '../common/useConfirmDialog'
 import { EmptyState } from '../common/EmptyState'
 import { TripPdfExportDialog } from './TripPdfExportDialog'
+import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog'
 
-interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onActiveNightTargetChange?: (target: TripNightTarget | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onClose: () => void }
+export type UnsavedTripSettingsGuard = () => Promise<boolean>
+
+interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null; tripViewOnly?: boolean; hiddenDayIds?: ReadonlySet<string>; collapsed?: boolean; createRequest?: number; onCollapsedChange?: (collapsed: boolean) => void; onTripViewOnlyChange?: (enabled: boolean) => void; onDayVisibilityChange?: (dayId: string, visible: boolean) => void; onTripChange: (trip: Trip | null) => void; onActiveDayChange: (id: string | null) => void; onActiveNightTargetChange?: (target: TripNightTarget | null) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect?: (placeId: string) => void; onUnsavedChangesGuardChange?: (guard: UnsavedTripSettingsGuard | null) => void; onClose: () => void }
 
 const DayCollapseContext = createContext<{ collapsedDayIds: ReadonlySet<string>; onToggle: (dayId: string) => void } | null>(null)
 type TripActionKey = 'route-all' | 'optimize-all' | `route:${string}` | `optimize:${string}`
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveNightTargetChange = () => undefined, onStopFocus, onStopPlaceSelect = () => undefined }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveNightTargetChange = () => undefined, onStopFocus, onStopPlaceSelect = () => undefined, onUnsavedChangesGuardChange = () => undefined }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
   const canEdit = poiMap.can_edit === true
   const isArchivedTrip = trip?.status === 'completed' || trip?.status === 'archived'
@@ -26,7 +29,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [optimization, setOptimization] = useState<{ dayId: string; value: TripOptimization } | null>(null)
   const [globalOptimization, setGlobalOptimization] = useState<Array<{ dayId: string; dayNumber: number; value: TripOptimization }> | null>(null)
   const [draftName, setDraftName] = useState('')
-  const [dirty, setDirty] = useState(false)
+  const [draftStartDate, setDraftStartDate] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [pendingAction, setPendingAction] = useState<TripActionKey | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +44,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const [loadSettingsDraft, setLoadSettingsDraft] = useState<TripLoadSettings | null>(null)
   const [loadingTripId, setLoadingTripId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false)
+  const [savingUnsavedChanges, setSavingUnsavedChanges] = useState(false)
   const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set())
   const [timelineCollapseRequest, setTimelineCollapseRequest] = useState({ collapsed: false, version: 0 })
   const [openDaySettingsIds, setOpenDaySettingsIds] = useState<Set<string>>(() => new Set())
@@ -51,6 +56,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
   const onActiveNightTargetChangeRef = useRef(onActiveNightTargetChange)
   const loadControllerRef = useRef<AbortController | null>(null)
   const selectionVersionRef = useRef(0)
+  const unsavedPromptResolverRef = useRef<((canLeave: boolean) => void) | null>(null)
   onTripChangeRef.current = onTripChange
   onActiveDayChangeRef.current = onActiveDayChange
   onActiveNightTargetChangeRef.current = onActiveNightTargetChange
@@ -82,7 +88,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     return { loaded, loadedSummary, daySummaries: Object.fromEntries(perDay.map((item) => [item.day_id, item])) }
   }, [])
   const applyLoadedTrip = useCallback(({ loaded, loadedSummary, daySummaries: loadedDays }: Awaited<ReturnType<typeof loadTripDetails>>) => {
-    onTripChangeRef.current(loaded); setSummary(loadedSummary); setDaySummaries(loadedDays); setDraftName(loaded.name); setLoadSettingsDraft(readLoadSettings(loaded)); setDirty(false)
+    onTripChangeRef.current(loaded); setSummary(loadedSummary); setDaySummaries(loadedDays); setDraftName(loaded.name); setDraftStartDate(loaded.start_date); setLoadSettingsDraft(readLoadSettings(loaded))
     const currentDayId = activeDayIdRef.current
     onActiveDayChangeRef.current(loaded.days.some((day) => day.id === currentDayId) ? currentDayId : loaded.days[0]?.id ?? null)
   }, [])
@@ -109,12 +115,12 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
       if (loadControllerRef.current === controller) setLoadingTripId(null)
     }
   }, [applyLoadedTrip, loadTripDetails])
-  const reload = async (id = trip?.id) => {
+  const reload = useCallback(async (id = trip?.id) => {
     const items = await listTrips(poiMap.id); setTrips(items)
     const target = id && items.some((item) => item.id === id) ? id : items[0]?.id
     if (!target) { loadControllerRef.current?.abort(); onTripChangeRef.current(null); onActiveDayChangeRef.current(null); setSummary(null); setDaySummaries({}); setLoadingTripId(null); return }
     await selectTrip(target)
-  }
+  }, [poiMap.id, selectTrip, trip?.id])
   const refreshTripSilently = async (id = trip?.id) => {
     if (!id) return
     const selectionVersion = selectionVersionRef.current
@@ -150,12 +156,88 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     setError(null)
     try {
       await action()
+      return true
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Opération impossible.')
+      return false
     } finally {
       if (actionKey) setPendingAction(null)
       setBusy(false)
     }
+  }
+  const savedLoadSettings = useMemo(() => trip ? readLoadSettings(trip) : null, [trip])
+  const activeLoadSettings = loadSettingsDraft ?? savedLoadSettings
+  const hasUnsavedSettings = Boolean(trip && activeLoadSettings && (
+    draftName !== trip.name
+    || draftStartDate !== trip.start_date
+    || !sameLoadSettings(activeLoadSettings, savedLoadSettings!)
+  ))
+  const discardSettingsDraft = useCallback(() => {
+    if (!trip) return
+    setDraftName(trip.name)
+    setDraftStartDate(trip.start_date)
+    setLoadSettingsDraft(readLoadSettings(trip))
+  }, [trip])
+  const saveSettings = useCallback(async () => {
+    if (!trip || !activeLoadSettings || !hasUnsavedSettings) return true
+    return run(async () => {
+      const tripChanges: Partial<Pick<Trip, 'name' | 'start_date'>> = {}
+      if (draftName !== trip.name) tripChanges.name = draftName
+      if (draftStartDate !== trip.start_date) tripChanges.start_date = draftStartDate
+      if (Object.keys(tripChanges).length > 0) await updateTrip(trip.id, tripChanges)
+      if (!sameLoadSettings(activeLoadSettings, readLoadSettings(trip))) await updateTripLoadSettings(trip.id, activeLoadSettings)
+      await reload(trip.id)
+    })
+  }, [activeLoadSettings, draftName, draftStartDate, hasUnsavedSettings, reload, trip])
+  const settleUnsavedPrompt = useCallback((canLeave: boolean) => {
+    unsavedPromptResolverRef.current?.(canLeave)
+    unsavedPromptResolverRef.current = null
+    setUnsavedPromptOpen(false)
+  }, [])
+  const requestSettingsLeave = useCallback(() => {
+    if (!hasUnsavedSettings) return Promise.resolve(true)
+    unsavedPromptResolverRef.current?.(false)
+    setUnsavedPromptOpen(true)
+    return new Promise<boolean>((resolve) => { unsavedPromptResolverRef.current = resolve })
+  }, [hasUnsavedSettings])
+  const saveAndContinue = useCallback(async () => {
+    setSavingUnsavedChanges(true)
+    const saved = await saveSettings()
+    setSavingUnsavedChanges(false)
+    if (saved) settleUnsavedPrompt(true)
+  }, [saveSettings, settleUnsavedPrompt])
+  const discardAndContinue = useCallback(() => {
+    discardSettingsDraft()
+    settleUnsavedPrompt(true)
+  }, [discardSettingsDraft, settleUnsavedPrompt])
+  useEffect(() => {
+    onUnsavedChangesGuardChange(hasUnsavedSettings ? requestSettingsLeave : null)
+    return () => onUnsavedChangesGuardChange(null)
+  }, [hasUnsavedSettings, onUnsavedChangesGuardChange, requestSettingsLeave])
+  useEffect(() => {
+    if (!hasUnsavedSettings) return
+    const preventUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', preventUnload)
+    return () => window.removeEventListener('beforeunload', preventUnload)
+  }, [hasUnsavedSettings])
+  useEffect(() => () => unsavedPromptResolverRef.current?.(false), [])
+
+  const changeSelectedTrip = (target: string) => {
+    if (!hasUnsavedSettings) {
+      void selectTrip(target)
+      return
+    }
+    void requestSettingsLeave().then((canLeave) => { if (canLeave) void selectTrip(target) })
+  }
+  const toggleSettings = () => {
+    if (!settingsOpen || !hasUnsavedSettings) {
+      setSettingsOpen((current) => !current)
+      return
+    }
+    void requestSettingsLeave().then((canLeave) => { if (canLeave) setSettingsOpen(false) })
   }
   const reorderDays = (index: number, delta: number) => {
     if (!trip) return
@@ -265,10 +347,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     <div className="trip-panel-scroll" role="region" aria-label="Contenu de la sortie" tabIndex={0}>
     {tripViewOnly ? <div className="trip-panel-compact-summary">{summary && trip ? <TripSummaryMetrics summary={summary} defaultOpen /> : <div className="trip-panel-empty" role="status"><Route size={24} /><strong>Chargement du résumé…</strong></div>}</div> : <>
     {error && <p className="trip-panel-error" role="alert">{error === 'Internal Server Error' ? 'Une erreur serveur empêche cette opération.' : error}</p>}
-    <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => void selectTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres de la sortie' : 'Afficher les paramètres de la sortie'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres de la sortie" onClick={() => setSettingsOpen((current) => !current)}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} onPdf={(trigger) => { setPdfExportTrigger(trigger); setPdfExportOpen(true) }} />}</div>
+    <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => changeSelectedTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres de la sortie' : 'Afficher les paramètres de la sortie'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres de la sortie" onClick={toggleSettings}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} onPdf={(trigger) => { setPdfExportTrigger(trigger); setPdfExportOpen(true) }} />}</div>
     {loadingTripId ? <div className="trip-panel-empty" role="status"><Route size={28} /><strong>Chargement du voyage…</strong></div> : <>
     {!trip ? <EmptyState className="trip-panel-empty" icon={<Route size={28} />} title="Aucune sortie préparée" description="Créez un voyage puis ajoutez les POI depuis le panneau Lieux." /> : <>
-      {settingsOpen && <TripSettings trip={trip} canEdit={canEditTrip} canManage={canEdit} canDelete={canEditTrip && poiMap.can_delete === true} busy={busy} draftName={draftName} dirty={dirty} loadSettings={loadSettingsDraft ?? readLoadSettings(trip)} onNameChange={(value) => { setDraftName(value); setDirty(value !== trip.name) }} onStartDateChange={(startDate) => void run(async () => { await updateTrip(trip.id, { start_date: startDate }); await reload(trip.id) })} onLoadSettingsChange={setLoadSettingsDraft} onSave={() => void run(async () => { if (draftName !== trip.name) await updateTrip(trip.id, { name: draftName }); if (loadSettingsDraft) await updateTripLoadSettings(trip.id, loadSettingsDraft); await reload(trip.id) })} onDuplicate={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })} onArchive={() => void run(async () => { await archiveTrip(trip.id); await reload(trip.id) })} onUnarchive={() => void run(async () => { await unarchiveTrip(trip.id); await reload(trip.id) })} onDelete={() => void confirm({ title: 'Placer cette sortie dans la corbeille ?', message: `La sortie « ${trip.name} » et toute sa planification pourront être restaurées pendant votre délai de conservation.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTrip(trip.id); await reload('') }) })} />}
+      {settingsOpen && activeLoadSettings && <TripSettings trip={trip} canEdit={canEditTrip} canManage={canEdit} canDelete={canEditTrip && poiMap.can_delete === true} busy={busy} draftName={draftName} draftStartDate={draftStartDate} dirty={hasUnsavedSettings} loadSettings={activeLoadSettings} onNameChange={setDraftName} onStartDateChange={setDraftStartDate} onLoadSettingsChange={setLoadSettingsDraft} onSave={() => void saveSettings()} onDuplicate={() => void run(async () => { const copy = await duplicateTrip(trip.id); await reload(copy.id) })} onArchive={() => void run(async () => { await archiveTrip(trip.id); await reload(trip.id) })} onUnarchive={() => void run(async () => { await unarchiveTrip(trip.id); await reload(trip.id) })} onDelete={() => void confirm({ title: 'Placer cette sortie dans la corbeille ?', message: `La sortie « ${trip.name} » et toute sa planification pourront être restaurées pendant votre délai de conservation.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTrip(trip.id); await reload('') }) })} />}
       {summary && <TripSummaryMetrics summary={summary} />}
       <section className="trip-panel-section trip-panel-journeys"><header className="trip-panel-journeys-header"><span>Trajets</span><span className="trip-panel-journeys-header-actions">{canEdit && <span className="trip-panel-journeys-route-actions"><button className={routeFeedback === 'all' ? 'route-success' : undefined} type="button" aria-label={pendingAction === 'route-all' ? 'Calcul des itinéraires en cours' : routeFeedback === 'all' ? 'Itinéraires rafraîchis' : 'Calculer les itinéraires'} title={pendingAction === 'route-all' ? 'Calcul des itinéraires en cours' : routeFeedback === 'all' ? 'Itinéraires rafraîchis' : 'Calculer les itinéraires'} disabled={busy || !trip.days.some((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))} onClick={recalculateAllRoutes}>{pendingAction === 'route-all' ? <LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" /> : routeFeedback === 'all' ? <Check size={13} /> : <Route size={13} />}<span>{pendingAction === 'route-all' ? 'Calcul en cours…' : routeFeedback === 'all' ? 'Itinéraires rafraîchis' : 'Calculer les itinéraires'}</span></button><button className="trip-global-optimize-button" type="button" aria-label={pendingAction === 'optimize-all' ? 'Optimisation du voyage en cours' : 'Optimiser le voyage'} title={pendingAction === 'optimize-all' ? 'Optimisation du voyage en cours' : 'Optimiser le voyage'} disabled={busy || globalOptimization !== null || !trip.days.some((day) => day.stops.length >= 2)} onClick={optimizeAllDays}>{pendingAction === 'optimize-all' ? <LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" /> : <Sparkles size={13} />}<span>{pendingAction === 'optimize-all' ? 'Optimisation…' : 'Optimiser le voyage'}</span></button></span>}<span className="trip-panel-journeys-toggle-actions"><button type="button" aria-label="Tout déplier" title="Tout déplier" onClick={() => setAllTimelineCollapsed(false)}><ChevronsDown size={13} /><span>Tout déplier</span></button><button type="button" aria-label="Tout replier" title="Tout replier" onClick={() => setAllTimelineCollapsed(true)}><ChevronsUp size={13} /><span>Tout replier</span></button></span></span></header>
         {globalOptimization && <GlobalOptimizationReview proposals={globalOptimization} busy={busy} onCancel={() => setGlobalOptimization(null)} onApply={applyGlobalOptimization} />}
@@ -289,14 +371,23 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     </div>
     {createOpen && <CreateTripDialog mapName={poiMap.name} onClose={() => setCreateOpen(false)} onCreate={async (payload) => { const created = await createTrip(poiMap.id, payload); await reload(created.id); setCreateOpen(false) }} />}
     {pdfExportOpen && <TripPdfExportDialog trigger={pdfExportTrigger} onClose={() => setPdfExportOpen(false)} onExport={exportPdf} />}
+    {unsavedPromptOpen && <UnsavedChangesDialog saving={savingUnsavedChanges} onCancel={() => settleUnsavedPrompt(false)} onDiscard={discardAndContinue} onSave={() => void saveAndContinue()} />}
     {confirmationDialog}
     </>}
   </aside>
 }
 
-function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, dirty, loadSettings, onNameChange, onStartDateChange, onLoadSettingsChange, onSave, onDuplicate, onArchive, onUnarchive, onDelete }: { trip: Trip; canEdit: boolean; canManage: boolean; canDelete: boolean; busy: boolean; draftName: string; dirty: boolean; loadSettings: TripLoadSettings; onNameChange: (value: string) => void; onStartDateChange: (value: string | null) => void; onLoadSettingsChange: (settings: TripLoadSettings) => void; onSave: () => void; onDuplicate: () => void; onArchive: () => void; onUnarchive: () => void; onDelete: () => void }) {
+function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, draftStartDate, dirty, loadSettings, onNameChange, onStartDateChange, onLoadSettingsChange, onSave, onDuplicate, onArchive, onUnarchive, onDelete }: { trip: Trip; canEdit: boolean; canManage: boolean; canDelete: boolean; busy: boolean; draftName: string; draftStartDate: string | null; dirty: boolean; loadSettings: TripLoadSettings; onNameChange: (value: string) => void; onStartDateChange: (value: string | null) => void; onLoadSettingsChange: (settings: TripLoadSettings) => void; onSave: () => void; onDuplicate: () => void; onArchive: () => void; onUnarchive: () => void; onDelete: () => void }) {
   const archived = trip.status === 'completed' || trip.status === 'archived'
-  return <section className="trip-panel-section trip-panel-settings" aria-labelledby="trip-settings-title"><header className="trip-panel-settings__header"><span id="trip-settings-title">Paramètres de la sortie</span></header><section className="trip-panel-options"><h3>Nom du voyage</h3><div className="trip-panel-fields"><input aria-label="Nom du voyage" value={draftName} readOnly={!canEdit} onChange={(event) => onNameChange(event.target.value)} /><div className="trip-panel-field-meta"><span className={dirty ? 'dirty' : ''}>{dirty ? 'Non enregistré' : 'Enregistré'}</span></div></div></section><section className="trip-settings-dates" aria-label="Dates du voyage"><h3>Dates du voyage</h3><div><label><CalendarDays aria-hidden="true" size={16} /><span><small>Date de départ</small>{canEdit ? <input aria-label="Date de départ du voyage" type="date" value={trip.start_date ?? ''} disabled={busy} onChange={(event) => onStartDateChange(event.target.value || null)} /> : <strong>{formatTripDate(trip.start_date)}</strong>}</span></label><div><Flag aria-hidden="true" size={16} /><span><small>Date d’arrivée</small><strong>{formatTripDate(trip.end_date)}</strong></span></div></div></section><TripLoadSettingsForm trip={trip} canEdit={canEdit} busy={busy} value={loadSettings} onChange={onLoadSettingsChange} embedded />{canManage && <section className="trip-settings-controls" aria-label="Contrôles de la sortie"><h3>Contrôles de la sortie</h3><div><button type="button" aria-label="Dupliquer le voyage" disabled={busy} onClick={onDuplicate}><Copy size={14} />Dupliquer</button>{archived ? <button className="trip-settings-control--reactivate" type="button" aria-label="Réactiver la sortie" disabled={busy} onClick={onUnarchive}><ArchiveRestore size={14} />Réactiver</button> : <button type="button" aria-label="Archiver la sortie" disabled={busy} onClick={onArchive}><Archive size={14} />Archiver</button>}{canDelete && <button className="trip-settings-control--danger" type="button" aria-label="Supprimer le voyage" disabled={busy} onClick={onDelete}><Trash2 size={14} />Supprimer</button>}{canEdit && <button className="trip-settings-control--save" type="button" aria-label="Enregistrer" disabled={busy || loadSettings.low_load_max_minutes >= loadSettings.medium_load_max_minutes} onClick={onSave}><Save size={14} />Enregistrer</button>}</div></section>}</section>
+  return <section className="trip-panel-section trip-panel-settings" aria-labelledby="trip-settings-title"><header className="trip-panel-settings__header"><span id="trip-settings-title">Paramètres de la sortie</span></header><section className="trip-panel-options"><h3>Nom du voyage</h3><div className="trip-panel-fields"><input aria-label="Nom du voyage" value={draftName} readOnly={!canEdit} onChange={(event) => onNameChange(event.target.value)} /><div className="trip-panel-field-meta"><span className={dirty ? 'dirty' : ''}>{dirty ? 'Non enregistré' : 'Enregistré'}</span></div></div></section><section className="trip-settings-dates" aria-label="Dates du voyage"><h3>Dates du voyage</h3><div><label><CalendarDays aria-hidden="true" size={16} /><span><small>Date de départ</small>{canEdit ? <input aria-label="Date de départ du voyage" type="date" value={draftStartDate ?? ''} disabled={busy} onChange={(event) => onStartDateChange(event.target.value || null)} /> : <strong>{formatTripDate(trip.start_date)}</strong>}</span></label><div><Flag aria-hidden="true" size={16} /><span><small>Date d’arrivée</small><strong>{formatTripDate(trip.end_date)}</strong></span></div></div></section><TripLoadSettingsForm trip={trip} canEdit={canEdit} busy={busy} value={loadSettings} onChange={onLoadSettingsChange} embedded />{canManage && <section className="trip-settings-controls" aria-label="Contrôles de la sortie"><h3>Contrôles de la sortie</h3><div><button type="button" aria-label="Dupliquer le voyage" disabled={busy} onClick={onDuplicate}><Copy size={14} />Dupliquer</button>{archived ? <button className="trip-settings-control--reactivate" type="button" aria-label="Réactiver la sortie" disabled={busy} onClick={onUnarchive}><ArchiveRestore size={14} />Réactiver</button> : <button type="button" aria-label="Archiver la sortie" disabled={busy} onClick={onArchive}><Archive size={14} />Archiver</button>}{canDelete && <button className="trip-settings-control--danger" type="button" aria-label="Supprimer le voyage" disabled={busy} onClick={onDelete}><Trash2 size={14} />Supprimer</button>}{canEdit && <button className="trip-settings-control--save" type="button" aria-label="Enregistrer" disabled={busy || !dirty || loadSettings.low_load_max_minutes >= loadSettings.medium_load_max_minutes} onClick={onSave}><Save size={14} />Enregistrer</button>}</div></section>}</section>
+}
+
+function sameLoadSettings(left: TripLoadSettings, right: TripLoadSettings) {
+  return left.low_load_max_minutes === right.low_load_max_minutes
+    && left.medium_load_max_minutes === right.medium_load_max_minutes
+    && left.low_load_color === right.low_load_color
+    && left.medium_load_color === right.medium_load_color
+    && left.high_load_color === right.high_load_color
 }
 
 function TripSummaryMetrics({ summary, defaultOpen = false }: { summary: TripSummary; defaultOpen?: boolean }) {

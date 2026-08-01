@@ -57,6 +57,7 @@ import {
   serializePlaceFilters,
 } from "./places/placeFilters";
 import { getTripMapBounds } from "./components/trips/tripMapBounds";
+import type { UnsavedTripSettingsGuard } from "./components/trips/TripPlannerPanel";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { useAuth } from "./auth/useAuth";
@@ -237,6 +238,7 @@ function WorkspaceApp() {
   const [createMapRequest, setCreateMapRequest] = useState(0);
   const [importRequest, setImportRequest] = useState(0);
   const [createTripRequest, setCreateTripRequest] = useState(0);
+  const unsavedTripSettingsGuard = useRef<UnsavedTripSettingsGuard | null>(null);
   const tripAddPending = useRef(new Set<string>());
   const tripNoticeTimer = useRef<number | null>(null);
   const openAdmin = useCallback(
@@ -1045,6 +1047,9 @@ function WorkspaceApp() {
           onStopPlaceSelect={(placeId) => {
             void handleTripPlaceSelect(placeId);
           }}
+          onUnsavedChangesGuardChange={(guard) => {
+            unsavedTripSettingsGuard.current = guard;
+          }}
           onClose={() => {
             setTripPlannerOpen(false);
             setTripPlannerCollapsed(false);
@@ -1077,7 +1082,7 @@ function WorkspaceApp() {
       />
     );
 
-  const handleWorkspacePanelChange = (panel: WorkspacePanel) => {
+  const applyWorkspacePanelChange = (panel: WorkspacePanel) => {
     if (dashboardOpen) navigate(withMap("/", activeMapId, activeStatusId));
     if (panel !== "places" || tripPlannerOpen) {
       setTripPlannerOpen(false);
@@ -1093,6 +1098,15 @@ function WorkspaceApp() {
     openWorkspacePanel(panel);
   };
 
+  const handleWorkspacePanelChange = (panel: WorkspacePanel) => {
+    const guard = unsavedTripSettingsGuard.current;
+    if (!guard) {
+      applyWorkspacePanelChange(panel);
+      return;
+    }
+    void guard().then((canLeave) => { if (canLeave) applyWorkspacePanelChange(panel); });
+  };
+
   const toggleWorkspacePanelCollapsed = (
     panel: Exclude<WorkspacePanel, null>,
   ) => {
@@ -1104,7 +1118,7 @@ function WorkspaceApp() {
       setCollapsedWorkspacePanel((current) =>
         current === panel ? null : panel,
       );
-    else handleWorkspacePanelChange(panel);
+    else void handleWorkspacePanelChange(panel);
   };
 
   const openTrips = (create = false) => {
@@ -1125,12 +1139,21 @@ function WorkspaceApp() {
     if (create) setCreateTripRequest((value) => value + 1);
   };
 
-  const openDashboard = () => {
+  const applyOpenDashboard = () => {
     setTripPlannerOpen(false);
     setSelectedPlace(null);
     setCoordinatePrefill(null);
     setDraftPosition(null);
     navigate(withMap("/dashboard", activeMapId, activeStatusId));
+  };
+
+  const openDashboard = () => {
+    const guard = unsavedTripSettingsGuard.current;
+    if (!guard) {
+      applyOpenDashboard();
+      return;
+    }
+    void guard().then((canLeave) => { if (canLeave) applyOpenDashboard(); });
   };
 
   return (
