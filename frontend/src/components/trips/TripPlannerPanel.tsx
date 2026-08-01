@@ -551,9 +551,18 @@ function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, re
       <span className="trip-timeline-anchor-badge"><Play aria-hidden="true" size={15} /></span>
       <div className="trip-night-content">
         <div className="trip-night-header-row">
-          <span className="trip-panel-timeline-heading"><strong>Départ</strong><TimelineStatusBadge status={departure ? 'valid' : 'empty'} /></span>
+          <span className="trip-panel-timeline-heading"><strong>Départ</strong></span>
+          <span className="trip-day-header-metrics trip-night-header-metrics trip-anchor-header-metrics" aria-label="Résumé du départ">
+            <span className="trip-day-header-metric trip-night-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}>
+              <strong><Clock3 aria-hidden="true" size={12} />{recommendedLabel}</strong>
+              <small>Départ conseillé</small>
+            </span>
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-day-header-status"><TimelineStatusBadge status={departure ? 'valid' : 'empty'} /></span>
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+          </span>
           <span className="trip-night-header-actions">
-            <span className="trip-anchor-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}><span>Départ conseillé</span><Clock3 aria-hidden="true" size={12} /><strong>{recommendedLabel}</strong></span>
             <button className="trip-day-collapse-toggle trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} le départ`} aria-expanded={!collapsed} onClick={() => setCollapsed((current) => !current)}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
           </span>
         </div>
@@ -604,7 +613,14 @@ function Arrival({ trip, canEdit, reload, collapseRequest, onStopFocus, onStopPl
       <span className="trip-timeline-anchor-badge trip-timeline-arrival-badge"><Flag aria-hidden="true" size={14} /></span>
       <div className="trip-night-content">
         <div className="trip-night-header-row">
-          <span className="trip-panel-timeline-heading"><strong>Arrivée</strong><TimelineStatusBadge status={effectiveArrival ? 'valid' : 'empty'} /></span>
+          <span className="trip-panel-timeline-heading"><strong>Arrivée</strong></span>
+          <span className="trip-day-header-metrics trip-night-header-metrics trip-anchor-header-metrics" aria-label="Résumé de l’arrivée">
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-day-header-status"><TimelineStatusBadge status={effectiveArrival ? 'valid' : 'empty'} /></span>
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+          </span>
           <span className="trip-night-header-actions">
             <button className="trip-day-collapse-toggle trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} l’arrivée`} aria-expanded={!collapsed} onClick={() => setCollapsed((current) => !current)}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
           </span>
