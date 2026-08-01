@@ -303,14 +303,14 @@ describe('TripPlannerPanel', () => {
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
 
-  it('shows routing engine and country constraint once in trip settings', async () => {
+  it('does not expose routing details in trip settings', async () => {
     vi.mocked(getTripSummary).mockResolvedValue({ ...emptySummary, route_providers: ['google'], route_provider_labels: ['Google Routes'], country_constraint_enabled: true, constraint_country_code: 'GEO', constraint_country_name: 'Géorgie' })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Géorgie', country: { name: 'Géorgie' }, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres du voyage' }))
-    expect(screen.getAllByText('Google Routes')).toHaveLength(1)
-    expect(screen.getAllByText('Itinéraire limité à la Géorgie')).toHaveLength(1)
-    expect(within(screen.getByLabelText('Paramètres de routage')).getByText('Moteur')).toBeVisible()
+    expect(screen.queryByLabelText('Paramètres de routage')).not.toBeInTheDocument()
+    expect(screen.queryByText('Google Routes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Itinéraire limité à la Géorgie')).not.toBeInTheDocument()
   })
 
   it('toggles the map visibility of each day independently', async () => {
