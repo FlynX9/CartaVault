@@ -10056,7 +10056,7 @@ html[data-theme='dark'] .trip-planner-panel :is(.trip-panel-day, .trip-panel-nig
 .trip-planner-panel .trip-panel-day::after,
 .trip-planner-panel .trip-panel-night::after {
   top: 2.5rem;
-  bottom: -1.45rem;
+  bottom: -3.55rem;
   left: var(--trip-timeline-x);
   width: 2px;
   border: 0;
@@ -10083,9 +10083,11 @@ html[data-theme='dark'] .trip-planner-panel :is(.trip-panel-day, .trip-panel-nig
   display: none;
 }
 
-.trip-planner-panel .trip-panel-days > div:has(.trip-panel-insert-day:hover) .trip-panel-day::after,
-.trip-planner-panel .trip-panel-days > div:has(.trip-panel-insert-day:focus-within) .trip-panel-day::after {
-  bottom: -2.65rem;
+.trip-planner-panel .trip-timeline-day-block:has(.trip-panel-insert-day:hover) > .trip-panel-night::after,
+.trip-planner-panel .trip-timeline-day-block:has(.trip-panel-insert-day:focus-within) > .trip-panel-night::after,
+.trip-planner-panel .trip-timeline-day-block:not(:has(> .trip-panel-night)):has(.trip-panel-insert-day:hover) > .trip-panel-day::after,
+.trip-planner-panel .trip-timeline-day-block:not(:has(> .trip-panel-night)):has(.trip-panel-insert-day:focus-within) > .trip-panel-day::after {
+  bottom: -4.85rem;
 }
 
 /* Give timeline markers breathing room without reducing the useful width of
