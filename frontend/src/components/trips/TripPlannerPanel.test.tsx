@@ -438,12 +438,16 @@ describe('TripPlannerPanel', () => {
 
     const hideToggle = await screen.findByRole('switch', { name: 'Masquer le jour 1 sur la carte' })
     expect(hideToggle).toHaveAttribute('aria-checked', 'true')
+    expect(hideToggle).toHaveClass('trip-panel-day-number', 'trip-day-visibility-bubble')
+    expect(hideToggle.querySelector('.lucide-eye')).toBeInTheDocument()
+    expect(hideToggle.closest('summary')?.querySelector('.trip-panel-day-actions')).not.toContainElement(hideToggle)
     fireEvent.click(hideToggle)
     expect(onDayVisibilityChange).toHaveBeenCalledWith('day-1', false)
 
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={visualTrip} activeDayId="day-1" hiddenDayIds={new Set(['day-1'])} onDayVisibilityChange={onDayVisibilityChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     const showToggle = screen.getByRole('switch', { name: 'Afficher le jour 1 sur la carte' })
     expect(showToggle).toHaveAttribute('aria-checked', 'false')
+    expect(showToggle.querySelector('.lucide-eye-off')).toBeInTheDocument()
     fireEvent.click(showToggle)
     expect(onDayVisibilityChange).toHaveBeenLastCalledWith('day-1', true)
   })

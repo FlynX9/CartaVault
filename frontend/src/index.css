@@ -4017,9 +4017,6 @@ html[data-theme='dark'] .trip-pdf-export-provider.is-selected { background: rgb(
 .trip-view-toggle input:checked + i { background: var(--cv-color-teal); }
 .trip-view-toggle input:checked + i::after { transform: translateX(.82rem); }
 .trip-view-toggle input:focus-visible + i { outline: 2px solid rgb(15 166 138 / 35%); outline-offset: 2px; }
-.trip-panel-day-actions .trip-day-visibility-toggle { color: var(--trip-day-color); background: color-mix(in srgb, var(--trip-day-color) 10%, white); border-color: color-mix(in srgb, var(--trip-day-color) 28%, white); }
-.trip-panel-day-actions .trip-day-visibility-toggle[aria-checked="false"] { color: var(--cv-color-gray); background: var(--cv-color-mist); border-color: rgb(100 112 122 / 18%); }
-.trip-panel-day-actions .trip-day-visibility-toggle:disabled { cursor: not-allowed; opacity: .42; }
 
 .trip-panel-section > summary,
 .trip-metrics-global > summary,
@@ -10368,6 +10365,28 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
 
 .trip-planner-panel .trip-day-drag-surface { cursor: grab; touch-action: none; }
 .trip-planner-panel .trip-day-drag-surface:active { cursor: grabbing; }
+.trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-day-visibility-bubble {
+  padding: 0;
+  font: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+.trip-planner-panel .trip-day-visibility-bubble:disabled { cursor: not-allowed; opacity: .62; }
+.trip-planner-panel .trip-day-bubble__default,
+.trip-planner-panel .trip-day-bubble__visibility {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  place-items: center;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.trip-planner-panel .trip-day-bubble__default { grid-template-rows: 12px 12px; opacity: 1; }
+.trip-planner-panel .trip-day-bubble__visibility { color: #fff; opacity: 0; transform: scale(.82); }
+.trip-planner-panel .trip-day-bubble__default > svg { color: #fff; stroke-width: 2.2; }
+.trip-planner-panel .trip-day-bubble__default > b { color: #fff; font-size: .61rem; font-weight: 850; line-height: 1; }
+.trip-planner-panel .trip-day-visibility-bubble:not(:disabled):is(:hover, :focus-visible) .trip-day-bubble__default { opacity: 0; transform: scale(.82); }
+.trip-planner-panel .trip-day-visibility-bubble:not(:disabled):is(:hover, :focus-visible) .trip-day-bubble__visibility { opacity: 1; transform: scale(1); }
 .trip-planner-panel .trip-timeline-day-block { transition: opacity 140ms ease; }
 .trip-planner-panel .trip-timeline-day-block.is-dragging { opacity: .38; }
 .trip-planner-panel .trip-timeline-day-block.drop-before::before,
