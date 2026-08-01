@@ -566,6 +566,9 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withStops} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     const source = screen.getByRole('button', { name: /Étape 0/ }).closest('li')!
     const target = screen.getByRole('button', { name: /Étape 1/ }).closest('li')!
+    expect(screen.queryByRole('button', { name: 'Monter l’étape' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Descendre l’étape' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Supprimer l’étape' })).toHaveLength(2)
     const dataTransfer = { effectAllowed: '', setData: vi.fn(), getData: () => 'stop:stop-0' }
     fireEvent.dragStart(source, { dataTransfer })
     expect(source).toHaveClass('is-dragging')

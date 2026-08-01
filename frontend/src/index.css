@@ -9856,9 +9856,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 .trip-planner-panel :is(.trip-panel-day-actions, .trip-panel-stop-actions) button:is(
   [aria-label='Monter la journée'],
-  [aria-label='Descendre la journée'],
-  [aria-label='Monter l’étape'],
-  [aria-label='Descendre l’étape']
+  [aria-label='Descendre la journée']
 ):is(:hover, :focus-visible) {
   color: var(--cv-color-teal);
   background: color-mix(in srgb, var(--cv-color-teal) 11%, var(--cv-surface, #fff));
