@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, unarchiveTrip, updateTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
+import { addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, unarchiveTrip, updateTrip, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTrip: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTrip: vi.fn(), updateTripDeparture: vi.fn(), updateTripDay: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), reorderTripDays: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -47,6 +47,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(addTripDay).mockResolvedValue({ ...trip.days[0], id: 'day-new', day_number: 2, sort_order: 1 })
     vi.mocked(deleteTripStop).mockResolvedValue(undefined)
     vi.mocked(moveTripStop).mockResolvedValue(trip)
+    vi.mocked(reorderTripDays).mockResolvedValue(trip)
     vi.mocked(archiveTrip).mockResolvedValue({ ...trip, status: 'completed', completed_at: '2026-07-27T12:00:00' })
     vi.mocked(unarchiveTrip).mockResolvedValue({ ...trip, status: 'in_progress' })
     vi.mocked(calculateTripDayRoute).mockResolvedValue(trip.days[0])
@@ -96,6 +97,36 @@ describe('TripPlannerPanel', () => {
     emptyStatuses.forEach((status) => expect(status.closest('.trip-timeline-status')?.querySelector('.lucide-circle-alert')).toBeInTheDocument())
     expect(within(container.querySelector('.trip-panel-departure') as HTMLElement).getByText('Vide')).toBeVisible()
     expect(within(container.querySelector('.trip-panel-arrival') as HTMLElement).getByText('Vide')).toBeVisible()
+  })
+
+  it('reorders days by drag and drop while keeping the following night in the same block', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const night = { id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Nuit du premier jour', latitude: 48.5, longitude: 2.5, address: null, notes: null, check_in_time: null, check_out_time: null }
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [night] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([withNight])
+    vi.mocked(getTrip).mockResolvedValue(withNight)
+    vi.mocked(reorderTripDays).mockResolvedValue(withNight)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const firstHeader = (await screen.findByText('Jour 1')).closest<HTMLElement>('summary')!
+    const secondHeader = screen.getByText('Jour 2').closest<HTMLElement>('summary')!
+    const firstBlock = firstHeader.closest<HTMLElement>('.trip-timeline-day-block')!
+    const secondBlock = secondHeader.closest<HTMLElement>('.trip-timeline-day-block')!
+    expect(firstHeader).toHaveAttribute('draggable', 'true')
+    expect(within(firstBlock).getByText('Nuit du premier jour')).toBeVisible()
+    expect(secondBlock.querySelector('.trip-panel-night:not(.trip-panel-arrival)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Déplacer le jour/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Monter la journée' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Descendre la journée' })).not.toBeInTheDocument()
+
+    const dataTransfer = { effectAllowed: '', setData: vi.fn(), getData: () => 'day:day-2' }
+    fireEvent.dragStart(secondHeader, { dataTransfer })
+    expect(secondBlock).toHaveClass('is-dragging')
+    fireEvent.dragOver(firstBlock, { dataTransfer, clientY: 0 })
+    expect(firstBlock).toHaveClass('drop-before')
+    fireEvent.drop(firstBlock, { dataTransfer, clientY: 0 })
+
+    await waitFor(() => expect(reorderTripDays).toHaveBeenCalledWith(trip.id, ['day-2', 'day-1']))
   })
 
   it('shows valid for a ready day and non-calculated when its route needs attention', async () => {

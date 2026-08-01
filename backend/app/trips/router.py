@@ -232,14 +232,31 @@ def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = De
 def reorder_days(trip_id: UUID, data: IdOrder, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
     if set(data.ids) != {day.id for day in trip.days} or len(data.ids) != len(trip.days): raise HTTPException(422, "Day order must contain every day exactly once")
-    positions = {item: index for index, item in enumerate(data.ids)}
     nights = session.scalars(select(TripNight).where(TripNight.trip_id == trip.id)).all()
-    if any(positions[night.next_day_id] != positions[night.previous_day_id] + 1 for night in nights): raise HTTPException(422, "Days connected by a night must remain consecutive and ordered")
+    nights_by_previous_day = {
+        night.previous_day_id: {column.name: getattr(night, column.name) for column in TripNight.__table__.columns}
+        for night in nights
+    }
+    # A night travels with the day it follows. Rebuild the links atomically so
+    # each retained night targets the day's new successor; the new last day
+    # cannot keep an overnight stop before the arrival anchor.
+    if nights:
+        session.execute(delete(TripNight).where(TripNight.trip_id == trip.id))
+        session.flush()
     for day in trip.days: day.sort_order += 10_000; day.day_number += 10_000
     session.flush(); lookup = {day.id: day for day in trip.days}
     for index, item in enumerate(data.ids): lookup[item].sort_order = index; lookup[item].day_number = index + 1
+    rebuilt_nights = []
+    for index, day_id in enumerate(data.ids[:-1]):
+        values = nights_by_previous_day.get(day_id)
+        if values is None: continue
+        values["next_day_id"] = data.ids[index + 1]
+        values["updated_at"] = datetime.now(UTC)
+        rebuilt_nights.append(values)
+    if rebuilt_nights: session.execute(TripNight.__table__.insert(), rebuilt_nights)
+    for day in trip.days: stale(day)
     synchronize_trip_dates(trip)
-    session.commit(); return _trip_read(session, trip_id)
+    session.commit(); session.expire_all(); return _trip_read(session, trip_id)
 
 
 @router.post("/trip-days/{day_id}/duplicate", response_model=DayRead, status_code=201)

@@ -10366,6 +10366,26 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   align-self: stretch;
 }
 
+.trip-planner-panel .trip-day-drag-surface { cursor: grab; touch-action: none; }
+.trip-planner-panel .trip-day-drag-surface:active { cursor: grabbing; }
+.trip-planner-panel .trip-timeline-day-block { transition: opacity 140ms ease; }
+.trip-planner-panel .trip-timeline-day-block.is-dragging { opacity: .38; }
+.trip-planner-panel .trip-timeline-day-block.drop-before::before,
+.trip-planner-panel .trip-timeline-day-block.drop-after::after {
+  position: absolute;
+  z-index: 8;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: var(--cv-color-teal);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cv-color-teal) 15%, transparent);
+  content: '';
+  pointer-events: none;
+}
+.trip-planner-panel .trip-timeline-day-block.drop-before::before { top: -.25rem; }
+.trip-planner-panel .trip-timeline-day-block.drop-after::after { bottom: -.1rem; }
+
 .trip-planner-panel .trip-panel-night .trip-anchor-recommended {
   color: var(--cv-color-slate);
   background: var(--cv-surface, #fff);

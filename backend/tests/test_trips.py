@@ -132,7 +132,8 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     assert night.status_code == 201
     invalid_night = integration_client.post(f"/trips/{trip_id}/nights", json={"previous_day_id": days[0]["id"], "next_day_id": days[2]["id"], "name": "Invalide", "latitude": 48, "longitude": 6})
     assert invalid_night.status_code == 422
-    assert integration_client.post(f"/trips/{trip_id}/days/reorder", json={"ids": [days[1]["id"], days[0]["id"], days[2]["id"]]}).status_code == 422
+    assert integration_client.post(f"/trips/{trip_id}/days/reorder", json={"ids": [days[1]["id"], days[0]["id"], days[2]["id"]]}).status_code == 200
+    assert integration_client.post(f"/trips/{trip_id}/days/reorder", json={"ids": [days[0]["id"], days[1]["id"], days[2]["id"]]}).status_code == 200
 
     reordered = integration_client.post(f"/trip-days/{days[0]['id']}/stops/reorder", json={"ids": [free.json()["id"], first.json()["id"]]})
     assert reordered.status_code == 200 and reordered.json()["route_status"] is None
@@ -190,6 +191,35 @@ def test_inserting_a_day_reindexes_following_days_and_preserves_overnight_order(
     invalid = integration_client.post(f"/trips/{trip_id}/days", json={"after_day_id": str(uuid4())})
     assert invalid.status_code == 422
     assert integration_client.get(f"/trips/{trip_id}").json()["days"] == before_invalid["days"]
+
+
+def test_reordering_days_moves_their_night_and_drops_the_new_last_night(integration_client, poi_map) -> None:
+    created = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Réorganisation des nuits"}).json()
+    trip_id = created["id"]
+    first = created["days"][0]
+    second = integration_client.post(f"/trips/{trip_id}/days", json={"title": "Deuxième"}).json()
+    third = integration_client.post(f"/trips/{trip_id}/days", json={"title": "Dernier"}).json()
+    first_night = integration_client.post(
+        f"/trips/{trip_id}/nights",
+        json={"previous_day_id": first["id"], "next_day_id": second["id"], "name": "Nuit du premier", "latitude": 48.4, "longitude": 6.6},
+    ).json()
+    integration_client.post(
+        f"/trips/{trip_id}/nights",
+        json={"previous_day_id": second["id"], "next_day_id": third["id"], "name": "Nuit du deuxième", "latitude": 48.5, "longitude": 6.7},
+    )
+
+    response = integration_client.post(
+        f"/trips/{trip_id}/days/reorder",
+        json={"ids": [third["id"], first["id"], second["id"]]},
+    )
+
+    assert response.status_code == 200
+    reordered = response.json()
+    assert [day["id"] for day in reordered["days"]] == [third["id"], first["id"], second["id"]]
+    assert len(reordered["nights"]) == 1
+    assert reordered["nights"][0]["id"] == first_night["id"]
+    assert reordered["nights"][0]["previous_day_id"] == first["id"]
+    assert reordered["nights"][0]["next_day_id"] == second["id"]
 
 
 def test_removing_a_middle_stop_compacts_the_day_order(integration_client, poi_map) -> None:
