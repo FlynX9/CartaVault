@@ -827,7 +827,8 @@ describe('TripPlannerPanel', () => {
     expect(recommendedDeparture).toHaveTextContent('Départ conseillé')
     expect(container.querySelector('.trip-panel-day-number .lucide-sun')).toBeInTheDocument()
     expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
-    const settingsButton = screen.getByRole('button', { name: 'Paramètres du jour' })
+    const settingsButton = screen.getByRole('button', { name: 'Réglages' })
+    expect(settingsButton.querySelector('.lucide-settings-2')).toBeInTheDocument()
     expect(settingsButton).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(settingsButton)
     expect(settingsButton).toHaveAttribute('aria-expanded', 'true')
@@ -841,7 +842,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(updateTripDay).mockResolvedValue({ ...trip.days[0], color: '#2563EB' } as never)
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const settingsButton = await screen.findByRole('button', { name: 'Paramètres du jour' })
+    const settingsButton = await screen.findByRole('button', { name: 'Réglages' })
     fireEvent.click(settingsButton)
     const picker = screen.getByLabelText('Couleur du jour 1')
     fireEvent.change(picker, { target: { value: '#2563eb' } })
