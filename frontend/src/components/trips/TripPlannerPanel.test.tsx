@@ -61,8 +61,9 @@ describe('TripPlannerPanel', () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={null} activeDayId={null} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('map-sidebar', 'trip-planner-panel')
     const header = screen.getByRole('button', { name: 'Réduire le panneau Sortie' }).closest('header')
-    expect(header).toHaveClass('trip-panel-header', 'cv-workspace-panel__header')
-    expect(header?.querySelector('.cv-workspace-panel__title')).toBeInTheDocument()
+    expect(header).toHaveClass('trip-panel-header', 'places-redesign-header')
+    expect(header?.querySelector('.places-redesign-title-row')).toBeInTheDocument()
+    expect(header?.querySelector('.places-redesign-header-actions')).toBeInTheDocument()
     const scrollRegion = screen.getByRole('region', { name: 'Contenu de la sortie' })
     expect(scrollRegion).toHaveClass('trip-panel-scroll')
     expect(scrollRegion).toContainElement(screen.getByLabelText('Voyage actif'))
@@ -71,6 +72,23 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Créer une sortie' }))
     expect(screen.getByRole('dialog', { name: 'Préparer une sortie' })).toBeVisible()
+  })
+
+  it('matches the places header hierarchy and keeps the day count current', () => {
+    const { rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    const header = screen.getByRole('button', { name: 'Réduire le panneau Sortie' }).closest('header')
+    expect(header).toHaveClass('places-redesign-header')
+    expect(header?.querySelector('.places-redesign-title-row')).toBeInTheDocument()
+    expect(header?.querySelector('.places-redesign-map-meta')).toBeInTheDocument()
+    expect(header?.querySelector('.places-redesign-header-actions')).toBeInTheDocument()
+    expect(within(header as HTMLElement).getByRole('heading', { name: 'Sortie' })).toBeVisible()
+    expect(within(header as HTMLElement).getByText('En cours')).toHaveClass('places-redesign-count')
+    expect(within(header as HTMLElement).getByText('Voyage test')).toBeVisible()
+    expect(within(header as HTMLElement).getByText('1 jour')).toBeVisible()
+
+    const twoDayTrip = { ...trip, days: [...trip.days, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }] }
+    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDayTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    expect(within(header as HTMLElement).getByText('2 jours')).toBeVisible()
   })
 
   it('renders only the compact header when the panel is collapsed', () => {
