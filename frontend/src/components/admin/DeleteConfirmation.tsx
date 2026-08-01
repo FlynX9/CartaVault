@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { ConfirmDialog } from '../common/ConfirmDialog'
 
 interface DeleteConfirmationProps {
   entityName: string
@@ -8,21 +8,5 @@ interface DeleteConfirmationProps {
 }
 
 export function DeleteConfirmation({ entityName, isDeleting, onCancel, onConfirm }: DeleteConfirmationProps) {
-  const cancelButton = useRef<HTMLButtonElement>(null)
-  useEffect(() => cancelButton.current?.focus(), [])
-
-  return (
-    <div className="delete-confirmation" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-description">
-      <h3 id="delete-title">Confirmer la suppression</h3>
-      <p id="delete-description">Supprimer « {entityName} » ? Les associations avec les POI seront également retirées.</p>
-      <div className="admin-form-actions">
-        <button className="danger-button" type="button" disabled={isDeleting} onClick={onConfirm}>
-          {isDeleting ? 'Suppression…' : 'Supprimer définitivement'}
-        </button>
-        <button ref={cancelButton} className="secondary-button" type="button" disabled={isDeleting} onClick={onCancel}>
-          Annuler
-        </button>
-      </div>
-    </div>
-  )
+  return <ConfirmDialog title={`Supprimer « ${entityName} » ?`} message="Les associations avec les POI seront également retirées. Cette action est définitive." confirmLabel={isDeleting ? 'Suppression…' : 'Supprimer définitivement'} busy={isDeleting} onCancel={onCancel} onConfirm={onConfirm} />
 }
