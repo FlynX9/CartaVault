@@ -1,15 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getPlaceDetails } from '../../api/places'
+import { getPlaceDetails, getPlaces } from '../../api/places'
 import { geocodingService } from '../../geocoding/geocodingService'
 import { CreateTripNightDialog } from './CreateTripNightDialog'
 
-vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
+vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaces: vi.fn() }))
 vi.mock('../../geocoding/geocodingService', () => ({ geocodingService: { search: vi.fn() } }))
 
 describe('CreateTripNightDialog', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getPlaces).mockResolvedValue([])
+  })
   afterEach(cleanup)
 
   it('selects an address or GPS result and creates a free night location', async () => {
@@ -57,11 +60,33 @@ describe('CreateTripNightDialog', () => {
   it('creates a free day stop through the shared geographic dialog', async () => {
     vi.mocked(geocodingService.search).mockResolvedValue([{ id: 'geo-stop', name: 'Point de vue', formattedAddress: 'Col du Test', latitude: 44.1, longitude: 6.2, source: 'test' }])
     const onCreate = vi.fn().mockResolvedValue(undefined)
-    render(<CreateTripNightDialog kind="stop" mapName="France" focus={[44, 6]} onClose={vi.fn()} onCreate={onCreate} />)
-    fireEvent.change(screen.getByLabelText('Adresse ou coordonnées GPS'), { target: { value: 'Col du Test' } })
+    render(<CreateTripNightDialog kind="stop" mapId="map-1" mapName="France" focus={[44, 6]} onClose={vi.fn()} onCreate={onCreate} />)
+    expect(screen.queryByText('Type d’étape')).not.toBeInTheDocument()
+    expect(screen.queryByText('Notes')).not.toBeInTheDocument()
+    expect(document.querySelector('.trip-night-drop')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Adresse, coordonnées GPS ou POI'), { target: { value: 'Col du Test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
     fireEvent.click(await screen.findByRole('option', { name: /Point de vue/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter l’étape' }))
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ stop_type: 'free_location', name: 'Point de vue', latitude: 44.1, longitude: 6.2, visit_duration_minutes: 30 })))
+    expect(onCreate.mock.calls[0][0]).not.toHaveProperty('notes')
+  })
+
+  it('includes map POIs in the free-stop search and selects one directly', async () => {
+    vi.mocked(geocodingService.search).mockResolvedValue([])
+    vi.mocked(getPlaces).mockResolvedValue([{
+      id: 'place-1', map_id: 'map-1', name: 'Musée CartaVault', latitude: 44.2, longitude: 6.3, region: 'Provence',
+      map: { id: 'map-1', name: 'France', country: {} },
+    } as never])
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(<CreateTripNightDialog kind="stop" mapId="map-1" mapName="France" focus={[44, 6]} onClose={vi.fn()} onCreate={onCreate} />)
+
+    fireEvent.change(screen.getByLabelText('Adresse, coordonnées GPS ou POI'), { target: { value: 'Musée' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Musée CartaVault/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter l’étape' }))
+
+    expect(getPlaces).toHaveBeenCalledWith({ mapId: 'map-1', q: 'Musée', limit: 6 }, expect.any(AbortSignal))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith({ place_id: 'place-1', stop_type: 'free_location', visit_duration_minutes: 30 }))
   })
 })

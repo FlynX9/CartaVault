@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { BedDouble, ClipboardPaste, MapPin, Search, Upload, X } from 'lucide-react'
 
 import type { TripArrivalCreatePayload, TripDepartureCreatePayload, TripNightCreatePayload } from '../../api/trips'
-import { getPlaceDetails } from '../../api/places'
+import { getPlaceDetails, getPlaces } from '../../api/places'
 import { formatCoordinates } from '../../geocoding/coordinates'
 import { geocodingService } from '../../geocoding/geocodingService'
 import type { GeocodingResult } from '../../geocoding/types'
@@ -12,6 +12,7 @@ import type { TripNightSourceType } from '../../types/trip'
 import { useModalFocus } from '../../hooks/useModalFocus'
 
 interface CommonProps {
+  mapId?: string
   mapName?: string
   countryCode?: string
   focus: [number, number]
@@ -76,7 +77,7 @@ function extractReservationText(value: string): ReservationText | null {
 }
 
 export function CreateTripNightDialog(props: Props) {
-  const { mapName, countryCode, focus, initialPlaceId, initialLocation, onClose } = props
+  const { mapId, mapName, countryCode, focus, initialPlaceId, initialLocation, onClose } = props
   const isDeparture = props.kind === 'departure'
   const isArrival = props.kind === 'arrival'
   const isStop = props.kind === 'stop'
@@ -89,6 +90,7 @@ export function CreateTripNightDialog(props: Props) {
   const [reservationText, setReservationText] = useState('')
   const [locationSourceType, setLocationSourceType] = useState<TripNightSourceType>(props.initialSourceType ?? (initialPlaceId ? 'place' : 'map'))
   const [results, setResults] = useState<GeocodingResult[]>([])
+  const [placeResults, setPlaceResults] = useState<PlaceDetails[]>([])
   const [selectedResult, setSelectedResult] = useState<GeocodingResult | null>(initialLocation ? { id: 'current-anchor', name: initialLocation.name, formattedAddress: initialLocation.address ?? '', latitude: initialLocation.latitude, longitude: initialLocation.longitude, source: 'current' } : null)
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null)
   const [loading, setLoading] = useState(false)
@@ -102,7 +104,7 @@ export function CreateTripNightDialog(props: Props) {
     try {
       const place = await getPlaceDetails(placeId, controller.signal)
       if (place.latitude === null || place.longitude === null) throw new Error('Ce POI ne possède pas de coordonnées utilisables.')
-      if (!controller.signal.aborted) { setSelectedPlace(place); setLocationSourceType('place'); setSelectedResult(null); setResults([]); setQuery('') }
+      if (!controller.signal.aborted) { setSelectedPlace(place); setLocationSourceType('place'); setSelectedResult(null); setResults([]); setPlaceResults([]); setQuery('') }
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'Impossible de charger ce POI.')
     } finally { if (!controller.signal.aborted) setLoading(false) }
@@ -115,12 +117,23 @@ export function CreateTripNightDialog(props: Props) {
 
   const search = async () => {
     const normalized = query.trim()
-    if (!normalized) { setError('Saisissez une adresse ou des coordonnées.'); return }
+    if (!normalized) { setError(isStop ? 'Saisissez une adresse, des coordonnées ou le nom d’un POI.' : 'Saisissez une adresse ou des coordonnées.'); return }
     searchController.current?.abort(); const controller = new AbortController(); searchController.current = controller
-    setLoading(true); setError(null); setSelectedPlace(null)
+    setLoading(true); setError(null); setSelectedPlace(null); setSelectedResult(null)
     try {
-      const found = await geocodingService.search(normalized, { signal: controller.signal, focus, countryCode, limit: 6 })
-      if (!controller.signal.aborted) { setResults(found); if (!found.length) setError('Aucun emplacement trouvé.') }
+      const [geographicResponse, placesResponse] = await Promise.allSettled([
+        geocodingService.search(normalized, { signal: controller.signal, focus, countryCode, limit: 6 }),
+        isStop && mapId ? getPlaces({ mapId, q: normalized, limit: 6 }, controller.signal) : Promise.resolve([]),
+      ])
+      if (controller.signal.aborted) return
+      const found = geographicResponse.status === 'fulfilled' ? geographicResponse.value : []
+      const foundPlaces = placesResponse.status === 'fulfilled'
+        ? placesResponse.value.filter((place) => place.latitude !== null && place.longitude !== null)
+        : []
+      setResults(found)
+      setPlaceResults(foundPlaces)
+      if (!found.length && !foundPlaces.length) setError('Aucun emplacement ou POI trouvé.')
+      if (geographicResponse.status === 'rejected' && placesResponse.status === 'rejected') throw geographicResponse.reason
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'La recherche géographique est indisponible.')
     } finally { if (!controller.signal.aborted) setLoading(false) }
@@ -129,7 +142,7 @@ export function CreateTripNightDialog(props: Props) {
   const analyzeReservation = async () => {
     const extracted = extractReservationText(reservationText)
     if (!extracted) { setError('Collez une confirmation ou des coordonnées à analyser.'); return }
-    setLoading(true); setError(null); setSelectedPlace(null); setResults([])
+    setLoading(true); setError(null); setSelectedPlace(null); setResults([]); setPlaceResults([])
     try {
       if (extracted.latitude !== null && extracted.longitude !== null) {
         setSelectedResult({ id: 'reservation-coordinates', name: extracted.name, formattedAddress: extracted.address, latitude: extracted.latitude, longitude: extracted.longitude, source: 'reservation' }); setLocationSourceType('imported_text')
@@ -165,8 +178,7 @@ export function CreateTripNightDialog(props: Props) {
         }
       if (props.kind === 'stop') await props.onCreate({
         ...location,
-        stop_type: String(data.get('stop_type') ?? 'free_location') as TripFreeStopPayload['stop_type'],
-        notes: String(data.get('notes') ?? '').trim() || undefined,
+        stop_type: 'free_location',
         visit_duration_minutes: 30,
       })
       else if (props.kind === 'departure') await props.onCreate({
@@ -200,21 +212,20 @@ export function CreateTripNightDialog(props: Props) {
     : selectedResult ? formatCoordinates(selectedResult.latitude, selectedResult.longitude) : null
 
   return createPortal(<div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
-    <section ref={dialog} className="create-trip-night-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-night-title">
+    <section ref={dialog} className={`create-trip-night-dialog cv-modal${isStop ? ' create-trip-night-dialog--stop' : ''}`} role="dialog" aria-modal="true" aria-labelledby="create-trip-night-title">
       <form onSubmit={(event) => void submit(event)}>
-        <header><div><p className="cv-workspace-panel__eyebrow">{isStop ? 'Étape libre' : isDeparture ? 'Départ' : isArrival ? 'Arrivée' : 'Étape de nuit'}</p><h2 id="create-trip-night-title">{isStop ? 'Ajouter un lieu libre' : isEditing ? (isDeparture ? 'Modifier le point de départ' : isArrival ? 'Modifier le point d’arrivée' : 'Modifier l’hébergement') : (isDeparture ? 'Ajouter le point de départ' : isArrival ? 'Ajouter le point d’arrivée' : 'Ajouter un hébergement')}</h2><span>{mapName ? `Sortie sur la carte ${mapName}` : isStop ? 'Nouvelle étape de la journée' : isDeparture ? 'Point de départ du premier jour' : isArrival ? 'Destination du dernier jour' : 'Hébergement entre deux journées'}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
+        <header>{isStop && <span className="create-trip-night-dialog__header-icon" aria-hidden="true"><MapPin size={21} /></span>}<div><p className="cv-workspace-panel__eyebrow">{isStop ? 'Étape libre' : isDeparture ? 'Départ' : isArrival ? 'Arrivée' : 'Étape de nuit'}</p><h2 id="create-trip-night-title">{isStop ? 'Ajouter un lieu libre' : isEditing ? (isDeparture ? 'Modifier le point de départ' : isArrival ? 'Modifier le point d’arrivée' : 'Modifier l’hébergement') : (isDeparture ? 'Ajouter le point de départ' : isArrival ? 'Ajouter le point d’arrivée' : 'Ajouter un hébergement')}</h2><span>{mapName ? `Recherchez une adresse ou un POI de la carte ${mapName}` : isStop ? 'Recherchez une adresse, des coordonnées ou un POI' : isDeparture ? 'Point de départ du premier jour' : isArrival ? 'Destination du dernier jour' : 'Hébergement entre deux journées'}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
         <div className="create-trip-night-dialog__body">
           {error && <p className="form-alert" role="alert">{error}</p>}
-          <section className="trip-night-location"><h3>Emplacement</h3><div className="trip-night-search"><label><span className="visually-hidden">Adresse ou coordonnées GPS</span><Search size={16} /><input ref={input} type="search" value={query} placeholder="Adresse ou coordonnées GPS…" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void search() } }} /></label><button type="button" disabled={loading} onClick={() => void search()}>{loading ? 'Recherche…' : 'Rechercher'}</button></div>
-            {results.length > 0 && <div className="trip-night-results" role="listbox" aria-label="Résultats géographiques">{results.map((result) => <button key={result.id} type="button" role="option" aria-selected={selectedResult?.id === result.id} onClick={() => { setSelectedResult(result); setLocationSourceType('map'); setSelectedPlace(null); setResults([]); setQuery(result.formattedAddress) }}><MapPin size={15} /><span><strong>{result.name}</strong><small>{result.formattedAddress} · {formatCoordinates(result.latitude, result.longitude)}</small></span></button>)}</div>}
-            <div className={`trip-night-drop${selectedPlace ? ' selected' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={drop}><Upload size={19} /><span><strong>Ou glissez un POI ici</strong><small>Depuis le panneau Lieux</small></span></div>
+          <section className="trip-night-location"><h3>{isStop ? 'Rechercher un lieu' : 'Emplacement'}</h3><div className="trip-night-search"><label><span className="visually-hidden">{isStop ? 'Adresse, coordonnées GPS ou POI' : 'Adresse ou coordonnées GPS'}</span><Search size={16} /><input ref={input} type="search" value={query} placeholder={isStop ? 'Adresse, coordonnées GPS ou nom d’un POI…' : 'Adresse ou coordonnées GPS…'} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void search() } }} /></label><button type="button" disabled={loading} onClick={() => void search()}>{loading ? 'Recherche…' : 'Rechercher'}</button></div>
+            {(placeResults.length > 0 || results.length > 0) && <div className="trip-night-results" role="listbox" aria-label="Résultats de recherche">{placeResults.map((place) => <button className="trip-night-result trip-night-result--poi" key={`place-${place.id}`} type="button" role="option" aria-selected={selectedPlace?.id === place.id} onClick={() => { setSelectedPlace(place); setLocationSourceType('place'); setSelectedResult(null); setResults([]); setPlaceResults([]); setQuery(place.name) }}><MapPin size={15} /><span><strong>{place.name}</strong><small>POI CartaVault · {place.region ?? place.map.name}</small></span><em>POI</em></button>)}{results.map((result) => <button className="trip-night-result" key={`geo-${result.id}`} type="button" role="option" aria-selected={selectedResult?.id === result.id} onClick={() => { setSelectedResult(result); setLocationSourceType('map'); setSelectedPlace(null); setResults([]); setPlaceResults([]); setQuery(result.formattedAddress) }}><MapPin size={15} /><span><strong>{result.name}</strong><small>{result.formattedAddress} · {formatCoordinates(result.latitude, result.longitude)}</small></span><em>Adresse</em></button>)}</div>}
+            {!isStop && <div className={`trip-night-drop${selectedPlace ? ' selected' : ''}`} onDragOver={(event) => event.preventDefault()} onDrop={drop}><Upload size={19} /><span><strong>Ou glissez un POI ici</strong><small>Depuis le panneau Lieux</small></span></div>}
             {!isStop && !isDeparture && !isArrival && <section className="trip-night-reservation"><h4><ClipboardPaste size={14} />Coller une confirmation</h4><textarea aria-label="Texte de confirmation de réservation" value={reservationText} onChange={(event) => setReservationText(event.target.value)} rows={4} maxLength={10000} placeholder="Collez une réservation d’hôtel ou un e-mail : le nom, l’adresse ou les coordonnées seront proposés." /><div><small>Les coordonnées GPS sont détectées directement. Sinon, CartaVault recherche l’adresse extraite.</small><button type="button" disabled={loading || !reservationText.trim()} onClick={() => void analyzeReservation()}>Analyser le texte</button></div></section>}
             {selectionName && <article className="trip-night-selection">{isDeparture || isArrival || isStop ? <MapPin size={20} /> : <BedDouble size={20} />}<span><strong>{selectionName}</strong><small>{selectionAddress}</small><small>{selectionCoordinates}</small></span><button type="button" onClick={() => { setSelectedPlace(null); setSelectedResult(null); setQuery('') }}>Changer</button></article>}
           </section>
           {!selectedPlace && selectedResult && <label className="form-field"><span>{isStop ? 'Nom du lieu' : isDeparture ? 'Nom du point de départ' : isArrival ? 'Nom du point d’arrivée' : 'Nom de l’hébergement'}</span><input name="name" defaultValue={selectedResult.name} maxLength={255} /></label>}
-          {isStop && <label className="form-field"><span>Type d’étape</span><select name="stop_type" defaultValue="free_location"><option value="free_location">Lieu libre</option><option value="restaurant">Restaurant</option><option value="parking">Parking</option><option value="station">Station</option><option value="airport">Aéroport</option><option value="other">Autre</option></select></label>}
           {!isStop && !isArrival && (isDeparture ? <label className="form-field"><span>Heure de départ</span><input name="departure_time" type="time" defaultValue={props.initialDepartureTime ?? ''} /></label> : <div className="create-trip-night-dialog__times"><label className="form-field"><span>Arrivée</span><input name="check_in_time" type="time" defaultValue={props.initialCheckInTime ?? ''} /></label><label className="form-field"><span>Départ</span><input name="check_out_time" type="time" defaultValue={props.initialCheckOutTime ?? ''} /></label></div>)}
-          <label className="form-field"><span>Notes</span><textarea name="notes" rows={3} maxLength={10000} defaultValue={props.initialNotes ?? ''} placeholder="Réservation, consignes, contact…" /></label>
+          {!isStop && <label className="form-field"><span>Notes</span><textarea name="notes" rows={3} maxLength={10000} defaultValue={props.initialNotes ?? ''} placeholder="Réservation, consignes, contact…" /></label>}
         </div>
         <footer className="dialog-actions"><button className="secondary-button" type="button" disabled={busy} onClick={onClose}>Annuler</button><button className="primary-button" data-cv-save={isEditing ? 'true' : undefined} type="submit" disabled={busy || (!selectedPlace && !selectedResult)}>{isDeparture || isArrival || isStop ? <MapPin size={16} /> : <BedDouble size={16} />}{busy ? 'Enregistrement…' : isStop ? 'Ajouter l’étape' : isEditing ? 'Enregistrer' : isDeparture ? 'Ajouter le départ' : isArrival ? 'Ajouter l’arrivée' : 'Ajouter la nuit'}</button></footer>
       </form>

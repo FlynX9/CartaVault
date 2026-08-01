@@ -500,7 +500,7 @@ function DayCollapseToggle({ day }: { day: TripDay }) {
 
 function FreeStop({ day, poiMap, reload }: { day: TripDay; poiMap: PoiMap; reload: () => Promise<void> }) {
   const [open, setOpen] = useState(false); const anchor = day.stops.at(-1)
-  return <><button className="trip-panel-free-stop" type="button" aria-label="Ajouter un Lieu libre" title="Ajouter un lieu libre" onClick={() => setOpen(true)}><span aria-hidden="true" /><i aria-hidden="true"><Plus size={14} /></i><span aria-hidden="true" /></button>{open && <CreateTripNightDialog kind="stop" mapName={poiMap.name} countryCode={poiMap.country.iso_alpha2} focus={[anchor?.latitude ?? poiMap.effective_center_latitude, anchor?.longitude ?? poiMap.effective_center_longitude]} onClose={() => setOpen(false)} onCreate={async (payload) => { await addTripStop(day.id, { ...payload }); await reload(); setOpen(false) }} />}</>
+  return <><button className="trip-panel-free-stop" type="button" aria-label="Ajouter un Lieu libre" title="Ajouter un lieu libre" onClick={() => setOpen(true)}><span aria-hidden="true" /><i aria-hidden="true"><Plus size={14} /></i><span aria-hidden="true" /></button>{open && <CreateTripNightDialog kind="stop" mapId={poiMap.id} mapName={poiMap.name} countryCode={poiMap.country.iso_alpha2} focus={[anchor?.latitude ?? poiMap.effective_center_latitude, anchor?.longitude ?? poiMap.effective_center_longitude]} onClose={() => setOpen(false)} onCreate={async (payload) => { await addTripStop(day.id, { ...payload }); await reload(); setOpen(false) }} />}</>
 }
 
 type TimelineCollapseRequest = { collapsed: boolean; version: number }
