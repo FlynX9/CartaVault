@@ -684,9 +684,18 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
       <span className="trip-timeline-night-badge"><Moon aria-hidden="true" size={13} /><b>N{previous.day_number}</b></span>
       <div className="trip-night-content">
         <div className="trip-night-header-row">
-          <span className="trip-panel-timeline-heading"><strong>Nuit {previous.day_number}</strong><TimelineStatusBadge status={night ? 'valid' : 'empty'} /></span>
+          <span className="trip-panel-timeline-heading"><strong>Nuit {previous.day_number}</strong></span>
+          <span className="trip-day-header-metrics trip-night-header-metrics" aria-label="Résumé de la nuit">
+            <span className="trip-day-header-metric trip-night-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}>
+              <strong><Clock3 aria-hidden="true" size={12} />{recommendedLabel}</strong>
+              <small>Départ conseillé</small>
+            </span>
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+            <span className="trip-day-header-status"><TimelineStatusBadge status={night ? 'valid' : 'empty'} /></span>
+            <span className="trip-night-header-spacer" aria-hidden="true" />
+          </span>
           <span className="trip-night-header-actions">
-            <span className="trip-anchor-recommended" aria-label={`Départ recommandé : ${recommendedLabel}`}><span>Départ conseillé</span><Clock3 aria-hidden="true" size={12} /><strong>{recommendedLabel}</strong></span>
             <button className="trip-day-collapse-toggle trip-day-collapse-toggle--inline trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} la nuit ${previous.day_number}`} aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
           </span>
         </div>

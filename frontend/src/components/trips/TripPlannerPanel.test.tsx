@@ -949,6 +949,11 @@ describe('TripPlannerPanel', () => {
     } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([anchoredTrip])
     vi.mocked(getTrip).mockResolvedValue(anchoredTrip)
+    vi.mocked(getTripDaySummary).mockImplementation(async (id) => ({
+      ...emptyDaySummary,
+      day_id: id,
+      recommended_start_time: id === 'day-2' ? '08:25' : null,
+    }))
 
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={anchoredTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
@@ -962,6 +967,12 @@ describe('TripPlannerPanel', () => {
     expect(container.querySelector('.trip-night-metrics')).not.toBeInTheDocument()
     expect(container.querySelector('.trip-night-kind')).not.toBeInTheDocument()
     expect(container.querySelector('.trip-night-stop')).toHaveAttribute('aria-label', 'Point cartographique')
+    const nightHeader = (await screen.findByText('Nuit 1')).closest('.trip-night-header-row') as HTMLElement
+    const nightMetrics = nightHeader.querySelector('.trip-night-header-metrics')
+    const recommendedDeparture = within(nightHeader).getByLabelText('Départ recommandé : 08:25')
+    expect(recommendedDeparture).toHaveClass('trip-day-header-metric', 'trip-night-recommended')
+    expect(nightMetrics?.children[0]).toBe(recommendedDeparture)
+    expect(nightMetrics?.children[3]).toContainElement(within(nightHeader).getByText('Valide').closest('.trip-timeline-status'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Réduire le départ' }))
     expect(screen.queryByText('Maison')).not.toBeInTheDocument()

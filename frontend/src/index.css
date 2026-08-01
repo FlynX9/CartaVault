@@ -10452,6 +10452,63 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   white-space: nowrap;
 }
 
+/* Nights deliberately reuse the day-header column template. The recommended
+   departure replaces Distance, while its validity occupies the exact same
+   status column as a day. Empty cells preserve Route, Total and Load. */
+.trip-planner-panel .trip-panel-night .trip-night-header-row {
+  display: grid;
+  grid-template-columns: minmax(6.8rem, 1fr) minmax(0, 4.7fr) auto;
+  align-items: stretch;
+  gap: .35rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-row > .trip-panel-timeline-heading {
+  display: block;
+  height: 100%;
+  align-content: center;
+  align-self: stretch;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-metrics {
+  height: 100%;
+  align-self: stretch;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-row .trip-day-header-metrics > span:not(.trip-day-load-label) {
+  min-height: 42px;
+  grid-column: auto;
+  justify-content: stretch;
+  padding: 0 .42rem;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-row .trip-day-header-status > .trip-timeline-status {
+  position: static;
+  inset: auto;
+  width: 100%;
+  max-width: 7.25rem;
+  min-height: 24px;
+  align-self: center;
+  justify-self: center;
+  justify-content: center;
+  transform: none;
+}
+
+.trip-planner-panel .trip-night-recommended > strong > svg {
+  color: var(--trip-night-previous-color, var(--cv-color-teal));
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-header-actions {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  align-self: stretch;
+  padding-left: 0;
+}
+
+.trip-planner-panel .trip-panel-night .trip-night-collapse-toggle {
+  grid-column: auto;
+}
+
 .trip-planner-panel .trip-day-drag-surface { cursor: grab; touch-action: none; }
 .trip-planner-panel .trip-day-drag-surface:active { cursor: grabbing; }
 .trip-planner-panel .trip-panel-days .trip-panel-day > summary > .trip-day-visibility-bubble {
