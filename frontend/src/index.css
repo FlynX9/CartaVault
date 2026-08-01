@@ -11233,5 +11233,6 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   color: #8a6200;
   background: color-mix(in srgb, var(--cv-color-gold) 12%, var(--cv-surface, #fff));
   border-color: var(--cv-color-gold);
-  box-shadow: none;
+  outline-color: color-mix(in srgb, var(--cv-color-gold) 30%, transparent);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--cv-color-gold) 18%, transparent);
 }
