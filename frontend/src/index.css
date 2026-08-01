@@ -3755,76 +3755,101 @@ html[data-theme='dark'] .trip-pdf-export-provider.is-selected { background: rgb(
 /* The free-stop flow is a focused CartaVault place picker: one search surface,
    one result list and one explicit selection. */
 .create-trip-night-dialog--stop.cv-modal {
-  width: min(40rem, calc(100vw - 2rem));
+  --free-stop-control-height: 1.9rem;
+  width: min(36rem, calc(100vw - 2rem));
   border-color: var(--cv-border-subtle, #dfe7ec);
-  border-radius: 1rem;
+  border-radius: .9rem;
 }
 
 .create-trip-night-dialog--stop header {
   display: grid;
-  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
-  align-items: start;
-  gap: .8rem;
-  padding: 1.1rem 1.15rem 1rem;
+  grid-template-columns: 2.35rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+  padding: .85rem .9rem .8rem;
   background: var(--cv-surface, #fff);
 }
 
 .create-trip-night-dialog--stop .create-trip-night-dialog__header-icon {
   display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.35rem;
+  height: 2.35rem;
   color: var(--cv-color-teal);
-  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface, #fff));
-  border-radius: .72rem;
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff));
+  border-radius: .62rem;
   place-items: center;
 }
 
+.create-trip-night-dialog--stop .create-trip-night-dialog__header-icon svg { width: 1rem; height: 1rem; }
 .create-trip-night-dialog--stop header > div { min-width: 0; }
-.create-trip-night-dialog--stop header h2 { color: var(--cv-color-navy); font-size: 1.22rem; letter-spacing: -.025em; }
-.create-trip-night-dialog--stop header .panel-icon-button { width: 2.25rem; height: 2.25rem; min-height: 2.25rem; padding: 0; }
+.create-trip-night-dialog--stop header .cv-workspace-panel__eyebrow { font-size: .58rem; line-height: 1.2; }
+.create-trip-night-dialog--stop header h2 { margin-top: .08rem; color: var(--cv-color-navy); font-size: 1.08rem; line-height: 1.25; letter-spacing: -.02em; }
+.create-trip-night-dialog--stop header > div > span { margin-top: .18rem; font-size: .68rem; font-weight: 400; line-height: 1.35; }
+.create-trip-night-dialog--stop header .panel-icon-button {
+  width: var(--free-stop-control-height);
+  min-width: var(--free-stop-control-height);
+  height: var(--free-stop-control-height);
+  min-height: var(--free-stop-control-height);
+  padding: 0;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface, #fff);
+  border: 1px solid var(--cv-border-strong, #cbd7df);
+  border-radius: .5rem;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.create-trip-night-dialog--stop header .panel-icon-button svg { width: .82rem; height: .82rem; }
+.create-trip-night-dialog--stop header .panel-icon-button:not(:disabled):is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 7%, var(--cv-surface, #fff));
+  border-color: color-mix(in srgb, var(--cv-color-teal) 58%, var(--cv-border-strong, #cbd7df));
+}
 
 .create-trip-night-dialog--stop .create-trip-night-dialog__body {
-  gap: .8rem;
-  padding: 1rem;
+  gap: .65rem;
+  padding: .75rem .9rem;
   background: color-mix(in srgb, var(--cv-color-mist) 72%, var(--cv-surface, #fff));
 }
 
 .create-trip-night-dialog--stop .trip-night-location {
-  gap: .72rem;
-  padding: .9rem;
+  gap: .55rem;
+  padding: .7rem;
   background: var(--cv-surface, #fff);
   border-color: var(--cv-border-subtle, #dfe7ec);
-  border-radius: .75rem;
-  box-shadow: 0 2px 7px rgb(13 27 42 / 4%);
+  border-radius: .62rem;
+  box-shadow: 0 1px 4px rgb(13 27 42 / 4%);
 }
 
-.create-trip-night-dialog--stop .trip-night-location h3 { color: var(--cv-color-navy); font-size: .78rem; font-weight: 750; }
-.create-trip-night-dialog--stop .trip-night-search { gap: .5rem; }
+.create-trip-night-dialog--stop .trip-night-location h3 { color: var(--cv-color-navy); font-size: .72rem; font-weight: 700; }
+.create-trip-night-dialog--stop .trip-night-search { gap: .4rem; }
 .create-trip-night-dialog--stop .trip-night-search label { color: var(--cv-color-gray); }
+.create-trip-night-dialog--stop .trip-night-search label > svg { left: .6rem; width: .8rem; height: .8rem; }
 .create-trip-night-dialog--stop .trip-night-search input {
-  min-height: 2.7rem;
-  padding-left: 2.15rem;
+  min-height: var(--free-stop-control-height);
+  padding: .32rem .52rem .32rem 1.7rem;
   background: var(--cv-surface, #fff);
   border-color: var(--cv-border-strong, #cbd7df);
-  border-radius: .58rem;
-  font-size: .76rem;
+  border-radius: .5rem;
+  font-size: .66rem;
   font-weight: 400;
 }
 
 .create-trip-night-dialog--stop .trip-night-search label:focus-within { color: var(--cv-color-teal); }
 .create-trip-night-dialog--stop .trip-night-search label:focus-within input {
   border-color: var(--cv-color-teal);
-  outline: 3px solid color-mix(in srgb, var(--cv-color-teal) 14%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 13%, transparent);
 }
 
 .create-trip-night-dialog--stop .trip-night-search > button {
-  min-height: 2.7rem;
-  padding: .48rem .8rem;
+  min-height: var(--free-stop-control-height);
+  padding: .3rem .52rem;
   color: var(--cv-color-slate);
   background: var(--cv-surface, #fff);
   border: 1px solid var(--cv-border-strong, #cbd7df);
-  font-size: .7rem;
+  border-radius: .5rem;
+  cursor: pointer;
+  font-size: .64rem;
   font-weight: 700;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
 }
 
 .create-trip-night-dialog--stop .trip-night-search > button:not(:disabled):is(:hover, :focus-visible) {
@@ -3834,20 +3859,22 @@ html[data-theme='dark'] .trip-pdf-export-provider.is-selected { background: rgb(
 }
 
 .create-trip-night-dialog--stop .trip-night-results {
-  max-height: 15rem;
-  gap: .38rem;
+  max-height: 13rem;
+  gap: .3rem;
   padding-right: .15rem;
 }
 
 .create-trip-night-dialog--stop .trip-night-results > .trip-night-result {
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: .55rem;
-  min-height: 3.45rem;
-  padding: .55rem .62rem;
+  gap: .45rem;
+  min-height: 2.85rem;
+  padding: .45rem .52rem;
   color: var(--cv-color-slate);
   background: color-mix(in srgb, var(--cv-color-mist) 58%, var(--cv-surface, #fff));
   border-color: var(--cv-border-subtle, #dfe7ec);
-  border-radius: .58rem;
+  border-radius: .5rem;
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
 }
 
 .create-trip-night-dialog--stop .trip-night-results > .trip-night-result:is(:hover, :focus-visible) {
@@ -3875,13 +3902,46 @@ html[data-theme='dark'] .trip-pdf-export-provider.is-selected { background: rgb(
 }
 
 .create-trip-night-dialog--stop .trip-night-selection {
-  padding: .65rem;
+  padding: .5rem .55rem;
   background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface, #fff));
   border: 1px solid color-mix(in srgb, var(--cv-color-teal) 28%, var(--cv-border-subtle, #dfe7ec));
-  border-radius: .6rem;
+  border-radius: .5rem;
+}
+.create-trip-night-dialog--stop .trip-night-selection button {
+  min-height: 1.8rem;
+  padding: .26rem .45rem;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface, #fff);
+  border-color: var(--cv-border-strong, #cbd7df);
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.create-trip-night-dialog--stop .trip-night-selection button:is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 7%, var(--cv-surface, #fff));
+  border-color: var(--cv-color-teal);
 }
 
-.create-trip-night-dialog--stop .dialog-actions { padding: .85rem 1rem; background: var(--cv-surface, #fff); }
+.create-trip-night-dialog--stop .dialog-actions { gap: .45rem; padding: .65rem .9rem; background: var(--cv-surface, #fff); }
+.create-trip-night-dialog--stop .dialog-actions button {
+  min-height: var(--free-stop-control-height);
+  padding: .3rem .55rem;
+  border-radius: .48rem;
+  cursor: pointer;
+  font-size: .64rem;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+.create-trip-night-dialog--stop .dialog-actions button svg { width: .82rem; height: .82rem; }
+.create-trip-night-dialog--stop .dialog-actions .secondary-button:is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 7%, var(--cv-surface, #fff));
+  border-color: var(--cv-color-teal);
+}
+.create-trip-night-dialog--stop .dialog-actions .primary-button:not(:disabled):is(:hover, :focus-visible) {
+  background: #0b8f77;
+  border-color: #0b8f77;
+}
+.create-trip-night-dialog--stop button:disabled { cursor: not-allowed; opacity: .55; }
 
 html[data-theme='dark'] .create-trip-night-dialog--stop header,
 html[data-theme='dark'] .create-trip-night-dialog--stop .trip-night-location,
@@ -3891,8 +3951,11 @@ html[data-theme='dark'] .create-trip-night-dialog--stop .dialog-actions {
 
 @media (max-width: 560px) {
   .create-trip-night-dialog--stop.cv-modal { width: calc(100vw - 1rem); }
-  .create-trip-night-dialog--stop header { grid-template-columns: 2.35rem minmax(0, 1fr) auto; gap: .6rem; }
-  .create-trip-night-dialog--stop .create-trip-night-dialog__header-icon { width: 2.35rem; height: 2.35rem; }
+  .create-trip-night-dialog--stop header { grid-template-columns: 2rem minmax(0, 1fr) auto; gap: .55rem; padding-inline: .7rem; }
+  .create-trip-night-dialog--stop .create-trip-night-dialog__header-icon { width: 2rem; height: 2rem; }
+  .create-trip-night-dialog--stop .create-trip-night-dialog__body { padding-inline: .7rem; }
+  .create-trip-night-dialog--stop .trip-night-search { flex-direction: column; }
+  .create-trip-night-dialog--stop .trip-night-search > button { align-self: flex-end; }
   .create-trip-night-dialog--stop .trip-night-result em { display: none; }
 }
 .trip-panel-header-actions .trip-view-button.active { color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); }
