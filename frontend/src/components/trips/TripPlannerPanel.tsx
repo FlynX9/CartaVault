@@ -1,5 +1,5 @@
-import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from 'react'
-import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GitCommitHorizontal, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Timer, Trash2 } from 'lucide-react'
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
+import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GitCommitHorizontal, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Timer, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
 import type { PoiMap } from '../../types/map'
@@ -472,6 +472,16 @@ function routeSegmentFromStopToArrival(day: TripDay, stopIndex: number, arrivalI
 
 function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onSelectDay, onSelectNight, onSelectLocation, onNavigateItem }: TripPreviewTimelineProps) {
   const trackRef = useRef<HTMLDivElement>(null)
+  const dragStateRef = useRef({ pointerId: -1, startX: 0, startScrollLeft: 0, dragged: false })
+  const dragSelectionFrameRef = useRef<number | null>(null)
+  const dragSelectionIndexRef = useRef(-1)
+  const dragSettleTimerRef = useRef<number | null>(null)
+  const alignmentFrameRef = useRef<number | null>(null)
+  const suppressClickRef = useRef(false)
+  const suppressClickTimerRef = useRef<number | null>(null)
+  const wheelDeltaRef = useRef(0)
+  const wheelResetTimerRef = useRef<number | null>(null)
+  const wheelUnlockTimerRef = useRef<number | null>(null)
   const firstDay = trip.days[0]
   const lastDay = trip.days.at(-1)
   const effectiveArrival = trip.arrival ?? trip.departure
@@ -489,6 +499,16 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
   }, [effectiveArrival, trip.days, trip.departure, trip.nights])
   const selectedNavigationIndex = navigationItems.findIndex((item) => item.key === selectedKey)
   const selectedDayId = selectedKey?.startsWith('day:') ? selectedKey.slice(4) : selectedKey === null ? activeDayId : null
+  const selectedPointColor = useMemo(() => {
+    const fallbackDay = trip.days.find((day) => day.id === activeDayId) ?? firstDay
+    if (!selectedKey) return fallbackDay?.color ?? '#0FA68A'
+    if (selectedKey === 'departure') return firstDay?.color ?? '#0FA68A'
+    if (selectedKey === 'arrival') return lastDay?.color ?? '#0FA68A'
+    if (selectedKey.startsWith('day:')) return trip.days.find((day) => `day:${day.id}` === selectedKey)?.color ?? '#0FA68A'
+    if (selectedKey.startsWith('stop:')) return trip.days.find((day) => day.stops.some((stop) => `stop:${stop.id}` === selectedKey))?.color ?? '#0FA68A'
+    const night = trip.nights.find((item) => `night:${item.id}` === selectedKey)
+    return trip.days.find((day) => day.id === night?.next_day_id)?.color ?? fallbackDay?.color ?? '#0FA68A'
+  }, [activeDayId, firstDay, lastDay, selectedKey, trip.days, trip.nights])
   const selectedLeg = useMemo(() => {
     if (!selectedKey) return null
     if (selectedKey === 'departure') {
@@ -524,17 +544,41 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
           : null
     return { from: stop.name, to: target.name, color: day.color ?? '#0FA68A', segment }
   }, [effectiveArrival, selectedKey, trip])
+  const getTimelinePointBounds = useCallback((item: HTMLElement) => {
+    const point = item.querySelector<HTMLElement>('.trip-preview-anchor-dot') ?? item.querySelector<HTMLElement>(':scope > span')
+    const pointBounds = point?.getBoundingClientRect()
+    return pointBounds && (pointBounds.width > 0 || pointBounds.height > 0) ? pointBounds : item.getBoundingClientRect()
+  }, [])
   const centerTimelineElement = useCallback((item: HTMLElement, behavior: 'smooth' | 'instant' = 'smooth') => {
     const viewport = trackRef.current
-    if (!viewport) return
+    if (!viewport || dragStateRef.current.pointerId !== -1) return
     const viewportBounds = viewport.getBoundingClientRect()
-    const itemBounds = item.getBoundingClientRect()
-    const legCardBounds = viewport.closest('.trip-preview-timeline')?.querySelector<HTMLElement>('.trip-preview-leg-card')?.getBoundingClientRect()
-    const centerAxisX = legCardBounds ? legCardBounds.left + legCardBounds.width / 2 : viewportBounds.left + viewportBounds.width / 2
+    const itemBounds = getTimelinePointBounds(item)
+    const centerGuideBounds = viewport.closest('.trip-preview-timeline')?.querySelector<HTMLElement>('.trip-preview-center-guide')?.getBoundingClientRect()
+    const centerAxisX = centerGuideBounds ? centerGuideBounds.left + centerGuideBounds.width / 2 : viewportBounds.left + viewportBounds.width / 2
     const left = Math.max(0, viewport.scrollLeft + itemBounds.left + itemBounds.width / 2 - centerAxisX)
     if (behavior === 'smooth' && typeof viewport.scrollTo === 'function') viewport.scrollTo({ left, behavior: 'smooth' })
     else viewport.scrollLeft = left
-  }, [])
+  }, [getTimelinePointBounds])
+  const lockTimelineElementToGuide = useCallback((item: HTMLElement) => {
+    if (alignmentFrameRef.current !== null) cancelAnimationFrame(alignmentFrameRef.current)
+    let remainingCorrections = 2
+    const correctAlignment = () => {
+      const viewport = trackRef.current
+      if (!viewport || dragStateRef.current.pointerId !== -1) { alignmentFrameRef.current = null; return }
+      const pointBounds = getTimelinePointBounds(item)
+      const guideBounds = viewport.closest('.trip-preview-timeline')?.querySelector<HTMLElement>('.trip-preview-center-guide')?.getBoundingClientRect()
+      const viewportBounds = viewport.getBoundingClientRect()
+      const guideCenter = guideBounds ? guideBounds.left + guideBounds.width / 2 : viewportBounds.left + viewportBounds.width / 2
+      const pointCenter = pointBounds.left + pointBounds.width / 2
+      const error = pointCenter - guideCenter
+      if (Math.abs(error) > 0.25) viewport.scrollLeft += error
+      remainingCorrections -= 1
+      if (Math.abs(error) <= 0.25 || remainingCorrections <= 0) { alignmentFrameRef.current = null; return }
+      alignmentFrameRef.current = requestAnimationFrame(correctAlignment)
+    }
+    correctAlignment()
+  }, [getTimelinePointBounds])
   const findSelectedTimelineElement = useCallback(() => {
     const viewport = trackRef.current
     if (!viewport) return null
@@ -546,6 +590,79 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
     const item = findSelectedTimelineElement()
     if (item) centerTimelineElement(item, behavior)
   }, [centerTimelineElement, findSelectedTimelineElement])
+  const selectTimelineItemNearestCenter = useCallback(() => {
+    const viewport = trackRef.current
+    if (!viewport) return null
+    const viewportBounds = viewport.getBoundingClientRect()
+    const centerGuideBounds = viewport.closest('.trip-preview-timeline')?.querySelector<HTMLElement>('.trip-preview-center-guide')?.getBoundingClientRect()
+    const centerAxisX = centerGuideBounds ? centerGuideBounds.left + centerGuideBounds.width / 2 : viewportBounds.left + viewportBounds.width / 2
+    const candidates = Array.from(viewport.querySelectorAll<HTMLElement>('[data-preview-navigation-index]'))
+      .map((element) => ({ element, index: Number(element.dataset.previewNavigationIndex), bounds: getTimelinePointBounds(element) }))
+      .filter((item) => Number.isInteger(item.index) && item.index >= 0 && (item.bounds.width > 0 || item.bounds.height > 0))
+    const closest = candidates.reduce<(typeof candidates)[number] | null>((current, candidate) => {
+      const distance = Math.abs(candidate.bounds.left + candidate.bounds.width / 2 - centerAxisX)
+      if (!current) return candidate
+      const currentDistance = Math.abs(current.bounds.left + current.bounds.width / 2 - centerAxisX)
+      return distance < currentDistance ? candidate : current
+    }, null)
+    if (!closest) return null
+    if (closest.index !== dragSelectionIndexRef.current) {
+      dragSelectionIndexRef.current = closest.index
+      const item = navigationItems[closest.index]
+      if (item) onNavigateItem(item.key, item.stopId)
+    }
+    return closest.element
+  }, [getTimelinePointBounds, navigationItems, onNavigateItem])
+  const startTimelineDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const viewport = trackRef.current
+    if (!viewport || event.button !== 0 || event.isPrimary === false) return
+    if (suppressClickTimerRef.current !== null) window.clearTimeout(suppressClickTimerRef.current)
+    if (dragSettleTimerRef.current !== null) window.clearTimeout(dragSettleTimerRef.current)
+    suppressClickRef.current = false
+    dragSelectionIndexRef.current = selectedNavigationIndex
+    dragStateRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: viewport.scrollLeft, dragged: false }
+  }
+  const moveTimelineDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const viewport = trackRef.current
+    const drag = dragStateRef.current
+    if (!viewport || drag.pointerId !== event.pointerId) return
+    const delta = event.clientX - drag.startX
+    if (!drag.dragged && Math.abs(delta) < 5) return
+    if (!drag.dragged) {
+      drag.dragged = true
+      viewport.setPointerCapture?.(event.pointerId)
+    }
+    viewport.classList.add('is-dragging')
+    viewport.scrollLeft = drag.startScrollLeft - delta
+    if (dragSelectionFrameRef.current !== null) cancelAnimationFrame(dragSelectionFrameRef.current)
+    dragSelectionFrameRef.current = requestAnimationFrame(() => {
+      dragSelectionFrameRef.current = null
+      selectTimelineItemNearestCenter()
+    })
+    event.preventDefault()
+  }
+  const finishTimelineDrag = (event: ReactPointerEvent<HTMLDivElement>, cancelled = false) => {
+    const viewport = trackRef.current
+    const drag = dragStateRef.current
+    if (!viewport || drag.pointerId !== event.pointerId) return
+    if (viewport.hasPointerCapture?.(event.pointerId)) viewport.releasePointerCapture(event.pointerId)
+    viewport.classList.remove('is-dragging')
+    suppressClickRef.current = drag.dragged && !cancelled
+    dragStateRef.current = { pointerId: -1, startX: 0, startScrollLeft: viewport.scrollLeft, dragged: false }
+    if (dragSelectionFrameRef.current !== null) cancelAnimationFrame(dragSelectionFrameRef.current)
+    dragSelectionFrameRef.current = null
+    if (suppressClickRef.current) requestAnimationFrame(() => {
+      const centeredItem = selectTimelineItemNearestCenter()
+      if (centeredItem) {
+        centerTimelineElement(centeredItem)
+        dragSettleTimerRef.current = window.setTimeout(() => {
+          lockTimelineElementToGuide(centeredItem)
+          dragSettleTimerRef.current = null
+        }, 180)
+      }
+    })
+    if (suppressClickRef.current) suppressClickTimerRef.current = window.setTimeout(() => { suppressClickRef.current = false; suppressClickTimerRef.current = null }, 0)
+  }
   const navigateTimeline = useCallback((direction: -1 | 1) => {
     if (navigationItems.length === 0) return
     const nextIndex = selectedNavigationIndex < 0
@@ -555,15 +672,35 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
     const item = navigationItems[nextIndex]
     onNavigateItem(item.key, item.stopId)
   }, [navigationItems, onNavigateItem, selectedNavigationIndex])
+  const navigateTimelineWithWheel = useCallback((event: ReactWheelEvent<HTMLDivElement>) => {
+    if (event.deltaY === 0 || navigationItems.length === 0) return
+    event.preventDefault()
+    if (wheelUnlockTimerRef.current !== null) return
+    const deltaUnit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? Math.max(1, trackRef.current?.clientWidth ?? 1) : 1
+    wheelDeltaRef.current += event.deltaY * deltaUnit
+    if (wheelResetTimerRef.current !== null) window.clearTimeout(wheelResetTimerRef.current)
+    wheelResetTimerRef.current = window.setTimeout(() => {
+      wheelDeltaRef.current = 0
+      wheelResetTimerRef.current = null
+    }, 160)
+    if (Math.abs(wheelDeltaRef.current) < 32) return
+    const direction = wheelDeltaRef.current < 0 ? -1 : 1
+    wheelDeltaRef.current = 0
+    navigateTimeline(direction)
+    wheelUnlockTimerRef.current = window.setTimeout(() => { wheelUnlockTimerRef.current = null }, 140)
+  }, [navigateTimeline, navigationItems.length])
   useEffect(() => {
     if (!findSelectedTimelineElement()) return
     const frame = requestAnimationFrame(() => centerSelectedTimelineElement())
-    const settleTimer = window.setTimeout(() => centerSelectedTimelineElement('instant'), 300)
+    const settleTimer = window.setTimeout(() => {
+      const item = findSelectedTimelineElement()
+      if (item) lockTimelineElementToGuide(item)
+    }, 180)
     return () => {
       cancelAnimationFrame(frame)
       window.clearTimeout(settleTimer)
     }
-  }, [centerSelectedTimelineElement, findSelectedTimelineElement])
+  }, [centerSelectedTimelineElement, findSelectedTimelineElement, lockTimelineElementToGuide])
   useEffect(() => {
     const viewport = trackRef.current
     const selectedItem = findSelectedTimelineElement()
@@ -571,26 +708,21 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
     let frame: number | null = null
     const observer = new ResizeObserver(() => {
       if (frame !== null) cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => centerSelectedTimelineElement('instant'))
+      frame = requestAnimationFrame(() => {
+        const item = findSelectedTimelineElement()
+        if (item) lockTimelineElementToGuide(item)
+      })
     })
     observer.observe(viewport)
-    observer.observe(selectedItem)
     const track = viewport.querySelector<HTMLElement>('.trip-preview-track')
     if (track) observer.observe(track)
-    const legCard = viewport.closest('.trip-preview-timeline')?.querySelector<HTMLElement>('.trip-preview-leg-card')
-    if (legCard) observer.observe(legCard)
-    const handleLayoutTransition = (event: TransitionEvent) => {
-      if (event.propertyName !== 'width' && event.propertyName !== 'min-width') return
-      if (frame !== null) cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => centerSelectedTimelineElement('instant'))
-    }
-    viewport.addEventListener('transitionend', handleLayoutTransition)
+    const centerGuide = viewport.closest('.trip-preview-timeline')?.querySelector<HTMLElement>('.trip-preview-center-guide')
+    if (centerGuide) observer.observe(centerGuide)
     return () => {
       observer.disconnect()
-      viewport.removeEventListener('transitionend', handleLayoutTransition)
       if (frame !== null) cancelAnimationFrame(frame)
     }
-  }, [centerSelectedTimelineElement, findSelectedTimelineElement])
+  }, [findSelectedTimelineElement, lockTimelineElementToGuide])
   useEffect(() => {
     const navigateWithKeyboard = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -602,11 +734,19 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
     window.addEventListener('keydown', navigateWithKeyboard)
     return () => window.removeEventListener('keydown', navigateWithKeyboard)
   }, [navigateTimeline])
+  useEffect(() => () => {
+    if (suppressClickTimerRef.current !== null) window.clearTimeout(suppressClickTimerRef.current)
+    if (dragSelectionFrameRef.current !== null) cancelAnimationFrame(dragSelectionFrameRef.current)
+    if (dragSettleTimerRef.current !== null) window.clearTimeout(dragSettleTimerRef.current)
+    if (alignmentFrameRef.current !== null) cancelAnimationFrame(alignmentFrameRef.current)
+    if (wheelResetTimerRef.current !== null) window.clearTimeout(wheelResetTimerRef.current)
+    if (wheelUnlockTimerRef.current !== null) window.clearTimeout(wheelUnlockTimerRef.current)
+  }, [])
 
   return <section className="trip-preview-timeline" aria-labelledby="trip-preview-timeline-title">
     <h3 id="trip-preview-timeline-title" className="visually-hidden">Frise interactive du voyage</h3>
-    <button className="trip-preview-scroll trip-preview-scroll--previous" type="button" aria-label="Sélectionner le point précédent" disabled={navigationItems.length === 0 || selectedNavigationIndex === 0} onClick={() => navigateTimeline(-1)}><ChevronLeft size={15} /></button>
-    <div ref={trackRef} className="trip-preview-viewport" onClickCapture={(event) => { const item = (event.target as HTMLElement).closest<HTMLElement>('[data-preview-navigation-index], [data-preview-day-id]'); if (item) requestAnimationFrame(() => centerTimelineElement(item)) }}><ol className="trip-preview-track">
+    <span className="trip-preview-center-guide" style={{ color: selectedPointColor }} aria-hidden="true"><ChevronDown size={20} /><ChevronUp size={20} /></span>
+    <div ref={trackRef} className="trip-preview-viewport" onWheel={navigateTimelineWithWheel} onPointerDown={startTimelineDrag} onPointerMove={moveTimelineDrag} onPointerUp={(event) => finishTimelineDrag(event)} onPointerCancel={(event) => finishTimelineDrag(event, true)} onClickCapture={(event) => { if (suppressClickRef.current) { event.preventDefault(); event.stopPropagation(); suppressClickRef.current = false; if (suppressClickTimerRef.current !== null) window.clearTimeout(suppressClickTimerRef.current); suppressClickTimerRef.current = null } }}><ol className="trip-preview-track">
       {firstDay && <li className="trip-preview-anchor-item">
         <button className={`trip-preview-anchor trip-preview-anchor--terminal${selectedKey === 'departure' ? ' is-selected' : ''}${selectedKey === 'departure' && firstDay.stops[0] ? ' has-active-connector' : ''}`} style={{ '--trip-preview-color': firstDay.color ?? '#0FA68A' } as CSSProperties} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === 'departure')} aria-label={`Départ${trip.departure ? ` : ${trip.departure.name}` : ''}`} aria-current={selectedKey === 'departure' ? 'step' : undefined} disabled={!trip.departure} onClick={() => { if (trip.departure) onSelectLocation('departure', firstDay.id, null) }}>
           <strong>Départ</strong><span className="trip-preview-anchor-dot"><Play size={14} /></span><small>{trip.departure?.name ?? 'Non défini'}</small><em>{formatClock(trip.departure?.departure_time ?? null)}</em>
@@ -638,7 +778,7 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
             <span className="trip-preview-day-label" aria-hidden="true">Jour {day.day_number}</span>
           </li>
           {night && <li className="trip-preview-anchor-item"><button className={`trip-preview-anchor trip-preview-anchor--night${selectedKey === `night:${night.id}` ? ' is-selected' : ''}${selectedKey === `night:${night.id}` && nextDay?.stops[0] ? ' has-active-connector' : ''}`} style={{ '--trip-preview-color': nextDayColor, '--trip-preview-night-previous-color': dayColor, '--trip-preview-night-next-color': nextDayColor } as CSSProperties} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === `night:${night.id}`)} aria-label={`Nuit ${dayIndex + 1} : ${night.name}`} aria-current={selectedKey === `night:${night.id}` ? 'step' : undefined} onClick={() => onSelectNight(night)}>
-            <strong>Nuit {dayIndex + 1}</strong><span className="trip-preview-anchor-dot"><Moon size={14} /></span><small>{selectedKey === `night:${night.id}` ? night.name : ''}</small><em>{formatClock(night.check_in_time)}</em>
+            <strong>Nuit {dayIndex + 1}</strong><span className="trip-preview-anchor-dot"><Moon size={14} /></span><small aria-hidden="true" />{night.check_in_time && <em>{formatClock(night.check_in_time)}</em>}
           </button></li>}
         </Fragment>
       })}
@@ -648,8 +788,7 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
         </button>
       </li>}
     </ol></div>
-    {selectedLeg && <div className="trip-preview-leg-card" style={{ '--trip-preview-color': selectedLeg.color } as CSSProperties} role="status" aria-label={`${selectedLeg.from} vers ${selectedLeg.to} : ${formatRouteDistance(selectedLeg.segment?.distance_meters ?? null)}, ${formatRouteDuration(selectedLeg.segment?.duration_seconds ?? null)}`}><span><small>Étape actuelle de départ</small><strong title={selectedLeg.from}>{selectedLeg.from}</strong></span><span className="trip-preview-leg-card__metrics"><span><Road aria-hidden="true" size={13} />{formatRouteDistance(selectedLeg.segment?.distance_meters ?? null)}</span><i aria-hidden="true" /><span><Car aria-hidden="true" size={13} />{formatRouteDuration(selectedLeg.segment?.duration_seconds ?? null)}</span></span><span><small>Étape actuelle d’arrivée</small><strong title={selectedLeg.to}>{selectedLeg.to}</strong></span></div>}
-    <button className="trip-preview-scroll trip-preview-scroll--next" type="button" aria-label="Sélectionner le point suivant" disabled={navigationItems.length === 0 || selectedNavigationIndex === navigationItems.length - 1} onClick={() => navigateTimeline(1)}><ChevronRight size={15} /></button>
+    {selectedLeg && <div className="trip-preview-leg-card" style={{ '--trip-preview-color': selectedLeg.color } as CSSProperties} role="status" aria-label={`${selectedLeg.from} vers ${selectedLeg.to} : ${formatRouteDistance(selectedLeg.segment?.distance_meters ?? null)}, ${formatRouteDuration(selectedLeg.segment?.duration_seconds ?? null)}`}><span><small>Départ</small><strong title={selectedLeg.from}>{selectedLeg.from}</strong></span><ChevronRight className="trip-preview-leg-card__separator" aria-hidden="true" size={16} /><span className="trip-preview-leg-card__metrics"><span className="trip-preview-leg-card__metric-values"><span><Road aria-hidden="true" size={16} />{formatRouteDistance(selectedLeg.segment?.distance_meters ?? null)}</span><i aria-hidden="true" /><span><Clock3 aria-hidden="true" size={16} />{formatRouteDuration(selectedLeg.segment?.duration_seconds ?? null)}</span></span></span><ChevronRight className="trip-preview-leg-card__separator" aria-hidden="true" size={16} /><span><small>Arrivée</small><strong title={selectedLeg.to}>{selectedLeg.to}</strong></span></div>}
   </section>
 }
 
