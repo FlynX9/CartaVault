@@ -11702,7 +11702,20 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   font: inherit;
   transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.trip-preview-anchor strong { color: var(--cv-color-navy); font-size: .66rem; line-height: 1; }
+.trip-preview-anchor strong {
+  color: var(--cv-color-navy);
+  font-size: .75rem;
+  font-weight: 820;
+  letter-spacing: .01em;
+  line-height: 1;
+  transition: color .15s ease, font-size .15s ease, text-shadow .15s ease;
+}
+.trip-preview-anchor.is-selected strong {
+  color: var(--trip-preview-color, var(--cv-color-navy));
+  font-size: .82rem;
+  font-weight: 900;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 20%, transparent);
+}
 .trip-preview-anchor small,
 .trip-preview-anchor em { display: block; max-width: 100%; overflow: hidden; font-size: .57rem; font-style: normal; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .trip-preview-anchor em { color: var(--cv-color-gray); }
@@ -11737,6 +11750,11 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   border-color: transparent;
   box-shadow: none;
 }
+.trip-preview-anchor--terminal:not(:disabled):is(:hover, :focus-visible) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
 .trip-preview-anchor--night:not(:disabled):is(:hover, :focus-visible) .trip-preview-anchor-dot {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 22%, transparent);
   transform: scale(1.1);
@@ -11748,6 +11766,11 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   box-shadow: 0 2px 7px color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 13%, transparent);
 }
 .trip-preview-anchor--night.is-selected {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.trip-preview-anchor--terminal.is-selected {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
