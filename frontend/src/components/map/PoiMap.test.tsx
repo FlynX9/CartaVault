@@ -271,6 +271,17 @@ describe('PoiMap selection lifecycle', () => {
     expect(container.querySelector('.trip-stop-number')).not.toBeInTheDocument()
   })
 
+  it('replaces a selected POI marker with a numbered marker using the trip day color', async () => {
+    const day = { id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#2563EB', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed' as const, safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: 1000, route_duration_seconds: 120, visit_duration_minutes: 30, total_duration_minutes: 32, route_geometry: { type: 'LineString' as const, coordinates: [[2, 48], [2.1, 48.1]] as [number, number][] }, route_segments: [], route_status: 'ready', sort_order: 0, stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: place.id, stop_type: 'place' as const, name: place.name, latitude: place.latitude, longitude: place.longitude, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }
+    const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [day] } satisfies Trip
+    const { container } = render(<PoiMap places={[place]} selectedPlaceId={place.id} initialView={{ center: [48, 2], zoom: 13 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="selected-trip-poi" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} trip={trip} tripViewOnly activeTripDayId="day-1" selectedTripStopId="stop-1" />)
+
+    await waitFor(() => expect(container.querySelector('.trip-selected-stop-marker')).toHaveTextContent('1'))
+    expect(container.querySelector('.trip-selected-stop-marker')).toHaveStyle({ '--trip-stop-color': '#2563EB' })
+    expect(container.querySelector('.status-marker')).not.toBeInTheDocument()
+    expect(container.querySelector('.trip-stop-number--selected')).not.toBeInTheDocument()
+  })
+
   it('emphasizes the route containing the selected preview stop over the previously active day', async () => {
     const baseDay = { id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#2563EB', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed' as const, safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: 1000, route_duration_seconds: 120, visit_duration_minutes: 30, total_duration_minutes: 32, route_geometry: { type: 'LineString' as const, coordinates: [[2, 48], [2.1, 48.1]] as [number, number][] }, route_segments: [], route_status: 'ready', sort_order: 0, stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Jour 1', latitude: 48, longitude: 2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }
     const selectedDay = { ...baseDay, id: 'day-2', day_number: 2, color: '#DC2626', sort_order: 1, route_geometry: { type: 'LineString' as const, coordinates: [[3, 49], [3.1, 49.1]] as [number, number][] }, stops: [{ ...baseDay.stops[0], id: 'stop-2', trip_day_id: 'day-2', name: 'Jour 2', latitude: 49, longitude: 3 }] }
@@ -293,6 +304,7 @@ describe('PoiMap selection lifecycle', () => {
     await waitFor(() => expect(container.querySelector('.leaflet-overlay-pane path[stroke="#0FA68A"][stroke-width="6"]')).toBeInTheDocument())
     expect(container.querySelector('.leaflet-overlay-pane path[stroke="#2563EB"][stroke-width="6"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"]')).toBeInTheDocument()
+    expect(container.querySelector('[data-endpoint-roles="end-start"] .trip-day-endpoint-icon__glyphs')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"]')?.parentElement).toHaveClass('is-selected')
     expect(container.querySelector('[data-endpoint-roles="end"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="start"]')).not.toBeInTheDocument()
