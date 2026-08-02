@@ -404,7 +404,7 @@ function TripSummaryMetrics({ summary, preview = false }: { summary: TripSummary
     <div className={`trip-summary-primary${preview ? ' trip-summary-primary--preview' : ''}`} aria-label="Chiffres clés du voyage">
       <div><Road aria-hidden="true" size={24} /><span><strong>{formatRouteDistance(summary.total_route_distance_meters)}</strong><small>Distance totale</small></span></div>
       <div><Navigation aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_route_duration_minutes)}</strong><small>Temps de trajet</small></span></div>
-      <div><Clock3 aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_planned_duration_minutes)}</strong><small>Temps total</small></span></div>
+      <div data-trip-timeline-center-axis={preview ? '' : undefined}><Clock3 aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_planned_duration_minutes)}</strong><small>Temps total</small></span></div>
       {preview && <div><Timer aria-hidden="true" size={24} /><span><strong>{formatMinutes(summary.total_visit_duration_minutes)}</strong><small>Temps de visite</small></span></div>}
     </div>
     {!preview && <details className="trip-metrics trip-metrics-global">
@@ -488,6 +488,29 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
     return items
   }, [effectiveArrival, trip.days, trip.departure, trip.nights])
   const selectedNavigationIndex = navigationItems.findIndex((item) => item.key === selectedKey)
+  const selectedDayId = selectedKey?.startsWith('day:') ? selectedKey.slice(4) : selectedKey === null ? activeDayId : null
+  const centerTimelineElement = useCallback((item: HTMLElement, behavior: 'smooth' | 'instant' = 'smooth') => {
+    const viewport = trackRef.current
+    if (!viewport) return
+    const viewportBounds = viewport.getBoundingClientRect()
+    const itemBounds = item.getBoundingClientRect()
+    const summaryAxis = viewport.closest('.trip-panel-compact-summary')?.querySelector<HTMLElement>('[data-trip-timeline-center-axis]')
+    const centerAxisX = summaryAxis?.getBoundingClientRect().left ?? viewportBounds.left + viewportBounds.width / 2
+    const left = Math.max(0, viewport.scrollLeft + itemBounds.left + itemBounds.width / 2 - centerAxisX)
+    if (behavior === 'smooth' && typeof viewport.scrollTo === 'function') viewport.scrollTo({ left, behavior: 'smooth' })
+    else viewport.scrollLeft = left
+  }, [])
+  const findSelectedTimelineElement = useCallback(() => {
+    const viewport = trackRef.current
+    if (!viewport) return null
+    if (selectedNavigationIndex >= 0) return viewport.querySelector<HTMLElement>(`[data-preview-navigation-index="${selectedNavigationIndex}"]`)
+    if (!selectedDayId) return null
+    return Array.from(viewport.querySelectorAll<HTMLElement>('[data-preview-day-id]')).find((item) => item.dataset.previewDayId === selectedDayId) ?? null
+  }, [selectedDayId, selectedNavigationIndex])
+  const centerSelectedTimelineElement = useCallback((behavior: 'smooth' | 'instant' = 'smooth') => {
+    const item = findSelectedTimelineElement()
+    if (item) centerTimelineElement(item, behavior)
+  }, [centerTimelineElement, findSelectedTimelineElement])
   const navigateTimeline = useCallback((direction: -1 | 1) => {
     if (navigationItems.length === 0) return
     const nextIndex = selectedNavigationIndex < 0
@@ -496,8 +519,43 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
     if (nextIndex === selectedNavigationIndex) return
     const item = navigationItems[nextIndex]
     onNavigateItem(item.key, item.stopId)
-    requestAnimationFrame(() => trackRef.current?.querySelector<HTMLElement>(`[data-preview-navigation-index="${nextIndex}"]`)?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' }))
   }, [navigationItems, onNavigateItem, selectedNavigationIndex])
+  useEffect(() => {
+    if (!findSelectedTimelineElement()) return
+    const frame = requestAnimationFrame(() => centerSelectedTimelineElement())
+    const settleTimer = window.setTimeout(() => centerSelectedTimelineElement('instant'), 300)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.clearTimeout(settleTimer)
+    }
+  }, [centerSelectedTimelineElement, findSelectedTimelineElement])
+  useEffect(() => {
+    const viewport = trackRef.current
+    const selectedItem = findSelectedTimelineElement()
+    if (!viewport || !selectedItem || typeof ResizeObserver === 'undefined') return
+    let frame: number | null = null
+    const observer = new ResizeObserver(() => {
+      if (frame !== null) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => centerSelectedTimelineElement('instant'))
+    })
+    observer.observe(viewport)
+    observer.observe(selectedItem)
+    const track = viewport.querySelector<HTMLElement>('.trip-preview-track')
+    if (track) observer.observe(track)
+    const summaryAxis = viewport.closest('.trip-panel-compact-summary')?.querySelector<HTMLElement>('[data-trip-timeline-center-axis]')
+    if (summaryAxis) observer.observe(summaryAxis)
+    const handleLayoutTransition = (event: TransitionEvent) => {
+      if (event.propertyName !== 'width' && event.propertyName !== 'min-width') return
+      if (frame !== null) cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => centerSelectedTimelineElement('instant'))
+    }
+    viewport.addEventListener('transitionend', handleLayoutTransition)
+    return () => {
+      observer.disconnect()
+      viewport.removeEventListener('transitionend', handleLayoutTransition)
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
+  }, [centerSelectedTimelineElement, findSelectedTimelineElement])
   useEffect(() => {
     const navigateWithKeyboard = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -513,7 +571,7 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
   return <section className="trip-preview-timeline" aria-labelledby="trip-preview-timeline-title">
     <h3 id="trip-preview-timeline-title" className="visually-hidden">Frise interactive du voyage</h3>
     <button className="trip-preview-scroll trip-preview-scroll--previous" type="button" aria-label="Sélectionner le point précédent" disabled={navigationItems.length === 0 || selectedNavigationIndex === 0} onClick={() => navigateTimeline(-1)}><ChevronLeft size={15} /></button>
-    <div ref={trackRef} className="trip-preview-viewport"><ol className="trip-preview-track">
+    <div ref={trackRef} className="trip-preview-viewport" onClickCapture={(event) => { const item = (event.target as HTMLElement).closest<HTMLElement>('[data-preview-navigation-index], [data-preview-day-id]'); if (item) requestAnimationFrame(() => centerTimelineElement(item)) }}><ol className="trip-preview-track">
       {firstDay && <li className="trip-preview-anchor-item">
         <button className={`trip-preview-anchor trip-preview-anchor--terminal${selectedKey === 'departure' ? ' is-selected' : ''}`} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === 'departure')} aria-label={`Départ${trip.departure ? ` : ${trip.departure.name}` : ''}`} aria-current={selectedKey === 'departure' ? 'step' : undefined} disabled={!trip.departure} onClick={() => { if (trip.departure) onSelectLocation('departure', firstDay.id, null) }}>
           <strong>Départ</strong><span className="trip-preview-anchor-dot"><Play size={14} /></span><small>{trip.departure?.name ?? 'Non défini'}</small><em>{formatClock(trip.departure?.departure_time ?? null)}</em>
@@ -533,7 +591,7 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
         const daySelected = selectedKey === `day:${day.id}` || (selectedKey === null && activeDayId === day.id)
         const containsSelectedStop = day.stops.some((stop) => selectedKey === `stop:${stop.id}`)
         return <Fragment key={day.id}>
-          <li className={`trip-preview-day-group${daySelected || containsSelectedStop ? ' is-active' : ''}`} style={{ '--trip-preview-color': dayColor, '--trip-preview-next-color': nextDayColor } as CSSProperties}>
+          <li className={`trip-preview-day-group${daySelected || containsSelectedStop ? ' is-active' : ''}`} data-preview-day-id={day.id} style={{ '--trip-preview-color': dayColor, '--trip-preview-next-color': nextDayColor } as CSSProperties}>
             <button className="trip-preview-day-zone" type="button" aria-label={`Jour ${day.day_number}`} aria-pressed={daySelected} title={`Afficher le tracé du jour ${day.day_number}`} onClick={() => onSelectDay(day)} />
             <span className="trip-preview-stop-segment" aria-label={`Étapes du jour ${day.day_number}`}>
               {departureSelected && trip.departure && firstStop && <span className="trip-preview-route-leg" aria-label={`${trip.departure.name} vers ${firstStop.name} : ${formatRouteDistance(departureRouteSegment?.distance_meters ?? null)}, ${formatRouteDuration(departureRouteSegment?.duration_seconds ?? null)}`}><span><span><Road aria-hidden="true" size={10} />{formatRouteDistance(departureRouteSegment?.distance_meters ?? null)}</span><i aria-hidden="true" /><span><Car aria-hidden="true" size={10} />{formatRouteDuration(departureRouteSegment?.duration_seconds ?? null)}</span></span></span>}

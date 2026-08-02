@@ -460,7 +460,17 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByRole('button', { name: 'Arrivée : Gare' })).toBeVisible()
 
     const museum = screen.getByRole('button', { name: 'Étape 1 : Musée' })
+    const timelineViewport = document.querySelector<HTMLElement>('.trip-preview-viewport')!
+    const timelineCenterAxis = document.querySelector<HTMLElement>('[data-trip-timeline-center-axis]')!
+    const centerScroll = vi.fn()
+    Object.defineProperty(timelineViewport, 'clientWidth', { configurable: true, value: 400 })
+    Object.defineProperty(timelineViewport, 'scrollTo', { configurable: true, value: centerScroll })
+    vi.spyOn(timelineViewport, 'getBoundingClientRect').mockReturnValue({ x: 0, y: 0, top: 0, right: 400, bottom: 100, left: 0, width: 400, height: 100, toJSON: () => ({}) })
+    vi.spyOn(timelineCenterAxis, 'getBoundingClientRect').mockReturnValue({ x: 180, y: 100, top: 100, right: 280, bottom: 150, left: 180, width: 100, height: 50, toJSON: () => ({}) })
+    vi.spyOn(museum, 'getBoundingClientRect').mockReturnValue({ x: 500, y: 0, top: 0, right: 520, bottom: 20, left: 500, width: 20, height: 20, toJSON: () => ({}) })
     fireEvent.click(museum)
+    await waitFor(() => expect(centerScroll).toHaveBeenCalledWith({ left: 330, behavior: 'smooth' }))
+    await waitFor(() => expect(timelineViewport.scrollLeft).toBe(330))
     expect(museum).toHaveAttribute('aria-current', 'step')
     expect(museum.querySelector('.trip-preview-stop-label')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Musée vers Hôtel Central : 4,2 km, 8 min')).toBeVisible()
@@ -470,6 +480,17 @@ describe('TripPlannerPanel', () => {
     expect(onStopFocus).not.toHaveBeenCalled()
     expect(onPreviewStopSelect).toHaveBeenCalledWith('stop-1')
     expect(onStopPlaceSelect).not.toHaveBeenCalled()
+
+    const secondDayButton = screen.getByRole('button', { name: 'Jour 2' })
+    const secondDayGroup = secondDayButton.closest<HTMLElement>('.trip-preview-day-group')!
+    vi.spyOn(secondDayGroup, 'getBoundingClientRect').mockReturnValue({ x: 560, y: 0, top: 0, right: 720, bottom: 100, left: 560, width: 160, height: 100, toJSON: () => ({}) })
+    centerScroll.mockClear()
+    fireEvent.click(secondDayButton)
+    await waitFor(() => expect(centerScroll).toHaveBeenCalledWith({ left: 790, behavior: 'smooth' }))
+    await waitFor(() => expect(timelineViewport.scrollLeft).toBe(790))
+    expect(secondDayGroup).toHaveClass('is-active')
+    fireEvent.click(museum)
+    await waitFor(() => expect(museum).toHaveAttribute('aria-current', 'step'))
 
     onActiveDayChange.mockClear()
     const previousPoint = screen.getByRole('button', { name: 'Sélectionner le point précédent' })

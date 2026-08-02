@@ -11651,25 +11651,26 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   border-radius: .7rem;
   box-shadow: 0 1px 4px rgb(13 27 42 / 5%);
 }
-.trip-preview-viewport { min-width: 0; overflow-x: auto; scroll-behavior: smooth; scrollbar-color: color-mix(in srgb, var(--cv-color-teal) 35%, transparent) transparent; scrollbar-width: thin; }
+.trip-preview-viewport { min-width: 0; overflow-x: auto; scroll-behavior: smooth; scrollbar-color: color-mix(in srgb, var(--cv-color-teal) 35%, transparent) transparent; scrollbar-width: thin; container-type: inline-size; }
 .trip-preview-track {
   position: relative;
   display: flex;
+  box-sizing: border-box;
   align-items: flex-start;
   width: max-content;
   min-width: 100%;
   justify-content: center;
   gap: 0;
   margin: 0;
-  padding: .45rem .2rem .15rem;
+  padding: .45rem max(.2rem, calc(50cqw - var(--trip-preview-half-step-width))) .15rem;
   list-style: none;
 }
 .trip-preview-track::before {
   position: absolute;
   z-index: 0;
   top: 2.65rem;
-  right: calc(var(--trip-preview-step-width) / 2);
-  left: calc(var(--trip-preview-step-width) / 2);
+  right: 50cqw;
+  left: 50cqw;
   height: 1px;
   background: var(--cv-border-strong, #cbd7df);
   content: '';
