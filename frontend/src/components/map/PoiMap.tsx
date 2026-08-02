@@ -190,6 +190,19 @@ interface TripDayEndpoint {
   longitude: number
   roles: Array<'start' | 'end'>
   colors: string[]
+  arrivalSide?: 'left' | 'right'
+}
+
+function tripNightArrivalSide(previousDay: TripDay, endpoint: { longitude: number }) {
+  const routeApproach = previousDay.route_geometry?.coordinates
+    ?.slice(0, -1)
+    .reverse()
+    .find(([longitude]) => Math.abs(longitude - endpoint.longitude) > 0.000001)
+  const fallbackStop = [...previousDay.stops]
+    .reverse()
+    .find((stop) => Math.abs(stop.longitude - endpoint.longitude) > 0.000001)
+  const previousLongitude = routeApproach?.[0] ?? fallbackStop?.longitude
+  return previousLongitude !== undefined && previousLongitude > endpoint.longitude ? 'right' : 'left'
 }
 
 function tripDayStart(trip: Trip, day: TripDay, dayIndex: number) {
@@ -246,6 +259,7 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
       const previousDay = trip.days[previousDayIndex]
       const previousColor = previousDay?.color || TRIP_COLORS[Math.max(previousDayIndex, 0) % TRIP_COLORS.length]
       addEndpoint(start, 'end', previousColor)
+      if (start && previousDay) endpoints.get(start.key)!.arrivalSide = tripNightArrivalSide(previousDay, start)
     }
     addEndpoint(start, 'start')
     addEndpoint(tripDayEnd(trip, day, dayIndex), 'end')
@@ -279,7 +293,12 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
       const endColor = endpoint.colors.at(-1) ?? startColor
       const selected = endpoint.key === selectedEndpointKey
       const combined = endpoint.roles.includes('end') && endpoint.roles.includes('start')
-      return <CircleMarker key={`endpoint:${endpoint.key}`} center={[endpoint.latitude, endpoint.longitude]} radius={selected ? 16 : 12} pathOptions={{ color: combined ? 'transparent' : 'white', fillOpacity: 0, weight: combined ? 0 : selected ? 4 : 3 }}><Tooltip permanent direction="center" className={`trip-day-endpoint-icon${selected ? ' is-selected' : ''}`}><span data-endpoint-roles={endpoint.roles.join('-')} style={{ '--trip-endpoint-start-color': startColor, '--trip-endpoint-end-color': endColor } as CSSProperties}><span className="trip-day-endpoint-icon__glyphs">{endpoint.roles.includes('end') && <Flag aria-label="Arrivée de la journée" size={12} />}{endpoint.roles.includes('start') && <Play aria-label="Départ de la journée" size={12} />}</span></span></Tooltip></CircleMarker>
+      const arrivalOnRight = combined && endpoint.arrivalSide === 'right'
+      const leftColor = arrivalOnRight ? endColor : startColor
+      const rightColor = arrivalOnRight ? startColor : endColor
+      const arrivalIcon = endpoint.roles.includes('end') && <Flag aria-label="Arrivée de la journée" size={12} />
+      const departureIcon = endpoint.roles.includes('start') && <Play aria-label="Départ de la journée" size={12} />
+      return <CircleMarker key={`endpoint:${endpoint.key}`} center={[endpoint.latitude, endpoint.longitude]} radius={selected ? 16 : 12} pathOptions={{ color: combined ? 'transparent' : 'white', fillOpacity: 0, weight: combined ? 0 : selected ? 4 : 3 }}><Tooltip permanent direction="center" className={`trip-day-endpoint-icon${selected ? ' is-selected' : ''}`}><span data-endpoint-roles={endpoint.roles.join('-')} data-arrival-side={endpoint.arrivalSide} style={{ '--trip-endpoint-start-color': leftColor, '--trip-endpoint-end-color': rightColor } as CSSProperties}><span className="trip-day-endpoint-icon__glyphs">{arrivalOnRight ? <>{departureIcon}{arrivalIcon}</> : <>{arrivalIcon}{departureIcon}</>}</span></span></Tooltip></CircleMarker>
     })}
   </>
 }

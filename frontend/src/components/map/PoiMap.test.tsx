@@ -305,11 +305,26 @@ describe('PoiMap selection lifecycle', () => {
     expect(container.querySelector('.leaflet-overlay-pane path[stroke="#2563EB"][stroke-width="6"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"] .trip-day-endpoint-icon__glyphs')).toBeInTheDocument()
+    expect(container.querySelector('[data-endpoint-roles="end-start"]')).toHaveAttribute('data-arrival-side', 'left')
     expect(container.querySelector('[data-endpoint-roles="end-start"]')?.parentElement).toHaveClass('is-selected')
     expect(container.querySelector('[data-endpoint-roles="end"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="start"]')).not.toBeInTheDocument()
     expect(container.querySelectorAll('.trip-day-endpoint-icon')).toHaveLength(2)
     expect(screen.getAllByLabelText('Arrivée de la journée')).toHaveLength(2)
     expect(screen.getByLabelText('Départ de la journée')).toHaveAttribute('fill', 'none')
+  })
+
+  it('places the arrival half on the side from which the previous route approaches the night', async () => {
+    const firstDay = { id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#0FA68A', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed' as const, safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: 1000, route_duration_seconds: 120, visit_duration_minutes: 30, total_duration_minutes: 32, route_geometry: { type: 'LineString' as const, coordinates: [[3, 48], [2.2, 48.2]] as [number, number][] }, route_segments: [], route_status: 'ready', sort_order: 0, stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Jour 1', latitude: 48, longitude: 3, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }
+    const secondDay = { ...firstDay, id: 'day-2', day_number: 2, color: '#2563EB', sort_order: 1, route_geometry: { type: 'LineString' as const, coordinates: [[2.2, 48.2], [2, 49]] as [number, number][] }, stops: [{ ...firstDay.stops[0], id: 'stop-2', trip_day_id: 'day-2', name: 'Jour 2', latitude: 49, longitude: 2 }] }
+    const night = { id: 'night-1', trip_id: 'trip-1', previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Nuit', latitude: 48.2, longitude: 2.2, address: null, notes: null, check_in_time: null, check_out_time: null }
+    const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [night], days: [firstDay, secondDay] } satisfies Trip
+    const { container } = render(<PoiMap places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 6 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="right-arrival" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} trip={trip} tripViewOnly activeTripNightTarget={{ nightId: 'night-1', previousDayId: 'day-1', nextDayId: 'day-2' }} selectedTripTimelineKey="night:night-1" />)
+
+    await waitFor(() => expect(container.querySelector('[data-endpoint-roles="end-start"]')).toBeInTheDocument())
+    const marker = container.querySelector<HTMLElement>('[data-endpoint-roles="end-start"]')
+    expect(marker).toHaveAttribute('data-arrival-side', 'right')
+    expect(marker).toHaveStyle({ '--trip-endpoint-start-color': '#2563EB', '--trip-endpoint-end-color': '#0FA68A' })
+    expect(marker?.querySelector('.lucide-play')).toBe(marker?.querySelector('.trip-day-endpoint-icon__glyphs')?.firstElementChild)
   })
 })
