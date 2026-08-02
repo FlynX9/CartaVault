@@ -256,7 +256,8 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
       const startColor = endpoint.colors[0] ?? '#0FA68A'
       const endColor = endpoint.colors.at(-1) ?? startColor
       const selected = endpoint.key === selectedEndpointKey
-      return <CircleMarker key={`endpoint:${endpoint.key}`} center={[endpoint.latitude, endpoint.longitude]} radius={selected ? 16 : 12} pathOptions={{ color: 'white', fillOpacity: 0, weight: selected ? 4 : 3 }}><Tooltip permanent direction="center" className={`trip-day-endpoint-icon${selected ? ' is-selected' : ''}`}><span data-endpoint-roles={endpoint.roles.join('-')} style={{ '--trip-endpoint-start-color': startColor, '--trip-endpoint-end-color': endColor } as CSSProperties}>{endpoint.roles.includes('end') && <Flag aria-label="Arrivée de la journée" size={11} />}{endpoint.roles.includes('start') && <Play aria-label="Départ de la journée" size={11} />}</span></Tooltip></CircleMarker>
+      const combined = endpoint.roles.includes('end') && endpoint.roles.includes('start')
+      return <CircleMarker key={`endpoint:${endpoint.key}`} center={[endpoint.latitude, endpoint.longitude]} radius={selected ? 16 : 12} pathOptions={{ color: combined ? 'transparent' : 'white', fillOpacity: 0, weight: combined ? 0 : selected ? 4 : 3 }}><Tooltip permanent direction="center" className={`trip-day-endpoint-icon${selected ? ' is-selected' : ''}`}><span data-endpoint-roles={endpoint.roles.join('-')} style={{ '--trip-endpoint-start-color': startColor, '--trip-endpoint-end-color': endColor } as CSSProperties}>{endpoint.roles.includes('end') && <Flag aria-label="Arrivée de la journée" size={12} />}{endpoint.roles.includes('start') && <Play aria-label="Départ de la journée" size={12} />}</span></Tooltip></CircleMarker>
     })}
   </>
 }

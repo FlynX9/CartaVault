@@ -11540,6 +11540,7 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
 }
 .trip-day-endpoint-icon.leaflet-tooltip::before { display: none; }
 .trip-day-endpoint-icon > span {
+  position: relative;
   display: inline-flex;
   width: 1.45rem;
   height: 1.45rem;
@@ -11551,10 +11552,37 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   border: 2px solid #fff;
   border-radius: 50%;
   box-shadow: 0 2px 7px rgb(13 27 42 / 28%);
+  transition: width .16s ease, height .16s ease, box-shadow .16s ease;
 }
-.trip-day-endpoint-icon > span[data-endpoint-roles='end-start'] { width: 1.7rem; border-radius: .58rem; }
+.trip-day-endpoint-icon > span[data-endpoint-roles='end-start'] {
+  display: grid;
+  width: 2.35rem;
+  height: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0 .12rem;
+  background: linear-gradient(90deg, var(--trip-endpoint-start-color) 0 50%, var(--trip-endpoint-end-color) 50% 100%);
+  border-width: 2.5px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgb(13 27 42 / 18%), 0 4px 12px rgb(13 27 42 / 34%);
+  place-items: center;
+}
+.trip-day-endpoint-icon > span[data-endpoint-roles='end-start']::after {
+  position: absolute;
+  top: .2rem;
+  bottom: .2rem;
+  left: 50%;
+  width: 1px;
+  background: rgb(255 255 255 / 48%);
+  content: '';
+}
+.trip-day-endpoint-icon > span[data-endpoint-roles='end-start'] > svg { position: relative; z-index: 1; }
 .trip-day-endpoint-icon.is-selected > span { width: 2rem; height: 2rem; }
-.trip-day-endpoint-icon.is-selected > span[data-endpoint-roles='end-start'] { width: 2.35rem; }
+.trip-day-endpoint-icon.is-selected > span[data-endpoint-roles='end-start'] {
+  width: 2.85rem;
+  height: 1.78rem;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 38%), 0 5px 16px rgb(13 27 42 / 42%);
+}
 
 /* The preview is a horizontal journey navigator anchored over the map. */
 .map-workspace .map-sidebar.trip-planner-panel--trip-view {
