@@ -11632,15 +11632,29 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   left: 50%;
   width: max-content;
   color: var(--trip-preview-color, var(--cv-color-teal));
-  font-size: .58rem;
-  font-weight: 750;
+  font-size: .7rem;
+  font-weight: 800;
   letter-spacing: .06em;
   line-height: 1;
   text-align: center;
   text-transform: uppercase;
   white-space: nowrap;
   transform: translateX(-50%);
+  transition: font-size .16s ease, font-weight .16s ease, text-shadow .16s ease;
   pointer-events: none;
+}
+.trip-preview-day-group.is-active .trip-preview-day-label {
+  font-size: .84rem;
+  font-weight: 900;
+  text-shadow: 0 0 10px color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 24%, transparent);
+}
+.trip-planner-panel--trip-view .trip-panel-header-day-count {
+  padding: .08rem .34rem;
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, transparent);
+  border-radius: .3rem;
+  font-size: .72rem;
+  font-weight: 850;
 }
 .trip-preview-day-zone {
   position: absolute;
