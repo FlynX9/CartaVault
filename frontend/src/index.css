@@ -11694,9 +11694,9 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   padding: 0;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 7%, transparent) 0%,
-    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 7%, transparent) 58%,
-    color-mix(in srgb, var(--trip-preview-next-color, var(--trip-preview-color, var(--cv-color-teal))) 7%, transparent) 100%
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 10%, transparent) 0%,
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 10%, transparent) 58%,
+    color-mix(in srgb, var(--trip-preview-next-color, var(--trip-preview-color, var(--cv-color-teal))) 10%, transparent) 100%
   );
   border: 0;
   border-radius: 0;
@@ -11707,12 +11707,31 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
 .trip-preview-day-group.is-active .trip-preview-day-zone {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 13%, transparent) 0%,
-    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 13%, transparent) 58%,
-    color-mix(in srgb, var(--trip-preview-next-color, var(--trip-preview-color, var(--cv-color-teal))) 13%, transparent) 100%
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 17%, transparent) 0%,
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 17%, transparent) 58%,
+    color-mix(in srgb, var(--trip-preview-next-color, var(--trip-preview-color, var(--cv-color-teal))) 17%, transparent) 100%
   );
-  filter: saturate(1.06);
+  filter: saturate(1.12);
   outline: none;
+}
+html[data-theme='dark'] .trip-preview-day-zone {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 20%, transparent) 0%,
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 20%, transparent) 58%,
+    color-mix(in srgb, var(--trip-preview-next-color, var(--trip-preview-color, var(--cv-color-teal))) 20%, transparent) 100%
+  );
+  filter: saturate(1.18);
+}
+html[data-theme='dark'] .trip-preview-day-zone:is(:hover, :focus-visible),
+html[data-theme='dark'] .trip-preview-day-group.is-active .trip-preview-day-zone {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 30%, transparent) 0%,
+    color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 30%, transparent) 58%,
+    color-mix(in srgb, var(--trip-preview-next-color, var(--trip-preview-color, var(--cv-color-teal))) 30%, transparent) 100%
+  );
+  filter: saturate(1.25);
 }
 .trip-preview-anchor {
   display: grid;
