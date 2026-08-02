@@ -11743,6 +11743,16 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 24%, transparent);
   transform: scale(1.22);
 }
+html[data-theme='dark'] .trip-preview-anchor:is(.trip-preview-anchor--night, .trip-preview-anchor--terminal),
+html[data-theme='dark'] .trip-preview-anchor:is(.trip-preview-anchor--night, .trip-preview-anchor--terminal):not(:disabled):is(:hover, :focus-visible),
+html[data-theme='dark'] .trip-preview-anchor:is(.trip-preview-anchor--night, .trip-preview-anchor--terminal).is-selected {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+html[data-theme='dark'] .trip-preview-anchor--terminal .trip-preview-anchor-dot {
+  color: #07111d;
+}
 .trip-preview-anchor:disabled { cursor: default; opacity: .48; }
 .trip-preview-stop-segment { position: relative; z-index: 2; display: flex; min-width: 0; align-items: flex-start; justify-content: center; gap: 0; padding: 1.79rem 0 0; }
 .trip-preview-stop-segment:empty { display: none; }
