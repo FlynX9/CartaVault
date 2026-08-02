@@ -11788,24 +11788,38 @@ html[data-theme='dark'] .trip-preview-anchor--terminal .trip-preview-anchor-dot 
   position: relative;
   z-index: 4;
   display: flex;
-  width: clamp(3.6rem, 5.5vw, 5.2rem);
-  min-width: clamp(3.6rem, 5.5vw, 5.2rem);
+  width: clamp(4.8rem, 6.5vw, 6.4rem);
+  min-width: clamp(4.8rem, 6.5vw, 6.4rem);
   height: .82rem;
   align-items: center;
   justify-content: center;
   color: var(--cv-color-slate);
-  font-size: .62rem;
-  font-weight: 600;
+  font-size: .65rem;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
 }
 .trip-preview-route-leg > span {
   display: inline-flex;
   align-items: center;
+  gap: .3rem;
+  padding: .18rem .42rem;
+  background: color-mix(in srgb, var(--cv-surface, #fff) 88%, transparent);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 2px 9px rgb(13 27 42 / 10%);
+  backdrop-filter: blur(4px);
+}
+.trip-preview-route-leg > span > span {
+  display: inline-flex;
+  align-items: center;
   gap: .16rem;
-  padding: .1rem .2rem;
-  background: color-mix(in srgb, var(--cv-surface, #fff) 90%, transparent);
-  border-radius: .25rem;
+}
+.trip-preview-route-leg svg { color: var(--trip-preview-color, var(--cv-color-teal)); stroke-width: 2.25; }
+.trip-preview-route-leg i {
+  width: 1px;
+  height: .7rem;
+  background: color-mix(in srgb, var(--cv-color-slate) 24%, transparent);
 }
 .trip-preview-day-group.is-active .trip-preview-stop {
   width: var(--trip-preview-step-width);
