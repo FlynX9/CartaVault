@@ -11697,6 +11697,7 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   --trip-preview-step-width: clamp(3.6rem, 5.2vw, 4.8rem);
   --trip-preview-half-step-width: clamp(1.8rem, 2.6vw, 2.4rem);
   --trip-preview-compact-stop-width: clamp(1.45rem, 2.4vw, 2.1rem);
+  --trip-preview-empty-day-width: clamp(4.6rem, 6vw, 5.4rem);
   --trip-preview-axis-y: 3.95rem;
   --trip-preview-guide-span: 4.8rem;
   position: relative;
@@ -11761,6 +11762,7 @@ html[data-theme='dark'] .cv-empty-state__icon { background: color-mix(in srgb, v
   align-self: stretch;
   justify-content: center;
 }
+.trip-preview-day-group.is-empty { min-width: var(--trip-preview-empty-day-width); }
 .trip-preview-day-label {
   position: absolute;
   z-index: 2;
@@ -11898,6 +11900,13 @@ html[data-theme='dark'] .trip-preview-day-group.is-active .trip-preview-day-zone
     var(--trip-preview-night-next-color, var(--cv-color-teal))
   );
 }
+.trip-preview-anchor--missing { cursor: default; }
+.trip-preview-anchor--missing .trip-preview-anchor-dot {
+  color: #d92d20;
+  background: color-mix(in srgb, #d92d20 10%, var(--cv-surface, #fff));
+  border-color: var(--cv-surface, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #d92d20 48%, var(--cv-border-subtle, #dfe7ec));
+}
 .trip-preview-anchor:not(:disabled):is(:hover, :focus-visible) {
   color: var(--cv-color-navy);
   background: color-mix(in srgb, var(--trip-preview-color, var(--cv-color-teal)) 7%, var(--cv-surface, #fff));
@@ -11952,6 +11961,7 @@ html[data-theme='dark'] .trip-preview-anchor--terminal .trip-preview-anchor-dot 
 .trip-preview-anchor:disabled { cursor: default; opacity: .48; }
 .trip-preview-stop-segment { position: relative; z-index: 2; display: flex; min-width: 0; align-items: flex-start; justify-content: center; gap: 0; padding: 1.35rem 0 0; }
 .trip-preview-stop-segment:empty { display: none; }
+.trip-preview-empty-warning { display: grid; width: 1.7rem; height: 1.7rem; color: #d92d20; background: color-mix(in srgb, #d92d20 10%, var(--cv-surface, #fff)); border: 1px solid color-mix(in srgb, #d92d20 48%, var(--cv-border-subtle, #dfe7ec)); border-radius: 50%; box-shadow: 0 0 0 2px var(--cv-surface, #fff); place-items: center; }
 .trip-preview-stop {
   position: relative;
   display: grid;

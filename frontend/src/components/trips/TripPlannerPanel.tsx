@@ -1,5 +1,5 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
-import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, ExternalLink, Eye, EyeOff, Flag, Gauge, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, ExternalLink, Eye, EyeOff, Flag, Gauge, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2, TriangleAlert } from 'lucide-react'
 import { IconMaximize, IconMinimize, IconTimelineEvent } from '@tabler/icons-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
@@ -801,9 +801,10 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
         const daySelected = selectedKey === `day:${day.id}` || (selectedKey === null && activeDayId === day.id)
         const containsSelectedStop = day.stops.some((stop) => selectedKey === `stop:${stop.id}`)
         return <Fragment key={day.id}>
-          <li className={`trip-preview-day-group${daySelected || containsSelectedStop ? ' is-active' : ''}`} data-preview-day-id={day.id} style={{ '--trip-preview-color': dayColor, '--trip-preview-next-color': nextDayColor } as CSSProperties}>
+          <li className={`trip-preview-day-group${day.stops.length === 0 ? ' is-empty' : ''}${daySelected || containsSelectedStop ? ' is-active' : ''}`} data-preview-day-id={day.id} style={{ '--trip-preview-color': dayColor, '--trip-preview-next-color': nextDayColor } as CSSProperties}>
             <button className="trip-preview-day-zone" type="button" aria-label={`Jour ${day.day_number}`} aria-pressed={daySelected} title={`Afficher le tracé du jour ${day.day_number}`} onClick={() => onSelectDay(day)} />
             <span className="trip-preview-stop-segment" aria-label={`Étapes du jour ${day.day_number}`}>
+              {day.stops.length === 0 && <span className="trip-preview-empty-warning" role="img" aria-label={`Jour ${day.day_number} sans étape`} title="Aucune étape"><TriangleAlert aria-hidden="true" size={17} /></span>}
               {day.stops.map((stop, stopIndex) => {
                 const stopKey = `stop:${stop.id}`
                 const stopSelected = selectedKey === stopKey
@@ -818,9 +819,9 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
             </span>
             <span className="trip-preview-day-label" aria-hidden="true">Jour {day.day_number}</span>
           </li>
-          {night && <li className="trip-preview-anchor-item"><button className={`trip-preview-anchor trip-preview-anchor--night${selectedKey === `night:${night.id}` ? ' is-selected' : ''}${selectedKey === `night:${night.id}` && nextDay?.stops[0] ? ' has-active-connector' : ''}`} style={{ '--trip-preview-color': nextDayColor, '--trip-preview-night-previous-color': dayColor, '--trip-preview-night-next-color': nextDayColor } as CSSProperties} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === `night:${night.id}`)} aria-label={`Nuit ${dayIndex + 1} : ${night.name}`} aria-current={selectedKey === `night:${night.id}` ? 'step' : undefined} onClick={() => onSelectNight(night)}>
+          {nextDay && <li className="trip-preview-anchor-item">{night ? <button className={`trip-preview-anchor trip-preview-anchor--night${selectedKey === `night:${night.id}` ? ' is-selected' : ''}${selectedKey === `night:${night.id}` && nextDay.stops[0] ? ' has-active-connector' : ''}`} style={{ '--trip-preview-color': nextDayColor, '--trip-preview-night-previous-color': dayColor, '--trip-preview-night-next-color': nextDayColor } as CSSProperties} type="button" data-preview-navigation-index={navigationItems.findIndex((item) => item.key === `night:${night.id}`)} aria-label={`Nuit ${dayIndex + 1} : ${night.name}`} aria-current={selectedKey === `night:${night.id}` ? 'step' : undefined} onClick={() => onSelectNight(night)}>
             <strong>Nuit {dayIndex + 1}</strong><span className="trip-preview-anchor-dot"><Moon size={14} /></span><small aria-hidden="true" />{(night.check_in_from_time ?? night.check_in_time) && <em>{formatClock(night.check_in_from_time ?? night.check_in_time!)}</em>}
-          </button></li>}
+          </button> : <span className="trip-preview-anchor trip-preview-anchor--night trip-preview-anchor--missing" role="img" aria-label={`Nuit ${dayIndex + 1} non renseignée`} title="Nuit non renseignée"><strong>Nuit {dayIndex + 1}</strong><span className="trip-preview-anchor-dot"><TriangleAlert aria-hidden="true" size={16} /></span><small aria-hidden="true" /></span>}</li>}
         </Fragment>
       })}
       {lastDay && <li className="trip-preview-anchor-item">

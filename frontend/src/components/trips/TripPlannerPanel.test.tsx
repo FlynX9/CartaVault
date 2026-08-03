@@ -440,6 +440,21 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
   })
 
+  it('keeps empty days readable and marks missing stops and nights', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563EB' }
+    const emptyPreview = { ...trip, days: [trip.days[0], secondDay], nights: [] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([emptyPreview])
+    vi.mocked(getTrip).mockResolvedValue(emptyPreview)
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={emptyPreview} activeDayId="day-1" tripViewOnly onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('img', { name: 'Jour 1 sans étape' })).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Jour 2 sans étape' })).toBeVisible()
+    expect(screen.getByRole('img', { name: 'Nuit 1 non renseignée' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveClass('is-empty')
+    expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).toHaveClass('is-empty')
+  })
+
   it('navigates the interactive preview timeline and focuses its stops on the map', async () => {
     const firstDay = { ...trip.days[0], stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: 'place-1', stop_type: 'place' as const, name: 'Musée', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'departure:departure-1', to: 'stop:stop-1', distance_meters: 3_500, duration_seconds: 420, routable: true }, { from: 'stop:stop-1', to: 'night:night-1', distance_meters: 4_200, duration_seconds: 480, routable: true }] }
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563EB', stops: [{ id: 'stop-2', trip_day_id: 'day-2', place_id: null, stop_type: 'free_location' as const, name: 'Belvédère', latitude: 48.2, longitude: 2.2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'night:night-1', to: 'stop:stop-2', distance_meters: 6_100, duration_seconds: 720, routable: true }, { from: 'stop:stop-2', to: 'arrival:departure-1', distance_meters: 7_300, duration_seconds: 660, routable: true }] }
