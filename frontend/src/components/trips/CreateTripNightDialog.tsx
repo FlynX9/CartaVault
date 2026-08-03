@@ -4,9 +4,8 @@ import { BedDouble, ClipboardPaste, MapPin, Search, Upload, X } from 'lucide-rea
 
 import type { TripArrivalCreatePayload, TripDepartureCreatePayload, TripNightCreatePayload } from '../../api/trips'
 import { getPlaceDetails, getPlaces } from '../../api/places'
-import { searchGooglePlaces } from '../../api/googlePlaces'
 import { formatCoordinates } from '../../geocoding/coordinates'
-import { geocodingService } from '../../geocoding/geocodingService'
+import { placeSearchService } from '../../geocoding/placeSearchService'
 import type { GeocodingResult } from '../../geocoding/types'
 import type { PlaceDetails } from '../../types/place'
 import type { TripNightSourceType } from '../../types/trip'
@@ -116,19 +115,6 @@ function bestReservationResult(results: GeocodingResult[], address: string, coun
   return [...results].sort((left, right) => score(right) - score(left))[0]
 }
 
-function addressNumbers(value: string) {
-  return normalizedGeocodingText(value).split(' ').filter((token) => /^\d+$/.test(token))
-}
-
-function isRelevantAddressResult(result: GeocodingResult, query: string, countryCode?: string) {
-  const expectedNumbers = addressNumbers(query)
-  const candidate = normalizedGeocodingText(`${result.formattedAddress} ${result.postalCode ?? ''}`)
-  const candidateTokens = candidate.split(' ')
-  const numbersMatch = expectedNumbers.length === 0 || expectedNumbers.every((number) => candidateTokens.includes(number))
-  const countryMatches = !countryCode || !result.countryCode || result.countryCode.toUpperCase() === countryCode.toUpperCase()
-  return numbersMatch && countryMatches
-}
-
 function extractReservationText(value: string): ReservationText | null {
   const lines = value.replace(/\r/g, '').split('\n').map(cleanReservationLine).filter(Boolean)
   if (!lines.length) return null
@@ -205,31 +191,21 @@ export function CreateTripNightDialog(props: Props) {
     searchController.current?.abort(); const controller = new AbortController(); searchController.current = controller
     setLoading(true); setError(null); setSelectedPlace(null); setSelectedResult(null)
     try {
-      const [googleResponse, geographicResponse, placesResponse] = await Promise.allSettled([
-        searchGooglePlaces(normalized, countryCode, 8, controller.signal),
-        geocodingService.search(normalized, { signal: controller.signal, focus, countryCode, limit: 6 }),
+      const [geographicResponse, placesResponse] = await Promise.allSettled([
+        placeSearchService.search(normalized, { signal: controller.signal, focus, countryCode, limit: 8 }),
         mapId ? getPlaces({ mapId, q: normalized, limit: 6 }, controller.signal) : Promise.resolve([]),
       ])
       if (controller.signal.aborted) return
-      const googleResults = googleResponse.status === 'fulfilled' ? googleResponse.value.items : []
-      const stadiaResults = geographicResponse.status === 'fulfilled'
-        ? geographicResponse.value.filter((result) => isRelevantAddressResult(result, normalized, countryCode))
-        : []
-      const found = [...googleResults, ...stadiaResults.filter((result) => !googleResults.some((google) => Math.abs(google.latitude - result.latitude) < 0.00001 && Math.abs(google.longitude - result.longitude) < 0.00001))]
+      const found = geographicResponse.status === 'fulfilled' ? geographicResponse.value : []
       const foundPlaces = placesResponse.status === 'fulfilled'
         ? placesResponse.value.filter((place) => place.latitude !== null && place.longitude !== null)
         : []
       setResults(found)
       setPlaceResults(foundPlaces)
       if (!found.length && !foundPlaces.length) {
-        const googleError = googleResponse.status === 'rejected' && googleResponse.reason instanceof Error
-          ? googleResponse.reason.message
-          : googleResponse.status === 'fulfilled' && !googleResponse.value.available && googleResponse.value.warning_code !== 'GOOGLE_PLACES_NOT_SELECTED'
-            ? 'Aucun résultat fiable. Configurez et vérifiez votre clé Google avec Google Places API pour rechercher les fiches d’établissements.'
-            : null
-        setError(googleError ?? 'Aucun emplacement ou POI fiable trouvé pour cette recherche.')
+        setError(geographicResponse.status === 'rejected' && geographicResponse.reason instanceof Error ? geographicResponse.reason.message : 'Aucun emplacement ou POI fiable trouvé pour cette recherche.')
       }
-      if (googleResponse.status === 'rejected' && geographicResponse.status === 'rejected' && placesResponse.status === 'rejected') throw googleResponse.reason
+      if (geographicResponse.status === 'rejected' && placesResponse.status === 'rejected') throw geographicResponse.reason
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : 'La recherche géographique est indisponible.')
     } finally { if (!controller.signal.aborted) setLoading(false) }
@@ -248,22 +224,9 @@ export function CreateTripNightDialog(props: Props) {
         return
       }
       const lookup = extracted.address || extracted.name
-      const [googleResponse, stadiaResponse] = await Promise.allSettled([
-        searchGooglePlaces(`${extracted.name}, ${lookup}`, countryCode, 8),
-        geocodingService.search(lookup, { countryCode, limit: 10 }),
-      ])
-      const googleResults = googleResponse.status === 'fulfilled' ? googleResponse.value.items : []
-      const stadiaResults = stadiaResponse.status === 'fulfilled'
-        ? stadiaResponse.value.filter((result) => isRelevantAddressResult(result, lookup, countryCode))
-        : []
-      const found = [...googleResults, ...stadiaResults]
+      const found = await placeSearchService.search(`${extracted.name}, ${lookup}`, { countryCode, limit: 10 })
       if (!found.length) {
-        const googleError = googleResponse.status === 'rejected' && googleResponse.reason instanceof Error
-          ? googleResponse.reason.message
-          : googleResponse.status === 'fulfilled' && !googleResponse.value.available && googleResponse.value.warning_code !== 'GOOGLE_PLACES_NOT_SELECTED'
-            ? 'La fiche de l’établissement nécessite une clé Google vérifiée avec Google Places API activée.'
-            : null
-        setError(googleError ?? 'Aucun emplacement fiable n’a pu être déduit de ce texte. Vérifiez l’adresse ou ajoutez des coordonnées.')
+        setError('Aucun emplacement fiable n’a pu être déduit de ce texte. Vérifiez l’adresse ou ajoutez des coordonnées.')
         return
       }
       const geocoded = bestReservationResult(found, extracted.address || extracted.name, countryCode)

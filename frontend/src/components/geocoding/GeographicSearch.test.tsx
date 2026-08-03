@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { geocodingService } from '../../geocoding/geocodingService'
+import { placeSearchService } from '../../geocoding/placeSearchService'
 import { GeographicSearch } from './GeographicSearch'
 
-vi.mock('../../geocoding/geocodingService', () => ({ geocodingService: { search: vi.fn() } }))
+vi.mock('../../geocoding/placeSearchService', () => ({ placeSearchService: { search: vi.fn() } }))
 
 afterEach(cleanup)
-beforeEach(() => { vi.mocked(geocodingService.search).mockReset(); vi.mocked(geocodingService.search).mockResolvedValue([]) })
+beforeEach(() => { vi.mocked(placeSearchService.search).mockReset(); vi.mocked(placeSearchService.search).mockResolvedValue([]) })
 
 describe('GeographicSearch', () => {
   it('starts compact, expands on focus, and collapses after an outside pointer action', () => {
@@ -28,7 +28,7 @@ describe('GeographicSearch', () => {
   })
 
   it('displays city and postal-address results returned by geocoding', async () => {
-    vi.mocked(geocodingService.search).mockResolvedValue([
+    vi.mocked(placeSearchService.search).mockResolvedValue([
       { id: 'berlin', name: 'Berlin', formattedAddress: 'Berlin, Allemagne', latitude: 52.52, longitude: 13.4, layer: 'locality', source: 'test' },
       { id: 'address', name: 'Unter den Linden 1', formattedAddress: 'Unter den Linden 1, Berlin', latitude: 52.51, longitude: 13.39, layer: 'address', source: 'test' },
     ])
@@ -39,7 +39,7 @@ describe('GeographicSearch', () => {
 
     expect(await screen.findByText('Berlin, Allemagne')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Unter den Linden 1/ })).toBeInTheDocument()
-    expect(geocodingService.search).toHaveBeenCalledWith('Berlin', expect.objectContaining({ countryCode: 'DE', focus: [51, 11] }))
+    expect(placeSearchService.search).toHaveBeenCalledWith('Berlin', expect.objectContaining({ countryCode: 'DE', focus: [51, 11] }))
   })
 
   it('keeps the selected location card available after the search field collapses', () => {

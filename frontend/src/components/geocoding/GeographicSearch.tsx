@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from 're
 import { Search } from 'lucide-react'
 
 import { formatCoordinates } from '../../geocoding/coordinates'
-import { geocodingService } from '../../geocoding/geocodingService'
+import { placeSearchService } from '../../geocoding/placeSearchService'
 import type { GeocodingResult } from '../../geocoding/types'
 
 interface Props { focus: [number, number]; countryCode?: string; selected: GeocodingResult | null; canCreate?: boolean; onSelect: (result: GeocodingResult) => void; onClear: () => void; onCreate: (result: GeocodingResult) => void }
@@ -35,7 +35,7 @@ export function GeographicSearch({ focus, countryCode, selected, canCreate = tru
     controller.current?.abort()
     const next = new AbortController(); controller.current = next; setLoading(true); setMessage(null); setOpen(true)
     try {
-      const found = await geocodingService.search(normalized, { signal: next.signal, focus, countryCode, limit: 6 })
+      const found = await placeSearchService.search(normalized, { signal: next.signal, focus, countryCode, limit: 8 })
       if (!next.signal.aborted) { setResults(found); setActiveIndex(0); if (!found.length) setMessage('Aucune adresse trouvée.') }
     } catch (error) {
       if (!next.signal.aborted) setMessage(error instanceof Error ? error.message : 'Le service de recherche géographique est indisponible.')

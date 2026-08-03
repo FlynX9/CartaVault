@@ -2,24 +2,22 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getPlaceDetails, getPlaces } from '../../api/places'
-import { searchGooglePlaces } from '../../api/googlePlaces'
-import { geocodingService } from '../../geocoding/geocodingService'
+import { placeSearchService } from '../../geocoding/placeSearchService'
 import { CreateTripNightDialog } from './CreateTripNightDialog'
 
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaces: vi.fn() }))
-vi.mock('../../api/googlePlaces', () => ({ searchGooglePlaces: vi.fn() }))
-vi.mock('../../geocoding/geocodingService', () => ({ geocodingService: { search: vi.fn() } }))
+vi.mock('../../geocoding/placeSearchService', () => ({ placeSearchService: { search: vi.fn() } }))
 
 describe('CreateTripNightDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(getPlaces).mockResolvedValue([])
-    vi.mocked(searchGooglePlaces).mockResolvedValue({ items: [], available: false, warning_code: 'GOOGLE_CREDENTIAL_UNAVAILABLE' })
+    vi.mocked(placeSearchService.search).mockResolvedValue([])
   })
   afterEach(cleanup)
 
   it('selects an address or GPS result and creates a free night location', async () => {
-    vi.mocked(geocodingService.search).mockResolvedValue([{ id: 'geo-1', name: 'Hôtel Central', formattedAddress: '1 rue Centrale, Namur', latitude: 50.4669, longitude: 4.8675, source: 'test' }])
+    vi.mocked(placeSearchService.search).mockResolvedValue([{ id: 'geo-1', name: 'Hôtel Central', formattedAddress: '1 rue Centrale, Namur', latitude: 50.4669, longitude: 4.8675, source: 'test' }])
     const onCreate = vi.fn().mockResolvedValue(undefined)
     render(<CreateTripNightDialog previousDayId="day-1" nextDayId="day-2" mapName="Belgique" focus={[50.5, 4.8]} countryCode="BE" onClose={vi.fn()} onCreate={onCreate} />)
     fireEvent.change(screen.getByLabelText('Adresse ou coordonnées GPS'), { target: { value: 'Namur' } })
@@ -27,7 +25,7 @@ describe('CreateTripNightDialog', () => {
     fireEvent.click(await screen.findByRole('option', { name: /Hôtel Central/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ previous_day_id: 'day-1', next_day_id: 'day-2', source_type: 'map', name: 'Hôtel Central', latitude: 50.4669, longitude: 4.8675, address: '1 rue Centrale, Namur' })))
-    expect(geocodingService.search).toHaveBeenCalledWith('Namur', expect.objectContaining({ countryCode: 'BE', focus: [50.5, 4.8] }))
+    expect(placeSearchService.search).toHaveBeenCalledWith('Namur', expect.objectContaining({ countryCode: 'BE', focus: [50.5, 4.8] }))
   })
 
   it('accepts a POI supplied by drag and drop', async () => {
@@ -75,10 +73,7 @@ describe('CreateTripNightDialog', () => {
       '13 Samreklo Street, 0103 Tbilissi, Géorgie',
       '**Voir l’itinéraire**',
     ].join('\n')
-    vi.mocked(geocodingService.search).mockResolvedValue([
-      { id: 'wrong-panorama', name: 'Panorama Hotel', formattedAddress: 'Batoumi, Géorgie', latitude: 41.64, longitude: 41.63, countryCode: 'GE', confidence: 0.95, source: 'test' },
-    ])
-    vi.mocked(searchGooglePlaces).mockResolvedValue({ items: [{ id: 'google:panorama', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, 0103 Tbilissi, Géorgie', latitude: 41.697122, longitude: 44.8135, countryCode: 'GE', postalCode: '0103', locality: 'Tbilissi', confidence: 1, source: 'google_places' }], available: true, warning_code: null })
+    vi.mocked(placeSearchService.search).mockResolvedValue([{ id: 'google:panorama', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, 0103 Tbilissi, Géorgie', latitude: 41.697122, longitude: 44.8135, countryCode: 'GE', postalCode: '0103', locality: 'Tbilissi', confidence: 1, source: 'google_places' }])
     const onCreate = vi.fn().mockResolvedValue(undefined)
     render(<CreateTripNightDialog previousDayId="day-1" nextDayId="day-2" countryCode="GE" focus={[41.7, 44.8]} onClose={vi.fn()} onCreate={onCreate} />)
 
@@ -86,7 +81,7 @@ describe('CreateTripNightDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyser le texte' }))
 
     expect(await screen.findByText('Panorama Boutique Hotel')).toBeVisible()
-    expect(searchGooglePlaces).toHaveBeenCalledWith('Panorama Boutique Hotel, 13 Samreklo Street, 0103 Tbilissi, Géorgie', 'GE', 8)
+    expect(placeSearchService.search).toHaveBeenCalledWith('Panorama Boutique Hotel, 13 Samreklo Street, 0103 Tbilissi, Géorgie', { countryCode: 'GE', limit: 10 })
     expect(screen.getByLabelText('Arrivée')).toHaveValue('00:00')
     expect(screen.getByLabelText('Départ')).toHaveValue('14:00')
 
@@ -103,7 +98,7 @@ describe('CreateTripNightDialog', () => {
   })
 
   it('includes CartaVault POIs when searching for a night location', async () => {
-    vi.mocked(geocodingService.search).mockResolvedValue([])
+    vi.mocked(placeSearchService.search).mockResolvedValue([])
     vi.mocked(getPlaces).mockResolvedValue([{
       id: 'hotel-1', map_id: 'map-1', name: 'Hôtel CartaVault', latitude: 44.2, longitude: 6.3, region: 'Provence',
       map: { id: 'map-1', name: 'France', country: {} },
@@ -121,14 +116,8 @@ describe('CreateTripNightDialog', () => {
   })
 
   it('prioritizes an official Google establishment and rejects unrelated address matches', async () => {
-    vi.mocked(searchGooglePlaces).mockResolvedValue({
-      items: [{ id: 'google:panorama', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, 0103 Tbilissi, Géorgie', latitude: 41.697122, longitude: 44.8135, countryCode: 'GE', source: 'google_places' }],
-      available: true,
-      warning_code: null,
-    })
-    vi.mocked(geocodingService.search).mockResolvedValue([
-      { id: 'wrong-1', name: 'Samreklo', formattedAddress: 'Samreklo, Kakhétie, Géorgie', latitude: 41.5, longitude: 45.2, countryCode: 'GE', source: 'stadia' },
-      { id: 'wrong-2', name: '13 Other Street', formattedAddress: '13 Other Street, Tbilissi, Géorgie', latitude: 41.7, longitude: 44.9, countryCode: 'GE', source: 'stadia' },
+    vi.mocked(placeSearchService.search).mockResolvedValue([
+      { id: 'google:panorama', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, 0103 Tbilissi, Géorgie', latitude: 41.697122, longitude: 44.8135, countryCode: 'GE', source: 'google_places' },
     ])
     render(<CreateTripNightDialog previousDayId="day-1" nextDayId="day-2" countryCode="GE" focus={[41.7, 44.8]} onClose={vi.fn()} onCreate={vi.fn()} />)
 
@@ -151,7 +140,7 @@ describe('CreateTripNightDialog', () => {
   })
 
   it('creates a free day stop through the shared geographic dialog', async () => {
-    vi.mocked(geocodingService.search).mockResolvedValue([{ id: 'geo-stop', name: 'Point de vue', formattedAddress: 'Col du Test', latitude: 44.1, longitude: 6.2, source: 'test' }])
+    vi.mocked(placeSearchService.search).mockResolvedValue([{ id: 'geo-stop', name: 'Point de vue', formattedAddress: 'Col du Test', latitude: 44.1, longitude: 6.2, source: 'test' }])
     const onCreate = vi.fn().mockResolvedValue(undefined)
     render(<CreateTripNightDialog kind="stop" mapId="map-1" mapName="France" focus={[44, 6]} onClose={vi.fn()} onCreate={onCreate} />)
     expect(screen.queryByText('Type d’étape')).not.toBeInTheDocument()
@@ -166,7 +155,7 @@ describe('CreateTripNightDialog', () => {
   })
 
   it('includes map POIs in the free-stop search and selects one directly', async () => {
-    vi.mocked(geocodingService.search).mockResolvedValue([])
+    vi.mocked(placeSearchService.search).mockResolvedValue([])
     vi.mocked(getPlaces).mockResolvedValue([{
       id: 'place-1', map_id: 'map-1', name: 'Musée CartaVault', latitude: 44.2, longitude: 6.3, region: 'Provence',
       map: { id: 'map-1', name: 'France', country: {} },
