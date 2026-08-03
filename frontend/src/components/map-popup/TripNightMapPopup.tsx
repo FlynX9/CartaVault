@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Link2, MapPin, Maximize2, Pencil, Save, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, FileText, ImagePlus, Link2, MapPin, Maximize2, Pencil, Save, Trash2, X } from 'lucide-react'
 
 import { deleteTripNightPhoto, tripNightPhotoUrl, updateTripNight, uploadTripNightPhoto } from '../../api/trips'
 import type { TripNight, TripNightPhoto } from '../../types/trip'
@@ -144,44 +144,61 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
     || checkOutFromTime !== clockValue(night.check_out_from_time)
     || checkOutUntilTime !== clockValue(night.check_out_until_time ?? night.check_out_time)
 
-  return <><article className="place-map-popup trip-stop-map-popup trip-night-map-popup" aria-labelledby={`trip-night-popup-title-${night.id}`}>
-    <header>
-      <div><span>Nuit</span><h2 id={`trip-night-popup-title-${night.id}`}>{night.name}</h2></div>
-      <button type="button" aria-label="Fermer la fiche de la nuit" title="Fermer" onClick={onClose}><X aria-hidden="true" size={15} /></button>
-    </header>
-    {activePhoto ? <div className="trip-night-gallery">
-      <button className="trip-night-gallery__image" type="button" title="Afficher la photo en grand" aria-label={`Afficher la photo ${activeIndex + 1} sur ${photos.length} en grand`} onClick={() => setLightboxOpen(true)}>
-        <img className="trip-night-map-popup__photo" src={tripNightPhotoUrl(night.id, activePhoto.id)} alt={`Photo ${activeIndex + 1} de ${night.name}`} />
-        <Maximize2 aria-hidden="true" size={17} />
-      </button>
-      {canEdit && <button className="trip-night-gallery__delete" type="button" disabled={pending} title="Supprimer cette photo" aria-label={`Supprimer la photo ${activeIndex + 1}`} onClick={() => void removePhoto(activePhoto.id)}><Trash2 aria-hidden="true" size={16} /></button>}
-      {photos.length > 1 && <>
-        <button className="trip-night-gallery__previous" type="button" aria-label="Photo précédente" title="Photo précédente" onClick={showPrevious}><ChevronLeft aria-hidden="true" size={19} /></button>
-        <button className="trip-night-gallery__next" type="button" aria-label="Photo suivante" title="Photo suivante" onClick={showNext}><ChevronRight aria-hidden="true" size={19} /></button>
-        <span className="trip-night-gallery__counter">{activeIndex + 1} / {photos.length}</span>
-      </>}
-    </div> : <div className="trip-night-map-popup__photo trip-night-map-popup__photo--empty"><ImagePlus aria-hidden="true" /><span>Aucune photo</span></div>}
+  return <><article className="place-map-popup trip-night-map-popup" aria-labelledby={`trip-night-popup-title-${night.id}`}>
+    <section className="popup-hero">
+      {activePhoto ? <figure className="popup-gallery trip-night-gallery">
+        <button className="trip-night-gallery__image" type="button" title="Afficher la photo en grand" aria-label={`Afficher la photo ${activeIndex + 1} sur ${photos.length} en grand`} onClick={() => setLightboxOpen(true)}>
+          <img className="trip-night-map-popup__photo" src={tripNightPhotoUrl(night.id, activePhoto.id)} alt={`Photo ${activeIndex + 1} de ${night.name}`} />
+          <Maximize2 className="trip-night-hover-action" aria-hidden="true" size={17} />
+        </button>
+        {canEdit && <button className="trip-night-gallery__delete trip-night-hover-action" type="button" disabled={pending} title="Supprimer cette photo" aria-label={`Supprimer la photo ${activeIndex + 1}`} onClick={() => void removePhoto(activePhoto.id)}><Trash2 aria-hidden="true" size={16} /></button>}
+        {photos.length > 1 && <>
+          <button className="trip-night-gallery__previous trip-night-hover-action" type="button" aria-label="Photo précédente" title="Photo précédente" onClick={showPrevious}><ChevronLeft aria-hidden="true" size={19} /></button>
+          <button className="trip-night-gallery__next trip-night-hover-action" type="button" aria-label="Photo suivante" title="Photo suivante" onClick={showNext}><ChevronRight aria-hidden="true" size={19} /></button>
+          <span className="trip-night-gallery__counter">{activeIndex + 1} / {photos.length}</span>
+        </>}
+      </figure> : <figure className="popup-gallery trip-night-gallery trip-night-map-popup__photo--empty"><ImagePlus aria-hidden="true" /><span>Aucune photo</span></figure>}
+      <div className="popup-overview">
+        <div className="popup-heading">
+          <h2 id={`trip-night-popup-title-${night.id}`} title={night.name}>{night.name}</h2>
+          <div className="popup-heading-actions">
+            <button className="popup-close" type="button" aria-label="Fermer la fiche de la nuit" title="Fermer" onClick={onClose}><X aria-hidden="true" size={15} /></button>
+          </div>
+        </div>
+        <div className="popup-overview-metadata trip-night-overview-metadata">
+          <section role="group" aria-label="Arrivée">
+            <span>Arrivée</span>
+            <div className="trip-night-time-range">
+              <label><span>À partir de</span>{canEdit ? <input type="time" value={checkInFromTime} onChange={(event) => setCheckInFromTime(event.target.value)} /> : <strong>{checkInFromTime || '—'}</strong>}</label>
+              <label><span>Jusqu’à</span>{canEdit ? <input type="time" value={checkInUntilTime} onChange={(event) => setCheckInUntilTime(event.target.value)} /> : <strong>{checkInUntilTime || '—'}</strong>}</label>
+            </div>
+          </section>
+          <section role="group" aria-label="Départ">
+            <span>Départ</span>
+            <div className="trip-night-time-range">
+              <label><span>À partir de</span>{canEdit ? <input type="time" value={checkOutFromTime} onChange={(event) => setCheckOutFromTime(event.target.value)} /> : <strong>{checkOutFromTime || '—'}</strong>}</label>
+              <label><span>Jusqu’à</span>{canEdit ? <input type="time" value={checkOutUntilTime} onChange={(event) => setCheckOutUntilTime(event.target.value)} /> : <strong>{checkOutUntilTime || '—'}</strong>}</label>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
     {canEdit && (pasteNotice
       ? <p className={`popup-paste-notice${pending ? ' is-loading' : ''}`} role="status" aria-live="polite">{pasteNotice}</p>
       : <p className="popup-paste-hint">Cliquez sur la fiche puis collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></p>)}
-    {night.address && <p className="trip-night-map-popup__address"><MapPin aria-hidden="true" size={15} /><span>{night.address}</span></p>}
-    <section className="trip-night-stay-details">
-      <div className="trip-night-website-field">
-        <span><Link2 aria-hidden="true" size={15} />Site web</span>
+    <section className="popup-description trip-night-map-popup__description">
+      <h3><FileText aria-hidden="true" size={17} />Description</h3>
+      {canEdit ? <textarea id={`trip-night-description-${night.id}`} aria-label="Description" value={description} placeholder="Ajoutez une description de l’hébergement…" maxLength={10000} onChange={(event) => setDescription(event.target.value)} /> : <p>{description || 'Aucune description.'}</p>}
+    </section>
+    <div className="popup-summary trip-night-summary">
+      <article aria-label="Adresse de l’hébergement"><MapPin aria-hidden="true" /><p><b>Adresse</b><span>{night.address || 'Non renseignée'}</span></p></article>
+      <article aria-label="Site web de l’hébergement"><Link2 aria-hidden="true" /><p><b>Site web</b><span className="trip-night-website-field">
         {canEdit && websiteEditing
           ? <input autoFocus type="url" value={websiteUrl} placeholder="https://www.exemple.com" aria-label="Adresse du site web" onChange={(event) => setWebsiteUrl(event.target.value)} />
           : websiteUrl ? <a href={normalizedWebsite(websiteUrl) ?? undefined} target="_blank" rel="noreferrer">{websiteUrl.replace(/^https?:\/\//i, '')}<ExternalLink aria-hidden="true" size={13} /></a> : <em>Aucune adresse web</em>}
         {canEdit && <button type="button" aria-label={websiteEditing ? 'Terminer la modification du site web' : 'Modifier le site web'} title={websiteEditing ? 'Terminer' : 'Modifier'} onClick={() => setWebsiteEditing((current) => !current)}>{websiteEditing ? <Save aria-hidden="true" size={14} /> : <Pencil aria-hidden="true" size={14} />}</button>}
-      </div>
-      <div className="trip-night-stay-times">
-        <fieldset><legend>Arrivée</legend><label><span>À partir de</span>{canEdit ? <input type="time" value={checkInFromTime} onChange={(event) => setCheckInFromTime(event.target.value)} /> : <strong>{checkInFromTime || '—'}</strong>}</label><label><span>Jusqu’à</span>{canEdit ? <input type="time" value={checkInUntilTime} onChange={(event) => setCheckInUntilTime(event.target.value)} /> : <strong>{checkInUntilTime || '—'}</strong>}</label></fieldset>
-        <fieldset><legend>Départ</legend><label><span>À partir de</span>{canEdit ? <input type="time" value={checkOutFromTime} onChange={(event) => setCheckOutFromTime(event.target.value)} /> : <strong>{checkOutFromTime || '—'}</strong>}</label><label><span>Jusqu’à</span>{canEdit ? <input type="time" value={checkOutUntilTime} onChange={(event) => setCheckOutUntilTime(event.target.value)} /> : <strong>{checkOutUntilTime || '—'}</strong>}</label></fieldset>
-      </div>
-    </section>
-    <section className="trip-night-map-popup__description">
-      <label htmlFor={`trip-night-description-${night.id}`}>Description</label>
-      {canEdit ? <textarea id={`trip-night-description-${night.id}`} value={description} placeholder="Ajoutez une description de l’hébergement…" maxLength={10000} onChange={(event) => setDescription(event.target.value)} /> : <p>{description || 'Aucune description.'}</p>}
-    </section>
+      </span></p></article>
+    </div>
     {error && <p className="trip-night-map-popup__error" role="alert">{error}</p>}
     <footer className="popup-actions">
       {canEdit && <>

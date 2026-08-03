@@ -5469,7 +5469,7 @@ body {
   line-height: 1.4;
 }
 .trip-stop-map-popup > p svg { flex: 0 0 auto; margin-top: .08rem; color: var(--cv-color-teal); }
-.trip-night-map-popup { width: min(28rem, calc(100vw - 3rem)); }
+.trip-night-map-popup { width: min(42rem, calc(100vw - 3rem)); }
 .trip-night-map-popup > header > div { display: grid; min-width: 0; gap: .1rem; }
 .trip-night-map-popup > header > div > span { color: var(--cv-color-teal); font-size: .62rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
 .trip-night-map-popup__photo { display: block; width: 100%; height: clamp(14rem, 34vh, 18rem); object-fit: cover; background: var(--cv-surface-muted); }
@@ -5528,6 +5528,11 @@ body {
 .trip-night-map-popup__description > p { margin: 0; color: var(--cv-color-slate); font-size: .78rem; line-height: 1.45; white-space: pre-wrap; }
 .trip-night-map-popup__error { margin: 0 .95rem .65rem; padding: .5rem .65rem; color: #b42318; background: #fff1f0; border-radius: .45rem; font-size: .72rem; }
 .trip-night-map-popup .popup-actions { margin-top: 0; }
+@media (hover: hover) and (pointer: fine) {
+  .trip-night-gallery .trip-night-hover-action { opacity: 0; pointer-events: none; transition: opacity .14s ease; }
+  .trip-night-gallery:hover .trip-night-hover-action,
+  .trip-night-gallery .trip-night-hover-action:focus-visible { opacity: 1; pointer-events: auto; }
+}
 html[data-theme='dark'] .trip-night-map-popup__photo--empty { background: var(--cv-surface-muted); }
 html[data-theme='dark'] .trip-night-map-popup__description textarea { color: var(--cv-color-slate); background: var(--cv-surface-muted); }
 @media (max-width: 640px) {
@@ -5648,6 +5653,50 @@ html[data-theme='dark'] .trip-night-map-popup__description textarea { color: var
 }
 
 /* Trip planner — dense itinerary inspired by the CartaVault reference. */
+/* Night cards reuse the POI detail skeleton while exposing stay-specific fields. */
+.leaflet-popup.trip-place-popup .leaflet-popup-content:has(.trip-night-map-popup),
+.leaflet-popup.trip-place-popup .trip-night-map-popup { width: min(42rem, calc(100vw - 3rem)) !important; }
+.trip-night-map-popup .popup-hero .trip-night-gallery { height: 160px; }
+.trip-night-map-popup .trip-night-gallery__image,
+.trip-night-map-popup .trip-night-map-popup__photo { width: 100%; height: 100%; }
+.trip-night-map-popup .trip-night-map-popup__photo--empty { width: 200px; height: 160px; margin: 0; }
+.trip-night-map-popup .trip-night-overview-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: .35rem; }
+.trip-night-map-popup .trip-night-time-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .3rem; }
+.trip-night-map-popup .trip-night-time-range label { display: grid; min-width: 0; gap: .2rem; color: var(--cv-color-gray); font-size: .58rem; font-weight: 500; }
+.trip-night-map-popup .trip-night-time-range input { width: 100%; min-width: 0; height: 1.8rem; padding: .2rem .3rem; color: var(--cv-color-slate); background: var(--cv-surface-muted); border: 1px solid var(--cv-border-subtle); border-radius: .42rem; font: inherit; font-size: .68rem; font-weight: 400; }
+.trip-night-map-popup .trip-night-time-range input:is(:hover, :focus) { border-color: var(--cv-color-teal); outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 10%, transparent); }
+.trip-night-map-popup .trip-night-time-range strong { min-height: 1.8rem; padding: .38rem .35rem; color: var(--cv-color-slate); background: var(--cv-surface-muted); border-radius: .42rem; font-size: .7rem; font-weight: 600; }
+.trip-night-map-popup > .popup-paste-hint,
+.trip-night-map-popup > .popup-paste-notice { margin: -.2rem 1rem .7rem; }
+.trip-night-map-popup .trip-night-map-popup__description { gap: .45rem; padding: .15rem .65rem .7rem; }
+.trip-night-map-popup .trip-night-map-popup__description textarea { width: 100%; min-height: 4.5rem; resize: vertical; padding: .6rem .68rem; color: var(--cv-color-slate); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: .55rem; font: inherit; font-size: .78rem; font-weight: 400; line-height: 1.45; }
+.trip-night-map-popup .trip-night-map-popup__description textarea:is(:hover, :focus) { border-color: var(--cv-color-teal); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--cv-color-teal) 10%, transparent); }
+.trip-night-map-popup .trip-night-map-popup__description > p { min-height: 0; padding-left: calc(20px + .48rem); white-space: pre-wrap; -webkit-line-clamp: unset; }
+.trip-night-map-popup .trip-night-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.trip-night-map-popup .trip-night-summary article,
+.trip-night-map-popup .trip-night-summary article:nth-child(3n) { border-right: 1px solid var(--cv-border-subtle); border-bottom: 0; }
+.trip-night-map-popup .trip-night-summary article:last-child { border-right: 0; }
+.trip-night-map-popup .trip-night-website-field { display: flex; min-width: 0; align-items: center; gap: .35rem; }
+.trip-night-map-popup .trip-night-website-field > a { display: inline-flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: .25rem; overflow: hidden; color: var(--cv-color-teal); font-weight: 500; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.trip-night-map-popup .trip-night-website-field > a:hover { text-decoration: underline; }
+.trip-night-map-popup .trip-night-website-field > em { min-width: 0; flex: 1 1 auto; color: var(--cv-color-gray); font-size: .72rem; font-style: normal; }
+.trip-night-map-popup .trip-night-website-field > input { width: 100%; min-width: 0; height: 1.8rem; padding: .3rem .42rem; color: var(--cv-color-slate); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: .42rem; font: inherit; font-size: .7rem; font-weight: 400; }
+.trip-night-map-popup .trip-night-website-field > button { display: grid; width: 1.8rem; min-width: 1.8rem; height: 1.8rem; place-items: center; padding: 0; color: var(--cv-color-slate); background: transparent; border: 1px solid var(--cv-border-subtle); border-radius: .42rem; }
+.trip-night-map-popup .trip-night-website-field > button:is(:hover, :focus-visible) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 8%, transparent); border-color: var(--cv-color-teal); }
+html[data-theme='dark'] .trip-night-map-popup .trip-night-time-range input,
+html[data-theme='dark'] .trip-night-map-popup .trip-night-map-popup__description textarea { background: var(--cv-surface-muted); }
+@media (max-width: 560px) {
+  .leaflet-popup.trip-place-popup .leaflet-popup-content:has(.trip-night-map-popup),
+  .leaflet-popup.trip-place-popup .trip-night-map-popup { width: min(420px, calc(100vw - 24px)) !important; }
+  .trip-night-map-popup .popup-hero .trip-night-gallery,
+  .trip-night-map-popup .trip-night-map-popup__photo--empty { width: 118px; height: 118px; }
+  .trip-night-map-popup .trip-night-overview-metadata { grid-template-columns: 1fr; }
+  .trip-night-map-popup .trip-night-overview-metadata > section { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); }
+  .trip-night-map-popup .trip-night-summary { grid-template-columns: 1fr !important; }
+  .trip-night-map-popup .trip-night-summary article { border-right: 0; border-bottom: 1px solid var(--cv-border-subtle); }
+  .trip-night-map-popup .trip-night-summary article:last-child { border-bottom: 0; }
+}
+
 .map-workspace .map-sidebar.trip-planner-panel { width: min(40rem, calc(100% - 1.6rem)); }
 .trip-planner-panel { color: var(--cv-color-navy); background: #f7f9fb; }
 .trip-planner-panel .trip-panel-title-row { min-width: 0; }

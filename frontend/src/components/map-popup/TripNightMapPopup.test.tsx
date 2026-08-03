@@ -98,6 +98,29 @@ describe('TripNightMapPopup', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Capture ajoutée à cette nuit.')
   })
 
+  it('limits hover-only actions to the night photo gallery', () => {
+    render(<TripNightMapPopup night={{ ...night, google_place_id: 'google-place-1', photo_id: 'photo-1', photos: [{ id: 'photo-1', sort_order: 0 }] }} canEdit onUpdated={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Supprimer la photo 1' })).toHaveClass('trip-night-hover-action')
+    expect(screen.getByRole('button', { name: 'Afficher la photo 1 sur 1 en grand' })).not.toHaveClass('trip-night-hover-action')
+    expect(screen.getByRole('button', { name: 'Fermer la fiche de la nuit' })).not.toHaveClass('trip-night-hover-action')
+    expect(screen.getByRole('button', { name: 'Modifier le site web' })).not.toHaveClass('trip-night-hover-action')
+    expect(screen.getByRole('button', { name: 'Ajouter des photos' })).not.toHaveClass('trip-night-hover-action')
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).not.toHaveClass('trip-night-hover-action')
+    expect(screen.getByRole('link', { name: 'Google Maps' })).not.toHaveClass('trip-night-hover-action')
+  })
+
+  it('reuses the POI popup skeleton with night-specific fields', () => {
+    const { container } = render(<TripNightMapPopup night={night} canEdit onUpdated={vi.fn()} onClose={vi.fn()} />)
+
+    expect(container.querySelector('.popup-hero .popup-gallery')).toBeInTheDocument()
+    expect(container.querySelector('.popup-hero .popup-overview')).toBeInTheDocument()
+    expect(container.querySelector('.popup-description')).toBeInTheDocument()
+    expect(container.querySelector('.popup-summary')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Arrivée' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Départ' })).toBeInTheDocument()
+  })
+
   it('does not intercept clipboard images on a read-only night popup', () => {
     const screenshot = new File(['capture'], 'capture.png', { type: 'image/png' })
     render(<TripNightMapPopup night={night} canEdit={false} onUpdated={vi.fn()} onClose={vi.fn()} />)
