@@ -53,7 +53,14 @@ def test_trip_night_description_and_private_gallery_are_not_media(integration_cl
         },
     ).json()
 
-    described = integration_client.patch(f"/trip-nights/{night['id']}", json={"description": "Réservation confirmée."})
+    described = integration_client.patch(f"/trip-nights/{night['id']}", json={
+        "description": "Réservation confirmée.",
+        "website_url": "https://hotel.example/reservation",
+        "check_in_from_time": "14:00",
+        "check_in_until_time": "23:59",
+        "check_out_from_time": "08:00",
+        "check_out_until_time": "11:00",
+    })
     uploaded = integration_client.post(
         f"/trip-nights/{night['id']}/photos",
         files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
@@ -65,6 +72,11 @@ def test_trip_night_description_and_private_gallery_are_not_media(integration_cl
 
     assert described.status_code == 200
     assert described.json()["description"] == "Réservation confirmée."
+    assert described.json()["website_url"] == "https://hotel.example/reservation"
+    assert described.json()["check_in_from_time"] == "14:00:00"
+    assert described.json()["check_in_until_time"] == "23:59:00"
+    assert described.json()["check_out_from_time"] == "08:00:00"
+    assert described.json()["check_out_until_time"] == "11:00:00"
     assert uploaded.status_code == 200
     assert uploaded.json()["photo_id"] is not None
     assert "photo_path" not in uploaded.json()

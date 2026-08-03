@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { deleteTripNightPhoto, updateTripNight, uploadTripNightPhoto } from '../../api/trips'
@@ -26,7 +26,7 @@ describe('TripNightMapPopup', () => {
 
     fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Vue sur le jardin' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(updateTripNight).toHaveBeenCalledWith('night-1', { description: 'Vue sur le jardin' }))
+    await waitFor(() => expect(updateTripNight).toHaveBeenCalledWith('night-1', expect.objectContaining({ description: 'Vue sur le jardin' })))
 
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File(['photo'], 'hotel.jpg', { type: 'image/jpeg' })] } })
@@ -38,6 +38,30 @@ describe('TripNightMapPopup', () => {
     const { container } = render(<TripNightMapPopup night={{ ...night, photo_id: 'photo-1', photos: [{ id: 'photo-1', sort_order: 0 }] }} canEdit={false} onUpdated={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('img', { name: 'Photo 1 de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photos/photo-1')
     expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument()
+  })
+
+  it('edits a clickable website and both arrival and departure ranges', async () => {
+    const onUpdated = vi.fn()
+    const detailedNight = { ...night, website_url: 'https://hotel.example', check_in_from_time: '14:00:00', check_in_until_time: '23:30:00', check_out_from_time: '08:00:00', check_out_until_time: '11:00:00' }
+    vi.mocked(updateTripNight).mockResolvedValue(detailedNight)
+    render(<TripNightMapPopup night={detailedNight} canEdit onUpdated={onUpdated} onClose={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: /hotel\.example/i })).toHaveAttribute('href', 'https://hotel.example')
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier le site web' }))
+    fireEvent.change(screen.getByLabelText('Adresse du site web'), { target: { value: 'booking.example/hotel' } })
+    const arrival = screen.getByRole('group', { name: 'Arrivée' })
+    const departure = screen.getByRole('group', { name: 'Départ' })
+    fireEvent.change(within(arrival).getByLabelText('À partir de'), { target: { value: '15:00' } })
+    fireEvent.change(within(departure).getByLabelText('Jusqu’à'), { target: { value: '12:00' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(updateTripNight).toHaveBeenCalledWith('night-1', expect.objectContaining({
+      website_url: 'https://booking.example/hotel',
+      check_in_from_time: '15:00',
+      check_in_until_time: '23:30',
+      check_out_from_time: '08:00',
+      check_out_until_time: '12:00',
+    })))
   })
 
   it('navigates, enlarges and deletes individual night photos', async () => {

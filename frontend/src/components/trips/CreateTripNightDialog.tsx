@@ -19,8 +19,10 @@ interface CommonProps {
   initialPlaceId?: string
   initialLocation?: { name: string; latitude: number; longitude: number; address?: string | null; google_place_id?: string | null }
   initialNotes?: string | null
-  initialCheckInTime?: string | null
-  initialCheckOutTime?: string | null
+  initialCheckInFromTime?: string | null
+  initialCheckInUntilTime?: string | null
+  initialCheckOutFromTime?: string | null
+  initialCheckOutUntilTime?: string | null
   initialSourceType?: TripNightSourceType
   initialDepartureTime?: string | null
   mode?: 'create' | 'edit'
@@ -67,8 +69,10 @@ type ReservationText = {
   address: string
   latitude: number | null
   longitude: number | null
-  checkInTime: string
-  checkOutTime: string
+  checkInFromTime: string
+  checkInUntilTime: string
+  checkOutFromTime: string
+  checkOutUntilTime: string
 }
 
 function cleanReservationLine(line: string) {
@@ -87,9 +91,12 @@ function reservationSection(lines: string[], label: RegExp) {
   return lines.slice(index + 1, nextSection < 0 ? undefined : nextSection)
 }
 
-function latestTime(lines: string[]) {
+function timeRange(lines: string[]) {
   const times = lines.join(' ').match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g)
-  return times?.at(-1)?.padStart(5, '0') ?? ''
+  return {
+    from: times?.[0]?.padStart(5, '0') ?? '',
+    until: times?.at(-1)?.padStart(5, '0') ?? '',
+  }
 }
 
 function normalizedGeocodingText(value: string) {
@@ -132,13 +139,17 @@ function extractReservationText(value: string): ReservationText | null {
   const address = addressSection.find((line) => /\d{1,5}\s+.+/.test(line))
     ?? useful.find((line) => /\d{1,5}\s+.+|\b(?:rue|avenue|boulevard|road|street|lane|place)\b/i.test(line) && line !== name)
     ?? ''
+  const checkIn = timeRange(reservationSection(lines, /^arrivée$/i))
+  const checkOut = timeRange(reservationSection(lines, /^départ$/i))
   return {
     name,
     address,
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
-    checkInTime: latestTime(reservationSection(lines, /^arrivée$/i)),
-    checkOutTime: latestTime(reservationSection(lines, /^départ$/i)),
+    checkInFromTime: checkIn.from,
+    checkInUntilTime: checkIn.until,
+    checkOutFromTime: checkOut.from,
+    checkOutUntilTime: checkOut.until,
   }
 }
 
@@ -156,8 +167,10 @@ export function CreateTripNightDialog(props: Props) {
   const [reservationText, setReservationText] = useState(
     props.initialSourceType === 'imported_text' ? props.initialNotes ?? '' : '',
   )
-  const [checkInTime, setCheckInTime] = useState(props.initialCheckInTime ?? '')
-  const [checkOutTime, setCheckOutTime] = useState(props.initialCheckOutTime ?? '')
+  const [checkInFromTime, setCheckInFromTime] = useState(props.initialCheckInFromTime ?? '')
+  const [checkInUntilTime, setCheckInUntilTime] = useState(props.initialCheckInUntilTime ?? '')
+  const [checkOutFromTime, setCheckOutFromTime] = useState(props.initialCheckOutFromTime ?? '')
+  const [checkOutUntilTime, setCheckOutUntilTime] = useState(props.initialCheckOutUntilTime ?? '')
   const [locationSourceType, setLocationSourceType] = useState<TripNightSourceType>(props.initialSourceType ?? (initialPlaceId ? 'place' : 'map'))
   const [results, setResults] = useState<GeocodingResult[]>([])
   const [placeResults, setPlaceResults] = useState<PlaceDetails[]>([])
@@ -215,8 +228,10 @@ export function CreateTripNightDialog(props: Props) {
     const extracted = extractReservationText(reservationText)
     if (!extracted) { setError('Collez une confirmation ou des coordonnées à analyser.'); return }
     setLoading(true); setError(null); setSelectedPlace(null); setResults([]); setPlaceResults([])
-    setCheckInTime(extracted.checkInTime)
-    setCheckOutTime(extracted.checkOutTime)
+    setCheckInFromTime(extracted.checkInFromTime)
+    setCheckInUntilTime(extracted.checkInUntilTime)
+    setCheckOutFromTime(extracted.checkOutFromTime)
+    setCheckOutUntilTime(extracted.checkOutUntilTime)
     try {
       if (extracted.latitude !== null && extracted.longitude !== null) {
         setSelectedResult({ id: 'reservation-coordinates', name: extracted.name, formattedAddress: extracted.address, latitude: extracted.latitude, longitude: extracted.longitude, source: 'reservation' }); setLocationSourceType('imported_text')
@@ -279,8 +294,10 @@ export function CreateTripNightDialog(props: Props) {
         notes: String(data.get('notes') ?? '').trim()
           || (locationSourceType === 'imported_text' ? reservationText.trim() : '')
           || undefined,
-        check_in_time: String(data.get('check_in_time') ?? '') || undefined,
-        check_out_time: String(data.get('check_out_time') ?? '') || undefined,
+        check_in_from_time: String(data.get('check_in_from_time') ?? '') || undefined,
+        check_in_until_time: String(data.get('check_in_until_time') ?? '') || undefined,
+        check_out_from_time: String(data.get('check_out_from_time') ?? '') || undefined,
+        check_out_until_time: String(data.get('check_out_until_time') ?? '') || undefined,
       })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : `Impossible d’ajouter ${isStop ? 'ce lieu' : isDeparture ? 'ce départ' : isArrival ? 'cette arrivée' : 'cette nuit'}.`)
@@ -307,7 +324,7 @@ export function CreateTripNightDialog(props: Props) {
             {selectionName && <article className="trip-night-selection">{isDeparture || isArrival || isStop ? <MapPin size={20} /> : <BedDouble size={20} />}<span><strong>{selectionName}</strong><small>{selectionAddress}</small><small>{selectionCoordinates}</small></span><button type="button" onClick={() => { setSelectedPlace(null); setSelectedResult(null); setQuery('') }}>Changer</button></article>}
           </section>
           {!selectedPlace && selectedResult && <label className="form-field"><span>{isStop ? 'Nom du lieu' : isDeparture ? 'Nom du point de départ' : isArrival ? 'Nom du point d’arrivée' : 'Nom de l’hébergement'}</span><input name="name" defaultValue={selectedResult.name} maxLength={255} /></label>}
-          {!isStop && !isArrival && (isDeparture ? <label className="form-field"><span>Heure de départ</span><input name="departure_time" type="time" defaultValue={props.initialDepartureTime ?? ''} /></label> : <div className="create-trip-night-dialog__times"><label className="form-field"><span>Arrivée</span><input name="check_in_time" type="time" value={checkInTime} onChange={(event) => setCheckInTime(event.target.value)} /></label><label className="form-field"><span>Départ</span><input name="check_out_time" type="time" value={checkOutTime} onChange={(event) => setCheckOutTime(event.target.value)} /></label></div>)}
+          {!isStop && !isArrival && (isDeparture ? <label className="form-field"><span>Heure de départ</span><input name="departure_time" type="time" defaultValue={props.initialDepartureTime ?? ''} /></label> : <div className="create-trip-night-dialog__stay-times"><fieldset><legend>Arrivée</legend><label className="form-field"><span>À partir de</span><input name="check_in_from_time" type="time" value={checkInFromTime} onChange={(event) => setCheckInFromTime(event.target.value)} /></label><label className="form-field"><span>Jusqu’à</span><input name="check_in_until_time" type="time" value={checkInUntilTime} onChange={(event) => setCheckInUntilTime(event.target.value)} /></label></fieldset><fieldset><legend>Départ</legend><label className="form-field"><span>À partir de</span><input name="check_out_from_time" type="time" value={checkOutFromTime} onChange={(event) => setCheckOutFromTime(event.target.value)} /></label><label className="form-field"><span>Jusqu’à</span><input name="check_out_until_time" type="time" value={checkOutUntilTime} onChange={(event) => setCheckOutUntilTime(event.target.value)} /></label></fieldset></div>)}
           {!isStop && <label className="form-field"><span>Notes</span><textarea name="notes" rows={3} maxLength={10000} defaultValue={props.initialNotes ?? ''} placeholder="Réservation, consignes, contact…" /></label>}
         </div>
         <footer className="dialog-actions"><button className="secondary-button" type="button" disabled={busy} onClick={onClose}>Annuler</button><button className="primary-button" data-cv-save={isEditing ? 'true' : undefined} type="submit" disabled={busy || (!selectedPlace && !selectedResult)}>{isDeparture || isArrival || isStop ? <MapPin size={16} /> : <BedDouble size={16} />}{busy ? 'Enregistrement…' : isStop ? 'Ajouter l’étape' : isEditing ? 'Enregistrer' : isDeparture ? 'Ajouter le départ' : isArrival ? 'Ajouter l’arrivée' : 'Ajouter la nuit'}</button></footer>

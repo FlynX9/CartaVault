@@ -151,10 +151,13 @@ class NightCreate(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     address: str | None = Field(default=None, max_length=500)
     google_place_id: str | None = Field(default=None, max_length=255)
+    website_url: str | None = Field(default=None, max_length=2048, pattern=r"^https?://")
     description: str | None = Field(default=None, max_length=10_000)
     notes: str | None = Field(default=None, max_length=10_000)
-    check_in_time: TimeValue | None = None
-    check_out_time: TimeValue | None = None
+    check_in_from_time: TimeValue | None = None
+    check_in_until_time: TimeValue | None = None
+    check_out_from_time: TimeValue | None = None
+    check_out_until_time: TimeValue | None = None
 
     @model_validator(mode="after")
     def source(self) -> Self:
@@ -170,10 +173,13 @@ class NightUpdate(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     address: str | None = Field(default=None, max_length=500)
     google_place_id: str | None = Field(default=None, max_length=255)
+    website_url: str | None = Field(default=None, max_length=2048, pattern=r"^https?://")
     description: str | None = Field(default=None, max_length=10_000)
     notes: str | None = Field(default=None, max_length=10_000)
-    check_in_time: TimeValue | None = None
-    check_out_time: TimeValue | None = None
+    check_in_from_time: TimeValue | None = None
+    check_in_until_time: TimeValue | None = None
+    check_out_from_time: TimeValue | None = None
+    check_out_until_time: TimeValue | None = None
 
 
 class DepartureCreate(BaseModel):
@@ -255,7 +261,8 @@ class NightPhotoRead(ORMRead):
 
 class NightRead(ORMRead):
     id: UUID; trip_id: UUID; previous_day_id: UUID; next_day_id: UUID; place_id: UUID | None; name: str; latitude: float; longitude: float
-    address: str | None; google_place_id: str | None; source_type: Literal["place", "map", "imported_text"]; description: str | None; photo_id: UUID | None; photos: list[NightPhotoRead] = Field(default_factory=list); notes: str | None; check_in_time: TimeValue | None; check_out_time: TimeValue | None; created_at: datetime; updated_at: datetime
+    address: str | None; google_place_id: str | None; website_url: str | None; source_type: Literal["place", "map", "imported_text"]; description: str | None; photo_id: UUID | None; photos: list[NightPhotoRead] = Field(default_factory=list); notes: str | None
+    check_in_from_time: TimeValue | None; check_in_until_time: TimeValue | None; check_out_from_time: TimeValue | None; check_out_until_time: TimeValue | None; created_at: datetime; updated_at: datetime
 
 
 class DepartureRead(ORMRead):

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, ChevronRight, ExternalLink, ImagePlus, MapPin, Maximize2, Save, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, ImagePlus, Link2, MapPin, Maximize2, Pencil, Save, Trash2, X } from 'lucide-react'
 
 import { deleteTripNightPhoto, tripNightPhotoUrl, updateTripNight, uploadTripNightPhoto } from '../../api/trips'
 import type { TripNight, TripNightPhoto } from '../../types/trip'
@@ -15,10 +15,22 @@ interface Props {
 const nightPhotos = (night: TripNight): TripNightPhoto[] => night.photos?.length
   ? night.photos
   : night.photo_id ? [{ id: night.photo_id, sort_order: 0 }] : []
+const clockValue = (value?: string | null) => value?.slice(0, 5) ?? ''
+const normalizedWebsite = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+}
 
 export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props) {
   const photos = nightPhotos(night)
   const [description, setDescription] = useState(night.description ?? '')
+  const [websiteUrl, setWebsiteUrl] = useState(night.website_url ?? '')
+  const [websiteEditing, setWebsiteEditing] = useState(false)
+  const [checkInFromTime, setCheckInFromTime] = useState(clockValue(night.check_in_from_time))
+  const [checkInUntilTime, setCheckInUntilTime] = useState(clockValue(night.check_in_until_time ?? night.check_in_time))
+  const [checkOutFromTime, setCheckOutFromTime] = useState(clockValue(night.check_out_from_time))
+  const [checkOutUntilTime, setCheckOutUntilTime] = useState(clockValue(night.check_out_until_time ?? night.check_out_time))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pasteNotice, setPasteNotice] = useState<string | null>(null)
@@ -29,7 +41,15 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
   const activeIndex = Math.max(0, photos.findIndex((photo) => photo.id === activePhotoId))
   const activePhoto = photos[activeIndex] ?? null
 
-  useEffect(() => setDescription(night.description ?? ''), [night.description, night.id])
+  useEffect(() => {
+    setDescription(night.description ?? '')
+    setWebsiteUrl(night.website_url ?? '')
+    setWebsiteEditing(false)
+    setCheckInFromTime(clockValue(night.check_in_from_time))
+    setCheckInUntilTime(clockValue(night.check_in_until_time ?? night.check_in_time))
+    setCheckOutFromTime(clockValue(night.check_out_from_time))
+    setCheckOutUntilTime(clockValue(night.check_out_until_time ?? night.check_out_time))
+  }, [night])
 
   useEffect(() => {
     pasteInFlight.current = false
@@ -117,6 +137,12 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
 
   const showPrevious = () => setActivePhotoId(photos[(activeIndex - 1 + photos.length) % photos.length]?.id ?? null)
   const showNext = () => setActivePhotoId(photos[(activeIndex + 1) % photos.length]?.id ?? null)
+  const detailsChanged = description !== (night.description ?? '')
+    || normalizedWebsite(websiteUrl) !== (night.website_url ?? null)
+    || checkInFromTime !== clockValue(night.check_in_from_time)
+    || checkInUntilTime !== clockValue(night.check_in_until_time ?? night.check_in_time)
+    || checkOutFromTime !== clockValue(night.check_out_from_time)
+    || checkOutUntilTime !== clockValue(night.check_out_until_time ?? night.check_out_time)
 
   return <><article className="place-map-popup trip-stop-map-popup trip-night-map-popup" aria-labelledby={`trip-night-popup-title-${night.id}`}>
     <header>
@@ -139,6 +165,19 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
       ? <p className={`popup-paste-notice${pending ? ' is-loading' : ''}`} role="status" aria-live="polite">{pasteNotice}</p>
       : <p className="popup-paste-hint">Cliquez sur la fiche puis collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></p>)}
     {night.address && <p className="trip-night-map-popup__address"><MapPin aria-hidden="true" size={15} /><span>{night.address}</span></p>}
+    <section className="trip-night-stay-details">
+      <div className="trip-night-website-field">
+        <span><Link2 aria-hidden="true" size={15} />Site web</span>
+        {canEdit && websiteEditing
+          ? <input autoFocus type="url" value={websiteUrl} placeholder="https://www.exemple.com" aria-label="Adresse du site web" onChange={(event) => setWebsiteUrl(event.target.value)} />
+          : websiteUrl ? <a href={normalizedWebsite(websiteUrl) ?? undefined} target="_blank" rel="noreferrer">{websiteUrl.replace(/^https?:\/\//i, '')}<ExternalLink aria-hidden="true" size={13} /></a> : <em>Aucune adresse web</em>}
+        {canEdit && <button type="button" aria-label={websiteEditing ? 'Terminer la modification du site web' : 'Modifier le site web'} title={websiteEditing ? 'Terminer' : 'Modifier'} onClick={() => setWebsiteEditing((current) => !current)}>{websiteEditing ? <Save aria-hidden="true" size={14} /> : <Pencil aria-hidden="true" size={14} />}</button>}
+      </div>
+      <div className="trip-night-stay-times">
+        <fieldset><legend>Arrivée</legend><label><span>À partir de</span>{canEdit ? <input type="time" value={checkInFromTime} onChange={(event) => setCheckInFromTime(event.target.value)} /> : <strong>{checkInFromTime || '—'}</strong>}</label><label><span>Jusqu’à</span>{canEdit ? <input type="time" value={checkInUntilTime} onChange={(event) => setCheckInUntilTime(event.target.value)} /> : <strong>{checkInUntilTime || '—'}</strong>}</label></fieldset>
+        <fieldset><legend>Départ</legend><label><span>À partir de</span>{canEdit ? <input type="time" value={checkOutFromTime} onChange={(event) => setCheckOutFromTime(event.target.value)} /> : <strong>{checkOutFromTime || '—'}</strong>}</label><label><span>Jusqu’à</span>{canEdit ? <input type="time" value={checkOutUntilTime} onChange={(event) => setCheckOutUntilTime(event.target.value)} /> : <strong>{checkOutUntilTime || '—'}</strong>}</label></fieldset>
+      </div>
+    </section>
     <section className="trip-night-map-popup__description">
       <label htmlFor={`trip-night-description-${night.id}`}>Description</label>
       {canEdit ? <textarea id={`trip-night-description-${night.id}`} value={description} placeholder="Ajoutez une description de l’hébergement…" maxLength={10000} onChange={(event) => setDescription(event.target.value)} /> : <p>{description || 'Aucune description.'}</p>}
@@ -148,7 +187,7 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
       {canEdit && <>
         <input ref={fileInput} hidden multiple type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void files.reduce((chain, file) => chain.then(() => uploadPhoto(file)), Promise.resolve()) }} />
         <button type="button" disabled={pending} onClick={() => fileInput.current?.click()}><ImagePlus aria-hidden="true" size={15} /><span>Ajouter des photos</span></button>
-        <button type="button" disabled={pending || description === (night.description ?? '')} onClick={() => void run(() => updateTripNight(night.id, { description: description.trim() || null }))}><Save aria-hidden="true" size={15} /><span>Enregistrer</span></button>
+        <button type="button" disabled={pending || !detailsChanged} onClick={() => void run(async () => { const updated = await updateTripNight(night.id, { description: description.trim() || null, website_url: normalizedWebsite(websiteUrl), check_in_from_time: checkInFromTime || null, check_in_until_time: checkInUntilTime || null, check_out_from_time: checkOutFromTime || null, check_out_until_time: checkOutUntilTime || null }); setWebsiteEditing(false); return updated })}><Save aria-hidden="true" size={15} /><span>Enregistrer</span></button>
       </>}
       {night.google_place_id && <a href={`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(night.google_place_id)}`} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" size={15} /><span>Google Maps</span></a>}
     </footer>

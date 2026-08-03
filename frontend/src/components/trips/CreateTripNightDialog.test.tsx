@@ -82,8 +82,10 @@ describe('CreateTripNightDialog', () => {
 
     expect(await screen.findByText('Panorama Boutique Hotel')).toBeVisible()
     expect(placeSearchService.search).toHaveBeenCalledWith('Panorama Boutique Hotel, 13 Samreklo Street, 0103 Tbilissi, Géorgie', { countryCode: 'GE', limit: 10 })
-    expect(screen.getByLabelText('Arrivée')).toHaveValue('00:00')
-    expect(screen.getByLabelText('Départ')).toHaveValue('14:00')
+    expect(screen.getAllByLabelText('À partir de')[0]).toHaveValue('14:00')
+    expect(screen.getAllByLabelText('Jusqu’à')[0]).toHaveValue('00:00')
+    expect(screen.getAllByLabelText('À partir de')[1]).toHaveValue('09:00')
+    expect(screen.getAllByLabelText('Jusqu’à')[1]).toHaveValue('14:00')
 
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
@@ -92,8 +94,10 @@ describe('CreateTripNightDialog', () => {
       latitude: 41.697122,
       longitude: 44.8135,
       google_place_id: 'panorama',
-      check_in_time: '00:00',
-      check_out_time: '14:00',
+      check_in_from_time: '14:00',
+      check_in_until_time: '00:00',
+      check_out_from_time: '09:00',
+      check_out_until_time: '14:00',
       notes: reservation,
     })))
   })
