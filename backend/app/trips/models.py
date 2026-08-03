@@ -154,7 +154,7 @@ class TripNight(Base):
         UniqueConstraint("next_day_id", name="trip_nights_next_day_key"),
         CheckConstraint("previous_day_id <> next_day_id", name="trip_nights_distinct_days_check"),
         CheckConstraint("latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180", name="trip_nights_coordinates_check"),
-        CheckConstraint("source_type IN ('place', 'map', 'imported_text')", name="trip_nights_source_type_check"),
+        CheckConstraint("source_type IN ('place', 'map')", name="trip_nights_source_type_check"),
         Index("trip_nights_trip_id_idx", "trip_id"),
     )
 

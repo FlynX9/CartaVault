@@ -1,7 +1,7 @@
 export type TripStatus = 'draft' | 'planned' | 'in_progress' | 'completed' | 'archived'
 export type TripVisitStatus = 'planned' | 'visited' | 'skipped' | 'inaccessible' | 'postponed'
 export type TripStopType = 'place' | 'free_location' | 'hotel' | 'restaurant' | 'parking' | 'station' | 'airport' | 'other'
-export type TripNightSourceType = 'place' | 'map' | 'imported_text'
+export type TripNightSourceType = 'place' | 'map'
 export interface TripNightTarget { nightId: string | null; previousDayId: string; nextDayId: string }
 
 export interface TripStop { id: string; trip_day_id: string; place_id: string | null; stop_type: TripStopType; name: string; latitude: number; longitude: number; address: string | null; sort_order: number; visit_duration_minutes: number | null; notes: string | null; is_required: boolean; is_locked: boolean; visit_status: TripVisitStatus }

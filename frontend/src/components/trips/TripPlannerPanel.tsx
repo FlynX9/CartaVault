@@ -1196,7 +1196,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
 
 function nightSourceLabel(sourceType: Trip['nights'][number]['source_type'] | undefined, placeId: string | null) {
   const source = sourceType ?? (placeId ? 'place' : 'map')
-  return source === 'place' ? 'POI' : source === 'imported_text' ? 'Texte de réservation' : 'Point cartographique'
+  return source === 'place' ? 'POI' : 'Point cartographique'
 }
 
 function googleMapsPlaceUrl(night: Trip['nights'][number]) {

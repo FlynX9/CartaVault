@@ -145,7 +145,7 @@ class NightCreate(BaseModel):
     previous_day_id: UUID
     next_day_id: UUID
     place_id: UUID | None = None
-    source_type: Literal["place", "map", "imported_text"] = "map"
+    source_type: Literal["place", "map"] = "map"
     name: str | None = Field(default=None, max_length=255)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -167,7 +167,7 @@ class NightCreate(BaseModel):
 
 class NightUpdate(BaseModel):
     place_id: UUID | None = None
-    source_type: Literal["place", "map", "imported_text"] | None = None
+    source_type: Literal["place", "map"] | None = None
     name: str | None = Field(default=None, min_length=1, max_length=255)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
@@ -261,7 +261,7 @@ class NightPhotoRead(ORMRead):
 
 class NightRead(ORMRead):
     id: UUID; trip_id: UUID; previous_day_id: UUID; next_day_id: UUID; place_id: UUID | None; name: str; latitude: float; longitude: float
-    address: str | None; google_place_id: str | None; website_url: str | None; source_type: Literal["place", "map", "imported_text"]; description: str | None; photo_id: UUID | None; photos: list[NightPhotoRead] = Field(default_factory=list); notes: str | None
+    address: str | None; google_place_id: str | None; website_url: str | None; source_type: Literal["place", "map"]; description: str | None; photo_id: UUID | None; photos: list[NightPhotoRead] = Field(default_factory=list); notes: str | None
     check_in_from_time: TimeValue | None; check_in_until_time: TimeValue | None; check_out_from_time: TimeValue | None; check_out_until_time: TimeValue | None; created_at: datetime; updated_at: datetime
 
 

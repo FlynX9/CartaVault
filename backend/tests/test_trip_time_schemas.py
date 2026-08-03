@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.trips.schemas import TripDayTimingUpdate, TripLoadSettings
+from app.trips.schemas import NightCreate, TripDayTimingUpdate, TripLoadSettings
 
 
 pytestmark = pytest.mark.unit
@@ -26,3 +26,15 @@ def test_trip_load_settings_validate_thresholds_and_colors() -> None:
         TripLoadSettings(low_load_max_minutes=480, medium_load_max_minutes=480, low_load_color="#0FA68A", medium_load_color="#D97706", high_load_color="#DC2626")
     with pytest.raises(ValidationError):
         TripLoadSettings(low_load_max_minutes=240, medium_load_max_minutes=480, low_load_color="green", medium_load_color="#D97706", high_load_color="#DC2626")
+
+
+def test_trip_night_rejects_removed_raw_text_import_source() -> None:
+    with pytest.raises(ValidationError):
+        NightCreate(
+            previous_day_id="11111111-1111-4111-8111-111111111111",
+            next_day_id="22222222-2222-4222-8222-222222222222",
+            source_type="imported_text",
+            name="Ancienne réservation",
+            latitude=48.8566,
+            longitude=2.3522,
+        )
