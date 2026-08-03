@@ -15,9 +15,49 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
   const [description, setDescription] = useState(night.description ?? '')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const pasteInFlight = useRef(false)
 
   useEffect(() => setDescription(night.description ?? ''), [night.description, night.id])
+
+  useEffect(() => {
+    pasteInFlight.current = false
+    setPasteNotice(null)
+  }, [night.id])
+
+  useEffect(() => {
+    if (!canEdit) return
+
+    const onPaste = (event: ClipboardEvent) => {
+      const file = Array.from(event.clipboardData?.files ?? []).find((candidate) => candidate.type.startsWith('image/'))
+        ?? Array.from(event.clipboardData?.items ?? []).find((item) => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile()
+      if (!file || pasteInFlight.current) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      pasteInFlight.current = true
+      setPending(true)
+      setError(null)
+      setPasteNotice('Ajout de la capture…')
+      void uploadTripNightPhoto(night.id, file)
+        .then((updated) => {
+          onUpdated(updated)
+          setPasteNotice('Capture ajoutée à cette nuit.')
+        })
+        .catch((caught: unknown) => {
+          setPasteNotice(null)
+          setError(caught instanceof Error ? caught.message : 'Impossible d’ajouter cette image.')
+        })
+        .finally(() => {
+          pasteInFlight.current = false
+          setPending(false)
+        })
+    }
+
+    window.addEventListener('paste', onPaste, true)
+    return () => window.removeEventListener('paste', onPaste, true)
+  }, [canEdit, night.id, onUpdated])
 
   const run = async (action: () => Promise<TripNight>) => {
     setPending(true)
@@ -33,6 +73,9 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
       <button type="button" aria-label="Fermer la fiche de la nuit" title="Fermer" onClick={onClose}><X aria-hidden="true" size={15} /></button>
     </header>
     {night.photo_id ? <img className="trip-night-map-popup__photo" src={tripNightPhotoUrl(night.id, night.photo_id)} alt={`Photo de ${night.name}`} /> : <div className="trip-night-map-popup__photo trip-night-map-popup__photo--empty"><ImagePlus aria-hidden="true" /><span>Aucune photo</span></div>}
+    {canEdit && (pasteNotice
+      ? <p className={`popup-paste-notice${pending ? ' is-loading' : ''}`} role="status" aria-live="polite">{pasteNotice}</p>
+      : <p className="popup-paste-hint">Cliquez sur la fiche puis collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></p>)}
     {night.address && <p className="trip-night-map-popup__address"><MapPin aria-hidden="true" size={15} /><span>{night.address}</span></p>}
     <section className="trip-night-map-popup__description">
       <label htmlFor={`trip-night-description-${night.id}`}>Description</label>

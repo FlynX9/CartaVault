@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { updateTripNight, uploadTripNightPhoto } from '../../api/trips'
 import type { TripNight } from '../../types/trip'
@@ -16,6 +16,7 @@ const night: TripNight = { id: 'night-1', trip_id: 'trip-1', previous_day_id: 'd
 
 describe('TripNightMapPopup', () => {
   beforeEach(() => vi.clearAllMocks())
+  afterEach(() => cleanup())
 
   it('edits the private description and uploads a night photo', async () => {
     const onUpdated = vi.fn()
@@ -37,5 +38,29 @@ describe('TripNightMapPopup', () => {
     const { container } = render(<TripNightMapPopup night={{ ...night, photo_id: 'photo-1' }} canEdit={false} onUpdated={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('img', { name: 'Photo de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photo?v=photo-1')
     expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument()
+  })
+
+  it('uploads a clipboard screenshot from the opened night popup', async () => {
+    const onUpdated = vi.fn()
+    const pastedNight = { ...night, photo_id: 'clipboard-photo' }
+    const screenshot = new File(['capture'], 'capture.png', { type: 'image/png' })
+    vi.mocked(uploadTripNightPhoto).mockResolvedValue(pastedNight)
+
+    const { container } = render(<TripNightMapPopup night={night} canEdit onUpdated={onUpdated} onClose={vi.fn()} />)
+    fireEvent.click(container.querySelector('.trip-night-map-popup')!)
+    fireEvent.paste(window, { clipboardData: { files: [screenshot], items: [] } })
+
+    await waitFor(() => expect(uploadTripNightPhoto).toHaveBeenCalledWith('night-1', screenshot))
+    expect(onUpdated).toHaveBeenCalledWith(pastedNight)
+    expect(screen.getByRole('status')).toHaveTextContent('Capture ajoutée à cette nuit.')
+  })
+
+  it('does not intercept clipboard images on a read-only night popup', () => {
+    const screenshot = new File(['capture'], 'capture.png', { type: 'image/png' })
+    render(<TripNightMapPopup night={night} canEdit={false} onUpdated={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.paste(window, { clipboardData: { files: [screenshot], items: [] } })
+
+    expect(uploadTripNightPhoto).not.toHaveBeenCalled()
   })
 })

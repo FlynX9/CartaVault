@@ -12,7 +12,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { deletePlace, getPlaceDetails, getPlaceHistory, updatePlace } from "../../api/places";
-import { getPlacePhotos } from "../../api/photos";
+import { getPlacePhotos, uploadPlacePhoto } from "../../api/photos";
 import type { Photo } from "../../types/photo";
 import type { PlaceDetails, PlaceHistoryEvent } from "../../types/place";
 import { buildGoogleMapsUrl } from "../../utils/googleMaps";
@@ -69,10 +69,21 @@ export function PlaceMapPopup({
   const [addingToTrip, setAddingToTrip] = useState(false);
   const [tripDayPickerOpen, setTripDayPickerOpen] = useState(false);
   const [targetDayId, setTargetDayId] = useState("");
+  const [pasteUploading, setPasteUploading] = useState(false);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const pasteTargetRef = useRef<HTMLTextAreaElement>(null);
+  const previousPasteFocusRef = useRef<HTMLElement | null>(null);
+  const pasteUploadingRef = useRef(false);
+  const pasteUploadSequence = useRef(0);
+  const pasteEventSeenAt = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
+    pasteUploadSequence.current += 1;
+    pasteUploadingRef.current = false;
+    setPasteUploading(false);
+    setPasteNotice(null);
     setDetailsLoading(true);
     setPhotosLoading(true);
     setDetailsError(null);
@@ -110,8 +121,90 @@ export function PlaceMapPopup({
   }, [historyOpen, placeId]);
 
   useEffect(() => {
-    if (place) titleRef.current?.focus();
-  }, [place]);
+    if (!place || detailsLoading) return;
+    (canEdit ? pasteTargetRef.current : titleRef.current)?.focus({ preventScroll: true });
+  }, [canEdit, detailsLoading, place]);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    const isPasteTarget = (target: EventTarget | null) => target instanceof HTMLElement && target.dataset.popupPasteTarget === "true";
+    const isTextTarget = (target: EventTarget | null) => target instanceof HTMLElement && !isPasteTarget(target) && (target.matches("input, textarea, select") || target.isContentEditable);
+    const restoreFocus = () => {
+      const target = previousPasteFocusRef.current;
+      previousPasteFocusRef.current = null;
+      window.setTimeout(() => (target?.isConnected ? target : titleRef.current)?.focus({ preventScroll: true }), 0);
+    };
+    const uploadClipboardImage = (source: Blob) => {
+      if (pasteUploadingRef.current) return;
+      const extensions: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+      const extension = extensions[source.type];
+      if (!extension) {
+        setPasteNotice("Format non pris en charge. Utilisez une image JPEG, PNG ou WebP.");
+        return;
+      }
+      const file = new File([source], `presse-papiers-${Date.now()}.${extension}`, { type: source.type });
+      const request = ++pasteUploadSequence.current;
+      pasteUploadingRef.current = true;
+      setPasteUploading(true);
+      setPasteNotice("Ajout de l’image en cours…");
+      void uploadPlacePhoto(placeId, file)
+        .then((photo) => {
+          if (pasteUploadSequence.current !== request) return;
+          setPhotos((current) => current.some((item) => item.id === photo.id) ? current : [...current, photo]);
+          setPhotosError(null);
+          setPasteNotice("Image ajoutée depuis le presse-papiers.");
+        })
+        .catch((error: unknown) => { if (pasteUploadSequence.current === request) setPasteNotice(error instanceof Error ? error.message : "Impossible d’ajouter cette image."); })
+        .finally(() => { if (pasteUploadSequence.current === request) { pasteUploadingRef.current = false; setPasteUploading(false); } });
+    };
+    const onPaste = (event: ClipboardEvent) => {
+      if (isTextTarget(event.target)) return;
+      pasteEventSeenAt.current = Date.now();
+      const source = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"))
+        ?? Array.from(event.clipboardData?.items ?? []).find((item) => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile();
+      if (!source) {
+        if (isPasteTarget(event.target)) {
+          event.preventDefault();
+          setPasteNotice("Aucune image détectée dans le presse-papiers.");
+          restoreFocus();
+        }
+        return;
+      }
+      event.preventDefault();
+      uploadClipboardImage(source);
+      restoreFocus();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "v" || (!event.ctrlKey && !event.metaKey) || event.altKey || isTextTarget(event.target)) return;
+      const requestedAt = Date.now();
+      previousPasteFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      pasteTargetRef.current?.focus({ preventScroll: true });
+      window.setTimeout(() => {
+        if (pasteEventSeenAt.current >= requestedAt || pasteUploadingRef.current) return;
+        if (!navigator.clipboard?.read) {
+          setPasteNotice("Le navigateur ne permet pas de lire l’image du presse-papiers.");
+          restoreFocus();
+          return;
+        }
+        void navigator.clipboard.read()
+          .then(async (items) => {
+            for (const item of items) {
+              const type = item.types.find((value) => value.startsWith("image/"));
+              if (type) { uploadClipboardImage(await item.getType(type)); return; }
+            }
+            setPasteNotice("Aucune image détectée dans le presse-papiers.");
+          })
+          .catch(() => setPasteNotice("Accès au presse-papiers refusé par le navigateur."))
+          .finally(restoreFocus);
+      }, 40);
+    };
+    window.addEventListener("paste", onPaste, true);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("paste", onPaste, true);
+      window.removeEventListener("keydown", onKeyDown, true);
+    };
+  }, [canEdit, placeId]);
 
   if (detailsLoading)
     return (
@@ -197,6 +290,7 @@ export function PlaceMapPopup({
       className="place-map-popup"
       aria-labelledby={`popup-title-${place.id}`}
     >
+      {canEdit && <textarea ref={pasteTargetRef} className="popup-paste-target" data-popup-paste-target="true" tabIndex={-1} aria-label="Collage d’image depuis le presse-papiers" />}
       <section className="popup-hero">
         <PlacePopupGallery
           placeName={place.name}
@@ -350,6 +444,8 @@ export function PlaceMapPopup({
           )}
         </div>
       </section>
+      {canEdit && !pasteNotice && <button className="popup-paste-hint" type="button" onClick={() => pasteTargetRef.current?.focus({ preventScroll: true })}>Collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></button>}
+      {pasteNotice && <p className={`popup-paste-notice${pasteUploading ? " is-loading" : ""}`} role="status" aria-live="polite">{pasteNotice}</p>}
       {detailsError && (
         <p className="inline-error" role="alert">
           {detailsError}

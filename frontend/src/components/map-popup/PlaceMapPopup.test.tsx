@@ -1,21 +1,67 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deletePlace, getPlaceDetails, getPlaceHistory } from '../../api/places'
-import { getPlacePhotos } from '../../api/photos'
+import { getPlacePhotos, uploadPlacePhoto } from '../../api/photos'
 import { PlaceMapPopup } from './PlaceMapPopup'
 
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaceHistory: vi.fn(), deletePlace: vi.fn() }))
-vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/photos')>()), getPlacePhotos: vi.fn() }))
+vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/photos')>()), getPlacePhotos: vi.fn(), uploadPlacePhoto: vi.fn() }))
 const PLACE_ID = '11111111-1111-4111-8111-111111111111'
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', map_id: MAP_ID, name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null, icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Brique' }], custom_fields: { gx_media_links: 'technical-data' }, interest_rating: null, visit_rating: null, created_at: '2026-01-01', updated_at: '2026-02-02' }
 const PHOTO = { id: '22222222-2222-4222-8222-222222222222', place_id: PLACE_ID, filename: 'photo.jpg', original_name: null, path: 'must-not-be-used.jpg', description: 'Façade', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
 const SECOND_PHOTO = { ...PHOTO, id: '33333333-3333-4333-8333-333333333333', filename: 'second.jpg', description: 'Cour intérieure', sort_order: 1, is_primary: false }
 
-beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlaceHistory).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(deletePlace).mockResolvedValue() })
+beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlaceHistory).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(uploadPlacePhoto).mockResolvedValue(SECOND_PHOTO); vi.mocked(deletePlace).mockResolvedValue() })
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('PlaceMapPopup', () => {
+  it('adds a clipboard image to the currently opened editable POI', async () => {
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+    const clipboardImage = new File(['image'], 'capture.png', { type: 'image/png' })
+    const pasteTarget = screen.getByRole('textbox', { name: 'Collage d’image depuis le presse-papiers' })
+    await waitFor(() => expect(pasteTarget).toHaveFocus())
+
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    expect(pasteTarget).toHaveFocus()
+    fireEvent.paste(pasteTarget, { clipboardData: { files: [clipboardImage], items: [] } })
+
+    await waitFor(() => expect(uploadPlacePhoto).toHaveBeenCalledWith(PLACE_ID, expect.objectContaining({ type: 'image/png' })))
+    expect(await screen.findByText('Image ajoutée depuis le presse-papiers.')).toBeVisible()
+    expect(screen.getByLabelText('Navigation des photos')).toHaveTextContent('1 / 2')
+  })
+
+  it('falls back to the Clipboard API when Ctrl+V emits no paste event', async () => {
+    const read = vi.fn().mockResolvedValue([{ types: ['image/png'], getType: vi.fn().mockResolvedValue(new Blob(['image'], { type: 'image/png' })) }])
+    vi.stubGlobal('navigator', { language: 'fr-FR', clipboard: { read } })
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+
+    await waitFor(() => expect(read).toHaveBeenCalledOnce())
+    await waitFor(() => expect(uploadPlacePhoto).toHaveBeenCalledWith(PLACE_ID, expect.objectContaining({ type: 'image/png' })))
+    expect(await screen.findByText('Image ajoutée depuis le presse-papiers.')).toBeVisible()
+  })
+
+  it('does not intercept image pastes in text fields or on a read-only POI', async () => {
+    const { rerender } = render(<><input aria-label="Champ texte" /><PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} /></>)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+    const clipboardData = { items: [{ kind: 'file', type: 'image/png', getAsFile: () => new File(['image'], 'capture.png', { type: 'image/png' }) }] }
+    const textField = screen.getByRole('textbox', { name: 'Champ texte' })
+    textField.focus()
+    fireEvent.keyDown(textField, { key: 'v', ctrlKey: true })
+    fireEvent.paste(textField, { clipboardData })
+    expect(textField).toHaveFocus()
+    expect(uploadPlacePhoto).not.toHaveBeenCalled()
+
+    rerender(<PlaceMapPopup placeId={PLACE_ID} canEdit={false} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+    fireEvent.paste(window, { clipboardData })
+    expect(uploadPlacePhoto).not.toHaveBeenCalled()
+  })
+
   it('reveals the history directly inside the quick card', async () => {
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     await screen.findByRole('heading', { name: 'Manufacture' })
