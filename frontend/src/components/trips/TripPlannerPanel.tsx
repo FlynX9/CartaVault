@@ -1005,8 +1005,8 @@ function Departure({ trip, selected, recommendedStart, recommendedStartOffset, c
           ? <div className="trip-night-stop" role="button" tabIndex={0} aria-label={departure.place_id ? 'POI' : 'Point cartographique'} onClick={focusDeparture} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusDeparture() } }}>
               <MapPin aria-hidden="true" size={14} />
               <span className="trip-night-stop-copy"><strong>{departure.name}</strong><small>{departure.place_id ? 'POI' : 'Point cartographique'}</small></span>
-              {!departure.place_id && <span className="trip-night-stop-actions">
-                <a className="trip-night-google-link" href={googleMapsAnchorUrl(departure)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${departure.name} dans Google Maps`} title="Ouvrir dans Google Maps" onClick={(event) => event.stopPropagation()}><ExternalLink size={11} /></a>
+              {(!departure.place_id || anchorActions?.canEdit) && <span className="trip-night-stop-actions">
+                {!departure.place_id && <a className="trip-night-google-link" href={googleMapsAnchorUrl(departure)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${departure.name} dans Google Maps`} title="Ouvrir dans Google Maps" onClick={(event) => event.stopPropagation()}><ExternalLink size={11} /></a>}
                 {anchorActions?.canEdit && <button className="trip-night-remove" type="button" aria-label="Supprimer le point de départ" title="Supprimer le point de départ" onClick={removeDeparture}><Trash2 size={11} /></button>}
               </span>}
             </div>
@@ -1088,8 +1088,8 @@ function Arrival({ trip, selected, estimatedArrival, estimatedArrivalOffset, col
           ? <div className="trip-night-stop" role="button" tabIndex={0} aria-label={arrival ? (arrival.place_id ? 'POI' : 'Point cartographique') : 'Même point que le départ'} onClick={focusArrival} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusArrival() } }}>
               <MapPin aria-hidden="true" size={14} />
               <span className="trip-night-stop-copy"><strong>{effectiveArrival.name}</strong><small>{arrival ? (arrival.place_id ? 'POI' : 'Point cartographique') : 'Même point que le départ'}</small></span>
-              {arrival && !arrival.place_id && <span className="trip-night-stop-actions">
-                <a className="trip-night-google-link" href={googleMapsAnchorUrl(arrival)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${arrival.name} dans Google Maps`} title="Ouvrir dans Google Maps" onClick={(event) => event.stopPropagation()}><ExternalLink size={11} /></a>
+              {arrival && (!arrival.place_id || anchorActions?.canEdit) && <span className="trip-night-stop-actions">
+                {!arrival.place_id && <a className="trip-night-google-link" href={googleMapsAnchorUrl(arrival)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${arrival.name} dans Google Maps`} title="Ouvrir dans Google Maps" onClick={(event) => event.stopPropagation()}><ExternalLink size={11} /></a>}
                 {anchorActions?.canEdit && <button className="trip-night-remove" type="button" aria-label="Supprimer le point d’arrivée" title="Supprimer le point d’arrivée" onClick={removeArrival}><Trash2 size={11} /></button>}
               </span>}
             </div>
@@ -1182,8 +1182,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
             <strong>{dropping ? 'Enregistrement…' : night.name}</strong>
             <small>{nightSourceLabel(night.source_type, night.place_id)}</small>
           </span>
-          {(night.google_place_id || canEdit) && <span className="trip-night-stop-actions">
-            {night.google_place_id && <a className="trip-night-google-link" href={googleMapsPlaceUrl(night)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir la fiche Google Maps de ${night.name}`} title="Ouvrir dans Google Maps"><ExternalLink size={11} /></a>}
+          {canEdit && <span className="trip-night-stop-actions">
             {canEdit && <button className="trip-night-remove" type="button" aria-label="Retirer le lieu de la nuit" title="Retirer le lieu" onClick={removeNightLocation}><Trash2 size={11} /></button>}
           </span>}
         </div> : <div className="trip-night-placeholder">{dropActive
@@ -1197,12 +1196,6 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
 function nightSourceLabel(sourceType: Trip['nights'][number]['source_type'] | undefined, placeId: string | null) {
   const source = sourceType ?? (placeId ? 'place' : 'map')
   return source === 'place' ? 'POI' : 'Point cartographique'
-}
-
-function googleMapsPlaceUrl(night: Trip['nights'][number]) {
-  const query = [night.name, night.address].filter(Boolean).join(', ')
-  const parameters = new URLSearchParams({ api: '1', query, query_place_id: night.google_place_id ?? '' })
-  return `https://www.google.com/maps/search/?${parameters.toString()}`
 }
 
 function googleMapsAnchorUrl(anchor: NonNullable<Trip['departure']> | NonNullable<Trip['arrival']>) {

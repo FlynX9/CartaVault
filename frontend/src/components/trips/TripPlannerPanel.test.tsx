@@ -1193,6 +1193,7 @@ describe('TripPlannerPanel', () => {
 
     expect(onStopPlaceSelect).toHaveBeenCalledWith('place-1')
     expect(onAnchorPopupChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Supprimer le point de départ' })).toBeVisible()
   })
 
   it('selects trip anchors for map search without legacy edit actions', async () => {
@@ -1229,10 +1230,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('button', { name: 'Modifier le point d’arrivée' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Modifier le lieu de la nuit' })).not.toBeInTheDocument()
-    const googleMapsLink = screen.getByRole('link', { name: 'Ouvrir la fiche Google Maps de Hôtel' })
-    expect(googleMapsLink).toHaveAttribute('target', '_blank')
-    expect(googleMapsLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
-    expect(googleMapsLink).toHaveAttribute('href', expect.stringContaining('query_place_id=ChIJ-hotel-official'))
+    expect(screen.queryByRole('link', { name: 'Ouvrir la fiche Google Maps de Hôtel' })).not.toBeInTheDocument()
     const departureGoogleLink = screen.getByRole('link', { name: 'Ouvrir Maison dans Google Maps' })
     const arrivalGoogleLink = screen.getByRole('link', { name: 'Ouvrir Retour maison dans Google Maps' })
     expect(departureGoogleLink).toHaveAttribute('href', expect.stringContaining('query=48%2C2'))
