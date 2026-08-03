@@ -4,7 +4,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.countries.models import Country
@@ -68,6 +68,25 @@ def synchronize_trip_dates(trip: Trip) -> None:
     for index, day in enumerate(ordered_days):
         day.date = trip.start_date + timedelta(days=index)
     trip.end_date = trip.start_date + timedelta(days=max(len(ordered_days) - 1, 0))
+
+
+def resize_trip_days(session: Session, trip: Trip, day_count: int) -> None:
+    """Resize a trip while retaining existing days from the beginning."""
+    if day_count < 1:
+        raise HTTPException(422, "A trip must keep at least one day")
+    ordered_days = sorted(trip.days, key=lambda item: item.sort_order)
+    if day_count < len(ordered_days):
+        removed_days = ordered_days[day_count:]
+        removed_ids = [day.id for day in removed_days]
+        session.execute(delete(TripNight).where((TripNight.previous_day_id.in_(removed_ids)) | (TripNight.next_day_id.in_(removed_ids))))
+        for day in removed_days:
+            trip.days.remove(day)
+    elif day_count > len(ordered_days):
+        for index in range(len(ordered_days), day_count):
+            trip.days.append(TripDay(day_number=index + 1, sort_order=index, color=next_day_color(trip.days)))
+    session.flush()
+    normalize_day_order(trip)
+    synchronize_trip_dates(trip)
 
 
 def normalize_stop_order(day: TripDay) -> None:

@@ -5695,15 +5695,18 @@ html[data-theme='dark'] .trip-night-map-popup__description textarea { color: var
 .trip-settings-dates { padding: 0.55rem 0.6rem; border-top: 1px solid #e5ebef; }
 .trip-settings-dates h3 { margin: 0 0 0.45rem; color: var(--cv-color-navy); font-size: 0.65rem; }
 .trip-settings-dates > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.trip-settings-dates label,
-.trip-settings-dates > div > div { display: flex; min-width: 0; align-items: center; gap: 0.5rem; padding: 0.15rem 0.65rem; color: var(--cv-color-teal); }
-.trip-settings-dates label { border-right: 1px solid #e5ebef; }
+.trip-settings-date-field { display: flex; min-width: 0; align-items: center; gap: 0.5rem; padding: 0.15rem 0.65rem; color: var(--cv-color-teal); }
+.trip-settings-date-field:first-child { border-right: 1px solid #e5ebef; }
 .trip-settings-dates span { display: grid; min-width: 0; flex: 1; gap: 0.12rem; }
 .trip-settings-dates small { color: var(--cv-color-slate); font-size: 0.56rem; font-weight: 500; }
 .trip-settings-dates strong { color: var(--cv-color-navy); font-size: 0.68rem; font-weight: 700; }
+.trip-settings-date-field > button { display: inline-grid; width: 1.65rem; height: 1.65rem; flex: 0 0 1.65rem; place-items: center; padding: 0; color: var(--cv-color-slate); background: transparent; border: 1px solid transparent; border-radius: 0.4rem; cursor: pointer; transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease; }
+.trip-settings-date-field > button:not(:disabled):is(:hover, :focus-visible) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 8%, transparent); border-color: var(--cv-color-teal); outline: none; }
+.trip-settings-date-field > button:disabled { cursor: not-allowed; opacity: 0.45; }
 .trip-settings-dates input { width: 100%; min-width: 0; min-height: 1.85rem; box-sizing: border-box; padding: 0.25rem 0.4rem; color: var(--cv-color-navy); background: #fff; border: 1px solid rgb(43 62 89 / 16%); border-radius: 0.4rem; font: inherit; font-size: 0.65rem; font-weight: 400; }
 .trip-settings-dates input:focus { border-color: var(--cv-color-teal); outline: 2px solid rgb(15 166 138 / 14%); }
 .trip-settings-dates input:disabled { cursor: wait; opacity: 0.65; }
+.trip-settings-date-error { margin: 0.45rem 0.65rem 0; color: #b42318; font-size: 0.58rem; }
 .trip-settings-controls { padding: 0.6rem; border-top: 1px solid #e5ebef; }
 .trip-settings-controls h3 { margin: 0 0 0.45rem; color: var(--cv-color-navy); font-size: 0.65rem; }
 .trip-settings-controls > div { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 0.4rem; }
@@ -7324,7 +7327,7 @@ html[data-theme='dark'] .trip-panel-day-content > ul > li:nth-child(even) {
   background-color: var(--cv-surface-muted);
 }
 html[data-theme='dark'] .trip-settings-dates { border-color: var(--cv-border-subtle); }
-html[data-theme='dark'] .trip-settings-dates label { border-color: var(--cv-border-subtle); }
+html[data-theme='dark'] .trip-settings-date-field:first-child { border-color: var(--cv-border-subtle); }
 html[data-theme='dark'] .trip-settings-dates input { color: var(--cv-color-navy); background: var(--cv-surface-muted); border-color: var(--cv-border-subtle); }
 html[data-theme='dark'] .trip-settings-controls { border-color: var(--cv-border-subtle); }
 html[data-theme='dark'] .trip-settings-controls button { background: var(--cv-surface); border-color: var(--cv-border-strong); }

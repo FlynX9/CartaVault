@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.trips.schemas import NightCreate, TripDayTimingUpdate, TripLoadSettings
+from app.trips.schemas import NightCreate, TripDayTimingUpdate, TripLoadSettings, TripUpdate
 
 
 pytestmark = pytest.mark.unit
@@ -38,3 +38,8 @@ def test_trip_night_rejects_removed_raw_text_import_source() -> None:
             latitude=48.8566,
             longitude=2.3522,
         )
+
+
+def test_trip_update_rejects_arrival_before_departure() -> None:
+    with pytest.raises(ValidationError):
+        TripUpdate(start_date="2026-08-10", end_date="2026-08-09")

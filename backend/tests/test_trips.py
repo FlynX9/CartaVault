@@ -180,8 +180,15 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     dated_trip = integration_client.get(f"/trips/{trip_id}").json()
     assert dated_trip["end_date"] == "2026-08-03"
     assert [item["date"] for item in dated_trip["days"]] == ["2026-08-01", "2026-08-02", "2026-08-03"]
+    extended = integration_client.patch(f"/trips/{trip_id}", json={"end_date": "2026-08-05"})
+    assert extended.status_code == 200
+    assert extended.json()["end_date"] == "2026-08-05"
+    assert [item["date"] for item in extended.json()["days"]] == ["2026-08-01", "2026-08-02", "2026-08-03", "2026-08-04", "2026-08-05"]
+    resized = integration_client.patch(f"/trips/{trip_id}", json={"end_date": "2026-08-03"})
+    assert resized.status_code == 200
+    assert len(resized.json()["days"]) == 3
     manual_end = integration_client.patch(f"/trips/{trip_id}", json={"end_date": "2026-07-31"})
-    assert manual_end.status_code == 200 and manual_end.json()["end_date"] == "2026-08-03"
+    assert manual_end.status_code == 422
     shifted = integration_client.patch(f"/trips/{trip_id}", json={"start_date": "2026-08-10"})
     assert shifted.status_code == 200 and shifted.json()["end_date"] == "2026-08-12"
     assert [item["date"] for item in shifted.json()["days"]] == ["2026-08-10", "2026-08-11", "2026-08-12"]

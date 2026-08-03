@@ -26,7 +26,7 @@ from app.trips.permissions import require_arrival_role, require_day_role, requir
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, stale, resolve_constraint_country, synchronize_trip_dates
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, resolve_constraint_country, synchronize_trip_dates
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
 from app.quotas.registry import QuotaKey
@@ -211,9 +211,26 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
     # end date, which can violate the database date constraint.
     trip = load_trip(session, trip_id)
     values = data.model_dump(exclude_unset=True)
-    values.pop("end_date", None)
+    end_date_was_set = "end_date" in data.model_fields_set
+    requested_end_date = values.pop("end_date", None)
+    target_start_date = values.get("start_date", trip.start_date)
+    target_day_count: int | None = None
+    if end_date_was_set and requested_end_date is not None:
+        if target_start_date is None:
+            raise HTTPException(422, "A departure date is required before setting the arrival date")
+        if requested_end_date < target_start_date:
+            raise HTTPException(422, "Arrival date cannot be before departure date")
+        target_day_count = (requested_end_date - target_start_date).days + 1
+        additional_days = target_day_count - len(trip.days)
+        if additional_days > 0:
+            QuotaService(session).ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id, increment=additional_days)
+    if "start_date" in values or target_day_count is not None:
+        trip.end_date = None
     for key, value in values.items(): setattr(trip, key, value)
-    synchronize_trip_dates(trip)
+    if target_day_count is not None:
+        resize_trip_days(session, trip, target_day_count)
+    else:
+        synchronize_trip_dates(trip)
     session.commit(); return _trip_read(session, trip_id)
 
 

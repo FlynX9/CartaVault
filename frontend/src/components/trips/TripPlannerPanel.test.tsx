@@ -239,7 +239,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
   })
 
-  it('edits the departure date and displays the automatically calculated arrival date', async () => {
+  it('edits both trip dates from their pencil actions', async () => {
     const datedTrip = { ...trip, start_date: '2026-08-10', end_date: '2026-08-12' } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([datedTrip])
     vi.mocked(getTrip).mockResolvedValue(datedTrip)
@@ -250,15 +250,21 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByLabelText('Dates du voyage')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
 
-    expect(await screen.findByLabelText('Date de départ du voyage')).toHaveValue('2026-08-10')
+    expect(screen.queryByLabelText('Date de départ du voyage')).not.toBeInTheDocument()
+    expect(await screen.findByText('10 août 2026')).toBeVisible()
     expect(screen.getByText('12 août 2026')).toBeVisible()
     expect(screen.getByLabelText('Dates du voyage')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier la date de départ' }))
+    expect(await screen.findByLabelText('Date de départ du voyage')).toHaveValue('2026-08-10')
     fireEvent.change(screen.getByLabelText('Date de départ du voyage'), { target: { value: '2026-09-01' } })
+    expect(screen.getByText('3 sept. 2026')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier la date d’arrivée' }))
+    fireEvent.change(screen.getByLabelText('Date d’arrivée du voyage'), { target: { value: '2026-09-05' } })
     const saveButton = screen.getByRole('button', { name: 'Enregistrer' })
     expect(saveButton).toBeEnabled()
     fireEvent.click(saveButton)
 
-    await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { start_date: '2026-09-01' }))
+    await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { start_date: '2026-09-01', end_date: '2026-09-05' }))
   })
 
   it('warns before closing modified settings and lets the user cancel or discard them', async () => {

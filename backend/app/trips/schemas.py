@@ -50,6 +50,7 @@ class TripUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=10_000)
     start_date: DateValue | None = None
+    end_date: DateValue | None = None
     status: TripStatus | None = None
     routing_profile: str | None = Field(default=None, pattern="^(driving|walking|cycling)$")
 
@@ -58,6 +59,8 @@ class TripUpdate(BaseModel):
         if "name" in self.model_fields_set:
             if self.name is None or not self.name.strip(): raise ValueError("Name cannot be empty")
             self.name = self.name.strip()
+        if self.start_date is not None and self.end_date is not None and self.end_date < self.start_date:
+            raise ValueError("End date cannot be before start date")
         return self
 
 
