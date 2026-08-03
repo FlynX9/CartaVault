@@ -102,6 +102,87 @@ def read_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = De
     require_trip_viewer(session, trip_id, user); return _trip_read(session, trip_id)
 
 
+@router.put("/trips/{trip_id}/state", response_model=TripRead)
+def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Atomically restore a previously read trip state for undo/redo."""
+    access = require_trip_editor(session, trip_id, user)
+    trip = load_trip(session, access.trip.id)
+    if data.id != trip.id or data.map_id != trip.map_id or data.created_by_user_id != trip.created_by_user_id:
+        raise HTTPException(422, "A restored state must belong to the same trip")
+    if not data.days:
+        raise HTTPException(422, "A trip must keep at least one day")
+
+    day_ids = [day.id for day in data.days]
+    if len(day_ids) != len(set(day_ids)):
+        raise HTTPException(422, "Restored days must be unique")
+    expected_orders = list(range(len(data.days)))
+    if sorted(day.sort_order for day in data.days) != expected_orders:
+        raise HTTPException(422, "Restored day order must be contiguous")
+    day_id_set = set(day_ids)
+    for day in data.days:
+        if day.trip_id != trip.id or any(stop.trip_day_id != day.id for stop in day.stops):
+            raise HTTPException(422, "Restored steps must belong to their day")
+        if sorted(stop.sort_order for stop in day.stops) != list(range(len(day.stops))):
+            raise HTTPException(422, "Restored step order must be contiguous")
+    for night in data.nights:
+        if night.trip_id != trip.id or night.previous_day_id not in day_id_set or night.next_day_id not in day_id_set:
+            raise HTTPException(422, "Restored nights must connect restored days")
+
+    profile = QuotaService(session).effective_profile(access.map_access.map.owner_id)
+    if profile.days_per_trip_max is not None and len(data.days) > profile.days_per_trip_max:
+        raise HTTPException(409, "The restored trip exceeds the day quota")
+    if profile.steps_per_day_max is not None and any(len(day.stops) > profile.steps_per_day_max for day in data.days):
+        raise HTTPException(409, "The restored trip exceeds the step quota")
+
+    place_ids = {
+        place_id
+        for place_id in [
+            *(stop.place_id for day in data.days for stop in day.stops),
+            *(night.place_id for night in data.nights),
+            data.departure.place_id if data.departure else None,
+            data.arrival.place_id if data.arrival else None,
+        ]
+        if place_id is not None
+    }
+    valid_place_ids = set(session.scalars(select(Place.id).where(Place.map_id == trip.map_id, Place.id.in_(place_ids)))) if place_ids else set()
+    if valid_place_ids != place_ids:
+        raise HTTPException(422, "A restored place must belong to the trip map")
+
+    current_day_ids = select(TripDay.id).where(TripDay.trip_id == trip.id)
+    session.execute(delete(TripNight).where(TripNight.trip_id == trip.id))
+    session.execute(delete(TripStop).where(TripStop.trip_day_id.in_(current_day_ids)))
+    session.execute(delete(TripDeparture).where(TripDeparture.trip_id == trip.id))
+    session.execute(delete(TripArrival).where(TripArrival.trip_id == trip.id))
+    session.execute(delete(TripDay).where(TripDay.trip_id == trip.id))
+    session.flush()
+
+    for field in (
+        "name", "description", "start_date", "end_date", "status", "routing_profile",
+        "low_load_max_minutes", "medium_load_max_minutes", "low_load_color",
+        "medium_load_color", "high_load_color", "completed_at", "archived_at",
+    ):
+        setattr(trip, field, getattr(data, field))
+
+    for day_data in data.days:
+        values = day_data.model_dump(exclude={"stops", "trip_id"})
+        session.add(TripDay(trip_id=trip.id, **values))
+    session.flush()
+    for day_data in data.days:
+        for stop_data in day_data.stops:
+            values = stop_data.model_dump(exclude={"trip_day_id"})
+            session.add(TripStop(trip_day_id=day_data.id, **values))
+    for night_data in data.nights:
+        values = night_data.model_dump(exclude={"trip_id"})
+        session.add(TripNight(trip_id=trip.id, **values))
+    if data.departure:
+        session.add(TripDeparture(trip_id=trip.id, **data.departure.model_dump(exclude={"trip_id"})))
+    if data.arrival:
+        session.add(TripArrival(trip_id=trip.id, **data.arrival.model_dump(exclude={"trip_id"})))
+    session.commit()
+    session.expire_all()
+    return _trip_read(session, trip.id)
+
+
 @router.patch("/trips/{trip_id}", response_model=TripRead)
 def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_trip_editor(session, trip_id, user)

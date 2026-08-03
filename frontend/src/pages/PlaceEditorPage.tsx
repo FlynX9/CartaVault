@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { getCategories } from '../api/categories'
 import { ApiError } from '../api/client'
-import { addPlaceCategory, addPlaceTag, createPlace, getPlaceDetails, refreshPlaceRegion, removePlaceCategory, removePlaceTag, setPrimaryPlaceCategory, updatePlace } from '../api/places'
+import { addPlaceCategory, addPlaceTag, createPlace, deletePlace, getPlaceDetails, refreshPlaceRegion, removePlaceCategory, removePlaceTag, restorePlace, setPrimaryPlaceCategory, updatePlace } from '../api/places'
 import { getTags } from '../api/tags'
 import { getStatuses } from '../api/statuses'
 import { uploadPlacePhoto } from '../api/photos'
@@ -17,6 +17,7 @@ import type { GeocodingResult } from '../geocoding/types'
 import { withMap } from '../utils/map'
 import { SkeletonList } from '../components/common/Skeleton'
 import { useConfirmDialog } from '../components/common/useConfirmDialog'
+import { announceWorkspaceChanged, recordReversibleAction } from '../ui/actionHistory'
 
 interface Props { mode: 'create' | 'edit'; placeId?: string; embedded?: boolean; activeMapId?: string | null; activeStatusId?: string | null; maps: PoiMap[]; onPlaceMutated: (mutation: PlaceMutation) => void; geographicPrefill?: GeocodingResult | null; coordinatePrefill?: Pick<GeocodingResult, 'latitude' | 'longitude'> | null; draftPosition?: DraftPosition | null; onDraftPositionChange?: (position: DraftPosition | null) => void }
 async function syncAssociations(placeId: string, initial: PlaceFormValues, current: PlaceFormValues) { const categories = calculateAssociationDiff(initial.categoryIds, current.categoryIds); const tags = calculateAssociationDiff(initial.tagIds, current.tagIds); for (const id of categories.added) await addPlaceCategory(placeId, id); for (const id of categories.removed) await removePlaceCategory(placeId, id); if (current.primaryCategoryId && current.primaryCategoryId !== initial.primaryCategoryId) await setPrimaryPlaceCategory(placeId, current.primaryCategoryId); for (const id of tags.added) await addPlaceTag(placeId, id); for (const id of tags.removed) await removePlaceTag(placeId, id) }
@@ -139,6 +140,22 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
       }
       if (!savedId) throw new Error('Identifiant absent.')
       await syncAssociations(savedId, initialValues, values)
+      const historyPlaceId = savedId
+      if (mode === 'create') {
+        recordReversibleAction({
+          label: `ajout du POI « ${values.name} »`,
+          undo: async () => { await deletePlace(historyPlaceId); announceWorkspaceChanged() },
+          redo: async () => { await restorePlace(historyPlaceId); announceWorkspaceChanged() },
+        })
+      } else if (JSON.stringify(initialValues) !== JSON.stringify(values)) {
+        const forwardPayload = buildMinimalUpdatePayload(initialValues, values)
+        const inversePayload = buildMinimalUpdatePayload(values, initialValues)
+        recordReversibleAction({
+          label: initialValues.mapId === values.mapId ? `modification du POI « ${values.name} »` : `déplacement du POI « ${values.name} »`,
+          undo: async () => { if (Object.keys(inversePayload).length) await updatePlace(historyPlaceId, { ...inversePayload, confirm_outside_country: true }); await syncAssociations(historyPlaceId, values, initialValues); announceWorkspaceChanged() },
+          redo: async () => { if (Object.keys(forwardPayload).length) await updatePlace(historyPlaceId, { ...forwardPayload, confirm_outside_country: true }); await syncAssociations(historyPlaceId, initialValues, values); announceWorkspaceChanged() },
+        })
+      }
       onPlaceMutated({ placeId: savedId, mapId: values.mapId })
       navigate(withMap(`/places/${savedId}`, values.mapId, activeStatusId))
     } catch (caught) {

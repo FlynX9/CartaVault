@@ -162,6 +162,7 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     try:
         assert integration_client.get(f"/trips/{trip_id}").status_code == 200
         assert integration_client.patch(f"/trips/{trip_id}", json={"name": "Interdit"}).status_code == 403
+        assert integration_client.put(f"/trips/{trip_id}/state", json=after_removal).status_code == 403
         assert integration_client.post(f"/trips/{trip_id}/exports/google-maps", json={}).status_code == 200
     finally:
         app.dependency_overrides[get_current_user] = lambda: auth_user
@@ -254,6 +255,30 @@ def test_removing_a_middle_stop_compacts_the_day_order(integration_client, poi_m
         stops[4]["id"],
     ]
     assert [item["sort_order"] for item in remaining] == [0, 1, 2, 3]
+
+
+def test_trip_state_can_restore_deleted_days_stops_and_nights(integration_client, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Historique rÃ©versible"}).json()
+    first = trip["days"][0]
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={"title": "DeuxiÃ¨me jour"}).json()
+    stop = integration_client.post(
+        f"/trip-days/{second['id']}/stops",
+        json={"stop_type": "free_location", "name": "Ã‰tape restaurÃ©e", "latitude": 48.1, "longitude": 2.1},
+    ).json()
+    night = integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={"previous_day_id": first["id"], "next_day_id": second["id"], "name": "Nuit restaurÃ©e", "latitude": 48.2, "longitude": 2.2},
+    ).json()
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+
+    assert integration_client.delete(f"/trip-days/{second['id']}").status_code == 204
+    restored = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+
+    assert restored.status_code == 200, restored.text
+    payload = restored.json()
+    assert [day["id"] for day in payload["days"]] == [first["id"], second["id"]]
+    assert payload["days"][1]["stops"][0]["id"] == stop["id"]
+    assert payload["nights"][0]["id"] == night["id"]
 
 
 def test_trip_rejects_place_from_another_map(integration_client, database_session, poi_map, auth_user, france_country) -> None:

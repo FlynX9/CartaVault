@@ -20,7 +20,7 @@ import { deleteMap, getMaps } from "./api/maps";
 import { getMapPlaces, getPlaceDetails } from "./api/places";
 import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
 import { getStatuses } from "./api/statuses";
-import { addTripNight, addTripStop, getTrip } from "./api/trips";
+import { addTripNight, addTripStop, getTrip, restoreTripState } from "./api/trips";
 import { TopBar } from "./components/layout/TopBar";
 import {
   MainNavigation,
@@ -59,6 +59,7 @@ import {
 } from "./places/placeFilters";
 import { getTripMapBounds } from "./components/trips/tripMapBounds";
 import type { UnsavedTripSettingsGuard } from "./components/trips/TripPlannerPanel";
+import { recordReversibleAction, WORKSPACE_CHANGED_EVENT } from "./ui/actionHistory";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { useAuth } from "./auth/useAuth";
@@ -208,6 +209,11 @@ function WorkspaceApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  useEffect(() => {
+    const refreshWorkspace = () => setRefreshVersion((value) => value + 1);
+    window.addEventListener(WORKSPACE_CHANGED_EVENT, refreshWorkspace);
+    return () => window.removeEventListener(WORKSPACE_CHANGED_EVENT, refreshWorkspace);
+  }, []);
   const requestSequence = useRef(0);
   const focusSequence = useRef(0);
   const focusedRoutePlaceId = useRef<string | null>(null);
@@ -597,6 +603,7 @@ function WorkspaceApp() {
     }
     tripAddPending.current.add(key);
     try {
+      const before = await getTrip(activeTrip.id);
       if (activeTripNightTarget) {
         const createdNight = await addTripNight(activeTrip.id, {
           previous_day_id: activeTripNightTarget.previousDayId,
@@ -616,6 +623,8 @@ function WorkspaceApp() {
       }
       const loaded = await getTrip(activeTrip.id);
       setActiveTrip(loaded);
+      const restore = async (state: Trip) => { const restored = await restoreTripState(activeTrip.id, state); setActiveTrip(restored); };
+      recordReversibleAction({ label: activeTripNightTarget ? `ajout du POI « ${place.name} » à la nuit` : `ajout du POI « ${place.name} » à la journée`, undo: () => restore(before), redo: () => restore(loaded) });
       const day = loaded.days.find((item) => item.id === targetDayId);
       if (!activeTripNightTarget) setActiveTripDayId(targetDayId);
       showTripNotice(
@@ -645,6 +654,7 @@ function WorkspaceApp() {
     )
       return;
     try {
+      const before = await getTrip(activeTrip.id);
       await addTripStop(dayId, {
         stop_type: "free_location",
         name: `Point ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
@@ -653,6 +663,8 @@ function WorkspaceApp() {
       });
       const loaded = await getTrip(activeTrip.id);
       setActiveTrip(loaded);
+      const restore = async (state: Trip) => { const restored = await restoreTripState(activeTrip.id, state); setActiveTrip(restored); };
+      recordReversibleAction({ label: 'ajout d’un emplacement à la journée', undo: () => restore(before), redo: () => restore(loaded) });
       setActiveTripDayId(dayId);
       const day = loaded.days.find((item) => item.id === dayId);
       showTripNotice(

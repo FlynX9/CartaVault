@@ -35,11 +35,12 @@ import {
   getPlaceFacets,
   getPlaceListPosition,
   getPlaces,
+  restorePlace,
   updatePlace,
 } from "../../api/places";
 import { getCategories } from "../../api/categories";
 import { getTags } from "../../api/tags";
-import { getTrip, listTrips } from "../../api/trips";
+import { getTrip, listTrips, restoreTripState } from "../../api/trips";
 import {
   DEFAULT_PLACE_FILTERS,
   countActivePlaceFilters,
@@ -58,6 +59,7 @@ import type { PlaceStatusSummary } from "../../types/status";
 import type { Trip } from "../../types/trip";
 import { CategoryIconPreview } from "../icons/CategoryIconPreview";
 import { withMap } from "../../utils/map";
+import { recordReversibleAction } from "../../ui/actionHistory";
 import { MapMarkerFilterContext } from "../map/mapMarkerFilterContext";
 import { KmzImportDialog } from "../imports/KmzImportDialog";
 import { useConfirmDialog } from "../common/useConfirmDialog";
@@ -553,6 +555,11 @@ export function MapPlaceList({
     try {
       await deletePlace(place.id);
       onBulkChanged();
+      recordReversibleAction({
+        label: `suppression du POI « ${place.name} »`,
+        undo: async () => { await restorePlace(place.id); onBulkChanged(); },
+        redo: async () => { await deletePlace(place.id); onBulkChanged(); },
+      });
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Suppression impossible.",
@@ -581,7 +588,7 @@ export function MapPlaceList({
       !(await confirm({
         title: `Supprimer ${selectedIds.size} lieu${selectedIds.size > 1 ? "x" : ""} ?`,
         message:
-          "Les lieux sélectionnés et leurs photos seront supprimés. Cette action est irréversible.",
+          "Les lieux sélectionnés seront placés dans la corbeille. Vous pourrez annuler cette action.",
         confirmLabel: "Tout supprimer",
       }))
     )
@@ -590,8 +597,9 @@ export function MapPlaceList({
       setBulkBusy(true);
       setBulkError(null);
       setBulkNotice(null);
+      const affectedPlaceIds = [...selectedIds];
       const result = await bulkUpdatePlaces({
-        place_ids: [...selectedIds],
+        place_ids: affectedPlaceIds,
         action,
         ...(action === "set_status" ? { status_id: bulkStatusId } : {}),
         ...(action.includes("category") ? { category_id: bulkCategoryId } : {}),
@@ -600,7 +608,14 @@ export function MapPlaceList({
       setBulkNotice(
         `${result.updated_count || result.deleted_count} lieux mis à jour${result.unchanged_count ? `, ${result.unchanged_count} inchangés` : ""}.`,
       );
-      if (action === "delete") replaceSelectedIds(new Set());
+      if (action === "delete") {
+        replaceSelectedIds(new Set());
+        recordReversibleAction({
+          label: `suppression de ${affectedPlaceIds.length} POI`,
+          undo: async () => { await Promise.all(affectedPlaceIds.map((id) => restorePlace(id))); onBulkChanged(); },
+          redo: async () => { await bulkUpdatePlaces({ place_ids: affectedPlaceIds, action: 'delete' }); onBulkChanged(); },
+        });
+      }
       onBulkChanged();
     } catch (caught) {
       setBulkError(
@@ -615,6 +630,7 @@ export function MapPlaceList({
     try {
       setBulkBusy(true);
       setBulkError(null);
+      const tripBefore = await getTrip(tripId);
       const result = await bulkAddPlacesToTrip({
         place_ids: [...selectedIds],
         trip_id: tripId,
@@ -625,6 +641,11 @@ export function MapPlaceList({
       );
       onBulkChanged();
       onBulkTripChanged(tripId);
+      if (result.added_count > 0) {
+        const tripAfter = await getTrip(tripId);
+        const restore = async (state: Trip) => { await restoreTripState(tripId, state); onBulkTripChanged(tripId); };
+        recordReversibleAction({ label: `ajout de ${result.added_count} POI à la sortie`, undo: () => restore(tripBefore), redo: () => restore(tripAfter) });
+      }
     } catch (caught) {
       setBulkError(
         caught instanceof Error

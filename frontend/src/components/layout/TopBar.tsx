@@ -9,6 +9,8 @@ import { useI18n } from '../../i18n/useI18n'
 import { useTheme } from '../../theme/useTheme'
 import { AccountModal } from '../account/AccountModal'
 import { NotificationCenter } from '../notifications/NotificationCenter'
+import { ActionHistoryControls } from './ActionHistoryControls'
+import { clearActionHistory } from '../../ui/actionHistory'
 
 interface TopBarProps {
   isMapWorkspace: boolean
@@ -42,6 +44,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
     } catch {
       // The local session is cleared by AuthProvider even if the server is unavailable.
     } finally {
+      clearActionHistory()
       navigate('/login', { replace: true })
     }
   }
@@ -78,6 +81,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
             <span>{t('topbar.marker', { count: markerCount })}</span>
           </div>
         )}
+        {isMapWorkspace && <ActionHistoryControls />}
         {user && <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />}
         {user && (
           <div className="user-account-cluster">

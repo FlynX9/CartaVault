@@ -1,7 +1,7 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GitCommitHorizontal, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Timer, Trash2 } from 'lucide-react'
 
-import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
+import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
 import type { PoiMap } from '../../types/map'
 import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripSummary } from '../../types/trip'
 import { CreateTripDialog } from './CreateTripDialog'
@@ -12,6 +12,7 @@ import { useConfirmDialog } from '../common/useConfirmDialog'
 import { EmptyState } from '../common/EmptyState'
 import { TripPdfExportDialog } from './TripPdfExportDialog'
 import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog'
+import { recordReversibleAction } from '../../ui/actionHistory'
 
 export type UnsavedTripSettingsGuard = () => Promise<boolean>
 
@@ -172,6 +173,18 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
       setBusy(false)
     }
   }
+  const runUndoable = async (label: string, action: () => Promise<void>) => {
+    if (!trip) return
+    const tripId = trip.id
+    const before = await getTrip(tripId)
+    await action()
+    const after = await getTrip(tripId)
+    const restore = async (state: Trip) => {
+      await restoreTripState(tripId, state)
+      await reload(tripId)
+    }
+    recordReversibleAction({ label, undo: () => restore(before), redo: () => restore(after) })
+  }
   const savedLoadSettings = useMemo(() => trip ? readLoadSettings(trip) : null, [trip])
   const activeLoadSettings = loadSettingsDraft ?? savedLoadSettings
   const hasUnsavedSettings = Boolean(trip && activeLoadSettings && (
@@ -255,17 +268,17 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     const insertionIndex = Math.max(0, Math.min(ids.length, targetIndex - Number(sourceIndex < targetIndex)))
     ids.splice(insertionIndex, 0, dayId)
     if (ids.every((id, index) => id === trip.days[index]?.id)) return
-    void run(async () => { await reorderTripDays(trip.id, ids); await reload(trip.id) })
+    void run(() => runUndoable('déplacement de la journée', async () => { await reorderTripDays(trip.id, ids); await reload(trip.id) }))
   }
   const insertDayAfter = (day: TripDay) => {
     if (!trip || !canEditTrip) return
-    void run(async () => { await addTripDay(trip.id, { after_day_id: day.id }); await reload(trip.id) })
+    void run(() => runUndoable('ajout de la journée', async () => { await addTripDay(trip.id, { after_day_id: day.id }); await reload(trip.id) }))
   }
   const drop = (event: DragEvent, day: TripDay) => {
     if (!canEditTrip) return
     event.preventDefault(); const data = event.dataTransfer.getData('text/plain')
-    if (data.startsWith('place:')) void run(async () => { await addTripStop(day.id, { place_id: data.slice(6), stop_type: 'place' }); await refreshTripSilently(trip!.id) })
-    if (data.startsWith('stop:')) void run(async () => { await moveTripStop(data.slice(5), day.id, day.stops.length); await refreshTripSilently(trip!.id) })
+    if (data.startsWith('place:')) void run(() => runUndoable('ajout de l’étape', async () => { await addTripStop(day.id, { place_id: data.slice(6), stop_type: 'place' }); await refreshTripSilently(trip!.id) }))
+    if (data.startsWith('stop:')) void run(() => runUndoable('déplacement de l’étape', async () => { await moveTripStop(data.slice(5), day.id, day.stops.length); await refreshTripSilently(trip!.id) }))
   }
   const dropStop = (event: DragEvent, day: TripDay, index: number) => {
     if (!canEditTrip) return
@@ -274,17 +287,17 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
     if (data.startsWith('place:')) {
       const placeId = data.slice(6)
       if (!placeId) return
-      void run(async () => {
+      void run(() => runUndoable('ajout de l’étape', async () => {
         const created = await addTripStop(day.id, { place_id: placeId, stop_type: 'place' })
         if (index < day.stops.length) await moveTripStop(created.id, day.id, index)
         await refreshTripSilently(trip!.id)
-      })
+      }))
       return
     }
     if (!data.startsWith('stop:')) return
     const stopId = data.slice(5)
     if (!stopId) return
-    void run(async () => { await moveTripStop(stopId, day.id, index); await refreshTripSilently(trip!.id) })
+    void run(() => runUndoable('déplacement de l’étape', async () => { await moveTripStop(stopId, day.id, index); await refreshTripSilently(trip!.id) }))
   }
   const recalculateRoute = (day: TripDay) => void run(async () => {
     if (!canEditTrip) return
@@ -369,8 +382,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, tripViewOnly = fal
           <details className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? ' is-active' : ''}`} open={!collapsedDayIds.has(day.id)} onClick={(event) => { const target = event.target as HTMLElement; if (target.closest('button, input, select, textarea, a')) return; activateDay(day.id); if (target.closest('.trip-panel-day > summary')) event.preventDefault() }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget((current) => current?.dayId === day.id ? null : current) }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, day)}>
             <summary className={canEdit ? 'trip-day-drag-surface' : undefined} draggable={canEdit} onDragStart={(event) => { if (!canEdit) return; event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('application/x-cartavault-day', day.id); setDraggedDayId(day.id); setDayDropTarget(null) }} onDragEnd={() => { setDraggedDayId(null); setDayDropTarget(null) }}><DayVisibilityBubble day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} /><span className="trip-panel-day-heading"><span className="trip-panel-timeline-heading"><strong>{day.title || `Jour ${day.day_number}`}</strong></span><small>{day.stops.length} {day.stops.length > 1 ? 'étapes' : 'étape'}</small></span><DayHeaderMetrics summary={daySummaries[day.id]} status={getDayTimelineStatus(day, daySummaries[day.id])} /><span className="trip-panel-day-actions"><DayCollapseToggle day={day} /></span></summary>
             <div className="trip-panel-day-content">{day.route_status === 'stale' && <p>Itinéraire à recalculer</p>}{daySummaries[day.id]?.country_constraint_status === 'unchecked' && <p className="trip-metrics-warning">Itinéraire à vérifier avec la contrainte pays.</p>}{daySummaries[day.id]?.country_constraint_status === 'invalid' && <p className="trip-panel-error">Itinéraire refusé : passage hors de {daySummaries[day.id]?.constraint_country_name}.</p>}
-              <ul>{day.stops.map((stop, index) => <li key={stop.id} className={`${draggedStopId === stop.id ? 'is-dragging' : ''}${dropTarget?.dayId === day.id && dropTarget.index === index ? ' drop-before' : ''}${index === day.stops.length - 1 && dropTarget?.dayId === day.id && dropTarget.index === day.stops.length ? ' drop-after' : ''}`} draggable={canEdit} onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `stop:${stop.id}`); setDraggedStopId(stop.id) }} onDragEnd={() => { setDraggedStopId(null); setDropTarget(null) }} onDragOver={(event) => { if (!canEdit || draggedDayId) return; event.preventDefault(); event.stopPropagation(); const bounds = event.currentTarget.getBoundingClientRect(); setDropTarget({ dayId: day.id, index: index + Number(event.clientY > bounds.top + bounds.height / 2) }) }} onDrop={(event) => { if (!draggedDayId) dropStop(event, day, dropTarget?.dayId === day.id ? dropTarget.index : index) }}><GripVertical className="trip-stop-grip" size={13} /><i>{index + 1}</i><MapPin className="trip-stop-kind" aria-hidden="true" size={14} /><span role="button" tabIndex={0} onClick={(event) => { event.stopPropagation(); activateDay(day.id); onStopFocus?.(stop.latitude, stop.longitude); if (stop.place_id) onStopPlaceSelect(stop.place_id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); activateDay(day.id); onStopFocus?.(stop.latitude, stop.longitude); if (stop.place_id) onStopPlaceSelect(stop.place_id) } }}><strong>{stop.name}</strong>{stop.stop_type !== 'place' && <small>{stopTypeLabel(stop.stop_type)}</small>}</span>{!canEdit && <span className="trip-stop-duration"><Clock3 aria-hidden="true" size={12} />{formatMinutes(stop.visit_duration_minutes)}</span>}<span className="trip-stop-drive"><Car aria-hidden="true" size={12} />{formatRouteDuration(day.route_segments?.[index]?.duration_seconds ?? null)}</span>{canEdit && <VisitDurationControl stop={stop} disabled={busy} onChange={async (minutes) => { await updateTripStop(stop.id, { visit_duration_minutes: minutes }); await reload(trip.id) }} />}{stop.is_locked && <Lock size={11} />}{canEdit && <span className="trip-panel-stop-actions"><button type="button" aria-label="Supprimer l’étape" onClick={(event) => { event.stopPropagation(); void confirm({ title: 'Supprimer cette étape ?', message: `« ${stop.name} » sera retirée de la journée.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripStop(stop.id); await refreshTripSilently(trip.id) }) }) }}><Trash2 size={11} /></button></span>}</li>)}</ul>
-              {day.stops.length === 0 && <p className="trip-panel-drop">Glissez des POI depuis le panneau Lieux</p>}{canEdit && <FreeStop day={day} poiMap={poiMap} reload={() => reload(trip.id)} />}<div className={`trip-panel-route-actions${canEdit ? ' trip-panel-route-actions--editable' : ''}`}><button className={routeFeedback === day.id ? 'route-success' : undefined} type="button" aria-label={pendingAction === `route:${day.id}` ? 'Calcul de l’itinéraire en cours' : routeFeedback === day.id ? 'Itinéraire rafraîchi' : 'Itinéraire'} disabled={busy || !canCalculateRoute(trip, day, dayIndex)} onClick={() => recalculateRoute(day)}>{pendingAction === `route:${day.id}` ? <><LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" />Calcul en cours…</> : routeFeedback === day.id ? <><Check size={13} />Itinéraire rafraîchi</> : <><Route size={13} />Itinéraire</>}</button><button type="button" aria-label={pendingAction === `optimize:${day.id}` ? 'Optimisation de la journée en cours' : 'Optimiser'} disabled={busy || day.stops.length < 2} onClick={() => void run(async () => setOptimization({ dayId: day.id, value: await optimizeTripDay(day.id) }), `optimize:${day.id}`)}>{pendingAction === `optimize:${day.id}` ? <><LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" />Optimisation…</> : <><Sparkles size={13} />Optimiser</>}</button>{canEdit && <><button type="button" aria-label="Dupliquer la journée" onClick={() => void run(async () => { await duplicateTripDay(day.id); await reload(trip.id) })}><Copy size={13} />Dupliquer</button><button type="button" aria-label="Supprimer la journée" onClick={() => void confirm({ title: 'Supprimer cette journée ?', message: `Le jour ${day.day_number}, ses étapes et son itinéraire seront définitivement supprimés.` }).then((confirmed) => { if (confirmed) void run(async () => { await deleteTripDay(day.id); await reload(trip.id) }) })}><Trash2 size={13} />Supprimer</button></>}<button className="trip-day-settings-trigger" type="button" aria-expanded={openDaySettingsIds.has(day.id)} aria-controls={`trip-day-settings-${day.id}`} title="Réglages du jour" onClick={() => toggleDaySettings(day.id)}><Settings2 aria-hidden="true" size={13} />Réglages</button></div>{optimization?.dayId === day.id && <div className="trip-panel-optimization"><OptimizationMetrics value={optimization.value} /><button type="button" onClick={() => setOptimization(null)}>Refuser</button><button type="button" onClick={() => void run(async () => { await confirmTripOptimization(day.id, optimization.value.optimized_stop_ids); setOptimization(null); await reload(trip.id) })}><Check size={11} />Accepter</button></div>}<DaySettings open={openDaySettingsIds.has(day.id)} day={day} summary={daySummaries[day.id]} canEdit={canEdit} busy={busy} endsAtHotel={trip.nights.some((night) => night.previous_day_id === day.id)} onTimingSave={async (payload) => { await updateTripDayTiming(day.id, payload); await reload(trip.id) }} onColorSave={(color) => void run(async () => { await updateTripDay(day.id, { color }); await reload(trip.id) })} /></div>
+              <ul>{day.stops.map((stop, index) => <li key={stop.id} className={`${draggedStopId === stop.id ? 'is-dragging' : ''}${dropTarget?.dayId === day.id && dropTarget.index === index ? ' drop-before' : ''}${index === day.stops.length - 1 && dropTarget?.dayId === day.id && dropTarget.index === day.stops.length ? ' drop-after' : ''}`} draggable={canEdit} onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `stop:${stop.id}`); setDraggedStopId(stop.id) }} onDragEnd={() => { setDraggedStopId(null); setDropTarget(null) }} onDragOver={(event) => { if (!canEdit || draggedDayId) return; event.preventDefault(); event.stopPropagation(); const bounds = event.currentTarget.getBoundingClientRect(); setDropTarget({ dayId: day.id, index: index + Number(event.clientY > bounds.top + bounds.height / 2) }) }} onDrop={(event) => { if (!draggedDayId) dropStop(event, day, dropTarget?.dayId === day.id ? dropTarget.index : index) }}><GripVertical className="trip-stop-grip" size={13} /><i>{index + 1}</i><MapPin className="trip-stop-kind" aria-hidden="true" size={14} /><span role="button" tabIndex={0} onClick={(event) => { event.stopPropagation(); activateDay(day.id); onStopFocus?.(stop.latitude, stop.longitude); if (stop.place_id) onStopPlaceSelect(stop.place_id) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); activateDay(day.id); onStopFocus?.(stop.latitude, stop.longitude); if (stop.place_id) onStopPlaceSelect(stop.place_id) } }}><strong>{stop.name}</strong>{stop.stop_type !== 'place' && <small>{stopTypeLabel(stop.stop_type)}</small>}</span>{!canEdit && <span className="trip-stop-duration"><Clock3 aria-hidden="true" size={12} />{formatMinutes(stop.visit_duration_minutes)}</span>}<span className="trip-stop-drive"><Car aria-hidden="true" size={12} />{formatRouteDuration(day.route_segments?.[index]?.duration_seconds ?? null)}</span>{canEdit && <VisitDurationControl stop={stop} disabled={busy} onChange={async (minutes) => { await updateTripStop(stop.id, { visit_duration_minutes: minutes }); await reload(trip.id) }} />}{stop.is_locked && <Lock size={11} />}{canEdit && <span className="trip-panel-stop-actions"><button type="button" aria-label="Supprimer l’étape" onClick={(event) => { event.stopPropagation(); void confirm({ title: 'Supprimer cette étape ?', message: `« ${stop.name} » sera retirée de la journée.` }).then((confirmed) => { if (confirmed) void run(() => runUndoable('suppression de l’étape', async () => { await deleteTripStop(stop.id); await refreshTripSilently(trip.id) })) }) }}><Trash2 size={11} /></button></span>}</li>)}</ul>
+              {day.stops.length === 0 && <p className="trip-panel-drop">Glissez des POI depuis le panneau Lieux</p>}{canEdit && <FreeStop day={day} poiMap={poiMap} onCreate={(payload) => runUndoable('ajout de l’étape', async () => { await addTripStop(day.id, payload); await reload(trip.id) })} />}<div className={`trip-panel-route-actions${canEdit ? ' trip-panel-route-actions--editable' : ''}`}><button className={routeFeedback === day.id ? 'route-success' : undefined} type="button" aria-label={pendingAction === `route:${day.id}` ? 'Calcul de l’itinéraire en cours' : routeFeedback === day.id ? 'Itinéraire rafraîchi' : 'Itinéraire'} disabled={busy || !canCalculateRoute(trip, day, dayIndex)} onClick={() => recalculateRoute(day)}>{pendingAction === `route:${day.id}` ? <><LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" />Calcul en cours…</> : routeFeedback === day.id ? <><Check size={13} />Itinéraire rafraîchi</> : <><Route size={13} />Itinéraire</>}</button><button type="button" aria-label={pendingAction === `optimize:${day.id}` ? 'Optimisation de la journée en cours' : 'Optimiser'} disabled={busy || day.stops.length < 2} onClick={() => void run(async () => setOptimization({ dayId: day.id, value: await optimizeTripDay(day.id) }), `optimize:${day.id}`)}>{pendingAction === `optimize:${day.id}` ? <><LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" />Optimisation…</> : <><Sparkles size={13} />Optimiser</>}</button>{canEdit && <><button type="button" aria-label="Dupliquer la journée" onClick={() => void run(() => runUndoable('duplication de la journée', async () => { await duplicateTripDay(day.id); await reload(trip.id) }))}><Copy size={13} />Dupliquer</button><button type="button" aria-label="Supprimer la journée" onClick={() => void confirm({ title: 'Supprimer cette journée ?', message: `Le jour ${day.day_number}, ses étapes et son itinéraire seront définitivement supprimés.` }).then((confirmed) => { if (confirmed) void run(() => runUndoable('suppression de la journée', async () => { await deleteTripDay(day.id); await reload(trip.id) })) })}><Trash2 size={13} />Supprimer</button></>}<button className="trip-day-settings-trigger" type="button" aria-expanded={openDaySettingsIds.has(day.id)} aria-controls={`trip-day-settings-${day.id}`} title="Réglages du jour" onClick={() => toggleDaySettings(day.id)}><Settings2 aria-hidden="true" size={13} />Réglages</button></div>{optimization?.dayId === day.id && <div className="trip-panel-optimization"><OptimizationMetrics value={optimization.value} /><button type="button" onClick={() => setOptimization(null)}>Refuser</button><button type="button" onClick={() => void run(() => runUndoable('optimisation de la journée', async () => { await confirmTripOptimization(day.id, optimization.value.optimized_stop_ids); setOptimization(null); await reload(trip.id) }))}><Check size={11} />Accepter</button></div>}<DaySettings open={openDaySettingsIds.has(day.id)} day={day} summary={daySummaries[day.id]} canEdit={canEdit} busy={busy} endsAtHotel={trip.nights.some((night) => night.previous_day_id === day.id)} onTimingSave={async (payload) => { await updateTripDayTiming(day.id, payload); await reload(trip.id) }} onColorSave={(color) => void run(async () => { await updateTripDay(day.id, { color }); await reload(trip.id) })} /></div>
           </details>
           {dayIndex < trip.days.length - 1 && <Night previous={day} next={trip.days[dayIndex + 1]} recommendedStart={daySummaries[trip.days[dayIndex + 1].id]?.recommended_start_time ?? null} recommendedStartOffset={daySummaries[trip.days[dayIndex + 1].id]?.recommended_start_day_offset ?? null} trip={trip} activeTarget={activeNightTarget} canEdit={canEditTrip} reload={reload} collapseRequest={timelineCollapseRequest} onSelect={(target) => { setActiveNightTarget(target); onActiveNightTargetChange(target); onActiveDayChange(trip.days[dayIndex + 1].id) }} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} />}
           {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
@@ -880,9 +893,9 @@ function DayCollapseToggle({ day }: { day: TripDay }) {
   return <button className="trip-day-collapse-toggle trip-day-collapse-toggle--inline" type="button" aria-label={`${collapsed ? 'Développer' : 'Réduire'} le jour ${day.day_number}`} aria-expanded={!collapsed} onClick={(event) => { event.preventDefault(); event.stopPropagation(); dayCollapse.onToggle(day.id) }}><ChevronDown className={collapsed ? 'is-collapsed' : undefined} size={14} /></button>
 }
 
-function FreeStop({ day, poiMap, reload }: { day: TripDay; poiMap: PoiMap; reload: () => Promise<void> }) {
+function FreeStop({ day, poiMap, onCreate }: { day: TripDay; poiMap: PoiMap; onCreate: (payload: Record<string, unknown>) => Promise<void> }) {
   const [open, setOpen] = useState(false); const anchor = day.stops.at(-1)
-  return <><button className="trip-panel-free-stop" type="button" aria-label="Ajouter un Lieu libre" title="Ajouter un lieu libre" onClick={() => setOpen(true)}><span aria-hidden="true" /><i aria-hidden="true"><Plus size={14} /></i><span aria-hidden="true" /></button>{open && <CreateTripNightDialog kind="stop" mapId={poiMap.id} mapName={poiMap.name} countryCode={poiMap.country.iso_alpha2} focus={[anchor?.latitude ?? poiMap.effective_center_latitude, anchor?.longitude ?? poiMap.effective_center_longitude]} onClose={() => setOpen(false)} onCreate={async (payload) => { await addTripStop(day.id, { ...payload }); await reload(); setOpen(false) }} />}</>
+  return <><button className="trip-panel-free-stop" type="button" aria-label="Ajouter un Lieu libre" title="Ajouter un lieu libre" onClick={() => setOpen(true)}><span aria-hidden="true" /><i aria-hidden="true"><Plus size={14} /></i><span aria-hidden="true" /></button>{open && <CreateTripNightDialog kind="stop" mapId={poiMap.id} mapName={poiMap.name} countryCode={poiMap.country.iso_alpha2} focus={[anchor?.latitude ?? poiMap.effective_center_latitude, anchor?.longitude ?? poiMap.effective_center_longitude]} onClose={() => setOpen(false)} onCreate={async (payload) => { await onCreate({ ...payload }); setOpen(false) }} />}</>
 }
 
 type TimelineCollapseRequest = { collapsed: boolean; version: number }
@@ -901,7 +914,18 @@ function useTransientDropState() {
   return [dropActive, setDropActive] as const
 }
 
+function useTripUndo(trip: Trip, reload: (id?: string) => Promise<void>) {
+  return useCallback(async (label: string, action: () => Promise<void>) => {
+    const before = await getTrip(trip.id)
+    await action()
+    const after = await getTrip(trip.id)
+    const restore = async (state: Trip) => { await restoreTripState(trip.id, state); await reload(trip.id) }
+    recordReversibleAction({ label, undo: () => restore(before), redo: () => restore(after) })
+  }, [reload, trip.id])
+}
+
 function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; recommendedStart: string | null; recommendedStartOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+  const runUndoable = useTripUndo(trip, reload)
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [dropActive, setDropActive] = useTransientDropState()
@@ -959,11 +983,12 @@ function Departure({ trip, recommendedStart, recommendedStartOffset, canEdit, re
             </div>)}
       </div>
     </div>
-    {dialog && <CreateTripNightDialog kind="departure" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? departure?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && departure && !departure.place_id ? departure : undefined} initialNotes={dialog.edit ? departure?.notes : undefined} initialDepartureTime={dialog.edit ? departure?.departure_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && departure) await updateTripDeparture(departure.id, payload); else await addTripDeparture(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
+    {dialog && <CreateTripNightDialog kind="departure" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? departure?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && departure && !departure.place_id ? departure : undefined} initialNotes={dialog.edit ? departure?.notes : undefined} initialDepartureTime={dialog.edit ? departure?.departure_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { await runUndoable(dialog.edit ? 'modification du départ' : 'ajout du départ', async () => { if (dialog.edit && departure) await updateTripDeparture(departure.id, payload); else await addTripDeparture(trip.id, payload); await reload(trip.id) }); setDialog(null) }} />}
   </>
 }
 
 function Arrival({ trip, estimatedArrival, estimatedArrivalOffset, canEdit, reload, collapseRequest, onStopFocus, onStopPlaceSelect }: { trip: Trip; estimatedArrival: string | null; estimatedArrivalOffset: number | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+  const runUndoable = useTripUndo(trip, reload)
   const [dialog, setDialog] = useState<{ placeId?: string; edit?: boolean } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [dropActive, setDropActive] = useTransientDropState()
@@ -1022,11 +1047,12 @@ function Arrival({ trip, estimatedArrival, estimatedArrivalOffset, canEdit, relo
             </div>)}
       </div>
     </div>
-    {dialog && <CreateTripNightDialog kind="arrival" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? arrival?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && arrival && !arrival.place_id ? arrival : undefined} initialNotes={dialog.edit ? arrival?.notes : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && arrival) await updateTripArrival(arrival.id, payload); else await addTripArrival(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
+    {dialog && <CreateTripNightDialog kind="arrival" mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.placeId ?? (dialog.edit ? arrival?.place_id ?? undefined : undefined)} initialLocation={dialog.edit && arrival && !arrival.place_id ? arrival : undefined} initialNotes={dialog.edit ? arrival?.notes : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { await runUndoable(dialog.edit ? 'modification de l’arrivée' : 'ajout de l’arrivée', async () => { if (dialog.edit && arrival) await updateTripArrival(arrival.id, payload); else await addTripArrival(trip.id, payload); await reload(trip.id) }); setDialog(null) }} />}
   </>
 }
 
 function Night({ trip, previous, next, recommendedStart, recommendedStartOffset, activeTarget, canEdit, reload, collapseRequest, onSelect, onStopFocus, onStopPlaceSelect }: { trip: Trip; previous: TripDay; next: TripDay; recommendedStart: string | null; recommendedStartOffset: number | null; activeTarget: TripNightTarget | null; canEdit: boolean; reload: (id?: string) => Promise<void>; collapseRequest: TimelineCollapseRequest; onSelect: (target: TripNightTarget) => void; onStopFocus?: (latitude: number, longitude: number) => void; onStopPlaceSelect: (placeId: string) => void }) {
+  const runUndoable = useTripUndo(trip, reload)
   const night = trip.nights.find((item) => item.previous_day_id === previous.id && item.next_day_id === next.id)
   const [dialog, setDialog] = useState<{ edit?: boolean } | null>(null)
   const [dropError, setDropError] = useState<string | null>(null)
@@ -1045,9 +1071,11 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
     setDropping(true); setDropError(null)
     void (async () => {
       try {
-        if (night) await updateTripNight(night.id, { place_id: placeId, source_type: 'place' })
-        else await addTripNight(trip.id, { previous_day_id: previous.id, next_day_id: next.id, place_id: placeId, source_type: 'place' })
-        await reload(trip.id)
+        await runUndoable(night ? 'modification de la nuit' : 'ajout de la nuit', async () => {
+          if (night) await updateTripNight(night.id, { place_id: placeId, source_type: 'place' })
+          else await addTripNight(trip.id, { previous_day_id: previous.id, next_day_id: next.id, place_id: placeId, source_type: 'place' })
+          await reload(trip.id)
+        })
       } catch (caught) {
         setDropError(caught instanceof Error ? caught.message : 'Impossible d’enregistrer cet hébergement.')
       } finally { setDropping(false) }
@@ -1065,7 +1093,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
   }
   const removeNightLocation = () => {
     if (!night) return
-    void (async () => { await deleteTripNight(night.id); await reload(trip.id) })()
+    void runUndoable('suppression du lieu de nuit', async () => { await deleteTripNight(night.id); await reload(trip.id) })
   }
   return <>
     {dropError && <p className="trip-panel-error" role="alert">{dropError}</p>}
@@ -1113,7 +1141,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
           : 'Glissez des POI depuis le panneau Lieux'}</div>)}
       </div>
     </div>
-    {dialog && <CreateTripNightDialog previousDayId={previous.id} nextDayId={next.id} mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.edit ? night?.place_id ?? undefined : undefined} initialLocation={dialog.edit && night && !night.place_id ? night : undefined} initialSourceType={night?.source_type} initialNotes={dialog.edit ? night?.notes : undefined} initialCheckInTime={dialog.edit ? night?.check_in_time : undefined} initialCheckOutTime={dialog.edit ? night?.check_out_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { if (dialog.edit && night) await updateTripNight(night.id, payload); else await addTripNight(trip.id, payload); await reload(trip.id); setDialog(null) }} />}
+    {dialog && <CreateTripNightDialog previousDayId={previous.id} nextDayId={next.id} mode={dialog.edit ? 'edit' : 'create'} focus={[anchor?.latitude ?? 46.2276, anchor?.longitude ?? 2.2137]} initialPlaceId={dialog.edit ? night?.place_id ?? undefined : undefined} initialLocation={dialog.edit && night && !night.place_id ? night : undefined} initialSourceType={night?.source_type} initialNotes={dialog.edit ? night?.notes : undefined} initialCheckInTime={dialog.edit ? night?.check_in_time : undefined} initialCheckOutTime={dialog.edit ? night?.check_out_time : undefined} onClose={() => setDialog(null)} onCreate={async (payload) => { await runUndoable(dialog.edit ? 'modification de la nuit' : 'ajout de la nuit', async () => { if (dialog.edit && night) await updateTripNight(night.id, payload); else await addTripNight(trip.id, payload); await reload(trip.id) }); setDialog(null) }} />}
   </>
 }
 
