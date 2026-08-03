@@ -16,6 +16,7 @@ from app.trips.routing.base import MatrixResult, RouteResult, RoutingProvider
 pytestmark = pytest.mark.integration
 
 JPEG_BYTES = b"\xff\xd8\xff\xe0trip-night-photo\xff\xd9"
+SECOND_JPEG_BYTES = b"\xff\xd8\xff\xe0second-trip-night-photo\xff\xd9"
 
 
 class StubRoutingProvider(RoutingProvider):
@@ -38,7 +39,7 @@ class FailingGoogleRoutingProvider(StubGoogleRoutingProvider):
         raise RoutingError("Google timeout", "GOOGLE_ROUTES_TIMEOUT")
 
 
-def test_trip_night_description_and_private_photo_are_not_media(integration_client, photo_storage, poi_map) -> None:
+def test_trip_night_description_and_private_gallery_are_not_media(integration_client, photo_storage, poi_map) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Nuits privées"}).json()
     second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
     night = integration_client.post(
@@ -54,8 +55,12 @@ def test_trip_night_description_and_private_photo_are_not_media(integration_clie
 
     described = integration_client.patch(f"/trip-nights/{night['id']}", json={"description": "Réservation confirmée."})
     uploaded = integration_client.post(
-        f"/trip-nights/{night['id']}/photo",
+        f"/trip-nights/{night['id']}/photos",
         files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+    second_upload = integration_client.post(
+        f"/trip-nights/{night['id']}/photos",
+        files={"file": ("room.jpg", SECOND_JPEG_BYTES, "image/jpeg")},
     )
 
     assert described.status_code == 200
@@ -63,13 +68,23 @@ def test_trip_night_description_and_private_photo_are_not_media(integration_clie
     assert uploaded.status_code == 200
     assert uploaded.json()["photo_id"] is not None
     assert "photo_path" not in uploaded.json()
-    assert integration_client.get(f"/trip-nights/{night['id']}/photo").content == JPEG_BYTES
-    assert uploaded.json()["photo_id"] not in {item["id"] for item in integration_client.get("/media").json()["items"]}
+    assert len(second_upload.json()["photos"]) == 2
+    first_photo_id, second_photo_id = [photo["id"] for photo in second_upload.json()["photos"]]
+    assert integration_client.get(f"/trip-nights/{night['id']}/photos/{first_photo_id}").content == JPEG_BYTES
+    assert integration_client.get(f"/trip-nights/{night['id']}/photos/{second_photo_id}").content == SECOND_JPEG_BYTES
+    assert {first_photo_id, second_photo_id}.isdisjoint({item["id"] for item in integration_client.get("/media").json()["items"]})
 
-    removed = integration_client.delete(f"/trip-nights/{night['id']}/photo")
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+    restored = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+    assert restored.status_code == 200, restored.text
+    assert [photo["id"] for photo in restored.json()["nights"][0]["photos"]] == [first_photo_id, second_photo_id]
+
+    removed = integration_client.delete(f"/trip-nights/{night['id']}/photos/{first_photo_id}")
     assert removed.status_code == 200
-    assert removed.json()["photo_id"] is None
-    assert integration_client.get(f"/trip-nights/{night['id']}/photo").status_code == 404
+    assert [photo["id"] for photo in removed.json()["photos"]] == [second_photo_id]
+    assert integration_client.get(f"/trip-nights/{night['id']}/photos/{first_photo_id}").status_code == 404
+    assert integration_client.get(f"/trip-nights/{night['id']}/photo").content == SECOND_JPEG_BYTES
+    assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{second_photo_id}").status_code == 200
 
 
 def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_client, poi_map) -> None:

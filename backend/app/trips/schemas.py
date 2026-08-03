@@ -249,9 +249,13 @@ class StopRead(ORMRead):
     notes: str | None; is_required: bool; is_locked: bool; visit_status: str; created_at: datetime; updated_at: datetime
 
 
+class NightPhotoRead(ORMRead):
+    id: UUID; sort_order: int; created_at: datetime
+
+
 class NightRead(ORMRead):
     id: UUID; trip_id: UUID; previous_day_id: UUID; next_day_id: UUID; place_id: UUID | None; name: str; latitude: float; longitude: float
-    address: str | None; google_place_id: str | None; source_type: Literal["place", "map", "imported_text"]; description: str | None; photo_id: UUID | None; notes: str | None; check_in_time: TimeValue | None; check_out_time: TimeValue | None; created_at: datetime; updated_at: datetime
+    address: str | None; google_place_id: str | None; source_type: Literal["place", "map", "imported_text"]; description: str | None; photo_id: UUID | None; photos: list[NightPhotoRead] = Field(default_factory=list); notes: str | None; check_in_time: TimeValue | None; check_out_time: TimeValue | None; created_at: datetime; updated_at: datetime
 
 
 class DepartureRead(ORMRead):

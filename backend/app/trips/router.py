@@ -19,7 +19,7 @@ from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, PhotoT
 from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
 from app.trips.pdf_export import create_pdf
-from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
+from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripNightPhoto, TripStop
 from app.trips.optimizer import optimize_matrix, path_cost
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
@@ -149,6 +149,19 @@ def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends
     if valid_place_ids != place_ids:
         raise HTTPException(422, "A restored place must belong to the trip map")
 
+    restored_night_ids = {night.id for night in data.nights}
+    preserved_night_photos = [
+        {
+            "id": photo.id,
+            "night_id": night.id,
+            "file_path": photo.file_path,
+            "mime_type": photo.mime_type,
+            "sort_order": photo.sort_order,
+            "created_at": photo.created_at,
+        }
+        for night in trip.nights if night.id in restored_night_ids
+        for photo in night.photos
+    ]
     current_day_ids = select(TripDay.id).where(TripDay.trip_id == trip.id)
     session.execute(delete(TripNight).where(TripNight.trip_id == trip.id))
     session.execute(delete(TripStop).where(TripStop.trip_day_id.in_(current_day_ids)))
@@ -173,8 +186,11 @@ def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends
             values = stop_data.model_dump(exclude={"trip_day_id"})
             session.add(TripStop(trip_day_id=day_data.id, **values))
     for night_data in data.nights:
-        values = night_data.model_dump(exclude={"trip_id"})
+        values = night_data.model_dump(exclude={"trip_id", "photo_id", "photos"})
         session.add(TripNight(trip_id=trip.id, **values))
+    session.flush()
+    if preserved_night_photos:
+        session.execute(TripNightPhoto.__table__.insert(), preserved_night_photos)
     if data.departure:
         session.add(TripDeparture(trip_id=trip.id, **data.departure.model_dump(exclude={"trip_id"})))
     if data.arrival:
@@ -452,6 +468,7 @@ def update_night(night_id: UUID, data: NightUpdate, session: Session = Depends(g
 
 
 @router.post("/trip-nights/{night_id}/photo", response_model=NightRead)
+@router.post("/trip-nights/{night_id}/photos", response_model=NightRead)
 def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     night, _ = require_night_role(session, night_id, user, "editor")
     photo_id = uuid4()
@@ -464,10 +481,7 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
     except PhotoStorageError as error:
         raise HTTPException(500, str(error)) from error
 
-    previous = (night.photo_path, night.photo_id)
-    night.photo_id = photo_id
-    night.photo_path = stored.relative_path
-    night.photo_mime_type = stored.media_type
+    night.photos.append(TripNightPhoto(id=photo_id, file_path=stored.relative_path, mime_type=stored.media_type, sort_order=len(night.photos)))
     try:
         session.commit()
         session.refresh(night)
@@ -475,37 +489,61 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
         session.rollback()
         delete_photo_file(stored.relative_path, night.id, photo_id)
         raise
-    if previous[0] is not None and previous[1] is not None:
-        try:
-            delete_photo_file(previous[0], night.id, previous[1])
-        except PhotoStorageError:
-            pass
     return NightRead.model_validate(night)
 
 
 @router.get("/trip-nights/{night_id}/photo")
-def get_night_photo(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_primary_night_photo(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     night, _ = require_night_role(session, night_id, user, "viewer")
-    if night.photo_path is None or night.photo_id is None or night.photo_mime_type is None:
+    if not night.photos:
         raise HTTPException(404, "This night has no photo")
+    return _night_photo_response(night, night.photos[0])
+
+
+@router.get("/trip-nights/{night_id}/photos/{photo_id}")
+def get_night_photo(night_id: UUID, photo_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    night, _ = require_night_role(session, night_id, user, "viewer")
+    photo = session.get(TripNightPhoto, photo_id)
+    if photo is None or photo.night_id != night.id:
+        raise HTTPException(404, "Night photo not found")
+    return _night_photo_response(night, photo)
+
+
+def _night_photo_response(night: TripNight, photo: TripNightPhoto):
     try:
-        path = resolve_photo_file(night.photo_path, night.id, night.photo_id, require_file=True)
+        path = resolve_photo_file(photo.file_path, night.id, photo.id, require_file=True)
     except PhotoFileNotFoundError as error:
         raise HTTPException(404, str(error)) from error
     except PhotoStorageError as error:
         raise HTTPException(500, str(error)) from error
-    return FileResponse(path, media_type=night.photo_mime_type)
+    return FileResponse(path, media_type=photo.mime_type)
 
 
 @router.delete("/trip-nights/{night_id}/photo", response_model=NightRead)
-def remove_night_photo(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def remove_primary_night_photo(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     night, _ = require_night_role(session, night_id, user, "editor")
-    if night.photo_path is None or night.photo_id is None:
+    if not night.photos:
         raise HTTPException(404, "This night has no photo")
-    path, photo_id = night.photo_path, night.photo_id
-    night.photo_id = None
-    night.photo_path = None
-    night.photo_mime_type = None
+    return _remove_night_photo(session, night, night.photos[0])
+
+
+@router.delete("/trip-nights/{night_id}/photos/{photo_id}", response_model=NightRead)
+def remove_night_photo(night_id: UUID, photo_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    night, _ = require_night_role(session, night_id, user, "editor")
+    photo = session.get(TripNightPhoto, photo_id)
+    if photo is None or photo.night_id != night.id:
+        raise HTTPException(404, "Night photo not found")
+    return _remove_night_photo(session, night, photo)
+
+
+def _remove_night_photo(session: Session, night: TripNight, photo: TripNightPhoto) -> NightRead:
+    path, photo_id = photo.file_path, photo.id
+    removed_order = photo.sort_order
+    session.delete(photo)
+    session.flush()
+    for sibling in night.photos:
+        if sibling.id != photo.id and sibling.sort_order > removed_order:
+            sibling.sort_order -= 1
     session.commit()
     try:
         delete_photo_file(path, night.id, photo_id)
@@ -517,11 +555,11 @@ def remove_night_photo(night_id: UUID, session: Session = Depends(get_db), user:
 @router.delete("/trip-nights/{night_id}", status_code=204)
 def remove_night(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     night, _ = require_night_role(session, night_id, user, "editor")
-    photo = (night.photo_path, night.photo_id)
+    photos = [(photo.file_path, photo.id) for photo in night.photos]
     stale(night.previous_day); stale(night.next_day); session.delete(night); session.commit()
-    if photo[0] is not None and photo[1] is not None:
+    for path, photo_id in photos:
         try:
-            delete_photo_file(photo[0], night_id, photo[1])
+            delete_photo_file(path, night_id, photo_id)
         except PhotoStorageError:
             pass
 

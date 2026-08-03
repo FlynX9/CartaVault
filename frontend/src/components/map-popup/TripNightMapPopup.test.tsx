@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { updateTripNight, uploadTripNightPhoto } from '../../api/trips'
+import { deleteTripNightPhoto, updateTripNight, uploadTripNightPhoto } from '../../api/trips'
 import type { TripNight } from '../../types/trip'
 import { TripNightMapPopup } from './TripNightMapPopup'
 
 vi.mock('../../api/trips', () => ({
   deleteTripNightPhoto: vi.fn(),
-  tripNightPhotoUrl: (id: string, photoId: string) => `/trip-nights/${id}/photo?v=${photoId}`,
+  tripNightPhotoUrl: (id: string, photoId: string) => `/trip-nights/${id}/photos/${photoId}`,
   updateTripNight: vi.fn(),
   uploadTripNightPhoto: vi.fn(),
 }))
@@ -35,9 +35,28 @@ describe('TripNightMapPopup', () => {
   })
 
   it('renders the stored night photo without exposing it as a media item', () => {
-    const { container } = render(<TripNightMapPopup night={{ ...night, photo_id: 'photo-1' }} canEdit={false} onUpdated={vi.fn()} onClose={vi.fn()} />)
-    expect(screen.getByRole('img', { name: 'Photo de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photo?v=photo-1')
+    const { container } = render(<TripNightMapPopup night={{ ...night, photo_id: 'photo-1', photos: [{ id: 'photo-1', sort_order: 0 }] }} canEdit={false} onUpdated={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('img', { name: 'Photo 1 de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photos/photo-1')
     expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument()
+  })
+
+  it('navigates, enlarges and deletes individual night photos', async () => {
+    const onUpdated = vi.fn()
+    const galleryNight = { ...night, photo_id: 'photo-1', photos: [{ id: 'photo-1', sort_order: 0 }, { id: 'photo-2', sort_order: 1 }] }
+    vi.mocked(deleteTripNightPhoto).mockResolvedValue({ ...galleryNight, photo_id: 'photo-2', photos: [{ id: 'photo-2', sort_order: 0 }] })
+    render(<TripNightMapPopup night={galleryNight} canEdit onUpdated={onUpdated} onClose={vi.fn()} />)
+
+    expect(screen.getByText('1 / 2')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Photo suivante' }))
+    expect(screen.getByRole('img', { name: 'Photo 2 de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photos/photo-2')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher la photo 2 sur 2 en grand' }))
+    expect(screen.getByRole('dialog', { name: 'Photo 2 de Hôtel' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la photo' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer la photo 2' }))
+    await waitFor(() => expect(deleteTripNightPhoto).toHaveBeenCalledWith('night-1', 'photo-2'))
+    expect(onUpdated).toHaveBeenCalled()
   })
 
   it('uploads a clipboard screenshot from the opened night popup', async () => {

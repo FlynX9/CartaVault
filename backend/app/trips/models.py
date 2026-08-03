@@ -170,9 +170,6 @@ class TripNight(Base):
     address: Mapped[str | None] = mapped_column(String(500))
     google_place_id: Mapped[str | None] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)
-    photo_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
-    photo_path: Mapped[str | None] = mapped_column(Text)
-    photo_mime_type: Mapped[str | None] = mapped_column(String(64))
     notes: Mapped[str | None] = mapped_column(Text)
     check_in_time: Mapped[time | None] = mapped_column(Time)
     check_out_time: Mapped[time | None] = mapped_column(Time)
@@ -183,6 +180,33 @@ class TripNight(Base):
     previous_day: Mapped[TripDay] = relationship(back_populates="next_night", foreign_keys=[previous_day_id])
     next_day: Mapped[TripDay] = relationship(back_populates="previous_night", foreign_keys=[next_day_id])
     place: Mapped["Place | None"] = relationship(back_populates="trip_nights")
+    photos: Mapped[list["TripNightPhoto"]] = relationship(
+        back_populates="night",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="TripNightPhoto.sort_order",
+    )
+
+    @property
+    def photo_id(self) -> UUID | None:
+        return self.photos[0].id if self.photos else None
+
+
+class TripNightPhoto(Base):
+    __tablename__ = "trip_night_photos"
+    __table_args__ = (
+        UniqueConstraint("night_id", "sort_order", name="trip_night_photos_night_order_key"),
+        Index("trip_night_photos_night_id_idx", "night_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    night_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("trip_nights.id", ondelete="CASCADE"), nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+    night: Mapped[TripNight] = relationship(back_populates="photos")
 
 
 class TripDeparture(Base):

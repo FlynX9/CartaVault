@@ -20,10 +20,15 @@ def test_trip_migration_upgrade_downgrade_upgrade_cycle(test_engine, test_databa
     monkeypatch.setenv("DATABASE_URL", test_database_url.render_as_string(hide_password=False))
     config = Config("alembic.ini")
 
+    # metadata.create_all may expose head-only tables before Alembic itself is
+    # stamped at that head; remove the untracked dependent table first.
+    with test_engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS trip_night_photos CASCADE"))
     command.downgrade(config, PARENT_REVISION)
     # The session fixture calls metadata.create_all; remove only the new domain
     # so this test exercises Alembic from the actual parent revision.
     with test_engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS trip_night_photos CASCADE"))
         connection.execute(text("DROP TABLE IF EXISTS trip_nights CASCADE"))
         connection.execute(text("DROP TABLE IF EXISTS trip_stops CASCADE"))
         connection.execute(text("DROP TABLE IF EXISTS trip_days CASCADE"))
@@ -46,4 +51,6 @@ def test_trip_migration_upgrade_downgrade_upgrade_cycle(test_engine, test_databa
         assert MigrationContext.configure(connection).get_current_revision() == ScriptDirectory.from_config(config).get_current_head()
     assert TRIP_TABLES <= set(inspect(test_engine).get_table_names())
     assert "trip_departures" in inspect(test_engine).get_table_names()
+    assert "trip_night_photos" in inspect(test_engine).get_table_names()
+    assert "trip_night_photos_night_order_key" in {item["name"] for item in inspect(test_engine).get_unique_constraints("trip_night_photos")}
     assert "trip_departures_trip_id_key" in {item["name"] for item in inspect(test_engine).get_unique_constraints("trip_departures")}

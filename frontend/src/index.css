@@ -5516,6 +5516,31 @@ body {
 .trip-night-map-popup__photo { display: block; width: 100%; height: clamp(14rem, 34vh, 18rem); object-fit: cover; background: var(--cv-surface-muted); }
 .trip-night-map-popup__photo--empty { display: grid; align-content: center; justify-items: center; gap: .4rem; color: var(--cv-color-slate); font-size: .72rem; }
 .trip-night-map-popup__photo--empty svg { color: var(--cv-color-teal); opacity: .7; }
+.trip-night-gallery { position: relative; overflow: hidden; background: var(--cv-surface-muted); }
+.trip-night-gallery__image { position: relative; display: block; width: 100%; height: auto; padding: 0; color: #fff; background: transparent; border: 0; border-radius: 0; cursor: zoom-in; }
+.trip-night-gallery__image > svg { position: absolute; right: .7rem; bottom: .65rem; padding: .35rem; box-sizing: content-box; color: #fff; background: rgb(8 25 43 / 70%); border-radius: .45rem; opacity: 0; transition: opacity .16s ease, transform .16s ease; }
+.trip-night-gallery__image:is(:hover, :focus-visible) > svg { opacity: 1; transform: scale(1.04); }
+.trip-night-gallery__image:focus-visible { outline: 2px solid var(--cv-color-teal); outline-offset: -2px; }
+.trip-night-gallery__delete,
+.trip-night-gallery__previous,
+.trip-night-gallery__next { position: absolute; z-index: 2; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; color: #fff; background: rgb(8 25 43 / 72%); border: 1px solid rgb(255 255 255 / 48%); border-radius: .52rem; box-shadow: 0 .2rem .7rem rgb(8 25 43 / 22%); }
+.trip-night-gallery__delete { top: .65rem; right: .65rem; }
+.trip-night-gallery__delete:is(:hover, :focus-visible) { color: #fff; background: #dc2626; border-color: #dc2626; }
+.trip-night-gallery__previous,
+.trip-night-gallery__next { top: 50%; border-radius: 999px; transform: translateY(-50%); }
+.trip-night-gallery__previous { left: .65rem; }
+.trip-night-gallery__next { right: .65rem; }
+.trip-night-gallery__previous:is(:hover, :focus-visible),
+.trip-night-gallery__next:is(:hover, :focus-visible) { color: #fff; background: color-mix(in srgb, var(--cv-color-teal) 82%, #08192b); border-color: #fff; }
+.trip-night-gallery__counter { position: absolute; z-index: 2; left: 50%; bottom: .65rem; padding: .24rem .5rem; color: #fff; background: rgb(8 25 43 / 72%); border: 1px solid rgb(255 255 255 / 36%); border-radius: 999px; font-size: .68rem; font-weight: 700; transform: translateX(-50%); }
+.trip-night-lightbox { position: fixed; z-index: 10050; inset: 0; display: grid; place-items: center; padding: 4rem 5rem; background: rgb(3 12 22 / 88%); backdrop-filter: blur(5px); }
+.trip-night-lightbox > img { display: block; max-width: min(92vw, 90rem); max-height: calc(100vh - 8rem); object-fit: contain; border-radius: .7rem; box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 45%); }
+.trip-night-lightbox > button { position: fixed; z-index: 1; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; color: #fff; background: rgb(255 255 255 / 10%); border: 1px solid rgb(255 255 255 / 28%); border-radius: .7rem; }
+.trip-night-lightbox > button:is(:hover, :focus-visible) { color: #fff; background: color-mix(in srgb, var(--cv-color-teal) 68%, transparent); border-color: #fff; }
+.trip-night-lightbox__close { top: 1.4rem; right: 1.4rem; }
+.trip-night-lightbox__previous { top: 50%; left: 1.4rem; transform: translateY(-50%); }
+.trip-night-lightbox__next { top: 50%; right: 1.4rem; transform: translateY(-50%); }
+.trip-night-lightbox > span { position: fixed; bottom: 1.35rem; left: 50%; padding: .35rem .7rem; color: #fff; background: rgb(255 255 255 / 10%); border-radius: 999px; font-size: .75rem; font-weight: 700; transform: translateX(-50%); }
 .trip-night-map-popup > .popup-paste-hint,
 .trip-night-map-popup > .popup-paste-notice { margin: .55rem 1rem 0; }
 .trip-night-map-popup > .trip-night-map-popup__address { padding-bottom: .7rem; border-bottom: 1px solid var(--cv-border-subtle); }
@@ -5528,6 +5553,11 @@ body {
 .trip-night-map-popup .popup-actions { margin-top: 0; }
 html[data-theme='dark'] .trip-night-map-popup__photo--empty { background: var(--cv-surface-muted); }
 html[data-theme='dark'] .trip-night-map-popup__description textarea { color: var(--cv-color-slate); background: var(--cv-surface-muted); }
+@media (max-width: 640px) {
+  .trip-night-lightbox { padding: 4rem 1rem; }
+  .trip-night-lightbox__previous { left: .65rem; }
+  .trip-night-lightbox__next { right: .65rem; }
+}
 @media (max-width: 560px) {
   .place-map-popup { width: min(420px, calc(100vw - 24px)); }
   .popup-hero { grid-template-columns: 112px minmax(0, 1fr); gap: 0.75rem; padding: 0.75rem 0.75rem 0.6rem; }

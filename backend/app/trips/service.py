@@ -30,7 +30,7 @@ def load_trip(session: Session, trip_id: UUID) -> Trip:
         .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
         .options(
             selectinload(Trip.days).selectinload(TripDay.stops),
-            selectinload(Trip.nights),
+            selectinload(Trip.nights).selectinload(TripNight.photos),
             selectinload(Trip.departure),
             selectinload(Trip.arrival),
         )

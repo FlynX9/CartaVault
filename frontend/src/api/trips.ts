@@ -38,9 +38,9 @@ export const moveTripStop = (id: string, targetDayId: string, sortOrder: number)
 export const addTripNight = (tripId: string, body: TripNightCreatePayload) => sendJson(`/trips/${tripId}/nights`, 'POST', body) as Promise<TripNight>
 export const deleteTripNight = (id: string) => sendWithoutResponse(`/trip-nights/${id}`, 'DELETE')
 export const updateTripNight = (id: string, body: Omit<TripNightCreatePayload, 'previous_day_id' | 'next_day_id'>) => sendJson(`/trip-nights/${id}`, 'PATCH', body) as Promise<TripNight>
-export const uploadTripNightPhoto = (id: string, file: File) => { const data = new FormData(); data.append('file', file); return sendFormData(`/trip-nights/${id}/photo`, 'POST', data) as Promise<TripNight> }
-export const deleteTripNightPhoto = (id: string) => sendJson(`/trip-nights/${id}/photo`, 'DELETE', {}) as Promise<TripNight>
-export const tripNightPhotoUrl = (id: string, photoId: string) => `${API_BASE_URL}/trip-nights/${encodeURIComponent(id)}/photo?v=${encodeURIComponent(photoId)}`
+export const uploadTripNightPhoto = (id: string, file: File) => { const data = new FormData(); data.append('file', file); return sendFormData(`/trip-nights/${id}/photos`, 'POST', data) as Promise<TripNight> }
+export const deleteTripNightPhoto = (id: string, photoId: string) => sendJson(`/trip-nights/${id}/photos/${photoId}`, 'DELETE', {}) as Promise<TripNight>
+export const tripNightPhotoUrl = (id: string, photoId: string) => `${API_BASE_URL}/trip-nights/${encodeURIComponent(id)}/photos/${encodeURIComponent(photoId)}`
 export const addTripDeparture = (tripId: string, body: TripDepartureCreatePayload) => sendJson(`/trips/${tripId}/departure`, 'POST', body) as Promise<TripDeparture>
 export const updateTripDeparture = (id: string, body: TripDepartureCreatePayload) => sendJson(`/trip-departures/${id}`, 'PATCH', body) as Promise<TripDeparture>
 export const deleteTripDeparture = (id: string) => sendWithoutResponse(`/trip-departures/${id}`, 'DELETE')
