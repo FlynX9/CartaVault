@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AccountModal } from './AccountModal'
-import { getAccountPreferences, getAccountProfile, getAccountSessions, getGoogleRoutesCredential, storeGoogleRoutesCredential, updateAccountPreferences, updateAccountProfile, verifyGoogleRoutesCredential } from '../../api/account'
+import { getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, storeGooglePlacesCredential, storeGoogleRoutesCredential, updateAccountPreferences, updateAccountProfile, verifyGooglePlacesCredential, verifyGoogleRoutesCredential } from '../../api/account'
 import { getRoutingProviders } from '../../api/routing'
 
 vi.mock('../../api/account', () => ({
@@ -10,6 +10,7 @@ vi.mock('../../api/account', () => ({
   changeAccountEmail: vi.fn(), changeAccountPassword: vi.fn(), deleteAccountAvatar: vi.fn(), deleteOwnAccount: vi.fn(),
   getAccountPreferences: vi.fn(), getAccountProfile: vi.fn(), getAccountSessions: vi.fn(), resetAccountPreferences: vi.fn(),
   getGoogleRoutesCredential: vi.fn(), storeGoogleRoutesCredential: vi.fn(), verifyGoogleRoutesCredential: vi.fn(), deleteGoogleRoutesCredential: vi.fn(),
+  getGooglePlacesCredential: vi.fn(), storeGooglePlacesCredential: vi.fn(), verifyGooglePlacesCredential: vi.fn(), deleteGooglePlacesCredential: vi.fn(),
   revokeAccountSession: vi.fn(), revokeOtherAccountSessions: vi.fn(), updateAccountPreferences: vi.fn(), updateAccountProfile: vi.fn(), uploadAccountAvatar: vi.fn(),
 }))
 vi.mock('../../api/routing', () => ({ getRoutingProviders: vi.fn() }))
@@ -17,10 +18,10 @@ const refresh = vi.fn()
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, avatar_url: null }, refresh }) }))
 
 const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, is_active: true, avatar_url: null, created_at: '2026-01-01', updated_at: '2026-01-01', last_login_at: null, owned_maps: [], shared_map_count: 1, active_session_count: 1, can_delete: true }
-const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const } }
+const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const }, places: { provider: 'stadia' as const } }
 const noCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
 
-beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }) })
+beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }) })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('AccountModal', () => {
@@ -141,5 +142,26 @@ describe('AccountModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Vérifier' }))
     await waitFor(() => expect(verifyGoogleRoutesCredential).toHaveBeenCalled())
     expect(await screen.findByText('La clé Google Routes est valide.')).toBeVisible()
+  })
+
+  it('keeps Stadia as the default Places engine and requires a separate verified Google Places key', async () => {
+    const stored = { configured: true, last4: 'aces', verified: false, verified_at: null, last_used_at: null, last_error_code: null }
+    const verified = { ...stored, verified: true, verified_at: '2026-08-03T10:00:00Z' }
+    vi.mocked(storeGooglePlacesCredential).mockResolvedValue(stored)
+    vi.mocked(verifyGooglePlacesCredential).mockResolvedValue(verified)
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
+
+    const engine = screen.getByLabelText('Moteur de recherche de lieux')
+    expect(engine).toHaveValue('stadia')
+    fireEvent.change(engine, { target: { value: 'google' } })
+    const input = await screen.findByLabelText('Clé Google Places', { selector: 'input' })
+    fireEvent.change(input, { target: { value: 'fake-google-places' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer cette clé' }))
+    await waitFor(() => expect(storeGooglePlacesCredential).toHaveBeenCalledWith('fake-google-places'))
+    fireEvent.click(screen.getByRole('button', { name: 'Vérifier' }))
+    await waitFor(() => expect(verifyGooglePlacesCredential).toHaveBeenCalled())
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, places: { provider: 'google' } }))
   })
 })

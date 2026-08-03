@@ -2,16 +2,19 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getPlaceDetails, getPlaces } from '../../api/places'
+import { searchGooglePlaces } from '../../api/googlePlaces'
 import { geocodingService } from '../../geocoding/geocodingService'
 import { CreateTripNightDialog } from './CreateTripNightDialog'
 
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaces: vi.fn() }))
+vi.mock('../../api/googlePlaces', () => ({ searchGooglePlaces: vi.fn() }))
 vi.mock('../../geocoding/geocodingService', () => ({ geocodingService: { search: vi.fn() } }))
 
 describe('CreateTripNightDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(getPlaces).mockResolvedValue([])
+    vi.mocked(searchGooglePlaces).mockResolvedValue({ items: [], available: false, warning_code: 'GOOGLE_CREDENTIAL_UNAVAILABLE' })
   })
   afterEach(cleanup)
 
@@ -44,7 +47,97 @@ describe('CreateTripNightDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyser le texte' }))
     expect(await screen.findByText('Hôtel des Alpes')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
-    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ source_type: 'imported_text', name: 'Hôtel des Alpes', address: '12 rue du Lac, Annecy', latitude: 45.8992, longitude: 6.1294 })))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      source_type: 'imported_text',
+      name: 'Hôtel des Alpes',
+      address: '12 rue du Lac, Annecy',
+      latitude: 45.8992,
+      longitude: 6.1294,
+      notes: 'Hôtel des Alpes\n12 rue du Lac, Annecy\nLatitude: 45.8992, Longitude: 6.1294',
+    })))
+  })
+
+  it('extracts the hotel, address and latest check-in and check-out times from a Booking confirmation', async () => {
+    const reservation = [
+      '**Votre séjour est** **confirmé**',
+      'Votre confirmation a bien été envoyée à l’adresse gregory.rivolet@proton.me.',
+      '[**Panorama Boutique Hotel**](https://www.booking.com/hotel/ge/panorama-boutique-tbilisi.fr.html)',
+      'Panorama Boutique Hotel',
+      '**Arrivée**',
+      '**mar. 1er sept. 2026**',
+      '14:00 - 00:00',
+      '**Départ**',
+      '**ven. 4 sept. 2026**',
+      '09:00 - 14:00',
+      '**Détails de la réservation**',
+      '2 adultes - 3 nuits, 1 chambre',
+      '**Adresse**',
+      '13 Samreklo Street, 0103 Tbilissi, Géorgie',
+      '**Voir l’itinéraire**',
+    ].join('\n')
+    vi.mocked(geocodingService.search).mockResolvedValue([
+      { id: 'wrong-panorama', name: 'Panorama Hotel', formattedAddress: 'Batoumi, Géorgie', latitude: 41.64, longitude: 41.63, countryCode: 'GE', confidence: 0.95, source: 'test' },
+    ])
+    vi.mocked(searchGooglePlaces).mockResolvedValue({ items: [{ id: 'google:panorama', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, 0103 Tbilissi, Géorgie', latitude: 41.697122, longitude: 44.8135, countryCode: 'GE', postalCode: '0103', locality: 'Tbilissi', confidence: 1, source: 'google_places' }], available: true, warning_code: null })
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(<CreateTripNightDialog previousDayId="day-1" nextDayId="day-2" countryCode="GE" focus={[41.7, 44.8]} onClose={vi.fn()} onCreate={onCreate} />)
+
+    fireEvent.change(screen.getByLabelText('Texte de confirmation de réservation'), { target: { value: reservation } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analyser le texte' }))
+
+    expect(await screen.findByText('Panorama Boutique Hotel')).toBeVisible()
+    expect(searchGooglePlaces).toHaveBeenCalledWith('Panorama Boutique Hotel, 13 Samreklo Street, 0103 Tbilissi, Géorgie', 'GE', 8)
+    expect(screen.getByLabelText('Arrivée')).toHaveValue('00:00')
+    expect(screen.getByLabelText('Départ')).toHaveValue('14:00')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Panorama Boutique Hotel',
+      address: '13 Samreklo Street, 0103 Tbilissi, Géorgie',
+      latitude: 41.697122,
+      longitude: 44.8135,
+      check_in_time: '00:00',
+      check_out_time: '14:00',
+      notes: reservation,
+    })))
+  })
+
+  it('includes CartaVault POIs when searching for a night location', async () => {
+    vi.mocked(geocodingService.search).mockResolvedValue([])
+    vi.mocked(getPlaces).mockResolvedValue([{
+      id: 'hotel-1', map_id: 'map-1', name: 'Hôtel CartaVault', latitude: 44.2, longitude: 6.3, region: 'Provence',
+      map: { id: 'map-1', name: 'France', country: {} },
+    } as never])
+    const onCreate = vi.fn().mockResolvedValue(undefined)
+    render(<CreateTripNightDialog mapId="map-1" previousDayId="day-1" nextDayId="day-2" focus={[44, 6]} onClose={vi.fn()} onCreate={onCreate} />)
+
+    fireEvent.change(screen.getByLabelText('Adresse ou coordonnées GPS'), { target: { value: 'Hôtel' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Hôtel CartaVault/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter la nuit' }))
+
+    expect(getPlaces).toHaveBeenCalledWith({ mapId: 'map-1', q: 'Hôtel', limit: 6 }, expect.any(AbortSignal))
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ place_id: 'hotel-1', source_type: 'place' })))
+  })
+
+  it('prioritizes an official Google establishment and rejects unrelated address matches', async () => {
+    vi.mocked(searchGooglePlaces).mockResolvedValue({
+      items: [{ id: 'google:panorama', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, 0103 Tbilissi, Géorgie', latitude: 41.697122, longitude: 44.8135, countryCode: 'GE', source: 'google_places' }],
+      available: true,
+      warning_code: null,
+    })
+    vi.mocked(geocodingService.search).mockResolvedValue([
+      { id: 'wrong-1', name: 'Samreklo', formattedAddress: 'Samreklo, Kakhétie, Géorgie', latitude: 41.5, longitude: 45.2, countryCode: 'GE', source: 'stadia' },
+      { id: 'wrong-2', name: '13 Other Street', formattedAddress: '13 Other Street, Tbilissi, Géorgie', latitude: 41.7, longitude: 44.9, countryCode: 'GE', source: 'stadia' },
+    ])
+    render(<CreateTripNightDialog previousDayId="day-1" nextDayId="day-2" countryCode="GE" focus={[41.7, 44.8]} onClose={vi.fn()} onCreate={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText('Adresse ou coordonnées GPS'), { target: { value: '13 Samreklo Street, 0103 Tbilissi, Géorgie' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Rechercher' }))
+
+    expect(await screen.findByRole('option', { name: /Panorama Boutique Hotel/ })).toHaveTextContent('Google')
+    expect(screen.queryByRole('option', { name: /Kakhétie/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Other Street/ })).not.toBeInTheDocument()
   })
 
   it('creates the departure without night day identifiers', async () => {

@@ -6,7 +6,7 @@ import { OnboardingCard } from './OnboardingCard'
 
 vi.mock('../../api/account', () => ({ getAccountPreferences: vi.fn(), updateAccountPreferences: vi.fn() }))
 
-const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'compact' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const }, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> } }
+const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'compact' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const }, places: { provider: 'stadia' as const }, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> } }
 const dashboard = { summary: { places: 0, trips: 0 } } as never
 const map = { id: 'map-1', can_edit: true } as never
 

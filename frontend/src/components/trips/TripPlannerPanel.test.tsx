@@ -1181,7 +1181,7 @@ describe('TripPlannerPanel', () => {
     expect(await screen.findByRole('button', { name: 'Modifier le point de départ' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Modifier le point d’arrivée' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Modifier l’hébergement' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Modifier le lieu de la nuit' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Supprimer le point de départ' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Utiliser le point de départ comme arrivée' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Supprimer l’hébergement' })).not.toBeInTheDocument()
@@ -1222,6 +1222,18 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('Maison')).toBeVisible()
     expect(screen.getByText('Hôtel')).toBeVisible()
     expect(screen.getByText('Retour maison')).toBeVisible()
+  })
+
+  it('opens the lodging search from an empty night', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const tripWithoutNight = { ...trip, days: [trip.days[0], secondDay], nights: [] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([tripWithoutNight])
+    vi.mocked(getTrip).mockResolvedValue(tripWithoutNight)
+
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={tripWithoutNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ajouter un hébergement' }))
+    expect(screen.getByRole('dialog', { name: 'Ajouter un hébergement' })).toBeVisible()
   })
 
   it('selects a night as the active itinerary target without opening its editor', async () => {

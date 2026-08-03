@@ -8,7 +8,7 @@ import { DashboardPage } from './DashboardPage'
 
 
 vi.mock('../../api/dashboard', () => ({ getDashboard: vi.fn() }))
-vi.mock('../../api/account', () => ({ getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' }, onboarding: { dismissed: true, completed_steps: [] } }), updateAccountPreferences: vi.fn() }))
+vi.mock('../../api/account', () => ({ getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' }, places: { provider: 'stadia' }, onboarding: { dismissed: true, completed_steps: [] } }), updateAccountPreferences: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({
   useAuth: () => ({ user: { display_name: 'Alice Martin' } }),
 }))

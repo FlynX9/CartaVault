@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { AccountPreferences, AccountProfile, AccountSession, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus } from '../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialDeletion, GooglePlacesCredentialStatus, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus } from '../types/account'
 
 export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
 
@@ -22,3 +22,7 @@ export async function getGoogleRoutesCredential(signal?: AbortSignal): Promise<G
 export async function storeGoogleRoutesCredential(apiKey: string): Promise<GoogleRoutesCredentialStatus> { return sendJson('/account/integrations/google-routes', 'PUT', { api_key: apiKey }) as Promise<GoogleRoutesCredentialStatus> }
 export async function verifyGoogleRoutesCredential(): Promise<GoogleRoutesCredentialStatus> { return sendJson('/account/integrations/google-routes/verify', 'POST', {}) as Promise<GoogleRoutesCredentialStatus> }
 export async function deleteGoogleRoutesCredential(currentPassword: string): Promise<GoogleRoutesCredentialDeletion> { return sendJson('/account/integrations/google-routes', 'DELETE', { current_password: currentPassword }) as Promise<GoogleRoutesCredentialDeletion> }
+export async function getGooglePlacesCredential(signal?: AbortSignal): Promise<GooglePlacesCredentialStatus> { return getJson('/account/integrations/google-places', new URLSearchParams(), signal) as Promise<GooglePlacesCredentialStatus> }
+export async function storeGooglePlacesCredential(apiKey: string): Promise<GooglePlacesCredentialStatus> { return sendJson('/account/integrations/google-places', 'PUT', { api_key: apiKey }) as Promise<GooglePlacesCredentialStatus> }
+export async function verifyGooglePlacesCredential(): Promise<GooglePlacesCredentialStatus> { return sendJson('/account/integrations/google-places/verify', 'POST', {}) as Promise<GooglePlacesCredentialStatus> }
+export async function deleteGooglePlacesCredential(currentPassword: string): Promise<GooglePlacesCredentialDeletion> { return sendJson('/account/integrations/google-places', 'DELETE', { current_password: currentPassword }) as Promise<GooglePlacesCredentialDeletion> }

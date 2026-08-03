@@ -27,6 +27,7 @@ export interface AccountPreferences {
     avoid_ferries: boolean
     traffic_mode: 'traffic_unaware' | 'traffic_aware' | 'traffic_aware_optimal'
   }
+  places: { provider: 'stadia' | 'google' }
 }
 
 export interface RoutingProviderCapability {
@@ -50,3 +51,5 @@ export interface GoogleRoutesCredentialDeletion {
   provider_reset: boolean
   provider: 'osrm' | 'google'
 }
+export type GooglePlacesCredentialStatus = GoogleRoutesCredentialStatus
+export interface GooglePlacesCredentialDeletion { deleted: boolean; provider_reset: boolean; provider: 'stadia' }

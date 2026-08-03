@@ -2,19 +2,20 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { createPortal } from 'react-dom'
 import { AlertTriangle, CalendarDays, Clock3, Image as ImageIcon, Info, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
-import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGoogleRoutesCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
 import { useAuth } from '../../auth/useAuth'
 import { useI18n } from '../../i18n/useI18n'
 import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
-import type { AccountPreferences, AccountProfile, AccountSession, GoogleRoutesCredentialStatus } from '../../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialStatus, GoogleRoutesCredentialStatus } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
+import { GooglePlacesCredentialPanel } from './GooglePlacesCredentialPanel'
 
 type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'danger'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' }, places: { provider: 'stadia' } }
 
 const fallbackTimeZones = ['Europe/Paris', 'Europe/London', 'Europe/Brussels', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Zurich', 'America/New_York', 'America/Los_Angeles', 'America/Toronto', 'Asia/Tbilisi', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney', 'Pacific/Auckland', 'UTC']
 const supportedTimeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : fallbackTimeZones
@@ -183,12 +184,13 @@ function PreferenceField({ icon: Icon, label, htmlFor, help, children, className
 function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
   const { setLocale, t } = useI18n()
   const [credentialStatus, setCredentialStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
+  const [placesCredentialStatus, setPlacesCredentialStatus] = useState<GooglePlacesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
   const [storageAvailable, setStorageAvailable] = useState(false)
   const [routingError, setRoutingError] = useState<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
-    void Promise.all([getRoutingProviders(controller.signal), getGoogleRoutesCredential(controller.signal)])
-      .then(([providers, credential]) => { setStorageAvailable(providers.credential_storage_available); setCredentialStatus(credential) })
+    void Promise.all([getRoutingProviders(controller.signal), getGoogleRoutesCredential(controller.signal), getGooglePlacesCredential(controller.signal)])
+      .then(([providers, credential, placesCredential]) => { setStorageAvailable(providers.credential_storage_available); setCredentialStatus(credential); setPlacesCredentialStatus(placesCredential) })
       .catch(() => { setStorageAvailable(false); setCredentialStatus({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }) })
     return () => controller.abort()
   }, [])
@@ -196,16 +198,25 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
   const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
   const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
   const googleSelected = preferences.routing.provider === 'google'
+  const googlePlacesSelected = preferences.places.provider === 'google'
   const handleCredentialChange = async (next: GoogleRoutesCredentialStatus, providerReset?: boolean) => {
     setCredentialStatus(next)
     const providers = await getRoutingProviders()
     setStorageAvailable(providers.credential_storage_available)
     if (providerReset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } })
   }
+  const handlePlacesCredentialChange = (next: GooglePlacesCredentialStatus, providerReset?: boolean) => {
+    setPlacesCredentialStatus(next)
+    if (providerReset) setPreferences({ ...preferences, places: { provider: 'stadia' } })
+  }
   const savePreferences = () => {
     setRoutingError(null)
     if (googleSelected && !credentialStatus.verified) {
       setRoutingError(t('account.preferences.googleCredentialRequired'))
+      return
+    }
+    if (googlePlacesSelected && !placesCredentialStatus.verified) {
+      setRoutingError('Ajoutez et vérifiez votre clé Google Places avant d’enregistrer ce moteur.')
       return
     }
     void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved'))
@@ -246,6 +257,13 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
           <PreferenceField label={t('account.preferences.traffic')} htmlFor="account-traffic" className="account-route-traffic"><select id="account-traffic" aria-labelledby="account-traffic-label" value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></PreferenceField>
         </>}
       </div>
+    </section>
+    <section className="account-preference-card account-preference-card--places">
+      <PreferenceCardHeading icon={MapIcon} title="Places" />
+      <PreferenceField label="Moteur de recherche de lieux" htmlFor="account-places-engine" help="Stadia est utilisé par défaut. Google Places nécessite une clé séparée autorisant Places API (New).">
+        <select id="account-places-engine" aria-labelledby="account-places-engine-label" value={preferences.places.provider} onChange={(event) => { setRoutingError(null); setPreferences({ ...preferences, places: { provider: event.target.value as AccountPreferences['places']['provider'] } }) }}><option value="stadia">Stadia</option><option value="google" disabled={!storageAvailable}>Google Places</option></select>
+      </PreferenceField>
+      {googlePlacesSelected && <GooglePlacesCredentialPanel status={placesCredentialStatus} storageAvailable={storageAvailable} onChanged={handlePlacesCredentialChange} />}
     </section>
     <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={savePreferences}>{t('common.save')}</button>
     <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>

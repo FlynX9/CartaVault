@@ -77,6 +77,47 @@ def test_credentials_are_isolated_between_users(integration_client, database_ses
     assert all("fake-google-key" not in row.encrypted_secret for row in rows)
 
 
+def test_verified_google_credential_searches_places_without_exposing_the_key(integration_client, database_session, auth_user, monkeypatch) -> None:
+    _configure_encryption(monkeypatch)
+    csrf = _login(integration_client, monkeypatch, auth_user)
+    api_key = "fake-google-key-places"
+    integration_client.put("/account/integrations/google-places", json={"api_key": api_key}, headers={"X-CSRF-Token": csrf})
+    credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == auth_user.id, UserApiCredential.provider == "google_places"))
+    assert credential is not None
+    credential.verified_at = datetime.now(UTC).replace(tzinfo=None)
+    database_session.commit()
+    calls: list[tuple[str, str, str | None, int]] = []
+
+    def fake_search(key: str, query: str, country: str | None, limit: int):
+        calls.append((key, query, country, limit))
+        return [SimpleNamespace(
+            id="google:panorama", name="Panorama Boutique Hotel", formatted_address="13 Samreklo Street, 0103 Tbilisi, Georgia",
+            latitude=41.697122, longitude=44.8135, country_code="GE", locality="Tbilisi", postal_code="0103",
+        )] if key == api_key and country == "GE" else []
+
+    monkeypatch.setattr("app.auth.google_places_credential_router.search_google_places", fake_search)
+
+    default_response = integration_client.get("/account/integrations/google-places/search", params={"q": "Panorama Boutique Hotel", "country_code": "GE"})
+
+    assert default_response.status_code == 200
+    assert default_response.json() == {"items": [], "available": False, "warning_code": "GOOGLE_PLACES_NOT_SELECTED"}
+    assert calls == []
+
+    auth_user.preferences = {"places": {"provider": "google"}}
+    database_session.commit()
+
+    response = integration_client.get("/account/integrations/google-places/search", params={"q": "Panorama Boutique Hotel", "country_code": "GE"})
+
+    assert response.status_code == 200
+    assert response.json()["items"][0] == {
+        "id": "google:panorama", "name": "Panorama Boutique Hotel", "formattedAddress": "13 Samreklo Street, 0103 Tbilisi, Georgia",
+        "latitude": 41.697122, "longitude": 44.8135, "countryCode": "GE", "locality": "Tbilisi", "postalCode": "0103",
+        "source": "google_places", "confidence": 1,
+    }
+    assert len(calls) == 1
+    assert api_key not in response.text
+
+
 def test_account_anonymization_deletes_credential(integration_client, database_session, monkeypatch) -> None:
     _configure_encryption(monkeypatch)
     user = User(email=f"delete-credential-{uuid4()}@example.test", display_name="Delete", password_hash="hash", is_admin=False, is_active=True)

@@ -85,6 +85,10 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
         credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_routes"))
         if credential is None or credential.verified_at is None:
             raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé Google Routes avant de sélectionner ce moteur."})
+    if data.places.provider == "google":
+        credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_places"))
+        if credential is None or credential.verified_at is None:
+            raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé Google Places avant de sélectionner ce moteur."})
     current.user.preferences = data.model_dump()
     database_session.commit()
     return _preferences(current.user)

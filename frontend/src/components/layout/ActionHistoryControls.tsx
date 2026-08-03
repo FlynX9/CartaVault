@@ -22,8 +22,8 @@ export function ActionHistoryControls() {
   }, [])
 
   return <div className="action-history-controls" aria-label="Historique des actions">
-    <button type="button" disabled={history.busy || history.undoLabel === null} aria-label={history.undoLabel ? `Annuler : ${history.undoLabel}` : 'Aucune action à annuler'} title={history.undoLabel ? `Annuler : ${history.undoLabel} (Ctrl+Z)` : 'Aucune action à annuler'} onClick={() => void undoLastAction()}><Undo2 size={16} aria-hidden="true" /></button>
-    <button type="button" disabled={history.busy || history.redoLabel === null} aria-label={history.redoLabel ? `Rétablir : ${history.redoLabel}` : 'Aucune action à rétablir'} title={history.redoLabel ? `Rétablir : ${history.redoLabel} (Ctrl+Y)` : 'Aucune action à rétablir'} onClick={() => void redoLastAction()}><Redo2 size={16} aria-hidden="true" /></button>
+    <button className="panel-icon-button" type="button" disabled={history.busy || history.undoLabel === null} aria-label={history.undoLabel ? `Annuler : ${history.undoLabel}` : 'Aucune action à annuler'} title={history.undoLabel ? `Annuler : ${history.undoLabel} (Ctrl+Z)` : 'Aucune action à annuler'} onClick={() => void undoLastAction()}><Undo2 size={18} aria-hidden="true" /></button>
+    <button className="panel-icon-button" type="button" disabled={history.busy || history.redoLabel === null} aria-label={history.redoLabel ? `Rétablir : ${history.redoLabel}` : 'Aucune action à rétablir'} title={history.redoLabel ? `Rétablir : ${history.redoLabel} (Ctrl+Y)` : 'Aucune action à rétablir'} onClick={() => void redoLastAction()}><Redo2 size={18} aria-hidden="true" /></button>
     {history.error && <span className="action-history-error" role="alert">{history.error}</span>}
   </div>
 }
