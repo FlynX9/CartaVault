@@ -185,8 +185,9 @@ describe('PlaceMapPopup', () => {
   })
 
   it('previews and saves popup ratings in half-star increments', async () => {
+    const onUpdated = vi.fn()
     vi.mocked(updatePlace).mockResolvedValue({ ...PLACE, interest_rating: 3.5 })
-    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    render(<PlaceMapPopup placeId={PLACE_ID} onUpdated={onUpdated} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     await screen.findByRole('heading', { name: 'Manufacture' })
 
     const halfStar = screen.getByRole('radio', { name: '3.5 sur 5' })
@@ -197,6 +198,7 @@ describe('PlaceMapPopup', () => {
 
     fireEvent.click(halfStar)
     await waitFor(() => expect(updatePlace).toHaveBeenCalledWith(PLACE_ID, { interest_rating: 3.5 }))
+    await waitFor(() => expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ id: PLACE_ID, interest_rating: 3.5 })))
     expect(screen.getByRole('radio', { name: '3.5 sur 5' })).toHaveAttribute('aria-checked', 'true')
   })
 

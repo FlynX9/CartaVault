@@ -1051,6 +1051,7 @@ function WorkspaceApp() {
             : []
         }
         onAddToTrip={addPlaceToActiveTripTarget}
+        onUpdated={() => setRefreshVersion((value) => value + 1)}
         onEdit={() =>
           navigate(
             withMap(

@@ -32,6 +32,7 @@ interface Props {
   tripAddTargetLabel?: string | null;
   tripDays?: Array<{ id: string; label: string }>;
   onAddToTrip?: (place: PlaceDetails, dayId?: string) => Promise<void> | void;
+  onUpdated?: (place: PlaceDetails) => void;
   onEdit: () => void;
   onDeleted: (placeId: string) => void;
   onClose: () => void;
@@ -57,6 +58,7 @@ export function PlaceMapPopup({
   tripAddTargetLabel = null,
   tripDays = [],
   onAddToTrip = () => undefined,
+  onUpdated = () => undefined,
   onEdit,
   onDeleted,
   onClose,
@@ -274,11 +276,11 @@ export function PlaceMapPopup({
   };
   const toggleFavorite = async () => {
     try {
-      setPlace(
-        await updatePlace(place.id, {
-          is_favorite: !(place.is_favorite === true),
-        }),
-      );
+      const updated = await updatePlace(place.id, {
+        is_favorite: !(place.is_favorite === true),
+      });
+      setPlace(updated);
+      onUpdated(updated);
     } catch (error) {
       setDetailsError(
         error instanceof Error
@@ -295,7 +297,9 @@ export function PlaceMapPopup({
     setDetailsError(null);
     setPlace(isVisited ? { ...place, visit_rating: value } : { ...place, interest_rating: value });
     try {
-      setPlace(await updatePlace(place.id, payload));
+      const updated = await updatePlace(place.id, payload);
+      setPlace(updated);
+      onUpdated(updated);
     } catch (error) {
       setPlace(previous);
       setDetailsError(error instanceof Error ? error.message : "Modification de la note impossible.");
