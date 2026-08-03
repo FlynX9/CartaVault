@@ -198,6 +198,10 @@ describe('PlaceMapPopup', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Photo suivante' }))
     expect(await screen.findByRole('img', { name: 'Cour intérieure' })).toBeVisible()
     expect(screen.getByLabelText('Navigation des photos')).toHaveTextContent('2 / 2')
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(await screen.findByRole('img', { name: 'Façade' })).toBeVisible()
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(await screen.findByRole('img', { name: 'Cour intérieure' })).toBeVisible()
   })
 
   it('keeps textual details visible with no photo, a missing file, or photo API failure', async () => {

@@ -73,6 +73,10 @@ describe('TripNightMapPopup', () => {
     expect(screen.getByText('1 / 2')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Photo suivante' }))
     expect(screen.getByRole('img', { name: 'Photo 2 de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photos/photo-2')
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByRole('img', { name: 'Photo 1 de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photos/photo-1')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByRole('img', { name: 'Photo 2 de Hôtel' })).toHaveAttribute('src', '/trip-nights/night-1/photos/photo-2')
 
     fireEvent.click(screen.getByRole('button', { name: 'Afficher la photo 2 sur 2 en grand' }))
     expect(screen.getByRole('dialog', { name: 'Photo 2 de Hôtel' })).toBeVisible()

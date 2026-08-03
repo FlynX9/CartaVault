@@ -101,9 +101,12 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
   })
 
   useEffect(() => {
-    if (!lightboxOpen) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setLightboxOpen(false)
+      if (event.key === 'Escape' && lightboxOpen) { setLightboxOpen(false); return }
+      const target = event.target
+      const isTextTarget = target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)
+      if (isTextTarget || photos.length < 2 || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+      event.preventDefault()
       if (event.key === 'ArrowLeft') setActivePhotoId(photos[(activeIndex - 1 + photos.length) % photos.length]?.id ?? null)
       if (event.key === 'ArrowRight') setActivePhotoId(photos[(activeIndex + 1) % photos.length]?.id ?? null)
     }

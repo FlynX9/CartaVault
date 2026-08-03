@@ -29,6 +29,23 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
     setViewerOpen(false)
   }, [photos])
 
+  useEffect(() => {
+    if (viewerOpen || orderedPhotos.length < 2) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target
+      const isPasteTarget = target instanceof HTMLElement && target.dataset.popupPasteTarget === 'true'
+      const isTextTarget = target instanceof HTMLElement && !isPasteTarget && (target.matches('input, textarea, select') || target.isContentEditable)
+      if (isTextTarget || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+      event.preventDefault()
+      setFailed(false)
+      setIndex((current) => event.key === 'ArrowLeft'
+        ? (current - 1 + orderedPhotos.length) % orderedPhotos.length
+        : (current + 1) % orderedPhotos.length)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [orderedPhotos.length, viewerOpen])
+
   if (isLoading) return <div className="popup-photo-placeholder" role="status">Chargement des photos…</div>
   if (error) return <div className="popup-photo-placeholder" role="alert">Photos indisponibles</div>
   if (orderedPhotos.length === 0) return <div className="popup-photo-placeholder">Aucune photo</div>
