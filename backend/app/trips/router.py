@@ -500,7 +500,12 @@ def update_night(night_id: UUID, data: NightUpdate, session: Session = Depends(g
 @router.post("/trip-nights/{night_id}/photo", response_model=NightRead)
 @router.post("/trip-nights/{night_id}/photos", response_model=NightRead)
 def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    night, _ = require_night_role(session, night_id, user, "editor")
+    night, access = require_night_role(session, night_id, user, "editor")
+    owner_id = access.map_access.map.owner_id
+    quotas = QuotaService(session)
+    quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
+    if file.size is not None:
+        quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=file.size)
     photo_id = uuid4()
     try:
         stored = store_photo_file(file.file, file.content_type, night.id, photo_id)
@@ -510,6 +515,12 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
         raise HTTPException(415, str(error)) from error
     except PhotoStorageError as error:
         raise HTTPException(500, str(error)) from error
+
+    try:
+        quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
+    except HTTPException:
+        delete_photo_file(stored.relative_path, night.id, photo_id)
+        raise
 
     night.photos.append(TripNightPhoto(id=photo_id, file_path=stored.relative_path, mime_type=stored.media_type, sort_order=len(night.photos)))
     try:

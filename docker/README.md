@@ -3,11 +3,16 @@
 CartaVault uses two runtime images and two required services:
 
 - `cartavault:<version>` contains FastAPI, Alembic and the compiled React frontend;
-- `postgis/postgis:16-3.4` stores PostgreSQL/PostGIS data.
+- the digest-pinned `postgis/postgis:16-3.5` Debian image stores PostgreSQL/PostGIS data.
 
 The application container is disposable. Database data, photos, avatars and
 generated exports remain in external volumes. The external reverse proxy owns
 HTTPS and forwards one HTTP port to CartaVault.
+
+Proxy forwarding headers are disabled by default. When CartaVault is behind a
+reverse proxy, set `CARTAVAULT_FORWARDED_ALLOW_IPS` to that proxy's exact IP or
+CIDR range. CartaVault rejects `*` so clients cannot forge their source address
+through `X-Forwarded-For` and bypass IP-based protections.
 
 ## Build and offline export
 
@@ -24,7 +29,7 @@ Export both images for an offline NAS or Portainer installation:
 ```
 
 The archive contains `cartavault:0.9.0-beta.1` and
-`postgis/postgis:16-3.4`.
+`postgis/postgis:16-3.5` at the digest declared in the Compose file.
 
 ## First installation
 

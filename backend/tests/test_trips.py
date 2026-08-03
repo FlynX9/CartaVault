@@ -101,6 +101,55 @@ def test_trip_night_description_and_private_gallery_are_not_media(integration_cl
     assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{second_photo_id}").status_code == 200
 
 
+def test_night_photos_respect_owner_photo_quota(
+    integration_client,
+    photo_storage,
+    poi_map,
+    auth_user,
+) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Quota nuits"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    night = integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={
+            "previous_day_id": trip["days"][0]["id"],
+            "next_day_id": second["id"],
+            "name": "Hôtel limité",
+            "latitude": 48.4,
+            "longitude": 2.3,
+        },
+    ).json()
+    profile = integration_client.post(
+        "/admin/quota-profiles",
+        json={
+            "name": f"One photo {uuid4()}",
+            "description": "Night photo quota test",
+            "is_active": True,
+            "limits": {"photos_total_max": 1},
+        },
+    ).json()
+    integration_client.put(
+        f"/admin/users/{auth_user.id}/quota-profile",
+        json={"quota_profile_id": profile["id"]},
+    )
+
+    first = integration_client.post(
+        f"/trip-nights/{night['id']}/photos",
+        files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+    blocked = integration_client.post(
+        f"/trip-nights/{night['id']}/photos",
+        files={"file": ("room.jpg", SECOND_JPEG_BYTES, "image/jpeg")},
+    )
+
+    assert first.status_code == 200
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "quota.photos_total.limit_reached"
+    assert len(list(photo_storage.rglob("*.jpg"))) == 1
+    photo_id = first.json()["photos"][0]["id"]
+    assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{photo_id}").status_code == 200
+
+
 def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_client, poi_map) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "À terminer"}).json()
 

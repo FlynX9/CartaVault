@@ -239,6 +239,16 @@ def upload_place_photo(
             detail="Unable to store the uploaded image",
         ) from error
 
+    try:
+        quotas.ensure_can_create(
+            place.map.owner_id,
+            QuotaKey.STORAGE_BYTES_MAX,
+            increment=stored_photo.file_size_bytes,
+        )
+    except HTTPException:
+        delete_photo_file(stored_photo.relative_path, place_id, photo_id)
+        raise
+
     next_order = database_session.scalar(select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place_id))
     photo = Photo(
         id=photo_id,

@@ -7,6 +7,7 @@ import pytest
 from app.photos import storage
 from app.photos.storage import (
     BACKEND_ROOT,
+    MAX_PHOTO_DIMENSION,
     MAX_PHOTO_SIZE,
     InvalidPhotoPathError,
     PhotoStorageError,
@@ -152,6 +153,28 @@ def test_removes_final_file_when_dimension_validation_fails(
         )
 
     assert not [path for path in photo_storage.rglob("*") if path.is_file()]
+
+
+def test_rejects_image_dimensions_that_are_unsafe_to_decode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class OversizedImage:
+        size = (MAX_PHOTO_DIMENSION + 1, 1)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def verify(self) -> None:
+            raise AssertionError("unsafe dimensions must be rejected before decoding")
+
+    monkeypatch.setattr(storage.Image, "open", lambda _path: OversizedImage())
+
+    with pytest.raises(UnsupportedPhotoTypeError, match="safe processing limit"):
+        storage.read_photo_dimensions(tmp_path / "oversized.jpg")
 
 
 @pytest.mark.parametrize(

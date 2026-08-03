@@ -8,9 +8,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$postgisImage = 'postgis/postgis:16-3.5@sha256:7d7925e334fceb6079c0a5d150e925f192cde2cf1dd78767ca843e2996d39829'
 $images = @(
     "cartavault:$Version",
-    "postgis/postgis:16-3.4"
+    $postgisImage
 )
 
 foreach ($image in $images) {

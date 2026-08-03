@@ -17,7 +17,7 @@ from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
 from app.quotas.registry import QUOTA_REGISTRY, QuotaKey
 from app.statuses.models import PlaceStatus
 from app.tags.models import Tag
-from app.trips.models import Trip, TripDay, TripStop
+from app.trips.models import Trip, TripDay, TripNight, TripNightPhoto, TripStop
 
 
 class QuotaService:
@@ -74,10 +74,22 @@ class QuotaService:
 
     def usage(self, owner_id: UUID, key: QuotaKey, scope_id: UUID | None = None) -> int:
         now = datetime.now(UTC).replace(tzinfo=None)
+        if key == QuotaKey.PHOTOS_TOTAL_MAX:
+            place_photos = self.session.scalar(
+                select(func.count()).select_from(Photo).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id)
+            ) or 0
+            night_photos = self.session.scalar(
+                select(func.count())
+                .select_from(TripNightPhoto)
+                .join(TripNight, TripNight.id == TripNightPhoto.night_id)
+                .join(Trip, Trip.id == TripNight.trip_id)
+                .join(PoiMap, PoiMap.id == Trip.map_id)
+                .where(PoiMap.owner_id == owner_id)
+            ) or 0
+            return int(place_photos + night_photos)
         statements = {
             QuotaKey.MAPS_MAX: select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == owner_id, PoiMap.deleted_at.is_(None)),
             QuotaKey.TRIPS_TOTAL_MAX: select(func.count()).select_from(Trip).join(PoiMap).where(PoiMap.owner_id == owner_id, PoiMap.deleted_at.is_(None), Trip.deleted_at.is_(None)),
-            QuotaKey.PHOTOS_TOTAL_MAX: select(func.count()).select_from(Photo).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id),
             QuotaKey.MEMBERSHIPS_TOTAL_MAX: select(func.count()).select_from(MapMembership).where(MapMembership.user_id == owner_id),
             QuotaKey.PENDING_INVITATIONS_MAX: select(func.count()).select_from(MapInvitation).join(PoiMap).where(PoiMap.owner_id == owner_id, MapInvitation.accepted_at.is_(None), MapInvitation.revoked_at.is_(None), MapInvitation.expires_at > now),
             QuotaKey.PLACES_PER_MAP_MAX: select(func.count()).select_from(Place).where(Place.map_id == scope_id, Place.deleted_at.is_(None)),
@@ -97,10 +109,17 @@ class QuotaService:
         return int(self.session.scalar(statements[key]) or 0)
 
     def storage_usage(self, owner_id: UUID) -> int:
-        paths = self.session.scalars(select(Photo.path).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id, Photo.path.is_not(None)))
+        place_paths = self.session.scalars(select(Photo.path).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id, Photo.path.is_not(None)))
+        night_paths = self.session.scalars(
+            select(TripNightPhoto.file_path)
+            .join(TripNight, TripNight.id == TripNightPhoto.night_id)
+            .join(Trip, Trip.id == TripNight.trip_id)
+            .join(PoiMap, PoiMap.id == Trip.map_id)
+            .where(PoiMap.owner_id == owner_id)
+        )
         root = get_photo_storage_root().resolve()
         total = 0
-        for raw_path in paths:
+        for raw_path in (*place_paths.all(), *night_paths.all()):
             try:
                 path = (root / str(raw_path)).resolve()
                 path.relative_to(root)

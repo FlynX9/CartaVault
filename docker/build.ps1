@@ -7,6 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $composeFile = Join-Path $PSScriptRoot 'compose.yml'
+$postgisImage = 'postgis/postgis:16-3.5@sha256:7d7925e334fceb6079c0a5d150e925f192cde2cf1dd78767ca843e2996d39829'
 
 $buildDefaults = @{
     CARTAVAULT_VERSION = $Version
@@ -31,7 +32,7 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Docker Compose validation failed.'
 }
 
-docker pull postgis/postgis:16-3.4
+docker pull $postgisImage
 if ($LASTEXITCODE -ne 0) {
     throw 'PostGIS image pull failed.'
 }
@@ -43,4 +44,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Prepared the two-image CartaVault stack:"
 Write-Host "  cartavault:$Version"
-Write-Host "  postgis/postgis:16-3.4"
+Write-Host "  $postgisImage"

@@ -43,6 +43,7 @@ from app.places.router import router as places_router
 from app.statuses.router import router as statuses_router
 from app.setup.router import router as setup_router
 from app.setup.service import setup_token
+from app.security_headers import SecurityHeadersMiddleware
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
 from app.config import legacy_google_routes_api_key_configured
@@ -182,6 +183,7 @@ app.add_middleware(
         "X-CartaVault-Setup-Token",
     ],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(setup_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)

@@ -72,4 +72,3 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=8 \
     CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
 
 ENTRYPOINT ["python", "-m", "app.container_entrypoint"]
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

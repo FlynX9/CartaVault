@@ -11,6 +11,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PHOTO_STORAGE_PATH = Path("storage/photos")
 MAX_PHOTO_SIZE = 20 * 1024 * 1024
+MAX_PHOTO_PIXELS = 40_000_000
+MAX_PHOTO_DIMENSION = 16_384
 PHOTO_CHUNK_SIZE = 1024 * 1024
 THUMBNAIL_MAX_SIZE = (640, 480)
 
@@ -219,9 +221,19 @@ def read_photo_dimensions(file_path: Path) -> tuple[int | None, int | None]:
 
     try:
         with Image.open(file_path) as image:
+            width, height = image.size
+            if (
+                width <= 0
+                or height <= 0
+                or width > MAX_PHOTO_DIMENSION
+                or height > MAX_PHOTO_DIMENSION
+                or width * height > MAX_PHOTO_PIXELS
+            ):
+                raise UnsupportedPhotoTypeError(
+                    "The uploaded image dimensions exceed the safe processing limit"
+                )
             image.verify()
-        with Image.open(file_path) as image:
-            return image.size
+            return width, height
     except Image.DecompressionBombError as error:
         raise UnsupportedPhotoTypeError(
             "The uploaded image dimensions exceed the safe processing limit"
