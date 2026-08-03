@@ -59,9 +59,29 @@ describe('GeographicSearch', () => {
 
     expect(container.querySelector('.geographic-search')).not.toHaveClass('is-pinned-open')
     expect(screen.getByLabelText('Emplacement géographique sélectionné')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Ajouter ici' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Créer un POI' }))
     fireEvent.click(screen.getByRole('button', { name: 'Effacer' }))
     expect(onCreate).toHaveBeenCalledTimes(1)
+    expect(onClear).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers the selected trip target on a geographic result', () => {
+    const result = { id: 'google:hotel', name: 'Panorama Boutique Hotel', formattedAddress: '13 Samreklo Street, Tbilissi', latitude: 41.697122, longitude: 44.8135, source: 'google_places' }
+    const onAddToTrip = vi.fn()
+    const onClear = vi.fn()
+    render(<GeographicSearch
+      focus={[41.7, 44.8]}
+      selected={result}
+      tripAddTargetLabel="Ajouter à la nuit 1"
+      onSelect={vi.fn()}
+      onClear={onClear}
+      onCreate={vi.fn()}
+      onAddToTrip={onAddToTrip}
+    />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter à la nuit 1' }))
+
+    expect(onAddToTrip).toHaveBeenCalledWith(result)
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 })

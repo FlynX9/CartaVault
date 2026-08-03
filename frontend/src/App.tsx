@@ -20,7 +20,7 @@ import { deleteMap, getMaps } from "./api/maps";
 import { getMapPlaces, getPlaceDetails } from "./api/places";
 import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
 import { getStatuses } from "./api/statuses";
-import { addTripNight, addTripStop, getTrip, restoreTripState } from "./api/trips";
+import { addTripNight, addTripStop, getTrip, restoreTripState, updateTripNight } from "./api/trips";
 import { TopBar } from "./components/layout/TopBar";
 import {
   MainNavigation,
@@ -581,12 +581,11 @@ function WorkspaceApp() {
     }
     if (activeTrip.status === "completed" || activeTrip.status === "archived")
       return;
-    if (activeTripNightTarget?.nightId) return;
     const targetDayId = requestedDayId ?? activeTripDayId;
-    if (
+    if (!activeTripNightTarget && (
       !targetDayId ||
       !activeTrip.days.some((day) => day.id === targetDayId)
-    ) {
+    )) {
       showTripNotice("Sélectionnez une journée.");
       return;
     }
@@ -598,7 +597,7 @@ function WorkspaceApp() {
       activeTrip.days.some((day) =>
         day.stops.some((stop) => stop.place_id === place.id),
       ) ||
-      activeTrip.nights.some((night) => night.place_id === place.id)
+      activeTrip.nights.some((night) => night.place_id === place.id && night.id !== activeTripNightTarget?.nightId)
     ) {
       showTripNotice("Ce POI est déjà présent dans la sortie.");
       return;
@@ -607,18 +606,20 @@ function WorkspaceApp() {
     try {
       const before = await getTrip(activeTrip.id);
       if (activeTripNightTarget) {
-        const createdNight = await addTripNight(activeTrip.id, {
-          previous_day_id: activeTripNightTarget.previousDayId,
-          next_day_id: activeTripNightTarget.nextDayId,
-          place_id: place.id,
-          source_type: "place",
-        });
+        const createdNight = activeTripNightTarget.nightId
+          ? await updateTripNight(activeTripNightTarget.nightId, { place_id: place.id, source_type: "place" })
+          : await addTripNight(activeTrip.id, {
+              previous_day_id: activeTripNightTarget.previousDayId,
+              next_day_id: activeTripNightTarget.nextDayId,
+              place_id: place.id,
+              source_type: "place",
+            });
         setActiveTripNightTarget({
           ...activeTripNightTarget,
           nightId: createdNight.id,
         });
       } else {
-        await addTripStop(targetDayId, {
+        await addTripStop(targetDayId!, {
           place_id: place.id,
           stop_type: "place",
         });
@@ -640,6 +641,76 @@ function WorkspaceApp() {
           ? caught.message
           : "Impossible d’ajouter ce POI.",
       );
+    } finally {
+      tripAddPending.current.delete(key);
+    }
+  };
+  const addGeographicResultToActiveTripTarget = async (result: GeocodingResult) => {
+    if (!tripPlannerOpen || activeMap?.can_edit !== true) return;
+    if (!activeTrip) {
+      showTripNotice("Créez ou sélectionnez une sortie.");
+      return;
+    }
+    if (activeTrip.status === "completed" || activeTrip.status === "archived") return;
+    const targetDayId = activeTripDayId;
+    if (!activeTripNightTarget && (!targetDayId || !activeTrip.days.some((day) => day.id === targetDayId))) {
+      showTripNotice("Sélectionnez une journée ou une nuit.");
+      return;
+    }
+    const targetKey = activeTripNightTarget
+      ? `night:${activeTripNightTarget.previousDayId}:${activeTripNightTarget.nextDayId}`
+      : `day:${targetDayId}`;
+    const key = `geographic:${targetKey}:${result.id}`;
+    if (tripAddPending.current.has(key)) return;
+    tripAddPending.current.add(key);
+    try {
+      const before = await getTrip(activeTrip.id);
+      if (activeTripNightTarget) {
+        const payload = {
+          place_id: null,
+          source_type: "map" as const,
+          name: result.name,
+          latitude: result.latitude,
+          longitude: result.longitude,
+          address: result.formattedAddress,
+          google_place_id: result.source === "google_places" && result.id.startsWith("google:")
+            ? result.id.slice("google:".length)
+            : null,
+        };
+        const savedNight = activeTripNightTarget.nightId
+          ? await updateTripNight(activeTripNightTarget.nightId, payload)
+          : await addTripNight(activeTrip.id, {
+              previous_day_id: activeTripNightTarget.previousDayId,
+              next_day_id: activeTripNightTarget.nextDayId,
+              ...payload,
+            });
+        setActiveTripNightTarget({ ...activeTripNightTarget, nightId: savedNight.id });
+      } else if (targetDayId) {
+        await addTripStop(targetDayId, {
+          stop_type: "free_location",
+          name: result.name,
+          latitude: result.latitude,
+          longitude: result.longitude,
+          address: result.formattedAddress,
+          visit_duration_minutes: 30,
+        });
+        setActiveTripDayId(targetDayId);
+      }
+      const loaded = await getTrip(activeTrip.id);
+      setActiveTrip(loaded);
+      const restore = async (state: Trip) => { const restored = await restoreTripState(activeTrip.id, state); setActiveTrip(restored); };
+      recordReversibleAction({
+        label: activeTripNightTarget ? `association de « ${result.name} » à la nuit` : `ajout de « ${result.name} » à la journée`,
+        undo: () => restore(before),
+        redo: () => restore(loaded),
+      });
+      const targetDay = loaded.days.find((day) => day.id === (activeTripNightTarget?.previousDayId ?? targetDayId));
+      showTripNotice(activeTripNightTarget
+        ? `${result.name} associé à la nuit ${targetDay?.day_number ?? "sélectionnée"}.`
+        : `${result.name} ajouté${targetDay ? ` au jour ${targetDay.day_number}` : ""}.`);
+      setTemporarySearchResult(null);
+    } catch (caught) {
+      showTripNotice(caught instanceof Error ? caught.message : "Impossible d’ajouter ce lieu à la sortie.");
     } finally {
       tripAddPending.current.delete(key);
     }
@@ -796,9 +867,7 @@ function WorkspaceApp() {
         ? activeTrip.days.find((day) => day.id === activeTripDayId)?.day_number
           ? `Ajouter au jour ${activeTrip.days.find((day) => day.id === activeTripDayId)?.day_number}`
           : null
-        : activeTripNightTarget.nightId === null
-          ? "Ajouter à la nuit sélectionnée"
-          : null
+        : `Ajouter à la nuit ${activeTrip.days.find((day) => day.id === activeTripNightTarget.previousDayId)?.day_number ?? "sélectionnée"}`
       : null;
   const activeTripPlaceIds = useMemo(
     () =>
@@ -1087,10 +1156,10 @@ function WorkspaceApp() {
           }
           onTripChange={setActiveTrip}
           onActiveDayChange={setActiveTripDayId}
-          onActiveNightTargetChange={(target) => {
+          onActiveNightTargetChange={(target, openPopup = false) => {
             setActiveTripNightTarget(target);
-            setTripNightPopupId(target?.nightId ?? null);
-            if (target?.nightId) closePopup();
+            setTripNightPopupId(openPopup ? target?.nightId ?? null : null);
+            if (openPopup && target?.nightId) closePopup();
           }}
           onStopFocus={handleTripStopFocus}
           onStopPlaceSelect={(placeId) => {
@@ -1362,6 +1431,8 @@ function WorkspaceApp() {
                     });
                   }}
                   onGeographicResultClear={() => setTemporarySearchResult(null)}
+                  geographicTripAddTargetLabel={activeTripAddTargetLabel}
+                  onGeographicResultAddToTrip={(result) => void addGeographicResultToActiveTripTarget(result)}
                   onCreateFromGeographicResult={(result) => {
                     setCoordinatePrefill(null);
                     setDraftPosition({

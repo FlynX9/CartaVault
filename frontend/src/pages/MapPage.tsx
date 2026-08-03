@@ -79,6 +79,8 @@ interface MapPageProps {
   onGeographicResultSelect?: (result: GeocodingResult) => void
   onGeographicResultClear?: () => void
   onCreateFromGeographicResult?: (result: GeocodingResult) => void
+  geographicTripAddTargetLabel?: string | null
+  onGeographicResultAddToTrip?: (result: GeocodingResult) => void
   onCreateFromCoordinates?: (latitude: number, longitude: number) => void
   draftPosition?: DraftPosition | null
   draftPlaceId?: string | null
@@ -125,6 +127,8 @@ export function MapPage({
   onGeographicResultSelect = () => undefined,
   onGeographicResultClear = () => undefined,
   onCreateFromGeographicResult = () => undefined,
+  geographicTripAddTargetLabel = null,
+  onGeographicResultAddToTrip = () => undefined,
   onCreateFromCoordinates = () => undefined,
   draftPosition = null,
   draftPlaceId = null,
@@ -307,7 +311,7 @@ export function MapPage({
           </div>
           {!tripViewOnly && (
             <div className="map-overlay-control-slot map-overlay-control-slot--search">
-              <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} />
+              <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">

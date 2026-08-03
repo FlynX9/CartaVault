@@ -5,9 +5,19 @@ import { formatCoordinates } from '../../geocoding/coordinates'
 import { placeSearchService } from '../../geocoding/placeSearchService'
 import type { GeocodingResult } from '../../geocoding/types'
 
-interface Props { focus: [number, number]; countryCode?: string; selected: GeocodingResult | null; canCreate?: boolean; onSelect: (result: GeocodingResult) => void; onClear: () => void; onCreate: (result: GeocodingResult) => void }
+interface Props {
+  focus: [number, number]
+  countryCode?: string
+  selected: GeocodingResult | null
+  canCreate?: boolean
+  tripAddTargetLabel?: string | null
+  onSelect: (result: GeocodingResult) => void
+  onClear: () => void
+  onCreate: (result: GeocodingResult) => void
+  onAddToTrip?: (result: GeocodingResult) => void
+}
 
-export function GeographicSearch({ focus, countryCode, selected, canCreate = true, onSelect, onClear, onCreate }: Props) {
+export function GeographicSearch({ focus, countryCode, selected, canCreate = true, tripAddTargetLabel = null, onSelect, onClear, onCreate, onAddToTrip }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodingResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -52,6 +62,6 @@ export function GeographicSearch({ focus, countryCode, selected, canCreate = tru
   return <section ref={section} className={`geographic-search${focused || open || loading ? ' is-pinned-open' : ''}`} aria-label="Recherche géographique" onFocus={() => setFocused(true)} onBlur={handleBlur}><form onSubmit={submit}><label><span className="visually-hidden">Rechercher une adresse ou des coordonnées</span><input ref={input} type="search" value={query} placeholder="Rechercher une adresse ou des coordonnées…" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') { setOpen(false); setResults([]); input.current?.focus() } if (event.key === 'ArrowDown' && results.length) { event.preventDefault(); setActiveIndex((value) => Math.min(value + 1, results.length - 1)) } if (event.key === 'ArrowUp' && results.length) { event.preventDefault(); setActiveIndex((value) => Math.max(value - 1, 0)) } }} aria-expanded={open} aria-controls="geocoding-results" /></label><button type="submit" aria-label="Lancer la recherche géographique" disabled={loading}>{loading ? '…' : <Search size={18} aria-hidden="true" />}</button></form>
     {loading && <p className="geocoding-status" role="status">Recherche géographique…</p>}
     {open && !loading && <div className="geocoding-results" id="geocoding-results" role="listbox" aria-label="Résultats géographiques">{message && <p role="status">{message}</p>}{results.map((result, index) => <button key={result.id} type="button" role="option" aria-selected={index === activeIndex} className={index === activeIndex ? 'active' : undefined} onMouseEnter={() => setActiveIndex(index)} onClick={() => select(result)}><strong>{result.name}</strong><span>{result.formattedAddress}</span><small>{result.layer ?? 'lieu'} · {result.countryName ?? result.countryCode ?? 'Monde'} · {formatCoordinates(result.latitude, result.longitude)}</small></button>)}</div>}
-    {selected && <aside className="geocoding-selection" aria-label="Emplacement géographique sélectionné"><strong>{selected.name}</strong><span>{selected.formattedAddress}</span><small>{formatCoordinates(selected.latitude, selected.longitude)}</small><div>{canCreate && <button type="button" className="primary-button" onClick={() => onCreate(selected)}>Ajouter ici</button>}<button type="button" onClick={onClear}>Effacer</button></div></aside>}
+    {selected && <aside className="geocoding-selection" aria-label="Emplacement géographique sélectionné"><strong>{selected.name}</strong><span>{selected.formattedAddress}</span><small>{formatCoordinates(selected.latitude, selected.longitude)}</small><div>{tripAddTargetLabel && onAddToTrip && <button type="button" className="primary-button" onClick={() => { onAddToTrip(selected); onClear() }}>{tripAddTargetLabel}</button>}{canCreate && <button type="button" onClick={() => onCreate(selected)}>Créer un POI</button>}<button type="button" onClick={onClear}>Effacer</button></div></aside>}
   </section>
 }

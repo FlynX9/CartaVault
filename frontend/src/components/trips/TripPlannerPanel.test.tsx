@@ -600,7 +600,7 @@ describe('TripPlannerPanel', () => {
     expect(viewpoint).toHaveAttribute('aria-current', 'step')
 
     fireEvent.click(night)
-    expect(onActiveNightTargetChange).toHaveBeenCalledWith({ nightId: 'night-1', previousDayId: 'day-1', nextDayId: 'day-2' })
+    expect(onActiveNightTargetChange).toHaveBeenCalledWith({ nightId: 'night-1', previousDayId: 'day-1', nextDayId: 'day-2' }, true)
     expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
     expect(onStopFocus).not.toHaveBeenCalled()
     expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
@@ -838,10 +838,10 @@ describe('TripPlannerPanel', () => {
     const dataTransfer = { types: ['text/plain'], getData: () => 'place:hotel-poi' }
     fireEvent.dragEnter(nightDropTarget, { dataTransfer })
     expect(within(nightDropTarget).getByText('Déposer ici')).toBeVisible()
-    expect(within(nightDropTarget).queryByText('Glissez des POI depuis le panneau Lieux')).not.toBeInTheDocument()
+    expect(within(nightDropTarget).queryByText('Glissez un POI ou utilisez la recherche de la carte')).not.toBeInTheDocument()
     fireEvent.dragLeave(nightDropTarget, { relatedTarget: document.body })
     expect(within(nightDropTarget).queryByText('Déposer ici')).not.toBeInTheDocument()
-    expect(within(nightDropTarget).getByText('Glissez des POI depuis le panneau Lieux')).toBeVisible()
+    expect(within(nightDropTarget).getByText('Glissez un POI ou utilisez la recherche de la carte')).toBeVisible()
     fireEvent.dragEnter(nightDropTarget, { dataTransfer })
     fireEvent.dragEnd(window)
     expect(within(nightDropTarget).queryByText('Déposer ici')).not.toBeInTheDocument()
@@ -860,11 +860,11 @@ describe('TripPlannerPanel', () => {
 
     fireEvent.click(await within(nightCard).findByRole('button', { name: 'Réduire la nuit 1' }))
     expect(nightCard).toHaveClass('is-collapsed')
-    expect(within(nightCard).queryByText('Glissez des POI depuis le panneau Lieux')).not.toBeInTheDocument()
+    expect(within(nightCard).queryByText('Glissez un POI ou utilisez la recherche de la carte')).not.toBeInTheDocument()
 
     fireEvent.click(within(nightCard).getByRole('button', { name: 'Développer la nuit 1' }))
     expect(nightCard).not.toHaveClass('is-collapsed')
-    expect(within(nightCard).getByText('Glissez des POI depuis le panneau Lieux')).toBeVisible()
+    expect(within(nightCard).getByText('Glissez un POI ou utilisez la recherche de la carte')).toBeVisible()
   })
 
   it('adds a fixed departure before day one from a dropped POI', async () => {
@@ -1181,7 +1181,7 @@ describe('TripPlannerPanel', () => {
     expect(await screen.findByRole('button', { name: 'Modifier le point de départ' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Modifier le point d’arrivée' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Modifier le lieu de la nuit' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Modifier le lieu de la nuit' })).not.toBeInTheDocument()
     const googleMapsLink = screen.getByRole('link', { name: 'Ouvrir la fiche Google Maps de Hôtel' })
     expect(googleMapsLink).toHaveAttribute('target', '_blank')
     expect(googleMapsLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
@@ -1228,7 +1228,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('Retour maison')).toBeVisible()
   })
 
-  it('opens the lodging search from an empty night', async () => {
+  it('directs an empty night to the map search without opening a dialog', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
     const tripWithoutNight = { ...trip, days: [trip.days[0], secondDay], nights: [] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([tripWithoutNight])
@@ -1236,8 +1236,9 @@ describe('TripPlannerPanel', () => {
 
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={tripWithoutNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Ajouter un hébergement' }))
-    expect(screen.getByRole('dialog', { name: 'Ajouter un hébergement' })).toBeVisible()
+    expect((await screen.findAllByText('Glissez un POI ou utilisez la recherche de la carte')).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Ajouter un hébergement' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('selects a night as the active itinerary target without opening its editor', async () => {
@@ -1246,13 +1247,18 @@ describe('TripPlannerPanel', () => {
     vi.mocked(listTrips).mockResolvedValue([withNight])
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const onActiveDayChange = vi.fn()
+    const onActiveNightTargetChange = vi.fn()
     const onStopFocus = vi.fn()
     const onStopPlaceSelect = vi.fn()
-    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onActiveNightTargetChange={onActiveNightTargetChange} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
 
+    fireEvent.click((await screen.findByText('Nuit 1')).closest('.trip-night-header-row') as HTMLElement)
+    expect(onActiveNightTargetChange).toHaveBeenLastCalledWith(expect.objectContaining({ nightId: 'night-1' }), false)
+    expect(onStopFocus).not.toHaveBeenCalled()
     const night = await screen.findByText('Hôtel central')
     fireEvent.click(night)
 
+    expect(onActiveNightTargetChange).toHaveBeenLastCalledWith(expect.objectContaining({ nightId: 'night-1' }), true)
     expect(container.querySelector('.trip-panel-night.is-active')).toBeInTheDocument()
     expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
     expect(onStopFocus).toHaveBeenCalledWith(49, 3)
@@ -1293,10 +1299,9 @@ describe('TripPlannerPanel', () => {
     await waitFor(() => expect(deleteTripNight).toHaveBeenCalledWith('night-1'))
   })
 
-  it('presents the free location action as a ghost stop entry', () => {
+  it('does not render the legacy free-location insertion row', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Belgique', country: { iso_alpha2: 'BE' }, effective_center_latitude: 50.5, effective_center_longitude: 4.5, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    expect(screen.getByRole('button', { name: /Lieu libre/ })).toHaveClass('trip-panel-free-stop')
-    fireEvent.click(screen.getByRole('button', { name: /Lieu libre/ }))
-    expect(screen.getByRole('dialog', { name: 'Ajouter un lieu libre' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /Lieu libre/ })).not.toBeInTheDocument()
+    expect(document.querySelector('.trip-panel-free-stop')).not.toBeInTheDocument()
   })
 })
