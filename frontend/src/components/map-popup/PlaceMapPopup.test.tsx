@@ -134,6 +134,16 @@ describe('PlaceMapPopup', () => {
     await waitFor(() => expect(onAddToTrip).toHaveBeenCalledWith(PLACE))
   })
 
+  it('can hide place management actions without hiding navigation or trip actions', async () => {
+    render(<PlaceMapPopup placeId={PLACE_ID} showManagementActions={false} tripAddTargetLabel="Ajouter au départ" onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    await screen.findByRole('heading', { name: 'Manufacture' })
+    expect(screen.queryByRole('button', { name: 'Modifier le POI' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Supprimer le POI' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ajouter au départ' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Ouvrir dans Google Maps' })).toBeVisible()
+  })
+
   it('shows only the rating that matches the status visit classification', async () => {
     vi.mocked(getPlaceDetails).mockResolvedValue({ ...PLACE, interest_rating: 3.5, visit_rating: 2 })
     const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
@@ -180,7 +190,7 @@ describe('PlaceMapPopup', () => {
     const previous = screen.getByRole('button', { name: 'Photo précédente' })
     expect(previous).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Photo suivante' }))
-    expect(screen.getByRole('img', { name: 'Cour intérieure' })).toBeVisible()
+    expect(await screen.findByRole('img', { name: 'Cour intérieure' })).toBeVisible()
     expect(screen.getByLabelText('Navigation des photos')).toHaveTextContent('2 / 2')
   })
 

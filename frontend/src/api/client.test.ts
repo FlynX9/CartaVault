@@ -1,11 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { sendJson } from './client'
+import { getJson, sendJson } from './client'
 import { API_MUTATION_FAILURE_EVENT, API_MUTATION_SUCCESS_EVENT } from './mutationEvents'
 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('API errors', () => {
+  it('bypasses the browser cache for authenticated API reads', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await getJson('/trips/trip-1', new URLSearchParams())
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/trips/trip-1'), expect.objectContaining({ cache: 'no-store' }))
+  })
+
   it('maps FastAPI 422 details to form fields', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({
       detail: [{ loc: ['body', 'latitude'], msg: 'Input should be less than 90' }],

@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from geoalchemy2.elements import WKTElement
 from sqlalchemy import select
 
 from app.auth.dependencies import get_current_user
@@ -9,6 +10,7 @@ from app.countries.models import Country
 from app.main import app
 from app.exports import temporary_exports
 from app.maps.models import MapMembership, PoiMap
+from app.places.models import Place
 from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.router import get_routing_provider
 from app.trips.routing.base import MatrixResult, RouteResult, RoutingProvider
@@ -429,6 +431,91 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     assert updated_departure.status_code == 200
     assert updated_departure.json()["name"] == "Nouveau départ"
     assert integration_client.delete(f"/trip-departures/{departure.json()['id']}").status_code == 204
+
+
+def test_search_result_replaces_linked_trip_anchors(
+    integration_client,
+    database_session,
+    poi_map,
+) -> None:
+    status = next(item for item in poi_map.statuses if item.is_default)
+    linked_place = Place(
+        name="Ancien point",
+        map_id=poi_map.id,
+        status_id=status.id,
+        location=WKTElement("POINT(2.0 48.0)", srid=4326),
+    )
+    replacement_place = Place(
+        name="Nouveau POI de départ",
+        map_id=poi_map.id,
+        status_id=status.id,
+        location=WKTElement("POINT(3.0 49.0)", srid=4326),
+    )
+    database_session.add_all([linked_place, replacement_place])
+    database_session.commit()
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Remplacement des points"}).json()
+    departure = integration_client.post(
+        f"/trips/{trip['id']}/departure",
+        json={"place_id": str(linked_place.id), "notes": "Conserver la note", "departure_time": "08:30"},
+    ).json()
+    arrival = integration_client.post(
+        f"/trips/{trip['id']}/arrival",
+        json={"place_id": str(linked_place.id), "notes": "Conserver le retour"},
+    ).json()
+
+    linked_replacement = integration_client.put(
+        f"/trips/{trip['id']}/anchors/departure/place/{replacement_place.id}",
+        json={},
+    )
+    assert linked_replacement.status_code == 200
+    assert linked_replacement.json()["departure"]["place_id"] == str(replacement_place.id)
+    assert linked_replacement.json()["departure"]["name"] == "Nouveau POI de départ"
+    assert linked_replacement.json()["departure"]["latitude"] == 49.0
+    assert linked_replacement.json()["departure"]["longitude"] == 3.0
+    assert linked_replacement.json()["departure"]["notes"] == "Conserver la note"
+    assert linked_replacement.json()["departure"]["departure_time"] == "08:30:00"
+    refreshed_trip = integration_client.get(f"/trips/{trip['id']}")
+    assert refreshed_trip.headers["cache-control"] == "private, no-store"
+    assert refreshed_trip.json()["departure"]["place_id"] == str(replacement_place.id)
+
+    replaced_departure = integration_client.patch(
+        f"/trip-departures/{departure['id']}",
+        json={
+            "place_id": None,
+            "name": "Nouveau départ",
+            "latitude": 41.697122,
+            "longitude": 44.8135,
+            "address": "13 Samreklo Street, Tbilissi",
+            "notes": departure["notes"],
+            "departure_time": departure["departure_time"],
+        },
+    )
+    replaced_arrival = integration_client.patch(
+        f"/trip-arrivals/{arrival['id']}",
+        json={
+            "place_id": None,
+            "name": "Nouvelle arrivée",
+            "latitude": 41.7151,
+            "longitude": 44.8271,
+            "address": "Tbilissi, Géorgie",
+            "notes": arrival["notes"],
+        },
+    )
+
+    assert replaced_departure.status_code == 200
+    assert replaced_departure.json()["place_id"] is None
+    assert replaced_departure.json()["name"] == "Nouveau départ"
+    assert replaced_departure.json()["latitude"] == 41.697122
+    assert replaced_departure.json()["longitude"] == 44.8135
+    assert replaced_departure.json()["address"] == "13 Samreklo Street, Tbilissi"
+    assert replaced_departure.json()["notes"] == "Conserver la note"
+    assert replaced_departure.json()["departure_time"] == "08:30:00"
+    assert replaced_arrival.status_code == 200
+    assert replaced_arrival.json()["place_id"] is None
+    assert replaced_arrival.json()["name"] == "Nouvelle arrivée"
+    assert replaced_arrival.json()["latitude"] == 41.7151
+    assert replaced_arrival.json()["longitude"] == 44.8271
+    assert replaced_arrival.json()["notes"] == "Conserver le retour"
 
 
 def test_google_provider_is_persisted_and_failed_recalculation_keeps_previous_route(integration_client, poi_map) -> None:

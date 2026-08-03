@@ -4,6 +4,7 @@ interface Props {
   googleMapsUrl: string | null;
   isDeleting: boolean;
   canEdit?: boolean;
+  showManagementActions?: boolean;
   showClose?: boolean;
   tripAddTargetLabel?: string | null;
   canChooseTripDay?: boolean;
@@ -18,6 +19,7 @@ export function PlacePopupActions({
   googleMapsUrl,
   isDeleting,
   canEdit = true,
+  showManagementActions = true,
   showClose = true,
   tripAddTargetLabel = null,
   canChooseTripDay = false,
@@ -46,7 +48,7 @@ export function PlacePopupActions({
           </span>
         </button>
       )}
-      {canEdit && (
+      {canEdit && showManagementActions && (
         <button
           type="button"
           aria-label="Modifier le POI"
@@ -58,7 +60,7 @@ export function PlacePopupActions({
           <span>Éditer</span>
         </button>
       )}
-      {canEdit && (
+      {canEdit && showManagementActions && (
         <button
           className="popup-action-delete"
           type="button"

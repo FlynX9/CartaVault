@@ -20,7 +20,7 @@ import { deleteMap, getMaps } from "./api/maps";
 import { getMapPlaces, getPlaceDetails } from "./api/places";
 import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
 import { getStatuses } from "./api/statuses";
-import { addTripNight, addTripStop, getTrip, restoreTripState, updateTripNight } from "./api/trips";
+import { addTripArrival, addTripDeparture, addTripNight, addTripStop, deleteTripArrival, deleteTripDeparture, getTrip, restoreTripState, setTripAnchorPlace, updateTripArrival, updateTripDeparture, updateTripNight } from "./api/trips";
 import { TopBar } from "./components/layout/TopBar";
 import {
   MainNavigation,
@@ -34,6 +34,7 @@ import { MapSidebar } from "./components/sidebar/MapSidebar";
 import { PlaceMapPopup } from "./components/map-popup/PlaceMapPopup";
 import { TripStopMapPopup } from "./components/map-popup/TripStopMapPopup";
 import { TripNightMapPopup } from "./components/map-popup/TripNightMapPopup";
+import { TripAnchorMapPopup } from "./components/map-popup/TripAnchorMapPopup";
 import {
   deriveMapSidebarState,
   getSidebarPlaceId,
@@ -239,9 +240,18 @@ function WorkspaceApp() {
   const [activeTripDayId, setActiveTripDayId] = useState<string | null>(null);
   const [activeTripNightTarget, setActiveTripNightTarget] =
     useState<TripNightTarget | null>(null);
+  const [activeTripAnchorTarget, setActiveTripAnchorTarget] =
+    useState<"departure" | "arrival" | null>(null);
+  const activeTripAnchorTargetRef = useRef<"departure" | "arrival" | null>(null);
+  const changeActiveTripAnchorTarget = useCallback((target: "departure" | "arrival" | null) => {
+    activeTripAnchorTargetRef.current = target;
+    setActiveTripAnchorTarget(target);
+  }, []);
   const [tripViewOnly, setTripViewOnly] = useState(false);
   const [tripPreviewStopId, setTripPreviewStopId] = useState<string | null>(null);
   const [tripNightPopupId, setTripNightPopupId] = useState<string | null>(null);
+  const [tripAnchorPopupTarget, setTripAnchorPopupTarget] =
+    useState<"departure" | "arrival" | null>(null);
   const [tripPreviewSelectionKey, setTripPreviewSelectionKey] = useState<string | null>(null);
   const [hiddenTripDayIds, setHiddenTripDayIds] = useState<Set<string>>(
     () => new Set(),
@@ -570,6 +580,51 @@ function WorkspaceApp() {
       2600,
     );
   };
+  const replaceActiveTripAnchorWithPlace = async (
+    target: "departure" | "arrival",
+    placeId: string,
+  ) => {
+    if (!activeTrip || activeMap?.can_edit !== true) return;
+    const key = `anchor:${target}:${placeId}`;
+    if (tripAddPending.current.has(key)) return;
+    tripAddPending.current.add(key);
+    try {
+      const before = await getTrip(activeTrip.id);
+      let loaded: Trip;
+      try {
+        loaded = await setTripAnchorPlace(activeTrip.id, target, placeId);
+      } catch (caught) {
+        if (!(caught instanceof ApiError) || caught.status !== 404) throw caught;
+        if (target === "departure") {
+          const payload = { place_id: placeId, notes: before.departure?.notes ?? null, departure_time: before.departure?.departure_time ?? null };
+          const saved = before.departure
+            ? await updateTripDeparture(before.departure.id, payload)
+            : await addTripDeparture(activeTrip.id, payload);
+          loaded = { ...before, departure: saved };
+        } else {
+          const payload = { place_id: placeId, notes: before.arrival?.notes ?? null };
+          const saved = before.arrival
+            ? await updateTripArrival(before.arrival.id, payload)
+            : await addTripArrival(activeTrip.id, payload);
+          loaded = { ...before, arrival: saved };
+        }
+      }
+      const savedAnchor = target === "departure" ? loaded.departure : loaded.arrival;
+      if (savedAnchor?.place_id !== placeId) throw new Error("Le serveur n’a pas associé le POI demandé.");
+      setActiveTrip(loaded);
+      const restore = async (state: Trip) => { const restored = await restoreTripState(activeTrip.id, state); setActiveTrip(restored); };
+      recordReversibleAction({
+        label: target === "departure" ? "remplacement du point de départ" : "remplacement du point d’arrivée",
+        undo: () => restore(before),
+        redo: () => restore(loaded),
+      });
+      showTripNotice(`${savedAnchor.name} associé ${target === "departure" ? "au départ" : "à l’arrivée"}.`);
+    } catch (caught) {
+      showTripNotice(caught instanceof Error ? caught.message : "Impossible de remplacer ce point.");
+    } finally {
+      tripAddPending.current.delete(key);
+    }
+  };
   const addPlaceToActiveTripTarget = async (
     place: PreviewPlace,
     requestedDayId?: string,
@@ -581,6 +636,11 @@ function WorkspaceApp() {
     }
     if (activeTrip.status === "completed" || activeTrip.status === "archived")
       return;
+    const anchorTarget = activeTripAnchorTargetRef.current;
+    if (anchorTarget) {
+      await replaceActiveTripAnchorWithPlace(anchorTarget, place.id);
+      return;
+    }
     const targetDayId = requestedDayId ?? activeTripDayId;
     if (!activeTripNightTarget && (
       !targetDayId ||
@@ -593,15 +653,6 @@ function WorkspaceApp() {
       ? `night:${activeTripNightTarget.previousDayId}:${activeTripNightTarget.nextDayId}:${place.id}`
       : `day:${targetDayId}:${place.id}`;
     if (tripAddPending.current.has(key)) return;
-    if (
-      activeTrip.days.some((day) =>
-        day.stops.some((stop) => stop.place_id === place.id),
-      ) ||
-      activeTrip.nights.some((night) => night.place_id === place.id && night.id !== activeTripNightTarget?.nightId)
-    ) {
-      showTripNotice("Ce POI est déjà présent dans la sortie.");
-      return;
-    }
     tripAddPending.current.add(key);
     try {
       const before = await getTrip(activeTrip.id);
@@ -653,26 +704,47 @@ function WorkspaceApp() {
     }
     if (activeTrip.status === "completed" || activeTrip.status === "archived") return;
     const targetDayId = activeTripDayId;
-    if (!activeTripNightTarget && (!targetDayId || !activeTrip.days.some((day) => day.id === targetDayId))) {
-      showTripNotice("Sélectionnez une journée ou une nuit.");
+    const anchorTarget = activeTripAnchorTargetRef.current;
+    if (!anchorTarget && !activeTripNightTarget && (!targetDayId || !activeTrip.days.some((day) => day.id === targetDayId))) {
+      showTripNotice("Sélectionnez un jour, une nuit, le départ ou l’arrivée.");
       return;
     }
-    const targetKey = activeTripNightTarget
+    const targetKey = anchorTarget ?? (activeTripNightTarget
       ? `night:${activeTripNightTarget.previousDayId}:${activeTripNightTarget.nextDayId}`
-      : `day:${targetDayId}`;
+      : `day:${targetDayId}`);
     const key = `geographic:${targetKey}:${result.id}`;
     if (tripAddPending.current.has(key)) return;
     tripAddPending.current.add(key);
     try {
       const before = await getTrip(activeTrip.id);
-      if (activeTripNightTarget) {
+      const locationPayload = {
+        name: result.name,
+        latitude: result.latitude,
+        longitude: result.longitude,
+        address: result.formattedAddress,
+      };
+      let savedDeparture = null;
+      let savedArrival = null;
+      if (anchorTarget === "departure") {
+        const payload = {
+          ...locationPayload,
+          place_id: null,
+          notes: before.departure?.notes ?? null,
+          departure_time: before.departure?.departure_time ?? null,
+        };
+        savedDeparture = before.departure
+          ? await updateTripDeparture(before.departure.id, payload)
+          : await addTripDeparture(activeTrip.id, payload);
+      } else if (anchorTarget === "arrival") {
+        const payload = { ...locationPayload, place_id: null, notes: before.arrival?.notes ?? null };
+        savedArrival = before.arrival
+          ? await updateTripArrival(before.arrival.id, payload)
+          : await addTripArrival(activeTrip.id, payload);
+      } else if (activeTripNightTarget) {
         const payload = {
           place_id: null,
           source_type: "map" as const,
-          name: result.name,
-          latitude: result.latitude,
-          longitude: result.longitude,
-          address: result.formattedAddress,
+          ...locationPayload,
           google_place_id: result.source === "google_places" && result.id.startsWith("google:")
             ? result.id.slice("google:".length)
             : null,
@@ -696,18 +768,27 @@ function WorkspaceApp() {
         });
         setActiveTripDayId(targetDayId);
       }
-      const loaded = await getTrip(activeTrip.id);
+      const refreshed = await getTrip(activeTrip.id);
+      const loaded: Trip = anchorTarget === "departure" && savedDeparture
+        ? { ...refreshed, departure: savedDeparture }
+        : anchorTarget === "arrival" && savedArrival
+          ? { ...refreshed, arrival: savedArrival }
+          : refreshed;
       setActiveTrip(loaded);
       const restore = async (state: Trip) => { const restored = await restoreTripState(activeTrip.id, state); setActiveTrip(restored); };
       recordReversibleAction({
-        label: activeTripNightTarget ? `association de « ${result.name} » à la nuit` : `ajout de « ${result.name} » à la journée`,
+        label: anchorTarget
+          ? `association de « ${result.name} » ${anchorTarget === "departure" ? "au départ" : "à l’arrivée"}`
+          : activeTripNightTarget ? `association de « ${result.name} » à la nuit` : `ajout de « ${result.name} » à la journée`,
         undo: () => restore(before),
         redo: () => restore(loaded),
       });
       const targetDay = loaded.days.find((day) => day.id === (activeTripNightTarget?.previousDayId ?? targetDayId));
-      showTripNotice(activeTripNightTarget
-        ? `${result.name} associé à la nuit ${targetDay?.day_number ?? "sélectionnée"}.`
-        : `${result.name} ajouté${targetDay ? ` au jour ${targetDay.day_number}` : ""}.`);
+      showTripNotice(anchorTarget
+        ? `${result.name} associé ${anchorTarget === "departure" ? "au départ" : "à l’arrivée"}.`
+        : activeTripNightTarget
+          ? `${result.name} associé à la nuit ${targetDay?.day_number ?? "sélectionnée"}.`
+          : `${result.name} ajouté${targetDay ? ` au jour ${targetDay.day_number}` : ""}.`);
       setTemporarySearchResult(null);
     } catch (caught) {
       showTripNotice(caught instanceof Error ? caught.message : "Impossible d’ajouter ce lieu à la sortie.");
@@ -820,11 +901,13 @@ function WorkspaceApp() {
     setActiveTrip(null);
     setActiveTripDayId(null);
     setActiveTripNightTarget(null);
+    changeActiveTripAnchorTarget(null);
     setTripNightPopupId(null);
+    setTripAnchorPopupTarget(null);
     setTripPlannerCollapsed(false);
     setPlaceSelectionMode(false);
     setSelectedPlaceIds(new Set());
-  }, [activeMapId]);
+  }, [activeMapId, changeActiveTripAnchorTarget]);
   useEffect(() => {
     if (
       sidebarState.mode === "create" &&
@@ -869,6 +952,14 @@ function WorkspaceApp() {
           : null
         : `Ajouter à la nuit ${activeTrip.days.find((day) => day.id === activeTripNightTarget.previousDayId)?.day_number ?? "sélectionnée"}`
       : null;
+  const activeTripGeographicTargetLabel =
+    tripPlannerOpen && activeMap?.can_edit === true && activeTrip !== null && activeTrip.status !== "completed" && activeTrip.status !== "archived"
+      ? activeTripAnchorTarget === "departure"
+        ? "Ajouter au départ"
+        : activeTripAnchorTarget === "arrival"
+          ? "Ajouter à l’arrivée"
+          : activeTripAddTargetLabel
+      : null;
   const activeTripPlaceIds = useMemo(
     () =>
       new Set(
@@ -877,18 +968,62 @@ function WorkspaceApp() {
             day.stops.map((stop) => stop.place_id),
           ) ?? []),
           ...(activeTrip?.nights.map((night) => night.place_id) ?? []),
+          activeTrip?.departure?.place_id ?? null,
+          activeTrip?.arrival?.place_id ?? null,
         ].filter((id): id is string => id !== null),
       ),
     [activeTrip],
   );
+  const activeTripTargetPlaceId = activeTripAnchorTarget === "departure"
+    ? activeTrip?.departure?.place_id ?? null
+    : activeTripAnchorTarget === "arrival"
+      ? activeTrip?.arrival?.place_id ?? null
+      : activeTripNightTarget?.nightId
+        ? activeTrip?.nights.find((night) => night.id === activeTripNightTarget.nightId)?.place_id ?? null
+        : null;
   const popupTripAddTargetLabel =
-    selectedPlaceId !== null && !activeTripPlaceIds.has(selectedPlaceId)
-      ? activeTripAddTargetLabel
+    selectedPlaceId !== null && selectedPlaceId !== activeTripTargetPlaceId
+      ? activeTripGeographicTargetLabel
       : null;
   const selectedPreviewStop = activeTrip?.days.flatMap((day) => day.stops).find((stop) => stop.id === tripPreviewStopId) ?? null;
   const selectedTripNight = activeTrip?.nights.find((night) => night.id === tripNightPopupId) ?? null;
+  const selectedTripAnchor = tripAnchorPopupTarget === "departure"
+    ? activeTrip?.departure ?? null
+    : tripAnchorPopupTarget === "arrival"
+      ? activeTrip?.arrival ?? null
+      : null;
+  const deleteSelectedTripAnchor = async () => {
+    if (!activeTrip || !selectedTripAnchor || !tripAnchorPopupTarget) return;
+    try {
+      const before = await getTrip(activeTrip.id);
+      if (tripAnchorPopupTarget === "departure") await deleteTripDeparture(selectedTripAnchor.id);
+      else await deleteTripArrival(selectedTripAnchor.id);
+      const after = await getTrip(activeTrip.id);
+      setActiveTrip(after);
+      setTripAnchorPopupTarget(null);
+      const restore = async (state: Trip) => {
+        await restoreTripState(activeTrip.id, state);
+        setActiveTrip(await getTrip(activeTrip.id));
+      };
+      recordReversibleAction({
+        label: tripAnchorPopupTarget === "departure" ? "suppression du point de départ" : "suppression du point d’arrivée",
+        undo: () => restore(before),
+        redo: () => restore(after),
+      });
+    } catch (caught) {
+      showTripNotice(caught instanceof Error ? caught.message : "Impossible de supprimer ce point.");
+    }
+  };
   const popupContent =
-    selectedTripNight !== null ? (
+    selectedTripAnchor !== null && tripAnchorPopupTarget !== null ? (
+      <TripAnchorMapPopup
+        anchor={selectedTripAnchor}
+        kind={tripAnchorPopupTarget}
+        canEdit={activeMap?.can_edit === true}
+        onDelete={() => void deleteSelectedTripAnchor()}
+        onClose={() => setTripAnchorPopupTarget(null)}
+      />
+    ) : selectedTripNight !== null ? (
       <TripNightMapPopup
         night={selectedTripNight}
         canEdit={activeMap?.can_edit === true}
@@ -899,6 +1034,7 @@ function WorkspaceApp() {
       <PlaceMapPopup
         placeId={selectedPlaceId}
         canEdit={activeMap?.can_edit === true}
+        showManagementActions={!tripPlannerOpen}
         tripAddTargetLabel={popupTripAddTargetLabel}
         tripDays={
           tripPlannerOpen &&
@@ -906,7 +1042,7 @@ function WorkspaceApp() {
           activeTrip !== null &&
           activeTripDayId === null &&
           activeTripNightTarget === null &&
-          !activeTripPlaceIds.has(selectedPlaceId)
+          activeTripAnchorTarget === null
             ? activeTrip.days.map((day) => ({
                 id: day.id,
                 label: `Jour ${day.day_number}${day.title ? ` · ${day.title}` : ""}`,
@@ -1156,13 +1292,26 @@ function WorkspaceApp() {
           }
           onTripChange={setActiveTrip}
           onActiveDayChange={setActiveTripDayId}
+          activeAnchorTarget={activeTripAnchorTarget}
+          onActiveAnchorTargetChange={changeActiveTripAnchorTarget}
           onActiveNightTargetChange={(target, openPopup = false) => {
             setActiveTripNightTarget(target);
+            if (target) changeActiveTripAnchorTarget(null);
+            if (openPopup) setTripAnchorPopupTarget(null);
             setTripNightPopupId(openPopup ? target?.nightId ?? null : null);
             if (openPopup && target?.nightId) closePopup();
           }}
+          onAnchorPopupChange={(target) => {
+            setTripAnchorPopupTarget(target);
+            if (target) {
+              setTripNightPopupId(null);
+              closePopup();
+            }
+          }}
+          onAnchorPlaceDrop={(target, placeId) => replaceActiveTripAnchorWithPlace(target, placeId)}
           onStopFocus={handleTripStopFocus}
           onStopPlaceSelect={(placeId) => {
+            setTripAnchorPopupTarget(null);
             void handleTripPlaceSelect(placeId, !tripViewOnly);
           }}
           onPreviewStopSelect={(stopId) => {
@@ -1181,7 +1330,9 @@ function WorkspaceApp() {
             setActiveTrip(null);
             setActiveTripDayId(null);
             setActiveTripNightTarget(null);
+            changeActiveTripAnchorTarget(null);
             setTripNightPopupId(null);
+            setTripAnchorPopupTarget(null);
             setTripViewOnly(false);
             setTripPreviewSelectionKey(null);
             setHiddenTripDayIds(new Set());
@@ -1217,6 +1368,8 @@ function WorkspaceApp() {
       setActiveTrip(null);
       setActiveTripDayId(null);
       setActiveTripNightTarget(null);
+      changeActiveTripAnchorTarget(null);
+      setTripAnchorPopupTarget(null);
       setTripViewOnly(false);
       setHiddenTripDayIds(new Set());
     }
@@ -1431,7 +1584,7 @@ function WorkspaceApp() {
                     });
                   }}
                   onGeographicResultClear={() => setTemporarySearchResult(null)}
-                  geographicTripAddTargetLabel={activeTripAddTargetLabel}
+                  geographicTripAddTargetLabel={activeTripGeographicTargetLabel}
                   onGeographicResultAddToTrip={(result) => void addGeographicResultToActiveTripTarget(result)}
                   onCreateFromGeographicResult={(result) => {
                     setCoordinatePrefill(null);

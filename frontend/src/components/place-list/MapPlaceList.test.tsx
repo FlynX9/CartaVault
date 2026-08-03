@@ -162,17 +162,19 @@ describe('MapPlaceList', () => {
     expect(screen.getByLabelText('Note 3.5')).toHaveStyle({ color: '#2563EB' })
   })
 
-  it('makes available POIs draggable only during trip planning', async () => {
+  it('keeps POIs draggable during trip planning and marks reused places without muting them', async () => {
     const place = { id: 'place-id', name: 'Étape', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
-    const { container, rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
-    expect(await screen.findByRole('button', { name: /^Étape/ })).toHaveAttribute('draggable', 'true')
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    const reusedPlace = await screen.findByRole('button', { name: 'Étape — déjà présent dans la sortie' })
+    expect(reusedPlace).toHaveAttribute('draggable', 'true')
     expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).not.toBeInTheDocument()
     expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-trip-planning')
-    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
-    expect(await screen.findByRole('button', { name: /^Étape/ })).toHaveAttribute('draggable', 'false')
-    expect(container.querySelector('.places-place-card')).toHaveClass('trip-added')
-    expect(screen.getByText('Ajouté')).toBeVisible()
+    expect(container.querySelector('.places-place-card')).not.toHaveClass('trip-added')
+    expect(container.querySelector('.places-place-trip-check')).toHaveAttribute('title', 'Déjà présent dans la sortie')
+    const reusedSetData = vi.fn()
+    fireEvent.dragStart(reusedPlace, { dataTransfer: { effectAllowed: 'none', setData: reusedSetData } })
+    expect(reusedSetData).toHaveBeenCalledWith('application/x-cartavault-place', 'place-id')
   })
 
   it('adds an available POI from a compact action next to Google Maps', async () => {
@@ -180,7 +182,7 @@ describe('MapPlaceList', () => {
     const onTripPlaceAdd = vi.fn()
     vi.mocked(getPlaces).mockResolvedValue([place])
     const props = { poiMap: { id: 'map-id', name: 'France', can_edit: false } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, tripPlanningActive: true, tripAddTargetLabel: 'Ajouter au jour 2', onTripPlaceAdd, onPlaceSelect: vi.fn() }
-    const { rerender } = render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set()} /></MemoryRouter>)
+    render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
 
     const addButton = await screen.findByRole('button', { name: 'Ajouter au jour 2' })
     const googleMaps = screen.getByRole('link', { name: 'Ouvrir Étape ciblée dans Google Maps' })
@@ -190,9 +192,8 @@ describe('MapPlaceList', () => {
     fireEvent.click(addButton)
     expect(onTripPlaceAdd).toHaveBeenCalledWith(place)
 
-    rerender(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
-    expect(screen.queryByRole('button', { name: 'Ajouter au jour 2' })).not.toBeInTheDocument()
-    expect(screen.getByText('Ajouté')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Ajouter au jour 2' })).toBeVisible()
+    expect(document.querySelector('.places-place-trip-check')).toHaveAttribute('title', 'Déjà présent dans la sortie')
   })
 
   it('keeps the rich card layout when multi-selection is enabled', async () => {

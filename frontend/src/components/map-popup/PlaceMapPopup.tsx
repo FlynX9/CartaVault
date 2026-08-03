@@ -27,6 +27,7 @@ import { formatMinutes } from "../trips/tripMetrics";
 interface Props {
   placeId: string;
   canEdit?: boolean;
+  showManagementActions?: boolean;
   tripAddTargetLabel?: string | null;
   tripDays?: Array<{ id: string; label: string }>;
   onAddToTrip?: (place: PlaceDetails, dayId?: string) => Promise<void> | void;
@@ -48,6 +49,7 @@ function ratingFillPercentage(rating: number, star: number): number {
 export function PlaceMapPopup({
   placeId,
   canEdit = true,
+  showManagementActions = true,
   tripAddTargetLabel = null,
   tripDays = [],
   onAddToTrip = () => undefined,
@@ -526,6 +528,7 @@ export function PlaceMapPopup({
         googleMapsUrl={googleUrl}
         isDeleting={deleting}
         canEdit={canEdit}
+        showManagementActions={showManagementActions}
         showClose={false}
         tripAddTargetLabel={tripAddTargetLabel}
         canChooseTripDay={tripDays.length > 0}

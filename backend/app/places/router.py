@@ -449,17 +449,14 @@ def bulk_add_to_trip(
         raise HTTPException(status_code=409, detail="BULK_DAY_FORBIDDEN")
     if trip_access.trip.map_id not in map_ids:
         raise HTTPException(status_code=409, detail="BULK_TRIP_FORBIDDEN")
-    existing = set(database_session.scalars(select(TripStop.place_id).where(TripStop.trip_day_id == day.id, TripStop.place_id.in_(action_data.place_ids))).all())
     QuotaService(database_session).ensure_can_create(
         current_user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day.id,
-        increment=len(action_data.place_ids) - len(existing),
+        increment=len(action_data.place_ids),
     )
     next_order = (database_session.scalar(select(func.max(TripStop.sort_order)).where(TripStop.trip_day_id == day.id)) or -1) + 1
     added = 0
     try:
         for place in places:
-            if place.id in existing:
-                continue
             longitude = database_session.scalar(select(func.ST_X(Place.location)).where(Place.id == place.id))
             latitude = database_session.scalar(select(func.ST_Y(Place.location)).where(Place.id == place.id))
             if longitude is None or latitude is None:
@@ -474,7 +471,7 @@ def bulk_add_to_trip(
     except SQLAlchemyError as error:
         database_session.rollback()
         raise HTTPException(status_code=500, detail="BULK_ACTION_FAILED") from error
-    return PlaceBulkTripResult(selected_count=len(places), added_count=added, duplicate_count=len(places) - added)
+    return PlaceBulkTripResult(selected_count=len(places), added_count=added, duplicate_count=0)
 
 
 @router.get("/facets", response_model=PlaceFacets)

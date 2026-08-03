@@ -139,6 +139,7 @@ async function request(
       {
         method,
         headers,
+        cache: 'no-store',
         body:
           options.body === undefined ? undefined : JSON.stringify(options.body),
         signal: options.signal,

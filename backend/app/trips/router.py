@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -99,8 +100,10 @@ def create_trip(map_id: UUID, data: TripCreate, session: Session = Depends(get_d
 
 
 @router.get("/trips/{trip_id}", response_model=TripRead)
-def read_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    require_trip_viewer(session, trip_id, user); return _trip_read(session, trip_id)
+def read_trip(trip_id: UUID, response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    require_trip_viewer(session, trip_id, user)
+    response.headers["Cache-Control"] = "private, no-store"
+    return _trip_read(session, trip_id)
 
 
 @router.put("/trips/{trip_id}/state", response_model=TripRead)
@@ -576,6 +579,54 @@ def add_departure(trip_id: UUID, data: DepartureCreate, session: Session = Depen
         stale(trip.days[0])
         stale(trip.days[-1])
     session.commit(); return DepartureRead.model_validate(departure)
+
+
+@router.put("/trips/{trip_id}/anchors/{anchor}/place/{place_id}", response_model=TripRead)
+def set_trip_anchor_place(
+    trip_id: UUID,
+    anchor: Literal["departure", "arrival"],
+    place_id: UUID,
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Atomically create or replace a trip anchor from a map POI."""
+    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    place, latitude, longitude = place_snapshot(session, place_id, trip.map_id)
+    if anchor == "departure":
+        if trip.departure is None:
+            session.add(TripDeparture(
+                trip_id=trip.id,
+                place_id=place.id,
+                name=place.name,
+                latitude=latitude,
+                longitude=longitude,
+            ))
+        else:
+            trip.departure.place_id = place.id
+            trip.departure.name = place.name
+            trip.departure.latitude = latitude
+            trip.departure.longitude = longitude
+        if trip.days:
+            stale(trip.days[0])
+            stale(trip.days[-1])
+    else:
+        if trip.arrival is None:
+            session.add(TripArrival(
+                trip_id=trip.id,
+                place_id=place.id,
+                name=place.name,
+                latitude=latitude,
+                longitude=longitude,
+            ))
+        else:
+            trip.arrival.place_id = place.id
+            trip.arrival.name = place.name
+            trip.arrival.latitude = latitude
+            trip.arrival.longitude = longitude
+        if trip.days:
+            stale(trip.days[-1])
+    session.commit()
+    return _trip_read(session, trip.id)
 
 
 @router.delete("/trip-departures/{departure_id}", status_code=204)

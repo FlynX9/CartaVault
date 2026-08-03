@@ -254,9 +254,12 @@ def test_place_facets_and_bulk_trip_add_are_map_scoped(integration_client: TestC
     added = integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [first.json()["id"], second.json()["id"]], "trip_id": trip.json()["id"], "day_id": day_id})
     assert added.status_code == 200
     assert added.json() == {"selected_count": 2, "added_count": 2, "duplicate_count": 0}
-    duplicate = integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [first.json()["id"], second.json()["id"]], "trip_id": trip.json()["id"], "day_id": day_id})
-    assert duplicate.status_code == 200
-    assert duplicate.json()["duplicate_count"] == 2
+    repeated = integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [first.json()["id"], second.json()["id"]], "trip_id": trip.json()["id"], "day_id": day_id})
+    assert repeated.status_code == 200
+    assert repeated.json() == {"selected_count": 2, "added_count": 2, "duplicate_count": 0}
+    refreshed = integration_client.get(f"/trips/{trip.json()['id']}")
+    assert refreshed.status_code == 200
+    assert [stop["place_id"] for stop in refreshed.json()["days"][0]["stops"]].count(first.json()["id"]) == 2
 
 
 def test_place_list_position_uses_the_same_filtered_stable_order(integration_client: TestClient, poi_map: PoiMap) -> None:

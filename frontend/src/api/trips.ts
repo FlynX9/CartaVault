@@ -5,7 +5,7 @@ import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPaylo
 const empty = new URLSearchParams()
 export interface TripCreatePayload { name: string; description?: string; start_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
 export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string | null; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; google_place_id?: string | null; website_url?: string | null; description?: string | null; notes?: string; check_in_from_time?: string | null; check_in_until_time?: string | null; check_out_from_time?: string | null; check_out_until_time?: string | null }
-export interface TripDepartureCreatePayload { place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; departure_time?: string }
+export interface TripDepartureCreatePayload { place_id?: string | null; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string | null; departure_time?: string | null }
 export type TripArrivalCreatePayload = Omit<TripDepartureCreatePayload, 'departure_time'>
 export type TripPdfNavigationProvider = 'google_maps' | 'waze'
 export interface TripPdfExportOptions {
@@ -47,6 +47,7 @@ export const deleteTripDeparture = (id: string) => sendWithoutResponse(`/trip-de
 export const addTripArrival = (tripId: string, body: TripArrivalCreatePayload) => sendJson(`/trips/${tripId}/arrival`, 'POST', body) as Promise<TripArrival>
 export const updateTripArrival = (id: string, body: TripArrivalCreatePayload) => sendJson(`/trip-arrivals/${id}`, 'PATCH', body) as Promise<TripArrival>
 export const deleteTripArrival = (id: string) => sendWithoutResponse(`/trip-arrivals/${id}`, 'DELETE')
+export const setTripAnchorPlace = (tripId: string, anchor: 'departure' | 'arrival', placeId: string) => sendJson(`/trips/${tripId}/anchors/${anchor}/place/${placeId}`, 'PUT', {}) as Promise<Trip>
 export const calculateTripDayRoute = (id: string) => sendJson(`/trip-days/${id}/route`, 'POST', {}) as Promise<TripDay>
 export const optimizeTripDay = (id: string) => sendJson(`/trip-days/${id}/optimize`, 'POST', { metric: 'duration', keep_start: true, keep_end: true, keep_locked: true }) as Promise<TripOptimization>
 export const confirmTripOptimization = (id: string, stopIds: string[]) => sendJson(`/trip-days/${id}/optimize/confirm`, 'POST', { stop_ids: stopIds }) as Promise<TripDay>
