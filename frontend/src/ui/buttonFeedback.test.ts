@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { installButtonFeedback } from './buttonFeedback'
+import { announceApiMutationFailure, announceApiMutationStart, announceApiMutationSuccess } from '../api/mutationEvents'
 
 describe('global button feedback', () => {
   let uninstall: () => void
@@ -60,5 +61,42 @@ describe('global button feedback', () => {
     expect(disabled).not.toHaveClass('cv-button-click-feedback')
     expect(filterButton).not.toHaveClass('cv-button-click-feedback')
     expect(labelledFilter).not.toHaveClass('cv-button-click-feedback')
+  })
+
+  it('briefly replaces a successful action with a check', () => {
+    const button = document.createElement('button')
+    button.textContent = 'Optimiser'
+    button.addEventListener('click', () => {
+      const mutation = announceApiMutationStart('POST', '/trips/optimize')
+      announceApiMutationSuccess(mutation)
+    })
+    document.body.append(button)
+
+    button.click()
+    vi.advanceTimersByTime(99)
+    expect(button).not.toHaveClass('cv-button-action-success')
+    vi.advanceTimersByTime(1)
+    expect(button).toHaveClass('cv-button-action-success')
+    vi.advanceTimersByTime(900)
+    expect(button).not.toHaveClass('cv-button-action-success')
+  })
+
+  it('waits for every mutation and suppresses success after a failure', () => {
+    const button = document.createElement('button')
+    let first = null as ReturnType<typeof announceApiMutationStart> | null
+    let second = null as ReturnType<typeof announceApiMutationStart> | null
+    button.addEventListener('click', () => {
+      first = announceApiMutationStart('POST', '/trips/day-1/route')
+      second = announceApiMutationStart('POST', '/trips/day-2/route')
+    })
+    document.body.append(button)
+
+    button.click()
+    announceApiMutationSuccess(first!)
+    vi.advanceTimersByTime(150)
+    expect(button).not.toHaveClass('cv-button-action-success')
+    announceApiMutationFailure(second!)
+    vi.advanceTimersByTime(150)
+    expect(button).not.toHaveClass('cv-button-action-success')
   })
 })

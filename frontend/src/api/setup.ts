@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { ApiError } from './client'
+import { announceApiMutationFailure, announceApiMutationStart, announceApiMutationSuccess } from './mutationEvents'
 
 export type SetupCheck = {
   key: string
@@ -49,29 +50,38 @@ async function setupRequest<T>(
   path: string,
   options: { method?: 'GET' | 'POST'; token?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method ?? 'GET',
-    headers: {
-      Accept: 'application/json',
-      ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(options.token ? { 'X-CartaVault-Setup-Token': options.token } : {}),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    credentials: 'include',
-    signal: options.signal,
-  })
-  if (!response.ok) {
-    let message = 'Initial setup request failed.'
-    try {
-      const payload = await response.json() as { detail?: string | Array<{ msg?: string }> }
-      if (typeof payload.detail === 'string') message = payload.detail
-      else if (Array.isArray(payload.detail)) message = payload.detail.map((item) => item.msg).filter(Boolean).join(' ')
-    } catch {
-      // The status code still provides a safe diagnostic when no JSON body exists.
+  const method = options.method ?? 'GET'
+  const mutation = method === 'POST' ? announceApiMutationStart(method, path) : null
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: {
+        Accept: 'application/json',
+        ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(options.token ? { 'X-CartaVault-Setup-Token': options.token } : {}),
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      credentials: 'include',
+      signal: options.signal,
+    })
+    if (!response.ok) {
+      let message = 'Initial setup request failed.'
+      try {
+        const payload = await response.json() as { detail?: string | Array<{ msg?: string }> }
+        if (typeof payload.detail === 'string') message = payload.detail
+        else if (Array.isArray(payload.detail)) message = payload.detail.map((item) => item.msg).filter(Boolean).join(' ')
+      } catch {
+        // The status code still provides a safe diagnostic when no JSON body exists.
+      }
+      throw new ApiError(response.status, message)
     }
-    throw new ApiError(response.status, message)
+    const payload = await response.json() as T
+    if (mutation) announceApiMutationSuccess(mutation)
+    return payload
+  } catch (error) {
+    if (mutation) announceApiMutationFailure(mutation)
+    throw error
   }
-  return response.json() as Promise<T>
 }
 
 export function getSetupStatus(signal?: AbortSignal): Promise<SetupStatus> {

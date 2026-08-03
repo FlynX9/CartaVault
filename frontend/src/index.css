@@ -157,8 +157,41 @@ button {
   }
 }
 
+@keyframes cv-button-action-success {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.55); }
+  55% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
 button.cv-button-click-feedback {
   animation: cv-button-click-feedback 320ms ease-out;
+}
+
+button.cv-button-action-success {
+  position: relative;
+  color: transparent !important;
+  text-shadow: none !important;
+}
+
+button.cv-button-action-success > * { opacity: 0 !important; }
+button.cv-button-action-success::after {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  color: var(--cv-color-teal);
+  background: var(--cv-surface, #fff);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 28%, transparent);
+  content: '✓';
+  font-size: .95rem;
+  font-weight: 900;
+  line-height: 1;
+  animation: cv-button-action-success 220ms ease-out both;
+  place-items: center;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -166,6 +199,8 @@ button.cv-button-click-feedback {
     animation: none;
     filter: brightness(.92);
   }
+
+  button.cv-button-action-success::after { animation: none; }
 }
 
 .app-shell {

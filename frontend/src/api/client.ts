@@ -1,4 +1,6 @@
 import { API_BASE_URL } from '../config'
+import { announceApiMutationFailure, announceApiMutationStart, announceApiMutationSuccess } from './mutationEvents'
+import type { ApiMutationEventDetail } from './mutationEvents'
 
 export type ApiFieldErrors = Record<string, string>
 
@@ -22,6 +24,7 @@ export class ApiError extends Error {
 }
 
 let csrfToken: string | null = null
+const trackedMutations = new WeakMap<Response, ApiMutationEventDetail>()
 export const SESSION_EXPIRED_EVENT = 'cartavault:session-expired'
 
 export function setCsrfToken(value: string | null): void {
@@ -116,6 +119,8 @@ async function request(
   path: string,
   options: RequestOptions,
 ): Promise<Response> {
+  const method = options.method ?? 'GET'
+  const mutation = method === 'GET' ? null : announceApiMutationStart(method, path)
   const query = options.searchParams?.toString() ?? ''
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -128,33 +133,53 @@ async function request(
     headers['X-CSRF-Token'] = csrfToken
   }
 
-  const response = await fetch(
-    `${API_BASE_URL}${path}${query ? `?${query}` : ''}`,
-    {
-      method: options.method ?? 'GET',
-      headers,
-      body:
-        options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal: options.signal,
-      credentials: 'include',
-    },
-  )
-
-  if (!response.ok) {
-    const error = await getResponseError(response)
-    if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
-      setCsrfToken(null)
-      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
-    }
-    throw new ApiError(
-      response.status,
-      error.message ?? 'Erreur API.',
-      error.fieldErrors,
-      error.code,
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}${path}${query ? `?${query}` : ''}`,
+      {
+        method,
+        headers,
+        body:
+          options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: options.signal,
+        credentials: 'include',
+      },
     )
-  }
 
-  return response
+    if (!response.ok) {
+      const error = await getResponseError(response)
+      if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
+        setCsrfToken(null)
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+      }
+      throw new ApiError(
+        response.status,
+        error.message ?? 'Erreur API.',
+        error.fieldErrors,
+        error.code,
+      )
+    }
+
+    if (mutation) trackedMutations.set(response, mutation)
+    return response
+  } catch (error) {
+    if (mutation) announceApiMutationFailure(mutation)
+    throw error
+  }
+}
+
+async function completeResponse<T>(response: Response, consume: () => Promise<T>): Promise<T> {
+  const mutation = trackedMutations.get(response)
+  try {
+    const result = await consume()
+    if (mutation) announceApiMutationSuccess(mutation)
+    return result
+  } catch (error) {
+    if (mutation) announceApiMutationFailure(mutation)
+    throw error
+  } finally {
+    trackedMutations.delete(response)
+  }
 }
 
 export async function getJson(
@@ -163,7 +188,7 @@ export async function getJson(
   signal?: AbortSignal,
 ): Promise<unknown> {
   const response = await request(path, { searchParams, signal })
-  return response.json()
+  return completeResponse(response, () => response.json())
 }
 
 export async function sendJson(
@@ -173,7 +198,7 @@ export async function sendJson(
   signal?: AbortSignal,
 ): Promise<unknown> {
   const response = await request(path, { method, body, signal })
-  return response.json()
+  return completeResponse(response, () => response.json())
 }
 
 export async function sendWithoutResponse(
@@ -181,7 +206,8 @@ export async function sendWithoutResponse(
   method: 'POST' | 'DELETE',
   signal?: AbortSignal,
 ): Promise<void> {
-  await request(path, { method, signal })
+  const response = await request(path, { method, signal })
+  await completeResponse(response, async () => undefined)
 }
 
 export async function sendBodyWithoutResponse(
@@ -190,12 +216,13 @@ export async function sendBodyWithoutResponse(
   body: unknown,
   signal?: AbortSignal,
 ): Promise<void> {
-  await request(path, { method, body, signal })
+  const response = await request(path, { method, body, signal })
+  await completeResponse(response, async () => undefined)
 }
 
 export async function getBlob(path: string, signal?: AbortSignal): Promise<Blob> {
   const response = await request(path, { signal })
-  return response.blob()
+  return completeResponse(response, () => response.blob())
 }
 
 export async function sendFormData(
@@ -204,23 +231,31 @@ export async function sendFormData(
   body: FormData,
   signal?: AbortSignal,
 ): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    body,
-    signal,
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(csrfToken === null ? {} : { 'X-CSRF-Token': csrfToken }),
-    },
-  })
-  if (!response.ok) {
-    const error = await getResponseError(response)
-    if (response.status === 401) {
-      setCsrfToken(null)
-      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+  const mutation = announceApiMutationStart(method, path)
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      body,
+      signal,
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(csrfToken === null ? {} : { 'X-CSRF-Token': csrfToken }),
+      },
+    })
+    if (!response.ok) {
+      const error = await getResponseError(response)
+      if (response.status === 401) {
+        setCsrfToken(null)
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+      }
+      throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors, error.code)
     }
-    throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors, error.code)
+    const payload: unknown = await response.json()
+    announceApiMutationSuccess(mutation)
+    return payload
+  } catch (error) {
+    announceApiMutationFailure(mutation)
+    throw error
   }
-  return response.json()
 }
