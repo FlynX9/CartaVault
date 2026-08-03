@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -403,7 +403,17 @@ def add_stop(day_id: UUID, data: StopCreate, session: Session = Depends(get_db),
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, stop_type="place")
     if "visit_duration_minutes" not in data.model_fields_set:
         values["visit_duration_minutes"] = place.default_visit_duration_minutes if place is not None and place.default_visit_duration_minutes is not None else 30
-    stop = TripStop(trip_day_id=day.id, sort_order=len(day.stops), **values); session.add(stop); stale(day); session.commit(); return StopRead.model_validate(stop)
+    next_sort_order = session.scalar(
+        select(func.coalesce(func.max(TripStop.sort_order), -1) + 1).where(
+            TripStop.trip_day_id == day.id
+        )
+    )
+    stop = TripStop(
+        trip_day_id=day.id,
+        sort_order=next_sort_order,
+        **values,
+    )
+    session.add(stop); stale(day); session.commit(); return StopRead.model_validate(stop)
 
 
 @router.patch("/trip-stops/{stop_id}", response_model=StopRead)

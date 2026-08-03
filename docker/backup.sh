@@ -28,18 +28,18 @@ destination="$backup_root/$timestamp"
 mkdir -p "$destination"
 
 echo "[backup] Checking PostgreSQL."
-compose exec -T postgres \
+compose exec -T postgis \
   sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
 echo "[backup] Exporting PostgreSQL."
-compose exec -T postgres \
+compose exec -T postgis \
   sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner --no-acl' \
   > "$destination/database.dump"
 
 echo "[backup] Exporting photo and avatar volumes."
 compose run --rm --no-deps \
   -v "$destination:/backup" \
-  --entrypoint sh backend \
+  --entrypoint sh cartavault \
   -c 'tar -czf /backup/photos.tar.gz -C /app/storage/photos . && tar -czf /backup/avatars.tar.gz -C /app/storage/avatars .'
 
 set -- "$destination/database.dump" "$destination/photos.tar.gz" "$destination/avatars.tar.gz"
@@ -47,7 +47,7 @@ if [ "${CARTAVAULT_BACKUP_EXPORTS:-false}" = "true" ]; then
   echo "[backup] Exporting temporary exports."
   compose run --rm --no-deps \
     -v "$destination:/backup" \
-    --entrypoint sh backend \
+    --entrypoint sh cartavault \
     -c 'tar -czf /backup/exports.tar.gz -C /app/storage/exports .'
   set -- "$@" "$destination/exports.tar.gz"
 fi

@@ -1,9 +1,11 @@
 name: cartavault
 
-x-backend-environment: &backend-environment
+x-cartavault-environment: &cartavault-environment
   DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
   CARTAVAULT_VERSION: ${CARTAVAULT_VERSION:?CARTAVAULT_VERSION is required}
   CARTAVAULT_ENVIRONMENT: production
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_FRONTEND_DIST: /app/frontend
   CARTAVAULT_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:?FRONTEND_PUBLIC_URL is required}
   FRONTEND_PUBLIC_URL: ${FRONTEND_PUBLIC_URL:?FRONTEND_PUBLIC_URL is required}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
@@ -11,6 +13,13 @@ x-backend-environment: &backend-environment
   CARTAVAULT_SESSION_SECRET: ${CARTAVAULT_SESSION_SECRET:?CARTAVAULT_SESSION_SECRET is required}
   CARTAVAULT_SETUP_TOKEN: ${CARTAVAULT_SETUP_TOKEN:?CARTAVAULT_SETUP_TOKEN is required}
   CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: ${CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY:?CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY is required}
+  CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: ${CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL:-}
+  CARTAVAULT_BOOTSTRAP_ADMIN_NAME: ${CARTAVAULT_BOOTSTRAP_ADMIN_NAME:-}
+  CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: ${CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD:-}
+  CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS: ${CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS:-120}
+  CARTAVAULT_DATABASE_STABLE_CHECKS: ${CARTAVAULT_DATABASE_STABLE_CHECKS:-3}
+  CARTAVAULT_DATABASE_CONNECT_TIMEOUT_SECONDS: ${CARTAVAULT_DATABASE_CONNECT_TIMEOUT_SECONDS:-5}
+  CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS: ${CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS:-300}
   PHOTO_STORAGE_PATH: /app/storage/photos
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
@@ -28,8 +37,8 @@ x-backend-environment: &backend-environment
   EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
 
 services:
-  postgres:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-postgres:${CARTAVAULT_VERSION}
+  postgis:
+    image: postgis/postgis:16-3.4
     platform: linux/amd64
     restart: unless-stopped
     environment:
@@ -44,61 +53,36 @@ services:
       timeout: 5s
       retries: 12
       start_period: 15s
-    networks:
-      - cartavault_private
+    networks: [cartavault_private]
 
-  migrate:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-backend:${CARTAVAULT_VERSION}
-    platform: linux/amd64
-    restart: "no"
-    environment:
-      <<: *backend-environment
-      CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: ${CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL:-}
-      CARTAVAULT_BOOTSTRAP_ADMIN_NAME: ${CARTAVAULT_BOOTSTRAP_ADMIN_NAME:-}
-      CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: ${CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD:-}
-      CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS: ${CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS:-120}
-      CARTAVAULT_DATABASE_STABLE_CHECKS: ${CARTAVAULT_DATABASE_STABLE_CHECKS:-3}
-      CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS: ${CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS:-300}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: ["python", "-m", "app.deployment", "migrate-and-bootstrap"]
-    networks:
-      - cartavault_private
-
-  backend:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-backend:${CARTAVAULT_VERSION}
+  cartavault:
+    image: ${CARTAVAULT_IMAGE:-cartavault}:${CARTAVAULT_VERSION}
     platform: linux/amd64
     restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     environment:
-      <<: *backend-environment
+      <<: *cartavault-environment
+    ports:
+      - "${CARTAVAULT_HTTP_PORT:-8088}:8000"
     volumes:
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/photos:/app/storage/photos
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/avatars:/app/storage/avatars
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/exports:/app/storage/exports
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
     depends_on:
-      migrate:
-        condition: service_completed_successfully
+      postgis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/', timeout=3)"]
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 15s
-    networks:
-      - cartavault_private
-
-  frontend:
-    image: ${CARTAVAULT_IMAGE_PREFIX:-cartavault}-frontend:${CARTAVAULT_VERSION}
-    platform: linux/amd64
-    restart: unless-stopped
-    ports:
-      - "${CARTAVAULT_HTTP_PORT:-8088}:80"
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - cartavault_private
+      start_period: 20s
+    networks: [cartavault_private]
 
 networks:
   cartavault_private:

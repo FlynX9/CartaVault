@@ -9,9 +9,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $images = @(
-    "cartavault-postgres:$Version",
-    "cartavault-backend:$Version",
-    "cartavault-frontend:$Version"
+    "cartavault:$Version",
+    "postgis/postgis:16-3.4"
 )
 
 foreach ($image in $images) {

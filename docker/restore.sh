@@ -27,18 +27,18 @@ echo "[restore] Verifying backup checksums."
 (cd "$backup_directory" && sha256sum -c SHA256SUMS)
 
 echo "[restore] Stopping application services."
-compose stop frontend backend
+compose stop cartavault
 
 echo "[restore] Recreating the configured database."
-compose exec -T postgres sh -c \
+compose exec -T postgis sh -c \
   'dropdb -U "$POSTGRES_USER" --if-exists --force "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
-cat "$backup_directory/database.dump" | compose exec -T postgres sh -c \
+cat "$backup_directory/database.dump" | compose exec -T postgis sh -c \
   'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-acl --exit-on-error'
 
 echo "[restore] Restoring media volumes."
 compose run --rm --no-deps \
   -v "$backup_directory:/backup:ro" \
-  --entrypoint sh backend \
+  --entrypoint sh cartavault \
   -c 'find /app/storage/photos -mindepth 1 -delete; find /app/storage/avatars -mindepth 1 -delete; tar -xzf /backup/photos.tar.gz -C /app/storage/photos; tar -xzf /backup/avatars.tar.gz -C /app/storage/avatars'
 
 if [ -f "$backup_directory/exports.tar.gz" ]; then
@@ -48,10 +48,9 @@ else
 fi
 compose run --rm --no-deps \
   -v "$backup_directory:/backup:ro" \
-  --entrypoint sh backend \
+  --entrypoint sh cartavault \
   -c 'find /app/storage/exports -mindepth 1 -delete; if [ -f /backup/exports.tar.gz ]; then tar -xzf /backup/exports.tar.gz -C /app/storage/exports; fi'
 
 echo "[restore] Migrating the restored database and restarting CartaVault."
-compose run --rm migrate
-compose up -d backend frontend
+compose up -d cartavault
 compose ps

@@ -3,6 +3,7 @@ import os
 import logging
 from contextlib import asynccontextmanager
 from contextlib import suppress
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
@@ -47,6 +48,7 @@ from app.trips.router import router as trips_router
 from app.config import legacy_google_routes_api_key_configured
 from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
+from app.static_frontend import install_frontend, normalize_api_prefix
 
 
 logger = logging.getLogger(__name__)
@@ -94,6 +96,9 @@ def get_cors_allowed_origins() -> list[str]:
 
 
 load_dotenv()
+
+API_PREFIX = normalize_api_prefix(os.getenv("CARTAVAULT_API_PREFIX"))
+FRONTEND_DIST = os.getenv("CARTAVAULT_FRONTEND_DIST")
 
 
 def validate_startup_security_state(session: Session) -> None:
@@ -157,6 +162,10 @@ app = FastAPI(
     description="API for managing geographic points of interest",
     version="0.1.0",
     root_path=os.getenv("CARTAVAULT_API_ROOT_PATH", "").strip().rstrip("/"),
+    docs_url=f"{API_PREFIX}/docs",
+    openapi_url=f"{API_PREFIX}/openapi.json",
+    redoc_url=f"{API_PREFIX}/redoc",
+    swagger_ui_oauth2_redirect_url=f"{API_PREFIX}/docs/oauth2-redirect",
     lifespan=lifespan,
     dependencies=[Depends(require_csrf)],
 )
@@ -174,38 +183,47 @@ app.add_middleware(
     ],
 )
 
-app.include_router(setup_router)
-app.include_router(auth_router)
-app.include_router(public_auth_router)
-app.include_router(account_router)
-app.include_router(credential_router)
-app.include_router(google_places_credential_router)
-app.include_router(invitations_router)
-app.include_router(admin_users_router)
-app.include_router(registration_admin_router)
-app.include_router(admin_console_router)
-app.include_router(quotas_router)
-app.include_router(instance_status_router)
-app.include_router(dashboard_router)
-app.include_router(places_map_router)
-app.include_router(places_advanced_router)
-app.include_router(places_router)
-app.include_router(categories_router)
-app.include_router(countries_router)
-app.include_router(maps_router)
-app.include_router(imports_router)
-app.include_router(exports_router)
-app.include_router(tags_router)
-app.include_router(statuses_router)
-app.include_router(photos_router)
-app.include_router(media_router)
-app.include_router(trips_router)
-app.include_router(trash_router)
+app.include_router(setup_router, prefix=API_PREFIX)
+app.include_router(auth_router, prefix=API_PREFIX)
+app.include_router(public_auth_router, prefix=API_PREFIX)
+app.include_router(account_router, prefix=API_PREFIX)
+app.include_router(credential_router, prefix=API_PREFIX)
+app.include_router(google_places_credential_router, prefix=API_PREFIX)
+app.include_router(invitations_router, prefix=API_PREFIX)
+app.include_router(admin_users_router, prefix=API_PREFIX)
+app.include_router(registration_admin_router, prefix=API_PREFIX)
+app.include_router(admin_console_router, prefix=API_PREFIX)
+app.include_router(quotas_router, prefix=API_PREFIX)
+app.include_router(instance_status_router, prefix=API_PREFIX)
+app.include_router(dashboard_router, prefix=API_PREFIX)
+app.include_router(places_map_router, prefix=API_PREFIX)
+app.include_router(places_advanced_router, prefix=API_PREFIX)
+app.include_router(places_router, prefix=API_PREFIX)
+app.include_router(categories_router, prefix=API_PREFIX)
+app.include_router(countries_router, prefix=API_PREFIX)
+app.include_router(maps_router, prefix=API_PREFIX)
+app.include_router(imports_router, prefix=API_PREFIX)
+app.include_router(exports_router, prefix=API_PREFIX)
+app.include_router(tags_router, prefix=API_PREFIX)
+app.include_router(statuses_router, prefix=API_PREFIX)
+app.include_router(photos_router, prefix=API_PREFIX)
+app.include_router(media_router, prefix=API_PREFIX)
+app.include_router(trips_router, prefix=API_PREFIX)
+app.include_router(trash_router, prefix=API_PREFIX)
 
 
 @app.get(
-    "/",
+    f"{API_PREFIX}/" if API_PREFIX else "/",
     tags=["health"],
 )
 def root() -> dict[str, str]:
     return {"message": "CartaVault API is running"}
+
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+if FRONTEND_DIST:
+    install_frontend(app, directory=Path(FRONTEND_DIST), api_prefix=API_PREFIX)

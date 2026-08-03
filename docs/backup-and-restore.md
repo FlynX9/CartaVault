@@ -71,7 +71,7 @@ All entries must report `OK`. Confirm the dump can be read without restoring
 it:
 
 ```sh
-docker compose -f docker/compose.yml exec -T postgres \
+docker compose -f docker/compose.yml exec -T postgis \
   pg_restore --list /dev/stdin < database.dump > /dev/null
 ```
 
@@ -105,10 +105,10 @@ CARTAVAULT_RESTORE_CONFIRM=restore \
   ./docker/restore.sh /srv/backups/cartavault/20260729T120000Z
 ```
 
-The script verifies checksums, stops frontend and backend, recreates and loads
+The script verifies checksums, stops CartaVault, recreates and loads
 the database, restores photos and avatars, restores exports when present (and
-otherwise clears the temporary export volume), runs the version-matched
-`migrate` job, and starts the application again. It fails if a required
+otherwise clears the temporary export volume), lets the version-matched
+application entrypoint apply migrations, and starts CartaVault again. It fails if a required
 database/photo/avatar artifact is missing. Never use it for a test against the
 production Compose project.
 
@@ -130,7 +130,7 @@ checks pass.
 4. Start PostgreSQL only, then run the restore with that isolated project:
 
    ```sh
-   docker compose --project-name cartavault-restore-test -f docker/compose.yml up -d postgres
+   docker compose --project-name cartavault-restore-test -f docker/compose.yml up -d postgis
    CARTAVAULT_COMPOSE_PROJECT=cartavault-restore-test \
    CARTAVAULT_RESTORE_CONFIRM=restore \
      ./docker/restore.sh /srv/backups/cartavault/20260729T120000Z

@@ -159,7 +159,7 @@ Create the release from `v0.1.0`, use the changelog as the source of truth, iden
 2. Read the release notes and migration notes.
 3. Update the application code and dependencies.
 4. Apply migrations only after verifying the target database.
-5. Restart the backend and frontend.
+5. Restart the CartaVault application container.
 6. Validate health endpoints, login, maps, and one safe write workflow.
 
 ## Rollback

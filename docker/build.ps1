@@ -13,10 +13,12 @@ $buildDefaults = @{
     POSTGRES_DB = 'cartavault_build'
     POSTGRES_USER = 'cartavault'
     POSTGRES_PASSWORD = 'build-only-password'
-    DATABASE_URL = 'postgresql+psycopg://cartavault:build-only-password@postgres:5432/cartavault_build'
+    DATABASE_URL = 'postgresql+psycopg://cartavault:build-only-password@postgis:5432/cartavault_build'
     FRONTEND_PUBLIC_URL = 'https://build.example.invalid'
     CORS_ALLOWED_ORIGINS = 'https://build.example.invalid'
     EMAIL_FROM_ADDRESS = 'no-reply@build.example.invalid'
+    CARTAVAULT_SESSION_SECRET = 'build-only-session-secret'
+    CARTAVAULT_SETUP_TOKEN = 'build-only-setup-token'
     CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
 }
 
@@ -29,12 +31,16 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Docker Compose validation failed.'
 }
 
-docker compose -f $composeFile build --pull
+docker pull postgis/postgis:16-3.4
+if ($LASTEXITCODE -ne 0) {
+    throw 'PostGIS image pull failed.'
+}
+
+docker compose -f $composeFile build --pull cartavault
 if ($LASTEXITCODE -ne 0) {
     throw 'Docker image build failed.'
 }
 
-Write-Host "Built one version-matched image set:"
-Write-Host "  cartavault-postgres:$Version"
-Write-Host "  cartavault-backend:$Version (also used by the migration job)"
-Write-Host "  cartavault-frontend:$Version"
+Write-Host "Prepared the two-image CartaVault stack:"
+Write-Host "  cartavault:$Version"
+Write-Host "  postgis/postgis:16-3.4"
