@@ -12,7 +12,6 @@ from app.auth.models import User
 from app.auth.permissions import require_map_role
 from app.imports.kmz_parser import KmzParseError, parse_kmz
 from app.imports.kmz_security import KMZ_MAX_UPLOAD_SIZE, KmzSecurityError, validate_kmz_upload
-from app.imports.progress import get_import_job, job_to_read, start_import_job
 from app.imports.schemas import (
     KmzConfirmRequest,
     KmzImportJobStart,
@@ -20,8 +19,11 @@ from app.imports.schemas import (
     KmzImportReport,
     KmzPreviewRead,
 )
-from app.imports.service import cache_preview, confirm_import, get_cached_import, mark_duplicate_items, mark_outside_country_items
+from app.imports.service import cache_preview, confirm_import, get_cached_import, mark_duplicate_items, mark_outside_country_items, remove_cached_import
 from app.maps.models import PoiMap
+from app.tasks.handlers import KMZ_IMPORT_TASK
+from app.tasks.models import BackgroundTask
+from app.tasks.service import create_task, submit_task
 
 
 router = APIRouter(prefix="/maps/{map_id}/imports/kmz", tags=["imports"])
@@ -56,7 +58,9 @@ def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ ar
     boundary_warning = mark_outside_country_items(access.map, items)
     if boundary_warning:
         warnings.append(boundary_warning)
-    return cache_preview(map_id, current_user.id, file.filename or "import.kmz", items, warnings)
+    result = cache_preview(database_session, map_id, current_user.id, file.filename or "import.kmz", payload, items, warnings)
+    database_session.commit()
+    return result
 
 
 @router.post("/confirm", response_model=KmzImportReport, status_code=status.HTTP_201_CREATED)
@@ -64,8 +68,8 @@ def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_sessio
     """Persist explicitly selected preview items in one atomic transaction."""
 
     require_map_role(database_session, map_id, current_user, "editor")
-    cached = get_cached_import(request.import_id, map_id, current_user.id)
-    return confirm_import(
+    cached = get_cached_import(database_session, request.import_id, map_id, current_user.id)
+    report = confirm_import(
         database_session,
         map_id,
         cached,
@@ -73,6 +77,9 @@ def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_sessio
         download_remote_images=request.download_remote_images,
         force_indexes=request.force_source_indexes,
     )
+    remove_cached_import(database_session, request.import_id)
+    database_session.commit()
+    return report
 
 
 @router.post("/confirm-jobs", response_model=KmzImportJobStart, status_code=status.HTTP_202_ACCEPTED)
@@ -85,9 +92,19 @@ def start_kmz_import(
     """Start a long KMZ confirmation and expose its measurable progress."""
 
     require_map_role(database_session, map_id, current_user, "editor")
-    cached = get_cached_import(request.import_id, map_id, current_user.id)
-    job = start_import_job(map_id, current_user.id, cached, request)
-    return KmzImportJobStart(job_id=job.job_id)
+    get_cached_import(database_session, request.import_id, map_id, current_user.id)
+    task = create_task(
+        database_session,
+        task_type=KMZ_IMPORT_TASK,
+        user_id=current_user.id,
+        map_id=map_id,
+        resource_type="kmz_import",
+        resource_id=request.import_id,
+        input_json=request.model_dump(mode="json"),
+        dedupe_key=f"kmz:{request.import_id}",
+    )
+    submit_task(database_session, task)
+    return KmzImportJobStart(job_id=task.id)
 
 
 @router.get("/confirm-jobs/{job_id}", response_model=KmzImportProgressRead)
@@ -100,4 +117,21 @@ def read_kmz_import_progress(
     """Return progress for an import owned by the authenticated map editor."""
 
     require_map_role(database_session, map_id, current_user, "editor")
-    return job_to_read(get_import_job(job_id, map_id, current_user.id))
+    task = database_session.get(BackgroundTask, job_id)
+    if task is None or task.map_id != map_id or task.requested_by_user_id != current_user.id or task.task_type != KMZ_IMPORT_TASK:
+        raise HTTPException(status_code=404, detail="KMZ import progress was not found")
+    total = max(1, task.progress_total)
+    completed = min(task.progress_current, total)
+    status_value = "completed" if task.status == "succeeded" else task.status
+    if status_value in {"cancelled", "expired"}:
+        status_value = "failed"
+    return KmzImportProgressRead(
+        job_id=task.id,
+        status=status_value,
+        completed=completed,
+        total=total,
+        percent=round(completed * 100 / total),
+        message=task.progress_message,
+        report=task.result_json if task.status == "succeeded" else None,
+        error=task.error_message,
+    )

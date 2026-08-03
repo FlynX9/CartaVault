@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -19,7 +20,6 @@ from app.places.models import Place
 from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, PhotoTooLargeError, UnsupportedPhotoTypeError, delete_photo_file, resolve_photo_file, store_photo_file
 from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
-from app.trips.pdf_export import create_pdf
 from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripNightPhoto, TripStop
 from app.trips.optimizer import optimize_matrix, path_cost
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
@@ -32,6 +32,9 @@ from app.trips.summary_service import day_summary, trip_summary
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.trash.service import trash_deadline
+from app.tasks.handlers import TRIP_PDF_TASK
+from app.tasks.schemas import TaskStart
+from app.tasks.service import create_task, submit_task
 
 router = APIRouter(tags=["trips"])
 
@@ -913,27 +916,37 @@ def export_google(trip_id: UUID, session: Session = Depends(get_db), user: User 
 
 @router.post("/trips/{trip_id}/exports/gpx", status_code=201)
 def export_gpx(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_gpx(trip, user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
+    access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_gpx(trip, user.id, session); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
 
 
 @router.post("/trips/{trip_id}/exports/kmz", status_code=201)
 def export_kmz(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_kmz(trip, user.id); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
+    access = require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); item = create_kmz(trip, user.id, session); return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
 
 
-@router.post("/trips/{trip_id}/exports/pdf", status_code=201)
+@router.post("/trips/{trip_id}/exports/pdf", response_model=TaskStart, status_code=202)
 def export_pdf(trip_id: UUID, options: TripPdfExportOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    require_trip_viewer(session, trip_id, user)
+    access = require_trip_viewer(session, trip_id, user)
     trip = load_trip(session, trip_id)
     _assert_export_routes(session, user, trip)
-    locale = str((user.preferences or {}).get("language") or "fr")
-    item = create_pdf(session, trip, user.id, locale, options)
-    return {"export_id": item.export_id, "file_name": item.file_name, "download_url": f"/trips/{trip_id}/exports/{item.export_id}/download", "expires_at": item.expires_at}
+    task = create_task(
+        session,
+        task_type=TRIP_PDF_TASK,
+        user_id=user.id,
+        map_id=access.trip.map_id,
+        resource_type="trip",
+        resource_id=trip_id,
+        input_json={"options": options.model_dump(mode="json")},
+        dedupe_key=f"trip-pdf:{trip_id}:{sha256(options.model_dump_json().encode('utf-8')).hexdigest()}",
+        max_attempts=2,
+    )
+    submit_task(session, task)
+    return TaskStart(task_id=task.id, status=task.status)
 
 
 @router.get("/trips/{trip_id}/exports/{export_id}/download")
 def download_trip_export(trip_id: UUID, export_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    access = require_trip_viewer(session, trip_id, user); item = get_export(export_id, access.trip.map_id, user.id)
+    access = require_trip_viewer(session, trip_id, user); item = get_export(export_id, access.trip.map_id, user.id, session)
     if item is None: raise HTTPException(404, "Trip export not found or expired")
     media = "application/pdf" if item.file_name.endswith(".pdf") else "application/gpx+xml" if item.file_name.endswith(".gpx") else "application/vnd.google-earth.kmz"
     return FileResponse(item.path, media_type=media, filename=item.file_name)

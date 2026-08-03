@@ -17,6 +17,7 @@ from app.statuses.models import PlaceStatus
 from app.tags.associations import place_tags_table
 from app.tags.models import Tag
 from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
+from app.tasks.models import BackgroundTask, GeneratedExport, KmzImportPreview
 
 __all__ = (
     "Category",
@@ -43,6 +44,9 @@ __all__ = (
     "TripDeparture",
     "TripStop",
     "TripNight",
+    "BackgroundTask",
+    "GeneratedExport",
+    "KmzImportPreview",
     "place_categories_table",
     "place_tags_table",
 )

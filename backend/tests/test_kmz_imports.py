@@ -48,6 +48,7 @@ def test_progress_import_keeps_poi_when_remote_image_fails(
 
     progress_updates: list[tuple[int, int, str]] = []
     cached = get_cached_import(
+        database_session,
         UUID(preview_body["import_id"]),
         poi_map.id,
         auth_user.id,

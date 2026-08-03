@@ -46,6 +46,8 @@ from app.setup.service import setup_token
 from app.security_headers import SecurityHeadersMiddleware
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
+from app.tasks.router import router as tasks_router
+from app.tasks.cleanup import purge_expired_task_artifacts
 from app.config import legacy_google_routes_api_key_configured
 from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
@@ -127,7 +129,7 @@ async def _trash_purge_loop() -> None:
     while True:
         await asyncio.sleep(3600)
         try:
-            await asyncio.to_thread(_purge_expired_trash)
+            await asyncio.to_thread(_purge_expired_maintenance)
         except SQLAlchemyError:
             logger.exception("Unable to purge expired trash items")
 
@@ -135,6 +137,12 @@ async def _trash_purge_loop() -> None:
 def _purge_expired_trash() -> None:
     with SessionLocal() as session:
         purge_expired_trash(session)
+
+
+def _purge_expired_maintenance() -> None:
+    with SessionLocal() as session:
+        purge_expired_trash(session)
+        purge_expired_task_artifacts(session)
 
 
 @asynccontextmanager
@@ -147,6 +155,7 @@ async def lifespan(_: FastAPI):
             with SessionLocal() as session:
                 validate_startup_security_state(session)
                 purge_expired_trash(session)
+                purge_expired_task_artifacts(session)
         except SQLAlchemyError as error:
             raise RuntimeError("CartaVault authentication schema is missing. Apply the schema migration, then run: python -m app.cli create-admin") from error
         purge_task = asyncio.create_task(_trash_purge_loop())
@@ -211,6 +220,7 @@ app.include_router(statuses_router, prefix=API_PREFIX)
 app.include_router(photos_router, prefix=API_PREFIX)
 app.include_router(media_router, prefix=API_PREFIX)
 app.include_router(trips_router, prefix=API_PREFIX)
+app.include_router(tasks_router, prefix=API_PREFIX)
 app.include_router(trash_router, prefix=API_PREFIX)
 
 

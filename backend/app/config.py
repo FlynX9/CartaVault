@@ -143,3 +143,24 @@ class EmailSettings:
 
 
 email_settings = EmailSettings()
+
+
+@dataclass(frozen=True)
+class TaskSettings:
+    mode: str = os.getenv("CARTAVAULT_TASK_MODE", "sync").strip().lower()
+    redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0").strip()
+    queue_name: str = os.getenv("CARTAVAULT_TASK_QUEUE", "cartavault").strip()
+    default_timeout_seconds: int = _positive_int("CARTAVAULT_TASK_TIMEOUT_SECONDS", 1800)
+    result_ttl_seconds: int = _positive_int("CARTAVAULT_TASK_RESULT_TTL_SECONDS", 86400)
+    stale_after_seconds: int = _positive_int("CARTAVAULT_TASK_STALE_AFTER_SECONDS", 3600)
+
+    def __post_init__(self) -> None:
+        if self.mode not in {"sync", "redis"}:
+            raise RuntimeError("CARTAVAULT_TASK_MODE must be 'sync' or 'redis'")
+        if self.mode == "redis" and not self.redis_url.startswith(("redis://", "rediss://")):
+            raise RuntimeError("REDIS_URL must be a Redis URL")
+        if not self.queue_name:
+            raise RuntimeError("CARTAVAULT_TASK_QUEUE cannot be empty")
+
+
+task_settings = TaskSettings()

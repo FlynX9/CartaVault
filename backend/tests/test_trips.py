@@ -208,9 +208,13 @@ def test_trip_pdf_export_is_permission_aware_and_downloadable(integration_client
 
     exported = integration_client.post(f"/trips/{trip['id']}/exports/pdf", json={})
 
-    assert exported.status_code == 201
-    assert exported.json()["file_name"] == "sejour-ete.pdf"
-    downloaded = integration_client.get(exported.json()["download_url"])
+    assert exported.status_code == 202
+    task = integration_client.get(f"/tasks/{exported.json()['task_id']}")
+    assert task.status_code == 200
+    assert task.json()["status"] == "succeeded"
+    result = task.json()["result"]
+    assert result["file_name"] == "sejour-ete.pdf"
+    downloaded = integration_client.get(result["download_url"])
     assert downloaded.status_code == 200
     assert downloaded.headers["content-type"] == "application/pdf"
     assert downloaded.content.startswith(b"%PDF-1.4")

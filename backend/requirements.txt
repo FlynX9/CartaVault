@@ -30,3 +30,5 @@ Pillow==12.3.0
 cryptography==49.0.0
 qrcode==8.2
 reportlab==5.0.0
+redis==8.1.0
+rq==2.10.0

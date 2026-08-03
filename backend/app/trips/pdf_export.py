@@ -143,10 +143,12 @@ def create_pdf(
     user_id: UUID,
     locale: str,
     options: TripPdfExportOptions | None = None,
+    *,
+    task_id: UUID | None = None,
 ) -> TemporaryExport:
     export_options = options or TripPdfExportOptions()
     language = locale if locale in _TEXT else "fr"
-    item = create(trip.map_id, user_id, f"{_safe_name(trip.name)}.pdf")
+    item = create(trip.map_id, user_id, f"{_safe_name(trip.name)}.pdf", session, task_id=task_id)
     photos, links = _place_assets(session, trip, include_photos=export_options.include_place_images)
     font, bold_font = _register_fonts()
     styles = _styles(font, bold_font)
@@ -190,7 +192,11 @@ def create_pdf(
 
     try:
         document.build(story, onFirstPage=decorate, onLaterPages=decorate)
+        if session is not None:
+            session.commit()
     except Exception:
+        if session is not None:
+            session.rollback()
         item.path.unlink(missing_ok=True)
         raise
     return item

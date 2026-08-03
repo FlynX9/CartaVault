@@ -25,7 +25,7 @@ def create_export(map_id: UUID, options: KmzExportOptions, session: Session = De
 @router.get("/{export_id}/download")
 def download_export(map_id: UUID, export_id: UUID, session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> FileResponse:
     require_map_role(session, map_id, current_user, "viewer")
-    item = get(export_id, map_id, current_user.id)
+    item = get(export_id, map_id, current_user.id, session)
     if item is None:
         raise HTTPException(status_code=404, detail="KMZ export not found or expired")
     return FileResponse(item.path, media_type="application/vnd.google-earth.kmz", filename=item.file_name)

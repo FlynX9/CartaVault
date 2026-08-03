@@ -103,7 +103,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
     if not placemarks:
         raise HTTPException(status_code=422, detail="No exportable places match the selected filters")
     file_name = _file_name(poi_map.name)
-    temporary = create(map_id, user_id, file_name)
+    temporary = create(map_id, user_id, file_name, session)
     with ZipFile(temporary.path, "w", ZIP_DEFLATED, allowZip64=False) as archive:
         archive.writestr("doc.kml", build_kml(poi_map.name, placemarks, styles))
         for style_id, (color, group, icon_id) in marker_styles.items():
@@ -112,6 +112,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
             if temporary.path.stat().st_size + source.stat().st_size > MAX_TOTAL_SIZE: skipped_images += 1; warnings.append("KMZ size limit reached"); break
             archive.write(source, relative)
     report = KmzExportReport(map_id=map_id, map_name=poi_map.name, total_places_in_map=total, exported_places=len(placemarks), filtered_places=total - len(places), skipped_places=skipped, included_images=len(images) - skipped_images, skipped_images=skipped_images, custom_fields_count=custom_count, warnings=warnings, errors=[], file_size=temporary.path.stat().st_size, generated_at=datetime.now(UTC))
+    session.commit()
     return temporary, report
 
 

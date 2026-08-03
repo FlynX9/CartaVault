@@ -1,12 +1,16 @@
 # CartaVault Docker deployment
 
-CartaVault uses two runtime images and two required services:
+CartaVault uses two runtime images and four services:
 
 - `cartavault:<version>` contains FastAPI, Alembic and the compiled React frontend;
 - the digest-pinned `postgis/postgis:16-3.5` Debian image stores PostgreSQL/PostGIS data.
+- the digest-pinned Redis image carries the private task queue;
+- a worker reuses the CartaVault image with the dedicated `app.tasks.worker` command.
 
 The application container is disposable. Database data, photos, avatars and
-generated exports remain in external volumes. The external reverse proxy owns
+generated exports and pending import archives remain in external volumes. Redis
+uses an authenticated, private AOF volume, but PostgreSQL remains the source of
+truth for task state. The external reverse proxy owns
 HTTPS and forwards one HTTP port to CartaVault.
 
 Proxy forwarding headers are disabled by default. When CartaVault is behind a
@@ -22,14 +26,15 @@ Build the application image and pull the pinned PostGIS companion image:
 .\docker\build.ps1 -Version "0.9.0-beta.1"
 ```
 
-Export both images for an offline NAS or Portainer installation:
+Export all three images for an offline NAS or Portainer installation:
 
 ```powershell
 .\docker\export-images.ps1 -Version "0.9.0-beta.1" -OutputDirectory "D:\docker-exports"
 ```
 
-The archive contains `cartavault:0.9.0-beta.1` and
-`postgis/postgis:16-3.5` at the digest declared in the Compose file.
+The archive contains `cartavault:0.9.0-beta.1`, `postgis/postgis:16-3.5`
+and `redis:7.4-alpine` at the digests declared in the Compose file. The API and
+worker reuse the same CartaVault image.
 
 ## First installation
 
@@ -81,6 +86,7 @@ Required runtime values include:
 - PostgreSQL database, user and password;
 - public URL and allowed CORS origins;
 - session, setup and credential-encryption secrets;
+- a distinct `REDIS_PASSWORD` used only on the private Docker network;
 - sender address for transactional email.
 
 No runtime secret or `.env` file is copied into the image. Keep
@@ -94,6 +100,8 @@ ${CARTAVAULT_DATA_ROOT}/postgres
 ${CARTAVAULT_DATA_ROOT}/photos
 ${CARTAVAULT_DATA_ROOT}/avatars
 ${CARTAVAULT_DATA_ROOT}/exports
+${CARTAVAULT_DATA_ROOT}/imports
+${CARTAVAULT_DATA_ROOT}/redis
 ```
 
 The default Synology root is `/volume2/docker/cartavault`; change it through
@@ -117,14 +125,17 @@ migrations before becoming ready.
 
 ## Health and logs
 
-`postgis` uses `pg_isready`. `cartavault` becomes healthy only after migrations,
-FastAPI lifespan checks and `/healthz` succeed. Startup logs distinguish
+`postgis` uses `pg_isready`, Redis uses an authenticated `PING`, and the worker
+healthcheck verifies that RQ has registered an idle or busy worker. `cartavault`
+becomes healthy only after migrations, FastAPI lifespan checks and `/healthz`
+succeed. Startup logs distinguish
 configuration, database readiness, migration locking, Alembic, bootstrap and
 application phases without printing credentials.
 
 ```sh
 docker compose --env-file docker/.env -f docker/compose.yml ps
 docker compose --env-file docker/.env -f docker/compose.yml logs cartavault
+docker compose --env-file docker/.env -f docker/compose.yml logs worker redis
 ```
 
 ## Backup, restore and rollback
@@ -139,9 +150,24 @@ backward-compatible. CartaVault never runs `alembic downgrade` automatically;
 restore the verified pre-upgrade recovery set when a schema rollback is
 required.
 
-## Single-replica beta constraint
+## Background tasks and synchronous fallback
+
+PDF generation and KMZ confirmation are queued by identifier. Their progress,
+ownership, errors and results are stored in PostgreSQL; Redis never contains
+archives, images, credentials or authoritative business state. Pending KMZ
+archives and generated files are shared between the API and worker through the
+`imports` and `exports` volumes.
+
+Local development defaults to `CARTAVAULT_TASK_MODE=sync`, which executes the
+same explicit handlers in the API process without Redis. Docker Compose sets
+the mode to `redis`. Do not use synchronous mode to scale multiple API replicas.
+See [`docs/background-tasks.md`](../docs/background-tasks.md) for operations and
+recovery.
+
+## Single-API-replica beta constraint
 
 The application container runs migrations during startup and therefore assumes
-one CartaVault replica for the private beta. The advisory lock prevents an
+one CartaVault API replica for the private beta. Worker replicas may be scaled
+independently. The advisory lock prevents an
 accidental concurrent migration, but a future multi-replica deployment should
 move migrations to a dedicated deployment job or CI-controlled rollout.

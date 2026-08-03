@@ -7,6 +7,8 @@ from uuid import UUID
 from xml.etree import ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from sqlalchemy.orm import Session
+
 from app.exports.temporary_exports import TemporaryExport, create
 from app.trips.models import Trip
 
@@ -27,8 +29,8 @@ def google_maps_links(trip: Trip, max_points: int = 10) -> list[dict]:
     return links
 
 
-def create_gpx(trip: Trip, user_id: UUID) -> TemporaryExport:
-    item = create(trip.map_id, user_id, f"{_slug(trip.name)}.gpx")
+def create_gpx(trip: Trip, user_id: UUID, session: Session | None = None) -> TemporaryExport:
+    item = create(trip.map_id, user_id, f"{_slug(trip.name)}.gpx", session)
     root = ET.Element("gpx", {"version": "1.1", "creator": "CartaVault", "xmlns": "http://www.topografix.com/GPX/1/1"})
     ET.SubElement(root, "name").text = trip.name
     for day in trip.days:
@@ -45,11 +47,13 @@ def create_gpx(trip: Trip, user_id: UUID) -> TemporaryExport:
             notes = getattr(stop, "notes", None)
             if notes: ET.SubElement(node, "desc").text = notes
     item.path.write_bytes(ET.tostring(root, encoding="utf-8", xml_declaration=True))
+    if session is not None:
+        session.commit()
     return item
 
 
-def create_kmz(trip: Trip, user_id: UUID) -> TemporaryExport:
-    item = create(trip.map_id, user_id, f"{_slug(trip.name)}.kmz")
+def create_kmz(trip: Trip, user_id: UUID, session: Session | None = None) -> TemporaryExport:
+    item = create(trip.map_id, user_id, f"{_slug(trip.name)}.kmz", session)
     namespace = "http://www.opengis.net/kml/2.2"; ET.register_namespace("", namespace)
     root = ET.Element(f"{{{namespace}}}kml"); document = ET.SubElement(root, "Document"); ET.SubElement(document, "name").text = trip.name
     colors = ["ff8aa60f", "ff4a7cc8", "ffb05e8a", "ff8a5ec8", "ff3e9bde"]
@@ -73,6 +77,8 @@ def create_kmz(trip: Trip, user_id: UUID) -> TemporaryExport:
         if day.route_geometry and day.route_geometry.get("coordinates"):
             route = ET.SubElement(folder, "Placemark"); ET.SubElement(route, "name").text = "Itinéraire"; ET.SubElement(route, "styleUrl").text = f"#{style_id}"; line_string = ET.SubElement(route, "LineString"); ET.SubElement(line_string, "tessellate").text = "1"; ET.SubElement(line_string, "coordinates").text = " ".join(f"{lon},{lat},0" for lon, lat in day.route_geometry["coordinates"])
     with ZipFile(item.path, "w", ZIP_DEFLATED) as archive: archive.writestr("doc.kml", ET.tostring(root, encoding="utf-8", xml_declaration=True))
+    if session is not None:
+        session.commit()
     return item
 
 

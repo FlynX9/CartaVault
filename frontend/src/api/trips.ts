@@ -57,6 +57,18 @@ export const setTripVisitStatus = (id: string, visitStatus: TripVisitStatus) => 
 export const exportTripGoogleMaps = (id: string) => sendJson(`/trips/${id}/exports/google-maps`, 'POST', {}) as Promise<{ links: Array<{ day_number: number; part: number; url: string }>; warnings: string[] }>
 export const exportTripGpx = (id: string) => sendJson(`/trips/${id}/exports/gpx`, 'POST', {}) as Promise<TripExport>
 export const exportTripKmz = (id: string) => sendJson(`/trips/${id}/exports/kmz`, 'POST', {}) as Promise<TripExport>
-export const exportTripPdf = (id: string, options: TripPdfExportOptions) => sendJson(`/trips/${id}/exports/pdf`, 'POST', options) as Promise<TripExport>
+interface BackgroundTaskResult { task_id: string; status: string }
+interface BackgroundTaskRead { status: string; result?: TripExport | null; error_message?: string | null }
+export async function exportTripPdf(id: string, options: TripPdfExportOptions): Promise<TripExport> {
+  const started = await sendJson(`/trips/${id}/exports/pdf`, 'POST', options) as BackgroundTaskResult
+  while (true) {
+    const task = await getJson(`/tasks/${encodeURIComponent(started.task_id)}`, empty) as BackgroundTaskRead
+    if (task.status === 'succeeded' && task.result) return task.result
+    if (['failed', 'cancelled', 'expired'].includes(task.status)) {
+      throw new Error(task.error_message ?? 'La génération du PDF a échoué.')
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 500))
+  }
+}
 export const downloadTripExport = (path: string, signal?: AbortSignal) => getBlob(path, signal)
 export const tripExportUrl = (path: string) => `${API_BASE_URL}${path}`

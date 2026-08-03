@@ -67,6 +67,10 @@ def generate_secrets(path: Path, *, rotate_setup_token: bool = False) -> int:
         updates["CARTAVAULT_SESSION_SECRET"] = secrets.token_urlsafe(48)
     if _needs_generation(values.get("CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY")):
         updates["CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY"] = Fernet.generate_key().decode("ascii")
+    if _needs_generation(values.get("REDIS_PASSWORD")):
+        # URL-safe output can be embedded in REDIS_URL without a second
+        # operator-controlled encoding step.
+        updates["REDIS_PASSWORD"] = secrets.token_urlsafe(36)
 
     token_was_generated = rotate_setup_token or _needs_generation(values.get("CARTAVAULT_SETUP_TOKEN"))
     if token_was_generated:

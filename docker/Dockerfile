@@ -7,7 +7,11 @@ ARG VITE_STADIA_MAPS_API_KEY
 WORKDIR /build/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# npm/cli can omit this platform-specific optional dependency when the lockfile
+# was generated on Windows. Keep the locked musl binary explicit so the Linux
+# image build remains reproducible.
+RUN npm ci --include=optional \
+    && npm install --no-save --ignore-scripts=false lightningcss-linux-x64-musl@1.32.0
 
 COPY frontend ./
 COPY shared ../shared
@@ -62,7 +66,7 @@ COPY --chown=cartavault:cartavault backend/migrations ./migrations
 COPY --chown=cartavault:cartavault shared /shared
 COPY --from=frontend-builder --chown=cartavault:cartavault /build/frontend/dist ./frontend
 
-RUN mkdir -p /app/storage/photos /app/storage/avatars /app/storage/exports \
+RUN mkdir -p /app/storage/photos /app/storage/avatars /app/storage/exports /app/storage/imports \
     && chown -R cartavault:cartavault /app/storage
 
 USER cartavault

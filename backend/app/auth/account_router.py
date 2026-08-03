@@ -185,5 +185,5 @@ def delete_account(data: AccountDelete, response: Response, database_session: Se
     database_session.execute(delete(UserApiCredential).where(UserApiCredential.user_id == user.id))
     database_session.execute(update(MapInvitation).where(MapInvitation.email == user.email, MapInvitation.accepted_at.is_(None)).values(revoked_at=now))
     user.display_name = "Utilisateur supprimé"; user.email = f"deleted-{user.id}@invalid.local"; user.is_active = False; user.is_admin = False; user.deleted_at = now; user.avatar_filename = None; user.avatar_updated_at = now
-    database_session.commit(); delete_avatar(old_avatar); remove_for_user(user.id)
+    database_session.commit(); delete_avatar(old_avatar); remove_for_user(user.id, database_session)
     response.delete_cookie(security_settings.session_cookie_name, path="/"); response.delete_cookie(security_settings.csrf_cookie_name, path="/"); response.status_code = 204; return response

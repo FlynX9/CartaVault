@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from io import BytesIO
-from threading import Lock
+import os
+from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
@@ -21,6 +21,8 @@ from app.categories.models import IMPORTED_CATEGORY_NAME, Category
 from app.countries.point_validator import validate_point_country
 from app.imports.kmz_mapping import map_extended_data
 from app.imports.kmz_parser import ParsedImage, ParsedPlacemark
+from app.imports.kmz_parser import KmzParseError, parse_kmz
+from app.imports.kmz_security import KmzSecurityError, validate_kmz_upload
 from app.imports.schemas import (
     KmzImagePreview,
     KmzImportFailure,
@@ -37,12 +39,13 @@ from app.statuses.models import PlaceStatus
 from app.statuses.router import slugify_status_name
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
+from app.tasks.models import KmzImportPreview
 
 
 IMPORT_TTL = timedelta(minutes=15)
 ProgressCallback = Callable[[int, int, str], None]
-_imports: dict[UUID, "CachedKmzImport"] = {}
-_imports_lock = Lock()
+DEFAULT_IMPORT_ROOT = Path(__file__).resolve().parents[2] / "storage" / "imports"
+IMPORT_ROOT = Path(os.getenv("IMPORT_STORAGE_PATH", str(DEFAULT_IMPORT_ROOT))).expanduser().resolve()
 
 
 @dataclass(frozen=True)
@@ -56,21 +59,43 @@ class CachedKmzImport:
     global_warnings: tuple[str, ...]
 
 
-def cache_preview(map_id: UUID, user_id: UUID, file_name: str, items: list[ParsedPlacemark], warnings: list[str]) -> KmzPreviewRead:
-    """Keep short-lived parsed data in process; no archive paths are exposed."""
+def cache_preview(
+    database_session: Session,
+    map_id: UUID,
+    user_id: UUID,
+    file_name: str,
+    payload: bytes,
+    items: list[ParsedPlacemark],
+    warnings: list[str],
+) -> KmzPreviewRead:
+    """Persist the validated archive so any worker can rebuild the preview."""
 
-    _purge_expired_imports()
+    IMPORT_ROOT.mkdir(parents=True, exist_ok=True)
+    storage_name = f"{uuid4()}.kmz"
+    final_path = IMPORT_ROOT / storage_name
+    temporary_path = IMPORT_ROOT / f".{storage_name}.tmp"
+    temporary_path.write_bytes(payload)
+    temporary_path.replace(final_path)
+    now = datetime.now(UTC)
+    preview = KmzImportPreview(
+        map_id=map_id,
+        user_id=user_id,
+        storage_name=storage_name,
+        file_name=file_name,
+        created_at=now,
+        expires_at=now + IMPORT_TTL,
+    )
+    database_session.add(preview)
+    database_session.flush()
     cached = CachedKmzImport(
-        import_id=uuid4(),
+        import_id=preview.id,
         map_id=map_id,
         user_id=user_id,
         file_name=file_name,
-        created_at=datetime.now(UTC),
+        created_at=now,
         items=tuple(items),
         global_warnings=tuple(warnings),
     )
-    with _imports_lock:
-        _imports[cached.import_id] = cached
     return preview_to_read(cached)
 
 
@@ -123,15 +148,47 @@ def mark_outside_country_items(poi_map: PoiMap, items: list[ParsedPlacemark]) ->
     return None
 
 
-def get_cached_import(import_id: UUID, map_id: UUID, user_id: UUID) -> CachedKmzImport:
-    _purge_expired_imports()
-    with _imports_lock:
-        cached = _imports.get(import_id)
-    if cached is None:
+def get_cached_import(database_session: Session, import_id: UUID, map_id: UUID, user_id: UUID) -> CachedKmzImport:
+    preview = database_session.get(KmzImportPreview, import_id)
+    if preview is None or preview.expires_at.replace(tzinfo=UTC) <= datetime.now(UTC):
         raise HTTPException(status_code=410, detail="The KMZ import preview has expired")
-    if cached.map_id != map_id or cached.user_id != user_id:
+    if preview.map_id != map_id or preview.user_id != user_id:
         raise HTTPException(status_code=404, detail="The KMZ import preview does not belong to this map")
-    return cached
+    archive_path = (IMPORT_ROOT / preview.storage_name).resolve()
+    if archive_path.parent != IMPORT_ROOT or not archive_path.is_file():
+        raise HTTPException(status_code=410, detail="The KMZ import preview is no longer available")
+    try:
+        validated = validate_kmz_upload(preview.file_name, archive_path.read_bytes())
+        try:
+            items, warnings = parse_kmz(validated.archive, tuple(entry.filename for entry in validated.entries))
+        finally:
+            validated.archive.close()
+    except (KmzSecurityError, KmzParseError) as error:
+        raise HTTPException(status_code=410, detail="The KMZ import preview is no longer valid") from error
+    mark_duplicate_items(database_session, map_id, items)
+    poi_map = database_session.get(PoiMap, map_id)
+    if poi_map is None:
+        raise HTTPException(status_code=404, detail="Map not found")
+    boundary_warning = mark_outside_country_items(poi_map, items)
+    if boundary_warning:
+        warnings.append(boundary_warning)
+    return CachedKmzImport(
+        import_id=preview.id,
+        map_id=preview.map_id,
+        user_id=preview.user_id,
+        file_name=preview.file_name,
+        created_at=preview.created_at.replace(tzinfo=UTC),
+        items=tuple(items),
+        global_warnings=tuple(warnings),
+    )
+
+
+def remove_cached_import(database_session: Session, import_id: UUID) -> None:
+    preview = database_session.get(KmzImportPreview, import_id)
+    if preview is None:
+        return
+    (IMPORT_ROOT / preview.storage_name).unlink(missing_ok=True)
+    database_session.delete(preview)
 
 
 def preview_to_read(cached: CachedKmzImport) -> KmzPreviewRead:
@@ -349,17 +406,18 @@ def confirm_import(
                         import_warnings.append(f"Image distante ignorée pour {place.name}: {error}")
                         report_progress(f"Image distante ignorée pour {place.name}", 1)
         database_session.commit()
-    except (SQLAlchemyError, PhotoStorageError, OSError, TypeError) as error:
+    except Exception as error:
         database_session.rollback()
         for relative_path, place_id, photo_id in reversed(stored_files):
             try:
                 delete_photo_file(relative_path, place_id, photo_id)
             except PhotoStorageError:
                 pass
-        raise HTTPException(status_code=500, detail="Unable to confirm the KMZ import") from error
+        if isinstance(error, (SQLAlchemyError, PhotoStorageError, OSError, TypeError)):
+            raise HTTPException(status_code=500, detail="Unable to confirm the KMZ import") from error
+        raise
 
     report_progress("Import terminé", progress_total - progress_completed)
-    _remove_cached_import(cached.import_id)
     return KmzImportReport(
         created_count=len(created_ids),
         skipped_count=skipped_count,
@@ -475,16 +533,3 @@ def _find_existing_duplicate(database_session: Session, map_id: UUID, item: Pars
 def _item_data(item: ParsedPlacemark) -> tuple[dict[str, str], dict[str, str | list[str]]]:
     mapped_fields, custom_fields = map_extended_data(item.extended_data, name=item.name, description=item.description)
     return mapped_fields, custom_fields
-
-
-def _purge_expired_imports() -> None:
-    cutoff = datetime.now(UTC) - IMPORT_TTL
-    with _imports_lock:
-        for import_id, cached in list(_imports.items()):
-            if cached.created_at < cutoff:
-                _imports.pop(import_id, None)
-
-
-def _remove_cached_import(import_id: UUID) -> None:
-    with _imports_lock:
-        _imports.pop(import_id, None)
