@@ -4,7 +4,7 @@ import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPaylo
 
 const empty = new URLSearchParams()
 export interface TripCreatePayload { name: string; description?: string; start_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
-export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; check_in_time?: string; check_out_time?: string }
+export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; google_place_id?: string | null; notes?: string; check_in_time?: string; check_out_time?: string }
 export interface TripDepartureCreatePayload { place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; departure_time?: string }
 export type TripArrivalCreatePayload = Omit<TripDepartureCreatePayload, 'departure_time'>
 export type TripPdfNavigationProvider = 'google_maps' | 'waze'

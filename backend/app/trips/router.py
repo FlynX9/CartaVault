@@ -249,7 +249,7 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
         session.add(day); session.flush(); days[item.id] = day
         quotas.ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day.id, increment=len(item.stops))
         for stop in item.stops: session.add(TripStop(trip_day_id=day.id, place_id=stop.place_id, stop_type=stop.stop_type, name=stop.name, latitude=stop.latitude, longitude=stop.longitude, address=stop.address, sort_order=stop.sort_order, visit_duration_minutes=stop.visit_duration_minutes, notes=stop.notes, is_required=stop.is_required, is_locked=stop.is_locked, visit_status="planned"))
-    for night in source.nights: session.add(TripNight(trip_id=copy.id, previous_day_id=days[night.previous_day_id].id, next_day_id=days[night.next_day_id].id, place_id=night.place_id, source_type=night.source_type, name=night.name, latitude=night.latitude, longitude=night.longitude, address=night.address, notes=night.notes, check_in_time=night.check_in_time, check_out_time=night.check_out_time))
+    for night in source.nights: session.add(TripNight(trip_id=copy.id, previous_day_id=days[night.previous_day_id].id, next_day_id=days[night.next_day_id].id, place_id=night.place_id, source_type=night.source_type, name=night.name, latitude=night.latitude, longitude=night.longitude, address=night.address, google_place_id=night.google_place_id, notes=night.notes, check_in_time=night.check_in_time, check_out_time=night.check_out_time))
     if source.departure: session.add(TripDeparture(trip_id=copy.id, place_id=source.departure.place_id, name=source.departure.name, latitude=source.departure.latitude, longitude=source.departure.longitude, address=source.departure.address, notes=source.departure.notes, departure_time=source.departure.departure_time))
     if source.arrival: session.add(TripArrival(trip_id=copy.id, place_id=source.arrival.place_id, name=source.arrival.name, latitude=source.arrival.latitude, longitude=source.arrival.longitude, address=source.arrival.address, notes=source.arrival.notes))
     synchronize_trip_dates(load_trip(session, copy.id))
@@ -437,7 +437,7 @@ def add_night(trip_id: UUID, data: NightCreate, session: Session = Depends(get_d
     if previous is None or following is None or following.sort_order != previous.sort_order + 1: raise HTTPException(422, "A night must connect consecutive days of the same trip")
     values = data.model_dump(exclude={"previous_day_id", "next_day_id"})
     if data.place_id:
-        place, latitude, longitude = place_snapshot(session, data.place_id, trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, source_type="place")
+        place, latitude, longitude = place_snapshot(session, data.place_id, trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, source_type="place", google_place_id=None)
     night = TripNight(trip_id=trip.id, previous_day_id=previous.id, next_day_id=following.id, **values); session.add(night); stale(previous); stale(following); session.commit(); return NightRead.model_validate(night)
 
 
@@ -445,7 +445,7 @@ def add_night(trip_id: UUID, data: NightCreate, session: Session = Depends(get_d
 def update_night(night_id: UUID, data: NightUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     night, access = require_night_role(session, night_id, user, "editor"); values = data.model_dump(exclude_unset=True)
     if data.place_id:
-        place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, source_type="place")
+        place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, source_type="place", google_place_id=None)
     for key, value in values.items(): setattr(night, key, value)
     stale(night.previous_day); stale(night.next_day); session.commit(); return NightRead.model_validate(night)
 

@@ -10121,7 +10121,7 @@ html[data-theme='dark'] .geocoding-marker {
   white-space: nowrap;
 }
 
-.trip-planner-panel .trip-panel-night .trip-night-stop button {
+.trip-planner-panel .trip-panel-night .trip-night-stop :is(button, a) {
   display: inline-grid;
   width: 22px;
   height: 22px;
@@ -10131,6 +10131,7 @@ html[data-theme='dark'] .geocoding-marker {
   background: transparent;
   border: 0;
   border-radius: .3rem;
+  text-decoration: none;
 }
 
 .trip-planner-panel .trip-panel-night .trip-night-stop-actions {
@@ -10139,14 +10140,14 @@ html[data-theme='dark'] .geocoding-marker {
   gap: .15rem;
 }
 
-.trip-planner-panel .trip-panel-night .trip-night-stop-actions button:first-child:hover,
-.trip-planner-panel .trip-panel-night .trip-night-stop-actions button:first-child:focus-visible {
+.trip-planner-panel .trip-panel-night .trip-night-stop-actions :is(.trip-night-google-link, .trip-night-edit):hover,
+.trip-planner-panel .trip-panel-night .trip-night-stop-actions :is(.trip-night-google-link, .trip-night-edit):focus-visible {
   color: var(--cv-color-teal);
   background: color-mix(in srgb, var(--cv-color-teal) 10%, transparent);
 }
 
-.trip-planner-panel .trip-panel-night .trip-night-stop button:hover,
-.trip-planner-panel .trip-panel-night .trip-night-stop button:focus-visible {
+.trip-planner-panel .trip-panel-night .trip-night-stop .trip-night-remove:hover,
+.trip-planner-panel .trip-panel-night .trip-night-stop .trip-night-remove:focus-visible {
   color: var(--cv-color-danger);
   background: color-mix(in srgb, var(--cv-color-danger) 10%, transparent);
 }

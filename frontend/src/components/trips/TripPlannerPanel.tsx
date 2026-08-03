@@ -1,5 +1,5 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
-import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, Eye, EyeOff, Flag, Gauge, GitCommitHorizontal, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Timer, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, Car, Check, ChevronDown, ChevronRight, ChevronUp, ChevronsDown, ChevronsUp, CircleAlert, Clock3, Copy, Download, ExternalLink, Eye, EyeOff, Flag, Gauge, GitCommitHorizontal, GripVertical, LoaderCircle, Lock, MapPin, Moon, Navigation, Pencil, Play, Plus, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, SquareChevronDown, SquareChevronUp, Sun, Timer, Trash2 } from 'lucide-react'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, createTrip, deleteTrip, deleteTripDay, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
 import type { PoiMap } from '../../types/map'
@@ -1135,9 +1135,10 @@ function Night({ poiMap, trip, previous, next, recommendedStart, recommendedStar
             <strong>{dropping ? 'Enregistrement…' : night.name}</strong>
             <small>{nightSourceLabel(night.source_type, night.place_id)}</small>
           </span>
-          {canEdit && <span className="trip-night-stop-actions">
-            <button type="button" aria-label="Modifier le lieu de la nuit" title="Modifier le lieu" onClick={() => setDialog({ edit: true })}><Pencil size={11} /></button>
-            <button type="button" aria-label="Retirer le lieu de la nuit" title="Retirer le lieu" onClick={removeNightLocation}><Trash2 size={11} /></button>
+          {(night.google_place_id || canEdit) && <span className="trip-night-stop-actions">
+            {night.google_place_id && <a className="trip-night-google-link" href={googleMapsPlaceUrl(night)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir la fiche Google Maps de ${night.name}`} title="Ouvrir dans Google Maps"><ExternalLink size={11} /></a>}
+            {canEdit && <><button className="trip-night-edit" type="button" aria-label="Modifier le lieu de la nuit" title="Modifier le lieu" onClick={() => setDialog({ edit: true })}><Pencil size={11} /></button>
+            <button className="trip-night-remove" type="button" aria-label="Retirer le lieu de la nuit" title="Retirer le lieu" onClick={removeNightLocation}><Trash2 size={11} /></button></>}
           </span>}
         </div> : <div className="trip-night-placeholder">{dropActive
           ? <span className="trip-night-drop-indicator" aria-hidden="true"><Plus size={12} />Déposer ici</span>
@@ -1151,6 +1152,12 @@ function Night({ poiMap, trip, previous, next, recommendedStart, recommendedStar
 function nightSourceLabel(sourceType: Trip['nights'][number]['source_type'] | undefined, placeId: string | null) {
   const source = sourceType ?? (placeId ? 'place' : 'map')
   return source === 'place' ? 'POI' : source === 'imported_text' ? 'Texte de réservation' : 'Point cartographique'
+}
+
+function googleMapsPlaceUrl(night: Trip['nights'][number]) {
+  const query = [night.name, night.address].filter(Boolean).join(', ')
+  const parameters = new URLSearchParams({ api: '1', query, query_place_id: night.google_place_id ?? '' })
+  return `https://www.google.com/maps/search/?${parameters.toString()}`
 }
 
 type TimelineStatus = 'valid' | 'pending' | 'empty'

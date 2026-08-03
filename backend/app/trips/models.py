@@ -168,6 +168,7 @@ class TripNight(Base):
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     address: Mapped[str | None] = mapped_column(String(500))
+    google_place_id: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     check_in_time: Mapped[time | None] = mapped_column(Time)
     check_out_time: Mapped[time | None] = mapped_column(Time)

@@ -91,6 +91,7 @@ describe('CreateTripNightDialog', () => {
       address: '13 Samreklo Street, 0103 Tbilissi, Géorgie',
       latitude: 41.697122,
       longitude: 44.8135,
+      google_place_id: 'panorama',
       check_in_time: '00:00',
       check_out_time: '14:00',
       notes: reservation,

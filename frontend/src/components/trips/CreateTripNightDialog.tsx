@@ -17,7 +17,7 @@ interface CommonProps {
   countryCode?: string
   focus: [number, number]
   initialPlaceId?: string
-  initialLocation?: { name: string; latitude: number; longitude: number; address?: string | null }
+  initialLocation?: { name: string; latitude: number; longitude: number; address?: string | null; google_place_id?: string | null }
   initialNotes?: string | null
   initialCheckInTime?: string | null
   initialCheckOutTime?: string | null
@@ -161,7 +161,7 @@ export function CreateTripNightDialog(props: Props) {
   const [locationSourceType, setLocationSourceType] = useState<TripNightSourceType>(props.initialSourceType ?? (initialPlaceId ? 'place' : 'map'))
   const [results, setResults] = useState<GeocodingResult[]>([])
   const [placeResults, setPlaceResults] = useState<PlaceDetails[]>([])
-  const [selectedResult, setSelectedResult] = useState<GeocodingResult | null>(initialLocation ? { id: 'current-anchor', name: initialLocation.name, formattedAddress: initialLocation.address ?? '', latitude: initialLocation.latitude, longitude: initialLocation.longitude, source: 'current' } : null)
+  const [selectedResult, setSelectedResult] = useState<GeocodingResult | null>(initialLocation ? { id: initialLocation.google_place_id ? `google:${initialLocation.google_place_id}` : 'current-anchor', name: initialLocation.name, formattedAddress: initialLocation.address ?? '', latitude: initialLocation.latitude, longitude: initialLocation.longitude, source: initialLocation.google_place_id ? 'google_places' : 'current' } : null)
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -273,6 +273,9 @@ export function CreateTripNightDialog(props: Props) {
         next_day_id: props.nextDayId,
         ...location,
         source_type: selectedPlace ? 'place' : locationSourceType,
+        google_place_id: selectedResult?.source === 'google_places' && selectedResult.id.startsWith('google:')
+          ? selectedResult.id.slice('google:'.length)
+          : null,
         notes: String(data.get('notes') ?? '').trim()
           || (locationSourceType === 'imported_text' ? reservationText.trim() : '')
           || undefined,

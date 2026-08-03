@@ -119,7 +119,7 @@ describe('TripPlannerPanel', () => {
 
   it('reorders days by drag and drop while keeping the following night in the same block', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
-    const night = { id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Nuit du premier jour', latitude: 48.5, longitude: 2.5, address: null, notes: null, check_in_time: null, check_out_time: null }
+    const night = { id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Nuit du premier jour', latitude: 48.5, longitude: 2.5, address: null, google_place_id: null, notes: null, check_in_time: null, check_out_time: null }
     const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [night] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withNight])
     vi.mocked(getTrip).mockResolvedValue(withNight)
@@ -436,7 +436,7 @@ describe('TripPlannerPanel', () => {
       days: [firstDay, secondDay],
       departure: { id: 'departure-1', trip_id: trip.id, place_id: 'station-1', name: 'Gare', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
       arrival: null,
-      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-1', source_type: 'place', name: 'Hôtel Central', latitude: 48.15, longitude: 2.15, address: null, notes: null, check_in_time: '20:30:00', check_out_time: null }],
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-1', source_type: 'place', name: 'Hôtel Central', latitude: 48.15, longitude: 2.15, address: null, google_place_id: null, notes: null, check_in_time: '20:30:00', check_out_time: null }],
     }
     vi.mocked(listTrips).mockResolvedValue([previewTrip])
     vi.mocked(getTrip).mockResolvedValue(previewTrip)
@@ -1165,7 +1165,7 @@ describe('TripPlannerPanel', () => {
       days: [trip.days[0], secondDay],
       departure: { id: 'departure-1', trip_id: trip.id, place_id: null, name: 'Maison', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
       arrival: { id: 'arrival-1', trip_id: trip.id, place_id: null, name: 'Retour maison', latitude: 48, longitude: 2, address: null, notes: null },
-      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map', name: 'Hôtel', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: '20:00:00', check_out_time: '08:00:00' }],
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map', name: 'Hôtel', latitude: 49, longitude: 3, address: '1 rue de Paris', google_place_id: 'ChIJ-hotel-official', notes: null, check_in_time: '20:00:00', check_out_time: '08:00:00' }],
     } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([anchoredTrip])
     vi.mocked(getTrip).mockResolvedValue(anchoredTrip)
@@ -1182,6 +1182,10 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByRole('button', { name: 'Modifier le point d’arrivée' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Modifier le lieu de la nuit' })).toBeVisible()
+    const googleMapsLink = screen.getByRole('link', { name: 'Ouvrir la fiche Google Maps de Hôtel' })
+    expect(googleMapsLink).toHaveAttribute('target', '_blank')
+    expect(googleMapsLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(googleMapsLink).toHaveAttribute('href', expect.stringContaining('query_place_id=ChIJ-hotel-official'))
     expect(screen.queryByRole('button', { name: 'Supprimer le point de départ' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Utiliser le point de départ comme arrivée' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Supprimer l’hébergement' })).not.toBeInTheDocument()
@@ -1238,7 +1242,7 @@ describe('TripPlannerPanel', () => {
 
   it('selects a night as the active itinerary target without opening its editor', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
-    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-hotel', source_type: 'place' as const, name: 'Hôtel central', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-hotel', source_type: 'place' as const, name: 'Hôtel central', latitude: 49, longitude: 3, address: null, google_place_id: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withNight])
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const onActiveDayChange = vi.fn()
@@ -1258,7 +1262,7 @@ describe('TripPlannerPanel', () => {
 
   it('centers the map on a free night address without opening a POI', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
-    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Adresse de nuit', latitude: 48.8566, longitude: 2.3522, address: 'Paris', notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Adresse de nuit', latitude: 48.8566, longitude: 2.3522, address: 'Paris', google_place_id: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withNight])
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const onStopFocus = vi.fn()
@@ -1273,7 +1277,7 @@ describe('TripPlannerPanel', () => {
 
   it('renders an overnight POI as a compact stop row with only a remove action', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
-    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-hotel', source_type: 'place' as const, name: 'Hôtel central', latitude: 49, longitude: 3, address: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-hotel', source_type: 'place' as const, name: 'Hôtel central', latitude: 49, longitude: 3, address: null, google_place_id: null, notes: null, check_in_time: null, check_out_time: null }] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withNight])
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)

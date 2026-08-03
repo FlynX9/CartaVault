@@ -128,8 +128,9 @@ def test_trip_days_stops_nights_reorder_summary_and_permissions(integration_clie
     assert first.status_code == free.status_code == 201
     assert first.json()["name"] == "POI voyage"
 
-    night = integration_client.post(f"/trips/{trip_id}/nights", json={"previous_day_id": days[0]["id"], "next_day_id": days[1]["id"], "name": "Hôtel", "latitude": 48.4, "longitude": 6.6})
+    night = integration_client.post(f"/trips/{trip_id}/nights", json={"previous_day_id": days[0]["id"], "next_day_id": days[1]["id"], "name": "Hôtel", "latitude": 48.4, "longitude": 6.6, "google_place_id": "ChIJ-hotel-official"})
     assert night.status_code == 201
+    assert night.json()["google_place_id"] == "ChIJ-hotel-official"
     invalid_night = integration_client.post(f"/trips/{trip_id}/nights", json={"previous_day_id": days[0]["id"], "next_day_id": days[2]["id"], "name": "Invalide", "latitude": 48, "longitude": 6})
     assert invalid_night.status_code == 422
     assert integration_client.post(f"/trips/{trip_id}/days/reorder", json={"ids": [days[1]["id"], days[0]["id"], days[2]["id"]]}).status_code == 200
