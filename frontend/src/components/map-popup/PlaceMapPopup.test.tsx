@@ -68,6 +68,16 @@ describe('PlaceMapPopup', () => {
     expect(uploadPlacePhoto).not.toHaveBeenCalled()
   })
 
+  it('disables clipboard photo uploads for stored POIs opened in trip mode', async () => {
+    render(<PlaceMapPopup placeId={PLACE_ID} allowPhotoPaste={false} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+
+    expect(screen.queryByRole('textbox', { name: 'Collage d’image depuis le presse-papiers' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Collez une capture avec')).not.toBeInTheDocument()
+    fireEvent.paste(window, { clipboardData: { files: [new File(['image'], 'capture.png', { type: 'image/png' })], items: [] } })
+    expect(uploadPlacePhoto).not.toHaveBeenCalled()
+  })
+
   it('reveals the history directly inside the quick card', async () => {
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     await screen.findByRole('heading', { name: 'Manufacture' })
@@ -194,7 +204,9 @@ describe('PlaceMapPopup', () => {
 
     expect(await screen.findByLabelText('Navigation des photos')).toHaveTextContent('1 / 2')
     const previous = screen.getByRole('button', { name: 'Photo précédente' })
-    expect(previous).toBeDisabled()
+    expect(previous).toBeEnabled()
+    expect(previous).toHaveClass('trip-night-gallery__previous', 'popup-gallery-hover-action')
+    expect(screen.getByRole('button', { name: 'Photo suivante' })).toHaveClass('trip-night-gallery__next', 'popup-gallery-hover-action')
     fireEvent.click(screen.getByRole('button', { name: 'Photo suivante' }))
     expect(await screen.findByRole('img', { name: 'Cour intérieure' })).toBeVisible()
     expect(screen.getByLabelText('Navigation des photos')).toHaveTextContent('2 / 2')

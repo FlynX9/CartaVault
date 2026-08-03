@@ -5532,6 +5532,9 @@ body {
   .trip-night-gallery .trip-night-hover-action { opacity: 0; pointer-events: none; transition: opacity .14s ease; }
   .trip-night-gallery:hover .trip-night-hover-action,
   .trip-night-gallery .trip-night-hover-action:focus-visible { opacity: 1; pointer-events: auto; }
+  .popup-gallery .popup-gallery-hover-action { opacity: 0; pointer-events: none; transition: opacity .14s ease; }
+  .popup-gallery:hover .popup-gallery-hover-action,
+  .popup-gallery .popup-gallery-hover-action:focus-visible { opacity: 1; pointer-events: auto; }
 }
 html[data-theme='dark'] .trip-night-map-popup__photo--empty { background: var(--cv-surface-muted); }
 html[data-theme='dark'] .trip-night-map-popup__description textarea { color: var(--cv-color-slate); background: var(--cv-surface-muted); }

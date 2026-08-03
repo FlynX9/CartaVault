@@ -27,6 +27,7 @@ import { formatMinutes } from "../trips/tripMetrics";
 interface Props {
   placeId: string;
   canEdit?: boolean;
+  allowPhotoPaste?: boolean;
   showManagementActions?: boolean;
   tripAddTargetLabel?: string | null;
   tripDays?: Array<{ id: string; label: string }>;
@@ -51,6 +52,7 @@ function ratingFillPercentage(rating: number, star: number): number {
 export function PlaceMapPopup({
   placeId,
   canEdit = true,
+  allowPhotoPaste = true,
   showManagementActions = true,
   tripAddTargetLabel = null,
   tripDays = [],
@@ -59,6 +61,7 @@ export function PlaceMapPopup({
   onDeleted,
   onClose,
 }: Props) {
+  const canPastePhotos = canEdit && allowPhotoPaste;
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [place, setPlace] = useState<PlaceDetails | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -134,11 +137,11 @@ export function PlaceMapPopup({
 
   useEffect(() => {
     if (!place || detailsLoading) return;
-    (canEdit ? pasteTargetRef.current : titleRef.current)?.focus({ preventScroll: true });
-  }, [canEdit, detailsLoading, place]);
+    (canPastePhotos ? pasteTargetRef.current : titleRef.current)?.focus({ preventScroll: true });
+  }, [canPastePhotos, detailsLoading, place]);
 
   useEffect(() => {
-    if (!canEdit) return;
+    if (!canPastePhotos) return;
     const isPasteTarget = (target: EventTarget | null) => target instanceof HTMLElement && target.dataset.popupPasteTarget === "true";
     const isTextTarget = (target: EventTarget | null) => target instanceof HTMLElement && !isPasteTarget(target) && (target.matches("input, textarea, select") || target.isContentEditable);
     const restoreFocus = () => {
@@ -216,7 +219,7 @@ export function PlaceMapPopup({
       window.removeEventListener("paste", onPaste, true);
       window.removeEventListener("keydown", onKeyDown, true);
     };
-  }, [canEdit, placeId]);
+  }, [canPastePhotos, placeId]);
 
   if (detailsLoading)
     return (
@@ -302,7 +305,7 @@ export function PlaceMapPopup({
       className="place-map-popup"
       aria-labelledby={`popup-title-${place.id}`}
     >
-      {canEdit && <textarea ref={pasteTargetRef} className="popup-paste-target" data-popup-paste-target="true" tabIndex={-1} aria-label="Collage d’image depuis le presse-papiers" />}
+      {canPastePhotos && <textarea ref={pasteTargetRef} className="popup-paste-target" data-popup-paste-target="true" tabIndex={-1} aria-label="Collage d’image depuis le presse-papiers" />}
       <section className="popup-hero">
         <PlacePopupGallery
           placeName={place.name}
@@ -456,7 +459,7 @@ export function PlaceMapPopup({
           )}
         </div>
       </section>
-      {canEdit && !pasteNotice && <button className="popup-paste-hint" type="button" onClick={() => pasteTargetRef.current?.focus({ preventScroll: true })}>Collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></button>}
+      {canPastePhotos && !pasteNotice && <button className="popup-paste-hint" type="button" onClick={() => pasteTargetRef.current?.focus({ preventScroll: true })}>Collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></button>}
       {pasteNotice && <p className={`popup-paste-notice${pasteUploading ? " is-loading" : ""}`} role="status" aria-live="polite">{pasteNotice}</p>}
       {detailsError && (
         <p className="inline-error" role="alert">

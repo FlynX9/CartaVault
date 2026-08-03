@@ -64,11 +64,11 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
         </button>
       )}
       {orderedPhotos.length > 1 && (
-        <figcaption className="popup-gallery__navigation" aria-label="Navigation des photos">
-          <button type="button" disabled={index === 0} aria-label="Photo précédente" title="Photo précédente" onClick={() => { setFailed(false); setIndex(index - 1) }}><ChevronLeft size={14} aria-hidden="true" /></button>
-          <span aria-live="polite">{index + 1} / {orderedPhotos.length}</span>
-          <button type="button" disabled={index === orderedPhotos.length - 1} aria-label="Photo suivante" title="Photo suivante" onClick={() => { setFailed(false); setIndex(index + 1) }}><ChevronRight size={14} aria-hidden="true" /></button>
-        </figcaption>
+        <>
+          <button className="trip-night-gallery__previous popup-gallery-hover-action" type="button" aria-label="Photo précédente" title="Photo précédente" onClick={() => { setFailed(false); setIndex((index - 1 + orderedPhotos.length) % orderedPhotos.length) }}><ChevronLeft size={19} aria-hidden="true" /></button>
+          <button className="trip-night-gallery__next popup-gallery-hover-action" type="button" aria-label="Photo suivante" title="Photo suivante" onClick={() => { setFailed(false); setIndex((index + 1) % orderedPhotos.length) }}><ChevronRight size={19} aria-hidden="true" /></button>
+          <span className="trip-night-gallery__counter" aria-label="Navigation des photos" aria-live="polite">{index + 1} / {orderedPhotos.length}</span>
+        </>
       )}
       {viewerOpen && <PhotoViewer photos={orderedPhotos} placeName={placeName} initialPhotoId={photo.id} onClose={() => setViewerOpen(false)} />}
     </figure>

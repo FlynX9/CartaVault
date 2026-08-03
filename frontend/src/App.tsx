@@ -1034,6 +1034,7 @@ function WorkspaceApp() {
       <PlaceMapPopup
         placeId={selectedPlaceId}
         canEdit={activeMap?.can_edit === true}
+        allowPhotoPaste={!tripPlannerOpen}
         showManagementActions={!tripPlannerOpen}
         tripAddTargetLabel={popupTripAddTargetLabel}
         tripDays={
