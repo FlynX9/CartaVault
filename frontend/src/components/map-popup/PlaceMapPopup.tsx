@@ -36,6 +36,8 @@ interface Props {
   onClose: () => void;
 }
 
+const PASTE_SUCCESS_NOTICE = "Image ajoutée depuis le presse-papiers.";
+
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(
     new Date(value),
@@ -116,6 +118,14 @@ export function PlaceMapPopup({
   }, [placeId]);
 
   useEffect(() => {
+    if (pasteNotice !== PASTE_SUCCESS_NOTICE) return;
+    const timeout = window.setTimeout(() => {
+      setPasteNotice((current) => current === PASTE_SUCCESS_NOTICE ? null : current);
+    }, 3000);
+    return () => window.clearTimeout(timeout);
+  }, [pasteNotice]);
+
+  useEffect(() => {
     if (!historyOpen) return;
     const controller = new AbortController(); setHistoryLoading(true);
     void getPlaceHistory(placeId, {}, controller.signal).then((page) => { if (!controller.signal.aborted) setHistory(page.items ?? []) }).catch(() => { if (!controller.signal.aborted) setHistory([]) }).finally(() => { if (!controller.signal.aborted) setHistoryLoading(false) });
@@ -154,7 +164,7 @@ export function PlaceMapPopup({
           if (pasteUploadSequence.current !== request) return;
           setPhotos((current) => current.some((item) => item.id === photo.id) ? current : [...current, photo]);
           setPhotosError(null);
-          setPasteNotice("Image ajoutée depuis le presse-papiers.");
+          setPasteNotice(PASTE_SUCCESS_NOTICE);
         })
         .catch((error: unknown) => { if (pasteUploadSequence.current === request) setPasteNotice(error instanceof Error ? error.message : "Impossible d’ajouter cette image."); })
         .finally(() => { if (pasteUploadSequence.current === request) { pasteUploadingRef.current = false; setPasteUploading(false); } });

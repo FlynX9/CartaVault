@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deletePlace, getPlaceDetails, getPlaceHistory } from '../../api/places'
 import { getPlacePhotos, uploadPlacePhoto } from '../../api/photos'
@@ -17,6 +17,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('PlaceMapPopup', () => {
   it('adds a clipboard image to the currently opened editable POI', async () => {
+    const timeoutSpy = vi.spyOn(window, 'setTimeout')
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     await screen.findByRole('heading', { name: 'Manufacture' })
     const clipboardImage = new File(['image'], 'capture.png', { type: 'image/png' })
@@ -30,6 +31,11 @@ describe('PlaceMapPopup', () => {
     await waitFor(() => expect(uploadPlacePhoto).toHaveBeenCalledWith(PLACE_ID, expect.objectContaining({ type: 'image/png' })))
     expect(await screen.findByText('Image ajoutée depuis le presse-papiers.')).toBeVisible()
     expect(screen.getByLabelText('Navigation des photos')).toHaveTextContent('1 / 2')
+
+    const dismissNotice = timeoutSpy.mock.calls.find(([, delay]) => delay === 3000)?.[0]
+    expect(dismissNotice).toBeTypeOf('function')
+    act(() => dismissNotice?.())
+    expect(screen.queryByText('Image ajoutée depuis le presse-papiers.')).not.toBeInTheDocument()
   })
 
   it('falls back to the Clipboard API when Ctrl+V emits no paste event', async () => {
