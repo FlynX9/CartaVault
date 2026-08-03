@@ -245,7 +245,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     </section>
     <section className="account-preference-card account-preference-card--routing">
       <PreferenceCardHeading icon={Route} title={t('account.preferences.routing')} />
-      <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-routing-engine">
+      <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-integration-engine">
         <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
       </PreferenceField>
       {googleSelected && <GoogleRoutesCredentialPanel status={credentialStatus} storageAvailable={storageAvailable} onChanged={handleCredentialChange} />}
@@ -260,7 +260,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     </section>
     <section className="account-preference-card account-preference-card--places">
       <PreferenceCardHeading icon={MapIcon} title="Places" />
-      <PreferenceField label="Moteur de recherche de lieux" htmlFor="account-places-engine" help="Stadia est utilisé par défaut. Google Places nécessite une clé séparée autorisant Places API (New).">
+      <PreferenceField label="Moteur de recherche de lieux" htmlFor="account-places-engine" help="Stadia est utilisé par défaut. Google Places nécessite une clé séparée autorisant Places API (New)." className="account-integration-engine">
         <select id="account-places-engine" aria-labelledby="account-places-engine-label" value={preferences.places.provider} onChange={(event) => { setRoutingError(null); setPreferences({ ...preferences, places: { provider: event.target.value as AccountPreferences['places']['provider'] } }) }}><option value="stadia">Stadia</option><option value="google" disabled={!storageAvailable}>Google Places</option></select>
       </PreferenceField>
       {googlePlacesSelected && <GooglePlacesCredentialPanel status={placesCredentialStatus} storageAvailable={storageAvailable} onChanged={handlePlacesCredentialChange} />}
