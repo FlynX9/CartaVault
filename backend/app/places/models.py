@@ -36,11 +36,11 @@ class Place(Base):
         Index("places_map_interest_rating_idx", "map_id", "interest_rating"),
         Index("places_map_visit_rating_idx", "map_id", "visit_rating"),
         CheckConstraint(
-            "interest_rating IS NULL OR (interest_rating BETWEEN 1 AND 5 AND interest_rating * 2 = trunc(interest_rating * 2))",
+            "interest_rating IS NULL OR (interest_rating BETWEEN 0.5 AND 5 AND interest_rating * 2 = trunc(interest_rating * 2))",
             name="places_interest_rating_range",
         ),
         CheckConstraint(
-            "visit_rating IS NULL OR (visit_rating BETWEEN 1 AND 5 AND visit_rating * 2 = trunc(visit_rating * 2))",
+            "visit_rating IS NULL OR (visit_rating BETWEEN 0.5 AND 5 AND visit_rating * 2 = trunc(visit_rating * 2))",
             name="places_visit_rating_range",
         ),
         CheckConstraint(

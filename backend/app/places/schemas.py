@@ -29,8 +29,8 @@ class PlaceCreate(BaseModel):
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
     is_favorite: bool = False
-    interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
-    visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    interest_rating: float | None = Field(default=None, ge=0.5, le=5, multiple_of=0.5)
+    visit_rating: float | None = Field(default=None, ge=0.5, le=5, multiple_of=0.5)
     default_visit_duration_minutes: int | None = Field(default=None, ge=0, le=1440)
     confirm_outside_country: bool = False
 
@@ -49,8 +49,8 @@ class PlaceUpdate(BaseModel):
     access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
     is_favorite: bool | None = None
-    interest_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
-    visit_rating: float | None = Field(default=None, ge=1, le=5, multiple_of=0.5)
+    interest_rating: float | None = Field(default=None, ge=0.5, le=5, multiple_of=0.5)
+    visit_rating: float | None = Field(default=None, ge=0.5, le=5, multiple_of=0.5)
     default_visit_duration_minutes: int | None = Field(default=None, ge=0, le=1440)
     confirm_outside_country: bool = False
 

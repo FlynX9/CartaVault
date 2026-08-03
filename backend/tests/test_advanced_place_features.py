@@ -60,6 +60,10 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
     invalid_rating = integration_client.patch(f"/places/{place_id}", json={"visit_rating": 3.25})
     assert invalid_rating.status_code == 422
 
+    minimum_rating = integration_client.patch(f"/places/{place_id}", json={"visit_rating": 0.5})
+    assert minimum_rating.status_code == 200
+    assert minimum_rating.json()["visit_rating"] == 0.5
+
     map_filtered = integration_client.get(
         "/places/map",
         params={

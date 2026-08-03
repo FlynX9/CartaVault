@@ -5378,6 +5378,14 @@ body {
 .popup-rating-star-fill { position: absolute; inset: 0 auto 0 0; display: block; overflow: hidden; }
 .popup-rating-star-fill svg { display: block; }
 .popup-rating strong { margin-left: 0.4rem; color: var(--cv-color-gray); font-size: 0.84rem; }
+.popup-rating-editor { position: relative; }
+.popup-rating-editor.is-saving { opacity: .65; }
+.popup-rating-stars { position: relative; display: inline-flex; }
+.popup-rating-stars-visual { display: inline-flex; gap: .15rem; }
+.popup-rating-targets { position: absolute; z-index: 1; inset: -.2rem 0 -.2rem 0; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.popup-rating-targets button { min-width: 0; padding: 0; cursor: pointer; background: transparent; border: 0; border-radius: .2rem; }
+.popup-rating-targets button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.popup-rating-targets button:disabled { cursor: wait; }
 .popup-description { margin: 0 1rem; padding: 0.1rem 0 0.85rem; border-bottom: 1px solid #e5ebef; }
 .popup-description p { margin: 0; color: var(--cv-color-slate); font-size: 0.88rem; line-height: 1.5; }
 .place-map-popup .popup-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 0 1rem; padding: 0.85rem 0; border: 0; }

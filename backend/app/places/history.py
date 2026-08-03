@@ -1,6 +1,7 @@
 """Small, transaction-friendly audit helpers for place changes."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -43,6 +44,8 @@ def json_compatible_value(value: object) -> object:
         return str(value)
     if isinstance(value, (date, datetime)):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
     if isinstance(value, dict):
         return {str(key): json_compatible_value(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):

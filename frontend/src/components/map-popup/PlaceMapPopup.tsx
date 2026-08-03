@@ -78,6 +78,8 @@ export function PlaceMapPopup({
   const [targetDayId, setTargetDayId] = useState("");
   const [pasteUploading, setPasteUploading] = useState(false);
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
+  const [ratingPreview, setRatingPreview] = useState<number | null>(null);
+  const [ratingSaving, setRatingSaving] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const pasteTargetRef = useRef<HTMLTextAreaElement>(null);
   const previousPasteFocusRef = useRef<HTMLElement | null>(null);
@@ -91,6 +93,8 @@ export function PlaceMapPopup({
     pasteUploadingRef.current = false;
     setPasteUploading(false);
     setPasteNotice(null);
+    setRatingPreview(null);
+    setRatingSaving(false);
     setDetailsLoading(true);
     setPhotosLoading(true);
     setDetailsError(null);
@@ -245,6 +249,7 @@ export function PlaceMapPopup({
   const primaryCategory = place.categories.find((item) => item.is_primary);
   const isVisited = place.status.functional_state === "visited";
   const rating = isVisited ? place.visit_rating : place.interest_rating;
+  const displayedRating = ratingPreview ?? rating ?? 0;
   const ratingLabel = isVisited
     ? "Évaluation après visite"
     : "Envie avant visite";
@@ -280,6 +285,23 @@ export function PlaceMapPopup({
           ? error.message
           : "Modification du favori impossible.",
       );
+    }
+  };
+  const saveRating = async (value: number) => {
+    if (!canEdit || ratingSaving) return;
+    const payload = isVisited ? { visit_rating: value } : { interest_rating: value };
+    const previous = place;
+    setRatingSaving(true);
+    setDetailsError(null);
+    setPlace(isVisited ? { ...place, visit_rating: value } : { ...place, interest_rating: value });
+    try {
+      setPlace(await updatePlace(place.id, payload));
+    } catch (error) {
+      setPlace(previous);
+      setDetailsError(error instanceof Error ? error.message : "Modification de la note impossible.");
+    } finally {
+      setRatingSaving(false);
+      setRatingPreview(null);
     }
   };
   const addToTrip = async (dayId?: string) => {
@@ -419,42 +441,54 @@ export function PlaceMapPopup({
               aria-label="Note"
             >
               <span>Note</span>
-              <p
-                className="popup-rating"
+              <div
+                className={`popup-rating popup-rating-editor${ratingSaving ? " is-saving" : ""}`}
                 style={{ color: place.status.color }}
                 aria-label={
-                  rating !== null && rating !== undefined
-                    ? `${ratingLabel} : ${rating} sur 5`
+                  displayedRating > 0
+                    ? `${ratingLabel} : ${displayedRating} sur 5`
                     : `${ratingLabel} : aucune note`
                 }
+                onMouseLeave={() => setRatingPreview(null)}
               >
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const fillPercentage =
-                    rating === null || rating === undefined
-                      ? 0
-                      : ratingFillPercentage(rating, star);
-                  return (
-                    <span
-                      className="popup-rating-star"
-                      data-fill={fillPercentage}
-                      key={star}
-                    >
-                      <Star size={19} fill="none" />
-                      <span
-                        className="popup-rating-star-fill"
-                        style={{ width: `${fillPercentage}%` }}
-                      >
-                        <Star size={19} fill="currentColor" />
-                      </span>
-                    </span>
-                  );
-                })}
-                <strong>
-                  {rating !== null && rating !== undefined
-                    ? rating.toFixed(1)
-                    : "Non noté"}
-                </strong>
-              </p>
+                <span className="popup-rating-stars">
+                  <span className="popup-rating-stars-visual" aria-hidden="true">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const fillPercentage = ratingFillPercentage(displayedRating, star);
+                      return (
+                        <span
+                          className="popup-rating-star"
+                          data-fill={fillPercentage}
+                          key={star}
+                        >
+                          <Star size={19} fill="none" />
+                          <span
+                            className="popup-rating-star-fill"
+                            style={{ width: `${fillPercentage}%` }}
+                          >
+                            <Star size={19} fill="currentColor" />
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </span>
+                  {canEdit && <span className="popup-rating-targets" role="radiogroup" aria-label={ratingLabel}>
+                    {Array.from({ length: 10 }, (_, index) => (index + 1) / 2).map((value) => <button
+                      type="button"
+                      role="radio"
+                      aria-checked={rating === value}
+                      aria-label={`${value.toFixed(1)} sur 5`}
+                      disabled={ratingSaving}
+                      key={value}
+                      onFocus={() => setRatingPreview(value)}
+                      onBlur={() => setRatingPreview(null)}
+                      onMouseEnter={() => setRatingPreview(value)}
+                      onClick={() => void saveRating(value)}
+                    />)}
+                  </span>}
+                </span>
+                <strong aria-live="polite">{displayedRating > 0 ? displayedRating.toFixed(1) : "Non noté"}</strong>
+              </div>
             </section>
           )}
         </div>
