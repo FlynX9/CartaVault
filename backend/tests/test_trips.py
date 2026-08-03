@@ -15,6 +15,8 @@ from app.trips.routing.base import MatrixResult, RouteResult, RoutingProvider
 
 pytestmark = pytest.mark.integration
 
+JPEG_BYTES = b"\xff\xd8\xff\xe0trip-night-photo\xff\xd9"
+
 
 class StubRoutingProvider(RoutingProvider):
     def calculate_route(self, coordinates, profile="driving"):
@@ -34,6 +36,40 @@ class FailingGoogleRoutingProvider(StubGoogleRoutingProvider):
     def calculate_route(self, coordinates, profile="driving"):
         from app.trips.routing.base import RoutingError
         raise RoutingError("Google timeout", "GOOGLE_ROUTES_TIMEOUT")
+
+
+def test_trip_night_description_and_private_photo_are_not_media(integration_client, photo_storage, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Nuits privées"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    night = integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={
+            "previous_day_id": trip["days"][0]["id"],
+            "next_day_id": second["id"],
+            "name": "Hôtel test",
+            "latitude": 48.4,
+            "longitude": 2.3,
+        },
+    ).json()
+
+    described = integration_client.patch(f"/trip-nights/{night['id']}", json={"description": "Réservation confirmée."})
+    uploaded = integration_client.post(
+        f"/trip-nights/{night['id']}/photo",
+        files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
+    )
+
+    assert described.status_code == 200
+    assert described.json()["description"] == "Réservation confirmée."
+    assert uploaded.status_code == 200
+    assert uploaded.json()["photo_id"] is not None
+    assert "photo_path" not in uploaded.json()
+    assert integration_client.get(f"/trip-nights/{night['id']}/photo").content == JPEG_BYTES
+    assert uploaded.json()["photo_id"] not in {item["id"] for item in integration_client.get("/media").json()["items"]}
+
+    removed = integration_client.delete(f"/trip-nights/{night['id']}/photo")
+    assert removed.status_code == 200
+    assert removed.json()["photo_id"] is None
+    assert integration_client.get(f"/trip-nights/{night['id']}/photo").status_code == 404
 
 
 def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_client, poi_map) -> None:

@@ -5504,6 +5504,22 @@ body {
   line-height: 1.4;
 }
 .trip-stop-map-popup > p svg { flex: 0 0 auto; margin-top: .08rem; color: var(--cv-color-teal); }
+.trip-night-map-popup { width: min(28rem, calc(100vw - 3rem)); }
+.trip-night-map-popup > header > div { display: grid; min-width: 0; gap: .1rem; }
+.trip-night-map-popup > header > div > span { color: var(--cv-color-teal); font-size: .62rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.trip-night-map-popup__photo { display: block; width: 100%; height: 11rem; object-fit: cover; background: var(--cv-surface-muted); }
+.trip-night-map-popup__photo--empty { display: grid; align-content: center; justify-items: center; gap: .4rem; color: var(--cv-color-slate); font-size: .72rem; }
+.trip-night-map-popup__photo--empty svg { color: var(--cv-color-teal); opacity: .7; }
+.trip-night-map-popup > .trip-night-map-popup__address { padding-bottom: .7rem; border-bottom: 1px solid var(--cv-border-subtle); }
+.trip-night-map-popup__description { display: grid; gap: .4rem; padding: .75rem 1rem; }
+.trip-night-map-popup__description label { color: var(--cv-color-navy); font-size: .74rem; font-weight: 700; }
+.trip-night-map-popup__description textarea { width: 100%; min-height: 5.25rem; resize: vertical; padding: .65rem .72rem; color: var(--cv-color-slate); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: .55rem; font: inherit; font-size: .78rem; font-weight: 400; line-height: 1.45; }
+.trip-night-map-popup__description textarea:is(:hover, :focus) { border-color: var(--cv-color-teal); outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--cv-color-teal) 10%, transparent); }
+.trip-night-map-popup__description > p { margin: 0; color: var(--cv-color-slate); font-size: .78rem; line-height: 1.45; white-space: pre-wrap; }
+.trip-night-map-popup__error { margin: 0 .95rem .65rem; padding: .5rem .65rem; color: #b42318; background: #fff1f0; border-radius: .45rem; font-size: .72rem; }
+.trip-night-map-popup .popup-actions { margin-top: 0; }
+html[data-theme='dark'] .trip-night-map-popup__photo--empty { background: var(--cv-surface-muted); }
+html[data-theme='dark'] .trip-night-map-popup__description textarea { color: var(--cv-color-slate); background: var(--cv-surface-muted); }
 @media (max-width: 560px) {
   .place-map-popup { width: min(420px, calc(100vw - 24px)); }
   .popup-hero { grid-template-columns: 112px minmax(0, 1fr); gap: 0.75rem; padding: 0.75rem 0.75rem 0.6rem; }

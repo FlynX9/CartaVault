@@ -1,10 +1,10 @@
 import { API_BASE_URL } from '../config'
-import { getBlob, getJson, sendJson, sendWithoutResponse } from './client'
+import { getBlob, getJson, sendFormData, sendJson, sendWithoutResponse } from './client'
 import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
 
 const empty = new URLSearchParams()
 export interface TripCreatePayload { name: string; description?: string; start_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
-export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; google_place_id?: string | null; notes?: string; check_in_time?: string; check_out_time?: string }
+export interface TripNightCreatePayload { previous_day_id: string; next_day_id: string; place_id?: string; source_type?: TripNightSourceType; name?: string; latitude?: number; longitude?: number; address?: string; google_place_id?: string | null; description?: string | null; notes?: string; check_in_time?: string; check_out_time?: string }
 export interface TripDepartureCreatePayload { place_id?: string; name?: string; latitude?: number; longitude?: number; address?: string; notes?: string; departure_time?: string }
 export type TripArrivalCreatePayload = Omit<TripDepartureCreatePayload, 'departure_time'>
 export type TripPdfNavigationProvider = 'google_maps' | 'waze'
@@ -38,6 +38,9 @@ export const moveTripStop = (id: string, targetDayId: string, sortOrder: number)
 export const addTripNight = (tripId: string, body: TripNightCreatePayload) => sendJson(`/trips/${tripId}/nights`, 'POST', body) as Promise<TripNight>
 export const deleteTripNight = (id: string) => sendWithoutResponse(`/trip-nights/${id}`, 'DELETE')
 export const updateTripNight = (id: string, body: Omit<TripNightCreatePayload, 'previous_day_id' | 'next_day_id'>) => sendJson(`/trip-nights/${id}`, 'PATCH', body) as Promise<TripNight>
+export const uploadTripNightPhoto = (id: string, file: File) => { const data = new FormData(); data.append('file', file); return sendFormData(`/trip-nights/${id}/photo`, 'POST', data) as Promise<TripNight> }
+export const deleteTripNightPhoto = (id: string) => sendJson(`/trip-nights/${id}/photo`, 'DELETE', {}) as Promise<TripNight>
+export const tripNightPhotoUrl = (id: string, photoId: string) => `${API_BASE_URL}/trip-nights/${encodeURIComponent(id)}/photo?v=${encodeURIComponent(photoId)}`
 export const addTripDeparture = (tripId: string, body: TripDepartureCreatePayload) => sendJson(`/trips/${tripId}/departure`, 'POST', body) as Promise<TripDeparture>
 export const updateTripDeparture = (id: string, body: TripDepartureCreatePayload) => sendJson(`/trip-departures/${id}`, 'PATCH', body) as Promise<TripDeparture>
 export const deleteTripDeparture = (id: string) => sendWithoutResponse(`/trip-departures/${id}`, 'DELETE')

@@ -544,7 +544,7 @@ describe('TripPlannerPanel', () => {
     expect(timelineCenterGuide).toHaveStyle({ color: secondDay.color })
     expect(within(night).queryByText('Hôtel Central')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Hôtel Central vers Belvédère : 6,1 km, 12 min')).toBeVisible()
-    expect(onStopPlaceSelect).toHaveBeenLastCalledWith('hotel-1')
+    expect(onStopPlaceSelect).not.toHaveBeenCalledWith('hotel-1')
     expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
     expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
     expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
@@ -604,7 +604,7 @@ describe('TripPlannerPanel', () => {
     expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
     expect(onStopFocus).not.toHaveBeenCalled()
     expect(onPreviewStopSelect).toHaveBeenLastCalledWith(null)
-    expect(onStopPlaceSelect).toHaveBeenLastCalledWith('hotel-1')
+    expect(onStopPlaceSelect).not.toHaveBeenCalledWith('hotel-1')
   })
 
   it('shows route metrics between stops only for the day opened by a stop selection', async () => {
@@ -1256,7 +1256,7 @@ describe('TripPlannerPanel', () => {
     expect(container.querySelector('.trip-panel-night.is-active')).toBeInTheDocument()
     expect(onActiveDayChange).toHaveBeenCalledWith('day-2')
     expect(onStopFocus).toHaveBeenCalledWith(49, 3)
-    expect(onStopPlaceSelect).toHaveBeenCalledWith('place-hotel')
+    expect(onStopPlaceSelect).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 

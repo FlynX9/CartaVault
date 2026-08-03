@@ -33,6 +33,7 @@ import {
 import { MapSidebar } from "./components/sidebar/MapSidebar";
 import { PlaceMapPopup } from "./components/map-popup/PlaceMapPopup";
 import { TripStopMapPopup } from "./components/map-popup/TripStopMapPopup";
+import { TripNightMapPopup } from "./components/map-popup/TripNightMapPopup";
 import {
   deriveMapSidebarState,
   getSidebarPlaceId,
@@ -240,6 +241,7 @@ function WorkspaceApp() {
     useState<TripNightTarget | null>(null);
   const [tripViewOnly, setTripViewOnly] = useState(false);
   const [tripPreviewStopId, setTripPreviewStopId] = useState<string | null>(null);
+  const [tripNightPopupId, setTripNightPopupId] = useState<string | null>(null);
   const [tripPreviewSelectionKey, setTripPreviewSelectionKey] = useState<string | null>(null);
   const [hiddenTripDayIds, setHiddenTripDayIds] = useState<Set<string>>(
     () => new Set(),
@@ -747,6 +749,7 @@ function WorkspaceApp() {
     setActiveTrip(null);
     setActiveTripDayId(null);
     setActiveTripNightTarget(null);
+    setTripNightPopupId(null);
     setTripPlannerCollapsed(false);
     setPlaceSelectionMode(false);
     setSelectedPlaceIds(new Set());
@@ -814,8 +817,16 @@ function WorkspaceApp() {
       ? activeTripAddTargetLabel
       : null;
   const selectedPreviewStop = activeTrip?.days.flatMap((day) => day.stops).find((stop) => stop.id === tripPreviewStopId) ?? null;
+  const selectedTripNight = activeTrip?.nights.find((night) => night.id === tripNightPopupId) ?? null;
   const popupContent =
-    selectedPlaceId !== null && !editorOpen ? (
+    selectedTripNight !== null ? (
+      <TripNightMapPopup
+        night={selectedTripNight}
+        canEdit={activeMap?.can_edit === true}
+        onUpdated={(updated) => setActiveTrip((current) => current === null ? null : ({ ...current, nights: current.nights.map((night) => night.id === updated.id ? updated : night) }))}
+        onClose={() => setTripNightPopupId(null)}
+      />
+    ) : selectedPlaceId !== null && !editorOpen ? (
       <PlaceMapPopup
         placeId={selectedPlaceId}
         canEdit={activeMap?.can_edit === true}
@@ -1076,7 +1087,11 @@ function WorkspaceApp() {
           }
           onTripChange={setActiveTrip}
           onActiveDayChange={setActiveTripDayId}
-          onActiveNightTargetChange={setActiveTripNightTarget}
+          onActiveNightTargetChange={(target) => {
+            setActiveTripNightTarget(target);
+            setTripNightPopupId(target?.nightId ?? null);
+            if (target?.nightId) closePopup();
+          }}
           onStopFocus={handleTripStopFocus}
           onStopPlaceSelect={(placeId) => {
             void handleTripPlaceSelect(placeId, !tripViewOnly);
@@ -1097,6 +1112,7 @@ function WorkspaceApp() {
             setActiveTrip(null);
             setActiveTripDayId(null);
             setActiveTripNightTarget(null);
+            setTripNightPopupId(null);
             setTripViewOnly(false);
             setTripPreviewSelectionKey(null);
             setHiddenTripDayIds(new Set());
