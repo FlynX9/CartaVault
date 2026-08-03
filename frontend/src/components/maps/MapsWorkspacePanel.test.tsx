@@ -53,7 +53,9 @@ describe('MapsWorkspacePanel', () => {
     render(<MapsWorkspacePanel maps={[map]} activeMapId={null} isLoading={false} errorMessage={null} onOpen={vi.fn()} onDelete={vi.fn()} onCreated={vi.fn()} collapsed onCollapsedChange={onCollapsedChange} />)
 
     expect(document.getElementById('workspace-maps-panel')).toHaveClass('is-collapsed')
-    fireEvent.click(screen.getByRole('button', { name: 'Agrandir le panneau' }))
+    const maximize = screen.getByRole('button', { name: 'Agrandir le panneau' })
+    expect(maximize.querySelector('.tabler-icon-maximize')).toBeInTheDocument()
+    fireEvent.click(maximize)
 
     expect(onCollapsedChange).toHaveBeenCalledWith(false)
   })

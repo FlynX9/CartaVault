@@ -14,11 +14,10 @@ import {
   Search,
   RotateCcw,
   SlidersHorizontal,
-  SquareChevronDown,
-  SquareChevronUp,
   Trash2,
   X,
 } from "lucide-react";
+import { IconMaximize, IconMinimize } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import {
   useCallback,
@@ -901,9 +900,9 @@ export function MapPlaceList({
             onClick={() => onCollapsedChange(!collapsed)}
           >
             {collapsed ? (
-              <SquareChevronDown size={18} />
+              <IconMaximize size={18} aria-hidden="true" />
             ) : (
-              <SquareChevronUp size={18} />
+              <IconMinimize size={18} aria-hidden="true" />
             )}
           </button>
         </div>

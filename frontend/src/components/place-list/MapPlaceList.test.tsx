@@ -62,7 +62,9 @@ describe('MapPlaceList', () => {
     const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn(), onCollapsedChange }
     const { container, rerender } = render(<MemoryRouter><MapPlaceList {...props} /></MemoryRouter>)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Réduire le panneau Lieux' }))
+    const minimize = screen.getByRole('button', { name: 'Réduire le panneau Lieux' })
+    expect(minimize.querySelector('.tabler-icon-minimize')).toBeInTheDocument()
+    fireEvent.click(minimize)
     expect(onCollapsedChange).toHaveBeenCalledWith(true)
 
     rerender(<MemoryRouter><MapPlaceList {...props} collapsed /></MemoryRouter>)
@@ -70,7 +72,9 @@ describe('MapPlaceList', () => {
     expect(screen.getByText('Lieux')).toBeVisible()
     expect(screen.getByText('0 lieu')).toBeVisible()
     expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-collapsed')
-    fireEvent.click(screen.getByRole('button', { name: 'Déployer le panneau Lieux' }))
+    const maximize = screen.getByRole('button', { name: 'Déployer le panneau Lieux' })
+    expect(maximize.querySelector('.tabler-icon-maximize')).toBeInTheDocument()
+    fireEvent.click(maximize)
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
 
