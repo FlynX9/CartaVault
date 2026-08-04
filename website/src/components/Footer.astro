@@ -1,0 +1,16 @@
+---
+import { copy, external, href, type Language } from '../content/site';
+const { lang } = Astro.props as { lang: Language };
+const text = copy[lang];
+---
+<footer>
+  <div><strong>CartaVault</strong><p>{text.footer}</p></div>
+  <div class="footer-links">
+    <a href={href(lang, 'about')}>{lang === 'fr' ? 'À propos' : 'About'}</a>
+    <a href={href(lang, 'contact')}>{text.contact}</a>
+    <a href={href(lang, 'legal')}>{text.legal}</a>
+    <a href={href(lang, 'privacy')}>{text.privacy}</a>
+    <a href={external.github}>GitHub <span aria-hidden="true">↗</span></a>
+  </div>
+  <small>© 2026 CartaVault · MIT</small>
+</footer>

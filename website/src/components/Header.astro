@@ -1,0 +1,19 @@
+---
+import { copy, external, href, type Language } from '../content/site';
+interface Props { lang: Language; other: Language; path: string; }
+const { lang, other, path } = Astro.props;
+const text = copy[lang];
+---
+<header class="site-header">
+  <a class="brand" href={href(lang)} aria-label="CartaVault — accueil">
+    <img src="/favicon.svg" width="42" height="42" alt="" />
+    <span>CartaVault</span>
+  </a>
+  <nav aria-label={text.navLabel}>
+    {Object.entries(text.nav).map(([slug, label]) => <a href={href(lang, slug)}>{label}</a>)}
+  </nav>
+  <div class="header-actions">
+    <a class="language" href={href(other, path)} lang={other}>{text.language}</a>
+    <a class="button small" href={external.app}>App <span aria-hidden="true">↗</span></a>
+  </div>
+</header>

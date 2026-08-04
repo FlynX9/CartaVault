@@ -1,0 +1,19 @@
+---
+import Screenshot from './Screenshot.astro';
+import { copy, external, href, type Language } from '../content/site';
+const { lang } = Astro.props as { lang: Language };
+const t = copy[lang].home;
+---
+<section class="hero wrap">
+  <div class="hero-copy">
+    <p class="eyebrow">{t.eyebrow}</p><h1>{t.hero}</h1><p class="lead">{t.intro}</p>
+    <div class="actions"><a class="button" href={external.github}>{t.primary} <span aria-hidden="true">↗</span></a><a class="button secondary" href={href(lang, 'features')}>{t.secondary}</a></div>
+    <ul class="proof">{t.proof.map((item) => <li>{item}</li>)}</ul>
+  </div>
+  <div class="hero-visual"><Screenshot src="/images/gestion-lieux.webp" alt={lang === 'fr' ? 'Carte CartaVault et panneau des lieux' : 'CartaVault map and places panel'} caption={lang === 'fr' ? 'Tous vos repères dans une carte structurée.' : 'Every saved place in a structured map.'} eager /></div>
+</section>
+<section class="section wrap two-col"><div><p class="eyebrow">01 · {lang === 'fr' ? 'Collecter' : 'Collect'}</p><h2>{t.placesTitle}</h2><p>{t.placesBody}</p></div><Screenshot src="/images/gestion-categories.webp" alt={lang === 'fr' ? 'Gestion des catégories CartaVault' : 'CartaVault category management'} caption={lang === 'fr' ? 'Des catégories adaptées à votre façon de voyager.' : 'Categories that match how you travel.'} /></section>
+<section class="section dark"><div class="wrap two-col reverse"><Screenshot src="/images/gestion-sorties.webp" alt={lang === 'fr' ? 'Planificateur de voyage CartaVault' : 'CartaVault trip planner'} caption={lang === 'fr' ? 'Itinéraires, durées et étapes dans une seule vue.' : 'Routes, durations and stops in one view.'} /><div><p class="eyebrow">02 · {lang === 'fr' ? 'Planifier' : 'Plan'}</p><h2>{t.tripsTitle}</h2><p>{t.tripsBody}</p></div></div></section>
+<section class="section wrap feature-grid"><article><span class="feature-icon">◎</span><h2>{t.collaborationTitle}</h2><p>{t.collaborationBody}</p></article><article><span class="feature-icon gold">⌂</span><h2>{t.hostingTitle}</h2><p>{t.hostingBody}</p><div class="chips"><span>{t.self}</span><span class="planned">{t.cloud}</span></div></article></section>
+<section class="section wrap"><p class="eyebrow">03 · Interface</p><h2>{t.screenshotsTitle}</h2><div class="gallery"><Screenshot src="/images/gestion-status.webp" alt={lang === 'fr' ? 'Statuts configurables' : 'Configurable statuses'} caption={lang === 'fr' ? 'Vos propres statuts et couleurs.' : 'Your own statuses and colours.'} /><Screenshot src="/images/gestion-categories.webp" alt={lang === 'fr' ? 'Catégories configurables' : 'Configurable categories'} caption={lang === 'fr' ? 'Une organisation adaptée à chaque collection.' : 'An organisation tailored to every collection.'} /></div></section>
+<section class="cta wrap"><div><p class="eyebrow">Open source</p><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p></div><div class="actions"><a class="button" href={external.github}>GitHub</a><a class="button secondary" href={external.docs}>{lang === 'fr' ? 'Documentation' : 'Documentation'}</a></div></section>

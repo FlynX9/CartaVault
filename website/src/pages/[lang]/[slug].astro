@@ -1,0 +1,10 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ContentPage from '../../components/ContentPage.astro';
+import { copy, languages, pageSlugs, type Language, type PageSlug } from '../../content/site';
+export function getStaticPaths() { return languages.flatMap((lang) => pageSlugs.map((slug) => ({ params: { lang, slug } }))); }
+const lang = Astro.params.lang as Language;
+const slug = Astro.params.slug as PageSlug;
+const page = copy[lang].pages[slug];
+---
+<BaseLayout lang={lang} path={slug} title={`${page.title} — CartaVault`} description={page.description}><ContentPage lang={lang} slug={slug} /></BaseLayout>

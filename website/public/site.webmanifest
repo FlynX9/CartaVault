@@ -1,0 +1,17 @@
+{
+  "name": "CartaVault",
+  "short_name": "CartaVault",
+  "description": "Cartographie personnelle et préparation de voyages.",
+  "lang": "fr",
+  "start_url": "/fr/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "theme_color": "#0d1b2a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

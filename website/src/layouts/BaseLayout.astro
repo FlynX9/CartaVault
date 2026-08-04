@@ -1,0 +1,52 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+import { copy, href, type Language } from '../content/site';
+
+interface Props { lang: Language; title: string; description: string; path?: string; image?: string; }
+const { lang, title, description, path = '', image = '/images/gestion-lieux.webp' } = Astro.props;
+const canonical = new URL(href(lang, path), Astro.site);
+const other = lang === 'fr' ? 'en' : 'fr';
+const structured = {
+  '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'CartaVault',
+  applicationCategory: 'TravelApplication', operatingSystem: 'Web', url: canonical.toString(),
+  description, license: 'https://opensource.org/license/mit',
+};
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#0d1b2a" />
+    <meta name="description" content={description} />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="fr" href={new URL(href('fr', path), Astro.site)} />
+    <link rel="alternate" hreflang="en" href={new URL(href('en', path), Astro.site)} />
+    <link rel="alternate" hreflang="x-default" href={new URL(href('fr', path), Astro.site)} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CartaVault" />
+    <meta property="og:locale" content={lang === 'fr' ? 'fr_FR' : 'en_GB'} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(image, Astro.site)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL(image, Astro.site)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(structured)} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{copy[lang].skip}</a>
+    <Header lang={lang} other={other} path={path} />
+    <main id="main"><slot /></main>
+    <Footer lang={lang} />
+  </body>
+</html>

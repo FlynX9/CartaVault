@@ -1,0 +1,77 @@
+name: Marketing website
+
+on:
+  push:
+    branches: [master]
+    paths: ['website/**', '.github/workflows/website.yml', 'docs/screenshots/**']
+  pull_request:
+    paths: ['website/**', '.github/workflows/website.yml', 'docs/screenshots/**']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy the verified build to the configured o2switch directory
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cartavault-website
+          path: website/dist
+          if-no-files-found: error
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: marketing-production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cartavault-website
+          path: dist
+      - name: Configure the restricted deployment key
+        env:
+          SSH_KEY: ${{ secrets.O2SWITCH_SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.O2SWITCH_SSH_HOST }}
+          SSH_PORT: ${{ secrets.O2SWITCH_SSH_PORT }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+      - name: Deploy only to the marketing document root
+        env:
+          SSH_HOST: ${{ secrets.O2SWITCH_SSH_HOST }}
+          SSH_PORT: ${{ secrets.O2SWITCH_SSH_PORT }}
+          SSH_USER: ${{ secrets.O2SWITCH_SSH_USER }}
+          DEPLOY_PATH: ${{ secrets.O2SWITCH_DEPLOY_PATH }}
+        run: |
+          test -n "$DEPLOY_PATH"
+          rsync --archive --compress --delete --protect-args \
+            -e "ssh -p $SSH_PORT" \
+            dist/ "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
