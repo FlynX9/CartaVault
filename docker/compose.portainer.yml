@@ -66,10 +66,13 @@ services:
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
+    # The official entrypoint needs these only to initialize a fresh /data
+    # volume, then drops permanently to the unprivileged redis user.
+    cap_add: [CHOWN, SETGID, SETUID]
     security_opt: [no-new-privileges:true]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    command: ["sh", "-c", "exec redis-server --appendonly yes --appendfsync everysec --requirepass \"$$REDIS_PASSWORD\" --maxmemory 256mb --maxmemory-policy noeviction"]
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
     volumes:
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/redis:/data
     tmpfs:

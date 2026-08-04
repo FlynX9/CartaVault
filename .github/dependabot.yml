@@ -13,6 +13,12 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # MapLibre 6 is not yet supported by the Leaflet bridge used by CartaVault.
+    # Remove this rule when @maplibre/maplibre-gl-leaflet supports version 6.
+    ignore:
+      - dependency-name: "maplibre-gl"
+        update-types:
+          - "version-update:semver-major"
     # Temporarily excluded versions (supported fields: dependency-name,
     # versions, update-types). Use a YAML comment for the tracking issue.
     # ignore:
