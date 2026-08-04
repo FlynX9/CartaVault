@@ -15,7 +15,12 @@ The `/account` router manages personal profile data, email and password changes,
 
 The Resend key is entered from Administration and encrypted with `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`; the API returns only its suffix. Both full-access and send-only Resend keys are supported. Verification sends a real localized CartaVault test email to the authenticated administrator and succeeds only when Resend accepts it. `EMAIL_FROM_ADDRESS` must use a domain verified in the corresponding Resend account; an empty reply-to address is omitted from provider requests. Other non-secret settings are `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`, `FRONTEND_PUBLIC_URL`, `PASSWORD_RESET_TOKEN_TTL_MINUTES`, and the bounded provider timeout/retry settings. Each email flow has versioned CartaVault HTML and text templates under `app/emails/templates/`, with `.en` and `.fr` variants. Registration-request language is retained until approval; invitations use the recipient language when an account exists, and password/security messages use the account preference.
 
-V1 supports Resend as its sole transport; `EMAIL_PROVIDER=none` explicitly disables delivery. Map shares and important account-security changes are sent after their database transaction commits, so an unavailable provider cannot undo the user action. The transport decision, complete event list, retry policy and future SMTP threshold are documented in [`../docs/transactional-email.md`](../docs/transactional-email.md).
+CartaVault supports Resend and generic SMTP transports;
+`EMAIL_PROVIDER=none` explicitly disables delivery. Map shares and important
+account-security changes are sent after their database transaction commits, so
+an unavailable provider cannot undo the user action. Configuration, the event
+list and the shared bounded retry policy are documented in
+[`../docs/transactional-email.md`](../docs/transactional-email.md).
 
 ## Authentication, roles, and security
 

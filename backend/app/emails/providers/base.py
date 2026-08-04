@@ -17,6 +17,13 @@ class EmailProvider(Protocol):
 
 
 class EmailDeliveryError(RuntimeError):
-    def __init__(self, code: str, message: str = "L’envoi de l’email a échoué.") -> None:
+    def __init__(
+        self,
+        code: str,
+        message: str = "L’envoi de l’email a échoué.",
+        *,
+        retryable: bool = False,
+    ) -> None:
         super().__init__(message)
         self.code = code
+        self.retryable = retryable

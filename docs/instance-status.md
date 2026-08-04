@@ -21,11 +21,11 @@ The aggregate status is `unavailable` when the application, PostgreSQL/PostGIS, 
 
 ## Measurements and known limits
 
-Checks cover the application, PostgreSQL/PostGIS, Alembic, local storage, functional volumes, sessions, HTTPS, Resend, mapping, OSRM, maintenance, backups, and security configuration.
+Checks cover the application, PostgreSQL/PostGIS, Alembic, local storage, functional volumes, sessions, HTTPS, transactional email, mapping, OSRM, maintenance, backups, and security configuration.
 
 - Storage is probed with a temporary file that is immediately removed; no full host path is exposed. Thresholds are 70% warning, 85% high, and 95% critical.
 - OSRM uses a lightweight request capped at two seconds. No billable Google Routes call or user-key decryption is performed.
-- Resend is assessed only from local metadata. No email and no provider call are sent.
+- Transactional email (Resend or SMTP) is assessed only from local configuration and metadata. No email and no provider call are sent.
 - If TLS terminates at an external proxy, certificate, HSTS, and redirect status remain `unknown` because the application has no proof.
 - The application does not yet maintain a structured history of email deliveries or application errors. Shown errors are current check failures only, without stack traces or payloads.
 - No backup, Redis, or worker subsystem is declared. Their state stays `unknown`; no backup evidence is fabricated.

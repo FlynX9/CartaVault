@@ -8,6 +8,7 @@ from app.auth.rate_limit import PublicAuthRateLimiter, rate_limit_key
 from app.emails.providers.base import EmailMessage
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
+from app.emails.providers.smtp import SMTPEmailProvider
 
 
 pytestmark = pytest.mark.unit
@@ -94,6 +95,26 @@ def test_email_delivery_can_be_explicitly_disabled(monkeypatch: pytest.MonkeyPat
         provider_from_database(object())  # type: ignore[arg-type]
 
     assert caught.value.code == "EMAIL_DELIVERY_DISABLED"
+
+
+def test_smtp_provider_is_selected_without_a_resend_database_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        provider="smtp",
+        from_name="CartaVault",
+        from_address="no-reply@example.test",
+        reply_to="",
+    )
+
+    class Session:
+        def get(self, _model, _key):
+            return None
+
+    monkeypatch.setattr("app.emails.service.email_settings", settings)
+
+    provider = provider_from_database(Session())  # type: ignore[arg-type]
+
+    assert isinstance(provider, SMTPEmailProvider)
+    assert provider.from_address == "no-reply@example.test"
 
 
 def test_public_auth_rate_limiter_rejects_a_burst() -> None:

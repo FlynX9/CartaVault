@@ -217,7 +217,7 @@ def verify_resend(
         locale = str((admin.preferences or {}).get("language") or "fr")
         # An administrator must be able to validate the stored credential before
         # enabling transactional delivery for the rest of the application.
-        EmailService(provider_from_database(session, allow_disabled=True)).send_resend_verification(
+        EmailService(provider_from_database(session, allow_disabled=True, provider="resend")).send_resend_verification(
             admin.email,
             admin.display_name,
             locale,

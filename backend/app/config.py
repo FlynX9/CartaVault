@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -148,10 +148,25 @@ class EmailSettings:
     timeout_seconds: int = _positive_int("EMAIL_PROVIDER_TIMEOUT_SECONDS", 10)
     max_attempts: int = _positive_int("EMAIL_PROVIDER_MAX_ATTEMPTS", 2)
     retry_delay_seconds: int = _nonnegative_int("EMAIL_PROVIDER_RETRY_DELAY_SECONDS", 1)
+    smtp_host: str = os.getenv("EMAIL_SMTP_HOST", "").strip()
+    smtp_port: int = _positive_int("EMAIL_SMTP_PORT", 587)
+    smtp_security: str = os.getenv("EMAIL_SMTP_SECURITY", "starttls").strip().lower()
+    smtp_username: str = os.getenv("EMAIL_SMTP_USERNAME", "").strip()
+    smtp_password: str = field(default=os.getenv("EMAIL_SMTP_PASSWORD", ""), repr=False)
 
     def __post_init__(self) -> None:
-        if self.provider not in {"resend", "none"}:
-            raise RuntimeError("EMAIL_PROVIDER must be 'resend' or 'none'")
+        if self.provider not in {"resend", "smtp", "none"}:
+            raise RuntimeError("EMAIL_PROVIDER must be 'resend', 'smtp' or 'none'")
+        if self.smtp_port > 65535:
+            raise RuntimeError("EMAIL_SMTP_PORT must be at most 65535")
+        if self.smtp_security not in {"starttls", "tls", "none"}:
+            raise RuntimeError("EMAIL_SMTP_SECURITY must be 'starttls', 'tls' or 'none'")
+        if self.provider == "smtp" and not self.smtp_host:
+            raise RuntimeError("EMAIL_SMTP_HOST is required when EMAIL_PROVIDER=smtp")
+        if self.provider == "smtp" and not self.from_address:
+            raise RuntimeError("EMAIL_FROM_ADDRESS is required when EMAIL_PROVIDER=smtp")
+        if self.provider == "smtp" and bool(self.smtp_username) != bool(self.smtp_password):
+            raise RuntimeError("EMAIL_SMTP_USERNAME and EMAIL_SMTP_PASSWORD must be configured together")
 
 
 email_settings = EmailSettings()

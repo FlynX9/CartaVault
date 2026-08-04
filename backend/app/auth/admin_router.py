@@ -12,6 +12,7 @@ from app.auth.models import User, UserSession
 from app.auth.schemas import PasswordReset, UserAdminCreate, UserAdminUpdate, UserRead
 from app.auth.security import hash_password, normalize_email
 from app.database import get_db
+from app.emails.notifications import notify_password_changed
 from app.quotas.service import QuotaService
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"], dependencies=[Depends(require_admin)])
@@ -98,4 +99,5 @@ def reset_password(user_id: UUID, data: PasswordReset, database_session: Session
     user.password_hash = hash_password(data.new_password)
     database_session.execute(update(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None)).values(revoked_at=func.now()))
     database_session.commit()
+    notify_password_changed(database_session, user)
     return None

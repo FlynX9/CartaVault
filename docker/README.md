@@ -86,7 +86,8 @@ docker compose --env-file docker/.env -f docker/compose.yml logs postgis cartava
 
 Required runtime values include the versioned image tag, database credentials
 and `DATABASE_URL`, public URL/CORS origins, session/setup/encryption secrets,
-and the transactional-email sender. No runtime secret or real `.env` file is
+and the transactional-email sender/provider. Resend uses the encrypted
+instance key; generic SMTP uses runtime `EMAIL_SMTP_*` values. No runtime secret or real `.env` file is
 copied into the image.
 
 Keep `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` with the database and media backup

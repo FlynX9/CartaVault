@@ -233,15 +233,24 @@ def _https(request: FastAPIRequest, checked_at: datetime, application: Applicati
 
 def _email(session: Session, checked_at: datetime) -> EmailDiagnostic:
     credential = session.get(SystemCredential, "resend")
-    configured = credential is not None
+    if email_settings.provider == "smtp":
+        configured = bool(email_settings.smtp_host and email_settings.from_address)
+        verified = None
+    elif email_settings.provider == "resend":
+        configured = credential is not None
+        verified = bool(credential and credential.verified_at)
+    else:
+        configured = False
+        verified = None
     sender_domain = email_settings.from_address.partition("@")[2] or None
     return EmailDiagnostic(
-        status="operational" if configured and credential.verified_at else "degraded" if configured else "misconfigured",
+        status="operational" if configured and (email_settings.provider == "smtp" or verified) else "degraded" if configured else "misconfigured",
         checked_at=checked_at, provider=email_settings.provider, configured=configured,
         sender_address=email_settings.from_address, reply_to_address=email_settings.reply_to,
-        sender_domain=sender_domain, domain_verified=True if credential and credential.verified_at else None,
-        last_success_at=credential.last_used_at if credential else None, last_failure_at=None,
-        last_error_code=credential.last_error_code if credential else None,
+        sender_domain=sender_domain, domain_verified=True if verified else None,
+        last_success_at=credential.last_used_at if email_settings.provider == "resend" and credential else None,
+        last_failure_at=None,
+        last_error_code=credential.last_error_code if email_settings.provider == "resend" and credential else None,
         sent_24h=None, failed_24h=None, sent_30d=None, failed_30d=None,
         failure_rate=None, quota_limit=None, quota_used=None,
     )
@@ -311,7 +320,7 @@ def _security(application: ApplicationDiagnostic, https: HttpsDiagnostic, email:
         SecurityCheck(code="security.csrf_enabled", severity="critical", passed=True, message_key="admin.instanceStatus.security.csrf"),
         SecurityCheck(code="security.debug_disabled", severity="high", passed=not application.debug_enabled, message_key="admin.instanceStatus.security.debug", action="Disable debug mode in production."),
         SecurityCheck(code="security.credential_encryption", severity="high", passed=bool(credential_settings.encryption_key), message_key="admin.instanceStatus.security.encryption", action="Configure the credential encryption key."),
-        SecurityCheck(code="security.email_configured", severity="warning", passed=email.configured, message_key="admin.instanceStatus.security.email", action="Configure and verify Resend."),
+        SecurityCheck(code="security.email_configured", severity="warning", passed=email.configured, message_key="admin.instanceStatus.security.email", action="Configure a transactional email provider."),
         SecurityCheck(code="security.backup_known", severity="high", passed=True if backups.known else None, message_key="admin.instanceStatus.security.backup", action="Document backups and test a restore."),
         SecurityCheck(code="security.mfa_admins", severity="warning", passed=False, message_key="admin.instanceStatus.security.mfaAdmins", action="MFA is not available in this version."),
         SecurityCheck(code="security.public_registration", severity="info", passed=None, message_key="admin.instanceStatus.security.registration"),

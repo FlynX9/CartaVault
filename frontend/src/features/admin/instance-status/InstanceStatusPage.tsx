@@ -113,7 +113,7 @@ export function InstanceStatusPage() {
         <ServiceRow icon={Database} name="PostgreSQL" item={c.database} detail={`${c.database.latency_ms ?? '—'} ms · ${c.database.postgresql_version ?? 'version inconnue'}`} />
         <ServiceRow icon={Database} name="PostGIS" item={{ ...c.database, status: c.database.postgis_available ? 'operational' : c.database.status === 'unavailable' ? 'unavailable' : 'degraded' }} detail={c.database.postgis_version ?? 'Version inconnue'} />
         <ServiceRow icon={HardDrive} name="Stockage local" item={c.storage} detail={`${bytes(c.storage.used_bytes)} utilisés · ${value(c.storage.photo_count)} photos`} />
-        <ServiceRow icon={Mail} name="Email / Resend" item={c.email} detail={c.email.configured === null ? 'Configuration inconnue' : c.email.configured ? `Expéditeur ${c.email.sender_address ?? 'non renseigné'}` : 'Non configuré'} />
+        <ServiceRow icon={Mail} name={`Email / ${c.email.provider === 'smtp' ? 'SMTP' : c.email.provider === 'resend' ? 'Resend' : 'désactivé'}`} item={c.email} detail={c.email.configured === null ? 'Configuration inconnue' : c.email.configured ? `Expéditeur ${c.email.sender_address ?? 'non renseigné'}` : 'Non configuré'} />
         <ServiceRow icon={Route} name="Routage / OSRM" item={c.routing} detail={c.routing.osrm_available ? `${c.routing.osrm_latency_ms ?? '—'} ms` : 'Disponibilité non confirmée'} />
         <ServiceRow icon={Map} name="Cartographie" item={c.mapping} detail={`Repli ${c.mapping.fallback_layer.toUpperCase()}`} />
         <ServiceRow icon={ShieldCheck} name="HTTPS" item={c.https} detail={c.https.https_detected ? 'Connexion HTTPS détectée' : 'Non observable depuis cette requête'} />

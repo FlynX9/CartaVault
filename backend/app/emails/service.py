@@ -12,6 +12,7 @@ from app.admin.models import SystemSetting
 from app.config import email_settings, security_settings
 from app.emails.providers.base import EmailDeliveryError, EmailMessage, EmailProvider
 from app.emails.providers.resend import ResendEmailProvider
+from app.emails.providers.smtp import SMTPEmailProvider
 
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -50,9 +51,24 @@ def _render(name: str, values: dict[str, str]) -> str:
     return Template((TEMPLATES / name).read_text(encoding="utf-8")).safe_substitute(values)
 
 
-def provider_from_database(session: Session, *, allow_disabled: bool = False) -> EmailProvider:
-    if email_settings.provider == "none" and not allow_disabled:
+def provider_from_database(
+    session: Session,
+    *,
+    allow_disabled: bool = False,
+    provider: str | None = None,
+) -> EmailProvider:
+    selected_provider = provider or email_settings.provider
+    if selected_provider == "none" and not allow_disabled:
         raise EmailDeliveryError("EMAIL_DELIVERY_DISABLED", "L’envoi d’emails est désactivé.")
+    configured = session.get(SystemSetting, "email")
+    values = configured.value if configured is not None else {}
+    sender = {
+        "from_name": str(values.get("sender_name") or email_settings.from_name),
+        "from_address": str(values.get("sender_address") or email_settings.from_address),
+        "reply_to": str(values.get("reply_to_address") or email_settings.reply_to or ""),
+    }
+    if selected_provider == "smtp":
+        return SMTPEmailProvider(**sender)
     credential = session.get(SystemCredential, "resend")
     if credential is None:
         raise EmailDeliveryError("EMAIL_PROVIDER_NOT_CONFIGURED", "Le service d’email n’est pas configuré.")
@@ -60,13 +76,9 @@ def provider_from_database(session: Session, *, allow_disabled: bool = False) ->
         api_key = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
     except CredentialEncryptionError as error:
         raise EmailDeliveryError(error.code, "Le service d’email n’est pas disponible.") from error
-    configured = session.get(SystemSetting, "email")
-    values = configured.value if configured is not None else {}
     return ResendEmailProvider(
         api_key,
-        from_name=str(values.get("sender_name") or email_settings.from_name),
-        from_address=str(values.get("sender_address") or email_settings.from_address),
-        reply_to=str(values.get("reply_to_address") or email_settings.reply_to or ""),
+        **sender,
     )
 
 

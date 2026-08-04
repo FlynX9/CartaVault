@@ -207,3 +207,29 @@ def test_account_security_changes_notify_old_and_current_addresses(
     assert changed_password.status_code == 204
     assert provider.messages[-1].recipients == [new_email]
     assert "mot de passe" in provider.messages[-1].subject.lower()
+
+
+def test_administrator_password_reset_sends_the_same_security_alert(
+    integration_client,
+    database_session,
+    monkeypatch,
+) -> None:
+    provider = _install_provider(monkeypatch)
+    user = User(
+        email=f"managed-{uuid4()}@example.test",
+        display_name="Managed user",
+        password_hash="old-password-hash",
+        is_active=True,
+    )
+    database_session.add(user)
+    database_session.commit()
+
+    response = integration_client.post(
+        f"/admin/users/{user.id}/reset-password",
+        json={"new_password": "a new administrator supplied password"},
+    )
+
+    assert response.status_code == 204
+    assert len(provider.messages) == 1
+    assert provider.messages[0].recipients == [user.email]
+    assert "mot de passe" in provider.messages[0].subject.lower()

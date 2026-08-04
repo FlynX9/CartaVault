@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-from time import sleep
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from app.config import email_settings
 from app.emails.providers.base import EmailDeliveryError, EmailMessage
+from app.emails.providers.retry import deliver_with_retry
 
 
 class ResendEmailProvider:
@@ -23,7 +23,7 @@ class ResendEmailProvider:
         self.from_address = from_address if from_address is not None else email_settings.from_address
         self.reply_to = reply_to if reply_to is not None else email_settings.reply_to
 
-    def send(self, message: EmailMessage) -> str | None:
+    def _send_once(self, message: EmailMessage) -> str | None:
         if not self.from_address:
             raise EmailDeliveryError(
                 "EMAIL_SENDER_NOT_CONFIGURED",
@@ -39,23 +39,31 @@ class ResendEmailProvider:
         if self.reply_to:
             payload["reply_to"] = self.reply_to
         request = Request(
-            "https://api.resend.com/emails", data=json.dumps(payload).encode("utf-8"), method="POST",
-            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "User-Agent": "CartaVault/1.0"},
+            "https://api.resend.com/emails",
+            data=json.dumps(payload).encode("utf-8"),
+            method="POST",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "CartaVault/1.0",
+            },
         )
-        result: object = None
-        for attempt in range(email_settings.max_attempts):
-            try:
-                with urlopen(request, timeout=email_settings.timeout_seconds) as response:  # noqa: S310 - fixed Resend endpoint
-                    result = json.loads(response.read().decode("utf-8"))
-                break
-            except HTTPError as error:
-                transient = error.code == 429 or error.code >= 500
-                if not transient or attempt + 1 >= email_settings.max_attempts:
-                    code = "EMAIL_PROVIDER_RATE_LIMITED" if error.code == 429 else "EMAIL_PROVIDER_REJECTED"
-                    raise EmailDeliveryError(code) from error
-            except (URLError, TimeoutError, json.JSONDecodeError) as error:
-                if attempt + 1 >= email_settings.max_attempts:
-                    raise EmailDeliveryError("EMAIL_PROVIDER_UNAVAILABLE") from error
-            if email_settings.retry_delay_seconds:
-                sleep(email_settings.retry_delay_seconds)
+        try:
+            with urlopen(request, timeout=email_settings.timeout_seconds) as response:  # noqa: S310 - fixed Resend endpoint
+                result: object = json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            transient = error.code == 429 or error.code >= 500
+            code = "EMAIL_PROVIDER_RATE_LIMITED" if error.code == 429 else (
+                "EMAIL_PROVIDER_UNAVAILABLE" if transient else "EMAIL_PROVIDER_REJECTED"
+            )
+            raise EmailDeliveryError(code, retryable=transient) from error
+        except (URLError, TimeoutError, json.JSONDecodeError) as error:
+            raise EmailDeliveryError("EMAIL_PROVIDER_UNAVAILABLE", retryable=True) from error
         return result.get("id") if isinstance(result, dict) and isinstance(result.get("id"), str) else None
+
+    def send(self, message: EmailMessage) -> str | None:
+        return deliver_with_retry(
+            lambda: self._send_once(message),
+            max_attempts=email_settings.max_attempts,
+            delay_seconds=email_settings.retry_delay_seconds,
+        )
