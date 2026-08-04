@@ -25,9 +25,9 @@ x-cartavault-environment: &cartavault-environment
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
   IMPORT_STORAGE_PATH: /app/storage/imports
-  CARTAVAULT_TASK_MODE: ${CARTAVAULT_TASK_MODE:-redis}
-  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
-  CARTAVAULT_TASK_QUEUE: cartavault
+  # The supported single-instance stack executes background work in-process.
+  # Use compose.redis.yml explicitly when a Redis queue and worker are wanted.
+  CARTAVAULT_TASK_MODE: sync
   CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE: ${CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE:-120}
   CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS: ${CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS:-60}
   CARTAVAULT_ROUTING_PROPOSAL_TTL_SECONDS: ${CARTAVAULT_ROUTING_PROPOSAL_TTL_SECONDS:-900}
@@ -45,23 +45,6 @@ x-cartavault-environment: &cartavault-environment
   EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
 
 services:
-  setup:
-    profiles: ["tools"]
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        CARTAVAULT_VERSION: ${CARTAVAULT_VERSION:-1.0.0}
-        VITE_API_BASE_URL: /api
-        VITE_STADIA_MAPS_API_KEY: ${VITE_STADIA_MAPS_API_KEY:-}
-    image: cartavault:${CARTAVAULT_VERSION:-1.0.0}
-    user: "0:0"
-    entrypoint: ["python", "-m", "app.setup_cli"]
-    environment:
-      CARTAVAULT_ENV_FILE: /config/.env
-    volumes:
-      - ${CARTAVAULT_ENV_FILE:-./.env}:/config/.env
-
   postgis:
     image: postgis/postgis:16-3.5@sha256:7d7925e334fceb6079c0a5d150e925f192cde2cf1dd78767ca843e2996d39829
     restart: unless-stopped
@@ -77,31 +60,6 @@ services:
       timeout: 5s
       retries: 12
       start_period: 15s
-    networks: [cartavault_private]
-
-  redis:
-    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
-    restart: unless-stopped
-    read_only: true
-    cap_drop: [ALL]
-    # The official entrypoint needs these only to initialize a fresh /data
-    # volume, then drops permanently to the unprivileged redis user.
-    cap_add: [CHOWN, SETGID, SETUID]
-    security_opt:
-      - no-new-privileges:true
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
-    volumes:
-      - redis_data:/data
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
     networks: [cartavault_private]
 
   cartavault:
@@ -132,43 +90,11 @@ services:
     depends_on:
       postgis:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 20s
-    networks: [cartavault_private]
-
-  worker:
-    image: cartavault:${CARTAVAULT_VERSION}
-    restart: unless-stopped
-    read_only: true
-    cap_drop: [ALL]
-    security_opt:
-      - no-new-privileges:true
-    entrypoint: ["python", "-m", "app.tasks.worker"]
-    environment:
-      <<: *cartavault-environment
-    volumes:
-      - photos_data:/app/storage/photos
-      - avatars_data:/app/storage/avatars
-      - exports_data:/app/storage/exports
-      - imports_data:/app/storage/imports
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,size=64m
-    depends_on:
-      cartavault:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "from redis import Redis; from rq import Worker; import os; c=Redis.from_url(os.environ['REDIS_URL']); assert any(w.get_state() in {'idle','busy'} for w in Worker.all(connection=c))"]
-      interval: 20s
-      timeout: 8s
-      retries: 6
       start_period: 20s
     networks: [cartavault_private]
 
@@ -178,7 +104,6 @@ volumes:
   avatars_data:
   exports_data:
   imports_data:
-  redis_data:
 
 networks:
   cartavault_private:

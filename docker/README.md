@@ -1,40 +1,40 @@
 # CartaVault Docker deployment
 
-CartaVault uses two runtime images and four services:
+## Supported standard topology
 
-- `cartavault:<version>` contains FastAPI, Alembic and the compiled React frontend;
-- the digest-pinned `postgis/postgis:16-3.5` Debian image stores PostgreSQL/PostGIS data.
-- the digest-pinned Redis image carries the private task queue;
-- a worker reuses the CartaVault image with the dedicated `app.tasks.worker` command.
+The beta and mono-instance deployment has exactly two services:
 
-The application container is disposable. Database data, photos, avatars and
-generated exports and pending import archives remain in external volumes. Redis
-uses an authenticated, private AOF volume, but PostgreSQL remains the source of
-truth for task state. The external reverse proxy owns
-HTTPS and forwards one HTTP port to CartaVault.
+```text
+cartavault  one CartaVault-owned image (FastAPI, Alembic, compiled React)
+postgis     pinned official PostgreSQL/PostGIS image
+```
 
-Proxy forwarding headers are disabled by default. When CartaVault is behind a
-reverse proxy, set `CARTAVAULT_FORWARDED_ALLOW_IPS` to that proxy's exact IP or
-CIDR range. CartaVault rejects `*` so clients cannot forge their source address
-through `X-Forwarded-For` and bypass IP-based protections.
+`docker/compose.yml` and `docker/compose.portainer.yml` are the standard
+contracts. They do not require Redis, a worker, a frontend container or a
+migration container. Long tasks run synchronously in the single application
+process (`CARTAVAULT_TASK_MODE=sync`). This is the supported default for one
+private-beta application replica.
+
+The external reverse proxy owns HTTPS and forwards one HTTP port to
+CartaVault. PostgreSQL has no published port.
 
 ## Build and offline export
 
-Build the application image and pull the pinned PostGIS companion image:
+Build the versioned application image and pull the pinned PostGIS companion:
 
 ```powershell
 .\docker\build.ps1 -Version "0.9.0-beta.1"
 ```
 
-Export all three images for an offline NAS or Portainer installation:
+Export the two standard images for an offline NAS or Portainer installation:
 
 ```powershell
 .\docker\export-images.ps1 -Version "0.9.0-beta.1" -OutputDirectory "D:\docker-exports"
 ```
 
-The archive contains `cartavault:0.9.0-beta.1`, `postgis/postgis:16-3.5`
-and `redis:7.4-alpine` at the digests declared in the Compose file. The API and
-worker reuse the same CartaVault image.
+The archive contains `cartavault:0.9.0-beta.1` and the digest-pinned
+`postgis/postgis:16-3.5` image. Use immutable version tags for upgrades and
+rollback; do not deploy `latest` as the only rollback reference.
 
 ## First installation
 
@@ -46,128 +46,132 @@ docker compose --env-file docker/.env -f docker/compose.setup.yml \
   run --rm setup generate-secrets
 ```
 
-Review `docker/.env`, then start the stack:
+Review `docker/.env`, then start only the standard services:
 
 ```sh
 docker compose --env-file docker/.env -f docker/compose.yml up -d
+docker compose --env-file docker/.env -f docker/compose.yml ps
 ```
 
-The CartaVault entrypoint performs this bounded sequence before opening the
-HTTP service:
+The application entrypoint waits for repeated successful PostgreSQL
+connections, acquires the migration advisory lock, applies every Alembic head
+and starts Uvicorn only after success. A timeout or migration error stops the
+container; CartaVault never runs an automatic downgrade.
 
-1. wait for repeated successful PostgreSQL connections;
-2. acquire the migration advisory lock;
-3. apply every Alembic head;
-4. verify the optional legacy administrator bootstrap;
-5. replace the startup process with Uvicorn.
+The single-replica assumption is intentional. A future multi-replica rollout
+must move migrations to a dedicated job/CI step or designate one migration
+replica.
 
-A migration error terminates the container. It is never ignored and no
-automatic downgrade is attempted.
+## HTTP routing and health
 
-## HTTP routing
-
-FastAPI serves the complete same-origin application:
+FastAPI serves the same-origin application:
 
 ```text
 /api/*     FastAPI API and OpenAPI documentation
 /assets/*  immutable content-hashed Vite assets
 /*         React application and deep-link fallback
-/healthz   lightweight container readiness endpoint
+/healthz   lightweight readiness endpoint
 ```
 
-Unknown `/api/*` routes remain JSON 404 responses and are never replaced by
-the React shell. `index.html` is not stored with a long-lived cache policy.
-
-## Persistent configuration
-
-Required runtime values include:
-
-- `CARTAVAULT_VERSION` and `DATABASE_URL`;
-- PostgreSQL database, user and password;
-- public URL and allowed CORS origins;
-- session, setup and credential-encryption secrets;
-- a distinct `REDIS_PASSWORD` used only on the private Docker network;
-- sender address for transactional email.
-
-No runtime secret or `.env` file is copied into the image. Keep
-`CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` with the database and media backups:
-encrypted provider credentials cannot be recovered without it.
-
-The standard Compose stack uses named volumes. The Portainer stack uses:
-
-```text
-${CARTAVAULT_DATA_ROOT}/postgres
-${CARTAVAULT_DATA_ROOT}/photos
-${CARTAVAULT_DATA_ROOT}/avatars
-${CARTAVAULT_DATA_ROOT}/exports
-${CARTAVAULT_DATA_ROOT}/imports
-${CARTAVAULT_DATA_ROOT}/redis
-```
-
-The default Synology root is `/volume2/docker/cartavault`; change it through
-`CARTAVAULT_DATA_ROOT`, never by rebuilding the image.
-
-The application runs as the non-root user `cartavault` (UID/GID `999`). Bind
-mounts used by Portainer or Synology must grant that identity read/write access
-to `photos`, `avatars` and `exports`. The rest of the container filesystem is
-read-only, Linux capabilities are dropped, and only a small temporary `/tmp`
-filesystem remains writable.
-
-## Portainer and external PostGIS
-
-Use `compose.portainer.yml` for bind-mounted Synology data. Set
-`CARTAVAULT_IMAGE` to the locally loaded application image name when it is not
-`cartavault`.
-
-Use `compose.external.yml` when PostgreSQL/PostGIS is managed separately. The
-application entrypoint still waits for the configured database and applies
-migrations before becoming ready.
-
-## Health and logs
-
-`postgis` uses `pg_isready`, Redis uses an authenticated `PING`, and the worker
-healthcheck verifies that RQ has registered an idle or busy worker. `cartavault`
-becomes healthy only after migrations, FastAPI lifespan checks and `/healthz`
-succeed. Startup logs distinguish
-configuration, database readiness, migration locking, Alembic, bootstrap and
-application phases without printing credentials.
+Unknown `/api/*` routes remain JSON 404 responses. The React shell is not used
+for API failures and `index.html` is not cached as an immutable asset.
+`postgis` uses `pg_isready`; `cartavault` becomes healthy only after migrations
+and the FastAPI lifespan have completed.
 
 ```sh
-docker compose --env-file docker/.env -f docker/compose.yml ps
-docker compose --env-file docker/.env -f docker/compose.yml logs cartavault
-docker compose --env-file docker/.env -f docker/compose.yml logs worker redis
+docker compose --env-file docker/.env -f docker/compose.yml logs postgis cartavault
 ```
 
-## Backup, restore and rollback
+## Configuration, secrets and persistent data
 
-Use `backup.sh` and `restore.sh` as described in
-[`docs/backup-and-restore.md`](../docs/backup-and-restore.md). Back up the
-database, media, deployment configuration and credential-encryption key as one
-recovery set before every significant upgrade.
+Required runtime values include the versioned image tag, database credentials
+and `DATABASE_URL`, public URL/CORS origins, session/setup/encryption secrets,
+and the transactional-email sender. No runtime secret or real `.env` file is
+copied into the image.
 
-Rolling back only the application image is safe only while its migrations are
-backward-compatible. CartaVault never runs `alembic downgrade` automatically;
-restore the verified pre-upgrade recovery set when a schema rollback is
-required.
+Keep `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` with the database and media backup
+set: stored provider credentials cannot be recovered without it.
 
-## Background tasks and synchronous fallback
+The standard Compose stack uses these named volumes:
 
-PDF generation and KMZ confirmation are queued by identifier. Their progress,
-ownership, errors and results are stored in PostgreSQL; Redis never contains
-archives, images, credentials or authoritative business state. Pending KMZ
-archives and generated files are shared between the API and worker through the
-`imports` and `exports` volumes.
+```text
+postgres_data  photos_data  avatars_data  exports_data  imports_data
+```
 
-Local development defaults to `CARTAVAULT_TASK_MODE=sync`, which executes the
-same explicit handlers in the API process without Redis. Docker Compose sets
-the mode to `redis`. Do not use synchronous mode to scale multiple API replicas.
-See [`docs/background-tasks.md`](../docs/background-tasks.md) for operations and
-recovery.
+The Portainer/Synology stack maps the same data below
+`${CARTAVAULT_DATA_ROOT}` (default `/volume2/docker/cartavault`):
 
-## Single-API-replica beta constraint
+```text
+postgres/  photos/  avatars/  exports/  imports/
+```
 
-The application container runs migrations during startup and therefore assumes
-one CartaVault API replica for the private beta. Worker replicas may be scaled
-independently. The advisory lock prevents an
-accidental concurrent migration, but a future multi-replica deployment should
-move migrations to a dedicated deployment job or CI-controlled rollout.
+The application runs as non-root UID/GID `999`. Bind mounts must grant that
+identity read/write access to application storage. The rest of the filesystem
+is read-only, capabilities are dropped and only `/tmp` is a writable tmpfs.
+Do not hard-code NAS paths into the image.
+
+Proxy headers are disabled by default. Behind a reverse proxy, set
+`CARTAVAULT_FORWARDED_ALLOW_IPS` to its exact IP/CIDR. The wildcard `*` is
+rejected.
+
+## Portainer, Synology and external PostGIS
+
+- `compose.portainer.yml`: standard two-service stack with bind mounts;
+- `compose.external.yml`: one CartaVault service when PostGIS is managed
+  outside this Compose project;
+- `compose.setup.yml`: one-shot secret-generation tool, never a runtime
+  service.
+
+Set `CARTAVAULT_IMAGE` in Portainer when the loaded image is not named
+`cartavault`. Keep the existing external reverse-proxy destination port; only
+the container behind it changes.
+
+## Optional Redis/worker extension
+
+Redis and RQ remain supported, but they are not part of the standard stack.
+Opt in only when task isolation or independent worker scaling is required:
+
+```sh
+docker compose --env-file docker/.env \
+  -f docker/compose.yml -f docker/compose.redis.yml up -d
+```
+
+For Portainer/Synology, combine `compose.portainer.yml` with
+`compose.portainer.redis.yml`. Define `REDIS_PASSWORD` and optionally
+`CARTAVAULT_TASK_QUEUE` before deploying. The extension switches only the
+application/worker to `CARTAVAULT_TASK_MODE=redis`, adds a private authenticated
+Redis service and reuses the same CartaVault image for the worker.
+
+The standard offline export intentionally contains no Redis image. Pull/export
+the pinned Redis image separately when this optional topology is selected.
+See [`docs/background-tasks.md`](../docs/background-tasks.md).
+
+## Upgrade from the previous beta stack
+
+The change is non-destructive: existing database and media data are reused.
+
+1. Back up PostgreSQL, photos, avatars, deployment configuration and
+   `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` as one recovery set.
+2. Record the old immutable image tags and stop the former frontend/backend/
+   migrate/Redis/worker stack without deleting volumes or bind-mounted data.
+3. Map the existing PostgreSQL data to `postgis` and existing media paths to
+   the corresponding `cartavault` mounts.
+4. Preserve `DATABASE_URL`, public URL, CORS, mail and authentication secrets;
+   remove Redis variables unless the optional extension is intentionally used.
+5. Deploy `compose.yml` or `compose.portainer.yml`. The unified container waits
+   for PostGIS and runs `alembic upgrade head` before becoming healthy.
+6. Validate `/healthz`, login, a map, a media file and one safe write.
+
+Do not delete the old volumes until the new stack and a restore test are
+accepted. Rolling an application image back is safe only while the migrated
+schema is backward-compatible; otherwise restore the complete pre-upgrade
+recovery set. See [`docs/backup-and-restore.md`](../docs/backup-and-restore.md).
+
+## Verification contract
+
+CI validates that the standard Compose resolves to exactly `postgis` and
+`cartavault`, builds the unified image from a clean checkout, starts an empty
+database, applies migrations, verifies frontend/API routing and health, checks
+the non-root/read-only runtime, recreates the application container and proves
+media persistence. It also validates the optional four-service Compose merge
+without making it the standard deployment.

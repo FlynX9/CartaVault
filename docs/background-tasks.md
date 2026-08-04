@@ -31,19 +31,29 @@ queue; the persistent model keeps a later broker migration possible.
   serialized into Redis;
 - logs include the task UUID and type and do not include task input or secrets.
 
-## Operations
+## Deployment modes
+
+The supported beta/mono-instance stack deliberately uses
+`CARTAVAULT_TASK_MODE=sync`: the `cartavault` container executes the same task
+handlers in process and Redis is not required. RQ is an optional scale-out
+extension, not a prerequisite for installing CartaVault.
+
+## Redis extension operations
 
 Inspect the services:
 
 ```sh
-docker compose --env-file docker/.env -f docker/compose.yml ps
-docker compose --env-file docker/.env -f docker/compose.yml logs worker redis
+docker compose --env-file docker/.env -f docker/compose.yml \
+  -f docker/compose.redis.yml ps
+docker compose --env-file docker/.env -f docker/compose.yml \
+  -f docker/compose.redis.yml logs worker redis
 ```
 
 Scale workers without scaling the API:
 
 ```sh
-docker compose --env-file docker/.env -f docker/compose.yml up -d --scale worker=2
+docker compose --env-file docker/.env -f docker/compose.yml \
+  -f docker/compose.redis.yml up -d --scale worker=2
 ```
 
 Redis uses AOF (`appendfsync everysec`), authentication, `noeviction`, a 256 MiB
@@ -52,8 +62,8 @@ fail with HTTP 503 and an auditable `broker_unavailable` task. Completed files
 and their authorization metadata remain available from PostgreSQL/shared
 storage until expiry.
 
-For local development without Redis, leave `CARTAVAULT_TASK_MODE=sync`. This is
-a functional fallback, not the production multi-process configuration.
+For local development and the standard single-replica beta deployment, keep
+the base Compose file alone. Do not set Redis mode without the extension.
 
 ## Cleanup and recovery
 

@@ -8,7 +8,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $composeFile = Join-Path $PSScriptRoot 'compose.yml'
 $postgisImage = 'postgis/postgis:16-3.5@sha256:7d7925e334fceb6079c0a5d150e925f192cde2cf1dd78767ca843e2996d39829'
-$redisImage = 'redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2'
 
 $buildDefaults = @{
     CARTAVAULT_VERSION = $Version
@@ -22,7 +21,6 @@ $buildDefaults = @{
     CARTAVAULT_SESSION_SECRET = 'build-only-session-secret'
     CARTAVAULT_SETUP_TOKEN = 'build-only-setup-token'
     CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
-    REDIS_PASSWORD = 'build-only-redis-password'
 }
 
 foreach ($entry in $buildDefaults.GetEnumerator()) {
@@ -39,11 +37,6 @@ if ($LASTEXITCODE -ne 0) {
     throw 'PostGIS image pull failed.'
 }
 
-docker pull $redisImage
-if ($LASTEXITCODE -ne 0) {
-    throw 'Redis image pull failed.'
-}
-
 docker compose -f $composeFile build --pull cartavault
 if ($LASTEXITCODE -ne 0) {
     throw 'Docker image build failed.'
@@ -52,4 +45,3 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Prepared the CartaVault stack images:"
 Write-Host "  cartavault:$Version"
 Write-Host "  $postgisImage"
-Write-Host "  $redisImage"

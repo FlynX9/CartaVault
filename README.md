@@ -27,6 +27,7 @@ It combines a **FastAPI** backend, a **PostgreSQL/PostGIS** database, and a **Re
 - [Architecture and technical stack](#architecture-and-technical-stack)
 - [Quick start on Windows](#quick-start-on-windows)
 - [Google Routes configuration](#google-routes-configuration)
+- [Docker deployment](#docker-deployment)
 - [Backup and restore](#backup-and-restore)
 - [Security audit](#security-audit)
 - [Security](#security)
@@ -317,7 +318,21 @@ Store this value in a deployment secret or an untracked `.env` file. Losing it m
 
 Restrict the Google key to the Routes API and, whenever possible, to the server IP addresses. Also configure quotas and budget alerts in Google Cloud.
 
-Trip-wide optimizations are proposed server-side and kept in Redis for 15 minutes before confirmation. CartaVault limits accidental billable bursts to 120 Google Routes requests per user and minute by default. These safeguards can be adjusted with `CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE`, `CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS`, and `CARTAVAULT_ROUTING_PROPOSAL_TTL_SECONDS`.
+Trip-wide optimizations are proposed server-side and kept temporarily before
+confirmation (in-process in the standard mono-instance stack, or in Redis when
+the worker extension is enabled). CartaVault limits accidental billable bursts
+to 120 Google Routes requests per user and minute by default. These safeguards
+can be adjusted with `CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE`,
+`CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS`, and
+`CARTAVAULT_ROUTING_PROPOSAL_TTL_SECONDS`.
+
+## Docker deployment
+
+The supported beta topology uses one unified CartaVault application image and
+one official PostgreSQL/PostGIS container. Redis and the RQ worker are an
+explicit optional extension, not a standard installation dependency. See the
+[Docker, Portainer and Synology guide](docker/README.md) for installation,
+upgrade and rollback instructions.
 
 ## Backup and restore
 
