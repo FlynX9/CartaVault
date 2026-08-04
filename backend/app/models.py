@@ -4,7 +4,7 @@ Import this module before issuing ORM queries from entry points that do not
 load the FastAPI routers, notably the administration CLI and Alembic.
 """
 
-from app.auth.models import AuthActionToken, RegistrationRequest, SystemCredential, User, UserApiCredential, UserSession
+from app.auth.models import AuthActionToken, AuthSecurityEvent, RegistrationRequest, SystemCredential, User, UserApiCredential, UserSession
 from app.admin.models import SystemSetting
 from app.quotas.models import QuotaProfile
 from app.categories.associations import place_categories_table
@@ -33,6 +33,7 @@ __all__ = (
     "Tag",
     "User",
     "AuthActionToken",
+    "AuthSecurityEvent",
     "RegistrationRequest",
     "SystemCredential",
     "SystemSetting",

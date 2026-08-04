@@ -27,6 +27,7 @@ def test_each_email_function_uses_a_repository_template() -> None:
     service = EmailService(provider)
 
     service.notify_registration_admins(["admin@example.test"], "candidate@example.test")
+    service.send_registration_verification("candidate@example.test", "Candidate", "verification-token")
     service.notify_registration_approved("candidate@example.test", "Candidate")
     service.send_password_reset("candidate@example.test", "Candidate", "opaque-token")
     service.send_map_share_invitation("new@example.test", "owner@example.test", "New account map", "new-token", True)
@@ -37,24 +38,25 @@ def test_each_email_function_uses_a_repository_template() -> None:
     service.notify_email_changed("old@example.test", "Candidate", "old@example.test", "new@example.test")
     service.send_resend_verification("admin@example.test", "Admin")
 
-    assert len(provider.messages) == 10
+    assert len(provider.messages) == 11
     assert all("Carta" in message.html and "Vault" in message.html for message in provider.messages)
     assert all("#0FA68A" in message.html for message in provider.messages)
     assert "candidate@example.test" in provider.messages[0].text
-    assert "Candidate" in provider.messages[1].text
-    assert "opaque-token" in provider.messages[2].text
-    assert "owner@example.test" in provider.messages[3].text
-    assert "New account map" in provider.messages[3].text
-    assert "/invitations/new-token" in provider.messages[3].text
-    assert "/invitations/member-token" in provider.messages[4].text
-    assert "Future map" in provider.messages[5].text
-    assert "/invitations/owner-new-token" in provider.messages[5].text
-    assert "Owned map" in provider.messages[6].text
-    assert "/invitations/owner-token" in provider.messages[6].text
-    assert "mot de passe" in provider.messages[7].subject.lower()
-    assert "old@example.test" in provider.messages[8].text
-    assert "new@example.test" in provider.messages[8].text
-    assert "Admin" in provider.messages[9].text
+    assert "verification-token" in provider.messages[1].text
+    assert "Candidate" in provider.messages[2].text
+    assert "opaque-token" in provider.messages[3].text
+    assert "owner@example.test" in provider.messages[4].text
+    assert "New account map" in provider.messages[4].text
+    assert "/invitations/new-token" in provider.messages[4].text
+    assert "/invitations/member-token" in provider.messages[5].text
+    assert "Future map" in provider.messages[6].text
+    assert "/invitations/owner-new-token" in provider.messages[6].text
+    assert "Owned map" in provider.messages[7].text
+    assert "/invitations/owner-token" in provider.messages[7].text
+    assert "mot de passe" in provider.messages[8].subject.lower()
+    assert "old@example.test" in provider.messages[9].text
+    assert "new@example.test" in provider.messages[9].text
+    assert "Admin" in provider.messages[10].text
 
 
 def test_email_templates_are_localized_without_changing_their_security_content() -> None:

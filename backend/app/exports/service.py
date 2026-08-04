@@ -32,7 +32,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
     if poi_map is None:
         raise HTTPException(status_code=404, detail="Map not found")
     total = session.scalar(select(func.count()).select_from(Place).where(Place.map_id == map_id)) or 0
-    statement = select(Place).where(Place.map_id == map_id).options(selectinload(Place.categories), selectinload(Place.tags), selectinload(Place.photos), selectinload(Place.status))
+    statement = select(Place).where(Place.map_id == map_id).options(selectinload(Place.categories), selectinload(Place.tags), selectinload(Place.photos), selectinload(Place.status), selectinload(Place.links))
     if options.category_ids:
         statement = statement.where(Place.categories.any(Place.categories.property.mapper.class_.id.in_(options.category_ids)))
     if options.status_ids:
@@ -97,6 +97,11 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
         }
         for key, value in values.items():
             if key in selected and value not in (None, [], ""): data[f"cartavault:{key}"] = value
+        if "links" in selected and place.links:
+            data["cartavault:links"] = [
+                {"label": link.label, "url": link.url}
+                for link in sorted(place.links, key=lambda item: (item.sort_order, item.id))
+            ]
         if options.include_custom_fields:
             for key, value in (place.custom_fields or {}).items(): data[f"custom:{key}"] = value; custom_count += 1
         placemarks.append({"name": place.name, "longitude": longitude, "latitude": latitude, "description": safe_description(place.description if "description" in selected else None, image_path), "extended_data": data, "style_id": style_id})

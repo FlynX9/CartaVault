@@ -165,12 +165,25 @@ class RegistrationCreate(EmailModel):
     password: str = Field(min_length=security_settings.password_min_length, max_length=1024)
     confirmation: str = Field(min_length=security_settings.password_min_length, max_length=1024)
     locale: Literal["fr", "en"] = "fr"
+    terms_accepted: bool
+    website: str = Field(default="", max_length=0)
 
     @model_validator(mode="after")
     def passwords_match(self) -> Self:
         if self.password != self.confirmation:
             raise ValueError("Password confirmation does not match")
+        if not self.terms_accepted:
+            raise ValueError("Terms must be accepted")
         return self
+
+
+class RegistrationVerification(BaseModel):
+    token: str = Field(min_length=32, max_length=512)
+
+
+class RegistrationVerificationResend(EmailModel):
+    email: str = Field(min_length=3, max_length=320)
+    locale: Literal["fr", "en"] = "fr"
 
 
 class PasswordResetRequest(EmailModel):
@@ -197,8 +210,10 @@ class RegistrationRequestRead(BaseModel):
     email: str
     display_name: str
     locale: Literal["fr", "en"]
-    status: Literal["pending", "approved", "rejected"]
+    status: Literal["awaiting_email", "pending", "approved", "rejected", "expired"]
     created_at: datetime
     reviewed_at: datetime | None
     notification_sent_at: datetime | None
     notification_error_code: str | None
+    email_verified_at: datetime | None
+    verification_expires_at: datetime | None

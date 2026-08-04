@@ -14,6 +14,7 @@ import type { DraftPosition } from '../../types/place'
 import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { FieldHelp } from '../common/FieldHelp'
 import { getTagColorStyle } from '../../tags/tagColors'
+import { PlaceLinksEditor } from './PlaceLinksEditor'
 
 interface PlaceFormProps {
   initialValues: PlaceFormValues
@@ -367,6 +368,15 @@ export function PlaceForm({
       </section>
       </div>
       </div>
+
+      {fieldEnabled('links') && <PlaceLinksEditor
+        links={values.links}
+        error={errors.links}
+        onChange={(links) => {
+          setValues((current) => ({ ...current, links }))
+          setLocalErrors((current) => ({ ...current, links: undefined }))
+        }}
+      />}
 
       {afterLocation && <div className="place-form__photos">{afterLocation}</div>}
 

@@ -336,6 +336,7 @@ def test_registration_response_does_not_enumerate_existing_accounts(
                 "password": "a sufficiently long password",
                 "confirmation": "a sufficiently long password",
                 "locale": "fr",
+                "terms_accepted": True,
             },
         )
 

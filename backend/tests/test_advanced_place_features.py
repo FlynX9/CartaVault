@@ -114,9 +114,39 @@ def test_favorite_ratings_visited_filters_links_and_history(integration_client, 
     assert link.status_code == 201
     assert integration_client.get(f"/places/{place_id}").json()["links"][0]["label"] == "Fiche externe"
 
+    duplicate_link = integration_client.post(
+        f"/places/{place_id}/links",
+        json={"url": "https://example.org/fiche", "label": "Copie"},
+    )
+    assert duplicate_link.status_code == 409
+
+    second_link = integration_client.post(
+        f"/places/{place_id}/links",
+        json={"url": "https://example.org/archive", "label": "  Archive   publique  ", "sort_order": 1},
+    )
+    assert second_link.status_code == 201
+    replaced = integration_client.put(
+        f"/places/{place_id}/links",
+        json={
+            "links": [
+                {"id": second_link.json()["id"], "url": second_link.json()["url"], "label": "Archive", "sort_order": 0},
+                {"id": link.json()["id"], "url": "https://example.org/fiche-v2", "label": "Fiche mise à jour", "sort_order": 1},
+            ]
+        },
+    )
+    assert replaced.status_code == 200
+    assert [item["label"] for item in replaced.json()] == ["Archive", "Fiche mise à jour"]
+    assert [item["sort_order"] for item in integration_client.get(f"/places/{place_id}").json()["links"]] == [0, 1]
+
+    duplicate_collection = integration_client.put(
+        f"/places/{place_id}/links",
+        json={"links": [{"url": "https://same.example"}, {"url": "https://same.example"}]},
+    )
+    assert duplicate_collection.status_code == 422
+
     history = integration_client.get(f"/places/{place_id}/history")
     assert history.status_code == 200
-    assert {event["action"] for event in history.json()["items"]} >= {"created", "link_added"}
+    assert {event["action"] for event in history.json()["items"]} >= {"created", "link_added", "links_replaced"}
 
 
 def test_map_field_configuration_and_trash_lifecycle(integration_client, poi_map) -> None:

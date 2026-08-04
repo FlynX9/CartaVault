@@ -102,8 +102,9 @@ class RegistrationRequest(Base):
     __tablename__ = "registration_requests"
     __table_args__ = (
         UniqueConstraint("email", name="registration_requests_email_key"),
-        CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="registration_requests_status_check"),
+        CheckConstraint("status IN ('awaiting_email', 'pending', 'approved', 'rejected', 'expired')", name="registration_requests_status_check"),
         Index("registration_requests_status_created_idx", "status", "created_at"),
+        Index("registration_requests_verification_token_hash_key", "verification_token_hash", unique=True),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -111,13 +112,36 @@ class RegistrationRequest(Base):
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
     locale: Mapped[str] = mapped_column(String(2), nullable=False, server_default=text("'fr'"))
-    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'pending'"))
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'awaiting_email'"))
+    verification_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    terms_accepted_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    terms_version: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'legacy'"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reviewed_by_user_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     notification_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     notification_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class AuthSecurityEvent(Base):
+    __tablename__ = "auth_security_events"
+    __table_args__ = (
+        Index("auth_security_events_occurred_at_idx", "occurred_at"),
+        Index("auth_security_events_event_type_idx", "event_type", "occurred_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_user_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    registration_request_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("registration_requests.id", ondelete="SET NULL"), nullable=True)
+    target_email_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    client_ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    details: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
 class AuthActionToken(Base):

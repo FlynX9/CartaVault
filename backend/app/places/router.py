@@ -242,7 +242,7 @@ def place_to_read(
         visit_rating=place.visit_rating,
         is_visited=place.status.functional_state == "visited",
         deleted_at=place.deleted_at,
-        links=place.links,
+        links=sorted(place.links, key=lambda item: (item.sort_order, item.id)),
         field_config=normalize_place_field_config(place.map.place_field_config),
         primary_photo_id=next((photo.id for photo in place.photos if photo.is_primary), place.photos[0].id if place.photos else None),
     )

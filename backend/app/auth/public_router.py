@@ -10,10 +10,11 @@ from sqlalchemy.orm import Session
 
 from app.auth.models import AuthActionToken, RegistrationRequest, User, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
+from app.auth.registration_security import CURRENT_TERMS_VERSION, expire_stale_registration_requests, record_auth_event, validate_registration_password
 from app.auth.registration_settings import public_registration_enabled
-from app.auth.schemas import PasswordResetConfirm, PasswordResetRequest, RegistrationCreate
+from app.auth.schemas import PasswordResetConfirm, PasswordResetRequest, RegistrationCreate, RegistrationVerification, RegistrationVerificationResend
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email
-from app.config import email_settings
+from app.config import email_settings, security_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
@@ -22,49 +23,124 @@ from app.emails.notifications import notify_password_changed
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
-GENERIC_REGISTRATION_MESSAGE = "Votre demande a été transmise aux administrateurs."
+GENERIC_REGISTRATION_MESSAGE = "Consultez votre messagerie pour confirmer votre adresse avant l’examen de votre demande."
 GENERIC_RESET_MESSAGE = "Si un compte correspond à cette adresse, un email de réinitialisation a été envoyé."
 
 
 @router.get("/registration-status")
-def registration_status(database_session: Session = Depends(get_db)) -> dict[str, bool]:
-    return {"enabled": public_registration_enabled(database_session)}
+def registration_status(database_session: Session = Depends(get_db)) -> dict[str, object]:
+    return {"enabled": public_registration_enabled(database_session), "terms_version": CURRENT_TERMS_VERSION}
+
+
+def _send_verification(database_session: Session, registration: RegistrationRequest, raw_token: str) -> None:
+    try:
+        EmailService(provider_from_database(database_session)).send_registration_verification(
+            registration.email, registration.display_name, raw_token, registration.locale,
+        )
+        registration.notification_sent_at = datetime.now(UTC).replace(tzinfo=None)
+        registration.notification_error_code = None
+    except EmailDeliveryError as error:
+        registration.notification_error_code = error.code
+        logger.warning("registration_verification_email_failed request_id=%s code=%s", registration.id, error.code)
 
 
 @router.post("/register", status_code=status.HTTP_202_ACCEPTED)
 def register(data: RegistrationCreate, request: Request, database_session: Session = Depends(get_db)) -> dict[str, str]:
     client_host = request.client.host if request.client else "unknown"
-    public_auth_rate_limiter.check(rate_limit_key("register", client_host))
-    if not public_registration_enabled(database_session):
-        logger.warning("public_registration_blocked client=%s", client_host)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Les inscriptions publiques ne sont pas activees.")
     email = normalize_email(str(data.email))
-    if database_session.scalar(select(User.id).where(User.email == email)) is not None or database_session.scalar(select(RegistrationRequest.id).where(RegistrationRequest.email == email)) is not None:
-        # Preserve comparable Argon2 work before returning the generic response.
+    public_auth_rate_limiter.check(rate_limit_key("register", client_host))
+    public_auth_rate_limiter.check(rate_limit_key("register-email", email))
+    if not public_registration_enabled(database_session):
+        record_auth_event(database_session, "registration.request", "blocked_disabled", email=email, client_ip=client_host)
+        database_session.commit()
+        logger.warning("public_registration_blocked client=%s", client_host)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Les inscriptions publiques ne sont pas activées.")
+    validate_registration_password(data.password, email)
+    expire_stale_registration_requests(database_session)
+    existing = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.email == email))
+    if database_session.scalar(select(User.id).where(User.email == email)) is not None or (existing is not None and existing.status != "expired"):
         hash_password(data.password)
+        record_auth_event(database_session, "registration.request", "duplicate", email=email, client_ip=client_host, request=existing)
+        database_session.commit()
         return {"status": "pending", "message": GENERIC_REGISTRATION_MESSAGE}
-    request = RegistrationRequest(email=email, display_name=email.split("@", 1)[0][:120], password_hash=hash_password(data.password), locale=data.locale)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    raw_token = generate_token()
+    registration = existing or RegistrationRequest(email=email)
+    registration.display_name = email.split("@", 1)[0][:120]
+    registration.password_hash = hash_password(data.password)
+    registration.locale = data.locale
+    registration.status = "awaiting_email"
+    registration.verification_token_hash = hash_token(raw_token)
+    registration.verification_expires_at = now + timedelta(hours=security_settings.registration_verification_hours)
+    registration.email_verified_at = None
+    registration.terms_accepted_at = now
+    registration.terms_version = CURRENT_TERMS_VERSION
+    if existing is not None:
+        registration.created_at = now
+        registration.updated_at = now
+        registration.reviewed_at = None
+        registration.reviewed_by_user_id = None
+        registration.notification_sent_at = None
+        registration.notification_error_code = None
     try:
-        database_session.add(request)
+        database_session.add(registration)
+        database_session.flush()
+        record_auth_event(database_session, "registration.request", "accepted", email=email, client_ip=client_host, request=registration)
         database_session.commit()
     except IntegrityError:
         database_session.rollback()
         return {"status": "pending", "message": GENERIC_REGISTRATION_MESSAGE}
-    admins = list(database_session.scalars(select(User).where(User.is_admin.is_(True), User.is_active.is_(True))))
-    try:
-        if admins:
-            service = EmailService(provider_from_database(database_session))
-            for locale in ("fr", "en"):
-                recipients = [admin.email for admin in admins if (admin.preferences or {}).get("language", "fr") == locale]
-                if recipients:
-                    service.notify_registration_admins(recipients, email, locale)
-            request.notification_sent_at = datetime.now(UTC).replace(tzinfo=None)
-            request.notification_error_code = None
-    except EmailDeliveryError as error:
-        request.notification_error_code = error.code
-        logger.warning("registration_admin_email_failed request_id=%s code=%s", request.id, error.code)
+    _send_verification(database_session, registration, raw_token)
     database_session.commit()
+    # Keep the response indistinguishable from duplicate-account requests.
     return {"status": "pending", "message": GENERIC_REGISTRATION_MESSAGE}
+
+
+@router.post("/register/verify", status_code=status.HTTP_202_ACCEPTED)
+def verify_registration_email(data: RegistrationVerification, request: Request, database_session: Session = Depends(get_db)) -> dict[str, str]:
+    client_host = request.client.host if request.client else "unknown"
+    public_auth_rate_limiter.check(rate_limit_key("registration-verify", client_host))
+    now = datetime.now(UTC).replace(tzinfo=None)
+    registration = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.verification_token_hash == hash_token(data.token)).with_for_update())
+    if registration is None or registration.status != "awaiting_email" or registration.verification_expires_at is None or registration.verification_expires_at <= now:
+        record_auth_event(database_session, "registration.email_verification", "invalid", client_ip=client_host)
+        database_session.commit()
+        raise HTTPException(400, "Le lien de vérification est invalide ou expiré.")
+    registration.status = "pending"
+    registration.email_verified_at = now
+    registration.verification_token_hash = None
+    record_auth_event(database_session, "registration.email_verification", "verified", email=registration.email, client_ip=client_host, request=registration)
+    admins = list(database_session.scalars(select(User).where(User.is_admin.is_(True), User.is_active.is_(True))))
+    database_session.commit()
+    try:
+        service = EmailService(provider_from_database(database_session))
+        for locale in ("fr", "en"):
+            recipients = [admin.email for admin in admins if (admin.preferences or {}).get("language", "fr") == locale]
+            if recipients:
+                service.notify_registration_admins(recipients, registration.email, locale)
+        registration.notification_sent_at = now
+        registration.notification_error_code = None
+    except EmailDeliveryError as error:
+        registration.notification_error_code = error.code
+    database_session.commit()
+    return {"status": "pending", "message": "Votre adresse est vérifiée. La demande attend maintenant la validation d’un administrateur."}
+
+
+@router.post("/register/resend-verification", status_code=status.HTTP_202_ACCEPTED)
+def resend_registration_verification(data: RegistrationVerificationResend, request: Request, database_session: Session = Depends(get_db)) -> dict[str, str]:
+    client_host = request.client.host if request.client else "unknown"
+    email = normalize_email(data.email)
+    public_auth_rate_limiter.check(rate_limit_key("registration-resend", client_host, email))
+    registration = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.email == email).with_for_update())
+    if registration is not None and registration.status == "awaiting_email":
+        now = datetime.now(UTC).replace(tzinfo=None)
+        raw_token = generate_token()
+        registration.verification_token_hash = hash_token(raw_token)
+        registration.verification_expires_at = now + timedelta(hours=security_settings.registration_verification_hours)
+        _send_verification(database_session, registration, raw_token)
+        record_auth_event(database_session, "registration.email_verification_resend", "sent", email=email, client_ip=client_host, request=registration)
+        database_session.commit()
+    return {"message": GENERIC_REGISTRATION_MESSAGE}
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)

@@ -66,6 +66,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { useAuth } from "./auth/useAuth";
 import { RegisterPage } from "./pages/RegisterPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import {
   ForgotPasswordPage,
   ResetPasswordPage,
@@ -1712,6 +1713,7 @@ function AppContent() {
     "/register",
     "/forgot-password",
     "/reset-password",
+    "/verify-email",
   ].includes(location.pathname);
 
   useEffect(() => {
@@ -1764,6 +1766,7 @@ function AppContent() {
   if (user && isAuthenticationPage) return <Navigate to="/dashboard" replace />;
   if (user === null && location.pathname === "/login") return <LoginPage />;
   if (location.pathname === "/register") return <RegisterPage />;
+  if (location.pathname === "/verify-email") return <VerifyEmailPage />;
   if (location.pathname === "/forgot-password") return <ForgotPasswordPage />;
   if (location.pathname === "/reset-password") return <ResetPasswordPage />;
   if (user === null) return <Navigate to="/login" replace />;

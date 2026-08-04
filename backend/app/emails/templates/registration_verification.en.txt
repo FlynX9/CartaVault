@@ -1,0 +1,6 @@
+Hello $display_name,
+
+Confirm your email address to submit your CartaVault registration request:
+$verification_url
+
+This link expires in $ttl_hours hours. If you did not request this account, ignore this email.

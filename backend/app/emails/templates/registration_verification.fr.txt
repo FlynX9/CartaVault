@@ -1,0 +1,6 @@
+Bonjour $display_name,
+
+Confirmez votre adresse email pour transmettre votre demande d’inscription CartaVault :
+$verification_url
+
+Ce lien expire dans $ttl_hours heures. Si vous n’êtes pas à l’origine de cette demande, ignorez cet email.

@@ -14,6 +14,7 @@ from app.auth.credential_encryption import CredentialEncryptionError, Credential
 from app.auth.dependencies import require_admin
 from app.auth.models import RegistrationRequest, SystemCredential, User
 from app.auth.registration_settings import public_registration_enabled, set_public_registration_enabled
+from app.auth.registration_security import expire_stale_registration_requests, record_auth_event
 from app.auth.schemas import RegistrationRequestRead
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
@@ -34,6 +35,7 @@ def get_public_registration_settings(database_session: Session = Depends(get_db)
 @router.put("/public-registration", response_model=PublicRegistrationSettings)
 def update_public_registration_settings(payload: PublicRegistrationSettings, database_session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> PublicRegistrationSettings:
     enabled = set_public_registration_enabled(database_session, payload.enabled)
+    record_auth_event(database_session, "registration.setting", "enabled" if enabled else "disabled", actor_user_id=admin.id)
     database_session.commit()
     logger.info("public_registration_updated admin_id=%s enabled=%s", admin.id, enabled)
     return PublicRegistrationSettings(enabled=enabled)
@@ -41,6 +43,8 @@ def update_public_registration_settings(payload: PublicRegistrationSettings, dat
 
 @router.get("/registration-requests", response_model=list[RegistrationRequestRead])
 def list_registration_requests(database_session: Session = Depends(get_db)) -> list[RegistrationRequest]:
+    if expire_stale_registration_requests(database_session):
+        database_session.commit()
     return list(database_session.scalars(select(RegistrationRequest).order_by(RegistrationRequest.created_at.desc())))
 
 
@@ -57,6 +61,7 @@ def approve_registration(request_id: UUID, payload: RegistrationApproval | None 
     profile = QuotaService(database_session).resolve_profile(payload.quota_profile_id if payload else None, lock=True)
     user = User(email=request.email, display_name=request.display_name, password_hash=request.password_hash, is_admin=False, is_active=True, quota_profile_id=profile.id, preferences={"language": request.locale})
     request.status = "approved"; request.reviewed_at = now; request.reviewed_by_user_id = admin.id
+    record_auth_event(database_session, "registration.review", "approved", email=request.email, request=request, actor_user_id=admin.id)
     try:
         database_session.add(user)
         database_session.commit()
@@ -77,9 +82,11 @@ def reject_registration(request_id: UUID, database_session: Session = Depends(ge
     request = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.id == request_id).with_for_update())
     if request is None:
         raise HTTPException(404, "Demande d’inscription introuvable.")
-    if request.status != "pending":
+    if request.status not in {"pending", "awaiting_email"}:
         raise HTTPException(409, "Cette demande a déjà été traitée.")
     request.status = "rejected"; request.reviewed_at = datetime.now(UTC).replace(tzinfo=None); request.reviewed_by_user_id = admin.id
+    request.verification_token_hash = None
+    record_auth_event(database_session, "registration.review", "rejected", email=request.email, request=request, actor_user_id=admin.id)
     database_session.commit()
     return request
 

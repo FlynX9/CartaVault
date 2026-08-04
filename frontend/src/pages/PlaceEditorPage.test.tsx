@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { getCategories } from '../api/categories'
 import { ApiError } from '../api/client'
-import { createPlace, getPlaceDetails, updatePlace } from '../api/places'
+import { createPlace, getPlaceDetails, replacePlaceLinks, updatePlace } from '../api/places'
 import type { PlaceFormValues } from '../types/place'
 import { PlaceEditorPage } from './PlaceEditorPage'
-vi.mock('../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) })); vi.mock('../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) })); vi.mock('../api/statuses', () => ({ getStatuses: vi.fn(() => Promise.resolve([{ id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, is_default: true }])) })); vi.mock('../api/places', () => ({ getPlaceDetails: vi.fn(), createPlace: vi.fn(), updatePlace: vi.fn(), refreshPlaceRegion: vi.fn(), addPlaceCategory: vi.fn(), removePlaceCategory: vi.fn(), addPlaceTag: vi.fn(), removePlaceTag: vi.fn() }))
-vi.mock('../components/places/PlaceForm', () => ({ PlaceForm: ({ initialValues, onSubmit }: { initialValues: PlaceFormValues; onSubmit: (values: PlaceFormValues) => Promise<void> }) => <><output data-testid="initial-map">{initialValues.mapId}</output><button onClick={() => void onSubmit({ ...initialValues, name: 'POI', latitude: '48', longitude: '2' })}>Envoyer</button><button onClick={() => void onSubmit({ ...initialValues, mapId: 'map-b' })}>Déplacer</button></> }))
+vi.mock('../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) })); vi.mock('../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) })); vi.mock('../api/statuses', () => ({ getStatuses: vi.fn(() => Promise.resolve([{ id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, is_default: true }])) })); vi.mock('../api/places', () => ({ getPlaceDetails: vi.fn(), createPlace: vi.fn(), updatePlace: vi.fn(), replacePlaceLinks: vi.fn(() => Promise.resolve([])), refreshPlaceRegion: vi.fn(), addPlaceCategory: vi.fn(), removePlaceCategory: vi.fn(), addPlaceTag: vi.fn(), removePlaceTag: vi.fn() }))
+vi.mock('../components/places/PlaceForm', () => ({ PlaceForm: ({ initialValues, onSubmit }: { initialValues: PlaceFormValues; onSubmit: (values: PlaceFormValues) => Promise<void> }) => <><output data-testid="initial-map">{initialValues.mapId}</output><button onClick={() => void onSubmit({ ...initialValues, name: 'POI', latitude: '48', longitude: '2' })}>Envoyer</button><button onClick={() => void onSubmit({ ...initialValues, mapId: 'map-b' })}>Déplacer</button><button onClick={() => void onSubmit({ ...initialValues, name: 'POI', latitude: '48', longitude: '2', links: [{ clientId: 'new-link', label: 'Site officiel', url: 'https://example.org' }] })}>Ajouter un lien</button></> }))
 const COUNTRY = { id: 'country', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' }; const MAP_A = { id: 'map-a', name: 'A', country: COUNTRY } as never; const MAP_B = { id: 'map-b', name: 'B', country: COUNTRY } as never
 const PLACE = { id: 'place-id', name: 'POI', map_id: 'map-a', map: { id: 'map-a', name: 'A', country: COUNTRY }, status: { id: 'status-id', map_id: 'map-a', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const }, description: null, region: null, construction_date: null, abandonment_date: null, condition: null, access: null, danger_level: null, latitude: 48, longitude: 2, categories: [], tags: [], created_at: '2026-01-01', updated_at: '2026-01-01' }
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -24,6 +24,12 @@ describe('PlaceEditorPage maps', () => {
   })
 
   it('creates with the active map', async () => { vi.mocked(createPlace).mockResolvedValue(PLACE); render(<MemoryRouter><PlaceEditorPage mode="create" activeMapId="map-a" maps={[MAP_A, MAP_B]} onPlaceMutated={vi.fn()} /></MemoryRouter>); expect(await screen.findByTestId('initial-map')).toHaveTextContent('map-a'); fireEvent.click(screen.getByText('Envoyer')); await waitFor(() => expect(createPlace).toHaveBeenCalledWith(expect.objectContaining({ map_id: 'map-a' }))) })
+  it('persists named links immediately after creating the POI', async () => {
+    vi.mocked(createPlace).mockResolvedValue(PLACE)
+    render(<MemoryRouter><PlaceEditorPage mode="create" activeMapId="map-a" maps={[MAP_A]} onPlaceMutated={vi.fn()} /></MemoryRouter>)
+    fireEvent.click(await screen.findByText('Ajouter un lien'))
+    await waitFor(() => expect(replacePlaceLinks).toHaveBeenCalledWith('place-id', [{ id: undefined, label: 'Site officiel', url: 'https://example.org', sort_order: 0 }]))
+  })
   it('asks for confirmation then retries an out-of-country creation explicitly', async () => {
     vi.mocked(createPlace)
       .mockRejectedValueOnce(new ApiError(409, 'Ces coordonnées semblent situées hors de France.', {}, 'PLACE_OUTSIDE_MAP_COUNTRY'))

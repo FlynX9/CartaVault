@@ -1,8 +1,9 @@
 import { LogIn, Mail } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '../auth/useAuth'
+import { getPublicRegistrationStatus } from '../api/registration'
 import { useI18n } from '../i18n/useI18n'
 import {
   AuthCard,
@@ -33,6 +34,13 @@ export function LoginPage() {
   const [remember, setRemember] = useState(rememberedEmail !== '')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [registrationEnabled, setRegistrationEnabled] = useState(false)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getPublicRegistrationStatus(controller.signal).then((result) => setRegistrationEnabled(result.enabled)).catch(() => setRegistrationEnabled(false))
+    return () => controller.abort()
+  }, [])
 
   if (loading) {
     return <main className="auth-loading" aria-live="polite">Chargement de CartaVault…</main>
@@ -64,7 +72,7 @@ export function LoginPage() {
       <AuthCard
         title={t('auth.login.title')}
         subtitle={t('auth.login.subtitle')}
-        footer={<p>{t('auth.login.noAccount')} <Link to="/register">{t('auth.login.createAccount')}</Link></p>}
+        footer={registrationEnabled ? <p>{t('auth.login.noAccount')} <Link to="/register">{t('auth.login.createAccount')}</Link></p> : undefined}
       >
         <form className="auth-form" onSubmit={(event) => void submit(event)}>
           <AuthInput

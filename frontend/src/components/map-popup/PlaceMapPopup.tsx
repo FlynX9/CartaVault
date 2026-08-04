@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarDays,
+  ChevronDown,
   Clock3,
   Copy,
   Earth,
   FileText,
+  ExternalLink,
   Heart,
   History,
   MapPin,
+  Link2,
   Star,
   TriangleAlert,
 } from "lucide-react";
@@ -513,6 +516,22 @@ export function PlaceMapPopup({
           </h3>
           <p>{place.description || "\u00A0"}</p>
         </section>
+      )}
+      {fieldEnabled("links") && (place.links?.length ?? 0) > 0 && (
+        <details className="popup-links">
+          <summary>
+            <span><Link2 size={17} aria-hidden="true" />Liens externes</span>
+            <span className="popup-links__count">{place.links?.length}</span>
+            <ChevronDown className="popup-links__chevron" size={16} aria-hidden="true" />
+          </summary>
+          <ul>
+            {[...(place.links ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((link) => <li key={link.id}>
+              <a href={link.url} target="_blank" rel="noopener noreferrer" title={link.url}>
+                <span>{link.label || link.url}</span><ExternalLink size={14} aria-hidden="true" />
+              </a>
+            </li>)}
+          </ul>
+        </details>
       )}
       <div className="popup-summary">
         <article aria-label="Région administrative">

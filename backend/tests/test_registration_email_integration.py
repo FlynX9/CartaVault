@@ -95,14 +95,20 @@ def test_registration_requires_admin_approval_before_user_creation(integration_c
     monkeypatch.setattr("app.auth.public_router.hash_password", lambda password: f"pending::{password}")
     email = f"candidate-{uuid4()}@example.test"
 
-    registered = integration_client.post("/auth/register", json={"email": email.upper(), "password": "a sufficiently long password", "confirmation": "a sufficiently long password"})
+    registered = integration_client.post("/auth/register", json={"email": email.upper(), "password": "a sufficiently long password", "confirmation": "a sufficiently long password", "terms_accepted": True})
 
     assert registered.status_code == 202
     request = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.email == email))
-    assert request is not None and request.status == "pending"
+    assert request is not None and request.status == "awaiting_email"
     assert database_session.scalar(select(User).where(User.email == email)) is None
-    assert provider.messages[0].recipients
-    assert integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password"}).status_code == 202
+    assert provider.messages[0].recipients == [email]
+    verification_match = re.search(r"token=([A-Za-z0-9_-]+)", provider.messages[0].text)
+    assert verification_match is not None
+    verified = integration_client.post("/auth/register/verify", json={"token": verification_match.group(1)})
+    assert verified.status_code == 202
+    database_session.refresh(request)
+    assert request.status == "pending" and request.email_verified_at is not None
+    assert integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password", "terms_accepted": True}).status_code == 202
 
     approved = integration_client.post(f"/admin/registration-requests/{request.id}/approve")
 
@@ -117,7 +123,7 @@ def test_rejected_registration_does_not_create_a_user(integration_client, databa
     _install_provider(monkeypatch)
     monkeypatch.setattr("app.auth.public_router.hash_password", lambda password: f"pending::{password}")
     email = f"rejected-{uuid4()}@example.test"
-    assert integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password"}).status_code == 202
+    assert integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password", "terms_accepted": True}).status_code == 202
     request = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.email == email))
 
     rejected = integration_client.post(f"/admin/registration-requests/{request.id}/reject")

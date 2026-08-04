@@ -325,6 +325,10 @@ export async function createPlaceLink(placeId: string, data: { url: string; labe
   return sendJson(`/places/${encodeURIComponent(placeId)}/links`, 'POST', data) as Promise<PlaceLink>
 }
 
+export async function replacePlaceLinks(placeId: string, links: Array<{ id?: string; url: string; label: string | null; sort_order: number }>): Promise<PlaceLink[]> {
+  return sendJson(`/places/${encodeURIComponent(placeId)}/links`, 'PUT', { links }) as Promise<PlaceLink[]>
+}
+
 export async function deletePlaceLink(placeId: string, linkId: string): Promise<void> {
   await sendWithoutResponse(`/places/${encodeURIComponent(placeId)}/links/${encodeURIComponent(linkId)}`, 'DELETE')
 }

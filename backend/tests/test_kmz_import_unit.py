@@ -5,6 +5,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import pytest
 
 from app.imports.kmz_mapping import map_extended_data
+from app.imports.service import _item_links
 from app.imports.kmz_parser import KmzParseError, ParsedPlacemark, parse_kmz
 from app.imports.kmz_security import KmzSecurityError, validate_kmz_upload
 from app.imports.service import mark_duplicate_items, mark_outside_country_items, preview_to_read
@@ -75,6 +76,30 @@ def test_kmz_parser_ignores_technical_nodes_outside_extended_data() -> None:
         archive.archive.close()
 
     assert items[0].extended_data == [("Etat", "Mort")]
+
+
+def test_cartavault_link_metadata_import_keeps_safe_order_and_rejects_unsafe_urls() -> None:
+    placemark = ParsedPlacemark(
+        source_index=0,
+        name="Tour",
+        description=None,
+        latitude=48.2,
+        longitude=6.15,
+        altitude=None,
+        extended_data=[
+            (
+                "cartavault:links",
+                '[{"label":"Site officiel","url":"https://example.org"},{"label":"Copie","url":"https://example.org"},{"label":"Danger","url":"javascript:alert(1)"},{"label":"Archive","url":"http://archive.example.org"}]',
+            )
+        ],
+    )
+
+    links = _item_links(placemark)
+
+    assert [(link.label, link.url, link.sort_order) for link in links] == [
+        ("Site officiel", "https://example.org", 0),
+        ("Archive", "http://archive.example.org", 1),
+    ]
 
 
 def test_kmz_parser_accepts_500_unique_images_and_deduplicates_repeated_urls() -> None:

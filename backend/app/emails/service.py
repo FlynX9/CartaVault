@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.models import SystemCredential
 from app.admin.models import SystemSetting
-from app.config import email_settings
+from app.config import email_settings, security_settings
 from app.emails.providers.base import EmailDeliveryError, EmailMessage, EmailProvider
 from app.emails.providers.resend import ResendEmailProvider
 
@@ -19,6 +19,7 @@ SUPPORTED_LOCALES = {"fr", "en"}
 SUBJECTS = {
     "fr": {
         "registration_admin": "Nouvelle demande d’inscription CartaVault",
+        "registration_verification": "Confirmez votre adresse email CartaVault",
         "registration_approved": "Votre accès CartaVault est approuvé",
         "password_reset": "Réinitialisez votre mot de passe CartaVault",
         "password_changed": "Votre mot de passe CartaVault a été modifié",
@@ -31,6 +32,7 @@ SUBJECTS = {
     },
     "en": {
         "registration_admin": "New CartaVault registration request",
+        "registration_verification": "Confirm your CartaVault email address",
         "registration_approved": "Your CartaVault access has been approved",
         "password_reset": "Reset your CartaVault password",
         "password_changed": "Your CartaVault password was changed",
@@ -84,6 +86,19 @@ class EmailService:
 
     def notify_registration_admins(self, recipients: list[str], applicant_email: str, locale: str = "fr") -> str | None:
         return self._send("registration_admin", recipients, {"applicant_email": applicant_email}, locale)
+
+    def send_registration_verification(self, recipient: str, display_name: str, token: str, locale: str = "fr") -> str | None:
+        verification_url = f"{email_settings.frontend_public_url}/verify-email?token={token}"
+        return self._send(
+            "registration_verification",
+            [recipient],
+            {
+                "display_name": display_name,
+                "verification_url": verification_url,
+                "ttl_hours": str(security_settings.registration_verification_hours),
+            },
+            locale,
+        )
 
     def notify_registration_approved(self, recipient: str, display_name: str, locale: str = "fr") -> str | None:
         return self._send("registration_approved", [recipient], {"display_name": display_name}, locale)

@@ -88,6 +88,14 @@ class PlaceLinkCreate(BaseModel):
             raise ValueError("Only HTTP and HTTPS URLs are allowed")
         return normalized
 
+    @field_validator("label")
+    @classmethod
+    def normalize_label(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = " ".join(value.split())
+        return normalized or None
+
 
 class PlaceLinkUpdate(BaseModel):
     url: str | None = Field(default=None, min_length=8, max_length=2048)
@@ -105,6 +113,14 @@ class PlaceLinkUpdate(BaseModel):
             raise ValueError("Only HTTP and HTTPS URLs are allowed")
         return normalized
 
+    @field_validator("label")
+    @classmethod
+    def normalize_label(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = " ".join(value.split())
+        return normalized or None
+
     @model_validator(mode="after")
     def reject_required_nulls(self) -> "PlaceLinkUpdate":
         supplied = self.model_fields_set
@@ -112,6 +128,24 @@ class PlaceLinkUpdate(BaseModel):
             raise ValueError("url cannot be null")
         if "sort_order" in supplied and self.sort_order is None:
             raise ValueError("sort_order cannot be null")
+        return self
+
+
+class PlaceLinkWrite(PlaceLinkCreate):
+    id: UUID | None = None
+
+
+class PlaceLinksReplace(BaseModel):
+    links: list[PlaceLinkWrite] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def reject_duplicate_links(self) -> Self:
+        urls = [link.url for link in self.links]
+        if len(urls) != len(set(urls)):
+            raise ValueError("A URL can only be attached once to a place")
+        ids = [link.id for link in self.links if link.id is not None]
+        if len(ids) != len(set(ids)):
+            raise ValueError("A link identifier cannot be repeated")
         return self
 
 

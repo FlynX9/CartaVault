@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import json
 import os
 from pathlib import Path
 from typing import Callable
@@ -34,7 +35,8 @@ from app.maps.models import PoiMap
 from app.photos.models import Photo
 from app.photos.storage import PhotoStorageError, delete_photo_file, store_photo_file
 from app.imports.remote_images import RemoteImageError, download_remote_image
-from app.places.models import Place
+from app.places.models import Place, PlaceLink
+from app.places.schemas import PlaceLinkCreate
 from app.statuses.models import PlaceStatus
 from app.statuses.router import slugify_status_name
 from app.quotas.registry import QuotaKey
@@ -330,6 +332,13 @@ def confirm_import(
             )
             database_session.add(place)
             database_session.flush()
+            imported_links = _item_links(item)
+            if imported_links:
+                quotas.ensure_can_create(owner_id, QuotaKey.LINKS_PER_PLACE_MAX, scope_id=place.id, increment=len(imported_links))
+                database_session.add_all(
+                    PlaceLink(place_id=place.id, url=link.url, label=link.label, sort_order=sort_order)
+                    for sort_order, link in enumerate(imported_links)
+                )
             place_image_increment = sum(
                 image.source_type == "embedded" or (download_remote_images and image.source_type == "remote_supported")
                 for image in item.images
@@ -533,3 +542,34 @@ def _find_existing_duplicate(database_session: Session, map_id: UUID, item: Pars
 def _item_data(item: ParsedPlacemark) -> tuple[dict[str, str], dict[str, str | list[str]]]:
     mapped_fields, custom_fields = map_extended_data(item.extended_data, name=item.name, description=item.description)
     return mapped_fields, custom_fields
+
+
+def _item_links(item: ParsedPlacemark) -> list[PlaceLinkCreate]:
+    """Read CartaVault link metadata without accepting arbitrary KML fields as URLs."""
+
+    raw_value = next((value for key, value in item.extended_data if key == "cartavault:links"), None)
+    if raw_value is None:
+        return []
+    try:
+        payload = json.loads(raw_value)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(payload, list):
+        return []
+
+    links: list[PlaceLinkCreate] = []
+    urls: set[str] = set()
+    for raw_link in payload[:20]:
+        if not isinstance(raw_link, dict):
+            continue
+        try:
+            link = PlaceLinkCreate.model_validate(
+                {"url": raw_link.get("url"), "label": raw_link.get("label"), "sort_order": len(links)}
+            )
+        except ValueError:
+            continue
+        if link.url in urls:
+            continue
+        urls.add(link.url)
+        links.append(link)
+    return links

@@ -48,6 +48,8 @@ class SecuritySettings:
     invitation_hours: int = _positive_int("CARTAVAULT_INVITATION_HOURS", 168)
     cookie_secure: bool = _boolean("CARTAVAULT_COOKIE_SECURE", False)
     password_min_length: int = _positive_int("CARTAVAULT_PASSWORD_MIN_LENGTH", 12)
+    registration_verification_hours: int = _positive_int("CARTAVAULT_REGISTRATION_VERIFICATION_HOURS", 24)
+    registration_retention_days: int = _positive_int("CARTAVAULT_REGISTRATION_RETENTION_DAYS", 30)
     argon2_time_cost: int = _positive_int("CARTAVAULT_ARGON2_TIME_COST", 3)
     argon2_memory_cost: int = _positive_int("CARTAVAULT_ARGON2_MEMORY_COST", 65536)
     argon2_parallelism: int = _positive_int("CARTAVAULT_ARGON2_PARALLELISM", 4)

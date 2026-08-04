@@ -9,7 +9,7 @@ vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declineP
 vi.mock('../../api/registration', () => ({ getRegistrationRequests: vi.fn() }))
 
 const INVITATION = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', map_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', map_name: 'Carte partagée', role: 'editor' as const, invited_by_display_name: 'Alice Martin', created_at: '2026-07-16T08:00:00', expires_at: '2026-07-23T08:00:00' }
-const REGISTRATION = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', email: 'new@example.test', display_name: 'New user', status: 'pending' as const, created_at: '2026-07-17T08:00:00', reviewed_at: null, notification_sent_at: null, notification_error_code: null }
+const REGISTRATION = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', email: 'new@example.test', display_name: 'New user', status: 'pending' as const, created_at: '2026-07-17T08:00:00', reviewed_at: null, notification_sent_at: null, notification_error_code: null, email_verified_at: '2026-07-17T08:05:00', verification_expires_at: null }
 
 beforeEach(() => {
   window.localStorage.clear()

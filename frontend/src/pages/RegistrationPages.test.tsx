@@ -35,10 +35,11 @@ describe('public registration and password reset pages', () => {
     fireEvent.change(screen.getByLabelText('Adresse email'), { target: { value: 'new@example.test' } })
     fireEvent.change(screen.getByLabelText(/^Mot de passe/), { target: { value: 'a sufficiently long password' } })
     fireEvent.change(screen.getByLabelText(/^Confirmer le mot de passe$/), { target: { value: 'a sufficiently long password' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /conditions d’utilisation/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Demander mon inscription' }))
 
     expect(await screen.findByText('Demande transmise')).toBeVisible()
-    expect(register).toHaveBeenCalledWith('new@example.test', 'a sufficiently long password', 'a sufficiently long password', 'fr')
+    expect(register).toHaveBeenCalledWith('new@example.test', 'a sufficiently long password', 'a sufficiently long password', true, 'fr')
   })
 
   it('always displays the generic reset request response', async () => {

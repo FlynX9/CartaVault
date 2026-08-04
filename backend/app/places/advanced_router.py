@@ -13,7 +13,7 @@ from app.database import get_db
 from app.places.history import add_place_history
 from app.places.models import Place, PlaceHistory, PlaceLink
 from app.places.router import build_place_read_statement, get_primary_category_keys, place_to_read
-from app.places.schemas import PlaceHistoryPage, PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinkUpdate, PlaceRead
+from app.places.schemas import PlaceHistoryPage, PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinksReplace, PlaceLinkUpdate, PlaceRead
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 
@@ -23,6 +23,20 @@ MAX_LINKS_PER_PLACE = 20
 
 def _link_read(link: PlaceLink) -> PlaceLinkRead:
     return PlaceLinkRead.model_validate(link, from_attributes=True)
+
+
+def _ensure_unique_link_url(
+    database_session: Session,
+    place_id: UUID,
+    url: str,
+    *,
+    excluding_link_id: UUID | None = None,
+) -> None:
+    statement = select(PlaceLink.id).where(PlaceLink.place_id == place_id, PlaceLink.url == url)
+    if excluding_link_id is not None:
+        statement = statement.where(PlaceLink.id != excluding_link_id)
+    if database_session.scalar(statement.limit(1)) is not None:
+        raise HTTPException(status_code=409, detail="This URL is already attached to the place")
 
 
 @router.get("/trash", response_model=list[PlaceRead])
@@ -83,6 +97,7 @@ def create_place_link(place_id: UUID, data: PlaceLinkCreate, database_session: S
     QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.LINKS_PER_PLACE_MAX, scope_id=place_id)
     if database_session.scalar(select(func.count()).select_from(PlaceLink).where(PlaceLink.place_id == place_id)) >= MAX_LINKS_PER_PLACE:
         raise HTTPException(status_code=409, detail=f"A place cannot have more than {MAX_LINKS_PER_PLACE} links")
+    _ensure_unique_link_url(database_session, place_id, data.url)
     link = PlaceLink(place_id=place_id, **data.model_dump())
     database_session.add(link)
     database_session.flush()
@@ -98,6 +113,8 @@ def update_place_link(place_id: UUID, link_id: UUID, data: PlaceLinkUpdate, data
     link = database_session.scalar(select(PlaceLink).where(PlaceLink.id == link_id, PlaceLink.place_id == place_id))
     if link is None:
         raise HTTPException(status_code=404, detail="Link not found")
+    if data.url is not None:
+        _ensure_unique_link_url(database_session, place_id, data.url, excluding_link_id=link.id)
     before = {"url": link.url, "label": link.label, "sort_order": link.sort_order}
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(link, field, value)
@@ -106,6 +123,59 @@ def update_place_link(place_id: UUID, link_id: UUID, data: PlaceLinkUpdate, data
     database_session.commit()
     database_session.refresh(link)
     return _link_read(link)
+
+
+@router.put("/{place_id}/links", response_model=list[PlaceLinkRead])
+def replace_place_links(place_id: UUID, data: PlaceLinksReplace, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[PlaceLinkRead]:
+    """Replace a place link collection atomically while preserving its row order."""
+
+    place = require_place_role(database_session, place_id, current_user, "editor")
+    existing = {link.id: link for link in place.links}
+    requested_ids = {item.id for item in data.links if item.id is not None}
+    unknown_ids = requested_ids.difference(existing)
+    if unknown_ids:
+        raise HTTPException(status_code=404, detail="One or more links do not belong to this place")
+
+    increment = max(0, len(data.links) - len(existing))
+    if increment:
+        QuotaService(database_session).ensure_can_create(
+            current_user.id,
+            QuotaKey.LINKS_PER_PLACE_MAX,
+            scope_id=place_id,
+            increment=increment,
+        )
+    if len(data.links) > MAX_LINKS_PER_PLACE:
+        raise HTTPException(status_code=409, detail=f"A place cannot have more than {MAX_LINKS_PER_PLACE} links")
+
+    before = [
+        {"id": str(link.id), "url": link.url, "label": link.label, "sort_order": link.sort_order}
+        for link in sorted(existing.values(), key=lambda item: (item.sort_order, item.id))
+    ]
+    result: list[PlaceLink] = []
+    for sort_order, item in enumerate(data.links):
+        if item.id is None:
+            link = PlaceLink(place_id=place_id)
+            database_session.add(link)
+        else:
+            link = existing[item.id]
+        link.url = item.url
+        link.label = item.label
+        link.sort_order = sort_order
+        result.append(link)
+
+    for link_id, link in existing.items():
+        if link_id not in requested_ids:
+            database_session.delete(link)
+
+    database_session.flush()
+    after = [
+        {"id": str(link.id), "url": link.url, "label": link.label, "sort_order": link.sort_order}
+        for link in result
+    ]
+    if before != after:
+        add_place_history(database_session, place.id, current_user.id, "links_replaced", {"links": {"old": before, "new": after}})
+    database_session.commit()
+    return [_link_read(link) for link in result]
 
 
 @router.delete("/{place_id}/links/{link_id}", status_code=204)
