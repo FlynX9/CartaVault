@@ -317,6 +317,8 @@ Store this value in a deployment secret or an untracked `.env` file. Losing it m
 
 Restrict the Google key to the Routes API and, whenever possible, to the server IP addresses. Also configure quotas and budget alerts in Google Cloud.
 
+Trip-wide optimizations are proposed server-side and kept in Redis for 15 minutes before confirmation. CartaVault limits accidental billable bursts to 120 Google Routes requests per user and minute by default. These safeguards can be adjusted with `CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE`, `CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS`, and `CARTAVAULT_ROUTING_PROPOSAL_TTL_SECONDS`.
+
 ## Backup and restore
 
 For production Docker deployments, follow the [backup and restore runbook](docs/backup-and-restore.md). It covers the PostgreSQL/PostGIS database, media, optional temporary exports, secret handling, automated backups, integrity checks, restore tests, and retention.

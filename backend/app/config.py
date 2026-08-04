@@ -118,6 +118,16 @@ legacy_google_routes_api_key_configured = bool(os.getenv("GOOGLE_MAPS_ROUTES_API
 
 
 @dataclass(frozen=True)
+class GoogleRoutingLimitSettings:
+    requests_per_minute: int = _positive_int("CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE", 120)
+    window_seconds: int = _positive_int("CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS", 60)
+    proposal_ttl_seconds: int = _positive_int("CARTAVAULT_ROUTING_PROPOSAL_TTL_SECONDS", 900)
+
+
+google_routing_limit_settings = GoogleRoutingLimitSettings()
+
+
+@dataclass(frozen=True)
 class CredentialSettings:
     encryption_key: str = os.getenv("CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY", "").strip()
 

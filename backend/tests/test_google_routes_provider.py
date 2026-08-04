@@ -96,6 +96,17 @@ def test_google_optimization_validates_returned_permutation(monkeypatch) -> None
         GoogleRoutesProvider("test-only", settings()).optimize_waypoint_order([(2, 48), (2.5, 48.5), (3, 49)])
 
 
+def test_google_optimization_reuses_route_returned_with_waypoint_order(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr("app.trips.routing.google.urlopen", lambda request, *_args, **_kwargs: calls.append(request) or Response(route_payload([0])))
+
+    result = GoogleRoutesProvider("test-only", settings()).optimize_waypoints([(2, 48), (2.5, 48.5), (3, 49)])
+
+    assert result.order == [0]
+    assert result.route.distance_meters == 12_345
+    assert len(calls) == 1
+
+
 def test_google_limits_intermediate_waypoints_without_calling_api() -> None:
     with pytest.raises(RoutingError) as error:
         GoogleRoutesProvider("test-only", settings()).calculate_route([(2 + index / 100, 48) for index in range(28)])
@@ -144,6 +155,24 @@ def test_google_rate_limiter_is_explicit() -> None:
     with pytest.raises(RoutingError) as error:
         limiter.check("user")
     assert error.value.code == "GOOGLE_ROUTING_RATE_LIMITED"
+    assert error.value.retry_after is not None
+
+
+def test_google_rate_limiter_uses_shared_redis_counter() -> None:
+    class FakeRedis:
+        def __init__(self): self.count = 0
+        def eval(self, *_args):
+            self.count += 1
+            return [self.count, 42]
+
+    redis = FakeRedis()
+    first = GoogleRoutingRateLimiter(limit=2, window_seconds=60, redis_client=redis)
+    second = GoogleRoutingRateLimiter(limit=2, window_seconds=60, redis_client=redis)
+    first.check("user")
+    second.check("user")
+    with pytest.raises(RoutingError) as error:
+        first.check("user")
+    assert error.value.retry_after == 42
 
 
 @pytest.mark.parametrize(("body", "expected"), [

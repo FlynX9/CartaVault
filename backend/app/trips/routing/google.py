@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 from time import perf_counter
 
 from app.config import GoogleRoutesSettings, google_routes_settings
-from app.trips.routing.base import Coordinate, MatrixResult, RouteResult, RoutingError, RoutingProvider
+from app.trips.routing.base import Coordinate, MatrixResult, RouteResult, RoutingError, RoutingProvider, WaypointOptimizationResult
 
 _DURATION = re.compile(r"^(\d+)(?:\.(\d{1,9}))?s$")
 _NORMAL_FIELDS = ",".join((
@@ -94,11 +94,14 @@ class GoogleRoutesProvider(RoutingProvider):
         raise RoutingError("Google Routes does not expose a matrix in CartaVault", "ROUTING_CAPABILITY_UNAVAILABLE")
 
     def optimize_waypoint_order(self, coordinates: list[Coordinate], profile: str = "driving") -> list[int]:
-        _, order = self._logged_compute(coordinates, profile, optimize=True)
+        return self.optimize_waypoints(coordinates, profile).order
+
+    def optimize_waypoints(self, coordinates: list[Coordinate], profile: str = "driving") -> WaypointOptimizationResult:
+        route, order = self._logged_compute(coordinates, profile, optimize=True)
         expected = list(range(max(0, len(coordinates) - 2)))
         if sorted(order) != expected:
             raise RoutingError("Google Routes returned an invalid waypoint order", "GOOGLE_ROUTES_INVALID_RESPONSE")
-        return order
+        return WaypointOptimizationResult(order=order, route=route)
 
     def _logged_compute(self, coordinates: list[Coordinate], profile: str, *, optimize: bool) -> tuple[RouteResult, list[int]]:
         started = perf_counter()

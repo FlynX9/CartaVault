@@ -11,7 +11,7 @@ from app.countries.models import Country
 from app.maps.models import PoiMap
 from app.places.models import Place
 from app.trips.models import Trip, TripDay, TripNight, TripStop
-from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
+from app.trips.routing.base import RouteResult, RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.routing.country_validator import CountryRouteValidation, CountryRouteValidator
 from app.trips.summary_service import day_summary
 
@@ -166,7 +166,25 @@ def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvide
     if len(coordinates) < 2: raise HTTPException(422, "At least two route points are required")
     try: result = provider.calculate_route(coordinates, profile)
     except RoutingError as error:
-        raise HTTPException(503 if error.code == "ROUTING_PROVIDER_UNAVAILABLE" else 502, {"code": error.code, "message": str(error)}) from error
+        status = 429 if error.code == "GOOGLE_ROUTING_RATE_LIMITED" else 503 if error.code == "ROUTING_PROVIDER_UNAVAILABLE" else 502
+        headers = {"Retry-After": str(error.retry_after)} if error.retry_after else None
+        raise HTTPException(status, {"code": error.code, "message": str(error)}, headers=headers) from error
+    apply_day_route_result(session, day, result, provider.provider_id, constraints, labels=labels, commit=True)
+    return day
+
+
+def apply_day_route_result(
+    session: Session,
+    day: TripDay,
+    result: RouteResult,
+    provider_id: str,
+    constraints: RoutingConstraints | None = None,
+    *,
+    labels: list[str] | None = None,
+    commit: bool = False,
+) -> TripDay:
+    if labels is None:
+        _, labels = day_coordinates(day)
     validate_route_constraint(session, day, constraints or RoutingConstraints(), result.geometry)
     # Mutate only after the post-routing validation: an invalid route never
     # replaces a previously valid one or its metrics.
@@ -175,9 +193,12 @@ def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvide
     day.route_duration_seconds = result.duration_seconds
     day.route_segments = [{**segment, "from": labels[index], "to": labels[index + 1], "routable": True} for index, segment in enumerate(result.segments)]
     day.route_status = "ready"
-    day.route_provider = provider.provider_id
+    day.route_provider = provider_id
     metrics = day_summary(day)
     day.visit_duration_minutes = metrics["visit_duration_minutes"]
     day.total_duration_minutes = metrics["total_duration_minutes"]
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return day

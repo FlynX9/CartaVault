@@ -240,7 +240,35 @@ class OptimizeOptions(BaseModel):
 
 
 class OptimizeConfirm(BaseModel):
-    stop_ids: list[UUID] = Field(min_length=1)
+    proposal_id: UUID
+
+
+class TripOptimizeConfirm(BaseModel):
+    proposal_id: UUID
+
+
+class DayOptimizationRead(BaseModel):
+    proposal_id: UUID
+    day_id: UUID
+    day_number: int
+    manual_stop_ids: list[UUID]
+    optimized_stop_ids: list[UUID]
+    before: float
+    after: float
+    gain: float
+    metric: Literal["duration", "distance"]
+    before_distance_meters: float
+    after_distance_meters: float
+    distance_gain_meters: float
+    before_duration_seconds: float
+    after_duration_seconds: float
+    duration_gain_seconds: float
+
+
+class TripOptimizationRead(BaseModel):
+    proposal_id: UUID
+    trip_id: UUID
+    days: list[DayOptimizationRead]
 
 
 class ApplyPlaceStatuses(BaseModel):

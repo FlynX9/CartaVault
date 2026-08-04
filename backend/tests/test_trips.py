@@ -13,7 +13,7 @@ from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
 from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
 from app.trips.router import get_routing_provider
-from app.trips.routing.base import MatrixResult, RouteResult, RoutingProvider
+from app.trips.routing.base import MatrixResult, RouteResult, RoutingProvider, WaypointOptimizationResult
 
 pytestmark = pytest.mark.integration
 
@@ -39,6 +39,31 @@ class FailingGoogleRoutingProvider(StubGoogleRoutingProvider):
     def calculate_route(self, coordinates, profile="driving"):
         from app.trips.routing.base import RoutingError
         raise RoutingError("Google timeout", "GOOGLE_ROUTES_TIMEOUT")
+
+
+class CountingGoogleRoutingProvider(StubGoogleRoutingProvider):
+    def __init__(self):
+        self.route_calls = 0
+        self.optimization_calls = 0
+
+    @staticmethod
+    def _route(coordinates):
+        return RouteResult(
+            {"type": "LineString", "coordinates": [list(item) for item in coordinates]},
+            len(coordinates) * 1000,
+            len(coordinates) * 60,
+            [{"distance_meters": 1000, "duration_seconds": 60} for _ in coordinates[1:]],
+        )
+
+    def calculate_route(self, coordinates, profile="driving"):
+        self.route_calls += 1
+        return self._route(coordinates)
+
+    def optimize_waypoints(self, coordinates, profile="driving"):
+        self.optimization_calls += 1
+        order = list(reversed(range(len(coordinates) - 2)))
+        reordered = [coordinates[0], *[coordinates[index + 1] for index in order], coordinates[-1]]
+        return WaypointOptimizationResult(order, self._route(reordered))
 
 
 def test_trip_night_description_and_private_gallery_are_not_media(integration_client, photo_storage, poi_map) -> None:
@@ -421,19 +446,23 @@ def test_trip_rejects_place_from_another_map(integration_client, database_sessio
     assert database_session.scalar(select(TripStop).where(TripStop.trip_day_id == day["id"])) is None
 
 
-def test_confirming_optimization_reorders_and_recalculates_route(integration_client, poi_map) -> None:
+def test_confirming_day_optimization_uses_the_server_side_proposal(integration_client, poi_map) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Optimisation"}).json()
     day = trip["days"][0]
-    stops = [integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Étape {index}", "latitude": 48 + index / 10, "longitude": 2 + index / 10}).json() for index in range(3)]
-    app.dependency_overrides[get_routing_provider] = lambda: StubRoutingProvider()
+    stops = [integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Étape {index}", "latitude": 48 + index / 10, "longitude": 2 + index / 10}).json() for index in range(4)]
+    provider = CountingGoogleRoutingProvider()
+    app.dependency_overrides[get_routing_provider] = lambda: provider
     try:
-        response = integration_client.post(f"/trip-days/{day['id']}/optimize/confirm", json={"stop_ids": [stops[2]["id"], stops[1]["id"], stops[0]["id"]]})
+        proposal = integration_client.post(f"/trip-days/{day['id']}/optimize", json={})
+        response = integration_client.post(f"/trip-days/{day['id']}/optimize/confirm", json={"proposal_id": proposal.json()["proposal_id"]})
     finally:
         app.dependency_overrides.pop(get_routing_provider, None)
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["stops"]] == [stops[2]["id"], stops[1]["id"], stops[0]["id"]]
+    assert [item["id"] for item in response.json()["stops"]] == [stops[0]["id"], stops[2]["id"], stops[1]["id"], stops[3]["id"]]
     assert response.json()["route_status"] == "ready"
     assert response.json()["route_geometry"]["type"] == "LineString"
+    assert provider.route_calls == 1
+    assert provider.optimization_calls == 1
 
 
 def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(integration_client, poi_map) -> None:
@@ -478,9 +507,9 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     assert summary.json()["days_without_route"] == 1
     assert summary.json()["is_route_summary_complete"] is False
     assert optimized.status_code == 200
-    assert optimized.json()["before"] == 30
-    assert optimized.json()["before_distance_meters"] == 30
-    assert optimized.json()["before_duration_seconds"] == 30
+    assert optimized.json()["before"] == 420
+    assert optimized.json()["before_distance_meters"] == 1500
+    assert optimized.json()["before_duration_seconds"] == 420
     assert optimized.json()["distance_gain_meters"] >= 0
     assert optimized.json()["duration_gain_seconds"] >= 0
     assert set(optimized.json()["optimized_stop_ids"]) == {item["id"] for item in stops}
@@ -491,6 +520,74 @@ def test_day_routes_and_optimization_keep_departure_and_night_as_fixed_anchors(i
     assert updated_departure.status_code == 200
     assert updated_departure.json()["name"] == "Nouveau départ"
     assert integration_client.delete(f"/trip-departures/{departure.json()['id']}").status_code == 204
+
+
+def test_global_google_optimization_reuses_proposed_routes_and_applies_once(integration_client, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Optimisation globale"}).json()
+    day = trip["days"][0]
+    stops = [
+        integration_client.post(
+            f"/trip-days/{day['id']}/stops",
+            json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index / 10, "longitude": 2 + index / 10},
+        ).json()
+        for index in range(4)
+    ]
+    provider = CountingGoogleRoutingProvider()
+    app.dependency_overrides[get_routing_provider] = lambda: provider
+    try:
+        assert integration_client.post(f"/trip-days/{day['id']}/route", json={}).status_code == 200
+        proposal = integration_client.post(f"/trips/{trip['id']}/optimize", json={})
+        assert proposal.status_code == 200, proposal.text
+        applied = integration_client.post(
+            f"/trips/{trip['id']}/optimize/confirm",
+            json={"proposal_id": proposal.json()["proposal_id"]},
+        )
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert applied.status_code == 200, applied.text
+    assert provider.route_calls == 1
+    assert provider.optimization_calls == 1
+    assert [item["id"] for item in applied.json()["days"][0]["stops"]] == [
+        stops[0]["id"], stops[2]["id"], stops[1]["id"], stops[3]["id"],
+    ]
+    assert applied.json()["days"][0]["route_status"] == "ready"
+
+
+def test_global_optimization_rejects_changed_trip_before_mutating_any_day(integration_client, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Validation atomique"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    day_ids = [trip["days"][0]["id"], second["id"]]
+    original_orders: dict[str, list[str]] = {}
+    for day_index, day_id in enumerate(day_ids):
+        created = [
+            integration_client.post(
+                f"/trip-days/{day_id}/stops",
+                json={"stop_type": "free_location", "name": f"J{day_index}-{index}", "latitude": 45 + day_index + index / 10, "longitude": 2 + index / 10},
+            ).json()
+            for index in range(4)
+        ]
+        original_orders[day_id] = [item["id"] for item in created]
+    provider = CountingGoogleRoutingProvider()
+    app.dependency_overrides[get_routing_provider] = lambda: provider
+    try:
+        proposal = integration_client.post(f"/trips/{trip['id']}/optimize", json={})
+        assert proposal.status_code == 200, proposal.text
+        assert integration_client.post(
+            f"/trip-days/{day_ids[1]}/stops",
+            json={"stop_type": "free_location", "name": "Ajout tardif", "latitude": 47.5, "longitude": 3.5},
+        ).status_code == 201
+        rejected = integration_client.post(
+            f"/trips/{trip['id']}/optimize/confirm",
+            json={"proposal_id": proposal.json()["proposal_id"]},
+        )
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert rejected.status_code == 409
+    current = integration_client.get(f"/trips/{trip['id']}").json()
+    first = next(day for day in current["days"] if day["id"] == day_ids[0])
+    assert [item["id"] for item in first["stops"]] == original_orders[day_ids[0]]
 
 
 def test_search_result_replaces_linked_trip_anchors(

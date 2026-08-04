@@ -230,7 +230,7 @@ an hourly maintenance task. The schema change is revision `f2a6c8d4e915`.
 
 Trips contain a departure, one or more days, intermediate nights, and an arrival. Stops can reference a place or a free location. Route calculations keep distance, driving time, visit time, buffers, safety margins, and planned time distinct. Day colors, visibility toggles, ordering, optimization confirmation, and country validation are supported.
 
-OSRM is the default provider. Google Routes is optional, per-user, and requires an encrypted verified key. Route requests and responses are validated; no provider credential is exposed to the browser.
+OSRM is the default provider. Google Routes is optional, per-user, and requires an encrypted verified key. Route requests and responses are validated; no provider credential is exposed to the browser. Google optimization proposals reuse the route returned by `ComputeRoutes`, are stored temporarily in Redis, and are applied atomically without a second provider call. The distributed per-user billable-request guard defaults to 120 requests per minute and returns HTTP 429 with `Retry-After` when reached.
 
 ## Testing
 

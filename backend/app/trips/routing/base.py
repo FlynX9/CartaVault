@@ -7,9 +7,10 @@ Coordinate = tuple[float, float]  # longitude, latitude
 
 
 class RoutingError(RuntimeError):
-    def __init__(self, message: str, code: str = "ROUTING_PROVIDER_ERROR"):
+    def __init__(self, message: str, code: str = "ROUTING_PROVIDER_ERROR", *, retry_after: int | None = None):
         super().__init__(message)
         self.code = code
+        self.retry_after = retry_after
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,12 @@ class RouteResult:
     distance_meters: float
     duration_seconds: float
     segments: list[dict]
+
+
+@dataclass(frozen=True)
+class WaypointOptimizationResult:
+    order: list[int]
+    route: RouteResult
 
 
 @dataclass(frozen=True)
@@ -49,4 +56,7 @@ class RoutingProvider(ABC):
     def calculate_matrix(self, coordinates: list[Coordinate], profile: str = "driving") -> MatrixResult: ...
 
     def optimize_waypoint_order(self, coordinates: list[Coordinate], profile: str = "driving") -> list[int]:
+        return self.optimize_waypoints(coordinates, profile).order
+
+    def optimize_waypoints(self, coordinates: list[Coordinate], profile: str = "driving") -> WaypointOptimizationResult:
         raise RoutingError("This routing provider does not support waypoint optimization", "ROUTING_CAPABILITY_UNAVAILABLE")

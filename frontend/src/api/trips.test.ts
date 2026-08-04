@@ -8,10 +8,10 @@ vi.mock('./client', () => ({ getJson: vi.fn(), sendJson: vi.fn(), sendWithoutRes
 describe('trip API', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('requests atomic confirmation and route recalculation from the backend', async () => {
+  it('confirms the stored optimization proposal without sending client-owned route data', async () => {
     vi.mocked(sendJson).mockResolvedValue({} as never)
-    await confirmTripOptimization('day-1', ['stop-2', 'stop-1', 'stop-3'])
+    await confirmTripOptimization('day-1', 'proposal-1')
     expect(sendJson).toHaveBeenCalledOnce()
-    expect(sendJson).toHaveBeenCalledWith('/trip-days/day-1/optimize/confirm', 'POST', { stop_ids: ['stop-2', 'stop-1', 'stop-3'] })
+    expect(sendJson).toHaveBeenCalledWith('/trip-days/day-1/optimize/confirm', 'POST', { proposal_id: 'proposal-1' })
   })
 })

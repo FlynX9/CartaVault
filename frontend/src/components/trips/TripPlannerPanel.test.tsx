@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, deleteTripArrival, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTripDay, reorderTripDays, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
+import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, deleteTripArrival, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
 import { getPlaceDetails } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
 vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
-  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripArrival: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTrip: vi.fn(), updateTripArrival: vi.fn(), updateTripDay: vi.fn(), updateTripDeparture: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripArrival: vi.fn(), deleteTripDeparture: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), reorderTripDays: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
+  return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripArrival: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTrip: vi.fn(), updateTripArrival: vi.fn(), updateTripDay: vi.fn(), updateTripDeparture: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripArrival: vi.fn(), deleteTripDeparture: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), reorderTripDays: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTrip: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), confirmTripOptimizations: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
 })
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
 
@@ -56,6 +56,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(unarchiveTrip).mockResolvedValue({ ...trip, status: 'in_progress' })
     vi.mocked(calculateTripDayRoute).mockResolvedValue(trip.days[0])
     vi.mocked(confirmTripOptimization).mockResolvedValue(trip.days[0])
+    vi.mocked(confirmTripOptimizations).mockResolvedValue(trip)
     vi.mocked(exportTripGpx).mockResolvedValue({ export_id: 'export-1', file_name: 'voyage.gpx', download_url: '/trips/exports/export-1', expires_at: '' })
     vi.mocked(exportTripPdf).mockResolvedValue({ export_id: 'export-pdf', file_name: 'voyage.pdf', download_url: '/trips/exports/export-pdf', expires_at: '' })
     vi.mocked(downloadTripExport).mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
@@ -1015,11 +1016,11 @@ describe('TripPlannerPanel', () => {
     const stops = [0, 1].map((index) => ({ id: `global-loading-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
     const routable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
     const routeRequest = deferred<Trip['days'][number]>()
-    const optimizationRequest = deferred<Awaited<ReturnType<typeof optimizeTripDay>>>()
+    const optimizationRequest = deferred<Awaited<ReturnType<typeof optimizeTrip>>>()
     vi.mocked(listTrips).mockResolvedValue([routable])
     vi.mocked(getTrip).mockResolvedValue(routable)
     vi.mocked(calculateTripDayRoute).mockReturnValueOnce(routeRequest.promise)
-    vi.mocked(optimizeTripDay).mockReturnValueOnce(optimizationRequest.promise)
+    vi.mocked(optimizeTrip).mockReturnValueOnce(optimizationRequest.promise)
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={routable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Calculer les itinéraires' }))
@@ -1033,20 +1034,14 @@ describe('TripPlannerPanel', () => {
     const pendingOptimization = screen.getByRole('button', { name: 'Optimisation du voyage en cours' })
     expect(pendingOptimization).toBeDisabled()
     expect(pendingOptimization.querySelector('.trip-action-spinner')).toBeInTheDocument()
-    await act(async () => optimizationRequest.resolve({
+    await act(async () => optimizationRequest.resolve({ proposal_id: 'global-loading-proposal', trip_id: trip.id, days: [{
+      proposal_id: 'global-loading-proposal', day_id: 'day-1', day_number: 1,
       manual_stop_ids: ['global-loading-0', 'global-loading-1'],
       optimized_stop_ids: ['global-loading-1', 'global-loading-0'],
-      before: 120,
-      after: 100,
-      gain: 20,
-      metric: 'duration',
-      before_distance_meters: 1_000,
-      after_distance_meters: 900,
-      distance_gain_meters: 100,
-      before_duration_seconds: 120,
-      after_duration_seconds: 100,
-      duration_gain_seconds: 20,
-    }))
+      before: 120, after: 100, gain: 20, metric: 'duration',
+      before_distance_meters: 1_000, after_distance_meters: 900, distance_gain_meters: 100,
+      before_duration_seconds: 120, after_duration_seconds: 100, duration_gain_seconds: 20,
+    }] }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Optimiser le voyage' })).toBeDisabled())
     expect(screen.getByRole('heading', { name: 'Résultat pour 1 journée' })).toBeVisible()
   })
@@ -1148,9 +1143,9 @@ describe('TripPlannerPanel', () => {
   it('reviews the global optimization with a positive apply action before changing days', async () => {
     const stops = [0, 1].map((index) => ({ id: `global-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
     const optimizable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
-    const proposal = { manual_stop_ids: ['global-0', 'global-1'], optimized_stop_ids: ['global-1', 'global-0'], before: 17_520, after: 14_880, gain: 2_640, metric: 'duration' as const, before_distance_meters: 214_000, after_distance_meters: 176_000, distance_gain_meters: 38_000, before_duration_seconds: 17_520, after_duration_seconds: 14_880, duration_gain_seconds: 2_640 }
+    const proposal = { proposal_id: 'proposal-1', day_id: 'day-1', day_number: 1, manual_stop_ids: ['global-0', 'global-1'], optimized_stop_ids: ['global-1', 'global-0'], before: 17_520, after: 14_880, gain: 2_640, metric: 'duration' as const, before_distance_meters: 214_000, after_distance_meters: 176_000, distance_gain_meters: 38_000, before_duration_seconds: 17_520, after_duration_seconds: 14_880, duration_gain_seconds: 2_640 }
     vi.mocked(listTrips).mockResolvedValue([optimizable]); vi.mocked(getTrip).mockResolvedValue(optimizable)
-    vi.mocked(optimizeTripDay).mockResolvedValue(proposal)
+    vi.mocked(optimizeTrip).mockResolvedValue({ proposal_id: 'proposal-1', trip_id: trip.id, days: [proposal] })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={optimizable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Optimiser le voyage' }))
@@ -1159,10 +1154,10 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByText('Gain total : 38 km · 44 min')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Appliquer l’optimisation' })).toHaveClass('primary')
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
-    expect(confirmTripOptimization).not.toHaveBeenCalled()
+    expect(confirmTripOptimizations).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Appliquer l’optimisation' }))
-    await waitFor(() => expect(confirmTripOptimization).toHaveBeenCalledWith('day-1', ['global-1', 'global-0']))
+    await waitFor(() => expect(confirmTripOptimizations).toHaveBeenCalledWith(trip.id, 'proposal-1'))
   })
 
   it('replaces departure and arrival with POIs dropped from the places panel', async () => {

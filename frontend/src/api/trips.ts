@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getBlob, getJson, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
+import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripOptimizationProposal, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
 
 const empty = new URLSearchParams()
 export interface TripCreatePayload { name: string; description?: string; start_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
@@ -50,7 +50,9 @@ export const deleteTripArrival = (id: string) => sendWithoutResponse(`/trip-arri
 export const setTripAnchorPlace = (tripId: string, anchor: 'departure' | 'arrival', placeId: string) => sendJson(`/trips/${tripId}/anchors/${anchor}/place/${placeId}`, 'PUT', {}) as Promise<Trip>
 export const calculateTripDayRoute = (id: string) => sendJson(`/trip-days/${id}/route`, 'POST', {}) as Promise<TripDay>
 export const optimizeTripDay = (id: string) => sendJson(`/trip-days/${id}/optimize`, 'POST', { metric: 'duration', keep_start: true, keep_end: true, keep_locked: true }) as Promise<TripOptimization>
-export const confirmTripOptimization = (id: string, stopIds: string[]) => sendJson(`/trip-days/${id}/optimize/confirm`, 'POST', { stop_ids: stopIds }) as Promise<TripDay>
+export const confirmTripOptimization = (id: string, proposalId: string) => sendJson(`/trip-days/${id}/optimize/confirm`, 'POST', { proposal_id: proposalId }) as Promise<TripDay>
+export const optimizeTrip = (id: string) => sendJson(`/trips/${id}/optimize`, 'POST', { metric: 'duration', keep_start: true, keep_end: true, keep_locked: true }) as Promise<TripOptimizationProposal>
+export const confirmTripOptimizations = (id: string, proposalId: string) => sendJson(`/trips/${id}/optimize/confirm`, 'POST', { proposal_id: proposalId }) as Promise<Trip>
 export const getTripSummary = (id: string, signal?: AbortSignal) => getJson(`/trips/${id}/summary`, empty, signal) as Promise<TripSummary>
 export const getTripDaySummary = (id: string, signal?: AbortSignal) => getJson(`/trip-days/${id}/summary`, empty, signal) as Promise<TripDayTimeSummary>
 export const setTripVisitStatus = (id: string, visitStatus: TripVisitStatus) => sendJson(`/trip-stops/${id}/visit-status`, 'PATCH', { visit_status: visitStatus }) as Promise<TripStop>

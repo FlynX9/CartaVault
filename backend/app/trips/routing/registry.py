@@ -3,39 +3,99 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from dataclasses import replace
 from datetime import UTC, datetime
+from hashlib import sha256
+import logging
 from threading import Lock
 from time import monotonic
 
+from redis import Redis
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.models import User, UserApiCredential
-from app.config import google_routes_settings
+from app.config import google_routes_settings, google_routing_limit_settings, task_settings
 from app.trips.routing.base import RoutingError, RoutingProvider
 from app.trips.routing.google import GoogleRoutesProvider
 from app.trips.routing.osrm import OsrmRoutingProvider
 
 
+logger = logging.getLogger(__name__)
+
+
 class GoogleRoutingRateLimiter:
-    def __init__(self, limit: int = 20, window_seconds: float = 60):
+    """Per-user limiter backed by Redis in distributed deployments.
+
+    Google remains the authoritative quota provider. This smaller application
+    limit protects users from accidental loops and unexpected billable bursts.
+    """
+
+    _SCRIPT = """
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+local ttl = redis.call('TTL', KEYS[1])
+return {current, ttl}
+"""
+
+    def __init__(self, limit: int = 120, window_seconds: float = 60, redis_client: Redis | None = None):
         self.limit = limit
         self.window_seconds = window_seconds
+        self._redis = redis_client
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         self._lock = Lock()
 
     def check(self, key: str) -> None:
+        if self._redis is not None:
+            try:
+                opaque = sha256(key.encode("utf-8")).hexdigest()
+                current, ttl = self._redis.eval(
+                    self._SCRIPT,
+                    1,
+                    f"cartavault:routing:rate:{opaque}",
+                    max(1, round(self.window_seconds)),
+                )
+                if int(current) > self.limit:
+                    retry_after = max(1, int(ttl))
+                    raise RoutingError(
+                        "Trop de calculs Google Routes ont été demandés. Réessayez dans un instant.",
+                        "GOOGLE_ROUTING_RATE_LIMITED",
+                        retry_after=retry_after,
+                    )
+                return
+            except RoutingError:
+                raise
+            except RedisError:
+                logger.warning("Redis routing limiter unavailable; using process-local fallback", exc_info=True)
+        self._check_local(key)
+
+    def _check_local(self, key: str) -> None:
         now = monotonic()
         with self._lock:
             requests = self._requests[key]
             while requests and requests[0] <= now - self.window_seconds:
                 requests.popleft()
             if len(requests) >= self.limit:
-                raise RoutingError("Trop de calculs Google Routes ont été demandés. Réessayez dans une minute.", "GOOGLE_ROUTING_RATE_LIMITED")
+                retry_after = max(1, round(self.window_seconds - (now - requests[0])))
+                raise RoutingError(
+                    "Trop de calculs Google Routes ont été demandés. Réessayez dans un instant.",
+                    "GOOGLE_ROUTING_RATE_LIMITED",
+                    retry_after=retry_after,
+                )
             requests.append(now)
 
 
-google_routing_rate_limiter = GoogleRoutingRateLimiter()
+def _routing_redis() -> Redis | None:
+    if task_settings.mode != "redis":
+        return None
+    return Redis.from_url(task_settings.redis_url, decode_responses=True)
+
+
+google_routing_rate_limiter = GoogleRoutingRateLimiter(
+    limit=google_routing_limit_settings.requests_per_minute,
+    window_seconds=google_routing_limit_settings.window_seconds,
+    redis_client=_routing_redis(),
+)
 
 
 def google_credential(session: Session, user_id: object) -> UserApiCredential | None:

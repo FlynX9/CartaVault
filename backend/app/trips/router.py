@@ -21,12 +21,13 @@ from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, PhotoT
 from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
 from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripNightPhoto, TripStop
-from app.trips.optimizer import optimize_matrix, path_cost
+from app.trips.optimizer import optimize_matrix
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
-from app.trips.routing.base import RoutingConstraints, RoutingError, RoutingProvider
-from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, calculate_day_route, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, resolve_constraint_country, synchronize_trip_dates
+from app.trips.routing.base import RouteResult, RoutingConstraints, RoutingError, RoutingProvider
+from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, apply_day_route_result, calculate_day_route, day_coordinates, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, resolve_constraint_country, synchronize_trip_dates
+from app.trips.optimization_store import OptimizationProposalUnavailable, optimization_proposal_store
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
 from app.quotas.registry import QuotaKey
@@ -733,72 +734,152 @@ def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Dep
     return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(user)))
 
 
-@router.post("/trip-days/{day_id}/optimize")
-def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
-    day, access = require_day_role(session, day_id, user, "editor"); stops = sorted(day.stops, key=lambda item: item.sort_order)
-    if len(stops) < 2: raise HTTPException(422, "At least two stops are required for optimization")
-    start = day.previous_night or (day.trip.departure if day.day_number == 1 else previous_day_last_stop(day))
-    end = day.next_night or ((day.trip.arrival or day.trip.departure) if day.day_number == len(day.trip.days) else None)
-    points = ([start] if start else []) + stops + ([end] if end else [])
-    if provider.provider_id == "google":
-        try:
-            optimized_stops = _google_optimized_stops(provider, stops, start, end, options, access.trip.routing_profile)
-            manual_route = provider.calculate_route([(point.longitude, point.latitude) for point in points], access.trip.routing_profile)
-            optimized_points = ([start] if start else []) + optimized_stops + ([end] if end else [])
-            optimized_route = provider.calculate_route([(point.longitude, point.latitude) for point in optimized_points], access.trip.routing_profile)
-        except RoutingError as error:
-            raise HTTPException(502, {"code": error.code, "message": str(error)}) from error
-        return {
-            "manual_stop_ids": [stop.id for stop in stops],
-            "optimized_stop_ids": [stop.id for stop in optimized_stops],
-            "before": manual_route.duration_seconds if options.metric == "duration" else manual_route.distance_meters,
-            "after": optimized_route.duration_seconds if options.metric == "duration" else optimized_route.distance_meters,
-            "gain": max(0, (manual_route.duration_seconds - optimized_route.duration_seconds) if options.metric == "duration" else (manual_route.distance_meters - optimized_route.distance_meters)),
-            "metric": options.metric,
-            "before_distance_meters": manual_route.distance_meters,
-            "after_distance_meters": optimized_route.distance_meters,
-            "distance_gain_meters": max(0, manual_route.distance_meters - optimized_route.distance_meters),
-            "before_duration_seconds": manual_route.duration_seconds,
-            "after_duration_seconds": optimized_route.duration_seconds,
-            "duration_gain_seconds": max(0, manual_route.duration_seconds - optimized_route.duration_seconds),
-        }
-    try: matrix = provider.calculate_matrix([(point.longitude, point.latitude) for point in points], access.trip.routing_profile)
-    except RoutingError as error: raise HTTPException(502, str(error)) from error
-    values = matrix.durations if options.metric == "duration" else matrix.distances
-    offset = 1 if start else 0
-    locked = {index + offset for index, stop in enumerate(stops) if options.keep_locked and stop.is_locked}
-    if start: locked.add(0)
-    if end: locked.add(len(points) - 1)
-    keep_start = bool(start) or options.keep_start
-    keep_end = bool(end) or options.keep_end
-    return_to_start = options.return_to_start and end is None
-    order = optimize_matrix(values, locked, keep_start, keep_end, return_to_start)
-    stop_indexes = [index for index in order if offset <= index < offset + len(stops)]
-    manual_order = list(range(len(points)))
-    before = path_cost(manual_order, values, return_to_start); after = path_cost(order, values, return_to_start)
-    before_distance = path_cost(manual_order, matrix.distances, return_to_start)
-    after_distance = path_cost(order, matrix.distances, return_to_start)
-    before_duration = path_cost(manual_order, matrix.durations, return_to_start)
-    after_duration = path_cost(order, matrix.durations, return_to_start)
+def _routing_failure(error: RoutingError) -> HTTPException:
+    status = 429 if error.code == "GOOGLE_ROUTING_RATE_LIMITED" else 503 if error.code == "ROUTING_PROVIDER_UNAVAILABLE" else 502
+    headers = {"Retry-After": str(error.retry_after)} if error.retry_after else None
+    return HTTPException(status, {"code": error.code, "message": str(error)}, headers=headers)
+
+
+def _route_payload(result: RouteResult) -> dict[str, object]:
     return {
-        "manual_stop_ids": [stop.id for stop in stops],
-        "optimized_stop_ids": [stops[index - offset].id for index in stop_indexes],
+        "geometry": result.geometry,
+        "distance_meters": result.distance_meters,
+        "duration_seconds": result.duration_seconds,
+        "segments": result.segments,
+    }
+
+
+def _route_from_payload(payload: dict[str, object]) -> RouteResult:
+    return RouteResult(
+        geometry=dict(payload["geometry"]),
+        distance_meters=float(payload["distance_meters"]),
+        duration_seconds=float(payload["duration_seconds"]),
+        segments=list(payload["segments"]),
+    )
+
+
+def _current_route(day: TripDay, provider: RoutingProvider) -> RouteResult | None:
+    if day.route_status != "ready" or day.route_provider != provider.provider_id or not day.route_geometry or day.route_distance_meters is None or day.route_duration_seconds is None or not isinstance(day.route_segments, list):
+        return None
+    return RouteResult(day.route_geometry, day.route_distance_meters, day.route_duration_seconds, day.route_segments)
+
+
+def _day_optimization_fingerprint(day: TripDay, provider: RoutingProvider, profile: str) -> str:
+    coordinates, _ = day_coordinates(day)
+    stops = sorted(day.stops, key=lambda item: item.sort_order)
+    settings = getattr(provider, "settings", None)
+    source = {
+        "day_id": str(day.id),
+        "provider": provider.provider_id,
+        "profile": profile,
+        "routing_settings": {
+            key: getattr(settings, key, None)
+            for key in ("routing_preference", "avoid_tolls", "avoid_highways", "avoid_ferries")
+        },
+        "coordinates": coordinates,
+        "stops": [(str(stop.id), stop.sort_order, stop.is_locked) for stop in stops],
+    }
+    return sha256(repr(source).encode("utf-8")).hexdigest()
+
+
+def _optimization_metrics(day: TripDay, stops: list[TripStop], optimized_stops: list[TripStop], manual_route: RouteResult, optimized_route: RouteResult, options: OptimizeOptions) -> dict[str, object]:
+    before = manual_route.duration_seconds if options.metric == "duration" else manual_route.distance_meters
+    after = optimized_route.duration_seconds if options.metric == "duration" else optimized_route.distance_meters
+    return {
+        "day_id": str(day.id),
+        "day_number": day.day_number,
+        "manual_stop_ids": [str(stop.id) for stop in stops],
+        "optimized_stop_ids": [str(stop.id) for stop in optimized_stops],
         "before": before,
         "after": after,
         "gain": max(0, before - after),
         "metric": options.metric,
-        "before_distance_meters": before_distance,
-        "after_distance_meters": after_distance,
-        "distance_gain_meters": max(0, before_distance - after_distance),
-        "before_duration_seconds": before_duration,
-        "after_duration_seconds": after_duration,
-        "duration_gain_seconds": max(0, before_duration - after_duration),
+        "before_distance_meters": manual_route.distance_meters,
+        "after_distance_meters": optimized_route.distance_meters,
+        "distance_gain_meters": max(0, manual_route.distance_meters - optimized_route.distance_meters),
+        "before_duration_seconds": manual_route.duration_seconds,
+        "after_duration_seconds": optimized_route.duration_seconds,
+        "duration_gain_seconds": max(0, manual_route.duration_seconds - optimized_route.duration_seconds),
     }
 
 
-def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], start: object | None, end: object | None, options: OptimizeOptions, profile: str) -> list[TripStop]:
+def _build_day_optimization(day: TripDay, provider: RoutingProvider, options: OptimizeOptions) -> tuple[dict[str, object], dict[str, object]]:
+    stops = sorted(day.stops, key=lambda item: item.sort_order)
+    if len(stops) < 2:
+        raise HTTPException(422, "At least two stops are required for optimization")
+    start = day.previous_night or (day.trip.departure if day.day_number == 1 else previous_day_last_stop(day))
+    end = day.next_night or ((day.trip.arrival or day.trip.departure) if day.day_number == len(day.trip.days) else None)
+    points = ([start] if start else []) + stops + ([end] if end else [])
+    coordinates = [(point.longitude, point.latitude) for point in points]
+    try:
+        if provider.provider_id == "google":
+            optimized_stops, optimized_route = _google_optimized_stops(provider, stops, start, end, options, day.trip.routing_profile)
+            manual_route = _current_route(day, provider) or provider.calculate_route(coordinates, day.trip.routing_profile)
+            if optimized_route is None:
+                optimized_points = ([start] if start else []) + optimized_stops + ([end] if end else [])
+                optimized_route = provider.calculate_route([(point.longitude, point.latitude) for point in optimized_points], day.trip.routing_profile)
+        else:
+            matrix = provider.calculate_matrix(coordinates, day.trip.routing_profile)
+            values = matrix.durations if options.metric == "duration" else matrix.distances
+            offset = 1 if start else 0
+            locked = {index + offset for index, stop in enumerate(stops) if options.keep_locked and stop.is_locked}
+            if start: locked.add(0)
+            if end: locked.add(len(points) - 1)
+            order = optimize_matrix(values, locked, bool(start) or options.keep_start, bool(end) or options.keep_end, options.return_to_start and end is None)
+            stop_indexes = [index for index in order if offset <= index < offset + len(stops)]
+            optimized_stops = [stops[index - offset] for index in stop_indexes]
+            manual_route = _current_route(day, provider) or provider.calculate_route(coordinates, day.trip.routing_profile)
+            optimized_points = ([start] if start else []) + optimized_stops + ([end] if end else [])
+            optimized_route = provider.calculate_route([(point.longitude, point.latitude) for point in optimized_points], day.trip.routing_profile)
+    except RoutingError as error:
+        raise _routing_failure(error) from error
+    metrics = _optimization_metrics(day, stops, optimized_stops, manual_route, optimized_route, options)
+    stored = {
+        **metrics,
+        "fingerprint": _day_optimization_fingerprint(day, provider, day.trip.routing_profile),
+        "route": _route_payload(optimized_route),
+    }
+    return metrics, stored
+
+
+def _store_optimization(user: User, trip: Trip, days: list[dict[str, object]]) -> UUID:
+    try:
+        return optimization_proposal_store.create({"user_id": str(user.id), "trip_id": str(trip.id), "days": days})
+    except OptimizationProposalUnavailable as error:
+        raise HTTPException(503, str(error)) from error
+
+
+@router.post("/trip-days/{day_id}/optimize", response_model=DayOptimizationRead)
+def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+    day, access = require_day_role(session, day_id, user, "editor")
+    metrics, stored = _build_day_optimization(day, provider, options)
+    proposal_id = _store_optimization(user, access.trip, [stored])
+    return {**metrics, "proposal_id": proposal_id}
+
+
+@router.post("/trips/{trip_id}/optimize", response_model=TripOptimizationRead)
+def optimize_trip(trip_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+    require_trip_editor(session, trip_id, user)
+    trip = load_trip(session, trip_id)
+    optimizable = [day for day in sorted(trip.days, key=lambda item: item.sort_order) if len(day.stops) >= 2]
+    if not optimizable:
+        raise HTTPException(422, "At least one day with two stops is required for optimization")
+    # Intentionally sequential: this bounds Google concurrency and prevents a
+    # single trip from producing a sudden billable burst.
+    results = [_build_day_optimization(day, provider, options) for day in optimizable]
+    proposal_id = _store_optimization(user, trip, [stored for _, stored in results])
+    return {
+        "proposal_id": proposal_id,
+        "trip_id": trip.id,
+        "days": [{**metrics, "proposal_id": proposal_id} for metrics, _ in results],
+    }
+
+
+def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], start: object | None, end: object | None, options: OptimizeOptions, profile: str) -> tuple[list[TripStop], RouteResult | None]:
     """Optimize independent runs so locked CartaVault stops remain fixed."""
     result = list(stops)
+    complete_route: RouteResult | None = None
+    all_coordinates = ([(start.longitude, start.latitude)] if start else []) + [(stop.longitude, stop.latitude) for stop in stops] + ([(end.longitude, end.latitude)] if end else [])
     locked = {index for index, stop in enumerate(stops) if options.keep_locked and stop.is_locked}
     if options.keep_start and start is None:
         locked.add(0)
@@ -817,7 +898,10 @@ def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], st
         right = end if finish == len(stops) - 1 else result[finish + 1]
         coordinates = ([(left.longitude, left.latitude)] if left else []) + [(stop.longitude, stop.latitude) for stop in run] + ([(right.longitude, right.latitude)] if right else [])
         if len(run) > 1 and len(coordinates) > 2:
-            order = provider.optimize_waypoint_order(coordinates, profile)
+            optimization = provider.optimize_waypoints(coordinates, profile)
+            order = optimization.order
+            if coordinates == all_coordinates:
+                complete_route = optimization.route
             movable = run
             if left is None:
                 movable = run[1:]
@@ -833,31 +917,67 @@ def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], st
                 raise RoutingError("Google Routes returned an invalid waypoint order", "GOOGLE_ROUTES_INVALID_RESPONSE")
             result[cursor:finish + 1] = prefix + [movable[index] for index in order] + suffix
         cursor = finish + 1
-    return result
+    return result, complete_route
 
 
 @router.post("/trip-days/{day_id}/optimize/confirm", response_model=DayRead)
 def confirm_optimization(day_id: UUID, data: OptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
     day, access = require_day_role(session, day_id, user, "editor")
-    if set(data.stop_ids) != {item.id for item in day.stops} or len(data.stop_ids) != len(day.stops): raise HTTPException(422, "Optimized order must contain every stop exactly once")
-    previous_order = {stop.id: stop.sort_order for stop in day.stops}
-    previous_route_status = day.route_status
-    for stop in day.stops: stop.sort_order += 10_000
-    session.flush(); lookup = {stop.id: stop for stop in day.stops}
-    for index, item in enumerate(data.stop_ids): lookup[item].sort_order = index
-    stale(day)
+    _apply_optimization_proposal(session, user, access.trip, data.proposal_id, provider, expected_day_id=day_id)
+    return DayRead.model_validate(next(item for item in load_trip(session, access.trip.id).days if item.id == day_id))
+
+
+@router.post("/trips/{trip_id}/optimize/confirm", response_model=TripRead)
+def confirm_trip_optimization(trip_id: UUID, data: TripOptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+    require_trip_editor(session, trip_id, user)
+    trip = load_trip(session, trip_id)
+    _apply_optimization_proposal(session, user, trip, data.proposal_id, provider)
+    return TripRead.model_validate(load_trip(session, trip_id))
+
+
+def _apply_optimization_proposal(session: Session, user: User, trip: Trip, proposal_id: UUID, provider: RoutingProvider, expected_day_id: UUID | None = None) -> None:
     try:
-        calculated = calculate_day_route(session, day, provider, access.trip.routing_profile, _routing_constraints(user))
-    except CountryRouteError:
-        # Keep the existing order and route if the final optimized geometry
-        # crosses the national boundary.  The OSRM table alone is insufficient.
-        for stop in day.stops:
-            stop.sort_order = previous_order[stop.id]
-        day.route_status = previous_route_status
+        proposal = optimization_proposal_store.take(proposal_id)
+    except OptimizationProposalUnavailable as error:
+        raise HTTPException(503, str(error)) from error
+    if proposal is None:
+        raise HTTPException(409, "Cette proposition d’optimisation a expiré ou a déjà été appliquée.")
+    try:
+        if proposal.get("user_id") != str(user.id) or proposal.get("trip_id") != str(trip.id):
+            raise HTTPException(403, "Cette proposition d’optimisation ne vous appartient pas.")
+        stored_days = proposal.get("days")
+        if not isinstance(stored_days, list) or not stored_days:
+            raise HTTPException(409, "La proposition d’optimisation est invalide.")
+        if expected_day_id is not None and ({UUID(str(item["day_id"])) for item in stored_days} != {expected_day_id}):
+            raise HTTPException(409, "La proposition ne correspond pas à cette journée.")
+        days_by_id = {day.id: day for day in trip.days}
+        resolved: list[tuple[TripDay, dict[str, object]]] = []
+        for stored in stored_days:
+            day = days_by_id.get(UUID(str(stored["day_id"])))
+            if day is None or stored.get("fingerprint") != _day_optimization_fingerprint(day, provider, trip.routing_profile):
+                raise HTTPException(409, "La sortie a changé depuis cette proposition. Relancez l’optimisation.")
+            requested = [UUID(str(item)) for item in stored["optimized_stop_ids"]]
+            if set(requested) != {item.id for item in day.stops} or len(requested) != len(day.stops):
+                raise HTTPException(409, "Les étapes de la journée ont changé depuis cette proposition.")
+            resolved.append((day, stored))
+        for day, _ in resolved:
+            for stop in day.stops:
+                stop.sort_order += 10_000
         session.flush()
+        for day, stored in resolved:
+            lookup = {stop.id: stop for stop in day.stops}
+            for index, stop_id in enumerate(UUID(str(item)) for item in stored["optimized_stop_ids"]):
+                lookup[stop_id].sort_order = index
+            day.stops.sort(key=lambda item: item.sort_order)
+            apply_day_route_result(session, day, _route_from_payload(stored["route"]), provider.provider_id, _routing_constraints(user))
+        session.commit()
+    except Exception:
+        session.rollback()
+        try:
+            optimization_proposal_store.restore(proposal_id, proposal)
+        except OptimizationProposalUnavailable:
+            pass
         raise
-    calculated.stops.sort(key=lambda item: item.sort_order)
-    return DayRead.model_validate(calculated)
 
 
 @router.post("/trip-days/{day_id}/optimize/cancel", status_code=204)
