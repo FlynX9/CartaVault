@@ -1,0 +1,74 @@
+---
+import { ArrowRight, ClockArrowUp, FileDown, FileOutput, Server, ShieldCheck } from '@lucide/astro';
+import appAdmin from '../assets/screenshots/app-admin.webp';
+import appPlaces from '../assets/screenshots/app-places.webp';
+import appPopup from '../assets/screenshots/app-place-popup.webp';
+import appTimeline from '../assets/screenshots/app-timeline.webp';
+import { copy, external, type Language } from '../content/site';
+import FeatureSection from './FeatureSection.astro';
+import ProductScreenshot from './ProductScreenshot.astro';
+import SectionEyebrow from './SectionEyebrow.astro';
+
+const { lang } = Astro.props as { lang: Language };
+const t = copy[lang];
+const page = t.pages.features;
+const showcase = t.featuresShowcase;
+const benefitIcons = { import: FileDown, file: FileOutput, history: ClockArrowUp, server: Server, shield: ShieldCheck };
+const sectionVisuals = [
+  { id: 'feature-maps', icon: 'map' as const, image: appPlaces, alt: lang === 'fr' ? 'Liste de lieux illustrés et carte CartaVault' : 'Illustrated place list and CartaVault map', label: lang === 'fr' ? 'Cartes et lieux' : 'Maps and places' },
+  { id: 'feature-trips', icon: 'route' as const, image: appTimeline, alt: lang === 'fr' ? 'Chronologie interactive d’un voyage CartaVault' : 'Interactive CartaVault trip timeline', label: lang === 'fr' ? 'Chronologie du voyage' : 'Trip timeline' },
+  { id: 'feature-sharing', icon: 'users' as const, image: appAdmin, alt: lang === 'fr' ? 'Gestion des utilisateurs et des rôles CartaVault' : 'CartaVault user and role management', label: lang === 'fr' ? 'Comptes et partage' : 'Accounts and sharing' },
+];
+---
+<header class="features-hero wide-wrap">
+  <div class="features-hero__copy">
+    <SectionEyebrow label={page.eyebrow} />
+    <h1>{page.title}</h1>
+    <p class="lead">{page.description}</p>
+    <div class="actions">
+      <a class="button" href={external.app}>{showcase.primary}<ArrowRight size={17} aria-hidden="true" /></a>
+      <a class="button secondary" href="#feature-maps">{showcase.secondary}</a>
+    </div>
+  </div>
+  <ProductScreenshot
+    image={appPopup}
+    alt={lang === 'fr' ? 'Fiche illustrée d’un lieu dans CartaVault' : 'Illustrated CartaVault place record'}
+    label={lang === 'fr' ? 'Fiche d’un lieu' : 'Place details'}
+    eager
+  />
+</header>
+
+<div class="feature-showcase wide-wrap">
+  {page.sections.map((section, index) => (
+    <FeatureSection
+      id={sectionVisuals[index].id}
+      number={String(index + 1).padStart(2, '0')}
+      icon={sectionVisuals[index].icon}
+      title={section.title}
+      body={section.body}
+      bullets={section.bullets ?? []}
+      image={sectionVisuals[index].image}
+      imageAlt={sectionVisuals[index].alt}
+      imageLabel={sectionVisuals[index].label}
+      reverse={index === 1}
+    />
+  ))}
+</div>
+
+<section class="benefits-section">
+  <div class="wrap">
+    <div class="benefits-heading">
+      <SectionEyebrow label={lang === 'fr' ? 'Fondations' : 'Foundations'} />
+      <h2>{showcase.benefitsTitle}</h2>
+    </div>
+    <div class="benefits-strip">
+      {showcase.benefits.map((benefit) => {
+        const BenefitIcon = benefitIcons[benefit.icon];
+        return <article>
+          <span aria-hidden="true"><BenefitIcon size={18} stroke-width={1.9} /></span>
+          <div><h3>{benefit.title}</h3><p>{benefit.body}</p></div>
+        </article>;
+      })}
+    </div>
+  </div>
+</section>

@@ -6,6 +6,7 @@ export type PageSlug = (typeof pageSlugs)[number];
 
 type Section = { title: string; body: string; bullets?: string[] };
 type Page = { title: string; description: string; eyebrow: string; sections: Section[] };
+type Benefit = { title: string; body: string; icon: 'import' | 'file' | 'history' | 'server' | 'shield' };
 
 export const external = {
   app: 'https://app.cartavault.fr',
@@ -17,8 +18,13 @@ export const external = {
 
 export const copy: Record<Language, {
   skip: string; navLabel: string; menu: string; close: string; language: string;
+  openApp: string;
   nav: Record<'features' | 'self-hosting' | 'documentation' | 'roadmap', string>;
   footer: string; legal: string; privacy: string; contact: string;
+  featuresShowcase: {
+    primary: string; secondary: string; links: string[]; benefitsTitle: string;
+    benefits: Benefit[];
+  };
   home: {
     title: string; description: string; eyebrow: string; hero: string; intro: string;
     primary: string; secondary: string; proof: string[];
@@ -30,9 +36,21 @@ export const copy: Record<Language, {
   pages: Record<PageSlug, Page>;
 }> = {
   fr: {
-    skip: 'Aller au contenu', navLabel: 'Navigation principale', menu: 'Ouvrir le menu', close: 'Fermer le menu', language: 'English',
+    skip: 'Aller au contenu', navLabel: 'Navigation principale', menu: 'Ouvrir le menu', close: 'Fermer le menu', language: 'EN', openApp: 'Ouvrir l’application',
     nav: { features: 'Fonctionnalités', 'self-hosting': 'Auto-hébergement', documentation: 'Documentation', roadmap: 'Feuille de route' },
     footer: 'Cartographiez vos découvertes. Gardez le contrôle de vos données.', legal: 'Mentions légales', privacy: 'Confidentialité', contact: 'Contact',
+    featuresShowcase: {
+      primary: 'Essayer CartaVault', secondary: 'Voir la démonstration',
+      links: ['Découvrir les cartes', 'Explorer les voyages', 'Comprendre le partage'],
+      benefitsTitle: 'Une base solide, jusque dans les détails',
+      benefits: [
+        { title: 'Import et export avancés', body: 'KML, KMZ et données structurées.', icon: 'import' },
+        { title: 'Exports professionnels', body: 'PDF illustrés, GPX et navigation.', icon: 'file' },
+        { title: 'Historique complet', body: 'Des changements lisibles et auditables.', icon: 'history' },
+        { title: 'Auto-hébergement', body: 'Une pile Docker claire et documentée.', icon: 'server' },
+        { title: 'Privé par défaut', body: 'Vos cartes restent sous votre contrôle.', icon: 'shield' },
+      ],
+    },
     home: {
       title: 'CartaVault — Vos lieux, vos voyages, vos données',
       description: 'CartaVault centralise vos lieux et transforme vos cartes privées en voyages structurés, dans une application open source auto-hébergeable.',
@@ -47,8 +65,8 @@ export const copy: Record<Language, {
       screenshotsTitle: 'L’application, pas une promesse abstraite', ctaTitle: 'Prêt à bâtir votre propre atlas ?', ctaBody: 'Consultez le dépôt, la documentation de déploiement et la feuille de route publique.',
     },
     pages: {
-      features: { title: 'Fonctionnalités', description: 'Cartes privées, lieux structurés, voyages et collaboration dans un même outil.', eyebrow: 'Produit', sections: [
-        { title: 'Cartes et lieux', body: 'Créez des cartes par pays et centralisez des milliers de points d’intérêt.', bullets: ['Recherche par texte, adresse ou coordonnées', 'Catégories, statuts, tags, notes et favoris', 'Photos, liens nommés, historique et corbeille', 'Import KMZ et export KML/KMZ'] },
+      features: { title: 'Tout ce qu’il faut pour organiser, préparer et documenter vos lieux.', description: 'CartaVault réunit cartographie privée, fiches détaillées, préparation de voyages et collaboration dans un même espace.', eyebrow: 'Produit', sections: [
+        { title: 'Cartes et lieux', body: 'Créez des cartes privées par pays et retrouvez chaque lieu dans une fiche structurée.', bullets: ['Recherche par texte, adresse ou coordonnées', 'Catégories, statuts, tags, notes et favoris', 'Photos, liens nommés, historique et corbeille', 'Import KML/KMZ et export KML/KMZ'] },
         { title: 'Sorties et voyages', body: 'Transformez une sélection de lieux en programme réaliste.', bullets: ['Jours, nuits, départ et arrivée', 'Routes, contraintes pays et optimisation', 'Chronologie interactive et mode aperçu', 'Exports PDF, GPX et liens de navigation'] },
         { title: 'Comptes et partage', body: 'Conservez des frontières d’accès claires.', bullets: ['Cartes privées et rôles propriétaire, éditeur, lecteur', 'Invitations et transfert de propriété', 'Préférences, sessions et quotas administrables', 'Audit des changements et notifications de sécurité'] },
       ] },
@@ -89,15 +107,27 @@ export const copy: Record<Language, {
     },
   },
   en: {
-    skip: 'Skip to content', navLabel: 'Main navigation', menu: 'Open menu', close: 'Close menu', language: 'Français',
+    skip: 'Skip to content', navLabel: 'Main navigation', menu: 'Open menu', close: 'Close menu', language: 'FR', openApp: 'Open the app',
     nav: { features: 'Features', 'self-hosting': 'Self-hosting', documentation: 'Documentation', roadmap: 'Roadmap' },
     footer: 'Map your discoveries. Keep control of your data.', legal: 'Legal notice', privacy: 'Privacy', contact: 'Contact',
+    featuresShowcase: {
+      primary: 'Try CartaVault', secondary: 'View the demo',
+      links: ['Discover maps', 'Explore trips', 'Understand sharing'],
+      benefitsTitle: 'A solid foundation, down to the details',
+      benefits: [
+        { title: 'Advanced import and export', body: 'KML, KMZ and structured data.', icon: 'import' },
+        { title: 'Professional exports', body: 'Illustrated PDFs, GPX and navigation.', icon: 'file' },
+        { title: 'Complete history', body: 'Changes that remain clear and auditable.', icon: 'history' },
+        { title: 'Self-hosting', body: 'A clear and documented Docker stack.', icon: 'server' },
+        { title: 'Private by default', body: 'Your maps remain under your control.', icon: 'shield' },
+      ],
+    },
     home: {
       title: 'CartaVault — Your places, trips and data', description: 'CartaVault turns private maps and saved places into structured journeys in an open-source, self-hostable application.', eyebrow: 'Open-source personal mapping', hero: 'Remember every place. Shape every journey.', intro: 'A private map to collect, classify and retrieve points of interest, then organize them into day-by-day itineraries — without giving up control of your data.', primary: 'Explore on GitHub', secondary: 'See features', proof: ['Open source · MIT License', 'PostgreSQL + PostGIS', 'Docker · Self-contained setup'], placesTitle: 'A geographic memory that stays readable', placesBody: 'Import, search and classify places with categories, statuses, tags, regions and favorites. Lists, facets and markers remain efficient as maps grow.', tripsTitle: 'From discovery to itinerary in one workspace', tripsBody: 'Build days with drag and drop, plan nights, calculate routes, estimate time and export a travel-ready PDF.', collaborationTitle: 'Private by default, collaborative by choice', collaborationBody: 'Share a map with explicit roles, invite fellow travelers and transfer ownership without exposing other spaces.', hostingTitle: 'Choose how you run CartaVault', hostingBody: 'Self-hosting is available today. A simpler hosted offering is planned without taking away your ability to deploy at home.', self: 'Self-host today', cloud: 'Cloud planned', screenshotsTitle: 'A working product, not an abstract promise', ctaTitle: 'Ready to build your own atlas?', ctaBody: 'Explore the repository, deployment documentation and public roadmap.',
     },
     pages: {
-      features: { title: 'Features', description: 'Private maps, structured places, trips and collaboration in one tool.', eyebrow: 'Product', sections: [
-        { title: 'Maps and places', body: 'Create country maps and centralize thousands of points of interest.', bullets: ['Text, address and coordinate search', 'Categories, statuses, tags, ratings and favorites', 'Photos, named links, history and trash', 'KMZ import and KML/KMZ export'] },
+      features: { title: 'Everything you need to organize, prepare and document your places.', description: 'CartaVault brings private maps, detailed place records, trip planning and collaboration into one workspace.', eyebrow: 'Product', sections: [
+        { title: 'Maps and places', body: 'Create private country maps and retrieve every place from a structured record.', bullets: ['Text, address and coordinate search', 'Categories, statuses, tags, ratings and favorites', 'Photos, named links, history and trash', 'KML/KMZ import and KML/KMZ export'] },
         { title: 'Trips and outings', body: 'Turn saved places into a realistic schedule.', bullets: ['Days, nights, departure and arrival', 'Routes, country constraints and optimization', 'Interactive timeline and trip preview', 'PDF and GPX exports with navigation links'] },
         { title: 'Accounts and sharing', body: 'Keep access boundaries explicit.', bullets: ['Private maps with owner, editor and viewer roles', 'Invitations and ownership transfer', 'Preferences, sessions and admin quotas', 'Change history and security notifications'] },
       ] },

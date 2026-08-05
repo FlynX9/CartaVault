@@ -5,7 +5,7 @@ import '../styles/global.css';
 import { copy, href, type Language } from '../content/site';
 
 interface Props { lang: Language; title: string; description: string; path?: string; image?: string; }
-const { lang, title, description, path = '', image = '/images/gestion-lieux.webp' } = Astro.props;
+const { lang, title, description, path = '', image = '/images/app-places.webp' } = Astro.props;
 const canonical = new URL(href(lang, path), Astro.site);
 const other = lang === 'fr' ? 'en' : 'fr';
 const structured = {
@@ -26,8 +26,9 @@ const structured = {
     <link rel="alternate" hreflang="fr" href={new URL(href('fr', path), Astro.site)} />
     <link rel="alternate" hreflang="en" href={new URL(href('en', path), Astro.site)} />
     <link rel="alternate" hreflang="x-default" href={new URL(href('fr', path), Astro.site)} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="200x200" href="/favicon-v2.png" />
+    <link rel="icon" type="image/x-icon" sizes="any" href="/favicon.ico?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="CartaVault" />

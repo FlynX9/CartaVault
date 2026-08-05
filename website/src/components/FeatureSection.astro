@@ -1,0 +1,35 @@
+---
+import { MapPinned, Route, UsersRound } from '@lucide/astro';
+import type { ImageMetadata } from 'astro';
+import FeatureList from './FeatureList.astro';
+import ProductScreenshot from './ProductScreenshot.astro';
+import SectionEyebrow from './SectionEyebrow.astro';
+
+interface Props {
+  id: string;
+  number: string;
+  icon: 'map' | 'route' | 'users';
+  title: string;
+  body: string;
+  bullets: string[];
+  image: ImageMetadata;
+  imageAlt: string;
+  imageLabel: string;
+  reverse?: boolean;
+}
+const props = Astro.props;
+const icons = { map: MapPinned, route: Route, users: UsersRound };
+const Icon = icons[props.icon];
+---
+<section id={props.id} class:list={['feature-section', { 'feature-section--reverse': props.reverse }]}>
+  <div class="feature-section__copy">
+    <div class="feature-section__meta">
+      <span class="feature-section__icon" aria-hidden="true"><Icon size={20} stroke-width={1.9} /></span>
+      <SectionEyebrow label={props.number} />
+    </div>
+    <h2>{props.title}</h2>
+    <p>{props.body}</p>
+    <FeatureList items={props.bullets} />
+  </div>
+  <ProductScreenshot image={props.image} alt={props.imageAlt} label={props.imageLabel} position={props.reverse ? 'right' : 'left'} />
+</section>

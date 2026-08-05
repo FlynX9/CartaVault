@@ -1,16 +1,25 @@
 ---
+import { ArrowUpRight, GitFork, Server } from '@lucide/astro';
 import { copy, external, href, type Language } from '../content/site';
 const { lang } = Astro.props as { lang: Language };
 const text = copy[lang];
 ---
 <footer>
-  <div><strong>CartaVault</strong><p>{text.footer}</p></div>
-  <div class="footer-links">
-    <a href={href(lang, 'about')}>{lang === 'fr' ? 'À propos' : 'About'}</a>
-    <a href={href(lang, 'contact')}>{text.contact}</a>
-    <a href={href(lang, 'legal')}>{text.legal}</a>
-    <a href={href(lang, 'privacy')}>{text.privacy}</a>
-    <a href={external.github}>GitHub <span aria-hidden="true">↗</span></a>
+  <div class="footer-main wrap">
+    <div class="footer-brand">
+      <a class="brand brand--footer" href={href(lang)}><img src="/images/cartavault-logo.png" width="42" height="42" alt="" /><span>CartaVault</span></a>
+      <p>{text.footer}</p>
+      <div class="footer-language" aria-label={lang === 'fr' ? 'Langue' : 'Language'}><a class:list={{ active: lang === 'fr' }} href={href('fr')}>FR</a><a class:list={{ active: lang === 'en' }} href={href('en')}>EN</a></div>
+    </div>
+    <nav class="footer-columns" aria-label={lang === 'fr' ? 'Navigation de pied de page' : 'Footer navigation'}>
+      <div><h2>{lang === 'fr' ? 'Produit' : 'Product'}</h2><a href={href(lang, 'features')}>{text.nav.features}</a><a href={href(lang, 'self-hosting')}>{text.nav['self-hosting']}</a><a href={external.app}>{text.openApp}<ArrowUpRight size={13} aria-hidden="true" /></a></div>
+      <div><h2>{lang === 'fr' ? 'Ressources' : 'Resources'}</h2><a href={href(lang, 'documentation')}>{text.nav.documentation}</a><a href={href(lang, 'roadmap')}>{text.nav.roadmap}</a><a href={href(lang, 'contact')}>{text.contact}</a></div>
+      <div><h2>{lang === 'fr' ? 'Projet' : 'Project'}</h2><a href={href(lang, 'about')}>{lang === 'fr' ? 'À propos' : 'About'}</a><a href={href(lang, 'legal')}>{text.legal}</a><a href={href(lang, 'privacy')}>{text.privacy}</a></div>
+    </nav>
+    <aside class="footer-open-source">
+      <span aria-hidden="true"><Server size={20} /></span>
+      <div><strong>{lang === 'fr' ? 'Open source et auto-hébergeable' : 'Open source and self-hostable'}</strong><p>{lang === 'fr' ? 'Déployez CartaVault chez vous et gardez la maîtrise de vos données.' : 'Run CartaVault on your infrastructure and keep control of your data.'}</p><a href={external.github}><GitFork size={16} aria-hidden="true" />GitHub<ArrowUpRight size={13} aria-hidden="true" /></a></div>
+    </aside>
   </div>
-  <small>© 2026 CartaVault · MIT</small>
+  <div class="footer-bottom wrap"><small>© 2026 CartaVault · MIT</small><small>{lang === 'fr' ? 'Conçu dans les Vosges.' : 'Made in the Vosges.'}</small></div>
 </footer>

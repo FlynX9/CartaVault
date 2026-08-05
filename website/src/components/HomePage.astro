@@ -1,19 +1,57 @@
 ---
-import Screenshot from './Screenshot.astro';
+import { ArrowRight, ArrowUpRight, Database, LockKeyhole, Server } from '@lucide/astro';
+import appAccount from '../assets/screenshots/app-account.webp';
+import appMedia from '../assets/screenshots/app-media.webp';
+import appPlaces from '../assets/screenshots/app-places.webp';
+import appPopup from '../assets/screenshots/app-place-popup.webp';
+import appTrip from '../assets/screenshots/app-trip.webp';
 import { copy, external, href, type Language } from '../content/site';
+import ProductScreenshot from './ProductScreenshot.astro';
+import SectionEyebrow from './SectionEyebrow.astro';
+
 const { lang } = Astro.props as { lang: Language };
 const t = copy[lang].home;
 ---
-<section class="hero wrap">
-  <div class="hero-copy">
-    <p class="eyebrow">{t.eyebrow}</p><h1>{t.hero}</h1><p class="lead">{t.intro}</p>
-    <div class="actions"><a class="button" href={external.github}>{t.primary} <span aria-hidden="true">↗</span></a><a class="button secondary" href={href(lang, 'features')}>{t.secondary}</a></div>
-    <ul class="proof">{t.proof.map((item) => <li>{item}</li>)}</ul>
+<section class="home-hero wide-wrap">
+  <div class="home-hero__copy">
+    <SectionEyebrow label={t.eyebrow} />
+    <h1>{t.hero}</h1>
+    <p class="lead">{t.intro}</p>
+    <div class="actions">
+      <a class="button" href={external.github}>{t.primary}<ArrowUpRight size={16} aria-hidden="true" /></a>
+      <a class="button secondary" href={href(lang, 'features')}>{t.secondary}<ArrowRight size={16} aria-hidden="true" /></a>
+    </div>
   </div>
-  <div class="hero-visual"><Screenshot src="/images/gestion-lieux.webp" alt={lang === 'fr' ? 'Carte CartaVault et panneau des lieux' : 'CartaVault map and places panel'} caption={lang === 'fr' ? 'Tous vos repères dans une carte structurée.' : 'Every saved place in a structured map.'} eager /></div>
+  <ProductScreenshot image={appPlaces} alt={lang === 'fr' ? 'Carte et liste de lieux illustrés dans CartaVault' : 'Map and illustrated place list in CartaVault'} label={lang === 'fr' ? 'Espace cartographique' : 'Mapping workspace'} eager />
 </section>
-<section class="section wrap two-col"><div><p class="eyebrow">01 · {lang === 'fr' ? 'Collecter' : 'Collect'}</p><h2>{t.placesTitle}</h2><p>{t.placesBody}</p></div><Screenshot src="/images/gestion-categories.webp" alt={lang === 'fr' ? 'Gestion des catégories CartaVault' : 'CartaVault category management'} caption={lang === 'fr' ? 'Des catégories adaptées à votre façon de voyager.' : 'Categories that match how you travel.'} /></section>
-<section class="section dark"><div class="wrap two-col reverse"><Screenshot src="/images/gestion-sorties.webp" alt={lang === 'fr' ? 'Planificateur de voyage CartaVault' : 'CartaVault trip planner'} caption={lang === 'fr' ? 'Itinéraires, durées et étapes dans une seule vue.' : 'Routes, durations and stops in one view.'} /><div><p class="eyebrow">02 · {lang === 'fr' ? 'Planifier' : 'Plan'}</p><h2>{t.tripsTitle}</h2><p>{t.tripsBody}</p></div></div></section>
-<section class="section wrap feature-grid"><article><span class="feature-icon">◎</span><h2>{t.collaborationTitle}</h2><p>{t.collaborationBody}</p></article><article><span class="feature-icon gold">⌂</span><h2>{t.hostingTitle}</h2><p>{t.hostingBody}</p><div class="chips"><span>{t.self}</span><span class="planned">{t.cloud}</span></div></article></section>
-<section class="section wrap"><p class="eyebrow">03 · Interface</p><h2>{t.screenshotsTitle}</h2><div class="gallery"><Screenshot src="/images/gestion-status.webp" alt={lang === 'fr' ? 'Statuts configurables' : 'Configurable statuses'} caption={lang === 'fr' ? 'Vos propres statuts et couleurs.' : 'Your own statuses and colours.'} /><Screenshot src="/images/gestion-categories.webp" alt={lang === 'fr' ? 'Catégories configurables' : 'Configurable categories'} caption={lang === 'fr' ? 'Une organisation adaptée à chaque collection.' : 'An organisation tailored to every collection.'} /></div></section>
-<section class="cta wrap"><div><p class="eyebrow">Open source</p><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p></div><div class="actions"><a class="button" href={external.github}>GitHub</a><a class="button secondary" href={external.docs}>{lang === 'fr' ? 'Documentation' : 'Documentation'}</a></div></section>
+
+<section class="proof-bar wrap" aria-label={lang === 'fr' ? 'Caractéristiques techniques' : 'Technical characteristics'}>
+  {t.proof.map((item, index) => <div><span aria-hidden="true">{index === 0 ? <LockKeyhole size={17} /> : index === 1 ? <Database size={17} /> : <Server size={17} />}</span><strong>{item}</strong></div>)}
+</section>
+
+<section class="home-feature wrap">
+  <div class="home-feature__copy"><SectionEyebrow label={`01 · ${lang === 'fr' ? 'Collecter' : 'Collect'}`} /><h2>{t.placesTitle}</h2><p>{t.placesBody}</p><a class="text-link" href={href(lang, 'features')}>{lang === 'fr' ? 'Explorer les cartes et lieux' : 'Explore maps and places'}<ArrowRight size={15} aria-hidden="true" /></a></div>
+  <ProductScreenshot image={appPopup} alt={lang === 'fr' ? 'Fiche détaillée et illustrée d’un lieu' : 'Detailed and illustrated place record'} label={lang === 'fr' ? 'Fiche d’un lieu' : 'Place details'} compact />
+</section>
+
+<section class="home-feature-band">
+  <div class="home-feature home-feature--reverse wrap">
+    <div class="home-feature__copy"><SectionEyebrow label={`02 · ${lang === 'fr' ? 'Planifier' : 'Plan'}`} /><h2>{t.tripsTitle}</h2><p>{t.tripsBody}</p><a class="text-link" href={href(lang, 'features')}>{lang === 'fr' ? 'Explorer les sorties et voyages' : 'Explore trips and outings'}<ArrowRight size={15} aria-hidden="true" /></a></div>
+    <ProductScreenshot image={appTrip} alt={lang === 'fr' ? 'Préparation détaillée d’une sortie' : 'Detailed trip planning'} label={lang === 'fr' ? 'Préparation de la sortie' : 'Trip planning'} />
+  </div>
+</section>
+
+<section class="home-principles wrap">
+  <article><span aria-hidden="true"><LockKeyhole size={21} /></span><div><SectionEyebrow label="03 · Collaboration" /><h2>{t.collaborationTitle}</h2><p>{t.collaborationBody}</p></div></article>
+  <article><span aria-hidden="true"><Server size={21} /></span><div><SectionEyebrow label={`04 · ${lang === 'fr' ? 'Hébergement' : 'Hosting'}`} /><h2>{t.hostingTitle}</h2><p>{t.hostingBody}</p><div class="chips"><span>{t.self}</span><span class="planned">{t.cloud}</span></div></div></article>
+</section>
+
+<section class="interface-section wide-wrap">
+  <div class="interface-section__heading"><div><SectionEyebrow label={lang === 'fr' ? 'Interface réelle' : 'Real interface'} /><h2>{t.screenshotsTitle}</h2></div><p>{lang === 'fr' ? 'Des écrans conçus pour rester lisibles, des grandes cartes jusqu’aux réglages personnels.' : 'Screens designed to remain readable, from large maps to personal settings.'}</p></div>
+  <div class="interface-gallery">
+    <ProductScreenshot image={appMedia} alt={lang === 'fr' ? 'Médiathèque CartaVault' : 'CartaVault media library'} label={lang === 'fr' ? 'Médiathèque' : 'Media library'} compact />
+    <ProductScreenshot image={appAccount} alt={lang === 'fr' ? 'Préférences du compte CartaVault' : 'CartaVault account preferences'} label={lang === 'fr' ? 'Préférences du compte' : 'Account preferences'} compact />
+  </div>
+</section>
+
+<section class="cta wrap"><div><SectionEyebrow label="Open source" /><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p></div><div class="actions"><a class="button" href={external.github}>GitHub<ArrowUpRight size={16} aria-hidden="true" /></a><a class="button secondary" href={external.docs}>{lang === 'fr' ? 'Documentation' : 'Documentation'}<ArrowRight size={16} aria-hidden="true" /></a></div></section>

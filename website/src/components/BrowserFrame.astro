@@ -1,0 +1,11 @@
+---
+interface Props { label: string; compact?: boolean; }
+const { label, compact = false } = Astro.props;
+---
+<div class:list={['browser-frame', { 'browser-frame--compact': compact }]}>
+  <div class="browser-frame__bar" aria-hidden="true">
+    <span></span><span></span><span></span>
+    <p>{label}</p>
+  </div>
+  <div class="browser-frame__content"><slot /></div>
+</div>

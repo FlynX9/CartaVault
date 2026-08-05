@@ -10,7 +10,7 @@ for (const file of pages) {
     if (!html.includes(marker)) throw new Error(`${file} is missing ${marker}`);
   }
 }
-for (const image of ['gestion-lieux.webp', 'gestion-sorties.webp', 'gestion-categories.webp', 'gestion-status.webp']) {
+for (const image of ['app-places.webp', 'cartavault-logo.png', '../favicon-v2.png', '../favicon.ico', '../apple-touch-icon.png']) {
   const details = await stat(new URL(`images/${image}`, dist));
   if (details.size > 750_000) throw new Error(`${image} exceeds the 750 KiB website budget`);
 }

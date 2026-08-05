@@ -1,19 +1,29 @@
 ---
+import { ArrowUpRight, ChevronDown, Menu, X } from '@lucide/astro';
 import { copy, external, href, type Language } from '../content/site';
 interface Props { lang: Language; other: Language; path: string; }
 const { lang, other, path } = Astro.props;
 const text = copy[lang];
 ---
 <header class="site-header">
-  <a class="brand" href={href(lang)} aria-label="CartaVault — accueil">
-    <img src="/favicon.svg" width="42" height="42" alt="" />
+  <a class="brand" href={href(lang)} aria-label={lang === 'fr' ? 'CartaVault — accueil' : 'CartaVault — home'}>
+    <img src="/images/cartavault-logo.png" width="38" height="38" alt="" />
     <span>CartaVault</span>
   </a>
-  <nav aria-label={text.navLabel}>
-    {Object.entries(text.nav).map(([slug, label]) => <a href={href(lang, slug)}>{label}</a>)}
+  <nav class="desktop-nav" aria-label={text.navLabel}>
+    {Object.entries(text.nav).map(([slug, label]) => <a href={href(lang, slug)} aria-current={path === slug ? 'page' : undefined}>{label}</a>)}
   </nav>
   <div class="header-actions">
-    <a class="language" href={href(other, path)} lang={other}>{text.language}</a>
-    <a class="button small" href={external.app}>App <span aria-hidden="true">↗</span></a>
+    <a class="language" href={href(other, path)} lang={other} aria-label={lang === 'fr' ? 'Afficher le site en anglais' : 'View the site in French'}>{text.language}<ChevronDown size={13} aria-hidden="true" /></a>
+    <a class="button small app-button" href={external.app}>{text.openApp}<ArrowUpRight size={15} aria-hidden="true" /></a>
+    <details class="mobile-menu">
+      <summary aria-label={text.menu}><Menu class="mobile-menu__open" size={21} aria-hidden="true" /><X class="mobile-menu__close" size={21} aria-hidden="true" /></summary>
+      <div class="mobile-menu__panel">
+        <nav aria-label={text.navLabel}>
+          {Object.entries(text.nav).map(([slug, label]) => <a href={href(lang, slug)} aria-current={path === slug ? 'page' : undefined}>{label}</a>)}
+        </nav>
+        <div><a class="language" href={href(other, path)} lang={other}>{text.language}</a><a class="button small" href={external.app}>{text.openApp}<ArrowUpRight size={15} aria-hidden="true" /></a></div>
+      </div>
+    </details>
   </div>
 </header>
