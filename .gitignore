@@ -54,3 +54,10 @@ htmlcov/
 /.agents/
 
 /docs/screenshots/convert_to_webp.py
+
+# Dedicated demonstration runtime (sources under /demo remain versioned)
+/demo/.env
+/demo/runtime/
+/demo/output/
+/demo/playwright-report/
+/demo/test-results/

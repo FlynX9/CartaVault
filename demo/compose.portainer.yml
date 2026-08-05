@@ -1,0 +1,101 @@
+name: cartavault-demo
+
+x-demo-environment: &demo-environment
+  DATABASE_URL: postgresql+psycopg://cartavault_demo:${DEMO_POSTGRES_PASSWORD:-cartavault-demo-only}@postgis-demo:5432/cartavault_demo
+  CARTAVAULT_DEMO_MODE: "true"
+  CARTAVAULT_DEMO_DATABASE_HOSTS: postgis-demo
+  CARTAVAULT_ENVIRONMENT: demo
+  CARTAVAULT_VERSION: demo
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_FRONTEND_DIST: /app/frontend
+  CARTAVAULT_PUBLIC_URL: ${DEMO_PUBLIC_URL:-http://192.168.1.100:8099}
+  FRONTEND_PUBLIC_URL: ${DEMO_PUBLIC_URL:-http://192.168.1.100:8099}
+  CORS_ALLOWED_ORIGINS: ${DEMO_PUBLIC_URL:-http://192.168.1.100:8099}
+  CARTAVAULT_COOKIE_SECURE: "false"
+  CARTAVAULT_SESSION_SECRET: demo-session-secret-never-use-in-production-2026
+  CARTAVAULT_SETUP_TOKEN: demo-setup-token-never-use-in-production
+  CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  CARTAVAULT_DATABASE_READY_TIMEOUT_SECONDS: "120"
+  CARTAVAULT_DATABASE_STABLE_CHECKS: "2"
+  CARTAVAULT_TASK_MODE: sync
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  PHOTO_STORAGE_PATH: /app/storage/photos
+  AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
+  IMPORT_STORAGE_PATH: /app/storage/imports
+  EMAIL_PROVIDER: none
+  EMAIL_FROM_ADDRESS: demo@cartavault.local
+  TZ: Europe/Paris
+
+services:
+  postgis-demo:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cartavault_demo
+      POSTGRES_USER: cartavault_demo
+      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:-cartavault-demo-only}
+      TZ: Europe/Paris
+    volumes:
+      - demo_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartavault_demo -d cartavault_demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [demo_private]
+
+  demo-reset:
+    image: cartavault:demo
+    restart: "no"
+    entrypoint: ["python", "/demo/scripts/manage.py"]
+    command: ["reset"]
+    environment:
+      <<: *demo-environment
+    volumes:
+      - demo_photos:/app/storage/photos
+      - demo_avatars:/app/storage/avatars
+      - demo_exports:/app/storage/exports
+      - demo_imports:/app/storage/imports
+    depends_on:
+      postgis-demo:
+        condition: service_healthy
+    networks: [demo_private]
+
+  cartavault-demo:
+    image: cartavault:demo
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      <<: *demo-environment
+    ports:
+      - "${DEMO_HTTP_PORT:-8099}:8000"
+    volumes:
+      - demo_photos:/app/storage/photos
+      - demo_avatars:/app/storage/avatars
+      - demo_exports:/app/storage/exports
+      - demo_imports:/app/storage/imports
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    depends_on:
+      demo-reset:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks: [demo_private]
+
+volumes:
+  demo_postgres:
+  demo_photos:
+  demo_avatars:
+  demo_exports:
+  demo_imports:
+
+networks:
+  demo_private:
+    driver: bridge

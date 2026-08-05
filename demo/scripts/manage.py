@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""Create and validate the isolated, deterministic CartaVault demo dataset."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import date, datetime, time, timedelta
+from pathlib import Path
+from uuid import UUID, uuid5
+
+from sqlalchemy import func, inspect, select, text
+from sqlalchemy.engine import make_url
+
+
+DEMO_ROOT = Path(__file__).resolve().parents[1]
+FIXED_NOW = datetime(2026, 6, 15, 9, 0, 0)
+NAMESPACE = UUID("78426079-c109-4976-8b84-aa6b2f060b63")
+EXPECTED_DATABASE = "cartavault_demo"
+DEFAULT_ALLOWED_HOSTS = {"postgis-demo", "localhost", "127.0.0.1"}
+PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$Q2FydGFWYXVsdERlbW8hIQ$WUJS/NnLEW8KY8vhr5bxoff8vZFUmxlOCTyq8zmnqaw"
+
+
+def stable_id(kind: str, slug: str) -> UUID:
+    return uuid5(NAMESPACE, f"{kind}:{slug}")
+
+
+def ensure_demo_target(database_url: str | None = None) -> None:
+    """Refuse every destructive command unless all demo guards match."""
+
+    if os.getenv("CARTAVAULT_DEMO_MODE", "").strip().lower() != "true":
+        raise RuntimeError("Refusing reset: CARTAVAULT_DEMO_MODE must be exactly 'true'.")
+    url = make_url(database_url or os.getenv("DATABASE_URL", ""))
+    allowed_hosts = {
+        value.strip().lower()
+        for value in os.getenv("CARTAVAULT_DEMO_DATABASE_HOSTS", ",".join(sorted(DEFAULT_ALLOWED_HOSTS))).split(",")
+        if value.strip()
+    }
+    if url.database != EXPECTED_DATABASE:
+        raise RuntimeError(f"Refusing reset: database must be exactly '{EXPECTED_DATABASE}'.")
+    if (url.host or "").lower() not in allowed_hosts:
+        raise RuntimeError(f"Refusing reset: database host '{url.host}' is not in the demo allowlist.")
+
+
+def run_migrations() -> None:
+    from alembic import command
+    from alembic.config import Config
+
+    config = Config("/app/alembic.ini" if Path("/app/alembic.ini").exists() else str(DEMO_ROOT.parent / "backend" / "alembic.ini"))
+    command.upgrade(config, "heads")
+
+
+REGIONS = {
+    "france": [
+        ("Île-de-France", 48.8566, 2.3522),
+        ("Grand Est", 48.5734, 7.7521),
+        ("Provence-Alpes-Côte d’Azur", 43.2965, 5.3698),
+    ],
+    "italy": [
+        ("Lombardie", 45.4642, 9.1900),
+        ("Toscane", 43.7696, 11.2558),
+        ("Latium", 41.9028, 12.4964),
+    ],
+}
+
+PLACE_NAMES = {
+    "france": [
+        "Passage des Verrières", "Bibliothèque des Voyageurs", "Jardin des Horloges", "Atelier du Canal",
+        "Belvédère des Lumières", "Marché des Créateurs", "Maison des Cartographes", "Galerie du Méridien",
+        "Pavillon des Explorateurs", "Café des Archives", "Fort des Brumes", "Parc des Deux Rives",
+        "Manufacture des Étoiles", "Musée du Rail Imaginaire", "Chapelle des Vignes", "Halle des Inventeurs",
+        "Observatoire de la Plaine", "Sentier des Remparts", "Maison de l’Illustration", "Quai des Bateliers",
+        "Villa des Calanques", "Jardin du Mistral", "Atelier des Ocres", "Belvédère du Levant",
+        "Maison des Navigateurs", "Marché des Alpilles", "Galerie du Vieux Port", "Sentier des Pins",
+        "Pavillon de la Méditerranée", "Café des Voyageuses",
+    ],
+    "italy": [
+        "Officina del Naviglio", "Giardino delle Mappe", "Biblioteca del Viaggio", "Terrazza delle Nuvole",
+        "Mercato degli Artigiani", "Casa dei Fotografi", "Museo della Bussola", "Passaggio delle Torri",
+        "Padiglione dei Laghi", "Caffè dell’Archivio", "Loggia dei Cartografi", "Giardino dell’Arno",
+        "Bottega delle Stampe", "Belvedere delle Colline", "Casa delle Esploratrici", "Mercato delle Ceramiche",
+        "Museo del Taccuino", "Sentiero dei Cipressi", "Officina della Luce", "Caffè delle Piazze",
+        "Terrazza del Tevere", "Giardino dei Mosaici", "Biblioteca dei Cammini", "Passaggio degli Archi",
+        "Casa delle Meridiane", "Mercato delle Fontane", "Museo del Viaggio Lento", "Belvedere Romano",
+        "Padiglione delle Strade", "Caffè del Grand Tour",
+    ],
+}
+
+CATEGORY_NAMES = ["Architecture", "Culture", "Nature", "Gastronomie", "Point de vue"]
+STATUS_DEFS = [
+    ("À découvrir", "a-decouvrir", "non_visited", "#0FA68A", True),
+    ("Planifié", "planifie", "non_visited", "#2563EB", False),
+    ("Visité", "visite", "visited", "#7C3AED", False),
+]
+DAY_COLORS = ["#0FA68A", "#2563EB", "#7C3AED", "#D97706", "#DC2626"]
+
+
+def _point(longitude: float, latitude: float):
+    from geoalchemy2.elements import WKTElement
+    return WKTElement(f"POINT({longitude:.6f} {latitude:.6f})", srid=4326)
+
+
+def _route(stops: list[tuple[float, float]]) -> dict:
+    return {"type": "LineString", "coordinates": [[lon, lat] for lat, lon in stops]}
+
+
+def clear_application_data(session) -> None:
+    from app.database import Base
+    protected = {"alembic_version", "countries", "quota_profiles"}
+    tables = [name for name in inspect(session.bind).get_table_names() if name not in protected]
+    if tables:
+        quoted = ", ".join(f'"{name}"' for name in sorted(tables))
+        session.execute(text(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE"))
+        session.commit()
+
+
+def create_project_media(session, places_by_map: dict[str, list], uploader_id: UUID) -> None:
+    """Create deterministic project-owned illustrations without external assets."""
+
+    from PIL import Image, ImageDraw
+    from app.photos.models import Photo
+    from app.photos.storage import get_photo_storage_root
+
+    storage_root = get_photo_storage_root()
+    storage_root.mkdir(parents=True, exist_ok=True)
+    palettes = [
+        ("#0B4050", "#19B99A", "#E6FAF5"), ("#172A46", "#4B7BEC", "#EDF3FF"),
+        ("#4A255F", "#9B51E0", "#F5ECFF"), ("#7A3E00", "#F5A623", "#FFF4E2"),
+        ("#6A2430", "#E44C65", "#FFF0F2"), ("#174A3B", "#45B97C", "#EAF8F0"),
+    ]
+    selected = [places_by_map[map_slug][index] for map_slug in ("france", "italy") for index in (0, 10, 20)]
+    for index, place in enumerate(selected):
+        photo_id = stable_id("photo", str(place.id))
+        place_directory = storage_root / str(place.id)
+        place_directory.mkdir(parents=True, exist_ok=True)
+        filename = f"{photo_id}.png"
+        path = place_directory / filename
+        background, accent, foreground = palettes[index]
+        image = Image.new("RGB", (1280, 720), background)
+        draw = ImageDraw.Draw(image)
+        for stripe in range(7):
+            x = 90 + stripe * 170
+            height = 180 + ((stripe * 83 + index * 47) % 360)
+            draw.rounded_rectangle((x, 610 - height, x + 105, 610), radius=22, fill=accent if stripe % 2 == 0 else foreground)
+        draw.ellipse((930, 70, 1190, 330), fill=accent)
+        draw.line((70, 625, 1210, 625), fill=foreground, width=10)
+        image.save(path, format="PNG", optimize=True)
+        session.add(Photo(
+            id=photo_id, place_id=place.id, filename=filename, original_name=f"illustration-{index + 1}.png",
+            path=f"{place.id}/{filename}", description="Illustration abstraite créée pour la démonstration CartaVault.",
+            sort_order=0, is_primary=True, mime_type="image/png", file_size_bytes=path.stat().st_size,
+            width=1280, height=720, uploaded_by_user_id=uploader_id, created_at=FIXED_NOW, updated_at=FIXED_NOW,
+        ))
+
+
+def seed(session) -> dict[str, object]:
+    import app.models  # noqa: F401 - register all mappings
+    from app.auth.models import User
+    from app.categories.associations import place_categories_table
+    from app.categories.models import Category
+    from app.countries.models import Country
+    from app.maps.models import MapMembership, PoiMap
+    from app.places.models import Place, PlaceLink
+    from app.statuses.models import PlaceStatus
+    from app.tags.models import Tag
+    from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
+
+    users = {}
+    user_specs = [
+        ("owner", "demo.owner@cartavault.local", "Camille — Propriétaire", True, "fr", "light"),
+        ("editor", "demo.editor@cartavault.local", "Andrea — Éditeur", False, "en", "dark"),
+        ("viewer", "demo.viewer@cartavault.local", "Morgan — Lecture seule", False, "fr", "light"),
+    ]
+    for slug, email, name, admin, language, theme in user_specs:
+        user = User(
+            id=stable_id("user", slug), email=email, display_name=name, password_hash=PASSWORD_HASH,
+            is_admin=admin, is_active=True, created_at=FIXED_NOW - timedelta(days=120), updated_at=FIXED_NOW,
+            last_login_at=FIXED_NOW - timedelta(hours=2),
+            preferences={"language": language, "theme": theme, "default_screen": "dashboard", "display_density": "comfortable"},
+        )
+        session.add(user)
+        users[slug] = user
+    session.flush()
+
+    maps: dict[str, PoiMap] = {}
+    places_by_map: dict[str, list[Place]] = {}
+    for map_slug, iso, display_name, center_lat, center_lon in [
+        ("france", "FR", "Carnet de France", 46.6, 2.4),
+        ("italy", "IT", "Grand tour d’Italie", 42.8, 12.5),
+    ]:
+        country = session.scalar(select(Country).where(Country.iso_alpha2 == iso))
+        if country is None:
+            raise RuntimeError(f"Country catalog is missing {iso}; migrations are incomplete.")
+        poi_map = PoiMap(
+            id=stable_id("map", map_slug), name=display_name, country_id=country.id, owner_id=users["owner"].id,
+            is_private=True, center_latitude=center_lat, center_longitude=center_lon, default_zoom=6,
+            created_at=FIXED_NOW - timedelta(days=90), updated_at=FIXED_NOW,
+        )
+        session.add(poi_map)
+        session.flush()
+        maps[map_slug] = poi_map
+        for role in ("owner", "editor", "viewer"):
+            session.add(MapMembership(
+                id=stable_id("membership", f"{map_slug}-{role}"), map_id=poi_map.id,
+                user_id=users[role].id, role=role, created_at=FIXED_NOW - timedelta(days=89), updated_at=FIXED_NOW,
+            ))
+        statuses = {}
+        for order, (name, slug, state, color, default) in enumerate(STATUS_DEFS):
+            status = PlaceStatus(
+                id=stable_id("status", f"{map_slug}-{slug}"), map_id=poi_map.id, name=name, slug=slug,
+                functional_state=state, color=color, sort_order=order, is_default=default, is_active=True,
+                created_at=FIXED_NOW - timedelta(days=88), updated_at=FIXED_NOW,
+            )
+            session.add(status)
+            statuses[slug] = status
+        categories = {}
+        for index, name in enumerate(CATEGORY_NAMES):
+            category = Category(
+                id=stable_id("category", f"{map_slug}-{name}"), map_id=poi_map.id, name=name,
+                description="Catégorie de démonstration CartaVault.",
+                icon=["building", "museum", "trees", "tools-kitchen-2", "binoculars"][index],
+                marks_as_visited=False,
+            )
+            session.add(category)
+            categories[name] = category
+        tags = {}
+        for name, color in [("Incontournable", "#0FA68A"), ("Photo", "#2563EB"), ("Famille", "#7C3AED")]:
+            tag = Tag(id=stable_id("tag", f"{map_slug}-{name}"), map_id=poi_map.id, name=name, color=color)
+            session.add(tag)
+            tags[name] = tag
+        session.flush()
+
+        map_places = []
+        for index, name in enumerate(PLACE_NAMES[map_slug]):
+            region_index = index // 10
+            region, base_lat, base_lon = REGIONS[map_slug][region_index]
+            offset_row, offset_col = divmod(index % 10, 5)
+            latitude = base_lat + (offset_row - 0.5) * 0.14 + (offset_col - 2) * 0.025
+            longitude = base_lon + (offset_col - 2) * 0.12 + (offset_row - 0.5) * 0.03
+            category_name = CATEGORY_NAMES[index % len(CATEGORY_NAMES)]
+            status_slug = STATUS_DEFS[index % len(STATUS_DEFS)][1]
+            place = Place(
+                id=stable_id("place", f"{map_slug}-{index + 1}"), map_id=poi_map.id, status_id=statuses[status_slug].id,
+                name=name, description=f"Lieu fictif conçu pour la démonstration CartaVault — {region}.",
+                location=_point(longitude, latitude), region=region, country=country.name, country_code=iso,
+                region_type="administrative", region_source="demo_fixture", region_resolved_at=FIXED_NOW,
+                is_favorite=index % 7 == 0, interest_rating=((index % 10) + 1) / 2 if index % 3 else None,
+                default_visit_duration_minutes=30 + (index % 4) * 15,
+                custom_fields={"demo": "true", "source": "project-created", "fixture_id": f"{map_slug}-{index + 1:02d}"},
+                created_at=FIXED_NOW - timedelta(days=70 - index), updated_at=FIXED_NOW - timedelta(days=index % 8),
+            )
+            session.add(place)
+            session.flush()
+            session.execute(place_categories_table.insert().values(place_id=place.id, category_id=categories[category_name].id, is_primary=True))
+            place.tags.append(tags[["Incontournable", "Photo", "Famille"][index % 3]])
+            place.links.append(PlaceLink(
+                id=stable_id("link", f"{map_slug}-{index + 1}"), label="Fiche de démonstration",
+                url=f"https://example.org/cartavault-demo/{map_slug}/{index + 1:02d}", sort_order=0,
+            ))
+            map_places.append(place)
+        places_by_map[map_slug] = map_places
+
+    session.flush()
+    create_project_media(session, places_by_map, users["owner"].id)
+    trip_specs = [
+        ("italy-main", "italy", "Grand tour responsable", 5, date(2026, 9, 7), "planned"),
+        ("france-short", "france", "Escapade culturelle", 2, date(2026, 10, 3), "planned"),
+        ("france-draft", "france", "Idées pour le printemps", 1, None, "draft"),
+    ]
+    for trip_slug, map_slug, title, day_count, start_date, status in trip_specs:
+        trip = Trip(
+            id=stable_id("trip", trip_slug), map_id=maps[map_slug].id, created_by_user_id=users["owner"].id,
+            name=title, description="Sortie déterministe de démonstration CartaVault.", start_date=start_date,
+            end_date=start_date + timedelta(days=day_count - 1) if start_date else None, status=status,
+            created_at=FIXED_NOW - timedelta(days=30), updated_at=FIXED_NOW,
+        )
+        session.add(trip)
+        session.flush()
+        trip_places = places_by_map[map_slug]
+        days = []
+        for day_index in range(day_count):
+            selected = trip_places[day_index * 5:day_index * 5 + 5]
+            coordinates = []
+            for item in selected:
+                # The demo points were produced from these same deterministic coordinates.
+                point_index = trip_places.index(item)
+                region_index = point_index // 10
+                _, base_lat, base_lon = REGIONS[map_slug][region_index]
+                row, col = divmod(point_index % 10, 5)
+                coordinates.append((base_lat + (row - .5) * .14 + (col - 2) * .025, base_lon + (col - 2) * .12 + (row - .5) * .03))
+            distance = 18000.0 + day_index * 7250.0
+            duration = 2700.0 + day_index * 900.0
+            day = TripDay(
+                id=stable_id("day", f"{trip_slug}-{day_index + 1}"), trip_id=trip.id,
+                day_number=day_index + 1, sort_order=day_index,
+                date=start_date + timedelta(days=day_index) if start_date else None,
+                title=f"Journée {day_index + 1}", color=DAY_COLORS[day_index], planned_start_time=time(9, 0),
+                planned_end_time=time(18, 0), route_distance_meters=distance, route_duration_seconds=duration,
+                visit_duration_minutes=sum(p.default_visit_duration_minutes or 30 for p in selected),
+                total_duration_minutes=int(duration / 60) + sum(p.default_visit_duration_minutes or 30 for p in selected),
+                route_geometry=_route(coordinates), route_segments=[], route_status="ready", route_provider="osrm",
+                created_at=FIXED_NOW - timedelta(days=29), updated_at=FIXED_NOW,
+            )
+            session.add(day)
+            session.flush()
+            days.append(day)
+            for stop_index, (place, (lat, lon)) in enumerate(zip(selected, coordinates, strict=True)):
+                session.add(TripStop(
+                    id=stable_id("stop", f"{trip_slug}-{day_index + 1}-{stop_index + 1}"), trip_day_id=day.id,
+                    place_id=place.id, stop_type="place", name=place.name, latitude=lat, longitude=lon,
+                    address=f"{region if (region := place.region) else ''}", sort_order=stop_index,
+                    visit_duration_minutes=place.default_visit_duration_minutes, visit_status="planned",
+                    created_at=FIXED_NOW - timedelta(days=29), updated_at=FIXED_NOW,
+                ))
+        first = trip_places[0]
+        last = trip_places[min(day_count * 5 - 1, len(trip_places) - 1)]
+        first_region = REGIONS[map_slug][0]
+        last_index = min(day_count * 5 - 1, len(trip_places) - 1)
+        last_region = REGIONS[map_slug][last_index // 10]
+        session.add(TripDeparture(
+            id=stable_id("departure", trip_slug), trip_id=trip.id, place_id=first.id, name=first.name,
+            latitude=first_region[1] - .07 - .05, longitude=first_region[2] - .24 - .015,
+            address=first.region, departure_time=time(8, 30), created_at=FIXED_NOW, updated_at=FIXED_NOW,
+        ))
+        session.add(TripArrival(
+            id=stable_id("arrival", trip_slug), trip_id=trip.id, place_id=last.id, name=last.name,
+            latitude=last_region[1] + ((last_index % 10) // 5 - .5) * .14 + ((last_index % 10) % 5 - 2) * .025,
+            longitude=last_region[2] + ((last_index % 10) % 5 - 2) * .12 + ((last_index % 10) // 5 - .5) * .03,
+            address=last.region, created_at=FIXED_NOW, updated_at=FIXED_NOW,
+        ))
+        for night_index in range(max(0, day_count - 1)):
+            hotel = trip_places[(night_index + 1) * 5 - 1]
+            point_index = (night_index + 1) * 5 - 1
+            reg = REGIONS[map_slug][point_index // 10]
+            row, col = divmod(point_index % 10, 5)
+            session.add(TripNight(
+                id=stable_id("night", f"{trip_slug}-{night_index + 1}"), trip_id=trip.id,
+                previous_day_id=days[night_index].id, next_day_id=days[night_index + 1].id,
+                place_id=hotel.id, source_type="place", name=f"Maison d’hôtes — Nuit {night_index + 1}",
+                latitude=reg[1] + (row - .5) * .14 + (col - 2) * .025,
+                longitude=reg[2] + (col - 2) * .12 + (row - .5) * .03,
+                address=hotel.region, description="Hébergement fictif pour la démonstration.",
+                check_in_from_time=time(16), check_in_until_time=time(22), check_out_from_time=time(7), check_out_until_time=time(10),
+                created_at=FIXED_NOW, updated_at=FIXED_NOW,
+            ))
+
+    session.commit()
+    return {"users": users, "maps": maps, "places": places_by_map}
+
+
+def validate(session) -> dict[str, object]:
+    import app.models  # noqa: F401
+    from app.auth.models import User
+    from app.maps.models import MapMembership, PoiMap
+    from app.places.models import Place
+    from app.photos.models import Photo
+    from app.trips.models import Trip, TripDay, TripNight, TripStop
+
+    counts = {
+        "users": session.scalar(select(func.count()).select_from(User)),
+        "maps": session.scalar(select(func.count()).select_from(PoiMap)),
+        "memberships": session.scalar(select(func.count()).select_from(MapMembership)),
+        "places": session.scalar(select(func.count()).select_from(Place)),
+        "photos": session.scalar(select(func.count()).select_from(Photo)),
+        "trips": session.scalar(select(func.count()).select_from(Trip)),
+        "trip_days": session.scalar(select(func.count()).select_from(TripDay)),
+        "trip_stops": session.scalar(select(func.count()).select_from(TripStop)),
+        "trip_nights": session.scalar(select(func.count()).select_from(TripNight)),
+    }
+    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 6, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5}
+    errors = [f"{key}: expected {expected[key]}, got {counts[key]}" for key in expected if counts[key] != expected[key]]
+    region_counts = dict(session.execute(select(Place.region, func.count()).group_by(Place.region)).all())
+    if len(region_counts) != 6 or any(value != 10 for value in region_counts.values()):
+        errors.append(f"regions: expected six groups of ten, got {region_counts}")
+    fixture_ids = session.scalars(select(Place.custom_fields["fixture_id"].as_string())).all()
+    if len(set(fixture_ids)) != 60:
+        errors.append("fixture identifiers are not unique")
+    result = {"valid": not errors, "counts": counts, "regions": region_counts, "errors": errors, "reference_time": FIXED_NOW.isoformat()}
+    if errors:
+        raise RuntimeError(json.dumps(result, ensure_ascii=False, indent=2))
+    return result
+
+
+def reset() -> dict[str, object]:
+    ensure_demo_target()
+    run_migrations()
+    from app.database import SessionLocal
+    with SessionLocal() as session:
+        clear_application_data(session)
+        seed(session)
+        return validate(session)
+
+
+def validate_only() -> dict[str, object]:
+    ensure_demo_target()
+    from app.database import SessionLocal
+    with SessionLocal() as session:
+        return validate(session)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("command", choices=("reset", "validate"))
+    args = parser.parse_args()
+    try:
+        result = reset() if args.command == "reset" else validate_only()
+    except Exception as error:
+        print(f"demo {args.command} failed: {error}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

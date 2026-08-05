@@ -1,0 +1,13 @@
+{
+  "name": "cartavault-demo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "screenshots": "playwright test",
+    "screenshots:list": "playwright test --list"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

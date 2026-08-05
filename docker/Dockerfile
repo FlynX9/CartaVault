@@ -64,6 +64,7 @@ COPY --chown=cartavault:cartavault backend/alembic.ini ./alembic.ini
 COPY --chown=cartavault:cartavault backend/app ./app
 COPY --chown=cartavault:cartavault backend/migrations ./migrations
 COPY --chown=cartavault:cartavault shared /shared
+COPY --chown=cartavault:cartavault demo /demo
 COPY --from=frontend-builder --chown=cartavault:cartavault /build/frontend/dist ./frontend
 
 RUN mkdir -p /app/storage/photos /app/storage/avatars /app/storage/exports /app/storage/imports \
