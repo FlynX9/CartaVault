@@ -12,6 +12,8 @@
 backend/.venv
 backend/storage
 docker-exports
+demo/output
+demo/runtime
 frontend/dist
 frontend/node_modules
 node_modules

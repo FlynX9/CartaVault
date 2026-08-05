@@ -2,7 +2,13 @@
   {"id":"login-fr-light","route":"/login","theme":"light","language":"fr"},
   {"id":"dashboard-fr-light","user":"owner","route":"/dashboard","theme":"light","language":"fr"},
   {"id":"places-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr"},
+  {"id":"place-popup-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"place-popup"},
   {"id":"places-france-fr-dark","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"dark","language":"fr"},
   {"id":"places-italy-en-light","user":"editor","route":"/?map=a66e3a70-91a9-5fe1-af13-e34976ecd055","theme":"light","language":"en"},
-  {"id":"viewer-readonly-fr-light","user":"viewer","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr"}
+  {"id":"viewer-readonly-fr-light","user":"viewer","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr"},
+  {"id":"trip-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trip"},
+  {"id":"timeline-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"timeline"},
+  {"id":"media-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"media"},
+  {"id":"account-profile-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account"},
+  {"id":"admin-users-fr-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"}
 ]

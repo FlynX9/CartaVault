@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -21,6 +22,9 @@ NAMESPACE = UUID("78426079-c109-4976-8b84-aa6b2f060b63")
 EXPECTED_DATABASE = "cartavault_demo"
 DEFAULT_ALLOWED_HOSTS = {"postgis-demo", "localhost", "127.0.0.1"}
 PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$Q2FydGFWYXVsdERlbW8hIQ$WUJS/NnLEW8KY8vhr5bxoff8vZFUmxlOCTyq8zmnqaw"
+ROUTE_FIXTURES = json.loads((DEMO_ROOT / "data" / "route_geometries.json").read_text(encoding="utf-8"))
+PLACE_ASSET_ROOT = DEMO_ROOT / "assets" / "places"
+EXPECTED_FRANCE_ASSETS = tuple(f"france-{index:02d}.webp" for index in range(1, 31))
 
 
 def stable_id(kind: str, slug: str) -> UUID:
@@ -116,42 +120,48 @@ def clear_application_data(session) -> None:
         session.commit()
 
 
-def create_project_media(session, places_by_map: dict[str, list], uploader_id: UUID) -> None:
-    """Create deterministic project-owned illustrations without external assets."""
+def validate_project_media_assets() -> list[Path]:
+    """Return the immutable France artwork set or fail before touching demo data."""
 
-    from PIL import Image, ImageDraw
+    assets = [PLACE_ASSET_ROOT / filename for filename in EXPECTED_FRANCE_ASSETS]
+    missing = [path.name for path in assets if not path.is_file()]
+    if missing:
+        raise RuntimeError(f"Demo artwork is incomplete; missing: {', '.join(missing)}")
+    return assets
+
+
+def project_media_assets_by_fixture_id() -> dict[str, Path]:
+    """Index every artwork by the stable fixture identifier stored on its POI."""
+
+    return {asset.stem: asset for asset in validate_project_media_assets()}
+
+
+def create_project_media(session, places_by_map: dict[str, list], uploader_id: UUID) -> None:
+    """Copy versioned France artwork into runtime storage and register every image."""
+
     from app.photos.models import Photo
     from app.photos.storage import get_photo_storage_root
 
     storage_root = get_photo_storage_root()
     storage_root.mkdir(parents=True, exist_ok=True)
-    palettes = [
-        ("#0B4050", "#19B99A", "#E6FAF5"), ("#172A46", "#4B7BEC", "#EDF3FF"),
-        ("#4A255F", "#9B51E0", "#F5ECFF"), ("#7A3E00", "#F5A623", "#FFF4E2"),
-        ("#6A2430", "#E44C65", "#FFF0F2"), ("#174A3B", "#45B97C", "#EAF8F0"),
-    ]
-    selected = [places_by_map[map_slug][index] for map_slug in ("france", "italy") for index in (0, 10, 20)]
-    for index, place in enumerate(selected):
+    assets_by_fixture_id = project_media_assets_by_fixture_id()
+    for index, place in enumerate(places_by_map["france"]):
+        fixture_id = str((place.custom_fields or {}).get("fixture_id", ""))
+        asset_path = assets_by_fixture_id.get(fixture_id)
+        if asset_path is None:
+            raise RuntimeError(f"No demo artwork is associated with POI fixture '{fixture_id or place.id}'.")
         photo_id = stable_id("photo", str(place.id))
         place_directory = storage_root / str(place.id)
         place_directory.mkdir(parents=True, exist_ok=True)
-        filename = f"{photo_id}.png"
+        filename = f"{photo_id}.webp"
         path = place_directory / filename
-        background, accent, foreground = palettes[index]
-        image = Image.new("RGB", (1280, 720), background)
-        draw = ImageDraw.Draw(image)
-        for stripe in range(7):
-            x = 90 + stripe * 170
-            height = 180 + ((stripe * 83 + index * 47) % 360)
-            draw.rounded_rectangle((x, 610 - height, x + 105, 610), radius=22, fill=accent if stripe % 2 == 0 else foreground)
-        draw.ellipse((930, 70, 1190, 330), fill=accent)
-        draw.line((70, 625, 1210, 625), fill=foreground, width=10)
-        image.save(path, format="PNG", optimize=True)
+        shutil.copyfile(asset_path, path)
         session.add(Photo(
-            id=photo_id, place_id=place.id, filename=filename, original_name=f"illustration-{index + 1}.png",
-            path=f"{place.id}/{filename}", description="Illustration abstraite créée pour la démonstration CartaVault.",
-            sort_order=0, is_primary=True, mime_type="image/png", file_size_bytes=path.stat().st_size,
-            width=1280, height=720, uploaded_by_user_id=uploader_id, created_at=FIXED_NOW, updated_at=FIXED_NOW,
+            id=photo_id, place_id=place.id, filename=filename, original_name=asset_path.name,
+            path=f"{place.id}/{filename}", description=f"Illustration originale du lieu fictif {place.name}.",
+            sort_order=0, is_primary=True, mime_type="image/webp", file_size_bytes=path.stat().st_size,
+            width=480, height=320, uploaded_by_user_id=uploader_id,
+            created_at=FIXED_NOW + timedelta(seconds=index), updated_at=FIXED_NOW + timedelta(seconds=index),
         ))
 
 
@@ -290,8 +300,26 @@ def seed(session) -> dict[str, object]:
                 _, base_lat, base_lon = REGIONS[map_slug][region_index]
                 row, col = divmod(point_index % 10, 5)
                 coordinates.append((base_lat + (row - .5) * .14 + (col - 2) * .025, base_lon + (col - 2) * .12 + (row - .5) * .03))
-            distance = 18000.0 + day_index * 7250.0
-            duration = 2700.0 + day_index * 900.0
+            # A day after the first one starts at the preceding night. Keep that
+            # transition in the fixture geometry so the preview never renders
+            # disconnected daily routes.
+            route_coordinates = coordinates
+            if day_index > 0:
+                previous_night_index = day_index * 5 - 1
+                _, night_base_lat, night_base_lon = REGIONS[map_slug][previous_night_index // 10]
+                night_row, night_col = divmod(previous_night_index % 10, 5)
+                previous_night_coordinates = (
+                    night_base_lat + (night_row - .5) * .14 + (night_col - 2) * .025,
+                    night_base_lon + (night_col - 2) * .12 + (night_row - .5) * .03,
+                )
+                route_coordinates = [previous_night_coordinates, *coordinates]
+            route_fixture = ROUTE_FIXTURES.get(f"{trip_slug}-{day_index + 1}")
+            distance = route_fixture["distance_meters"] if route_fixture else 18000.0 + day_index * 7250.0
+            duration = route_fixture["duration_seconds"] if route_fixture else 2700.0 + day_index * 900.0
+            route_geometry = (
+                {"type": "LineString", "coordinates": route_fixture["coordinates"]}
+                if route_fixture else _route(route_coordinates)
+            )
             day = TripDay(
                 id=stable_id("day", f"{trip_slug}-{day_index + 1}"), trip_id=trip.id,
                 day_number=day_index + 1, sort_order=day_index,
@@ -300,7 +328,7 @@ def seed(session) -> dict[str, object]:
                 planned_end_time=time(18, 0), route_distance_meters=distance, route_duration_seconds=duration,
                 visit_duration_minutes=sum(p.default_visit_duration_minutes or 30 for p in selected),
                 total_duration_minutes=int(duration / 60) + sum(p.default_visit_duration_minutes or 30 for p in selected),
-                route_geometry=_route(coordinates), route_segments=[], route_status="ready", route_provider="osrm",
+                route_geometry=route_geometry, route_segments=[], route_status="ready", route_provider="osrm",
                 created_at=FIXED_NOW - timedelta(days=29), updated_at=FIXED_NOW,
             )
             session.add(day)
@@ -369,7 +397,7 @@ def validate(session) -> dict[str, object]:
         "trip_stops": session.scalar(select(func.count()).select_from(TripStop)),
         "trip_nights": session.scalar(select(func.count()).select_from(TripNight)),
     }
-    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 6, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5}
+    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 30, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5}
     errors = [f"{key}: expected {expected[key]}, got {counts[key]}" for key in expected if counts[key] != expected[key]]
     region_counts = dict(session.execute(select(Place.region, func.count()).group_by(Place.region)).all())
     if len(region_counts) != 6 or any(value != 10 for value in region_counts.values()):
@@ -385,6 +413,9 @@ def validate(session) -> dict[str, object]:
 
 def reset() -> dict[str, object]:
     ensure_demo_target()
+    # Preflight immutable source assets before the destructive database reset.
+    # Only runtime copies under PHOTO_STORAGE_PATH are ever written here.
+    validate_project_media_assets()
     run_migrations()
     from app.database import SessionLocal
     with SessionLocal() as session:

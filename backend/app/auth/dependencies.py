@@ -45,7 +45,9 @@ def require_csrf(
     request: Request,
     database_session: Session = Depends(get_db),
 ) -> None:
-    if request.method in {"GET", "HEAD", "OPTIONS"} or request.url.path == "/auth/login":
+    normalized_path = request.url.path.rstrip("/")
+    is_login_request = request.method == "POST" and normalized_path.endswith("/auth/login")
+    if request.method in {"GET", "HEAD", "OPTIONS"} or is_login_request:
         return
     session_token = request.cookies.get(security_settings.session_cookie_name)
     if session_token is None:

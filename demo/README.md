@@ -33,7 +33,9 @@ Le reset refuse de s’exécuter sauf si les trois conditions suivantes sont ré
 - nom exact de la base : `cartavault_demo` ;
 - hôte présent dans `CARTAVAULT_DEMO_DATABASE_HOSTS`.
 
-Le jeu de données de référence contient trois utilisateurs, deux cartes (France et Italie), 60 POI, six régions et trois sorties couvrant les états planifié et brouillon.
+Le jeu de données de référence contient trois utilisateurs, deux cartes (France et Italie), 60 POI, six régions et trois sorties couvrant les états planifié et brouillon. Les 30 POI français possèdent chacun une illustration originale légère dédiée aux captures.
+
+Les illustrations sources résident dans `assets/places/` et sont immuables pour le reset. La commande vérifie leur présence avant toute remise à zéro de la base, puis copie ces fichiers dans le volume photo d’exécution. Un `reset`, même répété, ne supprime donc jamais les images sources.
 
 ## Captures déterministes
 
@@ -44,6 +46,8 @@ docker compose --profile screenshots run --rm screenshots
 Les fichiers sont écrits dans `demo/output/`, ignoré par Git. Playwright impose une taille de fenêtre, une locale, un fuseau horaire et un mouvement réduit fixes. Les tuiles cartographiques distantes sont neutralisées afin que les captures ne dépendent ni du réseau ni d’un fournisseur tiers.
 
 Pour modifier la couverture, éditer `screenshots.json`. Le manifeste sert de source unique aux scénarios locaux et CI.
+
+La couverture de référence comprend la connexion, le tableau de bord, les lieux en thèmes clair et sombre, la lecture seule, la sortie française, sa chronologie, la médiathèque, le profil utilisateur et l’administration des utilisateurs.
 
 ## Arrêt et suppression
 
