@@ -1,0 +1,187 @@
+name: Publish CartaVault container
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
+concurrency:
+  group: container-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: flynx9/cartavault
+
+jobs:
+  publish:
+    name: Build, verify and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out the released revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Validate the release and its CI
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ ]]; then
+            echo "Unsupported release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          version="${RELEASE_TAG#v}"
+          commit="$(git rev-parse HEAD)"
+          created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor "$commit" origin/master; then
+            echo "The released commit is not part of origin/master." >&2
+            exit 1
+          fi
+
+          ci_conclusion="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${commit}&event=push&status=success&per_page=1" \
+              --jq '.workflow_runs[0].conclusion // ""'
+          )"
+          if [[ "$ci_conclusion" != "success" ]]; then
+            echo "No successful master CI run was found for commit ${commit}." >&2
+            exit 1
+          fi
+
+          {
+            echo "version=$version"
+            echo "commit=$commit"
+            echo "created=$created"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
+            type=raw,value=beta,enable=${{ github.event.release.prerelease }}
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
+            type=sha,format=long,prefix=sha-
+          labels: |
+            org.opencontainers.image.title=CartaVault
+            org.opencontainers.image.description=Self-hosted maps, places and trip planning
+            org.opencontainers.image.url=https://cartavault.fr
+            org.opencontainers.image.source=https://github.com/FlynX9/CartaVault
+            org.opencontainers.image.documentation=https://cartavault.fr/docs/en/
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build the release candidate locally
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: cartavault-release-candidate:${{ steps.release.outputs.version }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CARTAVAULT_VERSION=${{ steps.release.outputs.version }}
+            CARTAVAULT_REVISION=${{ steps.release.outputs.commit }}
+            CARTAVAULT_BUILD_DATE=${{ steps.release.outputs.created }}
+            VITE_API_BASE_URL=/api
+          cache-from: type=gha,scope=cartavault-release-amd64
+          cache-to: type=gha,mode=max,scope=cartavault-release-amd64
+          provenance: false
+          sbom: false
+
+      - name: Verify the production image contents
+        shell: bash
+        env:
+          CANDIDATE_IMAGE: cartavault-release-candidate:${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{.Config.User}}')" = "cartavault"
+          test "$(docker image inspect "$CANDIDATE_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "${{ steps.release.outputs.version }}"
+          docker run --rm --entrypoint python "$CANDIDATE_IMAGE" -c \
+            "import app, importlib.util; assert importlib.util.find_spec('pytest') is None"
+
+      - name: Block fixable critical vulnerabilities
+        shell: bash
+        env:
+          CANDIDATE_IMAGE: cartavault-release-candidate:${{ steps.release.outputs.version }}
+        run: >-
+          docker run --rm
+          -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.73.0 image
+          --scanners vuln
+          --severity CRITICAL
+          --ignore-unfixed
+          --exit-code 1
+          "$CANDIDATE_IMAGE"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the verified revision
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CARTAVAULT_VERSION=${{ steps.release.outputs.version }}
+            CARTAVAULT_REVISION=${{ steps.release.outputs.commit }}
+            CARTAVAULT_BUILD_DATE=${{ steps.release.outputs.created }}
+            VITE_API_BASE_URL=/api
+          cache-from: type=gha,scope=cartavault-release-amd64
+          cache-to: type=gha,mode=max,scope=cartavault-release-amd64
+          provenance: mode=max
+          sbom: true
+
+      - name: Attest the published image
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Publish the deployment summary
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          {
+            echo "## CartaVault ${RELEASE_VERSION}"
+            echo
+            echo "- Image: \`${REGISTRY}/${IMAGE_NAME}:${RELEASE_VERSION}\`"
+            echo "- Digest: \`${RELEASE_DIGEST}\`"
+            echo "- Platform: \`linux/amd64\`"
+            echo "- SBOM and provenance: attached to the OCI image"
+          } >> "$GITHUB_STEP_SUMMARY"

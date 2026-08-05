@@ -145,7 +145,7 @@ rerunnable backfill command are documented in
 Set-Location backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
@@ -254,8 +254,9 @@ python -c "from app.main import app; print(app.title)"
 See [`tests/README.md`](tests/README.md) for the test-database safeguards and migration guidance.
 
 GitHub Actions runs the same checks with separate `cartavault_ci` and
-`cartavault_test` PostgreSQL/PostGIS databases. Python dependencies are audited
-from the pinned `requirements.txt`; see
+`cartavault_test` PostgreSQL/PostGIS databases. Runtime Python dependencies are
+audited from the pinned `requirements.txt`; development and test-only
+dependencies live in `requirements-dev.txt`. See
 [`../docs/dependency-security.md`](../docs/dependency-security.md) for the
 failure policy and local reproduction command.
 

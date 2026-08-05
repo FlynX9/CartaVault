@@ -39,7 +39,7 @@ services:
     extends:
       file: compose.portainer.yml
       service: cartavault
-    image: ${CARTAVAULT_IMAGE:-cartavault}:${CARTAVAULT_VERSION}
+    image: ${CARTAVAULT_IMAGE:-ghcr.io/flynx9/cartavault}:${CARTAVAULT_VERSION}
     ports: !reset []
     entrypoint: ["python", "-m", "app.tasks.worker"]
     environment:
@@ -57,4 +57,3 @@ services:
       timeout: 8s
       retries: 6
       start_period: 20s
-

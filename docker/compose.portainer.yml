@@ -71,7 +71,7 @@ services:
     networks: [cartavault_private]
 
   cartavault:
-    image: ${CARTAVAULT_IMAGE:-cartavault}:${CARTAVAULT_VERSION}
+    image: ${CARTAVAULT_IMAGE:-ghcr.io/flynx9/cartavault}:${CARTAVAULT_VERSION}
     platform: linux/amd64
     restart: unless-stopped
     read_only: true

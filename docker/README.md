@@ -13,10 +13,33 @@ postgis     pinned official PostgreSQL/PostGIS image
 contracts. They do not require Redis, a worker, a frontend container or a
 migration container. Long tasks run synchronously in the single application
 process (`CARTAVAULT_TASK_MODE=sync`). This is the supported default for one
-private-beta application replica.
+public-beta application replica.
 
 The external reverse proxy owns HTTPS and forwards one HTTP port to
 CartaVault. PostgreSQL has no published port.
+
+## Public beta image
+
+The official public-beta image is published from a GitHub Release to GitHub
+Container Registry:
+
+```text
+ghcr.io/flynx9/cartavault:0.9.0-beta.1
+```
+
+Use immutable version tags in every deployment. The mutable `beta` tag is only
+a discovery alias and must not be the sole rollback reference. The first
+public beta supports `linux/amd64`.
+
+```sh
+docker pull ghcr.io/flynx9/cartavault:0.9.0-beta.1
+docker image inspect ghcr.io/flynx9/cartavault:0.9.0-beta.1
+```
+
+Published images include OCI source/version/license metadata, an SBOM and
+build-provenance attestations. See
+[`../docs/container-releases.md`](../docs/container-releases.md) for the
+release, verification and rollback procedure.
 
 ## Build and offline export
 
@@ -124,8 +147,9 @@ rejected.
   service.
 
 Set `CARTAVAULT_IMAGE` in Portainer when the loaded image is not named
-`cartavault`. Keep the existing external reverse-proxy destination port; only
-the container behind it changes.
+`ghcr.io/flynx9/cartavault`. The supplied environment example already uses the
+public GHCR image. Keep the existing external reverse-proxy destination port;
+only the container behind it changes.
 
 ## Optional Redis/worker extension
 

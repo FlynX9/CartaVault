@@ -1,4 +1,4 @@
-FROM node:24-alpine AS frontend-builder
+FROM node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS frontend-builder
 
 ARG CARTAVAULT_VERSION=development
 ARG VITE_API_BASE_URL=/api
@@ -23,7 +23,7 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
 RUN npm run build
 
 
-FROM python:3.14-slim-trixie AS font-builder
+FROM python:3.14-slim-trixie@sha256:7bec7ddcddeff7975d6ba9b4be7dd6f6b2f55e7491539145e2978f7f97ce9144 AS font-builder
 
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes fonts-inter-variable \
@@ -33,9 +33,21 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 
-FROM python:3.14-slim-trixie AS runtime
+FROM python:3.14-slim-trixie@sha256:7bec7ddcddeff7975d6ba9b4be7dd6f6b2f55e7491539145e2978f7f97ce9144 AS runtime
 
 ARG CARTAVAULT_VERSION=development
+ARG CARTAVAULT_REVISION=unknown
+ARG CARTAVAULT_BUILD_DATE=unknown
+
+LABEL org.opencontainers.image.title="CartaVault" \
+    org.opencontainers.image.description="Self-hosted maps, places and trip planning" \
+    org.opencontainers.image.url="https://cartavault.fr" \
+    org.opencontainers.image.source="https://github.com/FlynX9/CartaVault" \
+    org.opencontainers.image.documentation="https://cartavault.fr/docs/en/" \
+    org.opencontainers.image.licenses="MIT" \
+    org.opencontainers.image.version="${CARTAVAULT_VERSION}" \
+    org.opencontainers.image.revision="${CARTAVAULT_REVISION}" \
+    org.opencontainers.image.created="${CARTAVAULT_BUILD_DATE}"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

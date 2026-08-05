@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Python-3.14-blue" alt="Python 3.14">
   <img src="https://img.shields.io/badge/React-TypeScript-61dafb" alt="React and TypeScript">
   <img src="https://img.shields.io/badge/PostgreSQL-PostGIS-336791" alt="PostgreSQL and PostGIS">
-  <img src="https://img.shields.io/badge/status-private%20beta-orange" alt="Status: private beta">
+  <img src="https://img.shields.io/badge/status-public%20beta-orange" alt="Status: public beta">
 </p>
 
 **CartaVault** is an open-source, self-hosted workspace for collecting points
@@ -18,7 +18,7 @@ built around a persistent interactive map. The standard deployment is a single
 CartaVault application image plus an official PostGIS container.
 
 > [!IMPORTANT]
-> CartaVault is currently a private beta. Features are usable, but deployment
+> CartaVault is currently a public beta. Features are usable, but deployment
 > contracts, migrations and interfaces may still evolve before the first
 > stable release. Back up the database and media before every upgrade.
 
@@ -136,7 +136,7 @@ Browser
           └── PostgreSQL + PostGIS
 ```
 
-The supported private-beta topology contains exactly two standard services:
+The supported public-beta topology contains exactly two standard services:
 
 | Service | Responsibility |
 |---|---|
@@ -164,8 +164,15 @@ CartaVault/
 
 ### Docker deployment
 
-Docker is the recommended way to run a private-beta instance. Build a versioned
-application image and pull the pinned PostGIS companion:
+Docker is the recommended way to run a public-beta instance. The published
+application image is available from GitHub Container Registry:
+
+```text
+ghcr.io/flynx9/cartavault:0.9.0-beta.1
+```
+
+For a source build, build a versioned application image and pull the pinned
+PostGIS companion:
 
 ```powershell
 .\docker\build.ps1 -Version "0.9.0-beta.1"
@@ -210,7 +217,7 @@ Start the backend:
 Set-Location backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 python -m alembic upgrade heads
 python -m app.cli create-admin
@@ -284,6 +291,7 @@ marketing site and includes searchable, generated API, environment, CLI, and
 feature references.
 
 - [Docker, Portainer and Synology](docker/README.md)
+- [Container releases and GHCR](docs/container-releases.md)
 - [Backup and restore](docs/backup-and-restore.md)
 - [Background tasks and Redis](docs/background-tasks.md)
 - [Security audit](docs/security-audit-2026-07.md)

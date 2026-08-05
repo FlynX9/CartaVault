@@ -80,7 +80,7 @@ export const copy: Record<Language, {
         { title: 'Besoin d’aide ?', body: 'Consultez les guides du dépôt, puis ouvrez une issue reproductible si le problème persiste.' },
       ] },
       roadmap: { title: 'Feuille de route', description: 'Une évolution publique, guidée par des issues vérifiables.', eyebrow: 'Projet', sections: [
-        { title: 'Cap actuel', body: 'Stabiliser la bêta privée : déploiement reproductible, sécurité, performances et qualité des voyages.' },
+        { title: 'Cap actuel', body: 'Faire progresser la bêta publique : déploiement reproductible, sécurité, performances et qualité des voyages.' },
         { title: 'Ensuite', body: 'Améliorer les imports, les exports, la collaboration et l’expérience mobile sans sacrifier l’auto-hébergement.' },
         { title: 'Suivre les décisions', body: 'Les fonctionnalités, anomalies et critères d’acceptation sont suivis publiquement sur GitHub.' },
       ] },
@@ -141,7 +141,7 @@ export const copy: Record<Language, {
         { title: 'Need help?', body: 'Read the repository guides, then open a reproducible issue if the problem remains.' },
       ] },
       roadmap: { title: 'Roadmap', description: 'Public development driven by verifiable issues.', eyebrow: 'Project', sections: [
-        { title: 'Current focus', body: 'Stabilize the private beta: reproducible deployment, security, performance and high-quality trip planning.' },
+        { title: 'Current focus', body: 'Advance the public beta: reproducible deployment, security, performance and high-quality trip planning.' },
         { title: 'Next', body: 'Improve imports, exports, collaboration and mobile use without sacrificing self-hosting.' },
         { title: 'Follow decisions', body: 'Features, bugs and acceptance criteria are tracked publicly on GitHub.' },
       ] },
