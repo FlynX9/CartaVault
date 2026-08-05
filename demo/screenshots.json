@@ -10,5 +10,12 @@
   {"id":"timeline-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"timeline"},
   {"id":"media-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"media"},
   {"id":"account-profile-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account"},
-  {"id":"admin-users-fr-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"}
+  {"id":"admin-users-fr-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"},
+  {"id":"places-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en"},
+  {"id":"place-popup-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"place-popup"},
+  {"id":"trip-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"trip"},
+  {"id":"timeline-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"timeline"},
+  {"id":"media-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"media"},
+  {"id":"account-profile-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"account"},
+  {"id":"admin-users-en-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"admin"}
 ]

@@ -47,7 +47,7 @@ Les fichiers sont écrits dans `demo/output/`, ignoré par Git. Playwright impos
 
 Pour modifier la couverture, éditer `screenshots.json`. Le manifeste sert de source unique aux scénarios locaux et CI.
 
-La couverture de référence comprend la connexion, le tableau de bord, les lieux en thèmes clair et sombre, la lecture seule, la sortie française, sa chronologie, la médiathèque, le profil utilisateur et l’administration des utilisateurs.
+La couverture de référence comprend la connexion, le tableau de bord, les lieux en thèmes clair et sombre, la lecture seule, la sortie française, sa chronologie, la médiathèque, le profil utilisateur et l’administration des utilisateurs. Les sept vues produit destinées au site et à la documentation sont capturées en français et en anglais ; le runner synchronise la préférence du compte avant chaque prise de vue.
 
 ## Arrêt et suppression
 

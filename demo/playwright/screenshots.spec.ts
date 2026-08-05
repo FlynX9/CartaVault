@@ -25,9 +25,36 @@ const authenticationCookies = new Map<keyof typeof credentials, AuthenticationCo
 async function stabilize(page: Page, scenario: Scenario) {
   await page.addInitScript(({ theme, language }) => {
     if (theme) localStorage.setItem('cartavault.theme', theme)
-    if (language) localStorage.setItem('cartavault.language', language)
+    if (language) {
+      localStorage.setItem('cartavault.locale', language)
+      Object.defineProperty(window.navigator, 'language', { configurable: true, get: () => language === 'fr' ? 'fr-FR' : 'en-US' })
+      Object.defineProperty(window.navigator, 'languages', { configurable: true, get: () => language === 'fr' ? ['fr-FR', 'fr'] : ['en-US', 'en'] })
+    }
   }, scenario)
   await page.emulateMedia({ colorScheme: scenario.theme ?? 'light', reducedMotion: 'reduce' })
+}
+
+async function setAccountLanguage(page: Page, language: NonNullable<Scenario['language']>) {
+  const result = await page.evaluate(async (nextLanguage) => {
+    const userResponse = await fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
+    const user = await userResponse.json() as { csrf_token?: string }
+    const preferencesResponse = await fetch('/api/account/preferences', { credentials: 'include', cache: 'no-store' })
+    const preferences = await preferencesResponse.json() as Record<string, unknown>
+    const updateResponse = await fetch('/api/account/preferences', {
+      method: 'PUT',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': user.csrf_token ?? '',
+      },
+      body: JSON.stringify({ ...preferences, language: nextLanguage }),
+    })
+    return { status: updateResponse.status, body: await updateResponse.text() }
+  }, language)
+  expect(result.status, `Unable to switch demo account to ${language}: ${result.body}`).toBe(200)
+  await page.reload({ waitUntil: 'networkidle' })
+  await expect(page.locator('html')).toHaveAttribute('lang', language)
 }
 
 async function login(page: Page, user: keyof typeof credentials) {
@@ -47,6 +74,7 @@ async function login(page: Page, user: keyof typeof credentials) {
 }
 
 async function prepareScenario(page: Page, scenario: Scenario) {
+  const isFrench = scenario.language !== 'en'
   if (scenario.view === 'place-popup') {
     const placeCard = page.getByRole('button', { name: 'Atelier des Ocres', exact: true })
     await expect(placeCard).toBeVisible()
@@ -61,7 +89,7 @@ async function prepareScenario(page: Page, scenario: Scenario) {
   }
 
   if (scenario.view === 'trip' || scenario.view === 'timeline') {
-    await page.getByRole('button', { name: 'Sorties', exact: true }).click()
+    await page.getByRole('button', { name: isFrench ? 'Sorties' : 'Trips', exact: true }).click()
     const panel = page.getByRole('complementary', { name: 'Préparation de sortie' })
     await expect(panel).toBeVisible()
     const tripSelector = panel.getByRole('combobox', { name: 'Voyage actif' })
@@ -82,7 +110,7 @@ async function prepareScenario(page: Page, scenario: Scenario) {
   }
 
   if (scenario.view === 'media') {
-    await page.getByRole('button', { name: 'Médias', exact: true }).click()
+    await page.getByRole('button', { name: isFrench ? 'Médias' : 'Media', exact: true }).click()
     const panel = page.getByRole('complementary', { name: 'Médiathèque' })
     await expect(panel).toBeVisible()
     await expect(panel.locator('.media-card')).toHaveCount(18)
@@ -93,9 +121,9 @@ async function prepareScenario(page: Page, scenario: Scenario) {
   }
 
   if (scenario.view === 'account') {
-    await page.getByRole('button', { name: /^Menu utilisateur de / }).click()
+    await page.getByRole('button', { name: isFrench ? /^Menu utilisateur de / : / user menu$/ }).click()
     await page.getByRole('menuitem', { name: 'Options' }).click()
-    await expect(page.getByRole('dialog', { name: 'Mon compte' })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: isFrench ? 'Mon compte' : 'My account' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Profil', exact: true })).toBeVisible()
     return
   }
@@ -110,6 +138,7 @@ for (const scenario of scenarios) {
   test(`capture ${scenario.id}`, async ({ page }) => {
     await stabilize(page, scenario)
     if (scenario.user) await login(page, scenario.user)
+    if (scenario.user && scenario.language) await setAccountLanguage(page, scenario.language)
     await page.goto(scenario.route)
     await page.waitForLoadState('networkidle')
     await prepareScenario(page, scenario)

@@ -10,7 +10,15 @@ for (const file of pages) {
     if (!html.includes(marker)) throw new Error(`${file} is missing ${marker}`);
   }
 }
-for (const image of ['app-places.webp', 'cartavault-logo.png', '../favicon-v2.png', '../favicon.ico', '../apple-touch-icon.png']) {
+for (const [language, opposite] of [['fr', 'en'], ['en', 'fr']]) {
+  for (const route of ['index.html', 'features/index.html']) {
+    const html = await readFile(new URL(`${language}/${route}`, dist), 'utf8');
+    if (!html.includes(`app-places-${language}.`) || html.includes(`app-places-${opposite}.`)) {
+      throw new Error(`${language}/${route} does not exclusively use ${language.toUpperCase()} product captures`);
+    }
+  }
+}
+for (const image of ['app-places-fr.webp', 'app-places-en.webp', 'cartavault-logo.png', '../favicon-v2.png', '../favicon.ico', '../apple-touch-icon.png']) {
   const details = await stat(new URL(`images/${image}`, dist));
   if (details.size > 750_000) throw new Error(`${image} exceeds the 750 KiB website budget`);
 }

@@ -5,7 +5,8 @@ import '../styles/global.css';
 import { copy, href, type Language } from '../content/site';
 
 interface Props { lang: Language; title: string; description: string; path?: string; image?: string; }
-const { lang, title, description, path = '', image = '/images/app-places.webp' } = Astro.props;
+const { lang, title, description, path = '', image } = Astro.props;
+const socialImage = image ?? `/images/app-places-${lang}.webp`;
 const canonical = new URL(href(lang, path), Astro.site);
 const other = lang === 'fr' ? 'en' : 'fr';
 const structured = {
@@ -36,11 +37,11 @@ const structured = {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={new URL(image, Astro.site)} />
+    <meta property="og:image" content={new URL(socialImage, Astro.site)} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={new URL(image, Astro.site)} />
+    <meta name="twitter:image" content={new URL(socialImage, Astro.site)} />
     <script is:inline type="application/ld+json" set:html={JSON.stringify(structured)} />
     <title>{title}</title>
   </head>

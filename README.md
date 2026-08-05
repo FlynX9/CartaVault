@@ -30,16 +30,16 @@ Browse illustrated POIs, filter large collections, change the map background
 and keep the useful information for each place in one record.
 
 <p align="center">
-  <img src="docs/screenshots/app-places.webp" alt="CartaVault place list displayed next to the map" width="100%">
+  <img src="docs/screenshots/app-places-en.webp" alt="CartaVault place list displayed next to the map" width="100%">
 </p>
 
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/screenshots/app-place-popup.webp" alt="Illustrated CartaVault place details">
+      <img src="docs/screenshots/app-place-popup-en.webp" alt="Illustrated CartaVault place details">
     </td>
     <td width="50%">
-      <img src="docs/screenshots/app-media.webp" alt="CartaVault media library">
+      <img src="docs/screenshots/app-media-en.webp" alt="CartaVault media library">
     </td>
   </tr>
   <tr>
@@ -54,11 +54,11 @@ Build an outing day by day, calculate routes, organize accommodation and
 review the whole journey from the interactive timeline.
 
 <p align="center">
-  <img src="docs/screenshots/app-trip.webp" alt="Multi-day trip planning in CartaVault" width="100%">
+  <img src="docs/screenshots/app-trip-en.webp" alt="Multi-day trip planning in CartaVault" width="100%">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/app-timeline.webp" alt="CartaVault interactive trip timeline with an active step" width="100%">
+  <img src="docs/screenshots/app-timeline-en.webp" alt="CartaVault interactive trip timeline with an active step" width="100%">
 </p>
 
 ### Account and administration
@@ -66,10 +66,10 @@ review the whole journey from the interactive timeline.
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/screenshots/app-account.webp" alt="CartaVault user profile">
+      <img src="docs/screenshots/app-account-en.webp" alt="CartaVault user profile">
     </td>
     <td width="50%">
-      <img src="docs/screenshots/app-admin.webp" alt="CartaVault administration console">
+      <img src="docs/screenshots/app-admin-en.webp" alt="CartaVault administration console">
     </td>
   </tr>
   <tr>

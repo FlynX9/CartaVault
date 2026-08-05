@@ -1,16 +1,24 @@
 ---
 import { ArrowRight, ArrowUpRight, Database, LockKeyhole, Server } from '@lucide/astro';
-import appAccount from '../assets/screenshots/app-account.webp';
-import appMedia from '../assets/screenshots/app-media.webp';
-import appPlaces from '../assets/screenshots/app-places.webp';
-import appPopup from '../assets/screenshots/app-place-popup.webp';
-import appTrip from '../assets/screenshots/app-trip.webp';
+import appAccountEn from '../assets/screenshots/app-account-en.webp';
+import appAccountFr from '../assets/screenshots/app-account-fr.webp';
+import appMediaEn from '../assets/screenshots/app-media-en.webp';
+import appMediaFr from '../assets/screenshots/app-media-fr.webp';
+import appPlacesEn from '../assets/screenshots/app-places-en.webp';
+import appPlacesFr from '../assets/screenshots/app-places-fr.webp';
+import appPopupEn from '../assets/screenshots/app-place-popup-en.webp';
+import appPopupFr from '../assets/screenshots/app-place-popup-fr.webp';
+import appTripEn from '../assets/screenshots/app-trip-en.webp';
+import appTripFr from '../assets/screenshots/app-trip-fr.webp';
 import { copy, external, href, type Language } from '../content/site';
 import ProductScreenshot from './ProductScreenshot.astro';
 import SectionEyebrow from './SectionEyebrow.astro';
 
 const { lang } = Astro.props as { lang: Language };
 const t = copy[lang].home;
+const screenshots = lang === 'fr'
+  ? { account: appAccountFr, media: appMediaFr, places: appPlacesFr, popup: appPopupFr, trip: appTripFr }
+  : { account: appAccountEn, media: appMediaEn, places: appPlacesEn, popup: appPopupEn, trip: appTripEn };
 ---
 <section class="home-hero wide-wrap">
   <div class="home-hero__copy">
@@ -22,7 +30,7 @@ const t = copy[lang].home;
       <a class="button secondary" href={href(lang, 'features')}>{t.secondary}<ArrowRight size={16} aria-hidden="true" /></a>
     </div>
   </div>
-  <ProductScreenshot image={appPlaces} alt={lang === 'fr' ? 'Carte et liste de lieux illustrés dans CartaVault' : 'Map and illustrated place list in CartaVault'} label={lang === 'fr' ? 'Espace cartographique' : 'Mapping workspace'} eager />
+  <ProductScreenshot image={screenshots.places} alt={lang === 'fr' ? 'Carte et liste de lieux illustrés dans CartaVault' : 'Map and illustrated place list in CartaVault'} label={lang === 'fr' ? 'Espace cartographique' : 'Mapping workspace'} eager />
 </section>
 
 <section class="proof-bar wrap" aria-label={lang === 'fr' ? 'Caractéristiques techniques' : 'Technical characteristics'}>
@@ -31,13 +39,13 @@ const t = copy[lang].home;
 
 <section class="home-feature wrap">
   <div class="home-feature__copy"><SectionEyebrow label={`01 · ${lang === 'fr' ? 'Collecter' : 'Collect'}`} /><h2>{t.placesTitle}</h2><p>{t.placesBody}</p><a class="text-link" href={href(lang, 'features')}>{lang === 'fr' ? 'Explorer les cartes et lieux' : 'Explore maps and places'}<ArrowRight size={15} aria-hidden="true" /></a></div>
-  <ProductScreenshot image={appPopup} alt={lang === 'fr' ? 'Fiche détaillée et illustrée d’un lieu' : 'Detailed and illustrated place record'} label={lang === 'fr' ? 'Fiche d’un lieu' : 'Place details'} compact />
+  <ProductScreenshot image={screenshots.popup} alt={lang === 'fr' ? 'Fiche détaillée et illustrée d’un lieu' : 'Detailed and illustrated place record'} label={lang === 'fr' ? 'Fiche d’un lieu' : 'Place details'} compact />
 </section>
 
 <section class="home-feature-band">
   <div class="home-feature home-feature--reverse wrap">
     <div class="home-feature__copy"><SectionEyebrow label={`02 · ${lang === 'fr' ? 'Planifier' : 'Plan'}`} /><h2>{t.tripsTitle}</h2><p>{t.tripsBody}</p><a class="text-link" href={href(lang, 'features')}>{lang === 'fr' ? 'Explorer les sorties et voyages' : 'Explore trips and outings'}<ArrowRight size={15} aria-hidden="true" /></a></div>
-    <ProductScreenshot image={appTrip} alt={lang === 'fr' ? 'Préparation détaillée d’une sortie' : 'Detailed trip planning'} label={lang === 'fr' ? 'Préparation de la sortie' : 'Trip planning'} />
+    <ProductScreenshot image={screenshots.trip} alt={lang === 'fr' ? 'Préparation détaillée d’une sortie' : 'Detailed trip planning'} label={lang === 'fr' ? 'Préparation de la sortie' : 'Trip planning'} />
   </div>
 </section>
 
@@ -49,8 +57,8 @@ const t = copy[lang].home;
 <section class="interface-section wide-wrap">
   <div class="interface-section__heading"><div><SectionEyebrow label={lang === 'fr' ? 'Interface réelle' : 'Real interface'} /><h2>{t.screenshotsTitle}</h2></div><p>{lang === 'fr' ? 'Des écrans conçus pour rester lisibles, des grandes cartes jusqu’aux réglages personnels.' : 'Screens designed to remain readable, from large maps to personal settings.'}</p></div>
   <div class="interface-gallery">
-    <ProductScreenshot image={appMedia} alt={lang === 'fr' ? 'Médiathèque CartaVault' : 'CartaVault media library'} label={lang === 'fr' ? 'Médiathèque' : 'Media library'} compact />
-    <ProductScreenshot image={appAccount} alt={lang === 'fr' ? 'Préférences du compte CartaVault' : 'CartaVault account preferences'} label={lang === 'fr' ? 'Préférences du compte' : 'Account preferences'} compact />
+    <ProductScreenshot image={screenshots.media} alt={lang === 'fr' ? 'Médiathèque CartaVault' : 'CartaVault media library'} label={lang === 'fr' ? 'Médiathèque' : 'Media library'} compact />
+    <ProductScreenshot image={screenshots.account} alt={lang === 'fr' ? 'Préférences du compte CartaVault' : 'CartaVault account preferences'} label={lang === 'fr' ? 'Préférences du compte' : 'Account preferences'} compact />
   </div>
 </section>
 

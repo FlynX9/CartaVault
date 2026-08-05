@@ -52,13 +52,16 @@ def test_french_demo_artwork_is_complete_and_versioned() -> None:
 def test_screenshot_manifest_covers_documentation_views() -> None:
     scenarios = json.loads((MODULE_PATH.parents[1] / "screenshots.json").read_text(encoding="utf-8"))
     scenario_ids = {scenario["id"] for scenario in scenarios}
-    assert {
-        "trip-france-fr-light",
-        "timeline-france-fr-light",
-        "media-fr-light",
-        "account-profile-fr-light",
-        "admin-users-fr-light",
-    } <= scenario_ids
+    for language in ("fr", "en"):
+        assert {
+            f"places-france-{language}-light",
+            f"place-popup-france-{language}-light",
+            f"trip-france-{language}-light",
+            f"timeline-france-{language}-light",
+            f"media-{language}-light",
+            f"account-profile-{language}-light",
+            f"admin-users-{language}-light",
+        } <= scenario_ids
 
 
 def test_demo_routes_include_the_previous_night_transition() -> None:

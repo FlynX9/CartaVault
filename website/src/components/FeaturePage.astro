@@ -1,9 +1,13 @@
 ---
 import { ArrowRight, ClockArrowUp, FileDown, FileOutput, Server, ShieldCheck } from '@lucide/astro';
-import appAdmin from '../assets/screenshots/app-admin.webp';
-import appPlaces from '../assets/screenshots/app-places.webp';
-import appPopup from '../assets/screenshots/app-place-popup.webp';
-import appTimeline from '../assets/screenshots/app-timeline.webp';
+import appAdminEn from '../assets/screenshots/app-admin-en.webp';
+import appAdminFr from '../assets/screenshots/app-admin-fr.webp';
+import appPlacesEn from '../assets/screenshots/app-places-en.webp';
+import appPlacesFr from '../assets/screenshots/app-places-fr.webp';
+import appPopupEn from '../assets/screenshots/app-place-popup-en.webp';
+import appPopupFr from '../assets/screenshots/app-place-popup-fr.webp';
+import appTimelineEn from '../assets/screenshots/app-timeline-en.webp';
+import appTimelineFr from '../assets/screenshots/app-timeline-fr.webp';
 import { copy, external, type Language } from '../content/site';
 import FeatureSection from './FeatureSection.astro';
 import ProductScreenshot from './ProductScreenshot.astro';
@@ -13,11 +17,14 @@ const { lang } = Astro.props as { lang: Language };
 const t = copy[lang];
 const page = t.pages.features;
 const showcase = t.featuresShowcase;
+const screenshots = lang === 'fr'
+  ? { admin: appAdminFr, places: appPlacesFr, popup: appPopupFr, timeline: appTimelineFr }
+  : { admin: appAdminEn, places: appPlacesEn, popup: appPopupEn, timeline: appTimelineEn };
 const benefitIcons = { import: FileDown, file: FileOutput, history: ClockArrowUp, server: Server, shield: ShieldCheck };
 const sectionVisuals = [
-  { id: 'feature-maps', icon: 'map' as const, image: appPlaces, alt: lang === 'fr' ? 'Liste de lieux illustrés et carte CartaVault' : 'Illustrated place list and CartaVault map', label: lang === 'fr' ? 'Cartes et lieux' : 'Maps and places' },
-  { id: 'feature-trips', icon: 'route' as const, image: appTimeline, alt: lang === 'fr' ? 'Chronologie interactive d’un voyage CartaVault' : 'Interactive CartaVault trip timeline', label: lang === 'fr' ? 'Chronologie du voyage' : 'Trip timeline' },
-  { id: 'feature-sharing', icon: 'users' as const, image: appAdmin, alt: lang === 'fr' ? 'Gestion des utilisateurs et des rôles CartaVault' : 'CartaVault user and role management', label: lang === 'fr' ? 'Comptes et partage' : 'Accounts and sharing' },
+  { id: 'feature-maps', icon: 'map' as const, image: screenshots.places, alt: lang === 'fr' ? 'Liste de lieux illustrés et carte CartaVault' : 'Illustrated place list and CartaVault map', label: lang === 'fr' ? 'Cartes et lieux' : 'Maps and places' },
+  { id: 'feature-trips', icon: 'route' as const, image: screenshots.timeline, alt: lang === 'fr' ? 'Chronologie interactive d’un voyage CartaVault' : 'Interactive CartaVault trip timeline', label: lang === 'fr' ? 'Chronologie du voyage' : 'Trip timeline' },
+  { id: 'feature-sharing', icon: 'users' as const, image: screenshots.admin, alt: lang === 'fr' ? 'Gestion des utilisateurs et des rôles CartaVault' : 'CartaVault user and role management', label: lang === 'fr' ? 'Comptes et partage' : 'Accounts and sharing' },
 ];
 ---
 <header class="features-hero wide-wrap">
@@ -31,7 +38,7 @@ const sectionVisuals = [
     </div>
   </div>
   <ProductScreenshot
-    image={appPopup}
+    image={screenshots.popup}
     alt={lang === 'fr' ? 'Fiche illustrée d’un lieu dans CartaVault' : 'Illustrated CartaVault place record'}
     label={lang === 'fr' ? 'Fiche d’un lieu' : 'Place details'}
     eager
