@@ -10,7 +10,7 @@ type Benefit = { title: string; body: string; icon: 'import' | 'file' | 'history
 
 export const external = {
   app: 'https://app.cartavault.fr',
-  docs: 'https://github.com/FlynX9/CartaVault/tree/master/docs',
+  docs: '/docs',
   github: 'https://github.com/FlynX9/CartaVault',
   issues: 'https://github.com/FlynX9/CartaVault/issues',
   email: 'mailto:contact@cartavault.fr',

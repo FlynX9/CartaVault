@@ -1,0 +1,34 @@
+---
+title: Trips and timeline
+description: Build, calculate, and export a day-by-day trip.
+sidebar:
+  order: 3
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import trip from '../../../../assets/screenshots/app-trip-en.webp';
+import timeline from '../../../../assets/screenshots/app-timeline-en.webp';
+
+## Create a trip
+
+Open **Trip** mode from a map, create a journey, and set its dates. Forcing an arrival date automatically adjusts the number of days and nights.
+
+## Build the stages
+
+Select a day, night, departure, or arrival, then add a search result or drag an existing place. The same place can be used more than once in a trip. Reorder stages and days with drag and drop.
+
+<ProductScreenshot src={trip} alt="CartaVault trip planning panel" caption="Each day groups its stages, durations, and route actions." />
+
+## Calculate and optimize
+
+Choose **Calculate routes** to retrieve routes, distances, and durations. **Optimize trip** proposes a more efficient order before you apply it. Providers and constraints are configured in user preferences.
+
+## Use the timeline
+
+**Trip timeline** mode fits the map to the journey. Click a stage or use the keyboard arrow keys to move through departure, stages, nights, and arrival.
+
+<ProductScreenshot src={timeline} alt="Interactive CartaVault trip timeline" caption="The timeline keeps the active point centered and highlights the relevant route." />
+
+## Export
+
+The PDF export can include an overview map, one map per day, photos, and Google Maps and/or Waze QR codes. GPX export provides tracks for compatible applications.

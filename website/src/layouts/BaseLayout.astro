@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { X } from '@lucide/astro';
 import '../styles/global.css';
 import { copy, href, type Language } from '../content/site';
 
@@ -50,5 +51,33 @@ const structured = {
     <Header lang={lang} other={other} path={path} />
     <main id="main"><slot /></main>
     <Footer lang={lang} />
+    <dialog class="screenshot-lightbox" id="screenshot-lightbox" aria-labelledby="screenshot-lightbox-title">
+      <div class="screenshot-lightbox__surface">
+        <header>
+          <p id="screenshot-lightbox-title"></p>
+          <button type="button" data-screenshot-close aria-label={lang === 'fr' ? 'Fermer l’image agrandie' : 'Close enlarged image'}><X size={18} aria-hidden="true" /></button>
+        </header>
+        <div class="screenshot-lightbox__viewport"><img alt="" /></div>
+      </div>
+    </dialog>
+    <script is:inline>
+      const lightbox = document.querySelector('#screenshot-lightbox');
+      if (lightbox instanceof HTMLDialogElement) {
+        const image = lightbox.querySelector('img');
+        const title = lightbox.querySelector('#screenshot-lightbox-title');
+        document.querySelectorAll('[data-screenshot-open]').forEach((trigger) => {
+          trigger.addEventListener('click', () => {
+            if (!(trigger instanceof HTMLElement) || !(image instanceof HTMLImageElement) || !(title instanceof HTMLElement)) return;
+            image.src = trigger.dataset.screenshotSrc ?? '';
+            image.alt = trigger.dataset.screenshotAlt ?? '';
+            title.textContent = trigger.dataset.screenshotLabel ?? '';
+            lightbox.showModal();
+          });
+        });
+        lightbox.querySelector('[data-screenshot-close]')?.addEventListener('click', () => lightbox.close());
+        lightbox.addEventListener('click', (event) => { if (event.target === lightbox) lightbox.close(); });
+        lightbox.addEventListener('close', () => { if (image instanceof HTMLImageElement) image.removeAttribute('src'); });
+      }
+    </script>
   </body>
 </html>

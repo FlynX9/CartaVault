@@ -1,0 +1,28 @@
+---
+title: Getting started
+description: From sign-in to your first CartaVault map.
+sidebar:
+  order: 1
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import UiPath from '../../../../components/docs/UiPath.astro';
+import places from '../../../../assets/screenshots/app-places-en.webp';
+
+## Sign in
+
+Open your instance URL and enter the email address and password supplied by the administrator. An authenticated session is redirected to the start screen selected in your preferences.
+
+## Create a map
+
+From the dashboard, choose **New map**, name it, and select its country. CartaVault uses the country for the initial viewport, consistency warnings, and the outside-country mask.
+
+<ProductScreenshot src={places} alt="Place list on the France map in CartaVault" caption="A map owns its places, trips, media, and access rules." />
+
+## Set up the interface
+
+Open <UiPath items={['Profile', 'Preferences']} /> to choose the language, theme, display density, time zone, and start screen.
+
+## Next step
+
+Continue with [managing places](/docs/en/places/) or [planning a trip](/docs/en/trips/).

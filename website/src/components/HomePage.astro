@@ -62,4 +62,4 @@ const screenshots = lang === 'fr'
   </div>
 </section>
 
-<section class="cta wrap"><div><SectionEyebrow label="Open source" /><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p></div><div class="actions"><a class="button" href={external.github}>GitHub<ArrowUpRight size={16} aria-hidden="true" /></a><a class="button secondary" href={external.docs}>{lang === 'fr' ? 'Documentation' : 'Documentation'}<ArrowRight size={16} aria-hidden="true" /></a></div></section>
+<section class="cta wrap"><div><SectionEyebrow label="Open source" /><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p></div><div class="actions"><a class="button" href={external.github}>GitHub<ArrowUpRight size={16} aria-hidden="true" /></a><a class="button secondary" href={`${external.docs}/${lang}/`}>{lang === 'fr' ? 'Documentation' : 'Documentation'}<ArrowRight size={16} aria-hidden="true" /></a></div></section>

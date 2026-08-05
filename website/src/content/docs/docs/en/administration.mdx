@@ -1,0 +1,46 @@
+---
+title: Administration and deployment
+description: Install, update, back up, and secure CartaVault.
+sidebar:
+  order: 4
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import admin from '../../../../assets/screenshots/app-admin-en.webp';
+
+## Standard architecture
+
+Single-instance mode consists of one CartaVault application image and PostgreSQL/PostGIS. Redis and the worker are optional extensions for asynchronous work or higher load.
+
+## Installation
+
+1. Copy the repository environment template.
+2. Generate persistent secrets with `python -m app.setup_cli generate-secrets`.
+3. Start the Docker Compose or Portainer stack.
+4. Let the migration job complete before the application starts.
+5. Open the setup wizard and create the first administrator.
+
+Never regenerate `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` during an update: stored API keys would become unreadable.
+
+## Update
+
+Back up volumes first, select the target image version, then recreate the stack. The version-matched migration container applies Alembic migrations before the application starts.
+
+## Minimum backup set
+
+Back up together:
+
+- the PostgreSQL database with `pg_dump`;
+- the photo volume;
+- the avatar volume;
+- the environment file and encryption key.
+
+Regularly test restoration on an isolated instance.
+
+## Security
+
+Use HTTPS, enable secure cookies, restrict CORS origins, and protect Portainer access. Instance diagnostics and user management remain administrator-only.
+
+<ProductScreenshot src={admin} alt="CartaVault user administration panel" caption="Administration centralizes accounts, quotas, and instance safeguards." />
+
+See the [environment reference](/docs/en/reference/environment/) and [command reference](/docs/en/reference/cli/).

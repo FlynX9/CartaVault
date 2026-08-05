@@ -1,0 +1,42 @@
+---
+title: Documentation CartaVault
+description: Utiliser, installer et administrer CartaVault.
+template: splash
+hero:
+  tagline: Organisez vos lieux, construisez vos voyages et gardez la maîtrise de vos données.
+  actions:
+    - text: Bien démarrer
+      link: /docs/fr/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: English documentation
+      link: /docs/en/
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Utiliser CartaVault" icon="open-book">
+    Créez des cartes et des lieux, ajoutez des médias, puis retrouvez rapidement vos données.
+  </Card>
+  <Card title="Préparer un voyage" icon="seti:config">
+    Composez les jours et les nuits, calculez les itinéraires et exportez votre carnet.
+  </Card>
+  <Card title="Administrer l'instance" icon="setting">
+    Déployez la pile Docker, sauvegardez les volumes et contrôlez les accès.
+  </Card>
+  <Card title="Références techniques" icon="document">
+    Consultez les variables d'environnement, les commandes et le contrat OpenAPI générés depuis le code.
+  </Card>
+</CardGrid>
+
+## Parcours conseillé
+
+1. [Connectez-vous et créez votre première carte](/docs/fr/getting-started/).
+2. [Ajoutez et classez vos lieux](/docs/fr/places/).
+3. [Transformez-les en voyage](/docs/fr/trips/).
+4. Si vous hébergez CartaVault, lisez le [guide d'administration](/docs/fr/administration/).
+
+> Cette documentation suit la version de la branche `master`. Les références marquées comme générées ne doivent pas être modifiées manuellement.

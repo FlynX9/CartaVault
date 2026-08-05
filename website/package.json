@@ -9,11 +9,17 @@
     "dev": "astro dev",
     "build": "astro build",
     "check": "astro check",
-    "verify": "npm run check && npm run build && node scripts/check-site.mjs",
+    "verify": "npm run docs:check && npm run check && npm run build && node scripts/check-site.mjs",
+    "docs:dev": "astro dev",
+    "docs:generate": "node scripts/run-docs.mjs",
+    "docs:check": "node scripts/run-docs.mjs --check",
+    "docs:screenshots": "docker compose -f ../demo/compose.yml --profile screenshots run --rm screenshots",
+    "demo:reset": "docker compose -f ../demo/compose.yml run --rm demo-reset reset",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/starlight": "^0.41.7",
     "@lucide/astro": "^1.28.0",
     "astro": "^7.1.6"
   },

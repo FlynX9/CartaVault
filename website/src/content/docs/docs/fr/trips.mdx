@@ -1,0 +1,34 @@
+---
+title: Sorties et chronologie
+description: Construire, calculer et exporter un voyage jour par jour.
+sidebar:
+  order: 3
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import trip from '../../../../assets/screenshots/app-trip-fr.webp';
+import timeline from '../../../../assets/screenshots/app-timeline-fr.webp';
+
+## Créer une sortie
+
+Depuis une carte, ouvrez le mode **Sortie**, créez un voyage et renseignez ses dates. Une date d'arrivée forcée ajuste automatiquement le nombre de jours et de nuits.
+
+## Composer les étapes
+
+Sélectionnez un jour, une nuit, le départ ou l'arrivée, puis ajoutez un résultat de recherche ou glissez un lieu existant. Un même lieu peut apparaître plusieurs fois dans le voyage. Déplacez les étapes et les jours par glisser-déposer.
+
+<ProductScreenshot src={trip} alt="Panneau de préparation d'une sortie CartaVault" caption="Chaque jour rassemble ses étapes, durées et actions de calcul." />
+
+## Calculer et optimiser
+
+Choisissez **Calculer les itinéraires** pour obtenir les routes, distances et temps. **Optimiser le voyage** propose un ordre plus efficace avant application. Les fournisseurs et contraintes se règlent dans les préférences utilisateur.
+
+## Utiliser la chronologie
+
+Le mode **Chronologie du voyage** cadre la carte sur le voyage. Cliquez sur une étape ou utilisez les flèches du clavier pour parcourir le départ, les étapes, les nuits et l'arrivée.
+
+<ProductScreenshot src={timeline} alt="Chronologie interactive d'un voyage CartaVault" caption="La chronologie conserve le point actif au centre et met en avant le trajet concerné." />
+
+## Exporter
+
+L'export PDF peut inclure la carte générale, une carte par jour, les photos et des QR codes Google Maps et/ou Waze. L'export GPX fournit les traces aux applications compatibles.

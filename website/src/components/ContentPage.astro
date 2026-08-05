@@ -3,7 +3,7 @@ import FeaturePage from './FeaturePage.astro';
 import { copy, external, type Language, type PageSlug } from '../content/site';
 const { lang, slug } = Astro.props as { lang: Language; slug: PageSlug };
 const page = copy[lang].pages[slug];
-const specialHref = slug === 'contact' ? external.email : slug === 'documentation' ? external.docs : slug === 'roadmap' ? external.issues : null;
+const specialHref = slug === 'contact' ? external.email : slug === 'documentation' ? `${external.docs}/${lang}/` : slug === 'roadmap' ? external.issues : null;
 ---
 {slug === 'features' ? <FeaturePage lang={lang} /> : <>
   <header class="page-hero wrap"><p class="section-eyebrow">{page.eyebrow}</p><h1>{page.title}</h1><p class="lead">{page.description}</p>{specialHref && <a class="button" href={specialHref}>{slug === 'contact' ? (lang === 'fr' ? 'Écrire un e-mail' : 'Send an email') : slug === 'roadmap' ? (lang === 'fr' ? 'Voir les issues' : 'View issues') : (lang === 'fr' ? 'Ouvrir les guides' : 'Open the guides')} <span aria-hidden="true">↗</span></a>}</header>

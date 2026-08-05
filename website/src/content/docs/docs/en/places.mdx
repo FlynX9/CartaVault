@@ -1,0 +1,32 @@
+---
+title: Maps and places
+description: Add, classify, search, import, and share places.
+sidebar:
+  order: 2
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import popup from '../../../../assets/screenshots/app-place-popup-en.webp';
+import media from '../../../../assets/screenshots/app-media-en.webp';
+
+## Add a place
+
+Use the **+** button in the Places panel, search for an address on the map, or import a KML/KMZ file. At minimum, provide a name and location. Visit duration defaults to 30 minutes when no value is set.
+
+## Complete the record
+
+A place can include a description, category, status, tags, a half-star rating, photos, and multiple named links. Images can also be pasted from the clipboard when editing is allowed.
+
+<ProductScreenshot src={popup} alt="Detailed CartaVault place record" caption="The record keeps useful information together without overloading the map." />
+
+The map media library then provides access to photos attached to places. Night-accommodation images remain separate from place media.
+
+<ProductScreenshot src={media} alt="CartaVault map media library" caption="Media remains linked to its source place." />
+
+## Find a place
+
+Combine text search, facets, and sorting. **Reset filters** clears active filters without changing your persisted sorting preference.
+
+## Share a map
+
+The owner can invite a viewer or editor, then transfer ownership through email confirmation. Administrators do not automatically gain access to private user maps.

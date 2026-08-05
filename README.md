@@ -278,6 +278,11 @@ coverage and remote screenshot targets.
 
 ## Documentation
 
+The bilingual user and administrator guide is published at
+[cartavault.fr/docs/en](https://cartavault.fr/docs/en/). It is built with the
+marketing site and includes searchable, generated API, environment, CLI, and
+feature references.
+
 - [Docker, Portainer and Synology](docker/README.md)
 - [Backup and restore](docs/backup-and-restore.md)
 - [Background tasks and Redis](docs/background-tasks.md)

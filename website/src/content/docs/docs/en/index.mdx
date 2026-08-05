@@ -1,0 +1,42 @@
+---
+title: CartaVault documentation
+description: Use, install and administer CartaVault.
+template: splash
+hero:
+  tagline: Organize places, build trips and keep control of your data.
+  actions:
+    - text: Get started
+      link: /docs/en/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: Documentation française
+      link: /docs/fr/
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Use CartaVault" icon="open-book">
+    Create maps and places, add media, and retrieve your information quickly.
+  </Card>
+  <Card title="Plan a trip" icon="seti:config">
+    Build days and nights, calculate routes, and export your travel document.
+  </Card>
+  <Card title="Administer an instance" icon="setting">
+    Deploy the Docker stack, back up volumes, and control access.
+  </Card>
+  <Card title="Technical references" icon="document">
+    Read environment, command-line, and OpenAPI references generated from the code.
+  </Card>
+</CardGrid>
+
+## Recommended path
+
+1. [Sign in and create your first map](/docs/en/getting-started/).
+2. [Add and organize places](/docs/en/places/).
+3. [Turn them into a trip](/docs/en/trips/).
+4. If you host CartaVault, read the [administration guide](/docs/en/administration/).
+
+> This documentation tracks the `master` branch. References marked as generated must not be edited manually.

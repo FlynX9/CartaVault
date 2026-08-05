@@ -1,0 +1,9 @@
+---
+interface Props { items: string[] }
+const { items } = Astro.props;
+---
+<span class="ui-path" aria-label={items.join(' puis ')}>{items.map((item, index) => <><kbd>{item}</kbd>{index < items.length - 1 && <span aria-hidden="true">›</span>}</>)}</span>
+<style>
+  .ui-path { display: inline-flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+  kbd { border: 1px solid var(--sl-color-gray-4); border-radius: .35rem; background: var(--sl-color-gray-6); padding: .1rem .42rem; font: inherit; font-size: .88em; }
+</style>

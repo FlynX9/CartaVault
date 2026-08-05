@@ -1,0 +1,23 @@
+---
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+  caption?: string;
+}
+
+const { src, alt, caption } = Astro.props;
+---
+
+<figure class="doc-shot">
+  <a href={src.src} target="_blank" rel="noreferrer" aria-label={`${alt} — ouvrir en grand`}>
+    <img src={src.src} width={src.width} height={src.height} alt={alt} loading="lazy" decoding="async" />
+  </a>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  .doc-shot { margin: 1.5rem 0; }
+  .doc-shot a { display: block; }
+  .doc-shot img { display: block; width: 100%; height: auto; }
+  figcaption { margin-top: .55rem; color: var(--sl-color-gray-2); font-size: .85rem; text-align: center; }
+</style>

@@ -1,0 +1,29 @@
+{
+  "features": [
+    {
+      "id": "places",
+      "fr": { "name": "Cartes et lieux", "summary": "Classement, recherche, médias, liens, historique et imports KML/KMZ." },
+      "en": { "name": "Maps and places", "summary": "Classification, search, media, links, history, and KML/KMZ imports." }
+    },
+    {
+      "id": "trips",
+      "fr": { "name": "Sorties", "summary": "Jours, nuits, routage, optimisation, chronologie et exports PDF/GPX." },
+      "en": { "name": "Trips", "summary": "Days, nights, routing, optimization, timeline, and PDF/GPX exports." }
+    },
+    {
+      "id": "sharing",
+      "fr": { "name": "Partage", "summary": "Rôles lecteur/éditeur, invitations et transfert de propriété validé." },
+      "en": { "name": "Sharing", "summary": "Viewer/editor roles, invitations, and confirmed ownership transfer." }
+    },
+    {
+      "id": "security",
+      "fr": { "name": "Sécurité", "summary": "Sessions révocables, protections CSRF/RBAC et audit des changements." },
+      "en": { "name": "Security", "summary": "Revocable sessions, CSRF/RBAC protections, and change auditing." }
+    },
+    {
+      "id": "self-hosting",
+      "fr": { "name": "Auto-hébergement", "summary": "Image applicative, PostGIS, migrations et worker Redis facultatif." },
+      "en": { "name": "Self-hosting", "summary": "Application image, PostGIS, migrations, and optional Redis worker." }
+    }
+  ]
+}

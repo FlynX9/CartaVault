@@ -18,8 +18,8 @@
   --cv-border-strong: #cbd8e1;
   --cv-text: var(--cv-navy-900);
   --cv-muted: var(--cv-slate-600);
-  --cv-content: 1200px;
-  --cv-wide: 1360px;
+  --cv-content: 900px;
+  --cv-wide: 1020px;
   --cv-space-1: 0.25rem;
   --cv-space-2: 0.5rem;
   --cv-space-3: 0.75rem;
@@ -35,6 +35,7 @@
   --cv-shadow-sm: 0 8px 28px rgb(13 27 42 / 7%);
   --cv-shadow-md: 0 22px 60px rgb(13 27 42 / 10%);
   --cv-transition: 180ms ease;
+  font-size: 12px;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--cv-text);
   background: var(--cv-surface);
@@ -87,6 +88,12 @@ p { color: var(--cv-muted); }
 .section-eyebrow, .eyebrow { margin-bottom: var(--cv-space-3); color: var(--cv-teal-700); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.19em; line-height: 1.4; text-transform: uppercase; }
 .lead { max-width: 62ch; margin-bottom: 0; font-size: clamp(1.05rem, 1.45vw, 1.2rem); line-height: 1.65; }
 
+/* Desktop density mirrors the former 75% browser-zoom presentation. */
+.site-header { min-height: 54px; }
+.brand img { width: 30px; height: 30px; }
+.button { min-height: 36px; }
+.button.small { min-height: 32px; }
+
 .browser-frame { overflow: hidden; background: var(--cv-surface); border: 1px solid var(--cv-border-strong); border-radius: var(--cv-radius-lg); box-shadow: var(--cv-shadow-md); }
 .browser-frame__bar { display: flex; align-items: center; gap: 6px; height: 34px; padding-inline: var(--cv-space-4); color: var(--cv-slate-500); background: #f7f9fb; border-bottom: 1px solid var(--cv-border); }
 .browser-frame__bar > span { width: 7px; height: 7px; border-radius: 50%; background: #c9d4dc; }
@@ -94,12 +101,27 @@ p { color: var(--cv-muted); }
 .browser-frame__bar p { overflow: hidden; margin: 0 0 0 var(--cv-space-2); font-size: 0.68rem; font-weight: 650; letter-spacing: 0.02em; text-overflow: ellipsis; white-space: nowrap; }
 .browser-frame__content { overflow: hidden; background: #eef2f4; }
 .product-screenshot { min-width: 0; margin: 0; }
+.product-screenshot__trigger { display: block; width: 100%; padding: 0; color: inherit; text-align: inherit; cursor: zoom-in; background: transparent; border: 0; border-radius: var(--cv-radius-lg); transition: transform var(--cv-transition); }
+.product-screenshot__trigger:hover { transform: translateY(-2px); }
+.product-screenshot__trigger:focus-visible { outline: 3px solid var(--cv-gold-500); outline-offset: 4px; }
+.product-screenshot__trigger:focus-visible .browser-frame { border-color: var(--cv-gold-500); }
 .product-screenshot img { display: block; width: 100%; aspect-ratio: 1.44 / 1; object-fit: cover; object-position: left top; }
 .product-screenshot--center img { object-position: center top; }
 .product-screenshot--right img { object-position: right top; }
 .product-screenshot figcaption { margin-top: var(--cv-space-3); color: var(--cv-slate-500); font-size: 0.78rem; text-align: center; }
 .browser-frame--compact { border-radius: var(--cv-radius-md); box-shadow: var(--cv-shadow-sm); }
-.browser-frame--compact .browser-frame__bar { height: 30px; }
+.browser-frame--compact .browser-frame__bar { height: 25px; }
+.browser-frame__bar { height: 28px; }
+
+.screenshot-lightbox { width: min(94vw, 1600px); max-width: none; height: auto; max-height: 94vh; padding: 0; overflow: visible; background: transparent; border: 0; }
+.screenshot-lightbox::backdrop { background: rgb(9 22 36 / 82%); backdrop-filter: blur(8px); }
+.screenshot-lightbox__surface { overflow: hidden; background: var(--cv-surface); border: 1px solid rgb(255 255 255 / 24%); border-radius: var(--cv-radius-lg); box-shadow: 0 32px 100px rgb(0 0 0 / 38%); }
+.screenshot-lightbox header { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: var(--cv-space-4); padding: var(--cv-space-3) var(--cv-space-4); border-bottom: 1px solid var(--cv-border); }
+.screenshot-lightbox header p { overflow: hidden; margin: 0; color: var(--cv-navy-900); font-size: 0.9rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.screenshot-lightbox header button { display: grid; width: 34px; height: 34px; flex: none; padding: 0; color: var(--cv-navy-800); cursor: pointer; background: var(--cv-surface); border: 1px solid var(--cv-border-strong); border-radius: var(--cv-radius-sm); place-items: center; transition: color var(--cv-transition), background var(--cv-transition), border-color var(--cv-transition); }
+.screenshot-lightbox header button:hover { color: var(--cv-teal-700); background: var(--cv-teal-50); border-color: rgb(15 166 138 / 48%); }
+.screenshot-lightbox__viewport { display: grid; max-height: calc(94vh - 49px); overflow: auto; background: #e9eef1; place-items: center; }
+.screenshot-lightbox__viewport img { display: block; width: auto; max-width: 100%; height: auto; max-height: calc(94vh - 49px); object-fit: contain; }
 
 .home-hero, .features-hero { position: relative; display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(560px, 1.18fr); align-items: center; gap: clamp(2.5rem, 5vw, 5rem); padding-block: clamp(4.5rem, 8vw, 7rem) 4.5rem; }
 .home-hero::before, .features-hero::before { position: absolute; top: 1.5rem; right: 0; z-index: -1; width: 46vw; height: 44vw; max-height: 620px; content: ""; opacity: 0.24; background-image: repeating-radial-gradient(ellipse at 40% 42%, transparent 0 22px, rgb(15 166 138 / 20%) 23px 24px); border-radius: 50%; mask-image: linear-gradient(135deg, transparent 4%, #000 46%, transparent 82%); }
@@ -217,6 +239,7 @@ footer { color: #fff; background: var(--cv-navy-950); }
 }
 
 @media (max-width: 900px) {
+  :root { font-size: 14px; }
   .desktop-nav, .header-actions > .language, .header-actions > .app-button { display: none; }
   .header-actions { margin-left: auto; }
   .mobile-menu { display: block; }
@@ -246,6 +269,7 @@ footer { color: #fff; background: var(--cv-navy-950); }
 }
 
 @media (max-width: 700px) {
+  :root { font-size: 16px; }
   .wrap, .wide-wrap { width: min(100% - 28px, var(--cv-content)); }
   .site-header { min-height: 62px; padding-inline: 14px; }
   .brand img { width: 34px; height: 34px; }

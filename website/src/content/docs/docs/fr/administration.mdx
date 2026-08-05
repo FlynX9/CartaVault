@@ -1,0 +1,46 @@
+---
+title: Administration et déploiement
+description: Installer, mettre à jour, sauvegarder et sécuriser CartaVault.
+sidebar:
+  order: 4
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import admin from '../../../../assets/screenshots/app-admin-fr.webp';
+
+## Architecture standard
+
+Le mode mono-instance comprend une image applicative CartaVault et PostgreSQL/PostGIS. Redis et le worker sont facultatifs et destinés aux tâches asynchrones ou à une charge plus importante.
+
+## Installation
+
+1. Copiez le fichier d'environnement fourni par le dépôt.
+2. Générez des secrets persistants avec `python -m app.setup_cli generate-secrets`.
+3. Démarrez la pile Docker Compose ou Portainer.
+4. Laissez le job de migration terminer avant l'application.
+5. Ouvrez l'assistant initial et créez le premier administrateur.
+
+Ne régénérez jamais `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` lors d'une mise à jour : les clés API stockées deviendraient illisibles.
+
+## Mise à jour
+
+Sauvegardez d'abord les volumes, remplacez l'image par la version ciblée, puis recréez la stack. Le conteneur de migration applique les migrations Alembic de la même version avant le démarrage de l'application.
+
+## Sauvegarde minimale
+
+Sauvegardez ensemble :
+
+- la base PostgreSQL avec `pg_dump` ;
+- le volume des photos ;
+- le volume des avatars ;
+- le fichier d'environnement et sa clé de chiffrement.
+
+Testez régulièrement une restauration sur une instance isolée.
+
+## Sécurité
+
+Utilisez HTTPS, activez les cookies sécurisés, limitez les origines CORS et protégez l'accès Portainer. Les diagnostics d'instance et la gestion des utilisateurs restent réservés aux administrateurs.
+
+<ProductScreenshot src={admin} alt="Panneau d'administration des utilisateurs CartaVault" caption="L'administration centralise les comptes, quotas et garde-fous de l'instance." />
+
+Consultez aussi les [variables d'environnement](/docs/fr/reference/environment/) et les [commandes](/docs/fr/reference/cli/).
