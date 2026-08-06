@@ -7,6 +7,7 @@ interface BasemapSelectorProps {
   activeBasemapId: BasemapId
   onBasemapChange: (id: BasemapId) => void
   googleSatelliteAvailable?: boolean
+  satelliteProvider?: 'stadia' | 'google'
 }
 
 const basemapIcons: Record<BasemapId, LucideIcon> = {
@@ -17,7 +18,7 @@ const basemapIcons: Record<BasemapId, LucideIcon> = {
   osm: Map,
 }
 
-export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatelliteAvailable = false }: BasemapSelectorProps) {
+export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatelliteAvailable = false, satelliteProvider = 'stadia' }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
   const activeBasemap = getBasemap(activeBasemapId)
   const selectBasemap = (id: BasemapId) => {
@@ -59,7 +60,10 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatell
       onBlur={handleBlur}
     >
       <legend>Fond</legend>
-      {expanded && <div className="basemap-selector-options">{[...AVAILABLE_BASEMAPS, ...(googleSatelliteAvailable ? [getBasemap('google-satellite')] : [])].filter((basemap, index, items) => basemap.id !== activeBasemapId && items.findIndex((item) => item.id === basemap.id) === index).map((basemap) => renderBasemapButton(basemap, false))}</div>}
+      {expanded && <div className="basemap-selector-options">{[
+        ...AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== 'satellite'),
+        ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : googleSatelliteAvailable ? [getBasemap('google-satellite')] : []),
+      ].filter((basemap, index, items) => basemap.id !== activeBasemapId && items.findIndex((item) => item.id === basemap.id) === index).map((basemap) => renderBasemapButton(basemap, false))}</div>}
       {renderBasemapButton(activeBasemap, true)}
     </fieldset>
   )

@@ -1,7 +1,7 @@
 import type { Geocoder, GeocodingResult } from './types'
+import { getStadiaPlacesConfig } from '../api/stadiaPlaces'
 
 const API_BASE_URL = 'https://api-eu.stadiamaps.com'
-const API_KEY = import.meta.env.VITE_STADIA_MAPS_API_KEY?.trim()
 
 type UnknownRecord = Record<string, unknown>
 const stringValue = (value: unknown) => typeof value === 'string' ? value : undefined
@@ -10,7 +10,6 @@ const numberValue = (value: unknown) => typeof value === 'number' && Number.isFi
 function buildUrl(path: string, parameters: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(parameters)) if (value !== undefined && value !== '') search.set(key, String(value))
-  if (API_KEY) search.set('api_key', API_KEY)
   return `${API_BASE_URL}${path}?${search.toString()}`
 }
 
@@ -30,7 +29,9 @@ function parseResult(feature: unknown, index: number): GeocodingResult | null {
 
 async function request(path: string, parameters: Record<string, string | number | undefined>, signal?: AbortSignal): Promise<GeocodingResult[]> {
   let response: Response
-  try { response = await fetch(buildUrl(path, parameters), { signal, headers: { Accept: 'application/json' } }) } catch (error) { if (error instanceof Error && error.name === 'AbortError') throw error; throw new Error('Le service de recherche géographique est indisponible.') }
+  const config = await getStadiaPlacesConfig(signal).catch(() => ({ personal_key_active: false, api_key: null }))
+  const apiKey = config.personal_key_active ? config.api_key ?? undefined : undefined
+  try { response = await fetch(buildUrl(path, { ...parameters, api_key: apiKey }), { signal, headers: { Accept: 'application/json' } }) } catch (error) { if (error instanceof Error && error.name === 'AbortError') throw error; throw new Error('Le service de recherche géographique est indisponible.') }
   if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'Vérifiez la configuration Stadia Maps.' : 'Le service de recherche géographique est indisponible.')
   let payload: unknown
   try { payload = await response.json() } catch { throw new Error('La réponse du service géographique est invalide.') }

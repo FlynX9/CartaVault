@@ -43,7 +43,7 @@ La recherche cartographique accepte un nom, une adresse ou des coordonnées. Les
 - créer un nouveau lieu à partir du résultat ;
 - en mode Sortie, l’ajouter au jour, à la nuit, au départ ou à l’arrivée actuellement sélectionné.
 
-Le fournisseur par défaut est Stadia. Si une clé Google Places valide est enregistrée dans vos préférences et que **Google Places** est sélectionné, la même recherche utilise Google Places. La fenêtre de résultats se ferme après un ajout réussi à une sortie.
+Le fournisseur par défaut est Stadia. Il fonctionne sans clé personnelle ; une clé Stadia Places facultative et vérifiée permet d’utiliser votre propre forfait. Si une clé Google Places valide est enregistrée dans **Profil > Clés API > Recherche de lieux** et que **Google Places** est sélectionné dans cette même catégorie, la recherche utilise Google Places. La fenêtre de résultats se ferme après un ajout réussi à une sortie.
 
 ## Coordonnées, région et cohérence pays
 

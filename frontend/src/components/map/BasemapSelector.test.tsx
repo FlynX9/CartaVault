@@ -42,4 +42,15 @@ describe('BasemapSelector', () => {
     fireEvent.keyDown(satellite, { key: 'Enter' })
     expect(onBasemapChange).toHaveBeenCalledWith('satellite')
   })
+
+  it('offers only the satellite provider selected in account preferences', () => {
+    const { rerender } = render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} googleSatelliteAvailable satelliteProvider="stadia" />)
+    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
+    expect(screen.getByRole('button', { name: 'Utiliser le fond Satellite' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Utiliser le fond Google Satellite' })).not.toBeInTheDocument()
+
+    rerender(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} googleSatelliteAvailable satelliteProvider="google" />)
+    expect(screen.getByRole('button', { name: 'Utiliser le fond Google Satellite' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Utiliser le fond Satellite' })).not.toBeInTheDocument()
+  })
 })

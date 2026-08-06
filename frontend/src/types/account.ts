@@ -28,6 +28,7 @@ export interface AccountPreferences {
     traffic_mode: 'traffic_unaware' | 'traffic_aware' | 'traffic_aware_optimal'
   }
   places: { provider: 'stadia' | 'google' }
+  basemaps?: { satellite_provider: 'stadia' | 'google' }
 }
 
 export interface RoutingProviderCapability {

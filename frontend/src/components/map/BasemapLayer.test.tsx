@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { BasemapLayer } from './BasemapLayer'
+import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 
 const { mapMock } = vi.hoisted(() => ({
   mapMock: {
@@ -20,6 +21,7 @@ vi.mock('react-leaflet', () => ({
   useMap: () => mapMock,
 }))
 vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
+vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, tile_url: null }) }))
 
 afterEach(() => {
   cleanup()
@@ -34,6 +36,12 @@ describe('BasemapLayer', () => {
     expect(layer).toHaveAttribute('data-url', expect.stringContaining('alidade_satellite'))
     expect(layer).toHaveAttribute('data-max-zoom', '20')
     expect(layer.getAttribute('data-attribution')).toContain('CNES')
+  })
+
+  it('uses the personal Stadia tile URL when a verified optional key exists', async () => {
+    vi.mocked(getStadiaBasemapConfig).mockResolvedValue({ personal_key_active: true, tile_url: 'https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg?api_key=personal' })
+    render(<BasemapLayer basemapId="satellite" onTileError={vi.fn()} />)
+    await waitFor(() => expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', expect.stringContaining('api_key=personal')))
   })
 
   it('identifies a failing raster source to the fallback controller', () => {

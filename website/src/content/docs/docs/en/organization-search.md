@@ -39,7 +39,7 @@ Before a destructive bulk action, verify both the selected count and active filt
 
 Map search accepts a name, address, or coordinates. Results appear temporarily on the map. You can center the view, create a permanent place, or—while planning a trip—add the result to the selected day, night, departure, or arrival.
 
-Stadia is the default provider. If a valid Google Places key is stored and **Google Places** is selected in preferences, the same surface uses Google Places. Results close after a successful trip addition.
+Stadia is the default provider and works without a personal key. An optional verified Stadia Places key uses your own plan. If a valid Google Places key is stored under **Profile > API keys > Place search** and **Google Places** is selected in that category, the same surface uses Google Places. Results close after a successful trip addition.
 
 ## Coordinates, region, and country checks
 

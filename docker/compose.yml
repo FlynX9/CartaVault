@@ -77,7 +77,6 @@ services:
       args:
         CARTAVAULT_VERSION: ${CARTAVAULT_VERSION}
         VITE_API_BASE_URL: /api
-        VITE_STADIA_MAPS_API_KEY: ${VITE_STADIA_MAPS_API_KEY:-}
     image: cartavault:${CARTAVAULT_VERSION}
     restart: unless-stopped
     read_only: true

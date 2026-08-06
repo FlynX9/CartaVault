@@ -23,7 +23,7 @@ Vérifiez la validité de la clé du fournisseur, ses API autorisées et ses quo
 
 ## La recherche d'adresse renvoie de mauvais résultats
 
-Vérifiez le fournisseur sélectionné dans **Profil > Préférences > Places**. Stadia et Google Places n'utilisent pas les mêmes index. Pour Google Places, contrôlez que la clé est vérifiée et que l'API Places correspondante est autorisée dans Google Cloud. Ajoutez le pays ou la ville à une requête ambiguë.
+Vérifiez le fournisseur sélectionné dans **Profil > Clés API > Recherche de lieux**. Stadia et Google Places n'utilisent pas les mêmes index. Pour Google Places, contrôlez que la clé est vérifiée et que l'API Places correspondante est autorisée dans Google Cloud. Ajoutez le pays ou la ville à une requête ambiguë.
 
 ## La région reste vide
 

@@ -77,6 +77,48 @@ def test_credentials_are_isolated_between_users(integration_client, database_ses
     assert all("fake-google-key" not in row.encrypted_secret for row in rows)
 
 
+def test_personal_google_map_tiles_key_is_independent_and_masked(integration_client, database_session, auth_user, monkeypatch) -> None:
+    _configure_encryption(monkeypatch)
+    csrf = _login(integration_client, monkeypatch, auth_user)
+    map_key = "fake-google-map-tiles-user-a"
+    stored = integration_client.put(
+        "/account/integrations/google-map-tiles",
+        json={"api_key": map_key},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert stored.status_code == 200
+    assert stored.json()["last4"] == "er-a"
+    assert map_key not in stored.text
+    credential = database_session.scalar(select(UserApiCredential).where(
+        UserApiCredential.user_id == auth_user.id,
+        UserApiCredential.provider == "google_map_tiles",
+    ))
+    assert credential is not None
+    assert map_key not in credential.encrypted_secret
+    assert database_session.scalar(select(UserApiCredential).where(
+        UserApiCredential.user_id == auth_user.id,
+        UserApiCredential.provider == "google_routes",
+    )) is None
+
+    monkeypatch.setattr("app.basemaps.router._create_google_session", lambda *_args: {"session": "verified"})
+    verified = integration_client.post("/account/integrations/google-map-tiles/verify", headers={"X-CSRF-Token": csrf})
+    assert verified.status_code == 200
+    assert verified.json()["verified"] is True
+
+    auth_user.preferences = {"preferred_basemap": "google-satellite"}
+    database_session.flush()
+    monkeypatch.setattr("app.basemaps.router.verify_password", lambda _hash, password: (password == "current password", False))
+    deleted = integration_client.request(
+        "DELETE",
+        "/account/integrations/google-map-tiles",
+        json={"current_password": "current password"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert deleted.status_code == 200
+    assert deleted.json()["provider_reset"] is True
+    assert auth_user.preferences["preferred_basemap"] == "cartavault-light"
+
+
 def test_verified_google_credential_searches_places_without_exposing_the_key(integration_client, database_session, auth_user, monkeypatch) -> None:
     _configure_encryption(monkeypatch)
     csrf = _login(integration_client, monkeypatch, auth_user)

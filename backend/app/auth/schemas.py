@@ -125,6 +125,10 @@ class PlacesPreferences(BaseModel):
     provider: Literal["stadia", "google"] = "stadia"
 
 
+class BasemapPreferences(BaseModel):
+    satellite_provider: Literal["stadia", "google"] = "stadia"
+
+
 class OnboardingPreferences(BaseModel):
     dismissed: bool = False
     completed_steps: list[Literal["map", "place", "import", "trip", "organization"]] = Field(default_factory=list)
@@ -139,15 +143,19 @@ class AccountPreferences(BaseModel):
     trash_retention_days: int = Field(default=30, ge=1, le=365)
     routing: RoutingPreferences = Field(default_factory=RoutingPreferences)
     places: PlacesPreferences = Field(default_factory=PlacesPreferences)
+    basemaps: BasemapPreferences = Field(default_factory=BasemapPreferences)
     onboarding: OnboardingPreferences = Field(default_factory=OnboardingPreferences)
 
     @model_validator(mode="before")
     @classmethod
     def migrate_legacy_routing_preference(cls, value: object) -> object:
-        if not isinstance(value, dict) or "routing" in value or "keep_routes_in_country" not in value:
+        if not isinstance(value, dict):
             return value
         migrated = dict(value)
-        migrated["routing"] = {"stay_in_country": migrated.pop("keep_routes_in_country")}
+        if "routing" not in migrated and "keep_routes_in_country" in migrated:
+            migrated["routing"] = {"stay_in_country": migrated.pop("keep_routes_in_country")}
+        if "basemaps" not in migrated:
+            migrated["basemaps"] = {"satellite_provider": "google" if migrated.get("preferred_basemap") == "google-satellite" else "stadia"}
         return migrated
 
 

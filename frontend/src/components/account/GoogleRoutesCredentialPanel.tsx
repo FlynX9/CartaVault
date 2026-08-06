@@ -5,6 +5,7 @@ import { deleteGoogleRoutesCredential, storeGoogleRoutesCredential, verifyGoogle
 import type { GoogleRoutesCredentialStatus } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
+import { formatCredentialDate } from './credentialDate'
 
 interface GoogleRoutesCredentialPanelProps {
   status: GoogleRoutesCredentialStatus
@@ -65,7 +66,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
     <div className="account-credential__heading">
       <span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span>
       <div><h3 id="google-routes-credential-title">Clé Google Routes<FieldHelp>La clé est chiffrée sur le serveur et n’est jamais renvoyée à votre navigateur après son enregistrement.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div>
-      {status.verified && <span className="account-credential__verification"><span className="account-credential__status">Vérifiée</span>{status.verified_at && <time dateTime={status.verified_at}>{formatShortDate(status.verified_at)}</time>}</span>}
+      {status.configured && status.verified && <span className="account-credential__verification"><span className="account-credential__status">Vérifiée</span>{status.verified_at && <time dateTime={status.verified_at}>{formatCredentialDate(status.verified_at)}</time>}</span>}
     </div>
     {!storageAvailable && <p className="account-credential__warning" role="status">Le stockage sécurisé des clés utilisateur n’est pas configuré sur ce serveur.</p>}
     {status.last_error_code && <p className="account-credential__warning">La clé doit être vérifiée ou remplacée avant utilisation.</p>}
@@ -81,5 +82,4 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
   </section>
 }
 
-function formatShortDate(value: string): string { return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short' }).format(new Date(value)) }
 function messageFor(reason: unknown, fallback: string): string { return reason instanceof Error ? reason.message : fallback }

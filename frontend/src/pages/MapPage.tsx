@@ -174,6 +174,7 @@ export function MapPage({
     resolvedTheme,
   ))
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
+  const [satelliteProvider, setSatelliteProvider] = useState<'stadia' | 'google'>(initialBasemapRef.current === 'google-satellite' ? 'google' : 'stadia')
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const [googleSatelliteAvailable, setGoogleSatelliteAvailable] = useState(false)
   const googleSatelliteAvailableRef = useRef(false)
@@ -225,6 +226,7 @@ export function MapPage({
     void getAccountPreferences().then((preferences) => {
       if (!current) return
       accountPreferencesRef.current = preferences
+      setSatelliteProvider(preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia'))
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
       const explicitSelection = explicitBasemapSelectionRef.current
@@ -244,6 +246,7 @@ export function MapPage({
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
       accountPreferencesRef.current = preferences
+      setSatelliteProvider(preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia'))
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
       const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current, googleSatelliteAvailableRef.current)
@@ -417,8 +420,10 @@ export function MapPage({
     failedBasemapsRef.current.clear()
     saveBasemapPreference(selected)
     const currentPreferences = accountPreferencesRef.current
-    if (currentPreferences !== null && currentPreferences.preferred_basemap !== selected) {
-      const updated = { ...currentPreferences, preferred_basemap: selected }
+    const provider = selected === 'google-satellite' ? 'google' : selected === 'satellite' ? 'stadia' : currentPreferences?.basemaps?.satellite_provider
+    if (currentPreferences !== null && (currentPreferences.preferred_basemap !== selected || (provider !== undefined && currentPreferences.basemaps?.satellite_provider !== provider))) {
+      const updated = { ...currentPreferences, preferred_basemap: selected, ...(provider ? { basemaps: { satellite_provider: provider } } : {}) }
+      if (provider) setSatelliteProvider(provider)
       accountPreferencesRef.current = updated
       void updateAccountPreferences(updated).then((saved) => {
         accountPreferencesRef.current = saved
@@ -561,7 +566,7 @@ export function MapPage({
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
-            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} googleSatelliteAvailable={googleSatelliteAvailable} />
+            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} googleSatelliteAvailable={googleSatelliteAvailable} satelliteProvider={satelliteProvider} />
           </div>
           {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
             <button

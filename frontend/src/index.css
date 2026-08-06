@@ -3472,6 +3472,13 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-preference-card { display: grid; gap: .85rem; padding: 1rem; background: var(--cv-surface); border: 1px solid rgb(43 62 89 / 12%); border-radius: .82rem; box-shadow: 0 1px 3px rgb(13 27 42 / 5%); }
 .account-preference-card__heading { display: flex; align-items: center; gap: .65rem; }
 .account-preference-card__heading h3 { margin: 0; color: var(--cv-color-navy); font-size: .92rem; }
+.account-credential__optional { color: var(--cv-color-slate); font-size: .68rem; font-weight: 500; }
+.account-api-key-group { gap: 0; }
+.account-api-key-group__toggle { display: grid; width: 100%; min-height: 2.65rem; grid-template-columns: auto 1fr auto; align-items: center; gap: .65rem; padding: 0; color: var(--cv-color-navy); background: transparent; border: 0; font-size: .92rem; font-weight: 750; text-align: left; cursor: pointer; }
+.account-api-key-group__toggle h3 { margin: 0; font: inherit; }
+.account-api-key-group__toggle > svg { color: var(--cv-color-slate); transition: transform 160ms ease; }
+.account-api-key-group__toggle[aria-expanded='true'] > svg { transform: rotate(180deg); }
+.account-api-key-group__content { display: grid; gap: .85rem; padding-top: .85rem; }
 .account-preference-card__icon, .account-credential__icon { display: grid; flex: 0 0 auto; width: 2.45rem; height: 2.45rem; color: var(--cv-color-slate); background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface)); border-radius: .72rem; place-items: center; }
 .account-preference-card--routing .account-preference-card__icon, .account-credential__icon { color: var(--cv-color-teal); }
 .account-preference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -3499,13 +3506,13 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-route-option { display: flex; min-height: 2.35rem; align-items: center; gap: .55rem; padding: .45rem 0; color: var(--cv-color-slate); border-bottom: 1px solid rgb(43 62 89 / 11%); font-size: .7rem; font-weight: 500; cursor: pointer; }
 .account-route-option input { flex: 0 0 auto; margin: 0; }
 .account-route-traffic { padding: .7rem 0 0; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential { max-width: none; margin: 0; padding: .9rem; background: color-mix(in srgb, var(--cv-color-mist) 48%, var(--cv-surface)); border-radius: .72rem; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential__heading { gap: .7rem; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential__heading h3 { font-size: .78rem; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential__heading p { margin-top: .18rem; font-size: .68rem; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential__actions { gap: .45rem; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential .account-button { min-height: 2.15rem; gap: .34rem; padding: .34rem .62rem; border-radius: .48rem; font-size: .65rem; }
-.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places) .account-credential .account-button svg { width: .82rem; height: .82rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential { max-width: none; margin: 0; padding: .9rem; background: color-mix(in srgb, var(--cv-color-mist) 48%, var(--cv-surface)); border-radius: .72rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential__heading { gap: .7rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential__heading h3 { font-size: .78rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential__heading p { margin-top: .18rem; font-size: .68rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential__actions { gap: .45rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential .account-button { min-height: 2.15rem; gap: .34rem; padding: .34rem .62rem; border-radius: .48rem; font-size: .65rem; }
+.account-preference-card:is(.account-preference-card--routing, .account-preference-card--places, .account-preference-card--maps) .account-credential .account-button svg { width: .82rem; height: .82rem; }
 .account-preferences-form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .4rem; padding-top: .05rem; }
 .account-preferences-form__actions .account-button { justify-self: auto; }
 @media (max-width: 900px) {

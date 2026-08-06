@@ -39,7 +39,7 @@ Choisissez OSRM ou Google Routes, puis les contraintes de pays, péage, autorout
 
 ## Fournisseur de recherche de lieux
 
-Stadia est disponible sans clé personnelle. Google Places devient sélectionnable après enregistrement et vérification d’une clé compatible. La clé Places est distincte de la clé Routes, même si Google Cloud peut autoriser les deux API sur un même projet.
+Le panneau **Clés API** regroupe les catégories repliables Routage, Recherche de lieux et Fonds de carte. Les formulaires de clé suivent le fournisseur choisi. Stadia reste disponible sans clé personnelle pour la recherche et les tuiles ; les clés facultatives Stadia Places et Stadia Maps permettent d’utiliser le forfait associé. Google Places et Google Map Tiles exigent une clé vérifiée. Les clés Google Routes, Places et Map Tiles sont gérées séparément, même si Google Cloud peut autoriser plusieurs API sur un même projet. Aucune clé Stadia globale n’est injectée dans l’image Docker.
 
 ## Clés Google personnelles
 

@@ -19,8 +19,10 @@ from app.admin.router import router as admin_console_router
 from app.auth.account_router import router as account_router
 from app.auth.credential_router import router as credential_router
 from app.auth.google_places_credential_router import router as google_places_credential_router
+from app.places.stadia_credential_router import router as stadia_places_credential_router
 from app.auth.openrouteservice_credential_router import router as openrouteservice_credential_router
-from app.basemaps.router import admin_router as basemap_admin_router, router as basemap_router
+from app.basemaps.router import admin_router as basemap_admin_router, credential_router as basemap_credential_router, router as basemap_router
+from app.basemaps.stadia_router import router as stadia_basemap_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
@@ -203,7 +205,10 @@ app.include_router(account_router, prefix=API_PREFIX)
 app.include_router(credential_router, prefix=API_PREFIX)
 app.include_router(google_places_credential_router, prefix=API_PREFIX)
 app.include_router(openrouteservice_credential_router, prefix=API_PREFIX)
+app.include_router(basemap_credential_router, prefix=API_PREFIX)
 app.include_router(basemap_router, prefix=API_PREFIX)
+app.include_router(stadia_basemap_router, prefix=API_PREFIX)
+app.include_router(stadia_places_credential_router, prefix=API_PREFIX)
 app.include_router(invitations_router, prefix=API_PREFIX)
 app.include_router(admin_users_router, prefix=API_PREFIX)
 app.include_router(registration_admin_router, prefix=API_PREFIX)

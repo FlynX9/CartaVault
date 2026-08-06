@@ -244,10 +244,15 @@ Detailed development notes live in the [backend](backend/README.md) and
 
 ### Routing and place search
 
-OSRM and Stadia are the default providers. Users can opt into Google Routes or
-Google Places by configuring their own compatible API key in account
-preferences. Provider credentials are encrypted server-side and are never
-returned to the browser.
+OSRM and Stadia are the default providers. **Account → API keys** centralizes
+the routing engine, place-search engine and basemap credentials. Users can opt
+into Google Routes, Google Places or Google Map Tiles with separate personal
+keys. Personal Stadia keys are optional for both place search and satellite
+tiles: without them, CartaVault uses public access; with a verified key, the
+corresponding requests use the associated Stadia plan.
+There is no global Stadia key or build argument. Provider credentials are
+encrypted server-side and credential-status responses expose only the last four
+characters.
 
 The instance must preserve this key with its database backup whenever personal
 provider credentials are stored:

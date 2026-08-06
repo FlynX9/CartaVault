@@ -9,16 +9,15 @@ describe('basemap registry', () => {
     expect(BASEMAPS.find((basemap) => basemap.id === 'google-satellite')?.attribution).toContain('Google')
   })
 
-  it('uses OpenFreeMap without a key and restricts the optional Stadia key to satellite', () => {
-    const withKey = createBasemaps(' reviewed-key ')
-    expect(withKey.slice(0, 2).every((basemap) => basemap.kind === 'vector' && !JSON.stringify(basemap).includes('api_key'))).toBe(true)
-    expect(withKey.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: expect.stringContaining('api_key=reviewed-key') })
-    expect(JSON.stringify(withKey.find((basemap) => basemap.id === 'google-satellite'))).not.toContain('reviewed-key')
-    expect(JSON.stringify(createBasemaps(undefined))).not.toContain('api_key=undefined')
+  it('keeps build-time basemap definitions free of provider keys', () => {
+    const basemaps = createBasemaps()
+    expect(basemaps.slice(0, 2).every((basemap) => basemap.kind === 'vector' && !JSON.stringify(basemap).includes('api_key'))).toBe(true)
+    expect(basemaps.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: expect.not.stringContaining('api_key=') })
+    expect(JSON.stringify(basemaps.find((basemap) => basemap.id === 'google-satellite'))).not.toContain('api_key')
   })
 
   it('supports self-hosted styles and vector tiles without appending a provider key', () => {
-    const basemaps = createBasemaps('reviewed-key', {
+    const basemaps = createBasemaps({
       'cartavault-light': true,
       'cartavault-dark': true,
       satellite: true,
@@ -39,7 +38,7 @@ describe('basemap registry', () => {
   })
 
   it('disables providers from configuration without removing the controlled OSM fallback', () => {
-    const basemaps = createBasemaps(undefined, {
+    const basemaps = createBasemaps({
       'cartavault-light': false,
       'cartavault-dark': true,
       satellite: false,

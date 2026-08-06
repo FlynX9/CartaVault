@@ -5,9 +5,10 @@ import L from 'leaflet'
 import { useEffect, useRef, useState } from 'react'
 import { TileLayer, useMap } from 'react-leaflet'
 
-import { getBasemap, type BasemapId, type VectorBasemapDefinition } from '../../map/basemaps'
+import { getBasemap, type BasemapId, type RasterBasemapDefinition, type VectorBasemapDefinition } from '../../map/basemaps'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { createGoogleSatelliteSession, reportGoogleSatelliteUsage } from '../../api/googleSatellite'
+import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
@@ -78,6 +79,18 @@ function GoogleSatelliteLayer({ onTileError }: { onTileError: (id: BasemapId, fa
   return <TileLayer key="google-satellite" url={session.tile_url} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileloadstart: () => { counts.current.tiles_started += 1 }, tileload: () => { counts.current.tiles_completed += 1 }, tileerror: () => { counts.current.tiles_failed += 1; onTileErrorRef.current('google-satellite') }, tileabort: () => { counts.current.tiles_cancelled += 1 } }} />
 }
 
+function StadiaSatelliteLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+  const [url, setUrl] = useState(basemap.url)
+  useEffect(() => {
+    const controller = new AbortController()
+    void getStadiaBasemapConfig(controller.signal).then((config) => {
+      if (!controller.signal.aborted && config.tile_url) setUrl(config.tile_url)
+    }).catch(() => undefined)
+    return () => controller.abort()
+  }, [basemap.url])
+  return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
+}
+
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
@@ -86,6 +99,7 @@ export function BasemapLayer({ basemapId, onTileError }: BasemapLayerProps) {
     return <VectorBasemapLayer key={basemap.id} basemap={basemap} onTileError={onTileError} />
   }
   if (basemap.kind === 'google') return <GoogleSatelliteLayer onTileError={onTileError} />
+  if (basemap.id === 'satellite' && basemap.requiresStadiaAuthentication) return <StadiaSatelliteLayer basemap={basemap} onTileError={onTileError} />
 
   return (
     <TileLayer

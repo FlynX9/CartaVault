@@ -23,7 +23,7 @@ Check the provider key, enabled APIs, and quotas. CartaVault backs off after rat
 
 ## Address search returns irrelevant results
 
-Check the provider under **Profile > Preferences > Places**. Stadia and Google Places use different indexes. For Google Places, verify the key and enable the matching Places API in Google Cloud. Add a country or city to ambiguous searches.
+Check the provider under **Profile > API keys > Place search**. Stadia and Google Places use different indexes. For Google Places, verify the key and enable the matching Places API in Google Cloud. Add a country or city to ambiguous searches.
 
 ## Region remains empty
 

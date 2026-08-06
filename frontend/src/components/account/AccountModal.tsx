@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, CalendarDays, Clock3, Image as ImageIcon, Info, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, ChevronDown, Clock3, Image as ImageIcon, Info, KeyRound, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
@@ -14,8 +14,14 @@ import { FieldHelp } from '../common/FieldHelp'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 import { GooglePlacesCredentialPanel } from './GooglePlacesCredentialPanel'
 import { OpenRouteServiceCredentialPanel } from './OpenRouteServiceCredentialPanel'
+import { GoogleSatelliteCredentialPanel } from './GoogleSatelliteCredentialPanel'
+import { StadiaMapsCredentialPanel } from './StadiaMapsCredentialPanel'
+import { StadiaPlacesCredentialPanel } from './StadiaPlacesCredentialPanel'
+import { getStadiaMapsCredential, type StadiaMapsCredentialStatus } from '../../api/stadiaMaps'
+import { getStadiaPlacesCredential, type StadiaPlacesCredentialStatus } from '../../api/stadiaPlaces'
+import { getGoogleSatelliteCredential, type GoogleSatelliteCredentialStatus } from '../../api/googleSatellite'
 
-type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'danger'
+type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'api_keys' | 'danger'
 
 const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' }, places: { provider: 'stadia' } }
 
@@ -30,7 +36,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [sessions, setSessions] = useState<AccountSession[]>([])
   const [preferences, setPreferences] = useState<AccountPreferences>(emptyPreferences)
-  const [googleSatelliteAvailable, setGoogleSatelliteAvailable] = useState(false)
+  const [, setGoogleSatelliteAvailable] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -104,7 +110,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           <button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button>
         </header>
         <nav className="account-modal__nav" aria-label={t('account.navigation')}>
-          {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCheck, t('account.security') ], [ 'sessions', MonitorSmartphone, t('account.sessions') ], [ 'preferences', Settings2, t('account.preferences') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
+          {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCheck, t('account.security') ], [ 'sessions', MonitorSmartphone, t('account.sessions') ], [ 'preferences', Settings2, t('account.preferences') ], [ 'api_keys', KeyRound, t('account.apiKeys') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
           <button className="danger" type="button" onClick={() => selectSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />{t('account.danger')}</button>
         </nav>
         <main className="account-modal__content">
@@ -112,7 +118,8 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} dirty={dirty} setDraftName={setDraftName} saveProfile={saveProfile} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
-          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} googleSatelliteAvailable={googleSatelliteAvailable} />}
+          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
+          {section === 'api_keys' && <ApiKeysSection preferences={preferences} setPreferences={setPreferences} onSatelliteAvailabilityChanged={setGoogleSatelliteAvailable} />}
           {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
         </main>
       </section>
@@ -183,6 +190,16 @@ function PreferenceCardHeading({ icon: Icon, title }: { icon: LucideIcon; title:
   return <header className="account-preference-card__heading"><span className="account-preference-card__icon"><Icon size={19} aria-hidden="true" /></span><h3>{title}</h3></header>
 }
 
+function ApiKeyGroup({ icon: Icon, title, modifier, children }: { icon: LucideIcon; title: string; modifier: string; children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false)
+  return <section className={`account-preference-card account-preference-card--${modifier} account-api-key-group${expanded ? ' account-api-key-group--expanded' : ''}`}>
+    <button className="account-api-key-group__toggle" type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+      <span className="account-preference-card__icon"><Icon size={19} aria-hidden="true" /></span><h3>{title}</h3><ChevronDown size={18} aria-hidden="true" />
+    </button>
+    {expanded && <div className="account-api-key-group__content">{children}</div>}
+  </section>
+}
+
 function PreferenceField({ icon: Icon, label, htmlFor, help, children, className = '' }: { icon?: LucideIcon; label: string; htmlFor: string; help?: ReactNode; children: ReactNode; className?: string }) {
   return <div className={`account-preference-field ${className}`.trim()}>
     <div className="account-preference-field__label">{Icon && <Icon size={16} aria-hidden="true" />}<label id={`${htmlFor}-label`} htmlFor={htmlFor}>{label}</label>{help && <FieldHelp>{help}</FieldHelp>}</div>
@@ -190,59 +207,11 @@ function PreferenceField({ icon: Icon, label, htmlFor, help, children, className
   </div>
 }
 
-function PreferencesSection({ preferences, setPreferences, run, googleSatelliteAvailable }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean>; googleSatelliteAvailable: boolean }) {
+function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
   const { setLocale, t } = useI18n()
-  const [credentialStatus, setCredentialStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
-  const [orsCredentialStatus, setOrsCredentialStatus] = useState<OpenRouteServiceCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null, self_hosted: false })
-  const [placesCredentialStatus, setPlacesCredentialStatus] = useState<GooglePlacesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
-  const [storageAvailable, setStorageAvailable] = useState(false)
-  const [orsAvailable, setOrsAvailable] = useState(false)
-  const [routingError, setRoutingError] = useState<string | null>(null)
-  useEffect(() => {
-    const controller = new AbortController()
-    void Promise.all([getRoutingProviders(controller.signal), getGoogleRoutesCredential(controller.signal), getGooglePlacesCredential(controller.signal), getOpenRouteServiceCredential(controller.signal)])
-      .then(([providers, credential, placesCredential, orsCredential]) => { setStorageAvailable(providers.credential_storage_available); setCredentialStatus(credential); setPlacesCredentialStatus(placesCredential); setOrsCredentialStatus(orsCredential); setOrsAvailable(providers.providers.some((provider) => provider.id === 'openrouteservice' && (provider.available || providers.credential_storage_available))) })
-      .catch(() => { setStorageAvailable(false); setCredentialStatus({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }) })
-    return () => controller.abort()
-  }, [])
   const update = <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => setPreferences({ ...preferences, [key]: value })
-  const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
   const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
-  const googleSelected = preferences.routing.provider === 'google'
-  const orsSelected = preferences.routing.provider === 'openrouteservice'
-  const googlePlacesSelected = preferences.places.provider === 'google'
-  const handleCredentialChange = async (next: GoogleRoutesCredentialStatus, providerReset?: boolean) => {
-    setCredentialStatus(next)
-    const providers = await getRoutingProviders()
-    setStorageAvailable(providers.credential_storage_available)
-    if (providerReset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } })
-  }
-  const handlePlacesCredentialChange = (next: GooglePlacesCredentialStatus, providerReset?: boolean) => {
-    setPlacesCredentialStatus(next)
-    if (providerReset) setPreferences({ ...preferences, places: { provider: 'stadia' } })
-  }
-  const handleOrsCredentialChange = async (next: OpenRouteServiceCredentialStatus, providerReset?: boolean) => {
-    setOrsCredentialStatus(next)
-    const providers = await getRoutingProviders()
-    setOrsAvailable(providers.providers.some((provider) => provider.id === 'openrouteservice' && (provider.available || providers.credential_storage_available)))
-    if (providerReset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } })
-  }
-  const savePreferences = () => {
-    setRoutingError(null)
-    if (googleSelected && !credentialStatus.verified) {
-      setRoutingError(t('account.preferences.googleCredentialRequired'))
-      return
-    }
-    if (orsSelected && !orsCredentialStatus.verified && !orsCredentialStatus.self_hosted) {
-      setRoutingError('Ajoutez et vérifiez votre clé OpenRouteService avant d’enregistrer ce moteur.')
-      return
-    }
-    if (googlePlacesSelected && !placesCredentialStatus.verified) {
-      setRoutingError('Ajoutez et vérifiez votre clé Google Places avant d’enregistrer ce moteur.')
-      return
-    }
-    void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved'))
-  }
+  const savePreferences = () => { void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved')) }
   return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><div className="account-form account-preferences-form">
     <section className="account-preference-card">
       <PreferenceCardHeading icon={Settings2} title={t('account.preferences.general')} />
@@ -251,7 +220,7 @@ function PreferencesSection({ preferences, setPreferences, run, googleSatelliteA
           <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
         </PreferenceField>
         <PreferenceField icon={MapIcon} label={t('account.preferences.basemap')} htmlFor="account-basemap">
-          <select id="account-basemap" aria-labelledby="account-basemap-label" value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="google-satellite" disabled={!googleSatelliteAvailable}>Google Satellite{googleSatelliteAvailable ? '' : ' (indisponible)'}</option><option value="osm">OpenStreetMap</option></select>
+          <select id="account-basemap" aria-labelledby="account-basemap-label" value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value={(preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')) === 'google' ? 'google-satellite' : 'satellite'}>Satellite</option><option value="osm">OpenStreetMap</option></select>
         </PreferenceField>
         <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density">
           <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>
@@ -265,32 +234,98 @@ function PreferencesSection({ preferences, setPreferences, run, googleSatelliteA
         </PreferenceField>
       </div>
     </section>
-    <section className="account-preference-card account-preference-card--routing">
-      <PreferenceCardHeading icon={Route} title={t('account.preferences.routing')} />
-      <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-integration-engine">
-        <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="openrouteservice" disabled={!orsAvailable}>OpenRouteService</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
-      </PreferenceField>
-      {googleSelected && <GoogleRoutesCredentialPanel status={credentialStatus} storageAvailable={storageAvailable} onChanged={handleCredentialChange} />}
-      {orsSelected && <OpenRouteServiceCredentialPanel status={orsCredentialStatus} storageAvailable={storageAvailable} onChanged={handleOrsCredentialChange} />}
-      {routingError && <div className="form-alert" role="alert">{routingError}</div>}
-      <div className="account-route-options">
-        <header className="account-route-options__heading"><SlidersHorizontal size={16} aria-hidden="true" /><h4>{t('account.preferences.routeOptions')}</h4><FieldHelp>{t('account.preferences.countryNotice')}</FieldHelp></header>
-        <label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} /><span>{t('account.preferences.stayInCountry')}</span></label>
-        {googleSelected && <><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} /><span>{t('account.preferences.avoidTolls')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} /><span>{t('account.preferences.avoidHighways')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} /><span>{t('account.preferences.avoidFerries')}</span></label>
-          <PreferenceField label={t('account.preferences.traffic')} htmlFor="account-traffic" className="account-route-traffic"><select id="account-traffic" aria-labelledby="account-traffic-label" value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></PreferenceField>
-        </>}
-      </div>
-    </section>
-    <section className="account-preference-card account-preference-card--places">
-      <PreferenceCardHeading icon={MapIcon} title="Places" />
-      <PreferenceField label="Moteur de recherche de lieux" htmlFor="account-places-engine" help="Stadia est utilisé par défaut. Google Places nécessite une clé séparée autorisant Places API (New)." className="account-integration-engine">
-        <select id="account-places-engine" aria-labelledby="account-places-engine-label" value={preferences.places.provider} onChange={(event) => { setRoutingError(null); setPreferences({ ...preferences, places: { provider: event.target.value as AccountPreferences['places']['provider'] } }) }}><option value="stadia">Stadia</option><option value="google" disabled={!storageAvailable}>Google Places</option></select>
-      </PreferenceField>
-      {googlePlacesSelected && <GooglePlacesCredentialPanel status={placesCredentialStatus} storageAvailable={storageAvailable} onChanged={handlePlacesCredentialChange} />}
-    </section>
     <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={savePreferences}>{t('common.save')}</button>
     <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
-    </div></div></>
+  </div></div></>
+}
+
+function ApiKeysSection({ preferences, setPreferences, onSatelliteAvailabilityChanged }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; onSatelliteAvailabilityChanged: (available: boolean) => void }) {
+  const { t } = useI18n()
+  const emptyCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
+  const [routes, setRoutes] = useState<GoogleRoutesCredentialStatus>(emptyCredential)
+  const [ors, setOrs] = useState<OpenRouteServiceCredentialStatus>({ ...emptyCredential, self_hosted: false })
+  const [places, setPlaces] = useState<GooglePlacesCredentialStatus>(emptyCredential)
+  const [stadiaPlaces, setStadiaPlaces] = useState<StadiaPlacesCredentialStatus>(emptyCredential)
+  const [satellite, setSatellite] = useState<GoogleSatelliteCredentialStatus>(emptyCredential)
+  const [stadiaMaps, setStadiaMaps] = useState<StadiaMapsCredentialStatus>(emptyCredential)
+  const [storageAvailable, setStorageAvailable] = useState(false)
+  const [orsAvailable, setOrsAvailable] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void Promise.all([
+      getRoutingProviders(controller.signal),
+      getGoogleRoutesCredential(controller.signal),
+      getOpenRouteServiceCredential(controller.signal),
+      getGooglePlacesCredential(controller.signal),
+      getStadiaPlacesCredential(controller.signal),
+      getGoogleSatelliteCredential(controller.signal),
+      getStadiaMapsCredential(controller.signal),
+    ]).then(([providers, routesStatus, orsStatus, placesStatus, stadiaPlacesStatus, satelliteStatus, stadiaMapsStatus]) => {
+      if (controller.signal.aborted) return
+      setStorageAvailable(providers.credential_storage_available)
+      setOrsAvailable(providers.providers.some((provider) => provider.id === 'openrouteservice' && (provider.available || providers.credential_storage_available)))
+      setRoutes(routesStatus); setOrs(orsStatus); setPlaces(placesStatus); setStadiaPlaces(stadiaPlacesStatus); setSatellite(satelliteStatus); setStadiaMaps(stadiaMapsStatus)
+    }).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : t('account.loadError')) })
+    return () => controller.abort()
+  }, [t])
+
+  const resetRouting = (reset?: boolean) => { if (reset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } }) }
+  const resetPlaces = (reset?: boolean) => { if (reset) setPreferences({ ...preferences, places: { provider: 'stadia' } }) }
+  const resetBasemap = (reset?: boolean) => { if (reset) setPreferences({ ...preferences, preferred_basemap: 'cartavault-light' }) }
+  const refreshSatelliteAvailability = () => { void getGoogleSatelliteStatus().then((status) => onSatelliteAvailabilityChanged(status.available)).catch(() => onSatelliteAvailabilityChanged(false)) }
+  const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
+  const googleSelected = preferences.routing.provider === 'google'
+  const satelliteProvider = preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')
+  const saveIntegrations = async () => {
+    setError(null); setMessage(null)
+    if (googleSelected && !routes.verified) { setError(t('account.preferences.googleCredentialRequired')); return }
+    if (preferences.routing.provider === 'openrouteservice' && !ors.verified && !ors.self_hosted) { setError('Ajoutez et vérifiez votre clé OpenRouteService avant d’enregistrer ce moteur.'); return }
+    if (preferences.places.provider === 'google' && !places.verified) { setError('Ajoutez et vérifiez votre clé Google Places avant d’enregistrer ce moteur.'); return }
+    if (satelliteProvider === 'google' && !satellite.verified) { setError('Ajoutez et vérifiez votre clé Google Map Tiles avant d’enregistrer ce fournisseur.'); return }
+    try {
+      const next = await updateAccountPreferences(preferences)
+      setPreferences(next)
+      window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next }))
+      setMessage(t('account.preferences.saved'))
+    } catch (reason) { setError(reason instanceof Error ? reason.message : t('account.loadError')) }
+  }
+
+  return <><AccountHeading title={t('account.apiKeys.title')} description={t('account.apiKeys.description')} />
+    {error && <div className="form-alert" role="alert">{error}</div>}
+    <div className="account-form account-preferences-form account-api-keys">
+      <ApiKeyGroup icon={Route} title={t('account.apiKeys.routing')} modifier="routing">
+        <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-integration-engine">
+          <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="openrouteservice" disabled={!orsAvailable}>OpenRouteService</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
+        </PreferenceField>
+        <div className="account-route-options">
+          <header className="account-route-options__heading"><SlidersHorizontal size={16} aria-hidden="true" /><h4>{t('account.preferences.routeOptions')}</h4><FieldHelp>{t('account.preferences.countryNotice')}</FieldHelp></header>
+          <label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.stay_in_country} onChange={(event) => updateRouting('stay_in_country', event.target.checked)} /><span>{t('account.preferences.stayInCountry')}</span></label>
+          {googleSelected && <><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} /><span>{t('account.preferences.avoidTolls')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} /><span>{t('account.preferences.avoidHighways')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} /><span>{t('account.preferences.avoidFerries')}</span></label><PreferenceField label={t('account.preferences.traffic')} htmlFor="account-traffic" className="account-route-traffic"><select id="account-traffic" aria-labelledby="account-traffic-label" value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></PreferenceField></>}
+        </div>
+        {preferences.routing.provider === 'google' && <GoogleRoutesCredentialPanel status={routes} storageAvailable={storageAvailable} onChanged={(next, reset) => { setRoutes(next); resetRouting(reset) }} />}
+        {preferences.routing.provider === 'openrouteservice' && <OpenRouteServiceCredentialPanel status={ors} storageAvailable={storageAvailable} onChanged={(next, reset) => { setOrs(next); resetRouting(reset) }} />}
+      </ApiKeyGroup>
+      <ApiKeyGroup icon={MapIcon} title={t('account.apiKeys.places')} modifier="places">
+        <PreferenceField label="Moteur de recherche de lieux" htmlFor="account-places-engine" help="Stadia est utilisé par défaut. Google Places nécessite une clé séparée autorisant Places API (New)." className="account-integration-engine">
+          <select id="account-places-engine" aria-labelledby="account-places-engine-label" value={preferences.places.provider} onChange={(event) => { setError(null); setPreferences({ ...preferences, places: { provider: event.target.value as AccountPreferences['places']['provider'] } }) }}><option value="stadia">Stadia</option><option value="google" disabled={!storageAvailable}>Google Places</option></select>
+        </PreferenceField>
+        {preferences.places.provider === 'stadia' && <StadiaPlacesCredentialPanel status={stadiaPlaces} storageAvailable={storageAvailable} onChanged={setStadiaPlaces} />}
+        {preferences.places.provider === 'google' && <GooglePlacesCredentialPanel status={places} storageAvailable={storageAvailable} onChanged={(next, reset) => { setPlaces(next); resetPlaces(reset) }} />}
+      </ApiKeyGroup>
+      <ApiKeyGroup icon={ImageIcon} title={t('account.apiKeys.maps')} modifier="maps">
+        <PreferenceField label="Fournisseur satellite" htmlFor="account-basemap-provider" help="Stadia fonctionne sans clé personnelle. Google Map Tiles exige une clé vérifiée et l’activation de l’administrateur." className="account-integration-engine">
+          <select id="account-basemap-provider" aria-labelledby="account-basemap-provider-label" value={satelliteProvider} onChange={(event) => { const provider = event.target.value as 'stadia' | 'google'; setError(null); setPreferences({ ...preferences, basemaps: { satellite_provider: provider }, preferred_basemap: preferences.preferred_basemap === 'satellite' || preferences.preferred_basemap === 'google-satellite' ? (provider === 'google' ? 'google-satellite' : 'satellite') : preferences.preferred_basemap }) }}><option value="stadia">Stadia Maps</option><option value="google">Google Map Tiles</option></select>
+        </PreferenceField>
+        {satelliteProvider === 'stadia' && <StadiaMapsCredentialPanel status={stadiaMaps} storageAvailable={storageAvailable} onChanged={setStadiaMaps} />}
+        {satelliteProvider === 'google' && <GoogleSatelliteCredentialPanel status={satellite} storageAvailable={storageAvailable} onChanged={(next, reset) => { setSatellite(next); resetBasemap(reset); refreshSatelliteAvailability() }} />}
+      </ApiKeyGroup>
+      {message && <div className="account-success" role="status">{message}</div>}
+      <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={() => void saveIntegrations()}>{t('common.save')}</button></div>
+    </div>
+  </>
 }
 
 function TimezoneCombobox({ value, label, onChange }: { value: string; label: string; onChange: (timezone: string) => void }) {

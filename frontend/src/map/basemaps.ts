@@ -69,13 +69,6 @@ const stadiaAttribution = '&copy; <a href="https://stadiamaps.com/" target="_bla
 const satelliteAttribution = '&copy; CNES, Distribution Airbus DS, &copy; Airbus DS, &copy; PlanetObserver (Contains Copernicus Data) | ' + stadiaAttribution
 const osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
 
-function addStadiaApiKey(url: string, apiKey: string | undefined): string {
-  const normalizedApiKey = apiKey?.trim()
-  return normalizedApiKey === undefined || normalizedApiKey === '' || !url.includes('stadiamaps.com')
-    ? url
-    : `${url}?api_key=${encodeURIComponent(normalizedApiKey)}`
-}
-
 function configuredUrl(value: string | undefined, fallback: string): string {
   return value?.trim() || fallback
 }
@@ -107,7 +100,7 @@ function configuredUrls(): BasemapUrls {
 }
 
 /** Builds reviewed sources. Vector CartaVault themes never receive a provider key. */
-export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY, availability = configuredAvailability(), urls = configuredUrls()): readonly BasemapDefinition[] {
+export function createBasemaps(availability = configuredAvailability(), urls = configuredUrls()): readonly BasemapDefinition[] {
   return [
     {
       kind: 'vector',
@@ -150,7 +143,7 @@ export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY
       id: 'satellite',
       label: 'Satellite',
       shortLabel: 'Satellite',
-      url: addStadiaApiKey(urls.satellite, apiKey),
+      url: urls.satellite,
       attribution: satelliteAttribution,
       maxZoom: 20,
       enabled: availability.satellite,

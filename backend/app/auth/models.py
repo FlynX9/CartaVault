@@ -78,7 +78,7 @@ class UserApiCredential(Base):
     __tablename__ = "user_api_credentials"
     __table_args__ = (
         UniqueConstraint("user_id", "provider", name="user_api_credentials_user_provider_key"),
-        CheckConstraint("provider IN ('google_routes', 'google_places', 'openrouteservice')", name="user_api_credentials_provider_check"),
+        CheckConstraint("provider IN ('google_routes', 'google_places', 'openrouteservice', 'google_map_tiles', 'stadia_maps', 'stadia_places')", name="user_api_credentials_provider_check"),
         CheckConstraint("encryption_version > 0", name="user_api_credentials_encryption_version_check"),
         Index("user_api_credentials_user_id_idx", "user_id"),
     )
@@ -166,7 +166,7 @@ class AuthActionToken(Base):
 class SystemCredential(Base):
     __tablename__ = "system_credentials"
     __table_args__ = (
-        CheckConstraint("provider IN ('resend', 'google_map_tiles')", name="system_credentials_provider_check"),
+        CheckConstraint("provider IN ('resend')", name="system_credentials_provider_check"),
         CheckConstraint("encryption_version > 0", name="system_credentials_encryption_version_check"),
     )
 
