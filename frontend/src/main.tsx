@@ -7,6 +7,7 @@ import { AuthProvider } from './auth/AuthProvider.tsx'
 import { I18nProvider } from './i18n/I18nProvider.tsx'
 import { installButtonFeedback } from './ui/buttonFeedback.ts'
 import { installInteractiveTitles } from './ui/interactiveTitles.ts'
+import { PwaUpdatePrompt } from './components/pwa/PwaUpdatePrompt.tsx'
 
 const uninstallButtonFeedback = installButtonFeedback()
 const uninstallInteractiveTitles = installInteractiveTitles()
@@ -18,7 +19,7 @@ if (import.meta.hot) import.meta.hot.dispose(() => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider><I18nProvider><App /></I18nProvider></AuthProvider>
+      <AuthProvider><I18nProvider><App /><PwaUpdatePrompt /></I18nProvider></AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )

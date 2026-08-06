@@ -69,5 +69,8 @@ export const commonFr = {
   'topbar.darkTheme': 'Thème sombre',
   'topbar.options': 'Options',
   'topbar.api': 'API',
+  'pwa.update.title': 'Une mise Ã  jour est disponible',
+  'pwa.update.description': 'Rechargez CartaVault pour appliquer la nouvelle version.',
+  'pwa.update.action': 'Mettre Ã  jour',
   'topbar.logout': 'Déconnexion',
 } as const

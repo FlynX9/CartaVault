@@ -71,5 +71,8 @@ export const commonEn = {
   'topbar.darkTheme': 'Dark theme',
   'topbar.options': 'Options',
   'topbar.api': 'API',
+  'pwa.update.title': 'An update is available',
+  'pwa.update.description': 'Reload CartaVault to apply the new version.',
+  'pwa.update.action': 'Update now',
   'topbar.logout': 'Log out',
 } as const satisfies Record<keyof typeof commonFr, string>

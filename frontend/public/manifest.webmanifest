@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "CartaVault",
+  "short_name": "CartaVault",
+  "description": "Organisez vos lieux et préparez vos voyages.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f5f8",
+  "theme_color": "#0d1b2a",
+  "icons": [
+    {
+      "src": "/icons/cartavault-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/cartavault-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

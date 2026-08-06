@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d1b2a" />
+    <title>CartaVault hors ligne</title>
+    <style>
+      :root { color: #0d1b2a; background: #f2f5f8; font-family: Inter, system-ui, sans-serif; }
+      body { display: grid; min-height: 100dvh; margin: 0; place-items: center; padding: 1.5rem; box-sizing: border-box; }
+      main { width: min(100%, 28rem); padding: 2rem; background: #fafaf8; border: 1px solid rgb(43 62 89 / 12%); border-radius: 1rem; box-shadow: 0 1rem 3rem rgb(13 27 42 / 12%); }
+      img { width: 3rem; height: 3rem; }
+      h1 { margin: 1rem 0 .5rem; font-size: 1.5rem; }
+      p { margin: 0; color: #64707a; line-height: 1.55; }
+      button { margin-top: 1.5rem; padding: .7rem 1rem; color: #fff; background: #0fa68a; border: 0; border-radius: .6rem; font: inherit; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/cartavault-icon.png" alt="" />
+      <h1>Vous êtes hors ligne</h1>
+      <p>Reconnectez-vous pour accéder aux données à jour de CartaVault. Les contenus déjà ouverts restent disponibles lorsque votre navigateur les a conservés.</p>
+      <button type="button" onclick="location.reload()">Réessayer</button>
+    </main>
+  </body>
+</html>

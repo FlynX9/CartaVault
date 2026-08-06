@@ -111,7 +111,9 @@ artwork. They do not reproduce third-party photographs or private user data.
 - clipboard paste, primary-photo selection, ordering and deletion;
 - full-size keyboard-accessible gallery;
 - centralized permission-aware media library with search and diagnostics;
-- responsive light and dark themes with multiple map backgrounds.
+- responsive light and dark themes with multiple map backgrounds;
+- installable PWA shell with safe update prompts and an offline fallback that
+  never caches authenticated API data or third-party map tiles.
 
 ### Accounts, sharing and administration
 
