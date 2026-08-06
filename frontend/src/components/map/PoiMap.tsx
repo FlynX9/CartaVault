@@ -17,6 +17,8 @@ import { DraftPositionMarker } from './DraftPositionMarker'
 import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
 import { MapClusterLayer } from './MapClusterLayer'
 import { CountryMaskLayer } from './CountryMaskLayer'
+import { MapMeasurementLayer } from './MapMeasurementLayer'
+import type { MeasurementPoint } from './measurement'
 import type { MapMarkerFilter } from './mapMarkerFilterContext'
 import type { Trip, TripDay, TripNightTarget } from '../../types/trip'
 
@@ -55,6 +57,10 @@ interface PoiMapProps {
   onPlaceSelectionToggle?: (placeId: string) => void
   countryId?: string | null
   countryMaskEnabled?: boolean
+  measurementActive?: boolean
+  measurementPoints?: readonly MeasurementPoint[]
+  measurementLocale?: string
+  onMeasurementPointAdd?: (point: MeasurementPoint) => void
 }
 
 const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
@@ -121,6 +127,10 @@ export function PoiMap({
   onPlaceSelectionToggle = () => undefined,
   countryId = null,
   countryMaskEnabled = true,
+  measurementActive = false,
+  measurementPoints = [],
+  measurementLocale = 'fr',
+  onMeasurementPointAdd = () => undefined,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const onPlaceSelectRef = useRef(onPlaceSelect)
@@ -142,7 +152,7 @@ export function PoiMap({
       maxZoom={MAP_MAX_ZOOM}
       maxBounds={WORLD_BOUNDS}
       maxBoundsViscosity={1}
-      className="poi-map"
+      className={`poi-map${measurementActive ? ' is-measuring' : ''}`}
     >
       <BasemapLayer basemapId={basemapId} onTileError={onBasemapTileError} />
       <CountryMaskLayer countryId={countryId} enabled={countryMaskEnabled} />
@@ -155,6 +165,7 @@ export function PoiMap({
       <MapResizeWatcher layoutKey={layoutKey} />
       <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} onMapClick={onPopupClose} />
       <MapDoubleClickZoomController disabled={trip !== null} />
+      <MapMeasurementLayer active={measurementActive} locale={measurementLocale} points={measurementPoints} onPointAdd={onMeasurementPointAdd} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="8.5"/><circle cx="14" cy="14" r="2.75"/><path d="M14 1.5v4M14 22.5v4M1.5 14h4M22.5 14h4"/></svg>', iconSize: [28, 28], iconAnchor: [14, 14] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}

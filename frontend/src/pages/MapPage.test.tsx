@@ -25,9 +25,10 @@ vi.mock('../api/account', () => ({
 }))
 
 vi.mock('../components/map/PoiMap', () => ({
-  PoiMap: ({ layoutKey, basemapId, onBasemapTileError, countryId, countryMaskEnabled }: { layoutKey: string; basemapId: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'; onBasemapTileError: (id: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm') => void; countryId?: string | null; countryMaskEnabled?: boolean }) => (
-    <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId} data-country-id={countryId ?? ''} data-country-mask={String(countryMaskEnabled)}>
+  PoiMap: ({ layoutKey, basemapId, onBasemapTileError, countryId, countryMaskEnabled, measurementActive, measurementPoints, onMeasurementPointAdd }: { layoutKey: string; basemapId: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'; onBasemapTileError: (id: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm') => void; countryId?: string | null; countryMaskEnabled?: boolean; measurementActive?: boolean; measurementPoints?: Array<{ latitude: number; longitude: number }>; onMeasurementPointAdd?: (point: { latitude: number; longitude: number }) => void }) => (
+    <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId} data-country-id={countryId ?? ''} data-country-mask={String(countryMaskEnabled)} data-measurement-active={String(measurementActive)} data-measurement-points={measurementPoints?.length ?? 0}>
       <button type="button" onClick={() => onBasemapTileError(basemapId)}>Simuler l'erreur de tuiles</button>
+      <button type="button" onClick={() => onMeasurementPointAdd?.({ latitude: 48.8566, longitude: 2.3522 })}>Simuler un clic de mesure</button>
     </div>
   ),
 }))
@@ -197,5 +198,36 @@ describe('MapPage', () => {
     expect(map).toHaveAttribute('data-country-mask', 'false')
     expect(window.localStorage.getItem('cartavault:country-mask-enabled')).toBe('false')
     expect(screen.getByRole('button', { name: 'Activer le masque hors pays' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('measures a multi-point path locally and supports undo and reset', async () => {
+    const props = {
+      places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 },
+      isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [],
+      sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(),
+      onPlaceSelect: vi.fn(),
+    }
+    render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+    const map = await screen.findByTestId('poi-map')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mesurer une distance' }))
+    expect(map).toHaveAttribute('data-measurement-active', 'true')
+    const measurementPanel = screen.getByRole('region', { name: 'Mesure de distance' })
+    expect(measurementPanel).toHaveTextContent('0 m')
+    expect(getComputedStyle(measurementPanel).pointerEvents).toBe('auto')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simuler un clic de mesure' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Simuler un clic de mesure' }))
+    expect(map).toHaveAttribute('data-measurement-points', '2')
+    expect(screen.getByRole('region', { name: 'Mesure de distance' })).toHaveTextContent('2 points')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer le dernier point' }))
+    expect(map).toHaveAttribute('data-measurement-points', '1')
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser la mesure' }))
+    expect(map).toHaveAttribute('data-measurement-points', '0')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Quitter le mode mesure' })[0])
+    expect(map).toHaveAttribute('data-measurement-active', 'false')
+    expect(screen.queryByRole('region', { name: 'Mesure de distance' })).not.toBeInTheDocument()
   })
 })

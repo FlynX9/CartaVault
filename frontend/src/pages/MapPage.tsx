@@ -18,6 +18,9 @@ import type { GeocodingResult } from '../geocoding/types'
 import type { Trip, TripNightTarget } from '../types/trip'
 import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
 import { useTheme } from '../theme/useTheme'
+import { useI18n } from '../i18n/useI18n'
+import { MapMeasurementControl } from '../components/map/MapMeasurementControl'
+import type { MeasurementPoint } from '../components/map/measurement'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -147,6 +150,7 @@ export function MapPage({
   onTripCoordinateAdd,
 }: MapPageProps) {
   const { resolvedTheme } = useTheme()
+  const { locale } = useI18n()
   const themeRef = useRef(resolvedTheme)
   themeRef.current = resolvedTheme
   const initialBasemapRef = useRef(resolvePreferredBasemap(
@@ -167,6 +171,8 @@ export function MapPage({
   const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
+  const [measurementActive, setMeasurementActive] = useState(false)
+  const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([])
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
 
   useEffect(() => {
@@ -295,6 +301,10 @@ export function MapPage({
           onPlaceSelectionToggle={onPlaceSelectionToggle}
           countryId={activeCountryId ?? null}
           countryMaskEnabled={countryMaskEnabled}
+          measurementActive={measurementActive}
+          measurementPoints={measurementPoints}
+          measurementLocale={locale}
+          onMeasurementPointAdd={(point) => setMeasurementPoints((current) => [...current, point])}
         />
         {popupContent && (
           <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
@@ -306,6 +316,13 @@ export function MapPage({
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
         {mapNotice && <p className="map-results-notice" role="status">{mapNotice}</p>}
         <div className="map-overlay-controls">
+          <MapMeasurementControl
+            active={measurementActive}
+            points={measurementPoints}
+            onToggle={() => { setContextMenu(null); setMeasurementActive((current) => !current) }}
+            onUndo={() => setMeasurementPoints((current) => current.slice(0, -1))}
+            onReset={() => setMeasurementPoints([])}
+          />
           <div className="map-overlay-control-slot map-overlay-control-slot--legend">
             <StatusLegend statuses={statuses} />
           </div>

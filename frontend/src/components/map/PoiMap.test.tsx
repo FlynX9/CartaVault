@@ -60,6 +60,33 @@ function MapHarness({ initiallySelected = false, markerFilter }: { initiallySele
 }
 
 describe('PoiMap selection lifecycle', () => {
+  it('keeps marker selection independent while measurement mode is active', async () => {
+    const onPlaceSelect = vi.fn()
+    const onMeasurementPointAdd = vi.fn()
+    render(
+      <PoiMap
+        places={[place]}
+        selectedPlaceId={null}
+        initialView={{ center: [48, 2], zoom: 13 }}
+        onBoundsChange={vi.fn()}
+        onViewChange={vi.fn()}
+        onPlaceSelect={onPlaceSelect}
+        focusRequest={null}
+        layoutKey="measurement-marker"
+        onPopupClose={vi.fn()}
+        basemapId="cartavault-light"
+        onBasemapTileError={vi.fn()}
+        measurementActive
+        onMeasurementPointAdd={onMeasurementPointAdd}
+      />,
+    )
+
+    fireEvent.click(await screen.findByTitle('Manufacture'))
+
+    expect(onPlaceSelect).toHaveBeenCalledWith(place)
+    expect(onMeasurementPointAdd).not.toHaveBeenCalled()
+  })
+
   it('preserves the Leaflet map instance across panel layout changes', () => {
     const props = {
       places: [place],
