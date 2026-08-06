@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { SquareDashed } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
@@ -19,8 +19,14 @@ import type { Trip, TripNightTarget } from '../types/trip'
 import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
 import { useTheme } from '../theme/useTheme'
 import { useI18n } from '../i18n/useI18n'
-import { MapMeasurementControl } from '../components/map/MapMeasurementControl'
 import type { MeasurementPoint } from '../components/map/measurement'
+import { MapToolsControl } from '../components/map/MapToolsControl'
+import type { MapExtent } from '../components/map/mapExtent'
+import { mapExtentGeoJson, pointIsInsideExtent } from '../components/map/mapExtent'
+import { mapPlaceMatchesMarkerFilter } from '../components/map/mapMarkerFilterContext'
+import { isTemporaryMapMode, resolveInteractiveMapMode, type InternalMapToolMode } from '../components/map/mapToolMode'
+import { getTripMapBounds } from '../components/trips/tripMapBounds'
+import { getPlaceDetails } from '../api/places'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -55,6 +61,7 @@ function saveCountryMaskPreference(enabled: boolean): void {
 }
 
 interface MapPageProps {
+  activeMapId?: string | null
   places: MapPlace[]
   selectedPlaceId: string | null
   initialView: MapView
@@ -65,6 +72,7 @@ interface MapPageProps {
   sidebarResizable?: boolean
   tripPlanningActive?: boolean
   tripPlannerCollapsed?: boolean
+  placeCreationActive?: boolean
   placeListOpen: boolean
   statuses: PlaceStatusSummary[]
   canEdit?: boolean
@@ -98,11 +106,14 @@ interface MapPageProps {
   placeSelectionMode?: boolean
   selectedPlaceIds?: ReadonlySet<string>
   onPlaceSelectionToggle?: (placeId: string) => void
+  onPlaceSelectionModeChange?: (active: boolean) => void
+  onAreaSelectionApply?: (placeIds: string[], strategy: 'replace' | 'add') => void
   tripNotice?: string | null
   onTripCoordinateAdd?: (dayId: string, latitude: number, longitude: number) => void
 }
 
 export function MapPage({
+  activeMapId = null,
   places,
   selectedPlaceId,
   initialView,
@@ -113,6 +124,7 @@ export function MapPage({
   sidebarResizable = false,
   tripPlanningActive = false,
   tripPlannerCollapsed = false,
+  placeCreationActive = false,
   placeListOpen,
   statuses,
   canEdit = true,
@@ -146,11 +158,13 @@ export function MapPage({
   placeSelectionMode = false,
   selectedPlaceIds = new Set<string>(),
   onPlaceSelectionToggle = () => undefined,
+  onPlaceSelectionModeChange = () => undefined,
+  onAreaSelectionApply = () => undefined,
   tripNotice = null,
   onTripCoordinateAdd,
 }: MapPageProps) {
   const { resolvedTheme } = useTheme()
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
   const themeRef = useRef(resolvedTheme)
   themeRef.current = resolvedTheme
   const initialBasemapRef = useRef(resolvePreferredBasemap(
@@ -173,7 +187,34 @@ export function MapPage({
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
   const [measurementActive, setMeasurementActive] = useState(false)
   const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([])
+  const [internalToolMode, setInternalToolMode] = useState<InternalMapToolMode>('navigation')
+  const [temporaryExtent, setTemporaryExtent] = useState<MapExtent | null>(null)
+  const [temporaryCoordinate, setTemporaryCoordinate] = useState<MeasurementPoint | null>(null)
+  const [geolocationFix, setGeolocationFix] = useState<(MeasurementPoint & { accuracy: number }) | null>(null)
+  const [geolocationLoading, setGeolocationLoading] = useState(false)
+  const [mapToolsNotice, setMapToolsNotice] = useState<string | null>(null)
+  const [selectionStrategy, setSelectionStrategy] = useState<'replace' | 'add'>('replace')
+  const [toolFocusRequest, setToolFocusRequest] = useState<MapFocusRequest | null>(null)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenLayoutVersion, setFullscreenLayoutVersion] = useState(0)
+  const mapLayoutRef = useRef<HTMLDivElement>(null)
+  const selectionFitControllerRef = useRef<AbortController | null>(null)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
+  const effectiveMode = resolveInteractiveMapMode({
+    internalMode: internalToolMode,
+    placeCreationActive: placeCreationActive || draftPosition !== null,
+    tripPlanningActive,
+    pointSelectionActive: placeSelectionMode,
+  })
+  const filteredMapPlaces = useMemo(() => places.filter((place) => mapPlaceMatchesMarkerFilter(place, markerFilter)), [markerFilter, places])
+  const areaCandidateIds = useMemo(() => temporaryExtent?.locked
+    ? filteredMapPlaces.filter((place) => pointIsInsideExtent(place, temporaryExtent)).map((place) => place.id)
+    : [], [filteredMapPlaces, temporaryExtent])
+  const normalizedTrip = useMemo<Trip | null>(() => trip === null ? null : {
+    ...trip,
+    nights: trip.nights ?? [],
+    days: (trip.days ?? []).map((day) => ({ ...day, stops: day.stops ?? [] })),
+  }, [trip])
 
   useEffect(() => {
     let current = true
@@ -229,6 +270,125 @@ export function MapPage({
     }
   }, [basemapId, resolvedTheme])
 
+  const resetTemporaryTools = (clearMeasurement = true) => {
+    setInternalToolMode('navigation')
+    setTemporaryExtent(null)
+    setTemporaryCoordinate(null)
+    setGeolocationFix(null)
+    setGeolocationLoading(false)
+    setMapToolsNotice(null)
+    if (clearMeasurement) setMeasurementPoints([])
+    setMeasurementActive(false)
+  }
+
+  useEffect(() => {
+    resetTemporaryTools()
+  }, [activeMapId])
+
+  useEffect(() => {
+    setToolFocusRequest(null)
+  }, [focusRequest])
+
+  useEffect(() => () => selectionFitControllerRef.current?.abort(), [])
+
+  useEffect(() => {
+    if (!tripPlanningActive && !placeCreationActive && draftPosition === null && !placeSelectionMode) return
+    if (internalToolMode !== 'navigation') resetTemporaryTools()
+  }, [draftPosition, internalToolMode, placeCreationActive, placeSelectionMode, tripPlanningActive])
+
+  useEffect(() => {
+    const cancelTemporaryMode = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !isTemporaryMapMode(effectiveMode)) return
+      if (document.fullscreenElement === mapLayoutRef.current) return
+      event.preventDefault()
+      resetTemporaryTools()
+    }
+    window.addEventListener('keydown', cancelTemporaryMode)
+    return () => window.removeEventListener('keydown', cancelTemporaryMode)
+  }, [effectiveMode])
+
+  useEffect(() => {
+    const updateFullscreenState = () => {
+      setFullscreen(document.fullscreenElement === mapLayoutRef.current)
+      setFullscreenLayoutVersion((value) => value + 1)
+    }
+    document.addEventListener('fullscreenchange', updateFullscreenState)
+    return () => document.removeEventListener('fullscreenchange', updateFullscreenState)
+  }, [])
+
+  const setToolMode = (nextMode: InternalMapToolMode) => {
+    if (tripPlanningActive || placeCreationActive || draftPosition !== null) return
+    if (placeSelectionMode) onPlaceSelectionModeChange(false)
+    setMapToolsNotice(null)
+    setTemporaryExtent(null)
+    setTemporaryCoordinate(null)
+    setGeolocationFix(null)
+    if (nextMode !== 'measurement' && nextMode !== 'navigation') setMeasurementPoints([])
+    setInternalToolMode(nextMode)
+    setMeasurementActive(nextMode === 'measurement')
+  }
+
+  const boundsForPlaces = (items: Array<{ latitude: number; longitude: number }>): MapBounds | null => items.length === 0 ? null : items.reduce<MapBounds>((result, place) => ({
+    minLatitude: Math.min(result.minLatitude, place.latitude),
+    maxLatitude: Math.max(result.maxLatitude, place.latitude),
+    minLongitude: Math.min(result.minLongitude, place.longitude),
+    maxLongitude: Math.max(result.maxLongitude, place.longitude),
+  }), { minLatitude: items[0].latitude, maxLatitude: items[0].latitude, minLongitude: items[0].longitude, maxLongitude: items[0].longitude })
+
+  const requestBoundsFocus = (requestedBounds: MapBounds | null) => {
+    if (requestedBounds === null) { setMapToolsNotice(t('map.tools.fit.empty')); return }
+    setMapToolsNotice(null)
+    setToolFocusRequest({ id: Date.now(), bounds: requestedBounds, maxZoom: 16 })
+  }
+
+  const fitCurrentSelection = async () => {
+    selectionFitControllerRef.current?.abort()
+    const controller = new AbortController()
+    selectionFitControllerRef.current = controller
+    const selectedIds = [...selectedPlaceIds]
+    const localPlaces = places.filter((place) => selectedPlaceIds.has(place.id))
+    const localIds = new Set(localPlaces.map((place) => place.id))
+    const missingResults = await Promise.allSettled(selectedIds.filter((id) => !localIds.has(id)).map((id) => getPlaceDetails(id, controller.signal)))
+    if (controller.signal.aborted) return
+    const coordinates = [
+      ...localPlaces,
+      ...missingResults.flatMap((result) => result.status === 'fulfilled' && result.value.latitude !== null && result.value.longitude !== null
+        ? [{ latitude: result.value.latitude, longitude: result.value.longitude }]
+        : []),
+    ]
+    requestBoundsFocus(boundsForPlaces(coordinates))
+    if (selectionFitControllerRef.current === controller) selectionFitControllerRef.current = null
+  }
+
+  const requestGeolocation = () => {
+    if (tripPlanningActive || placeCreationActive || draftPosition !== null) return
+    if (!navigator.geolocation) { setMapToolsNotice(t('map.tools.geolocation.unavailable')); return }
+    if (placeSelectionMode) onPlaceSelectionModeChange(false)
+    setInternalToolMode('geolocation')
+    setMeasurementActive(false)
+    setTemporaryExtent(null)
+    setTemporaryCoordinate(null)
+    setGeolocationLoading(true)
+    setMapToolsNotice(null)
+    navigator.geolocation.getCurrentPosition((position) => {
+      const fix = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy }
+      setGeolocationFix(fix)
+      setGeolocationLoading(false)
+      setToolFocusRequest({ id: Date.now(), view: { center: [fix.latitude, fix.longitude], zoom: 16 } })
+    }, (error) => {
+      setGeolocationLoading(false)
+      setInternalToolMode('navigation')
+      setMapToolsNotice(error.code === error.PERMISSION_DENIED ? t('map.tools.geolocation.denied') : t('map.tools.geolocation.unavailable'))
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 })
+  }
+
+  const toggleFullscreen = () => {
+    const target = mapLayoutRef.current
+    if (!target?.requestFullscreen) { setMapToolsNotice(t('map.tools.fullscreen.unavailable')); return }
+    if (document.fullscreenElement === target) void document.exitFullscreen()
+    else void target.requestFullscreen().catch(() => setMapToolsNotice(t('map.tools.fullscreen.unavailable')))
+  }
+
   const selectBasemap = (id: BasemapId) => {
     const selected = resolveAvailableBasemapId(id)
     explicitBasemapSelectionRef.current = selected
@@ -269,7 +429,7 @@ export function MapPage({
     >
       <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
       {placeListOpen && <PanelResizeHandle side="left" width={leftPanelWidth} onResize={setLeftPanelWidth} onResizeCommit={(width) => savePanelWidth(LEFT_PANEL_WIDTH_KEY, width)} />}
-      <div className="map-layout" aria-label="Carte des points d'intérêt">
+      <div ref={mapLayoutRef} className="map-layout" aria-label="Carte des points d'intérêt">
         <PoiMap
           places={places}
           selectedPlaceId={selectedPlaceId}
@@ -277,8 +437,8 @@ export function MapPage({
           onBoundsChange={onBoundsChange}
           onViewChange={onViewChange}
           onPlaceSelect={onPlaceSelect}
-          focusRequest={focusRequest}
-          layoutKey={`${placeListOpen}-${sidebarOpen}`}
+          focusRequest={toolFocusRequest ?? focusRequest}
+          layoutKey={`${placeListOpen}-${sidebarOpen}-${fullscreenLayoutVersion}`}
           onPopupClose={onPopupClose}
           basemapId={basemapId}
           onBasemapTileError={handleBasemapTileError}
@@ -305,6 +465,12 @@ export function MapPage({
           measurementPoints={measurementPoints}
           measurementLocale={locale}
           onMeasurementPointAdd={(point) => setMeasurementPoints((current) => [...current, point])}
+          mapToolMode={internalToolMode}
+          temporaryExtent={temporaryExtent}
+          temporaryCoordinate={temporaryCoordinate}
+          geolocationFix={geolocationFix}
+          onTemporaryExtentChange={setTemporaryExtent}
+          onTemporaryCoordinateChange={setTemporaryCoordinate}
         />
         {popupContent && (
           <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
@@ -316,12 +482,56 @@ export function MapPage({
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
         {mapNotice && <p className="map-results-notice" role="status">{mapNotice}</p>}
         <div className="map-overlay-controls">
-          <MapMeasurementControl
-            active={measurementActive}
-            points={measurementPoints}
-            onToggle={() => { setContextMenu(null); setMeasurementActive((current) => !current) }}
-            onUndo={() => setMeasurementPoints((current) => current.slice(0, -1))}
-            onReset={() => setMeasurementPoints([])}
+          <MapToolsControl
+            mode={effectiveMode}
+            internalMode={internalToolMode}
+            measurementPoints={measurementPoints}
+            extent={temporaryExtent}
+            coordinate={temporaryCoordinate}
+            selectedCount={selectedPlaceIds.size}
+            areaCandidateCount={areaCandidateIds.length}
+            selectionStrategy={selectionStrategy}
+            fullscreen={fullscreen}
+            geolocationLoading={geolocationLoading}
+            notice={mapToolsNotice}
+            canCreate={canEdit}
+            canUseInternalTools={!tripPlanningActive && !placeCreationActive && draftPosition === null}
+            hasVisiblePlaces={filteredMapPlaces.length > 0}
+            hasSelectedPlaces={selectedPlaceIds.size > 0}
+            hasTrip={getTripMapBounds(normalizedTrip) !== null}
+            hasActiveDay={Boolean(normalizedTrip?.days.some((day) => day.id === activeTripDayId && (day.stops.length > 0 || day.route_geometry?.coordinates.length)))}
+            onModeChange={(mode) => { setContextMenu(null); setToolMode(mode) }}
+            onUndoMeasurement={() => setMeasurementPoints((current) => current.slice(0, -1))}
+            onReset={() => resetTemporaryTools()}
+            onSelectionStrategyChange={setSelectionStrategy}
+            onApplyAreaSelection={() => {
+              onAreaSelectionApply(areaCandidateIds, selectionStrategy)
+              onPlaceSelectionModeChange(true)
+              setTemporaryExtent(null)
+              setInternalToolMode('navigation')
+            }}
+            onCopyExtent={() => {
+              if (!temporaryExtent) return
+              void navigator.clipboard?.writeText(mapExtentGeoJson(temporaryExtent)).then(() => setMapToolsNotice(t('map.tools.extent.copied'))).catch(() => setMapToolsNotice(t('map.tools.coordinates.copyError')))
+            }}
+            onFitVisible={() => requestBoundsFocus(boundsForPlaces(filteredMapPlaces))}
+            onFitSelection={() => { void fitCurrentSelection() }}
+            onFitTrip={() => requestBoundsFocus(getTripMapBounds(normalizedTrip))}
+            onFitDay={() => {
+              const day = normalizedTrip?.days.find((item) => item.id === activeTripDayId)
+              requestBoundsFocus(day && normalizedTrip ? getTripMapBounds({ ...normalizedTrip, departure: null, arrival: null, nights: [], days: [day] }) : null)
+            }}
+            onToggleFullscreen={toggleFullscreen}
+            onRequestGeolocation={requestGeolocation}
+            onCopyCoordinates={() => {
+              if (!temporaryCoordinate) return
+              void navigator.clipboard?.writeText(`${temporaryCoordinate.latitude.toFixed(6)}, ${temporaryCoordinate.longitude.toFixed(6)}`).then(() => setMapToolsNotice(t('map.tools.coordinates.copied'))).catch(() => setMapToolsNotice(t('map.tools.coordinates.copyError')))
+            }}
+            onCreateAtCoordinate={() => {
+              if (!temporaryCoordinate) return
+              onCreateFromCoordinates(temporaryCoordinate.latitude, temporaryCoordinate.longitude)
+              resetTemporaryTools()
+            }}
           />
           <div className="map-overlay-control-slot map-overlay-control-slot--legend">
             <StatusLegend statuses={statuses} />

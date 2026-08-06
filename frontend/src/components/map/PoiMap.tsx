@@ -19,7 +19,10 @@ import { MapClusterLayer } from './MapClusterLayer'
 import { CountryMaskLayer } from './CountryMaskLayer'
 import { MapMeasurementLayer } from './MapMeasurementLayer'
 import type { MeasurementPoint } from './measurement'
-import type { MapMarkerFilter } from './mapMarkerFilterContext'
+import { mapPlaceMatchesMarkerFilter, type MapMarkerFilter } from './mapMarkerFilterContext'
+import { MapTemporaryToolsLayer } from './MapTemporaryToolsLayer'
+import type { MapExtent } from './mapExtent'
+import type { InternalMapToolMode } from './mapToolMode'
 import type { Trip, TripDay, TripNightTarget } from '../../types/trip'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
@@ -61,6 +64,12 @@ interface PoiMapProps {
   measurementPoints?: readonly MeasurementPoint[]
   measurementLocale?: string
   onMeasurementPointAdd?: (point: MeasurementPoint) => void
+  mapToolMode?: InternalMapToolMode
+  temporaryExtent?: MapExtent | null
+  temporaryCoordinate?: MeasurementPoint | null
+  geolocationFix?: (MeasurementPoint & { accuracy: number }) | null
+  onTemporaryExtentChange?: (extent: MapExtent) => void
+  onTemporaryCoordinateChange?: (point: MeasurementPoint) => void
 }
 
 const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
@@ -131,6 +140,12 @@ export function PoiMap({
   measurementPoints = [],
   measurementLocale = 'fr',
   onMeasurementPointAdd = () => undefined,
+  mapToolMode = 'navigation',
+  temporaryExtent = null,
+  temporaryCoordinate = null,
+  geolocationFix = null,
+  onTemporaryExtentChange = () => undefined,
+  onTemporaryCoordinateChange = () => undefined,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const onPlaceSelectRef = useRef(onPlaceSelect)
@@ -141,7 +156,7 @@ export function PoiMap({
   const togglePlaceSelection = useCallback((placeId: string) => onPlaceSelectionToggleRef.current(placeId), [])
   const tripPlaceIds = useMemo(() => new Set(trip?.days.flatMap((day) => day.stops.map((stop) => stop.place_id).filter((id): id is string => id !== null)) ?? []), [trip])
   const selectedTripPlaceId = useMemo(() => trip?.days.flatMap((day) => day.stops).find((stop) => stop.id === selectedTripStopId)?.place_id ?? null, [selectedTripStopId, trip])
-  const matchesMarkerFilter = useCallback((place: MapPlace) => (markerFilter.query === '' || place.name.toLocaleLowerCase().includes(markerFilter.query.toLocaleLowerCase())) && (markerFilter.categoryId === '' || place.category_ids.includes(markerFilter.categoryId)) && (markerFilter.statusId === null || place.status.id === markerFilter.statusId) && (markerFilter.tagId === '' || place.tag_ids.includes(markerFilter.tagId)), [markerFilter])
+  const matchesMarkerFilter = useCallback((place: MapPlace) => mapPlaceMatchesMarkerFilter(place, markerFilter), [markerFilter])
   const standardPlaces = useMemo(() => places.filter((place) => place.id !== draftPlaceId && (!tripViewOnly || tripPlaceIds.has(place.id)) && (trip === null || !tripPlaceIds.has(place.id) || (place.id === selectedPlaceId && place.id !== selectedTripPlaceId))), [draftPlaceId, places, selectedPlaceId, selectedTripPlaceId, trip, tripPlaceIds, tripViewOnly])
   const renderPlace = useCallback((place: MapPlace) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} selectionMode={selectionMode} bulkSelected={selectedPlaceIds.has(place.id)} onSelect={selectPlace} onSelectionToggle={togglePlaceSelection} />, [hasMarkerFilter, matchesMarkerFilter, selectPlace, selectedPlaceId, selectedPlaceIds, selectionMode, togglePlaceSelection])
   return (
@@ -166,6 +181,7 @@ export function PoiMap({
       <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} onMapClick={onPopupClose} />
       <MapDoubleClickZoomController disabled={trip !== null} />
       <MapMeasurementLayer active={measurementActive} locale={measurementLocale} points={measurementPoints} onPointAdd={onMeasurementPointAdd} />
+      <MapTemporaryToolsLayer mode={mapToolMode} extent={temporaryExtent} coordinate={temporaryCoordinate} geolocation={geolocationFix} onExtentChange={onTemporaryExtentChange} onCoordinateChange={onTemporaryCoordinateChange} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="8.5"/><circle cx="14" cy="14" r="2.75"/><path d="M14 1.5v4M14 22.5v4M1.5 14h4M22.5 14h4"/></svg>', iconSize: [28, 28], iconAnchor: [14, 14] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}

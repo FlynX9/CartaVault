@@ -5,8 +5,10 @@ import { X } from '@lucide/astro';
 import '../styles/global.css';
 import { copy, href, type Language } from '../content/site';
 
-interface Props { lang: Language; title: string; description: string; path?: string; image?: string; }
-const { lang, title, description, path = '', image } = Astro.props;
+interface Props { lang: Language; title: string; description: string; path?: string; image?: string; indexable?: boolean; }
+const { lang, title, description, path = '', image, indexable = true } = Astro.props;
+const deploymentIsIndexable = import.meta.env.PUBLIC_SITE_INDEXABLE === 'true';
+const pageIsIndexable = indexable && deploymentIsIndexable;
 const socialImage = image ?? `/images/app-places-${lang}.webp`;
 const canonical = new URL(href(lang, path), Astro.site);
 const other = lang === 'fr' ? 'en' : 'fr';
@@ -23,11 +25,11 @@ const structured = {
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#0d1b2a" />
     <meta name="description" content={description} />
-    <meta name="robots" content="index,follow,max-image-preview:large" />
-    <link rel="canonical" href={canonical} />
-    <link rel="alternate" hreflang="fr" href={new URL(href('fr', path), Astro.site)} />
-    <link rel="alternate" hreflang="en" href={new URL(href('en', path), Astro.site)} />
-    <link rel="alternate" hreflang="x-default" href={new URL(href('fr', path), Astro.site)} />
+    <meta name="robots" content={pageIsIndexable ? 'index,follow,max-image-preview:large' : 'noindex,nofollow'} />
+    {pageIsIndexable && <link rel="canonical" href={canonical} />}
+    {pageIsIndexable && <link rel="alternate" hreflang="fr" href={new URL(href('fr', path), Astro.site)} />}
+    {pageIsIndexable && <link rel="alternate" hreflang="en" href={new URL(href('en', path), Astro.site)} />}
+    {pageIsIndexable && <link rel="alternate" hreflang="x-default" href={new URL(href('fr', path), Astro.site)} />}
     <link rel="icon" type="image/png" sizes="200x200" href="/favicon-v2.png" />
     <link rel="icon" type="image/x-icon" sizes="any" href="/favicon.ico?v=2" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -43,7 +45,7 @@ const structured = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={new URL(socialImage, Astro.site)} />
-    <script is:inline type="application/ld+json" set:html={JSON.stringify(structured)} />
+    {pageIsIndexable && <script is:inline type="application/ld+json" set:html={JSON.stringify(structured)} />}
     <title>{title}</title>
   </head>
   <body>

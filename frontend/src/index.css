@@ -9648,7 +9648,6 @@ html[data-theme='dark'] .status-marker.selected {
 .map-workspace .map-overlay-controls .geographic-search,
 .map-workspace .map-overlay-controls .basemap-selector,
 .map-workspace .map-overlay-controls .country-mask-toggle,
-.map-workspace .map-overlay-controls .map-measurement-toggle,
 .map-workspace .map-overlay-controls .geographic-search form > button {
   box-sizing: border-box;
   width: var(--cv-map-overlay-control-size);
@@ -9669,96 +9668,115 @@ html[data-theme='dark'] .status-marker.selected {
   place-items: center;
 }
 
-.map-workspace .map-overlay-controls .map-measurement-toggle {
+.poi-map.is-measuring { cursor: crosshair; }
+.poi-map.is-measuring .leaflet-marker-icon { cursor: pointer; }
+.measurement-distance-label { color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-strong)); box-shadow: var(--cv-shadow-sm); font-size: .7rem; font-weight: 700; }
+.measurement-distance-label::before { border-top-color: color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-strong)) !important; }
+
+.map-tools-control {
+  position: relative;
+  width: var(--cv-map-overlay-control-size);
+  height: var(--cv-map-overlay-control-size);
+  pointer-events: auto;
+}
+
+.map-tools-control > button {
   display: grid;
+  width: var(--cv-map-overlay-control-size);
+  height: var(--cv-map-overlay-control-size);
   padding: 0;
   color: var(--cv-color-slate);
   background: var(--cv-surface, rgb(250 250 248 / 97%));
-  border: 1px solid var(--cv-border-strong, rgb(43 62 89 / 14%));
+  border: 1px solid var(--cv-border-strong);
   border-radius: .6rem;
   box-shadow: var(--cv-shadow-sm);
   cursor: pointer;
   place-items: center;
 }
 
-.map-workspace .map-overlay-controls .map-measurement-toggle:hover,
-.map-workspace .map-overlay-controls .map-measurement-toggle:focus-visible,
-.map-workspace .map-overlay-controls .map-measurement-toggle.active {
+.map-tools-control > button:hover,
+.map-tools-control > button:focus-visible,
+.map-tools-control > button.active,
+.map-tools-control.is-expanded > button {
   color: var(--cv-color-teal);
-  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
   border-color: color-mix(in srgb, var(--cv-color-teal) 60%, var(--cv-border-strong));
   outline: 0;
 }
 
-.map-measurement-panel {
+.map-tools-control__menu {
   position: absolute;
-  z-index: var(--cv-z-map-controls);
-  top: 4rem;
-  right: .8rem;
-  width: min(19rem, calc(100% - 1.6rem));
-  padding: .75rem;
+  top: calc(var(--cv-map-overlay-control-size) + .45rem);
+  right: 0;
+  display: grid;
+  width: min(22rem, calc(100vw - 1.6rem));
+  max-height: calc(100vh - 7rem);
+  gap: .7rem;
+  padding: .8rem;
+  overflow: auto;
   color: var(--cv-color-navy);
-  background: color-mix(in srgb, var(--cv-surface) 96%, transparent);
+  background: color-mix(in srgb, var(--cv-surface) 97%, transparent);
   border: 1px solid var(--cv-border-strong);
   border-radius: .75rem;
   box-shadow: var(--cv-shadow-md);
-  backdrop-filter: blur(8px);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: .55rem .65rem;
-  pointer-events: auto;
+  backdrop-filter: blur(10px);
 }
 
-.map-measurement-panel__summary {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: .1rem .75rem;
-  grid-column: 1 / -1;
-}
-
-.map-measurement-panel__summary span,
-.map-measurement-panel__summary small { color: var(--cv-color-slate); }
-.map-measurement-panel__summary strong { color: var(--cv-color-teal); font-size: 1.05rem; }
-.map-measurement-panel__summary small { grid-column: 1 / -1; font-size: .72rem; }
-
-.map-measurement-panel__actions {
-  display: flex;
-  gap: .25rem;
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.map-measurement-panel__actions button {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
+.map-tools-control__heading,
+.map-tools-control__heading button,
+.map-tools-control__grid button,
+.map-tools-control__fit-actions button,
+.map-tools-control__wide-action,
+.map-tools-control__active-panel button {
   color: var(--cv-color-slate);
   background: transparent;
   border: 1px solid var(--cv-border-strong);
-  border-radius: .45rem;
   cursor: pointer;
-  place-items: center;
 }
 
-.map-measurement-panel__actions button:hover:not(:disabled),
-.map-measurement-panel__actions button:focus-visible:not(:disabled) {
-  color: var(--cv-color-teal);
-  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
-  border-color: var(--cv-color-teal);
-  outline: 0;
-}
+.map-tools-control__heading { display: flex; align-items: center; justify-content: space-between; border: 0; }
+.map-tools-control__heading strong { color: var(--cv-color-navy); font-size: .86rem; }
+.map-tools-control__heading button { display: grid; width: 1.9rem; height: 1.9rem; padding: 0; border-radius: .42rem; place-items: center; }
+.map-tools-control__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; }
+.map-tools-control__grid button { display: flex; min-width: 0; min-height: 2.45rem; align-items: center; gap: .4rem; padding: .45rem .55rem; border-radius: .5rem; font-size: .72rem; text-align: left; }
+.map-tools-control__grid button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-tools-control__grid button.active,
+.map-tools-control__strategy button.active { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 11%, var(--cv-surface)); border-color: var(--cv-color-teal); }
+.map-tools-control button:hover:not(:disabled), .map-tools-control button:focus-visible:not(:disabled) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface)); border-color: var(--cv-color-teal); outline: 0; }
+.map-tools-control button:disabled { cursor: default; opacity: .42; }
+.map-tools-control__section { display: grid; gap: .35rem; padding-top: .65rem; border-top: 1px solid var(--cv-border); }
+.map-tools-control__section > span { color: var(--cv-color-slate); font-size: .68rem; font-weight: 700; }
+.map-tools-control__fit-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+.map-tools-control__fit-actions button { min-height: 2rem; padding: .35rem .45rem; border-radius: .42rem; font-size: .68rem; }
+.map-tools-control__wide-action { display: flex; min-height: 2.2rem; align-items: center; justify-content: center; gap: .45rem; padding: .4rem .6rem; border-radius: .48rem; font-size: .72rem; }
+.map-tools-control__active-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .3rem .6rem; padding: .65rem; background: var(--cv-surface-muted); border: 1px solid var(--cv-border); border-radius: .55rem; }
+.map-tools-control__active-panel > span, .map-tools-control__active-panel > small { color: var(--cv-color-slate); font-size: .67rem; }
+.map-tools-control__active-panel > strong { color: var(--cv-color-teal); font-size: .78rem; }
+.map-tools-control__active-panel > small, .map-tools-control__active-panel > button, .map-tools-control__active-panel > div { grid-column: 1 / -1; }
+.map-tools-control__active-panel > button { display: flex; min-height: 2rem; align-items: center; justify-content: center; gap: .4rem; padding: .35rem .5rem; border-radius: .42rem; font-size: .68rem; }
+.map-tools-control__strategy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+.map-tools-control__strategy button { display: flex; min-height: 1.9rem; align-items: center; justify-content: center; gap: .3rem; padding: .3rem .4rem; border-radius: .4rem; font-size: .66rem; }
+.map-tools-control__extent-metrics { display: grid; gap: .3rem; }
+.map-tools-control__extent-metrics article { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: .5rem; padding: .35rem .45rem; background: var(--cv-surface); border: 1px solid var(--cv-border); border-radius: .4rem; }
+.map-tools-control__extent-metrics small { color: var(--cv-color-slate); font-size: .64rem; }
+.map-tools-control__extent-metrics strong { color: var(--cv-color-navy); font-size: .7rem; text-align: right; }
+.map-tools-control__extent-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
+.map-tools-control__extent-actions button { display: flex; min-height: 2rem; align-items: center; justify-content: center; gap: .3rem; padding: .35rem .4rem; border-radius: .42rem; font-size: .66rem; }
+.map-tools-control__notice, .map-tools-control__mode-notice { margin: 0; padding: .5rem .6rem; color: var(--cv-color-slate); background: var(--cv-surface-muted); border-radius: .45rem; font-size: .68rem; line-height: 1.35; }
+.map-tools-control__notice { color: #9a5b00; background: #fff7df; }
+.map-tools-control__selection-count { color: var(--cv-color-teal); font-size: .67rem; font-weight: 700; }
 
-.map-measurement-panel__actions button:disabled { cursor: default; opacity: .4; }
-.map-measurement-panel p { margin: 0; color: var(--cv-color-slate); font-size: .72rem; line-height: 1.35; }
-.poi-map.is-measuring { cursor: crosshair; }
-.poi-map.is-measuring .leaflet-marker-icon { cursor: pointer; }
-.measurement-distance-label { color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-strong)); box-shadow: var(--cv-shadow-sm); font-size: .7rem; font-weight: 700; }
-.measurement-distance-label::before { border-top-color: color-mix(in srgb, var(--cv-color-teal) 55%, var(--cv-border-strong)) !important; }
+.map-layout:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  background: var(--cv-surface);
+  border-radius: 0;
+}
 
 @media (max-width: 760px) {
-  .map-measurement-panel { top: 3.75rem; right: .7rem; }
+  .map-tools-control__menu { right: -14.1rem; width: min(21rem, calc(100vw - 1.4rem)); max-height: calc(100vh - 6.5rem); }
+  .map-tools-control__grid button { min-height: 2.7rem; }
 }
 
 .map-workspace .map-overlay-controls .country-mask-toggle:hover,

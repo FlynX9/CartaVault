@@ -44,6 +44,8 @@ backend/.pytest*/
 
 # Generated previews and local export samples
 /output/
+/website/dist-prod/
+/website/dist-release/
 
 # Test coverage reports
 .coverage

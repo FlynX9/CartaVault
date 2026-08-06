@@ -1554,6 +1554,7 @@ function WorkspaceApp() {
                 }
               >
                 <MapPage
+                  activeMapId={activeMapId}
                   places={places}
                   canEdit={activeMap?.can_edit === true}
                   selectedPlaceId={selectedPlaceId}
@@ -1564,6 +1565,7 @@ function WorkspaceApp() {
                   sidebarResizable={tripPlannerOpen && !tripPlannerCollapsed}
                   tripPlanningActive={tripPlannerOpen}
                   tripPlannerCollapsed={tripPlannerCollapsed}
+                  placeCreationActive={sidebarState.mode === "create"}
                   placeListOpen={workspacePanel !== null}
                   statuses={statuses}
                   focusRequest={focusRequest}
@@ -1635,6 +1637,11 @@ function WorkspaceApp() {
                       return next;
                     })
                   }
+                  onPlaceSelectionModeChange={setPlaceSelectionMode}
+                  onAreaSelectionApply={(placeIds, strategy) => {
+                    setSelectedPlaceIds((current) => strategy === 'add' ? new Set([...current, ...placeIds]) : new Set(placeIds));
+                    setPlaceSelectionMode(true);
+                  }}
                   onTripCoordinateAdd={
                     tripPlannerOpen && activeMap?.can_edit === true
                       ? (dayId, latitude, longitude) =>

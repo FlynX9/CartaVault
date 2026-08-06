@@ -11,7 +11,7 @@ export default defineConfig({
     starlight({
       title: 'CartaVault Docs',
       description: 'Guides utilisateur, administration et références techniques CartaVault.',
-      favicon: '/favicon.svg',
+      favicon: '/favicon.ico',
       logo: {
         src: './public/images/cartavault-logo.png',
         alt: 'CartaVault',
