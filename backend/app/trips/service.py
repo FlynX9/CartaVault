@@ -169,7 +169,8 @@ def calculate_day_route(session: Session, day: TripDay, provider: RoutingProvide
         status = 429 if error.code == "GOOGLE_ROUTING_RATE_LIMITED" else 503 if error.code == "ROUTING_PROVIDER_UNAVAILABLE" else 502
         headers = {"Retry-After": str(error.retry_after)} if error.retry_after else None
         raise HTTPException(status, {"code": error.code, "message": str(error)}, headers=headers) from error
-    apply_day_route_result(session, day, result, provider.provider_id, constraints, labels=labels, commit=True)
+    actual_provider = str(getattr(provider, "last_provider_id", provider.provider_id))
+    apply_day_route_result(session, day, result, actual_provider, constraints, labels=labels, commit=True)
     return day
 
 

@@ -128,7 +128,7 @@ def test_registry_exposes_capabilities_without_secret_and_rejects_unknown(monkey
     monkeypatch.setattr("app.trips.routing.registry.CredentialEncryptionService.configured", lambda: True)
     serialized = json.dumps(registry.capabilities(session, user))
     assert "test-only" not in serialized
-    assert {item["id"] for item in registry.capabilities(session, user)} == {"osrm", "google"}
+    assert {item["id"] for item in registry.capabilities(session, user)} == {"osrm", "google", "openrouteservice"}
     assert registry.capabilities(session, user)[1]["available"] is False
     with pytest.raises(RoutingError) as error:
         registry.resolve(session, user, "other")

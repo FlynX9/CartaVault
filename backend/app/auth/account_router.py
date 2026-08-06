@@ -15,7 +15,7 @@ from app.auth.models import User, UserApiCredential, UserSession
 from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
 from app.auth.security import hash_password, normalize_email, verify_password
 from app.auth.sessions import issue_session, revoke_user_sessions
-from app.config import security_settings
+from app.config import openroute_service_settings, security_settings
 from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
 from app.emails.notifications import notify_email_changed, notify_password_changed
@@ -85,6 +85,10 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
         credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_routes"))
         if credential is None or credential.verified_at is None:
             raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé Google Routes avant de sélectionner ce moteur."})
+    if data.routing.provider == "openrouteservice" and not openroute_service_settings.allow_unauthenticated:
+        credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "openrouteservice"))
+        if credential is None or credential.verified_at is None:
+            raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé OpenRouteService avant de sélectionner ce moteur."})
     if data.places.provider == "google":
         credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_places"))
         if credential is None or credential.verified_at is None:

@@ -120,6 +120,26 @@ legacy_google_routes_api_key_configured = bool(os.getenv("GOOGLE_MAPS_ROUTES_API
 
 
 @dataclass(frozen=True)
+class OpenRouteServiceSettings:
+    enabled: bool = _boolean("CARTAVAULT_ORS_ENABLED", True)
+    base_url: str = os.getenv("CARTAVAULT_ORS_BASE_URL", "https://api.openrouteservice.org").strip().rstrip("/")
+    timeout_seconds: int = _positive_int("CARTAVAULT_ORS_TIMEOUT_SECONDS", 15)
+    max_waypoints: int = _positive_int("CARTAVAULT_ORS_MAX_WAYPOINTS", 50)
+    allow_unauthenticated: bool = _boolean("CARTAVAULT_ORS_ALLOW_UNAUTHENTICATED", False)
+    fallback_to_osrm: bool = _boolean("CARTAVAULT_ORS_FALLBACK_TO_OSRM", True)
+    requests_per_minute: int = _positive_int("CARTAVAULT_ORS_REQUESTS_PER_MINUTE", 40)
+
+    def __post_init__(self) -> None:
+        if not self.base_url.startswith(("http://", "https://")):
+            raise RuntimeError("CARTAVAULT_ORS_BASE_URL must be a fixed HTTP(S) URL")
+        if self.allow_unauthenticated and self.base_url == "https://api.openrouteservice.org":
+            raise RuntimeError("Unauthenticated ORS access is only allowed for a self-hosted base URL")
+
+
+openroute_service_settings = OpenRouteServiceSettings()
+
+
+@dataclass(frozen=True)
 class GoogleRoutingLimitSettings:
     requests_per_minute: int = _positive_int("CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE", 120)
     window_seconds: int = _positive_int("CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS", 60)

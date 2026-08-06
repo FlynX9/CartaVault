@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AccountModal } from './AccountModal'
-import { getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, storeGooglePlacesCredential, storeGoogleRoutesCredential, updateAccountPreferences, updateAccountProfile, verifyGooglePlacesCredential, verifyGoogleRoutesCredential } from '../../api/account'
+import { getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, storeGooglePlacesCredential, storeGoogleRoutesCredential, updateAccountPreferences, updateAccountProfile, verifyGooglePlacesCredential, verifyGoogleRoutesCredential } from '../../api/account'
 import { getRoutingProviders } from '../../api/routing'
 
 vi.mock('../../api/account', () => ({
@@ -11,6 +11,7 @@ vi.mock('../../api/account', () => ({
   getAccountPreferences: vi.fn(), getAccountProfile: vi.fn(), getAccountSessions: vi.fn(), resetAccountPreferences: vi.fn(),
   getGoogleRoutesCredential: vi.fn(), storeGoogleRoutesCredential: vi.fn(), verifyGoogleRoutesCredential: vi.fn(), deleteGoogleRoutesCredential: vi.fn(),
   getGooglePlacesCredential: vi.fn(), storeGooglePlacesCredential: vi.fn(), verifyGooglePlacesCredential: vi.fn(), deleteGooglePlacesCredential: vi.fn(),
+  getOpenRouteServiceCredential: vi.fn(), storeOpenRouteServiceCredential: vi.fn(), verifyOpenRouteServiceCredential: vi.fn(), deleteOpenRouteServiceCredential: vi.fn(),
   revokeAccountSession: vi.fn(), revokeOtherAccountSessions: vi.fn(), updateAccountPreferences: vi.fn(), updateAccountProfile: vi.fn(), uploadAccountAvatar: vi.fn(),
 }))
 vi.mock('../../api/routing', () => ({ getRoutingProviders: vi.fn() }))
@@ -21,7 +22,7 @@ const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', 
 const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const }, places: { provider: 'stadia' as const } }
 const noCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
 
-beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }) })
+beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }, { id: 'openrouteservice', label: 'OpenRouteService', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getOpenRouteServiceCredential).mockResolvedValue({ ...noCredential, self_hosted: false }); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }) })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('AccountModal', () => {

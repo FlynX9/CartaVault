@@ -19,6 +19,7 @@ from app.admin.router import router as admin_console_router
 from app.auth.account_router import router as account_router
 from app.auth.credential_router import router as credential_router
 from app.auth.google_places_credential_router import router as google_places_credential_router
+from app.auth.openrouteservice_credential_router import router as openrouteservice_credential_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
@@ -200,6 +201,7 @@ app.include_router(public_auth_router, prefix=API_PREFIX)
 app.include_router(account_router, prefix=API_PREFIX)
 app.include_router(credential_router, prefix=API_PREFIX)
 app.include_router(google_places_credential_router, prefix=API_PREFIX)
+app.include_router(openrouteservice_credential_router, prefix=API_PREFIX)
 app.include_router(invitations_router, prefix=API_PREFIX)
 app.include_router(admin_users_router, prefix=API_PREFIX)
 app.include_router(registration_admin_router, prefix=API_PREFIX)

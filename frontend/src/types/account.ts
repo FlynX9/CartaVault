@@ -20,7 +20,7 @@ export interface AccountPreferences {
     completed_steps: Array<'map' | 'place' | 'import' | 'trip' | 'organization'>
   }
   routing: {
-    provider: 'osrm' | 'google'
+    provider: 'osrm' | 'google' | 'openrouteservice'
     stay_in_country: boolean
     avoid_tolls: boolean
     avoid_highways: boolean
@@ -31,8 +31,9 @@ export interface AccountPreferences {
 }
 
 export interface RoutingProviderCapability {
-  id: 'osrm' | 'google'; label: string; available: boolean
+  id: 'osrm' | 'google' | 'openrouteservice'; label: string; available: boolean
   credential_configured?: boolean; credential_verified?: boolean
+  self_hosted?: boolean; supported_profiles?: Array<'driving' | 'cycling' | 'walking'>
   supports_route: boolean; supports_matrix: boolean; supports_waypoint_optimization: boolean
 }
 export interface RoutingProvidersResponse { providers: RoutingProviderCapability[]; default_provider: 'osrm'; credential_storage_available: boolean }
@@ -52,4 +53,6 @@ export interface GoogleRoutesCredentialDeletion {
   provider: 'osrm' | 'google'
 }
 export type GooglePlacesCredentialStatus = GoogleRoutesCredentialStatus
+export interface OpenRouteServiceCredentialStatus extends GoogleRoutesCredentialStatus { self_hosted: boolean }
+export type OpenRouteServiceCredentialDeletion = GoogleRoutesCredentialDeletion
 export interface GooglePlacesCredentialDeletion { deleted: boolean; provider_reset: boolean; provider: 'stadia' }

@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialDeletion, GooglePlacesCredentialStatus, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus } from '../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialDeletion, GooglePlacesCredentialStatus, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialDeletion, OpenRouteServiceCredentialStatus } from '../types/account'
 
 export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
 
@@ -26,3 +26,7 @@ export async function getGooglePlacesCredential(signal?: AbortSignal): Promise<G
 export async function storeGooglePlacesCredential(apiKey: string): Promise<GooglePlacesCredentialStatus> { return sendJson('/account/integrations/google-places', 'PUT', { api_key: apiKey }) as Promise<GooglePlacesCredentialStatus> }
 export async function verifyGooglePlacesCredential(): Promise<GooglePlacesCredentialStatus> { return sendJson('/account/integrations/google-places/verify', 'POST', {}) as Promise<GooglePlacesCredentialStatus> }
 export async function deleteGooglePlacesCredential(currentPassword: string): Promise<GooglePlacesCredentialDeletion> { return sendJson('/account/integrations/google-places', 'DELETE', { current_password: currentPassword }) as Promise<GooglePlacesCredentialDeletion> }
+export async function getOpenRouteServiceCredential(signal?: AbortSignal): Promise<OpenRouteServiceCredentialStatus> { return getJson('/account/integrations/openrouteservice', new URLSearchParams(), signal) as Promise<OpenRouteServiceCredentialStatus> }
+export async function storeOpenRouteServiceCredential(apiKey: string): Promise<OpenRouteServiceCredentialStatus> { return sendJson('/account/integrations/openrouteservice', 'PUT', { api_key: apiKey }) as Promise<OpenRouteServiceCredentialStatus> }
+export async function verifyOpenRouteServiceCredential(): Promise<OpenRouteServiceCredentialStatus> { return sendJson('/account/integrations/openrouteservice/verify', 'POST', {}) as Promise<OpenRouteServiceCredentialStatus> }
+export async function deleteOpenRouteServiceCredential(currentPassword: string): Promise<OpenRouteServiceCredentialDeletion> { return sendJson('/account/integrations/openrouteservice', 'DELETE', { current_password: currentPassword }) as Promise<OpenRouteServiceCredentialDeletion> }

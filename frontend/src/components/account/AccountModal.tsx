@@ -2,16 +2,17 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { createPortal } from 'react-dom'
 import { AlertTriangle, CalendarDays, Clock3, Image as ImageIcon, Info, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
-import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
 import { useAuth } from '../../auth/useAuth'
 import { useI18n } from '../../i18n/useI18n'
 import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
-import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialStatus, GoogleRoutesCredentialStatus } from '../../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialStatus, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialStatus } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 import { GooglePlacesCredentialPanel } from './GooglePlacesCredentialPanel'
+import { OpenRouteServiceCredentialPanel } from './OpenRouteServiceCredentialPanel'
 
 type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'danger'
 
@@ -184,13 +185,15 @@ function PreferenceField({ icon: Icon, label, htmlFor, help, children, className
 function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
   const { setLocale, t } = useI18n()
   const [credentialStatus, setCredentialStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
+  const [orsCredentialStatus, setOrsCredentialStatus] = useState<OpenRouteServiceCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null, self_hosted: false })
   const [placesCredentialStatus, setPlacesCredentialStatus] = useState<GooglePlacesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
   const [storageAvailable, setStorageAvailable] = useState(false)
+  const [orsAvailable, setOrsAvailable] = useState(false)
   const [routingError, setRoutingError] = useState<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
-    void Promise.all([getRoutingProviders(controller.signal), getGoogleRoutesCredential(controller.signal), getGooglePlacesCredential(controller.signal)])
-      .then(([providers, credential, placesCredential]) => { setStorageAvailable(providers.credential_storage_available); setCredentialStatus(credential); setPlacesCredentialStatus(placesCredential) })
+    void Promise.all([getRoutingProviders(controller.signal), getGoogleRoutesCredential(controller.signal), getGooglePlacesCredential(controller.signal), getOpenRouteServiceCredential(controller.signal)])
+      .then(([providers, credential, placesCredential, orsCredential]) => { setStorageAvailable(providers.credential_storage_available); setCredentialStatus(credential); setPlacesCredentialStatus(placesCredential); setOrsCredentialStatus(orsCredential); setOrsAvailable(providers.providers.some((provider) => provider.id === 'openrouteservice' && (provider.available || providers.credential_storage_available))) })
       .catch(() => { setStorageAvailable(false); setCredentialStatus({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }) })
     return () => controller.abort()
   }, [])
@@ -198,6 +201,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
   const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
   const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
   const googleSelected = preferences.routing.provider === 'google'
+  const orsSelected = preferences.routing.provider === 'openrouteservice'
   const googlePlacesSelected = preferences.places.provider === 'google'
   const handleCredentialChange = async (next: GoogleRoutesCredentialStatus, providerReset?: boolean) => {
     setCredentialStatus(next)
@@ -209,10 +213,20 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     setPlacesCredentialStatus(next)
     if (providerReset) setPreferences({ ...preferences, places: { provider: 'stadia' } })
   }
+  const handleOrsCredentialChange = async (next: OpenRouteServiceCredentialStatus, providerReset?: boolean) => {
+    setOrsCredentialStatus(next)
+    const providers = await getRoutingProviders()
+    setOrsAvailable(providers.providers.some((provider) => provider.id === 'openrouteservice' && (provider.available || providers.credential_storage_available)))
+    if (providerReset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } })
+  }
   const savePreferences = () => {
     setRoutingError(null)
     if (googleSelected && !credentialStatus.verified) {
       setRoutingError(t('account.preferences.googleCredentialRequired'))
+      return
+    }
+    if (orsSelected && !orsCredentialStatus.verified && !orsCredentialStatus.self_hosted) {
+      setRoutingError('Ajoutez et vérifiez votre clé OpenRouteService avant d’enregistrer ce moteur.')
       return
     }
     if (googlePlacesSelected && !placesCredentialStatus.verified) {
@@ -246,9 +260,10 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
     <section className="account-preference-card account-preference-card--routing">
       <PreferenceCardHeading icon={Route} title={t('account.preferences.routing')} />
       <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-integration-engine">
-        <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
+        <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setRoutingError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="openrouteservice" disabled={!orsAvailable}>OpenRouteService</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
       </PreferenceField>
       {googleSelected && <GoogleRoutesCredentialPanel status={credentialStatus} storageAvailable={storageAvailable} onChanged={handleCredentialChange} />}
+      {orsSelected && <OpenRouteServiceCredentialPanel status={orsCredentialStatus} storageAvailable={storageAvailable} onChanged={handleOrsCredentialChange} />}
       {routingError && <div className="form-alert" role="alert">{routingError}</div>}
       <div className="account-route-options">
         <header className="account-route-options__heading"><SlidersHorizontal size={16} aria-hidden="true" /><h4>{t('account.preferences.routeOptions')}</h4><FieldHelp>{t('account.preferences.countryNotice')}</FieldHelp></header>

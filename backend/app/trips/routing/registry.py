@@ -15,10 +15,12 @@ from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.models import User, UserApiCredential
-from app.config import google_routes_settings, google_routing_limit_settings, task_settings
+from app.config import google_routes_settings, google_routing_limit_settings, openroute_service_settings, task_settings
 from app.trips.routing.base import RoutingError, RoutingProvider
+from app.trips.routing.fallback import FallbackRoutingProvider
 from app.trips.routing.google import GoogleRoutesProvider
 from app.trips.routing.osrm import OsrmRoutingProvider
+from app.trips.routing.openrouteservice import OpenRouteServiceProvider
 
 
 logger = logging.getLogger(__name__)
@@ -97,9 +99,19 @@ google_routing_rate_limiter = GoogleRoutingRateLimiter(
     redis_client=_routing_redis(),
 )
 
+ors_routing_rate_limiter = GoogleRoutingRateLimiter(
+    limit=openroute_service_settings.requests_per_minute,
+    window_seconds=60,
+    redis_client=_routing_redis(),
+)
+
 
 def google_credential(session: Session, user_id: object) -> UserApiCredential | None:
     return session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == user_id, UserApiCredential.provider == "google_routes"))
+
+
+def ors_credential(session: Session, user_id: object) -> UserApiCredential | None:
+    return session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == user_id, UserApiCredential.provider == "openrouteservice"))
 
 
 class RoutingProviderRegistry:
@@ -108,14 +120,21 @@ class RoutingProviderRegistry:
         storage_available = CredentialEncryptionService.configured()
         configured = credential is not None
         verified = configured and credential.verified_at is not None
+        ors = ors_credential(session, user.id)
+        ors_configured = ors is not None
+        ors_verified = ors_configured and ors.verified_at is not None
+        ors_self_hosted = openroute_service_settings.allow_unauthenticated
         return [
             {"id": "osrm", "label": "OSRM", "available": True, "supports_route": True, "supports_matrix": True, "supports_waypoint_optimization": False},
             {"id": "google", "label": "Google Routes", "available": storage_available and verified, "credential_configured": configured, "credential_verified": verified, "supports_route": True, "supports_matrix": False, "supports_waypoint_optimization": True},
+            {"id": "openrouteservice", "label": "OpenRouteService", "available": openroute_service_settings.enabled and (ors_self_hosted or storage_available and ors_verified), "credential_configured": ors_configured, "credential_verified": ors_verified, "self_hosted": ors_self_hosted, "supports_route": True, "supports_matrix": True, "supports_waypoint_optimization": False, "supported_profiles": ["driving", "cycling", "walking"]},
         ]
 
     def resolve(self, session: Session, user: User, provider_id: str, options: dict[str, object] | None = None) -> RoutingProvider:
         if provider_id == "osrm":
             return OsrmRoutingProvider()
+        if provider_id == "openrouteservice":
+            return self._resolve_ors(session, user, options)
         if provider_id != "google":
             raise RoutingError("Moteur de routage inconnu.", "ROUTING_PROVIDER_UNKNOWN")
         credential = google_credential(session, user.id)
@@ -150,6 +169,52 @@ class RoutingProviderRegistry:
         callback = lambda: google_routing_rate_limiter.check(str(user.id))
         return GoogleRoutesProvider(api_key, settings, before_request=callback, on_success=success, on_error=failure)
 
+    def _resolve_ors(self, session: Session, user: User, options: dict[str, object] | None) -> RoutingProvider:
+        if not openroute_service_settings.enabled:
+            if openroute_service_settings.fallback_to_osrm:
+                return OsrmRoutingProvider()
+            raise RoutingError("OpenRouteService est désactivé.", "ROUTING_PROVIDER_UNAVAILABLE")
+        credential = ors_credential(session, user.id)
+        api_key: str | None = None
+        if credential is not None and credential.verified_at is not None:
+            try:
+                api_key = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
+            except CredentialEncryptionError as error:
+                credential.last_error_code = error.code
+                session.commit()
+        elif not openroute_service_settings.allow_unauthenticated:
+            if openroute_service_settings.fallback_to_osrm:
+                return OsrmRoutingProvider()
+            raise RoutingError("La clé OpenRouteService doit être vérifiée.", "ROUTING_CREDENTIAL_NOT_VERIFIED")
+
+        def success() -> None:
+            if credential is not None:
+                credential.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+                credential.last_error_code = None
+                session.commit()
+
+        def failure(code: str) -> None:
+            if credential is not None:
+                credential.last_error_code = code
+                if code == "ORS_AUTH_ERROR":
+                    credential.verified_at = None
+                session.commit()
+
+        def limit() -> None:
+            try:
+                ors_routing_rate_limiter.check(f"ors:{user.id}")
+            except RoutingError as error:
+                raise RoutingError("Trop de calculs OpenRouteService ont été demandés. Réessayez dans un instant.", "ORS_LOCAL_RATE_LIMITED", retry_after=error.retry_after) from error
+
+        primary = OpenRouteServiceProvider(
+            api_key,
+            language=str((options or {}).get("language", "fr")),
+            before_request=limit,
+            on_success=success,
+            on_error=failure,
+        )
+        return FallbackRoutingProvider(primary, OsrmRoutingProvider()) if openroute_service_settings.fallback_to_osrm else primary
+
 
 routing_provider_registry = RoutingProviderRegistry()
 
@@ -164,4 +229,5 @@ def routing_preferences(preferences: object) -> dict[str, object]:
         "avoid_highways": routing.get("avoid_highways", False) is True,
         "avoid_ferries": routing.get("avoid_ferries", False) is True,
         "traffic_mode": routing.get("traffic_mode", "traffic_unaware"),
+        "language": root.get("language", "fr"),
     }
