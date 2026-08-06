@@ -7725,9 +7725,9 @@ html[data-theme='dark'] :is(
 /* Premium authentication workspace */
 .auth-page {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
+  min-height: 100dvh;
   padding: clamp(1rem, 2.5vw, 2.5rem);
+  box-sizing: border-box;
   overflow: auto;
   color: var(--cv-color-navy);
   background:
@@ -7739,7 +7739,7 @@ html[data-theme='dark'] :is(
   display: grid;
   grid-template-columns: minmax(24rem, 45fr) minmax(30rem, 55fr);
   width: min(100%, 100rem);
-  min-height: min(54rem, 100%);
+  min-height: min(54rem, calc(100dvh - clamp(2rem, 5vw, 5rem)));
   margin: auto;
   overflow: hidden;
   background: var(--cv-color-off-white);
@@ -8444,7 +8444,7 @@ html[data-theme='dark'] .auth-confirmation {
 
 @media (max-width: 1050px) {
   .auth-shell {
-    grid-template-columns: minmax(20rem, 40fr) minmax(27rem, 60fr);
+    grid-template-columns: minmax(18rem, 40fr) minmax(24rem, 60fr);
   }
 
   .auth-branding__content {
@@ -8458,11 +8458,37 @@ html[data-theme='dark'] .auth-confirmation {
   .auth-branding__features small {
     display: none;
   }
+
+  .auth-stage {
+    padding: clamp(3rem, 7vw, 5rem) clamp(1.5rem, 4vw, 3.5rem);
+  }
+}
+
+@media (max-width: 840px) {
+  .auth-page {
+    display: grid;
+    place-items: center;
+    padding: clamp(1rem, 4vw, 2rem);
+  }
+
+  .auth-shell {
+    display: block;
+    width: min(100%, 38rem);
+    min-height: 0;
+  }
+
+  .auth-branding {
+    display: none;
+  }
+
+  .auth-stage {
+    min-height: 0;
+    padding: clamp(4.5rem, 10vw, 5.75rem) clamp(1.5rem, 6vw, 3rem) clamp(1.5rem, 5vw, 2.5rem);
+  }
 }
 
 @media (max-width: 760px) {
   .auth-page {
-    height: 100dvh;
     min-height: 100dvh;
     padding: 0;
   }
@@ -8525,6 +8551,57 @@ html[data-theme='dark'] .auth-confirmation {
 
   .auth-card__footer {
     padding: 1rem 1.25rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .auth-stage {
+    padding-top: 4.25rem;
+  }
+
+  .auth-theme-toggle {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .auth-card__header {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .auth-card__body {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .auth-submit {
+    min-height: 3rem;
+  }
+}
+
+@media (max-height: 700px) and (min-width: 841px) {
+  .auth-page {
+    padding-block: 1rem;
+  }
+
+  .auth-shell {
+    min-height: 0;
+  }
+
+  .auth-branding {
+    min-height: 38rem;
+  }
+
+  .auth-branding__content {
+    padding-block: 2rem;
+  }
+
+  .auth-branding__message {
+    margin-top: 2.5rem;
+  }
+
+  .auth-stage {
+    padding-block: 4.5rem 2rem;
   }
 }
 
