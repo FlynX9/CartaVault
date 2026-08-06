@@ -10,7 +10,7 @@ export interface AccountSession {
 
 export interface AccountPreferences {
   language: 'fr' | 'en'
-  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'
+  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'google-satellite' | 'osm'
   density: 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string

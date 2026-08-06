@@ -3,16 +3,17 @@ import { describe, expect, it } from 'vitest'
 import { BASEMAP_PREFERENCE_KEY, BASEMAPS, DEFAULT_BASEMAP_ID, createBasemaps, getThemeDefaultBasemapId, loadBasemapPreference, loadStoredBasemapPreference, parseBasemapId, resolveAvailableBasemapId, saveBasemapPreference } from './basemaps'
 
 describe('basemap registry', () => {
-  it('defines the four reviewed basemaps with their attribution', () => {
-    expect(BASEMAPS.map((basemap) => basemap.id)).toEqual(['cartavault-light', 'cartavault-dark', 'satellite', 'osm'])
-    expect(new Set(BASEMAPS.map((basemap) => basemap.label)).size).toBe(4)
-    expect(BASEMAPS.every((basemap) => basemap.attribution.includes('OpenStreetMap'))).toBe(true)
+  it('defines the reviewed basemaps with provider attribution', () => {
+    expect(BASEMAPS.map((basemap) => basemap.id)).toEqual(['cartavault-light', 'cartavault-dark', 'google-satellite', 'satellite', 'osm'])
+    expect(new Set(BASEMAPS.map((basemap) => basemap.label)).size).toBe(5)
+    expect(BASEMAPS.find((basemap) => basemap.id === 'google-satellite')?.attribution).toContain('Google')
   })
 
   it('uses OpenFreeMap without a key and restricts the optional Stadia key to satellite', () => {
     const withKey = createBasemaps(' reviewed-key ')
     expect(withKey.slice(0, 2).every((basemap) => basemap.kind === 'vector' && !JSON.stringify(basemap).includes('api_key'))).toBe(true)
-    expect(withKey[2]).toMatchObject({ kind: 'raster', url: expect.stringContaining('api_key=reviewed-key') })
+    expect(withKey.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: expect.stringContaining('api_key=reviewed-key') })
+    expect(JSON.stringify(withKey.find((basemap) => basemap.id === 'google-satellite'))).not.toContain('reviewed-key')
     expect(JSON.stringify(createBasemaps(undefined))).not.toContain('api_key=undefined')
   })
 
@@ -32,8 +33,8 @@ describe('basemap registry', () => {
     })
     expect(basemaps[0]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/light.json', tileJsonUrl: 'https://maps.example.test/tiles.json' })
     expect(basemaps[1]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/dark.json', glyphsUrl: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf' })
-    expect(basemaps[2]).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg' })
-    expect(basemaps[3]).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/osm/{z}/{x}/{y}.png' })
+    expect(basemaps.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg' })
+    expect(basemaps.find((basemap) => basemap.id === 'osm')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/osm/{z}/{x}/{y}.png' })
     expect(basemaps.every((basemap) => !basemap.requiresStadiaAuthentication)).toBe(true)
   })
 

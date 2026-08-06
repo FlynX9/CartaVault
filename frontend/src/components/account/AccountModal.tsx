@@ -5,6 +5,7 @@ import { AlertTriangle, CalendarDays, Clock3, Image as ImageIcon, Info, Language
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
+import { getGoogleSatelliteStatus } from '../../api/googleSatellite'
 import { useAuth } from '../../auth/useAuth'
 import { useI18n } from '../../i18n/useI18n'
 import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
@@ -29,6 +30,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [sessions, setSessions] = useState<AccountSession[]>([])
   const [preferences, setPreferences] = useState<AccountPreferences>(emptyPreferences)
+  const [googleSatelliteAvailable, setGoogleSatelliteAvailable] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -44,8 +46,14 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   const initials = (profile?.display_name ?? user?.display_name ?? '?').trim().charAt(0).toUpperCase()
 
   const load = async () => {
-    const [nextProfile, nextSessions, nextPreferences] = await Promise.all([getAccountProfile(), getAccountSessions(), getAccountPreferences()])
+    const [nextProfile, nextSessions, nextPreferences, satelliteStatus] = await Promise.all([
+      getAccountProfile(),
+      getAccountSessions(),
+      getAccountPreferences(),
+      getGoogleSatelliteStatus().catch(() => ({ available: false, warning_level: 0 })),
+    ])
     setProfile(nextProfile); setDraftName(nextProfile.display_name); setSessions(nextSessions); setPreferences(nextPreferences)
+    setGoogleSatelliteAvailable(satelliteStatus.available)
   }
   useEffect(() => {
     void load().catch((reason: unknown) => setError(messageFor(reason, translationRef.current('account.loadError'))))
@@ -104,7 +112,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} dirty={dirty} setDraftName={setDraftName} saveProfile={saveProfile} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
-          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
+          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} googleSatelliteAvailable={googleSatelliteAvailable} />}
           {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
         </main>
       </section>
@@ -182,7 +190,7 @@ function PreferenceField({ icon: Icon, label, htmlFor, help, children, className
   </div>
 }
 
-function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
+function PreferencesSection({ preferences, setPreferences, run, googleSatelliteAvailable }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean>; googleSatelliteAvailable: boolean }) {
   const { setLocale, t } = useI18n()
   const [credentialStatus, setCredentialStatus] = useState<GoogleRoutesCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null })
   const [orsCredentialStatus, setOrsCredentialStatus] = useState<OpenRouteServiceCredentialStatus>({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null, self_hosted: false })
@@ -243,7 +251,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
           <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
         </PreferenceField>
         <PreferenceField icon={MapIcon} label={t('account.preferences.basemap')} htmlFor="account-basemap">
-          <select id="account-basemap" aria-labelledby="account-basemap-label" value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="osm">OpenStreetMap</option></select>
+          <select id="account-basemap" aria-labelledby="account-basemap-label" value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value="satellite">Satellite</option><option value="google-satellite" disabled={!googleSatelliteAvailable}>Google Satellite{googleSatelliteAvailable ? '' : ' (indisponible)'}</option><option value="osm">OpenStreetMap</option></select>
         </PreferenceField>
         <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density">
           <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>

@@ -4,6 +4,7 @@ export const BASEMAP_IDS = [
   'cartavault-light',
   'cartavault-dark',
   'satellite',
+  'google-satellite',
   'osm',
 ] as const
 
@@ -31,7 +32,9 @@ export interface RasterBasemapDefinition extends BasemapCommonDefinition {
   url: string
 }
 
-export type BasemapDefinition = VectorBasemapDefinition | RasterBasemapDefinition
+export interface GoogleBasemapDefinition extends BasemapCommonDefinition { kind: 'google' }
+
+export type BasemapDefinition = VectorBasemapDefinition | RasterBasemapDefinition | GoogleBasemapDefinition
 
 export const DEFAULT_BASEMAP_ID: BasemapId = 'cartavault-light'
 
@@ -39,6 +42,7 @@ export interface BasemapAvailability {
   'cartavault-light': boolean
   'cartavault-dark': boolean
   satellite: boolean
+  'google-satellite'?: boolean
   osm: boolean
 }
 
@@ -86,6 +90,7 @@ function configuredAvailability(): BasemapAvailability {
     'cartavault-light': enabled(import.meta.env.VITE_BASEMAP_LIGHT_ENABLED),
     'cartavault-dark': enabled(import.meta.env.VITE_BASEMAP_DARK_ENABLED),
     satellite: enabled(import.meta.env.VITE_BASEMAP_SATELLITE_ENABLED),
+    'google-satellite': false,
     osm: enabled(import.meta.env.VITE_BASEMAP_OSM_ENABLED),
   }
 }
@@ -128,6 +133,16 @@ export function createBasemaps(apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY
       attribution: openFreeMapAttribution,
       maxZoom: 20,
       enabled: availability['cartavault-dark'],
+      requiresStadiaAuthentication: false,
+    },
+    {
+      kind: 'google',
+      id: 'google-satellite',
+      label: 'Google Satellite',
+      shortLabel: 'Google',
+      attribution: '&copy; Google',
+      maxZoom: 22,
+      enabled: availability['google-satellite'] === true,
       requiresStadiaAuthentication: false,
     },
     {

@@ -140,6 +140,22 @@ openroute_service_settings = OpenRouteServiceSettings()
 
 
 @dataclass(frozen=True)
+class GoogleMapTilesSettings:
+    enabled: bool = _boolean("CARTAVAULT_GOOGLE_SATELLITE_ENABLED", True)
+    base_url: str = os.getenv("CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL", "https://tile.googleapis.com").strip().rstrip("/")
+    timeout_seconds: int = _positive_int("CARTAVAULT_GOOGLE_MAP_TILES_TIMEOUT_SECONDS", 10)
+    daily_soft_limit: int = _positive_int("CARTAVAULT_GOOGLE_MAP_TILES_DAILY_LIMIT", 10_000)
+    monthly_soft_limit: int = _positive_int("CARTAVAULT_GOOGLE_MAP_TILES_MONTHLY_LIMIT", 100_000)
+
+    def __post_init__(self) -> None:
+        if self.base_url != "https://tile.googleapis.com":
+            raise RuntimeError("CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL must use the official Google endpoint")
+
+
+google_map_tiles_settings = GoogleMapTilesSettings()
+
+
+@dataclass(frozen=True)
 class GoogleRoutingLimitSettings:
     requests_per_minute: int = _positive_int("CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE", 120)
     window_seconds: int = _positive_int("CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS", 60)

@@ -2,11 +2,12 @@ import '@maplibre/maplibre-gl-leaflet'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import L from 'leaflet'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { TileLayer, useMap } from 'react-leaflet'
 
 import { getBasemap, type BasemapId, type VectorBasemapDefinition } from '../../map/basemaps'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
+import { createGoogleSatelliteSession, reportGoogleSatelliteUsage } from '../../api/googleSatellite'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
@@ -52,6 +53,31 @@ function VectorBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDe
   return null
 }
 
+function GoogleSatelliteLayer({ onTileError }: { onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+  const [session, setSession] = useState<{ tile_url: string; attribution: string; max_zoom: number } | null>(null)
+  const counts = useRef({ tiles_started: 0, tiles_completed: 0, tiles_failed: 0, tiles_cancelled: 0 })
+  const onTileErrorRef = useRef(onTileError)
+  onTileErrorRef.current = onTileError
+  useEffect(() => {
+    const controller = new AbortController()
+    void createGoogleSatelliteSession(controller.signal).then(setSession).catch(() => { if (!controller.signal.aborted) onTileErrorRef.current('google-satellite', true) })
+    const flush = window.setInterval(() => {
+      const current = counts.current
+      if (Object.values(current).some(Boolean)) {
+        counts.current = { tiles_started: 0, tiles_completed: 0, tiles_failed: 0, tiles_cancelled: 0 }
+        void reportGoogleSatelliteUsage(current).catch(() => undefined)
+      }
+    }, 5000)
+    return () => {
+      controller.abort(); window.clearInterval(flush)
+      const current = counts.current
+      if (Object.values(current).some(Boolean)) void reportGoogleSatelliteUsage(current).catch(() => undefined)
+    }
+  }, [])
+  if (!session) return null
+  return <TileLayer key="google-satellite" url={session.tile_url} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileloadstart: () => { counts.current.tiles_started += 1 }, tileload: () => { counts.current.tiles_completed += 1 }, tileerror: () => { counts.current.tiles_failed += 1; onTileErrorRef.current('google-satellite') }, tileabort: () => { counts.current.tiles_cancelled += 1 } }} />
+}
+
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
@@ -59,6 +85,7 @@ export function BasemapLayer({ basemapId, onTileError }: BasemapLayerProps) {
   if (basemap.kind === 'vector') {
     return <VectorBasemapLayer key={basemap.id} basemap={basemap} onTileError={onTileError} />
   }
+  if (basemap.kind === 'google') return <GoogleSatelliteLayer onTileError={onTileError} />
 
   return (
     <TileLayer

@@ -166,7 +166,7 @@ class AuthActionToken(Base):
 class SystemCredential(Base):
     __tablename__ = "system_credentials"
     __table_args__ = (
-        CheckConstraint("provider IN ('resend')", name="system_credentials_provider_check"),
+        CheckConstraint("provider IN ('resend', 'google_map_tiles')", name="system_credentials_provider_check"),
         CheckConstraint("encryption_version > 0", name="system_credentials_encryption_version_check"),
     )
 

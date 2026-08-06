@@ -27,6 +27,7 @@ import { mapPlaceMatchesMarkerFilter } from '../components/map/mapMarkerFilterCo
 import { isTemporaryMapMode, resolveInteractiveMapMode, type InternalMapToolMode } from '../components/map/mapToolMode'
 import { getTripMapBounds } from '../components/trips/tripMapBounds'
 import { getPlaceDetails } from '../api/places'
+import { getGoogleSatelliteStatus } from '../api/googleSatellite'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -35,7 +36,8 @@ const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
 const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
-function resolvePreferredBasemap(value: unknown, theme: 'light' | 'dark'): BasemapId {
+function resolvePreferredBasemap(value: unknown, theme: 'light' | 'dark', googleSatelliteAvailable = false): BasemapId {
+  if (value === 'google-satellite' && googleSatelliteAvailable) return value
   return resolveAvailableBasemapId(value, theme === 'dark')
 }
 
@@ -173,6 +175,8 @@ export function MapPage({
   ))
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
+  const [googleSatelliteAvailable, setGoogleSatelliteAvailable] = useState(false)
+  const googleSatelliteAvailableRef = useRef(false)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
   const explicitBasemapSelectionRef = useRef<BasemapId | null>(null)
   const previousThemeRef = useRef(resolvedTheme)
@@ -233,7 +237,7 @@ export function MapPage({
         return
       }
       if (failedBasemapsRef.current.size > 0) return
-      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current)
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current, googleSatelliteAvailableRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
     }).catch(() => undefined)
@@ -242,13 +246,28 @@ export function MapPage({
       accountPreferencesRef.current = preferences
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
-      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current)
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, themeRef.current, googleSatelliteAvailableRef.current)
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
       setBasemapNotice(null)
     }
     window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated)
     return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void getGoogleSatelliteStatus(controller.signal).then((status) => {
+      if (controller.signal.aborted) return
+      googleSatelliteAvailableRef.current = status.available
+      setGoogleSatelliteAvailable(status.available)
+      const preferred = accountPreferencesRef.current?.preferred_basemap
+      if (status.available && preferred === 'google-satellite' && explicitBasemapSelectionRef.current === null) {
+        setBasemapId('google-satellite'); saveBasemapPreference('google-satellite')
+      }
+      if (status.warning_level >= 80) setBasemapNotice(`Google Satellite approche du seuil d’usage configuré (${status.warning_level} %).`)
+    }).catch(() => { googleSatelliteAvailableRef.current = false; setGoogleSatelliteAvailable(false) })
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -390,7 +409,7 @@ export function MapPage({
   }
 
   const selectBasemap = (id: BasemapId) => {
-    const selected = resolveAvailableBasemapId(id)
+    const selected = id === 'google-satellite' && googleSatelliteAvailableRef.current ? id : resolveAvailableBasemapId(id)
     explicitBasemapSelectionRef.current = selected
     setBasemapId(selected)
     setBasemapNotice(null)
@@ -542,7 +561,7 @@ export function MapPage({
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
-            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} />
+            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} googleSatelliteAvailable={googleSatelliteAvailable} />
           </div>
           {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
             <button

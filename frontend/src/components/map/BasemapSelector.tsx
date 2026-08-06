@@ -6,16 +6,18 @@ import { AVAILABLE_BASEMAPS, getBasemap, type BasemapId } from '../../map/basema
 interface BasemapSelectorProps {
   activeBasemapId: BasemapId
   onBasemapChange: (id: BasemapId) => void
+  googleSatelliteAvailable?: boolean
 }
 
 const basemapIcons: Record<BasemapId, LucideIcon> = {
   'cartavault-light': Sun,
   'cartavault-dark': Moon,
   satellite: Satellite,
+  'google-satellite': Satellite,
   osm: Map,
 }
 
-export function BasemapSelector({ activeBasemapId, onBasemapChange }: BasemapSelectorProps) {
+export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatelliteAvailable = false }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
   const activeBasemap = getBasemap(activeBasemapId)
   const selectBasemap = (id: BasemapId) => {
@@ -57,7 +59,7 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange }: BasemapSel
       onBlur={handleBlur}
     >
       <legend>Fond</legend>
-      {expanded && <div className="basemap-selector-options">{AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== activeBasemapId).map((basemap) => renderBasemapButton(basemap, false))}</div>}
+      {expanded && <div className="basemap-selector-options">{[...AVAILABLE_BASEMAPS, ...(googleSatelliteAvailable ? [getBasemap('google-satellite')] : [])].filter((basemap, index, items) => basemap.id !== activeBasemapId && items.findIndex((item) => item.id === basemap.id) === index).map((basemap) => renderBasemapButton(basemap, false))}</div>}
       {renderBasemapButton(activeBasemap, true)}
     </fieldset>
   )

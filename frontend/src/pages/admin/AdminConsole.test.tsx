@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { AdminConsole } from './AdminConsole'
 import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
 import { getPublicRegistrationSettings } from '../../api/registration'
+import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock('../../api/adminConsole', () => ({
   saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
+vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteCredential: vi.fn(), verifyGoogleSatelliteCredential: vi.fn(), deleteGoogleSatelliteCredential: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
 
 beforeEach(() => {
@@ -23,6 +25,7 @@ beforeEach(() => {
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)
+  vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ configured: false, masked_value: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null, available: false, warning_level: 0, settings: { enabled: false, daily_soft_limit: 10000, monthly_soft_limit: 100000, auto_disable_percent: 100, repeated_error_limit: 5, consecutive_errors: 0, disabled_reason: null }, usage: { sessions_today: 0, tiles_started_today: 0, tiles_completed_today: 0, tiles_failed_today: 0, tiles_cancelled_today: 0, tiles_started_month: 0 }, authoritative_monitoring: { connected: false, console_url: 'https://console.cloud.google.com/google/maps-apis/metrics', notice: 'Authoritative' } })
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
