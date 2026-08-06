@@ -228,7 +228,7 @@ button.cv-button-action-success::after {
 .action-history-error { position: fixed; z-index: calc(var(--cv-z-topbar) + 10); top: calc(var(--cv-topbar-height) + .65rem); right: 1rem; max-width: min(24rem, calc(100vw - 2rem)); padding: .65rem .8rem; color: #b42318; background: #fff7f6; border: 1px solid #f3b7b1; border-radius: .65rem; box-shadow: var(--cv-shadow-md); font-size: .78rem; }
 html[data-theme='dark'] .action-history-error { color: #fecaca; background: #351819; border-color: #7f1d1d; }
 .app-header h1 { color: var(--cv-color-navy); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 1.25rem; }
-.cartavault-wordmark { display: inline-flex; gap: 0; letter-spacing: -0.03em; }.cartavault-wordmark > span { font-weight: 400; }.cartavault-wordmark > strong { color: var(--cv-color-teal); font-weight: 800; }
+.cartavault-wordmark { display: inline-flex; align-items: baseline; gap: 0; letter-spacing: -0.03em; }.cartavault-wordmark > span { font-weight: 400; }.cartavault-wordmark > strong { color: var(--cv-color-teal); font-weight: 800; }.cartavault-wordmark > small { align-self: center; margin-left: .45rem; padding: .12rem .36rem; color: var(--cv-color-gray); background: var(--cv-surface-muted); border: 1px solid var(--cv-border-subtle); border-radius: 999px; font-size: .58rem; font-weight: 700; letter-spacing: .015em; line-height: 1; }
 .app-eyebrow { color: var(--cv-color-gray); }
 .header-link { color: var(--cv-color-slate); border-color: #d7e0e6; }
 .header-link:hover, .header-link:focus-visible { color: var(--cv-color-navy); background: var(--cv-color-mist); }

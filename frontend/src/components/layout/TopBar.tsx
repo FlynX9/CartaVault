@@ -24,6 +24,7 @@ interface TopBarProps {
 const API_DOCUMENTATION_URL = /^https?:\/\//.test(API_BASE_URL)
   ? `${API_BASE_URL}/docs`
   : new URL(`${API_BASE_URL}/docs`, window.location.origin).toString()
+const CARTAVAULT_VERSION = import.meta.env.VITE_CARTAVAULT_VERSION?.trim() || 'development'
 
 export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth()
@@ -72,7 +73,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
     <header className="app-header">
       <div className="brand-block">
         <p className="app-eyebrow">{contextLabel ?? (isMapWorkspace ? t('app.workspace') : t('app.administration'))}</p>
-        <h1 className="cartavault-wordmark"><span>Carta</span><strong>Vault</strong></h1>
+        <h1 className="cartavault-wordmark"><span>Carta</span><strong>Vault</strong><small title={`CartaVault ${CARTAVAULT_VERSION}`}>v{CARTAVAULT_VERSION}</small></h1>
       </div>
       <nav className="app-header-actions" aria-label={t('topbar.mainNavigation')}>
         {isMapWorkspace && (
