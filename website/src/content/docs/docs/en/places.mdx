@@ -1,32 +1,69 @@
 ---
-title: Maps and places
-description: Add, classify, search, import, and share places.
+title: Places and POI records
+description: Create, document, edit, and track every place in detail.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
 import popup from '../../../../assets/screenshots/app-place-popup-en.webp';
-import media from '../../../../assets/screenshots/app-media-en.webp';
 
-## Add a place
+## Three ways to add a place
 
-Use the **+** button in the Places panel, search for an address on the map, or import a KML/KMZ file. At minimum, provide a name and location. Visit duration defaults to 30 minutes when no value is set.
+### Manual creation
 
-## Complete the record
+Use the **+** button in Places. Enter a name and position, then useful metadata. If visit duration is empty, CartaVault uses 30 minutes when adding the place to a trip.
 
-A place can include a description, category, status, tags, a half-star rating, photos, and multiple named links. Images can also be pasted from the clipboard when editing is allowed.
+### Search result
 
-<ProductScreenshot src={popup} alt="Detailed CartaVault place record" caption="The record keeps useful information together without overloading the map." />
+Search for a name, address, or coordinates on the map. Select a result, verify its position, then create the place. A result can also become a free trip stage without creating a permanent POI.
 
-The map media library then provides access to photos attached to places. Night-accommodation images remain separate from place media.
+### KML/KMZ import
 
-<ProductScreenshot src={media} alt="CartaVault map media library" caption="Media remains linked to its source place." />
+Import previews the file before writing and reports duplicates, media, and warnings. See [Media, imports, and exports](/docs/en/media-import-export/).
 
-## Find a place
+## Main information
 
-Combine text search, facets, and sorting. **Reset filters** clears active filters without changing your persisted sorting preference.
+- **Name**: label used by lists, popups, trips, and exports.
+- **Coordinates**: marker latitude and longitude.
+- **Region**: automatically derived or manually entered.
+- **Visit duration**: reused when the place joins a trip.
+- **Description**: context and practical information.
+- **Condition, access, and danger**: optional fields controlled by map settings.
+- **Construction or abandonment dates**: specialized metadata that can be hidden per map.
 
-## Share a map
+Renaming a POI also refreshes its name in linked trips.
 
-The owner can invite a viewer or editor, then transfer ownership through email confirmation. Administrators do not automatically gain access to private user maps.
+## Category, status, and tags
+
+A place supports several categories with one primary category, one tracking status, and several tags. See [Organization and search](/docs/en/organization-search/) for management details.
+
+## Rating and favorite
+
+Change the rating directly in the popup in half-star increments. Hover to preview, then click to save. The list refreshes after validation. Toggle favorite from the record or place card.
+
+## Named links
+
+Store multiple web addresses with explicit labels such as *Official website*, *Tickets*, or *Article*. **External links** stays collapsible to protect readability. Use complete `https://` URLs.
+
+## Photos
+
+A record can hold several images. Upload a file or paste a clipboard capture with `Ctrl+V` when editing is allowed. Browse with gallery controls or keyboard arrows, open full size, reorder, and select the primary image.
+
+In Trip mode, a permanent POI remains readable but edit and delete actions are hidden. Clipboard upload there is reserved for search-derived locations without a classic POI record.
+
+<ProductScreenshot src={popup} alt="Detailed CartaVault place record" caption="The popup combines gallery, classification, rating, links, and place metadata." />
+
+## Detailed history
+
+The history action opens auditable events for creation, editing, trash, restore, photos, categories, tags, primary category, and links. Structured changes display before/after values where available.
+
+Server history explains persisted mutations and is separate from the interface's **Undo/Redo** controls.
+
+## Edit or delete
+
+**Edit** and **Delete** appear in Places mode when your role allows them. Deletion moves the place to trash first. Trip references follow server safeguards. Permanent deletion from trash cannot be undone.
+
+## Reuse a place
+
+The same POI can appear several times in a trip. A check badge on its thumbnail indicates that it is already used without disabling it, allowing repeated accommodation or meeting points.

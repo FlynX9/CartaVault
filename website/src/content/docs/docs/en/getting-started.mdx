@@ -1,6 +1,6 @@
 ---
 title: Getting started
-description: From sign-in to your first CartaVault map.
+description: From first sign-in to an organized CartaVault workspace.
 sidebar:
   order: 1
 ---
@@ -9,20 +9,48 @@ import ProductScreenshot from '../../../../components/docs/ProductScreenshot.ast
 import UiPath from '../../../../components/docs/UiPath.astro';
 import places from '../../../../assets/screenshots/app-places-en.webp';
 
+## Before you begin
+
+You need the URL of a CartaVault instance and an active account. Depending on configuration, an administrator creates the account, a public registration is approved, or the account is created while accepting an invitation.
+
 ## Sign in
 
-Open your instance URL and enter the email address and password supplied by the administrator. An authenticated session is redirected to the start screen selected in your preferences.
+Open the instance URL, enter your email address and password, then select **Sign in**. *Remember me* extends the intended session lifetime on that device; do not use it on a shared computer.
 
-## Create a map
+An already authenticated session does not return to the sign-in form. CartaVault redirects it to the start screen selected in preferences.
 
-From the dashboard, choose **New map**, name it, and select its country. CartaVault uses the country for the initial viewport, consistency warnings, and the outside-country mask.
+## Understand the workspace
 
-<ProductScreenshot src={places} alt="Place list on the France map in CartaVault" caption="A map owns its places, trips, media, and access rules." />
+The top bar opens the dashboard, undo/redo actions, notifications, theme, and account. Main navigation exposes maps, places, trips, media, categories, tags, statuses, and trash as context allows.
 
-## Set up the interface
+On a map, Places and other panels can be collapsed or resized while the map remains the central navigation surface.
 
-Open <UiPath items={['Profile', 'Preferences']} /> to choose the language, theme, display density, time zone, and start screen.
+## Create your first map
 
-## Next step
+1. From the dashboard, select **New map**.
+2. Enter a name such as *France trip*.
+3. Select the country.
+4. Open the newly created map.
 
-Continue with [managing places](/docs/en/places/) or [planning a trip](/docs/en/trips/).
+The country controls framing, coordinate checks, and the outside-country mask. A map owns its categories, statuses, places, trips, media, and members.
+
+## Add your first place
+
+Use the **+** button in Places, select a map-search result, or import KML/KMZ. For manual creation, provide at least a name and coordinates. Then add a category, status, visit duration, description, tags, links, and photos.
+
+<ProductScreenshot src={places} alt="Place list on the France map in CartaVault" caption="The list, markers, and detailed record stay synchronized." />
+
+## Organize before scaling up
+
+Define a small, consistent set of categories, statuses, and tags before a large import. Filters and dashboard analytics become useful immediately. **Imported** remains available for data that still needs classification.
+
+## Configure the interface
+
+Open <UiPath items={['Profile', 'Preferences']} /> to choose language, theme, density, basemap, time zone, startup screen, trash retention, and search and routing providers.
+
+## Recommended path
+
+1. Learn about the [dashboard and maps](/docs/en/dashboard-maps/).
+2. [Create and complete place records](/docs/en/places/).
+3. Configure [organization and search](/docs/en/organization-search/).
+4. Build a [day-by-day trip](/docs/en/trips/).

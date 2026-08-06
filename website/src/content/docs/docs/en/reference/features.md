@@ -9,8 +9,15 @@ sidebar:
 
 | ID | Feature | Scope |
 | --- | --- | --- |
-| `places` | Maps and places | Classification, search, media, links, history, and KML/KMZ imports. |
-| `trips` | Trips | Days, nights, routing, optimization, timeline, and PDF/GPX exports. |
-| `sharing` | Sharing | Viewer/editor roles, invitations, and confirmed ownership transfer. |
-| `security` | Security | Revocable sessions, CSRF/RBAC protections, and change auditing. |
-| `self-hosting` | Self-hosting | Application image, PostGIS, migrations, and optional Redis worker. |
+| `dashboard` | Dashboard | Global metrics, status/country/category analytics, recent activity, and data-quality checks. |
+| `maps` | Maps | Country workspaces, catalog, configurable fields, place/trip counts, trash, and restore. |
+| `places` | Places | POI records, visit duration, region, categories, statuses, tags, ratings, favorites, links, and history. |
+| `search` | Search and organization | Text and map search, Stadia or Google Places, facets, persisted sorting, and bulk actions. |
+| `media` | Media and exchange | Galleries, clipboard upload, media library, KML/KMZ imports, duplicate review, and map exports. |
+| `trips` | Trips | Departure, arrival, days, nights, reusable stages, durations, dates, load, and drag-and-drop. |
+| `routing` | Routing and optimization | OSRM or Google Routes, constraints, caching, per-day calculation, and confirmed optimization proposals. |
+| `timeline` | Timeline and exports | Interactive timeline, segment emphasis, illustrated PDF, Google/Waze QR, GPX, KMZ, and Google Maps links. |
+| `sharing` | Sharing | Viewer/editor roles, invitations, notifications, revocation, and confirmed ownership transfer. |
+| `account` | Account and preferences | Profile, avatar, language, theme, density, startup screen, sessions, and encrypted Google keys. |
+| `administration` | Administration | Users, public registration, quota profiles, Resend, diagnostics, and last-administrator safeguards. |
+| `self-hosting` | Self-hosting | Unified image, PostGIS, Alembic migrations, backup/restore, SMTP, and optional Redis worker. |

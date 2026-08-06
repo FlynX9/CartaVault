@@ -1,34 +1,65 @@
 ---
-title: Trips and timeline
-description: Build, calculate, and export a day-by-day trip.
+title: Trips and days
+description: Create a trip and manage its days, stops, nights, and times.
 sidebar:
-  order: 3
+  order: 7
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
 import trip from '../../../../assets/screenshots/app-trip-en.webp';
-import timeline from '../../../../assets/screenshots/app-timeline-en.webp';
 
-## Create a trip
+## Create and select a trip
 
-Open **Trip** mode from a map, create a journey, and set its dates. Forcing an arrival date automatically adjusts the number of days and nights.
+Open a map, then **Trip** mode. Create a trip, give it a name, and select it from the list. Statuses distinguish current, completed, and archived trips.
 
-## Build the stages
+The panel can be resized within limits that keep its information usable. Collapsing it frees map width while preserving full height.
 
-Select a day, night, departure, or arrival, then add a search result or drag an existing place. The same place can be used more than once in a trip. Reorder stages and days with drag and drop.
+## Trip settings
 
-<ProductScreenshot src={trip} alt="CartaVault trip planning panel" caption="Each day groups its stages, durations, and route actions." />
+Settings include the name, description, departure and arrival dates, day-load thresholds and colors, duplicate/archive/delete controls, and the save action.
 
-## Calculate and optimize
+Editing the arrival date can automatically create or remove the required days and nights. Unsaved changes prompt for confirmation when settings close or context changes.
 
-Choose **Calculate routes** to retrieve routes, distances, and durations. **Optimize trip** proposes a more efficient order before you apply it. Providers and constraints are configured in user preferences.
+## Departure and arrival
 
-## Use the timeline
+Select **Departure** or **Arrival**, then drag a place from Places or use a map-search result. An external result remains a free location; an existing POI stays linked to its record.
 
-**Trip timeline** mode fits the map to the journey. Click a stage or use the keyboard arrow keys to move through departure, stages, nights, and arrival.
+Click the displayed location to open the appropriate popup. The delete icon clears the anchor. Arrival can show an estimated time based on the final route.
 
-<ProductScreenshot src={timeline} alt="Interactive CartaVault trip timeline" caption="The timeline keeps the active point centered and highlights the relevant route." />
+## Add and arrange days
 
-## Export
+Use the top control to add a day. A night normally connects two days. Reorder days by dragging their header; the associated night follows. If the new final day has no following day, an extra night is removed.
 
-The PDF export can include an overview map, one map per day, photos, and Google Maps and/or Waze QR codes. GPX export provides tracks for compatible applications.
+The active day has a stronger border. Its settings control departure time, durations, constraints, and day-specific values.
+
+## Add stops
+
+Select the target day, then drag a POI, use **Add to day X** from an eligible record, add a map-search result, or use bulk place selection.
+
+One record can be added repeatedly. Reorder stages with drag and drop. Cancelled drags clear their drop zones and route-line hints.
+
+## Visit duration
+
+Each stop starts with the POI duration or 30 minutes. Change the selector for that occurrence only; the original POI default is not modified.
+
+## Nights
+
+A night is accommodation between two days. Select it, then add or replace its location through drag and drop or map search. Its simplified record stores description, website, arrival/departure ranges, and several private photos.
+
+Night photos are not added to the map media library. Gallery controls appear only while the image is hovered.
+
+## Day actions
+
+- **Route** calculates or recalculates one day.
+- **Optimize** prepares an ordering proposal.
+- **Duplicate** copies the day and stages.
+- **Delete** removes the day after confirmation.
+- **Settings** opens day settings and stays filled while active.
+
+<ProductScreenshot src={trip} alt="CartaVault trip planning panel" caption="Departure, Day, Night, and Arrival blocks form a reorderable journey." />
+
+## Load and validation
+
+Badges identify empty, valid, uncalculated, or review-required days. Low, moderate, and high load use the minute thresholds configured in trip settings.
+
+Continue with [Routing and optimization](/docs/en/routing/) and [Timeline and exports](/docs/en/timeline-exports/).

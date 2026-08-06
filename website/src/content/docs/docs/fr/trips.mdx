@@ -1,34 +1,76 @@
 ---
-title: Sorties et chronologie
-description: Construire, calculer et exporter un voyage jour par jour.
+title: Sorties et journées
+description: Créer une sortie, construire ses jours et gérer étapes, nuits et horaires.
 sidebar:
-  order: 3
+  order: 7
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
 import trip from '../../../../assets/screenshots/app-trip-fr.webp';
-import timeline from '../../../../assets/screenshots/app-timeline-fr.webp';
 
-## Créer une sortie
+## Créer et sélectionner une sortie
 
-Depuis une carte, ouvrez le mode **Sortie**, créez un voyage et renseignez ses dates. Une date d'arrivée forcée ajuste automatiquement le nombre de jours et de nuits.
+Ouvrez une carte puis le mode **Sortie**. Créez une sortie, donnez-lui un nom et sélectionnez-la dans la liste. Les statuts distinguent notamment les sorties en cours, terminées ou archivées.
 
-## Composer les étapes
+Le panneau peut être redimensionné dans des limites qui préservent ses informations. Réduit, il conserve sa hauteur et libère davantage de largeur pour la carte.
 
-Sélectionnez un jour, une nuit, le départ ou l'arrivée, puis ajoutez un résultat de recherche ou glissez un lieu existant. Un même lieu peut apparaître plusieurs fois dans le voyage. Déplacez les étapes et les jours par glisser-déposer.
+## Paramètres de la sortie
 
-<ProductScreenshot src={trip} alt="Panneau de préparation d'une sortie CartaVault" caption="Chaque jour rassemble ses étapes, durées et actions de calcul." />
+Les paramètres regroupent :
 
-## Calculer et optimiser
+- le nom et la description ;
+- la date de départ et la date d’arrivée ;
+- les seuils et couleurs de charge des journées ;
+- les actions dupliquer, archiver ou supprimer ;
+- l’enregistrement des modifications.
 
-Choisissez **Calculer les itinéraires** pour obtenir les routes, distances et temps. **Optimiser le voyage** propose un ordre plus efficace avant application. Les fournisseurs et contraintes se règlent dans les préférences utilisateur.
+Modifier la date d’arrivée peut créer ou retirer automatiquement les jours et nuits nécessaires. Une modification non enregistrée déclenche une confirmation si vous fermez les paramètres ou quittez le contexte.
 
-## Utiliser la chronologie
+## Départ et arrivée
 
-Le mode **Chronologie du voyage** cadre la carte sur le voyage. Cliquez sur une étape ou utilisez les flèches du clavier pour parcourir le départ, les étapes, les nuits et l'arrivée.
+Sélectionnez le bloc **Départ** ou **Arrivée**, puis glissez un lieu depuis le panneau Lieux ou utilisez un résultat de recherche cartographique. Un résultat externe est conservé comme emplacement libre ; un POI existant garde son lien avec sa fiche.
 
-<ProductScreenshot src={timeline} alt="Chronologie interactive d'un voyage CartaVault" caption="La chronologie conserve le point actif au centre et met en avant le trajet concerné." />
+Cliquez sur le lieu affiché dans le bloc pour ouvrir la popup appropriée. L’icône de suppression retire l’ancre. L’arrivée peut afficher une heure estimée calculée depuis le dernier trajet.
 
-## Exporter
+## Ajouter et organiser les journées
 
-L'export PDF peut inclure la carte générale, une carte par jour, les photos et des QR codes Google Maps et/ou Waze. L'export GPX fournit les traces aux applications compatibles.
+Ajoutez une journée avec le bouton prévu en haut du panneau. Une nuit relie normalement deux journées. Réordonnez les journées par glisser-déposer depuis leur en-tête : la nuit associée suit le déplacement. Si le nouveau dernier jour n’a plus de jour suivant, sa nuit excédentaire est supprimée.
+
+La bordure du jour actif est renforcée. Ses réglages permettent de définir l’heure de départ, les durées, contraintes et paramètres propres à la journée.
+
+## Ajouter des étapes
+
+Sélectionnez le jour cible puis :
+
+- glissez un POI depuis la liste ;
+- cliquez sur **Ajouter au jour X** dans une fiche autorisée ;
+- recherchez un lieu sur la carte et choisissez **Ajouter à Jour X** ;
+- utilisez une sélection groupée de POI.
+
+Une même fiche peut être ajoutée plusieurs fois. Réordonnez les étapes par glisser-déposer ; les flèches de déplacement ne sont pas nécessaires. Si un glisser est annulé, les zones et traits de dépôt reviennent à leur état normal.
+
+## Durée et visite
+
+Chaque étape reprend la durée configurée sur le POI ou 30 minutes. Le sélecteur de la journée permet de la modifier uniquement pour cette occurrence. Le changement n’altère pas la durée par défaut du POI.
+
+## Nuits
+
+Une nuit représente l’hébergement entre deux journées. Sélectionnez la nuit, puis ajoutez ou remplacez son emplacement par glisser-déposer ou depuis les résultats de recherche. La fiche simplifiée permet de conserver description, lien web, horaires d’arrivée/départ et plusieurs photos privées.
+
+Les photos d’une nuit ne sont pas ajoutées à la médiathèque générale. Les boutons de galerie apparaissent uniquement au survol de l’image.
+
+## Actions d’une journée
+
+- **Itinéraire** calcule ou recalcule uniquement cette journée.
+- **Optimiser** prépare une proposition d’ordre.
+- **Dupliquer** copie la journée et ses étapes.
+- **Supprimer** place la journée hors du voyage après confirmation.
+- **Réglages** ouvre les paramètres du jour et reste en couleur pleine tant qu’ils sont ouverts.
+
+<ProductScreenshot src={trip} alt="Panneau de préparation d’une sortie CartaVault" caption="Les blocs Départ, Jour, Nuit et Arrivée forment un itinéraire réorganisable." />
+
+## Charge et validation
+
+Les badges indiquent si la journée est vide, valide, non calculée ou à vérifier. La charge faible, modérée ou élevée dépend des seuils de minutes configurés dans les paramètres de la sortie.
+
+Poursuivez avec [Routage et optimisation](/docs/fr/routing/) puis [Chronologie et exports](/docs/fr/timeline-exports/).

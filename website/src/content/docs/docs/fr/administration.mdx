@@ -1,46 +1,66 @@
 ---
-title: Administration et déploiement
-description: Installer, mettre à jour, sauvegarder et sécuriser CartaVault.
+title: Administration de l’instance
+description: Gérer les utilisateurs, inscriptions, quotas, e-mails et diagnostics.
 sidebar:
-  order: 4
+  order: 11
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
 import admin from '../../../../assets/screenshots/app-admin-fr.webp';
 
-## Architecture standard
+## Accès à l’administration
 
-Le mode mono-instance comprend une image applicative CartaVault et PostgreSQL/PostGIS. Redis et le worker sont facultatifs et destinés aux tâches asynchrones ou à une charge plus importante.
+Seuls les administrateurs globaux ouvrent la console. Ce rôle permet de gérer l’instance mais n’accorde aucun accès automatique aux cartes privées des utilisateurs.
 
-## Installation
+## Utilisateurs
 
-1. Copiez le fichier d'environnement fourni par le dépôt.
-2. Générez des secrets persistants avec `python -m app.setup_cli generate-secrets`.
-3. Démarrez la pile Docker Compose ou Portainer.
-4. Laissez le job de migration terminer avant l'application.
-5. Ouvrez l'assistant initial et créez le premier administrateur.
+La liste affiche l’avatar lorsqu’il existe, l’identité, le rôle, l’état du compte, les quotas et les informations d’activité disponibles. Recherchez ou filtrez les comptes avant une opération.
 
-Ne régénérez jamais `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` lors d'une mise à jour : les clés API stockées deviendraient illisibles.
+Un administrateur peut activer ou désactiver un compte, modifier son rôle, affecter un profil de quotas et déclencher les opérations de sécurité prévues. Le dernier administrateur actif ne peut pas être rétrogradé, désactivé ou supprimé.
 
-## Mise à jour
+## Inscription publique
 
-Sauvegardez d'abord les volumes, remplacez l'image par la version ciblée, puis recréez la stack. Le conteneur de migration applique les migrations Alembic de la même version avant le démarrage de l'application.
+L’option **Inscriptions publiques** décide si le formulaire est accessible. Lorsqu’elle est active, le parcours comprend la vérification de l’adresse e-mail puis, selon la politique actuelle, l’approbation administrative.
 
-## Sauvegarde minimale
+Les demandes en attente apparaissent dans les notifications et dans la console. Vérifiez le nom, l’adresse et le profil de quotas avant d’approuver. Un refus ne crée pas de compte actif.
 
-Sauvegardez ensemble :
+## Profils de quotas
 
-- la base PostgreSQL avec `pg_dump` ;
-- le volume des photos ;
-- le volume des avatars ;
-- le fichier d'environnement et sa clé de chiffrement.
+Un profil définit les limites de cartes, lieux, membres, taille d’une photo et stockage photo. Les valeurs illimitées restent distinctes de zéro : zéro bloque une nouvelle création, tandis qu’illimité n’applique pas de plafond.
 
-Testez régulièrement une restauration sur une instance isolée.
+Vous pouvez créer, dupliquer, modifier, définir par défaut et archiver un profil. Un profil affecté à des utilisateurs ne peut pas être supprimé sans réaffectation. Le profil système illimité est protégé.
 
-## Sécurité
+## E-mails transactionnels
 
-Utilisez HTTPS, activez les cookies sécurisés, limitez les origines CORS et protégez l'accès Portainer. Les diagnostics d'instance et la gestion des utilisateurs restent réservés aux administrateurs.
+CartaVault sait utiliser Resend ou un SMTP générique. Dans la console, la clé Resend globale peut être enregistrée, vérifiée ou supprimée. Elle est chiffrée et n’est jamais relue en clair.
 
-<ProductScreenshot src={admin} alt="Panneau d'administration des utilisateurs CartaVault" caption="L'administration centralise les comptes, quotas et garde-fous de l'instance." />
+Les événements couvrent notamment la vérification d’adresse, les demandes d’inscription, la réinitialisation de mot de passe, les invitations et transferts de carte, ainsi que les alertes de changement d’adresse ou de mot de passe.
 
-Consultez aussi les [variables d'environnement](/docs/fr/reference/environment/) et les [commandes](/docs/fr/reference/cli/).
+Le transport SMTP se configure par variables d’environnement. Consultez [Déploiement et exploitation](/docs/fr/deployment/).
+
+## État de l’instance
+
+Le diagnostic présente sans secret :
+
+- versions de CartaVault, PostgreSQL/PostGIS et révision Alembic ;
+- santé de la base et des stockages ;
+- espace disque ;
+- état du routage et de l’e-mail ;
+- présence de la clé de chiffrement ;
+- compteurs d’utilisateurs, cartes, lieux et photos.
+
+Le bouton d’actualisation relance les contrôles à délai court. Un service externe indisponible ne doit pas masquer l’état des autres composants.
+
+## Notifications et audit
+
+Les nouvelles inscriptions et invitations apparaissent dans le centre de notifications. Les modifications détaillées des POI sont visibles depuis leur historique. Les événements de sécurité importants sont enregistrés côté serveur sans exposer mots de passe, jetons ou clés API.
+
+<ProductScreenshot src={admin} alt="Panneau d’administration des utilisateurs CartaVault" caption="La console centralise les comptes, demandes, profils de quotas et diagnostics." />
+
+## Garde-fous
+
+- utilisez un compte nominatif par administrateur ;
+- révoquez les sessions après un incident ;
+- ne copiez jamais une clé secrète dans une issue ou un journal partagé ;
+- sauvegardez avant une mise à jour ou une opération de masse ;
+- conservez l’administration derrière HTTPS et un proxy correctement configuré.

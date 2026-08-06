@@ -1,32 +1,69 @@
 ---
-title: Cartes et lieux
-description: Ajouter, classer, rechercher, importer et partager des lieux.
+title: Lieux et fiches POI
+description: Créer, documenter, modifier et suivre précisément chaque lieu.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
 import popup from '../../../../assets/screenshots/app-place-popup-fr.webp';
-import media from '../../../../assets/screenshots/app-media-fr.webp';
 
-## Ajouter un lieu
+## Les trois méthodes d’ajout
 
-Utilisez le bouton **+** du panneau Lieux, recherchez une adresse sur la carte ou importez un fichier KML/KMZ. Renseignez au minimum un nom et une position. La durée de visite vaut 30 minutes lorsqu'aucune valeur n'est indiquée.
+### Création manuelle
 
-## Compléter la fiche
+Utilisez le bouton **+** du panneau Lieux. Renseignez le nom et la position, puis les informations utiles. Si aucune durée n’est fournie, CartaVault utilise 30 minutes lors de l’ajout à une sortie.
 
-Une fiche peut contenir une description, une catégorie, un statut, des tags, une note par demi-étoile, des photos et plusieurs liens nommés. Les images peuvent aussi être collées depuis le presse-papiers lorsque l'édition est autorisée.
+### Résultat de recherche
 
-<ProductScreenshot src={popup} alt="Fiche détaillée d'un lieu CartaVault" caption="La fiche rassemble les informations utiles sans surcharger la carte." />
+Recherchez un nom, une adresse ou des coordonnées avec l’outil de la carte. Sélectionnez un résultat, contrôlez sa position puis créez le lieu. Le résultat peut aussi être utilisé directement comme étape libre d’une sortie sans créer de POI permanent.
 
-La médiathèque de la carte permet ensuite de retrouver les photos associées aux lieux. Les images propres aux hébergements de nuit restent séparées des médias de lieux.
+### Import KML/KMZ
 
-<ProductScreenshot src={media} alt="Médiathèque d'une carte CartaVault" caption="Les médias restent rattachés à leur lieu d'origine." />
+L’import analyse le fichier avant écriture et présente les doublons, médias et avertissements. Consultez [Médias, imports et exports](/docs/fr/media-import-export/).
 
-## Retrouver un lieu
+## Informations principales
 
-Combinez la recherche textuelle, les facettes et le tri. **Réinitialiser les filtres** efface les filtres actifs sans changer votre préférence de tri persistante.
+- **Nom** : libellé visible dans les listes, popups, sorties et exports.
+- **Coordonnées** : latitude et longitude du marqueur.
+- **Région** : déduite automatiquement ou saisie manuellement.
+- **Durée de visite** : valeur réutilisée lors de l’ajout à une sortie.
+- **Description** : notes descriptives, contexte ou informations pratiques.
+- **État, accès et danger** : champs optionnels selon la configuration de la carte.
+- **Dates de construction ou d’abandon** : métadonnées spécialisées pouvant être masquées par carte.
 
-## Partager une carte
+Renommer un POI actualise également son nom dans les sorties qui lui sont liées.
 
-Le propriétaire peut inviter un lecteur ou un éditeur, puis transférer la propriété avec validation par e-mail. Un administrateur n'accède pas automatiquement aux cartes privées des utilisateurs.
+## Catégorie, statut et tags
+
+Un lieu accepte plusieurs catégories avec une catégorie principale, un statut de suivi et plusieurs tags. Leur gestion détaillée se trouve dans [Organisation et recherche](/docs/fr/organization-search/).
+
+## Note et favori
+
+La note peut être modifiée directement dans la popup par demi-étoile. Survolez les étoiles pour prévisualiser la valeur puis cliquez pour enregistrer. La liste est rafraîchie après validation. Le favori se change depuis la fiche ou la tuile du lieu.
+
+## Liens nommés
+
+Ajoutez plusieurs adresses web avec un libellé explicite, par exemple *Site officiel*, *Billetterie* ou *Article*. La section **Liens externes** reste repliable afin de ne pas surcharger la fiche. Utilisez des URL complètes en `https://`.
+
+## Photos
+
+Une fiche peut contenir plusieurs images. Ajoutez un fichier ou collez une capture avec `Ctrl+V` lorsque l’édition est autorisée. Parcourez les images avec les boutons de la galerie ou les flèches gauche/droite du clavier, ouvrez-les en grand, réordonnez-les et choisissez la principale.
+
+En mode Sortie, un POI permanent reste consultable mais ses actions d’édition et de suppression sont masquées. Le collage d’image y est réservé aux emplacements issus de la recherche qui ne possèdent pas de fiche POI classique.
+
+<ProductScreenshot src={popup} alt="Fiche détaillée d’un lieu CartaVault" caption="La popup regroupe galerie, classement, note, liens et métadonnées du lieu." />
+
+## Historique détaillé
+
+Le bouton d’historique ouvre les événements auditables : création, modification, corbeille, restauration, photos, catégories, tags, catégorie principale et liens. Les changements structurés présentent les valeurs avant/après lorsqu’elles sont disponibles.
+
+L’historique explique les mutations enregistrées par le serveur ; il est distinct des actions **Annuler/Rétablir** de l’interface.
+
+## Modifier ou supprimer
+
+Les boutons **Éditer** et **Supprimer** apparaissent en mode Lieux si votre rôle l’autorise. La suppression déplace d’abord le lieu dans la corbeille. Les références de sortie sont traitées selon les garde-fous du serveur. La suppression définitive depuis la corbeille ne peut pas être annulée.
+
+## Utiliser plusieurs fois un lieu
+
+Un POI peut apparaître plusieurs fois dans une même sortie. Une coche sur sa miniature indique qu’il est déjà utilisé, sans le désactiver. Vous pouvez ainsi repasser par un même hébergement ou point de rendez-vous.

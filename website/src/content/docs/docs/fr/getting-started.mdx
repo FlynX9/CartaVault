@@ -1,6 +1,6 @@
 ---
 title: Bien démarrer
-description: De la connexion à votre première carte CartaVault.
+description: De la première connexion à un espace CartaVault organisé.
 sidebar:
   order: 1
 ---
@@ -9,20 +9,56 @@ import ProductScreenshot from '../../../../components/docs/ProductScreenshot.ast
 import UiPath from '../../../../components/docs/UiPath.astro';
 import places from '../../../../assets/screenshots/app-places-fr.webp';
 
+## Avant de commencer
+
+Vous avez besoin de l’adresse de l’instance CartaVault et d’un compte actif. Selon la configuration, le compte est créé par un administrateur, après validation d’une inscription publique ou lors de l’acceptation d’une invitation.
+
 ## Se connecter
 
-Ouvrez l'adresse de votre instance et saisissez l'adresse e-mail et le mot de passe fournis par l'administrateur. Une session déjà authentifiée est redirigée vers l'écran de démarrage configuré dans vos préférences.
+Ouvrez l’URL de l’instance, saisissez votre adresse e-mail et votre mot de passe, puis choisissez **Se connecter**. L’option *Se souvenir de moi* prolonge la durée prévue de la session sur cet appareil. N’utilisez-la pas sur un poste partagé.
 
-## Créer une carte
+Une session déjà authentifiée ne revient pas sur la page de connexion : elle est redirigée vers l’écran configuré dans vos préférences.
 
-Depuis le tableau de bord, choisissez **Nouvelle carte**, donnez-lui un nom et sélectionnez son pays. Le pays sert au cadrage initial, aux contrôles de cohérence et au masque hors pays.
+## Comprendre l’espace de travail
 
-<ProductScreenshot src={places} alt="Liste des lieux de la carte France dans CartaVault" caption="Une carte regroupe ses lieux, sorties, médias et droits d'accès." />
+La barre supérieure donne accès au tableau de bord, aux actions annuler/rétablir, aux notifications, au thème et au compte. La navigation principale ouvre les cartes, lieux, sorties, médias, catégories, tags, statuts et corbeille selon le contexte.
 
-## Régler votre interface
+Sur une carte, le panneau Lieux et les autres panneaux peuvent être réduits ou redimensionnés. La carte reste la surface centrale de navigation.
 
-Ouvrez <UiPath items={['Profil', 'Préférences']} /> pour choisir la langue, le thème, la densité d'affichage, le fuseau horaire et l'écran de démarrage.
+## Créer la première carte
 
-## Prochaine étape
+1. Depuis le tableau de bord, choisissez **Nouvelle carte**.
+2. Saisissez un nom, par exemple *Voyage en France*.
+3. Sélectionnez le pays.
+4. Ouvrez la carte créée.
 
-Continuez avec [la gestion des lieux](/docs/fr/places/) ou [la préparation d'un voyage](/docs/fr/trips/).
+Le pays sert au cadrage, au contrôle des coordonnées et au masque hors pays. Une carte possède ses propres catégories, statuts, lieux, sorties, médias et membres.
+
+## Ajouter un premier lieu
+
+Vous pouvez utiliser le bouton **+** du panneau Lieux, sélectionner un résultat de recherche sur la carte ou importer un KML/KMZ. Pour une création manuelle, indiquez au minimum un nom et des coordonnées. Complétez ensuite la catégorie, le statut, la durée de visite, la description, les tags, les liens et les photos.
+
+<ProductScreenshot src={places} alt="Liste des lieux de la carte France dans CartaVault" caption="La liste, les marqueurs et la fiche détaillée restent synchronisés." />
+
+## Organiser avant d’accumuler
+
+Définissez quelques catégories, statuts et tags cohérents avant d’importer un grand volume. Les filtres et le tableau de bord deviennent immédiatement plus utiles. La catégorie **Importé** reste disponible pour les données qui n’ont pas encore été reclassées.
+
+## Régler l’interface
+
+Ouvrez <UiPath items={['Profil', 'Préférences']} /> pour choisir :
+
+- la langue et le thème ;
+- la densité d’affichage ;
+- le fond cartographique ;
+- le fuseau horaire ;
+- l’écran de démarrage ;
+- la conservation de la corbeille ;
+- les fournisseurs de recherche et de routage.
+
+## Parcours conseillé
+
+1. Découvrez le [tableau de bord et les cartes](/docs/fr/dashboard-maps/).
+2. Apprenez à [créer et compléter les lieux](/docs/fr/places/).
+3. Configurez [l’organisation et la recherche](/docs/fr/organization-search/).
+4. Composez ensuite une [sortie jour par jour](/docs/fr/trips/).

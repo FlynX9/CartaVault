@@ -1,46 +1,66 @@
 ---
-title: Administration and deployment
-description: Install, update, back up, and secure CartaVault.
+title: Instance administration
+description: Manage users, registrations, quotas, email, and diagnostics.
 sidebar:
-  order: 4
+  order: 11
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
 import admin from '../../../../assets/screenshots/app-admin-en.webp';
 
-## Standard architecture
+## Administration access
 
-Single-instance mode consists of one CartaVault application image and PostgreSQL/PostGIS. Redis and the worker are optional extensions for asynchronous work or higher load.
+Only global administrators can open the console. This role manages the platform but does not automatically grant access to users' private maps.
 
-## Installation
+## Users
 
-1. Copy the repository environment template.
-2. Generate persistent secrets with `python -m app.setup_cli generate-secrets`.
-3. Start the Docker Compose or Portainer stack.
-4. Let the migration job complete before the application starts.
-5. Open the setup wizard and create the first administrator.
+The list displays the avatar when available, identity, role, account state, quotas, and available activity information. Search or filter accounts before acting.
 
-Never regenerate `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` during an update: stored API keys would become unreadable.
+An administrator can activate or disable an account, change its role, assign a quota profile, and perform supported security actions. The last active administrator cannot be demoted, disabled, or deleted.
 
-## Update
+## Public registration
 
-Back up volumes first, select the target image version, then recreate the stack. The version-matched migration container applies Alembic migrations before the application starts.
+**Public registration** controls whether the form is available. When enabled, the flow verifies the email address and, under the current policy, requests administrator approval.
 
-## Minimum backup set
+Pending requests appear in notifications and the console. Review name, address, and quota profile before approval. Rejection does not create an active account.
 
-Back up together:
+## Quota profiles
 
-- the PostgreSQL database with `pg_dump`;
-- the photo volume;
-- the avatar volume;
-- the environment file and encryption key.
+A profile limits maps, places, members, single-photo size, and photo storage. Unlimited values are distinct from zero: zero blocks new writes, while unlimited sets no cap.
 
-Regularly test restoration on an isolated instance.
+Create, duplicate, edit, set as default, or archive profiles. A profile assigned to users cannot be deleted without reassignment. The system unlimited profile is protected.
 
-## Security
+## Transactional email
 
-Use HTTPS, enable secure cookies, restrict CORS origins, and protect Portainer access. Instance diagnostics and user management remain administrator-only.
+CartaVault supports Resend and generic SMTP. The console stores, verifies, or removes the global Resend key. It is encrypted and never returned in clear text.
 
-<ProductScreenshot src={admin} alt="CartaVault user administration panel" caption="Administration centralizes accounts, quotas, and instance safeguards." />
+Events include address verification, registration requests, password reset, map invitations and transfers, and email or password change alerts.
 
-See the [environment reference](/docs/en/reference/environment/) and [command reference](/docs/en/reference/cli/).
+SMTP transport is configured through environment variables. See [Deployment and operations](/docs/en/deployment/).
+
+## Instance health
+
+Diagnostics expose, without secrets:
+
+- CartaVault, PostgreSQL/PostGIS, and Alembic versions;
+- database and storage health;
+- free disk space;
+- routing and email state;
+- encryption-key presence;
+- user, map, place, and photo counts.
+
+Refresh reruns short-timeout checks. One unavailable external service does not hide other component results.
+
+## Notifications and audit
+
+New registration requests and invitations appear in the notification center. Detailed POI changes are available from each record's history. Important security events are recorded server-side without passwords, tokens, or API keys.
+
+<ProductScreenshot src={admin} alt="CartaVault user administration panel" caption="The console centralizes accounts, requests, quota profiles, and diagnostics." />
+
+## Safeguards
+
+- use named administrator accounts;
+- revoke sessions after an incident;
+- never paste secrets into issues or shared logs;
+- back up before upgrades or bulk administration;
+- keep administration behind HTTPS and a correctly configured proxy.

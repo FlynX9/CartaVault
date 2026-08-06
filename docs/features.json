@@ -1,29 +1,64 @@
 {
   "features": [
     {
+      "id": "dashboard",
+      "fr": { "name": "Tableau de bord", "summary": "Indicateurs globaux, analyses par statut, pays et catégorie, activité récente et contrôles de qualité." },
+      "en": { "name": "Dashboard", "summary": "Global metrics, status/country/category analytics, recent activity, and data-quality checks." }
+    },
+    {
+      "id": "maps",
+      "fr": { "name": "Cartes", "summary": "Espaces par pays, catalogue, champs configurables, comptage des lieux et sorties, corbeille et restauration." },
+      "en": { "name": "Maps", "summary": "Country workspaces, catalog, configurable fields, place/trip counts, trash, and restore." }
+    },
+    {
       "id": "places",
-      "fr": { "name": "Cartes et lieux", "summary": "Classement, recherche, médias, liens, historique et imports KML/KMZ." },
-      "en": { "name": "Maps and places", "summary": "Classification, search, media, links, history, and KML/KMZ imports." }
+      "fr": { "name": "Lieux", "summary": "Fiches POI, durée de visite, région, catégories, statuts, tags, notes, favoris, liens et historique." },
+      "en": { "name": "Places", "summary": "POI records, visit duration, region, categories, statuses, tags, ratings, favorites, links, and history." }
+    },
+    {
+      "id": "search",
+      "fr": { "name": "Recherche et organisation", "summary": "Recherche texte et cartographique, Stadia ou Google Places, facettes, tris persistants et actions groupées." },
+      "en": { "name": "Search and organization", "summary": "Text and map search, Stadia or Google Places, facets, persisted sorting, and bulk actions." }
+    },
+    {
+      "id": "media",
+      "fr": { "name": "Médias et échanges", "summary": "Galeries, presse-papiers, médiathèque, imports KML/KMZ, doublons et exports cartographiques." },
+      "en": { "name": "Media and exchange", "summary": "Galleries, clipboard upload, media library, KML/KMZ imports, duplicate review, and map exports." }
     },
     {
       "id": "trips",
-      "fr": { "name": "Sorties", "summary": "Jours, nuits, routage, optimisation, chronologie et exports PDF/GPX." },
-      "en": { "name": "Trips", "summary": "Days, nights, routing, optimization, timeline, and PDF/GPX exports." }
+      "fr": { "name": "Sorties", "summary": "Départ, arrivée, jours, nuits, étapes réutilisables, durées, dates, charge et glisser-déposer." },
+      "en": { "name": "Trips", "summary": "Departure, arrival, days, nights, reusable stages, durations, dates, load, and drag-and-drop." }
+    },
+    {
+      "id": "routing",
+      "fr": { "name": "Routage et optimisation", "summary": "OSRM ou Google Routes, contraintes, cache, calculs par jour et propositions d’optimisation validées." },
+      "en": { "name": "Routing and optimization", "summary": "OSRM or Google Routes, constraints, caching, per-day calculation, and confirmed optimization proposals." }
+    },
+    {
+      "id": "timeline",
+      "fr": { "name": "Chronologie et exports", "summary": "Frise interactive, mise en avant des segments, PDF illustré, QR Google/Waze, GPX, KMZ et liens Google Maps." },
+      "en": { "name": "Timeline and exports", "summary": "Interactive timeline, segment emphasis, illustrated PDF, Google/Waze QR, GPX, KMZ, and Google Maps links." }
     },
     {
       "id": "sharing",
-      "fr": { "name": "Partage", "summary": "Rôles lecteur/éditeur, invitations et transfert de propriété validé." },
-      "en": { "name": "Sharing", "summary": "Viewer/editor roles, invitations, and confirmed ownership transfer." }
+      "fr": { "name": "Partage", "summary": "Rôles lecteur/éditeur, invitations, notifications, révocation et transfert de propriété confirmé." },
+      "en": { "name": "Sharing", "summary": "Viewer/editor roles, invitations, notifications, revocation, and confirmed ownership transfer." }
     },
     {
-      "id": "security",
-      "fr": { "name": "Sécurité", "summary": "Sessions révocables, protections CSRF/RBAC et audit des changements." },
-      "en": { "name": "Security", "summary": "Revocable sessions, CSRF/RBAC protections, and change auditing." }
+      "id": "account",
+      "fr": { "name": "Compte et préférences", "summary": "Profil, avatar, langue, thème, densité, écran initial, sessions et clés Google chiffrées." },
+      "en": { "name": "Account and preferences", "summary": "Profile, avatar, language, theme, density, startup screen, sessions, and encrypted Google keys." }
+    },
+    {
+      "id": "administration",
+      "fr": { "name": "Administration", "summary": "Utilisateurs, inscription publique, profils de quotas, Resend, diagnostics et garde-fous du dernier administrateur." },
+      "en": { "name": "Administration", "summary": "Users, public registration, quota profiles, Resend, diagnostics, and last-administrator safeguards." }
     },
     {
       "id": "self-hosting",
-      "fr": { "name": "Auto-hébergement", "summary": "Image applicative, PostGIS, migrations et worker Redis facultatif." },
-      "en": { "name": "Self-hosting", "summary": "Application image, PostGIS, migrations, and optional Redis worker." }
+      "fr": { "name": "Auto-hébergement", "summary": "Image unifiée, PostGIS, migrations Alembic, sauvegarde/restauration, SMTP et worker Redis facultatif." },
+      "en": { "name": "Self-hosting", "summary": "Unified image, PostGIS, Alembic migrations, backup/restore, SMTP, and optional Redis worker." }
     }
   ]
 }
