@@ -63,3 +63,6 @@ htmlcov/
 /demo/output/
 /demo/playwright-report/
 /demo/test-results/
+
+# Exclude generated docker image
+docker/*.tar
