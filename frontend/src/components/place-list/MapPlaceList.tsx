@@ -26,6 +26,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import {
@@ -109,6 +110,8 @@ interface Props {
   tripPlanningActive?: boolean;
   tripPlaceIds?: Set<string>;
   tripAddTargetLabel?: string | null;
+  activeTripId?: string | null;
+  activeTripDayId?: string | null;
   onTripPlaceAdd?: (place: PreviewPlace) => void;
   onBulkChanged?: () => void;
   onBulkTripChanged?: (tripId: string) => void;
@@ -157,6 +160,8 @@ export function MapPlaceList({
   tripPlanningActive = false,
   tripPlaceIds = new Set(),
   tripAddTargetLabel = null,
+  activeTripId = null,
+  activeTripDayId = null,
   onTripPlaceAdd = () => undefined,
   onBulkChanged = () => undefined,
   onBulkTripChanged = () => undefined,
@@ -182,6 +187,7 @@ export function MapPlaceList({
   >([]);
   const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [internalSelectionMode, setInternalSelectionMode] = useState(false);
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(
     new Set(),
@@ -196,9 +202,17 @@ export function MapPlaceList({
   const [tripId, setTripId] = useState("");
   const [dayId, setDayId] = useState("");
   const [importing, setImporting] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches,
+  );
   const [displayMode, setDisplayMode] = useState<"compact" | "expanded">(
     "expanded",
   );
+  const mobileSwipeStart = useRef<{ placeId: string; pointerId: number; x: number } | null>(null);
+  const mobileSwipeMoved = useRef(false);
+  const mobileSwipeOffset = useRef(0);
+  const [mobilePlaceSwipe, setMobilePlaceSwipe] = useState<{ placeId: string; offset: number } | null>(null);
+  const [mobilePlaceSwipeOpen, setMobilePlaceSwipeOpen] = useState<{ placeId: string; direction: 'delete' | 'more' } | null>(null);
   const [queryInput, setQueryInput] = useState(filters.query);
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
   const refs = useRef(new Map<string, HTMLButtonElement>());
@@ -212,6 +226,7 @@ export function MapPlaceList({
   const selectionRequest = useRef(0);
   const selectionController = useRef<AbortController | null>(null);
   const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext);
+  const canImportKmz = poiMap?.can_import !== false && !tripPlanningActive && !isMobileViewport;
   const selectionMode = controlledSelectionMode ?? internalSelectionMode;
   const selectedIds = controlledSelectedIds ?? internalSelectedIds;
   const replaceSelectedIds = useCallback(
@@ -243,16 +258,32 @@ export function MapPlaceList({
     placesRef.current = places;
   }, [places]);
   useEffect(() => {
-    if (tripPlanningActive) setImporting(false);
-  }, [tripPlanningActive]);
+    if (typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
+  useEffect(() => {
+    if (tripPlanningActive || isMobileViewport) setImporting(false);
+  }, [isMobileViewport, tripPlanningActive]);
+  // Selection stays anchored to the shared active day in Trip mode.  The
+  // existing selectors remain available for a deliberate alternate target.
+  useEffect(() => {
+    if (!tripPlanningActive || !activeTripId || !activeTripDayId) return;
+    setTripId(activeTripId);
+    setDayId(activeTripDayId);
+  }, [activeTripDayId, activeTripId, tripPlanningActive]);
   useEffect(() => {
     if (
       importRequest > 0 &&
       poiMap?.can_import !== false &&
-      !tripPlanningActive
+      !tripPlanningActive &&
+      !isMobileViewport
     )
       setImporting(true);
-  }, [importRequest, poiMap, tripPlanningActive]);
+  }, [importRequest, isMobileViewport, poiMap, tripPlanningActive]);
   useEffect(() => {
     selectionController.current?.abort();
     replaceSelectedIds(new Set());
@@ -409,6 +440,8 @@ export function MapPlaceList({
     tripPlanningActive ? "planning" : "",
     tripAddTargetLabel ?? "",
     poiMap?.can_edit === false ? "readonly" : "editable",
+    mobilePlaceSwipe ? `${mobilePlaceSwipe.placeId}:${mobilePlaceSwipe.offset}` : "",
+    mobilePlaceSwipeOpen ? `${mobilePlaceSwipeOpen.placeId}:${mobilePlaceSwipeOpen.direction}` : "",
   ].join("|");
   useEffect(() => {
     if (
@@ -565,6 +598,41 @@ export function MapPlaceList({
         caught instanceof Error ? caught.message : "Suppression impossible.",
       );
     }
+  };
+  const beginMobilePlaceSwipe = (event: ReactPointerEvent<HTMLElement>, placeId: string) => {
+    if (!window.matchMedia('(max-width: 760px)').matches || (event.target as HTMLElement).closest('a, input, select, .places-place-actions, .places-mobile-swipe-action')) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    mobileSwipeMoved.current = false;
+    mobileSwipeStart.current = { placeId, pointerId: event.pointerId, x: event.clientX };
+    const opened = mobilePlaceSwipeOpen?.placeId === placeId
+      ? mobilePlaceSwipeOpen.direction === 'delete' ? 92 : -116
+      : 0;
+    mobileSwipeOffset.current = opened;
+    setMobilePlaceSwipe({ placeId, offset: opened });
+    if (mobilePlaceSwipeOpen?.placeId !== placeId) setMobilePlaceSwipeOpen(null);
+  };
+  const moveMobilePlaceSwipe = (event: ReactPointerEvent<HTMLElement>) => {
+    const swipe = mobileSwipeStart.current;
+    if (!swipe || swipe.pointerId !== event.pointerId) return;
+    const opened = mobilePlaceSwipeOpen?.placeId === swipe.placeId
+      ? mobilePlaceSwipeOpen.direction === 'delete' ? 92 : -116
+      : 0;
+    const offset = Math.max(-124, Math.min(100, event.clientX - swipe.x + opened));
+    if (Math.abs(offset) > 7) {
+      mobileSwipeMoved.current = true;
+      event.preventDefault();
+    }
+    mobileSwipeOffset.current = offset;
+    setMobilePlaceSwipe({ placeId: swipe.placeId, offset });
+  };
+  const finishMobilePlaceSwipe = (event: ReactPointerEvent<HTMLElement>) => {
+    const swipe = mobileSwipeStart.current;
+    if (!swipe || swipe.pointerId !== event.pointerId) return;
+    const offset = mobileSwipeOffset.current;
+    mobileSwipeStart.current = null;
+    mobileSwipeOffset.current = 0;
+    setMobilePlaceSwipe(null);
+    setMobilePlaceSwipeOpen(Math.abs(offset) >= 44 ? { placeId: swipe.placeId, direction: offset > 0 ? 'delete' : 'more' } : null);
   };
   const togglePage = () => {
     const ids = visible.map((place) => place.id);
@@ -863,15 +931,28 @@ export function MapPlaceList({
         <div className="places-redesign-header-actions">
           {!collapsed &&
             poiMap &&
-            !tripPlanningActive &&
-            poiMap.can_import !== false && (
+            canImportKmz && (
               <button
-                className="panel-icon-button"
+                className="panel-icon-button places-import-kmz"
                 type="button"
                 aria-label={t("places.import")}
                 onClick={() => setImporting(true)}
               >
                 <Import size={17} />
+              </button>
+            )}
+          {!collapsed &&
+            poiMap &&
+            !tripPlanningActive && (
+              <button
+                className={`panel-icon-button places-mobile-controls-toggle${mobileControlsOpen ? " active" : ""}`}
+                type="button"
+                aria-label={mobileControlsOpen ? "Masquer la recherche et les filtres" : "Afficher la recherche et les filtres"}
+                title={mobileControlsOpen ? "Masquer les filtres" : "Afficher les filtres"}
+                aria-expanded={mobileControlsOpen}
+                onClick={() => setMobileControlsOpen((open) => !open)}
+              >
+                <SlidersHorizontal size={17} aria-hidden="true" />
               </button>
             )}
           {!collapsed &&
@@ -909,7 +990,7 @@ export function MapPlaceList({
       </header>
       {poiMap && (
         <section
-          className="places-redesign-controls"
+          className={`places-redesign-controls${mobileControlsOpen ? " is-mobile-open" : ""}`}
           aria-label={t("places.controls")}
         >
           <label className="place-list-search places-redesign-search">
@@ -1312,6 +1393,7 @@ export function MapPlaceList({
                   </select>
                 )}
               <button
+                className="place-bulk-add-to-active-day"
                 type="button"
                 disabled={bulkBusy || !dayId}
                 onClick={() => void addToTrip()}
@@ -1367,10 +1449,27 @@ export function MapPlaceList({
               const isSelected = place.id === selectedPlaceId;
               const rating = formatRating(place);
               const canAddToTripTarget = tripAddTargetLabel !== null;
+              const swipeOffset = mobilePlaceSwipe?.placeId === place.id
+                ? mobilePlaceSwipe.offset
+                : mobilePlaceSwipeOpen?.placeId === place.id
+                  ? mobilePlaceSwipeOpen.direction === 'delete' ? 92 : -116
+                  : 0;
+              const deleteRevealWidth = Math.max(0, swipeOffset);
+              const moreRevealWidth = Math.max(0, -swipeOffset);
               return (
                 <article
                   className={`places-place-card${isSelected ? " selected" : ""}${inTrip ? " trip-included" : ""}${selectionMode ? " has-selection" : ""}`}
+                  onPointerDown={(event) => beginMobilePlaceSwipe(event, place.id)}
+                  onPointerMove={moveMobilePlaceSwipe}
+                  onPointerUp={finishMobilePlaceSwipe}
+                  onPointerCancel={() => { mobileSwipeStart.current = null; mobileSwipeOffset.current = 0; setMobilePlaceSwipe(null); }}
                 >
+                  {poiMap?.can_edit !== false && <button className="places-mobile-swipe-action places-mobile-swipe-action--delete" style={{ width: `${deleteRevealWidth}px` }} type="button" aria-hidden={swipeOffset <= 0} tabIndex={swipeOffset > 0 ? 0 : -1} aria-label={`Supprimer ${place.name}`} onClick={() => void removePlace(place)}><Trash2 size={18} /></button>}
+                  <div className="places-mobile-swipe-action places-mobile-swipe-action--more" style={{ width: `${moreRevealWidth}px` }} aria-hidden={swipeOffset >= 0}>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`}><MapPinned size={17} /></a>
+                    {poiMap?.can_edit !== false && <Link to={withMap(`/places/${place.id}/edit`, poiMap?.id)} aria-label={`Éditer ${place.name}`}><Pencil size={17} /></Link>}
+                  </div>
+                  <div className="places-place-card-row" style={{ transform: `translateX(${swipeOffset}px)` }}>
                     {selectionMode && (
                       <input
                         className="place-list-select"
@@ -1403,7 +1502,13 @@ export function MapPlaceList({
                           );
                         }
                       }}
-                      onClick={() => onPlaceSelect(place)}
+                      onClick={() => {
+                        if (mobileSwipeMoved.current) {
+                          mobileSwipeMoved.current = false;
+                          return;
+                        }
+                        onPlaceSelect(place);
+                      }}
                     >
                       {displayMode === "expanded" && (
                         <span className="places-place-photo">
@@ -1581,6 +1686,7 @@ export function MapPlaceList({
                         </div>
                       </aside>
                     )}
+                  </div>
                 </article>
               );
             }}
@@ -1609,7 +1715,7 @@ export function MapPlaceList({
           </button>
         )}
       </div>
-      {!tripPlanningActive && importing && poiMap && (
+      {canImportKmz && importing && poiMap && (
         <KmzImportDialog
           poiMap={poiMap}
           onClose={() => setImporting(false)}

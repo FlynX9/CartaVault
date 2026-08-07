@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { createStatus, deleteStatus, getStatuses, reorderStatuses, updateStatus } from '../../api/statuses'
@@ -45,6 +45,9 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
   const [showForm, setShowForm] = useState(variant === 'page')
   const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+  const swipeStart = useRef<{ id: string; pointerId: number; x: number } | null>(null)
+  const [swipe, setSwipe] = useState<{ id: string; offset: number } | null>(null)
+  const [revealed, setRevealed] = useState<{ id: string; direction: 'delete' | 'edit' } | null>(null)
 
   useEffect(() => {
     if (!mapId) {
@@ -80,6 +83,30 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
     setForm(EMPTY_FORM)
     setError(null)
     setShowForm(variant === 'page')
+  }
+  const startSwipe = (event: ReactPointerEvent<HTMLLIElement>, statusId: string) => {
+    if (!isPanel || event.pointerType === 'mouse' || (event.target as HTMLElement).closest('button')) return
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    swipeStart.current = { id: statusId, pointerId: event.pointerId, x: event.clientX }
+    const offset = revealed?.id === statusId ? revealed.direction === 'delete' ? 86 : -70 : 0
+    setSwipe({ id: statusId, offset })
+    if (revealed?.id !== statusId) setRevealed(null)
+  }
+  const moveSwipe = (event: ReactPointerEvent<HTMLLIElement>) => {
+    const current = swipeStart.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const base = revealed?.id === current.id ? revealed.direction === 'delete' ? 86 : -70 : 0
+    const offset = Math.max(-78, Math.min(94, event.clientX - current.x + base))
+    if (Math.abs(offset) > 6) event.preventDefault()
+    setSwipe({ id: current.id, offset })
+  }
+  const endSwipe = (event: ReactPointerEvent<HTMLLIElement>) => {
+    const current = swipeStart.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const offset = swipe?.id === current.id ? swipe.offset : 0
+    swipeStart.current = null
+    setSwipe(null)
+    setRevealed(Math.abs(offset) >= 38 ? { id: current.id, direction: offset > 0 ? 'delete' : 'edit' } : null)
   }
 
   const create = () => {
@@ -226,17 +253,25 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       <ul className={`admin-entity-list${isPanel ? ' cv-panel-status-list cv-workspace-panel__list' : ''}`}>
         {statuses.map((item) => (
           <li
-            className={`${isPanel ? 'cv-workspace-panel__card' : ''}${draggedStatusId === item.id ? ' is-dragging' : ''}${dropTargetId === item.id ? ' is-drop-target' : ''}`}
+            className={`${isPanel ? 'cv-workspace-panel__card cv-mobile-swipe-entity' : ''}${draggedStatusId === item.id ? ' is-dragging' : ''}${dropTargetId === item.id ? ' is-drop-target' : ''}`}
             key={item.id}
             draggable={canEdit && !search}
             onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedStatusId(item.id) }}
             onDragOver={(event) => { if (canEdit && !search && draggedStatusId !== item.id) { event.preventDefault(); setDropTargetId(item.id) } }}
             onDrop={(event) => void reorder(event, item.id)}
             onDragEnd={() => { setDraggedStatusId(null); setDropTargetId(null) }}
+            onPointerDown={(event) => startSwipe(event, item.id)}
+            onPointerMove={moveSwipe}
+            onPointerUp={endSwipe}
+            onPointerCancel={() => { swipeStart.current = null; setSwipe(null) }}
           >
+            {isPanel && canEdit && !item.is_default && item.places_count === 0 && <button className="cv-mobile-swipe-entity__delete" type="button" aria-hidden={!(revealed?.id === item.id && revealed.direction === 'delete')} tabIndex={revealed?.id === item.id && revealed.direction === 'delete' ? 0 : -1} aria-label={`Supprimer ${item.name}`} onClick={() => void remove(item)}><Trash2 size={17} /></button>}
+            {isPanel && canEdit && <button className="cv-mobile-swipe-entity__edit" type="button" aria-hidden={!(revealed?.id === item.id && revealed.direction === 'edit')} tabIndex={revealed?.id === item.id && revealed.direction === 'edit' ? 0 : -1} aria-label={`Modifier ${item.name}`} onClick={() => select(item)}><Pencil size={17} /></button>}
+            <div className="cv-mobile-swipe-entity__row" style={isPanel ? { transform: `translateX(${swipe?.id === item.id ? swipe.offset : revealed?.id === item.id ? revealed.direction === 'delete' ? 86 : -70 : 0}px)` } : undefined}>
             {canEdit && !search && <GripVertical className="status-drag-handle" size={16} aria-hidden="true" />}
             <div className="status-summary"><span className="status-dot" style={{ backgroundColor: item.color }} /><div><strong>{item.name}</strong>{isPanel ? <div className="status-meta"><span>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'}</span><span className="status-place-count" aria-label={formatAssociatedPlaces(item.places_count)}>{item.places_count} POI</span>{item.is_default && <b>Défaut</b>}{!item.is_active && <b>Inactif</b>}</div> : <p>{item.functional_state === 'visited' ? 'Visité' : 'Non visité'} · {item.slug} · <span className="status-place-count" aria-label={formatAssociatedPlaces(item.places_count)}>{item.places_count} POI</span></p>}</div></div>
             {canEdit && <div className="entity-actions">{isPanel ? <><button className="panel-icon-button" type="button" aria-label={`Modifier ${item.name}`} title={`Modifier ${item.name}`} onClick={() => select(item)}><Pencil size={16} /></button><button className="panel-icon-button danger" type="button" aria-label={`Supprimer ${item.name}`} title={`Supprimer ${item.name}`} disabled={item.is_default || item.places_count > 0} onClick={() => void remove(item)}><Trash2 size={16} /></button></> : <><button className="secondary-button" type="button" onClick={() => select(item)}>Modifier</button><button className="danger-button" type="button" disabled={item.is_default || item.places_count > 0} onClick={() => void remove(item)}>Supprimer</button></>}</div>}
+            </div>
           </li>
         ))}
       </ul>

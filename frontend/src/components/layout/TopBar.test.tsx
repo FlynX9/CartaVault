@@ -12,9 +12,9 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: currentUser, logo
 vi.mock('../notifications/NotificationCenter', () => ({ NotificationCenter: () => <button type="button" aria-label="Notifications">Notifications</button> }))
 vi.mock('../account/AccountModal', () => ({ AccountModal: ({ onClose }: { onClose: () => void }) => <div role="dialog" aria-label="Espace compte"><button onClick={onClose}>Fermer</button></div> }))
 
-function renderTopBar(markerCount = 0) {
+function renderTopBar(markerCount = 0, initialEntry = '/workspace') {
   return render(
-    <MemoryRouter initialEntries={['/workspace']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <ThemeProvider>
         <TopBar isMapWorkspace markerCount={markerCount} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
         <CurrentPath />
@@ -85,12 +85,21 @@ describe('TopBar account entry', () => {
     expect(screen.queryByRole('menuitem', { name: 'Administration' })).not.toBeInTheDocument()
   })
 
-  it('places the persistent theme toggle to the right of the user and outside its menu', () => {
+  it('closes administration before opening the user menu', () => {
+    renderTopBar(0, '/admin/users')
+
+    fireEvent.click(screen.getByRole('button', { name: /Admin$/ }))
+
+    expect(screen.getByTestId('current-path')).toHaveTextContent('/')
+    expect(screen.getByRole('menu', { name: 'Menu utilisateur' })).toBeVisible()
+  })
+
+  it('places the persistent theme toggle before the user control and outside its menu', () => {
     localStorage.setItem('cartavault.theme', 'light')
     renderTopBar()
     const account = screen.getByRole('button', { name: /Admin$/ })
-    const themeSwitch = screen.getByRole('button', { name: /sombre$/i })
-    expect(account.compareDocumentPosition(themeSwitch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const themeSwitch = screen.getAllByRole('button', { name: /sombre$/i }).find((button) => button.classList.contains('topbar-theme-toggle'))!
+    expect(themeSwitch.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(themeSwitch).toHaveAttribute('aria-pressed', 'false')
 
     fireEvent.click(themeSwitch)

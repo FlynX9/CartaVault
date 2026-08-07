@@ -195,6 +195,7 @@ function WorkspaceApp() {
   const [mapView, setMapView] = useState<MapView>(INITIAL_MAP_VIEW);
   const [places, setPlaces] = useState<MapPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PreviewPlace | MapPlace | null>(null);
+  const [mobilePlaceDetailOpen, setMobilePlaceDetailOpen] = useState(false);
   const [placeSelectionMode, setPlaceSelectionMode] = useState(false);
   const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<string>>(
     () => new Set(),
@@ -555,8 +556,9 @@ function WorkspaceApp() {
     setRemovedPlaceId(id);
     setRefreshVersion((value) => value + 1);
   };
-  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true) => {
+  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true, openMobileDetail = false) => {
     setSelectedPlace(place);
+    setMobilePlaceDetailOpen(openMobileDetail && window.matchMedia('(max-width: 760px)').matches);
     setWorkspacePanel(tripViewOnly ? null : "places");
     suppressedRouteFocusPlaceId.current = focusPlace ? null : place.id;
     navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
@@ -928,6 +930,7 @@ function WorkspaceApp() {
     temporarySearchResult,
   ]);
   const closePopup = () => {
+    setMobilePlaceDetailOpen(false);
     if (sidebarState.mode === "details" || sidebarState.mode === "preview") {
       setSelectedPlace(null);
       navigate(withMap("/", activeMapId, activeStatusId));
@@ -1123,7 +1126,7 @@ function WorkspaceApp() {
               search: params.toString() ? `?${params}` : "",
             });
           }}
-          onPlaceSelect={(place) => handleSelect(place, true)}
+          onPlaceSelect={(place) => handleSelect(place, true, true, true)}
           onImported={() => setRefreshVersion((value) => value + 1)}
           onBulkChanged={() => setRefreshVersion((value) => value + 1)}
           onBulkTripChanged={(tripId) => {
@@ -1145,6 +1148,8 @@ function WorkspaceApp() {
           tripPlanningActive={tripPlannerOpen}
           tripPlaceIds={activeTripPlaceIds}
           tripAddTargetLabel={activeTripAddTargetLabel}
+          activeTripId={activeTrip?.id ?? null}
+          activeTripDayId={activeTripDayId}
           onTripPlaceAdd={(place) => void addPlaceToActiveTripTarget(place)}
           importRequest={importRequest}
         />
@@ -1327,6 +1332,11 @@ function WorkspaceApp() {
           onUnsavedChangesGuardChange={(guard) => {
             unsavedTripSettingsGuard.current = guard;
           }}
+          onMobilePlacesOpen={() => {
+            setWorkspacePanel("places");
+            setPlacesPanelCollapsed(false);
+            setTripPlannerCollapsed(true);
+          }}
           onClose={() => {
             setTripPlannerOpen(false);
             setTripPlannerCollapsed(false);
@@ -1422,6 +1432,16 @@ function WorkspaceApp() {
     if (create) setCreateTripRequest((value) => value + 1);
   };
 
+  const toggleTripsFromNavigation = () => {
+    if (window.matchMedia('(max-width: 760px)').matches && tripPlannerOpen) {
+      setTripPlannerOpen(false);
+      setTripPlannerCollapsed(false);
+      setWorkspacePanel(null);
+      return;
+    }
+    openTrips();
+  };
+
   const applyOpenDashboard = () => {
     setTripPlannerOpen(false);
     setSelectedPlace(null);
@@ -1451,7 +1471,7 @@ function WorkspaceApp() {
         onPlacesPanelToggle={() =>
           setPlacesPanelCollapsed((collapsed) => !collapsed)
         }
-        onOpenTrips={() => openTrips()}
+        onOpenTrips={toggleTripsFromNavigation}
         isAdmin={user?.is_admin === true}
         hasMaps={maps.length > 0}
       />
@@ -1495,6 +1515,7 @@ function WorkspaceApp() {
                     }
                   }}
                   onImportKmz={(mapId) => {
+                    if (window.matchMedia('(max-width: 760px)').matches) return;
                     const target = maps.find((map) => map.id === mapId);
                     if (
                       target?.can_import !== false &&
@@ -1570,6 +1591,7 @@ function WorkspaceApp() {
                   statuses={statuses}
                   focusRequest={focusRequest}
                   popupContent={popupContent}
+                  mobilePlaceDetailOpen={mobilePlaceDetailOpen && selectedPlaceId !== null && !editorOpen}
                   activeCountryCode={activeMap?.country.iso_alpha2}
                   activeCountryId={activeMap?.country.id}
                   temporarySearchResult={temporarySearchResult}

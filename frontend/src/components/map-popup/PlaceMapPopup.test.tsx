@@ -16,6 +16,21 @@ beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocke
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('PlaceMapPopup', () => {
+  it('disables clipboard photo paste controls on mobile', async () => {
+    const originalMatchMedia = window.matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockImplementation(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+    })
+
+    render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+
+    expect(screen.queryByRole('textbox', { name: 'Collage d’image depuis le presse-papiers' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Collez une capture avec')).not.toBeInTheDocument()
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia })
+  })
+
   it('keeps named links collapsed until requested and opens them safely', async () => {
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     const summary = await screen.findByText('Liens externes')
@@ -32,7 +47,8 @@ describe('PlaceMapPopup', () => {
     await screen.findByRole('heading', { name: 'Manufacture' })
     const clipboardImage = new File(['image'], 'capture.png', { type: 'image/png' })
     const pasteTarget = screen.getByRole('textbox', { name: 'Collage d’image depuis le presse-papiers' })
-    await waitFor(() => expect(pasteTarget).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Manufacture' })).toHaveFocus())
+    expect(pasteTarget).not.toHaveFocus()
 
     fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
     expect(pasteTarget).toHaveFocus()

@@ -7,6 +7,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone"],
+  "prefer_related_applications": false,
   "background_color": "#f2f5f8",
   "theme_color": "#0d1b2a",
   "icons": [
@@ -20,7 +22,29 @@
       "src": "/icons/cartavault-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/cartavault-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/pwa/capture-desktop.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "CartaVault sur ordinateur"
+    },
+    {
+      "src": "/pwa/capture-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "CartaVault sur mobile"
     }
   ]
 }

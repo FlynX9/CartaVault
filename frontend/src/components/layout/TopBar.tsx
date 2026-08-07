@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Braces, ChevronDown, LogOut, Moon, Settings2, ShieldCheck, Sun } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Braces, ChevronDown, LogOut, Moon, Settings2, ShieldCheck, Sun, UserRound } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { accountAvatarUrl } from '../../api/account'
 import { useAuth } from '../../auth/useAuth'
@@ -29,15 +29,19 @@ const CARTAVAULT_VERSION = import.meta.env.VITE_CARTAVAULT_VERSION?.trim() || 'd
 export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { resolvedTheme, toggleTheme } = useTheme()
   const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
-  const initial = user?.display_name.trim().charAt(0).toLocaleUpperCase() || '?'
   const avatar = accountAvatarUrl(user?.avatar_url ?? null)
   const nextThemeLabel = resolvedTheme === 'dark' ? t('auth.theme.light') : t('auth.theme.dark')
+  const closeAdminForAccount = () => {
+    if (!location.pathname.startsWith('/admin')) return
+    navigate({ pathname: '/', search: location.search })
+  }
   const handleLogout = async () => {
     setMenuOpen(false)
     try {
@@ -69,6 +73,12 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
     }
   }, [menuOpen])
 
+  useEffect(() => {
+    if (!location.pathname.startsWith('/admin')) return
+    setMenuOpen(false)
+    setAccountOpen(false)
+  }, [location.pathname])
+
   return (
     <header className="app-header">
       <div className="brand-block">
@@ -86,6 +96,31 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
         {user && <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />}
         {user && (
           <div className="user-account-cluster">
+            <button
+              className="topbar-theme-toggle"
+              type="button"
+              aria-label={nextThemeLabel}
+              title={nextThemeLabel}
+              aria-pressed={resolvedTheme === 'dark'}
+              onClick={toggleTheme}
+            >
+              <span className={`topbar-theme-toggle__choice${resolvedTheme === 'light' ? ' is-active' : ''}`}>
+                <Sun size={17} aria-hidden="true" />
+              </span>
+              <span className={`topbar-theme-toggle__choice${resolvedTheme === 'dark' ? ' is-active' : ''}`}>
+                <Moon size={17} aria-hidden="true" />
+              </span>
+            </button>
+            <button
+              className="topbar-theme-toggle-mobile panel-icon-button"
+              type="button"
+              aria-label={nextThemeLabel}
+              title={nextThemeLabel}
+              aria-pressed={resolvedTheme === 'dark'}
+              onClick={toggleTheme}
+            >
+              {resolvedTheme === 'light' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+            </button>
             <div ref={menu} className="user-account-menu">
               <button
                 ref={trigger}
@@ -94,10 +129,13 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
                 aria-label={t('topbar.userMenuFor', { name: user.display_name })}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
+                onClick={() => {
+                  closeAdminForAccount()
+                  setMenuOpen((open) => !open)
+                }}
               >
                 <span className="user-account-menu__avatar" aria-hidden="true">
-                  {avatar ? <img src={avatar} alt="" /> : initial}
+                  {avatar ? <img src={avatar} alt="" /> : <UserRound size={17} />}
                 </span>
                 <span className="user-account-menu__name">{user.display_name}</span>
                 <ChevronDown className={menuOpen ? 'open' : undefined} size={15} aria-hidden="true" />
@@ -105,15 +143,15 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
               {menuOpen && (
                 <div className="user-account-menu__dropdown user-account-menu__dropdown--compact" role="menu" aria-label={t('topbar.userMenu')}>
                   <div className="user-account-menu__links">
-                    <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); setAccountOpen(true) }}>
+                    <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); closeAdminForAccount(); setAccountOpen(true) }}>
                       <Settings2 size={17} aria-hidden="true" />{t('topbar.options')}
                     </button>
                     {user.is_admin && (
-                      <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); onOpenAdmin() }}>
+                      <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); setAccountOpen(false); onOpenAdmin() }}>
                         <ShieldCheck size={17} aria-hidden="true" />{t('app.administration')}
                       </button>
                     )}
-                    <a role="menuitem" href={API_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
+                    <a className="user-account-menu__api-link" role="menuitem" href={API_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
                       <Braces size={17} aria-hidden="true" />{t('topbar.api')}
                     </a>
                   </div>
@@ -125,21 +163,6 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
                 </div>
               )}
             </div>
-            <button
-              className="topbar-theme-toggle"
-              type="button"
-              aria-label={nextThemeLabel}
-              title={nextThemeLabel}
-              aria-pressed={resolvedTheme === 'dark'}
-              onClick={toggleTheme}
-            >
-              <span className={resolvedTheme === 'light' ? 'is-active' : undefined}>
-                <Sun size={17} aria-hidden="true" />
-              </span>
-              <span className={resolvedTheme === 'dark' ? 'is-active' : undefined}>
-                <Moon size={17} aria-hidden="true" />
-              </span>
-            </button>
           </div>
         )}
       </nav>

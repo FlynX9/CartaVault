@@ -1,6 +1,17 @@
 const CACHE_PREFIX = 'cartavault-shell-'
-const CACHE_NAME = `${CACHE_PREFIX}v1`
-const APP_SHELL = ['/', '/offline.html', '/cartavault-icon.png', '/cartavault-logo.png']
+const CACHE_NAME = `${CACHE_PREFIX}v2`
+const APP_SHELL = [
+  '/',
+  '/offline.html',
+  '/cartavault-icon.png',
+  '/cartavault-logo.png',
+  '/icons/cartavault-180.png',
+  '/icons/cartavault-192.png',
+  '/icons/cartavault-512.png',
+  '/icons/cartavault-maskable-512.png',
+  '/pwa/capture-desktop.png',
+  '/pwa/capture-mobile.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)))

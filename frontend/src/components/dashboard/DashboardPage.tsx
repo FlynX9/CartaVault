@@ -209,7 +209,7 @@ export function DashboardPage({
         </div>
         <button type="button" className="primary" onClick={onCreateMap}><Plus /><span>{t('dashboard.action.map')}</span></button>
         <button type="button" disabled={!canEditTargetMap} title={!canEditTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onCreatePlace(targetMap.id)}><MapPin /><span>{t('dashboard.action.place')}</span></button>
-        <button type="button" disabled={!canImportIntoTargetMap} title={!canImportIntoTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onImportKmz(targetMap.id)}><Upload /><span>{t('dashboard.action.import')}</span></button>
+        <button className="dashboard-kmz-import-action" type="button" disabled={!canImportIntoTargetMap} title={!canImportIntoTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onImportKmz(targetMap.id)}><Upload /><span>{t('dashboard.action.import')}</span></button>
         <button type="button" disabled={!canEditTargetMap} title={!canEditTargetMap ? unavailableReason : undefined} onClick={() => targetMap && onCreateTrip(targetMap.id)}><Route /><span>{t('dashboard.action.trip')}</span></button>
       </div>
     </header>

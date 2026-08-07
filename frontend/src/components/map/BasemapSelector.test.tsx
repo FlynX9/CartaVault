@@ -34,6 +34,12 @@ describe('BasemapSelector', () => {
     expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).not.toBeInTheDocument()
   })
 
+  it('opens the choices on touch when the active basemap is tapped', () => {
+    render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault clair' }))
+    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).toBeVisible()
+  })
+
   it('expands on keyboard focus and supports keyboard selection', () => {
     const onBasemapChange = vi.fn()
     render(<BasemapSelector activeBasemapId="osm" onBasemapChange={onBasemapChange} />)

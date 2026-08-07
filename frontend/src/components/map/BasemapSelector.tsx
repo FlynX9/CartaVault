@@ -38,11 +38,18 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatell
       aria-expanded={active ? expanded : undefined}
       aria-label={`Utiliser le fond ${basemap.label}`}
       title={basemap.label}
-      onClick={() => selectBasemap(basemap.id)}
+      onClick={() => {
+        // A tap focuses the fieldset before dispatching click on mobile.
+        // Always opening here avoids the former focus/click toggle race that
+        // required a second tap before the choices became visible.
+        if (active) setExpanded(true)
+        else selectBasemap(basemap.id)
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          selectBasemap(basemap.id)
+          if (active) setExpanded(true)
+          else selectBasemap(basemap.id)
         }
       }}
     >

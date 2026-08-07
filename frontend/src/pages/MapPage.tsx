@@ -80,6 +80,7 @@ interface MapPageProps {
   canEdit?: boolean
   sidebar: ReactNode
   popupContent?: ReactNode
+  mobilePlaceDetailOpen?: boolean
   placeList: ReactNode
   focusRequest: MapFocusRequest | null
   onBoundsChange: (bounds: MapBounds) => void
@@ -119,7 +120,7 @@ export function MapPage({
   places,
   selectedPlaceId,
   initialView,
-  isLoading,
+  isLoading: _isLoading,
   errorMessage,
   mapNotice = null,
   sidebarOpen,
@@ -132,6 +133,7 @@ export function MapPage({
   canEdit = true,
   sidebar,
   popupContent = null,
+  mobilePlaceDetailOpen = false,
   placeList,
   focusRequest,
   onBoundsChange,
@@ -445,10 +447,9 @@ export function MapPage({
     saveBasemapPreference('osm')
     setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. OpenStreetMap a été activé automatiquement.`)
   }
-
   return (
     <section
-      className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}${tripPlannerCollapsed ? ' trip-planner-collapsed' : ''}`}
+      className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}${tripPlannerCollapsed ? ' trip-planner-collapsed' : ''}${mobilePlaceDetailOpen ? ' mobile-place-detail-open' : ''}`}
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
       <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
@@ -585,15 +586,7 @@ export function MapPage({
             </button>
           </div>}
         </div>
-
         {basemapNotice && <div className="basemap-error" role="status">{basemapNotice}</div>}
-
-        {isLoading && (
-          <div className="status-banner loading-status" role="status">
-            <span className="loading-dot" aria-hidden="true" />
-            Chargement des POI…
-          </div>
-        )}
 
         {errorMessage !== null && (
           <div className="status-banner error-status" role="alert">

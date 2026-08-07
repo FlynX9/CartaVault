@@ -66,7 +66,10 @@ export function PlaceMapPopup({
   onDeleted,
   onClose,
 }: Props) {
-  const canPastePhotos = canEdit && allowPhotoPaste;
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches,
+  );
+  const canPastePhotos = canEdit && allowPhotoPaste && !isMobileViewport;
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [place, setPlace] = useState<PlaceDetails | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -91,6 +94,15 @@ export function PlaceMapPopup({
   const pasteUploadingRef = useRef(false);
   const pasteUploadSequence = useRef(0);
   const pasteEventSeenAt = useRef(0);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -146,8 +158,11 @@ export function PlaceMapPopup({
 
   useEffect(() => {
     if (!place || detailsLoading) return;
-    (canPastePhotos ? pasteTargetRef.current : titleRef.current)?.focus({ preventScroll: true });
-  }, [canPastePhotos, detailsLoading, place]);
+    // Do not focus the hidden clipboard textarea on open: mobile browsers then
+    // treat the POI card as an editing surface and immediately open the keyboard.
+    // The global paste handler still handles an explicit Ctrl/Cmd+V action.
+    titleRef.current?.focus({ preventScroll: true });
+  }, [detailsLoading, place]);
 
   useEffect(() => {
     if (!canPastePhotos) return;
@@ -500,7 +515,7 @@ export function PlaceMapPopup({
           )}
         </div>
       </section>
-      {canPastePhotos && !pasteNotice && <button className="popup-paste-hint" type="button" onClick={() => pasteTargetRef.current?.focus({ preventScroll: true })}>Collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></button>}
+      {canPastePhotos && !pasteNotice && <p className="popup-paste-hint">Collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></p>}
       {pasteNotice && <p className={`popup-paste-notice${pasteUploading ? " is-loading" : ""}`} role="status" aria-live="polite">{pasteNotice}</p>}
       {detailsError && (
         <p className="inline-error" role="alert">
