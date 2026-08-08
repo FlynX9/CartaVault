@@ -1,5 +1,7 @@
 const CACHE_PREFIX = 'cartavault-shell-'
-const CACHE_NAME = `${CACHE_PREFIX}v2`
+// Cache Storage is deliberately limited to the public app shell. Private map,
+// trip and POI data lives in the user-isolated IndexedDB offline store.
+const CACHE_NAME = `${CACHE_PREFIX}v3`
 const APP_SHELL = [
   '/',
   '/offline.html',

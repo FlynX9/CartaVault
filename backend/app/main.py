@@ -29,6 +29,7 @@ from app.auth.router import router as auth_router
 from app.auth.public_router import router as public_auth_router
 from app.auth.registration_admin_router import router as registration_admin_router
 from app.categories.router import router as categories_router
+from app.annotations.router import router as annotations_router
 from app.countries.router import router as countries_router
 from app.dashboard.router import router as dashboard_router
 from app.database import SessionLocal
@@ -221,6 +222,7 @@ app.include_router(places_map_router, prefix=API_PREFIX)
 app.include_router(places_advanced_router, prefix=API_PREFIX)
 app.include_router(places_router, prefix=API_PREFIX)
 app.include_router(categories_router, prefix=API_PREFIX)
+app.include_router(annotations_router, prefix=API_PREFIX)
 app.include_router(countries_router, prefix=API_PREFIX)
 app.include_router(maps_router, prefix=API_PREFIX)
 app.include_router(imports_router, prefix=API_PREFIX)

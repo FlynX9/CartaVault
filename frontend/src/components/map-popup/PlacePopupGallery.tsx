@@ -5,6 +5,7 @@ import { getPhotoFileUrl } from '../../api/photos'
 import type { Photo } from '../../types/photo'
 import { PhotoViewer } from '../photos/PhotoViewer'
 import { photoViewerMessages } from '../photos/photoViewerI18n'
+import { offlineThumbnail } from '../../pwa/offlineData'
 
 interface Props {
   placeName: string
@@ -17,11 +18,13 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
   const [index, setIndex] = useState(0)
   const [failed, setFailed] = useState(false)
   const [viewerOpen, setViewerOpen] = useState(false)
+  const [offlineSource, setOfflineSource] = useState<string | null>(null)
   const orderedPhotos = useMemo(
     () => [...photos].sort((left, right) => Number(right.is_primary) - Number(left.is_primary) || left.sort_order - right.sort_order || left.id.localeCompare(right.id)),
     [photos],
   )
   const t = photoViewerMessages()
+  const activePhotoId = orderedPhotos[index]?.id ?? null
 
   useLayoutEffect(() => {
     setIndex(0)
@@ -46,6 +49,18 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [orderedPhotos.length, viewerOpen])
 
+  useEffect(() => {
+    let objectUrl: string | null = null
+    setOfflineSource(null)
+    if (activePhotoId === null || navigator.onLine) return
+    void offlineThumbnail(activePhotoId).then((blob) => {
+      if (!blob) return
+      objectUrl = URL.createObjectURL(blob)
+      setOfflineSource(objectUrl)
+    })
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [activePhotoId])
+
   if (isLoading) return <div className="popup-photo-placeholder" role="status">Chargement des photos…</div>
   if (error) return <div className="popup-photo-placeholder" role="alert">Photos indisponibles</div>
   if (orderedPhotos.length === 0) return <div className="popup-photo-placeholder">Aucune photo</div>
@@ -53,13 +68,20 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
   const photo = orderedPhotos[index]
   const alternativeText = photo.description || `Photo de ${placeName}`
 
+  const loadOfflineThumbnail = () => {
+    void offlineThumbnail(photo.id).then((blob) => {
+      if (!blob) { setFailed(true); return }
+      setOfflineSource((current) => { if (current) URL.revokeObjectURL(current); return URL.createObjectURL(blob) })
+    })
+  }
+
   return (
     <figure className="popup-gallery">
       {failed ? (
         <div className="popup-photo-placeholder" role="img" aria-label={alternativeText}>Image indisponible</div>
       ) : (
         <button className="popup-gallery__open" type="button" aria-label={`${t.view} — ${alternativeText}`} onClick={() => setViewerOpen(true)}>
-          <img src={getPhotoFileUrl(photo.id)} alt={alternativeText} onError={() => setFailed(true)} />
+          <img src={offlineSource ?? getPhotoFileUrl(photo.id)} alt={alternativeText} onError={() => offlineSource ? setFailed(true) : loadOfflineThumbnail()} />
           <span><Maximize2 aria-hidden="true" size={15} /></span>
         </button>
       )}

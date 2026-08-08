@@ -2,6 +2,7 @@ import { getJson, sendJson, sendWithoutResponse, setCsrfToken } from './client'
 import { isRecord, readArray, readBoolean, readDateTime, readNullableNumber, readNumber, readString, readUuid } from './validation'
 import type { CountrySummary, MapCreatePayload, MapInvitation, MapMember, PendingMapInvitation, PoiMap, PublicInvitation } from '../types/map'
 import type { AuthUser } from '../auth/authTypes'
+import { isNetworkFailure, offlineMaps, reconcileOfflinePackages } from '../pwa/offlineData'
 
 function parseCountrySummary(value: unknown): CountrySummary {
   const context = 'Le pays de la carte'
@@ -35,8 +36,17 @@ export async function updateMapPlaceFields(mapId: string, fields: Record<string,
 }
 
 export async function getMaps(signal?: AbortSignal): Promise<PoiMap[]> {
-  const payload = await getJson('/maps', new URLSearchParams(), signal)
-  return readArray({ items: payload }, 'items', 'La liste des cartes').map(parseMap)
+  try {
+    const payload = await getJson('/maps', new URLSearchParams(), signal)
+    const maps = readArray({ items: payload }, 'items', 'La liste des cartes').map(parseMap)
+    void reconcileOfflinePackages(maps.map((item) => item.id))
+    return maps
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    const cached = await offlineMaps()
+    if (cached.length === 0) throw error
+    return cached
+  }
 }
 
 export async function createMap(payload: MapCreatePayload): Promise<PoiMap> {

@@ -121,6 +121,10 @@ async function request(
 ): Promise<Response> {
   const method = options.method ?? 'GET'
   const mutation = method === 'GET' ? null : announceApiMutationStart(method, path)
+  if (method !== 'GET' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (mutation) announceApiMutationFailure(mutation)
+    throw new ApiError(0, 'Cette action nécessite une connexion Internet. Les données hors ligne sont en lecture seule.')
+  }
   const query = options.searchParams?.toString() ?? ''
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -233,6 +237,10 @@ export async function sendFormData(
   signal?: AbortSignal,
 ): Promise<unknown> {
   const mutation = announceApiMutationStart(method, path)
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    announceApiMutationFailure(mutation)
+    throw new ApiError(0, 'Cette action nécessite une connexion Internet. Les données hors ligne sont en lecture seule.')
+  }
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method,

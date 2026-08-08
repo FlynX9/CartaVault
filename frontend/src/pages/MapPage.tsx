@@ -29,6 +29,10 @@ import { isTemporaryMapMode, resolveInteractiveMapMode, type InternalMapToolMode
 import { getTripMapBounds } from '../components/trips/tripMapBounds'
 import { getPlaceDetails } from '../api/places'
 import { getGoogleSatelliteStatus } from '../api/googleSatellite'
+import { createPlaceAnnotation, getPlaceAnnotations } from '../api/annotations'
+import type { AnnotationTemplate, PlaceAnnotation } from '../types/annotation'
+import type { AnnotationDrawingState } from '../components/map/AnnotationDrawingLayer'
+import { distanceBetweenPoints } from '../components/map/measurement'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -205,6 +209,8 @@ export function MapPage({
   const [toolFocusRequest, setToolFocusRequest] = useState<MapFocusRequest | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
   const [fullscreenLayoutVersion, setFullscreenLayoutVersion] = useState(0)
+  const [annotations, setAnnotations] = useState<PlaceAnnotation[]>([])
+  const [annotationDrawing, setAnnotationDrawing] = useState<(AnnotationDrawingState & { placeId: string; template: AnnotationTemplate }) | null>(null)
   const mapLayoutRef = useRef<HTMLDivElement>(null)
   const selectionFitControllerRef = useRef<AbortController | null>(null)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
@@ -313,6 +319,35 @@ export function MapPage({
   useEffect(() => {
     setToolFocusRequest(null)
   }, [focusRequest])
+
+  useEffect(() => {
+    if (!selectedPlaceId) { setAnnotations([]); return }
+    const controller = new AbortController()
+    const load = () => void getPlaceAnnotations(selectedPlaceId, controller.signal).then(setAnnotations).catch(() => { if (!controller.signal.aborted) setAnnotations([]) })
+    load()
+    const refresh = (event: Event) => { if ((event as CustomEvent<{ placeId?: string }>).detail?.placeId === selectedPlaceId) load() }
+    window.addEventListener('cartavault:annotations-updated', refresh)
+    return () => { controller.abort(); window.removeEventListener('cartavault:annotations-updated', refresh) }
+  }, [selectedPlaceId])
+
+  useEffect(() => {
+    const start = (event: Event) => {
+      const detail = (event as CustomEvent<{ placeId: string; template: AnnotationTemplate }>).detail
+      if (!detail?.placeId || !detail.template) return
+      resetTemporaryTools(); setAnnotationDrawing({ placeId: detail.placeId, template: detail.template, shapeType: detail.template.shape_type, color: detail.template.color, points: [] })
+    }
+    window.addEventListener('cartavault:annotation-draw-requested', start)
+    return () => window.removeEventListener('cartavault:annotation-draw-requested', start)
+  }, [])
+  const finishAnnotationDrawing = async () => {
+    if (!annotationDrawing) return
+    const { points, template, placeId } = annotationDrawing
+    const complete = (template.shape_type === 'circle' || template.shape_type === 'rectangle' || template.shape_type === 'line') ? points.length === 2 : template.shape_type === 'triangle' ? points.length === 3 : points.length >= 2
+    if (!complete) { setMapToolsNotice('Ajoutez davantage de points pour terminer cette annotation.'); return }
+    const coordinates = points.map((point) => [point.longitude, point.latitude])
+    const geometry: GeoJSON.Geometry = template.shape_type === 'circle' ? { type: 'Point', coordinates: coordinates[0] } : template.shape_type === 'rectangle' ? { type: 'Polygon', coordinates: [[[coordinates[0][0], coordinates[0][1]], [coordinates[1][0], coordinates[0][1]], [coordinates[1][0], coordinates[1][1]], [coordinates[0][0], coordinates[1][1]], coordinates[0]]] } : template.shape_type === 'triangle' ? { type: 'Polygon', coordinates: [[...coordinates, coordinates[0]]] } : { type: 'LineString', coordinates }
+    try { await createPlaceAnnotation(placeId, { template_id: template.id, geometry, ...(template.shape_type === 'circle' ? { radius_meters: distanceBetweenPoints(points[0], points[1]) } : {}) }); setAnnotationDrawing(null); window.dispatchEvent(new CustomEvent('cartavault:annotations-updated', { detail: { placeId } })) } catch (caught) { setMapToolsNotice(caught instanceof Error ? caught.message : 'Création de l’annotation impossible.') }
+  }
 
   useEffect(() => () => selectionFitControllerRef.current?.abort(), [])
 
@@ -497,6 +532,9 @@ export function MapPage({
           geolocationFix={geolocationFix}
           onTemporaryExtentChange={setTemporaryExtent}
           onTemporaryCoordinateChange={setTemporaryCoordinate}
+          annotations={annotations}
+          annotationDrawing={annotationDrawing}
+          onAnnotationDrawingPointsChange={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
         />
         {popupContent && !mobilePlaceDetailOpen && (
           <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
@@ -507,6 +545,7 @@ export function MapPage({
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
         {mapNotice && <p className="map-results-notice" role="status">{mapNotice}</p>}
+        {annotationDrawing && <div className="annotation-drawing-controls" role="status"><span>Dessin : {annotationDrawing.template.name}</span><button type="button" className="secondary-button" onClick={() => setAnnotationDrawing(null)}>Annuler</button><button type="button" className="primary-button" onClick={() => void finishAnnotationDrawing()}>Terminer</button></div>}
         <div className="map-overlay-controls">
           <MapToolsControl
             mode={effectiveMode}

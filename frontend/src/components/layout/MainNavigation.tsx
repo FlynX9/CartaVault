@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag, Trash2 } from 'lucide-react'
+import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag, Trash2, Spline } from 'lucide-react'
 import { useI18n } from '../../i18n/useI18n'
 
-export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | null
+export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates' | null
 
 interface Props {
   activePanel: WorkspacePanel
@@ -58,6 +58,7 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
       <div className="cv-main-navigation__group cv-main-navigation__organization-desktop" aria-label="Organisation">
         {hasMaps && <><button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>
         <button type="button" className={navClass(activePanel === 'tags')} aria-label={t('nav.tags')} aria-pressed={activePanel === 'tags'} onClick={() => togglePanel('tags')}><Tag size={23} /><span>{t('nav.tags')}</span></button>
+        <button type="button" className={navClass(activePanel === 'annotation-templates')} aria-label="Annotations" aria-pressed={activePanel === 'annotation-templates'} onClick={() => togglePanel('annotation-templates')}><Spline size={23} /><span>Annotations</span></button>
         {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}</>}
         <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => togglePanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
       </div>

@@ -6,6 +6,7 @@ load the FastAPI routers, notably the administration CLI and Alembic.
 
 from app.auth.models import AuthActionToken, AuthSecurityEvent, RegistrationRequest, SystemCredential, User, UserApiCredential, UserSession
 from app.admin.models import SystemSetting
+from app.annotations.models import AnnotationTemplate, PlaceAnnotation
 from app.quotas.models import QuotaProfile
 from app.categories.associations import place_categories_table
 from app.categories.models import Category
@@ -21,6 +22,8 @@ from app.tasks.models import BackgroundTask, GeneratedExport, KmzImportPreview
 
 __all__ = (
     "Category",
+    "AnnotationTemplate",
+    "PlaceAnnotation",
     "Country",
     "MapInvitation",
     "MapMembership",

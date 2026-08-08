@@ -1,6 +1,7 @@
 import type { MapStatusSummary, PlaceStatus, PlaceStatusCreatePayload, PlaceStatusSummary, PlaceStatusUpdatePayload } from '../types/status'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { isRecord, readBoolean, readDateTime, readNumber, readString, readUuid } from './validation'
+import { isNetworkFailure, offlineStatuses } from '../pwa/offlineData'
 
 const readFunctionalState = (value: Record<string, unknown>, context: string) => {
   const state = readString(value, 'functional_state', context)
@@ -55,9 +56,14 @@ export async function getStatuses(mapId: string, signal?: AbortSignal, options: 
   params.set('map_id', mapId)
   if (options.q?.trim()) params.set('q', options.q.trim())
   if (options.activeOnly) params.set('active_only', 'true')
+  try {
   const payload = await getJson('/statuses', params, signal)
   if (!Array.isArray(payload)) throw new Error('La liste des statuts est invalide.')
   return payload.map(parseStatus)
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    return offlineStatuses(mapId)
+  }
 }
 
 export async function createStatus(data: PlaceStatusCreatePayload): Promise<PlaceStatus> {

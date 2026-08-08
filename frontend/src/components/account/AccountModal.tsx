@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, CalendarDays, ChevronDown, Clock3, Image as ImageIcon, Info, KeyRound, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, ChevronDown, Clock3, HardDriveDownload, Image as ImageIcon, Info, KeyRound, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
@@ -20,8 +20,9 @@ import { StadiaPlacesCredentialPanel } from './StadiaPlacesCredentialPanel'
 import { getStadiaMapsCredential, type StadiaMapsCredentialStatus } from '../../api/stadiaMaps'
 import { getStadiaPlacesCredential, type StadiaPlacesCredentialStatus } from '../../api/stadiaPlaces'
 import { getGoogleSatelliteCredential, type GoogleSatelliteCredentialStatus } from '../../api/googleSatellite'
+import { OfflineDataSection } from './OfflineDataSection'
 
-type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'api_keys' | 'danger'
+type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'api_keys' | 'offline' | 'danger'
 
 const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' }, places: { provider: 'stadia' } }
 
@@ -110,7 +111,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           <button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button>
         </header>
         <nav className="account-modal__nav" aria-label={t('account.navigation')}>
-          {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCheck, t('account.security') ], [ 'sessions', MonitorSmartphone, t('account.sessions') ], [ 'preferences', Settings2, t('account.preferences') ], [ 'api_keys', KeyRound, t('account.apiKeys') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
+          {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCheck, t('account.security') ], [ 'sessions', MonitorSmartphone, t('account.sessions') ], [ 'preferences', Settings2, t('account.preferences') ], [ 'api_keys', KeyRound, t('account.apiKeys') ], [ 'offline', HardDriveDownload, t('account.offline') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
           <button className="danger" type="button" onClick={() => selectSection('danger')} aria-current={section === 'danger' ? 'page' : undefined}><AlertTriangle size={17} />{t('account.danger')}</button>
         </nav>
         <main className="account-modal__content">
@@ -120,6 +121,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
           {section === 'api_keys' && <ApiKeysSection preferences={preferences} setPreferences={setPreferences} onSatelliteAvailabilityChanged={setGoogleSatelliteAvailable} />}
+          {section === 'offline' && <OfflineDataSection />}
           {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
         </main>
       </section>

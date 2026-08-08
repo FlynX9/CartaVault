@@ -14,6 +14,7 @@ from app.tags.associations import place_tags_table
 
 
 if TYPE_CHECKING:
+    from app.annotations.models import PlaceAnnotation
     from app.categories.models import Category
     from app.photos.models import Photo
     from app.maps.models import PoiMap
@@ -192,6 +193,7 @@ class Place(Base):
     trip_nights: Mapped[list["TripNight"]] = relationship(back_populates="place")
     links: Mapped[list["PlaceLink"]] = relationship(back_populates="place", cascade="all, delete-orphan", passive_deletes=True, order_by="(PlaceLink.sort_order, PlaceLink.id)")
     history: Mapped[list["PlaceHistory"]] = relationship(back_populates="place", cascade="all, delete-orphan", passive_deletes=True, order_by="PlaceHistory.created_at.desc()")
+    annotations: Mapped[list["PlaceAnnotation"]] = relationship(back_populates="place", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class PlaceLink(Base):

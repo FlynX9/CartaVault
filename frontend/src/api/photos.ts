@@ -12,6 +12,7 @@ import {
   readString,
   readUuid,
 } from './validation'
+import { isNetworkFailure, offlinePhotos } from '../pwa/offlineData'
 
 function parsePhoto(value: unknown): Photo {
   const context = "La métadonnée photo du POI"
@@ -46,13 +47,13 @@ export async function getPlacePhotos(
   placeId: string,
   signal: AbortSignal,
 ): Promise<Photo[]> {
-  const payload = await getJson(
-    `/places/${encodeURIComponent(placeId)}/photos`,
-    new URLSearchParams(),
-    signal,
-  )
-
-  return parsePhotosResponse(payload)
+  try {
+    const payload = await getJson(`/places/${encodeURIComponent(placeId)}/photos`, new URLSearchParams(), signal)
+    return parsePhotosResponse(payload)
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    return offlinePhotos(placeId)
+  }
 }
 
 export function getPhotoFileUrl(photoId: string): string {

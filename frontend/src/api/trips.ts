@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config'
 import { getBlob, getJson, sendFormData, sendJson, sendWithoutResponse } from './client'
 import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripOptimizationProposal, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
+import { isNetworkFailure, offlineTrip, offlineTrips } from '../pwa/offlineData'
 
 const empty = new URLSearchParams()
 export interface TripCreatePayload { name: string; description?: string; start_date?: string; routing_profile?: 'driving' | 'walking' | 'cycling' }
@@ -14,8 +15,24 @@ export interface TripPdfExportOptions {
   include_navigation_qr_codes: boolean
   navigation_providers: TripPdfNavigationProvider[]
 }
-export const listTrips = (mapId: string, signal?: AbortSignal) => getJson(`/maps/${mapId}/trips`, empty, signal) as Promise<Trip[]>
-export const getTrip = (id: string, signal?: AbortSignal) => getJson(`/trips/${id}`, empty, signal) as Promise<Trip>
+export async function listTrips(mapId: string, signal?: AbortSignal): Promise<Trip[]> {
+  try { return await getJson(`/maps/${mapId}/trips`, empty, signal) as Trip[] }
+  catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    const cached = await offlineTrips(mapId)
+    if (cached.length === 0) throw error
+    return cached
+  }
+}
+export async function getTrip(id: string, signal?: AbortSignal): Promise<Trip> {
+  try { return await getJson(`/trips/${id}`, empty, signal) as Trip }
+  catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    const cached = await offlineTrip(id)
+    if (cached === null) throw error
+    return cached
+  }
+}
 export const restoreTripState = (id: string, state: Trip) => sendJson(`/trips/${id}/state`, 'PUT', state) as Promise<Trip>
 export const createTrip = (mapId: string, body: TripCreatePayload) => sendJson(`/maps/${mapId}/trips`, 'POST', body) as Promise<Trip>
 export const updateTrip = (id: string, body: Partial<Pick<Trip, 'name' | 'description' | 'start_date' | 'end_date' | 'status'>>) => sendJson(`/trips/${id}`, 'PATCH', body) as Promise<Trip>

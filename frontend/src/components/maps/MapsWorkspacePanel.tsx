@@ -1,4 +1,4 @@
-import { Check, Download, LockKeyhole, Map, MapPin, Plus, Route, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
+import { Check, Download, HardDriveDownload, LockKeyhole, Map, MapPin, Plus, Route, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
 import { IconMaximize, IconMinimize } from '@tabler/icons-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -10,6 +10,7 @@ import { CountryFlag } from './CountryFlag'
 import { CreateMapDialog } from './CreateMapDialog'
 import { SkeletonList } from '../common/Skeleton'
 import { EmptyState } from '../common/EmptyState'
+import { OfflinePackageDialog } from '../pwa/OfflinePackageDialog'
 
 interface MapsWorkspacePanelProps {
   maps: PoiMap[]
@@ -38,6 +39,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   const [invitationError, setInvitationError] = useState<string | null>(null)
   const [busyInvitationId, setBusyInvitationId] = useState<string | null>(null)
   const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null)
+  const [offlineMap, setOfflineMap] = useState<PoiMap | null>(null)
   const createButton = useRef<HTMLButtonElement>(null)
   const invitationController = useRef<AbortController | null>(null)
   useEffect(() => {
@@ -112,12 +114,13 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
             <div className="maps-catalog__preview" aria-label={t('maps.flagPreview', { country: poiMap.country.name, name: poiMap.name })} role="img"><CountryFlag countryCode={poiMap.country.iso_alpha2} className="maps-catalog__flag" /></div>
             <div className="maps-catalog__details"><span className={`maps-catalog__privacy${poiMap.is_shared ? ' shared' : ''}`} aria-label={poiMap.is_shared ? t('maps.shared') : t('maps.private')} title={poiMap.is_shared ? t('maps.shared') : t('maps.private')}>{poiMap.is_shared ? <Share2 size={15} /> : <LockKeyhole size={15} />}</span><strong>{poiMap.name}</strong><span>{poiMap.country.name}</span><div className="maps-catalog__metrics"><span><MapPin size={13} aria-hidden="true" />{t('maps.placeCount', { count: poiMap.place_count })}</span><span><Route size={13} aria-hidden="true" />{t('maps.tripCount', { count: poiMap.trip_count })}</span></div><em>{t(`maps.role.${poiMap.current_user_role === 'owner' || poiMap.current_user_role === 'editor' || poiMap.current_user_role === 'viewer' ? poiMap.current_user_role : 'admin'}`)}{(poiMap.current_user_role === 'editor' || poiMap.current_user_role === 'viewer') && poiMap.owner_email && <span className="maps-catalog__owner"> — {poiMap.owner_email} [{poiMap.owner_display_name || poiMap.owner_email}]</span>}</em></div>
           </div>
-          <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={t(poiMap.id === activeMapId ? 'maps.openedNamed' : 'maps.openNamed', { name: poiMap.name })} disabled={poiMap.id === activeMapId} onClick={() => onOpen(poiMap.id)}>{t(poiMap.id === activeMapId ? 'maps.opened' : 'maps.open')}</button>{poiMap.can_edit && <button type="button" className="panel-icon-button" aria-label={t('maps.configureFields', { name: poiMap.name })} title={t('maps.fields')} onClick={() => setSettingsMap(poiMap)}><Settings2 size={16} /></button>}{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={t('maps.export', { name: poiMap.name })} title={t('maps.export', { name: poiMap.name })} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={t('maps.manageMembers', { name: poiMap.name })} title={t('maps.members')} onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={t('maps.deleteNamed', { name: poiMap.name })} title={t('maps.deleteNamed', { name: poiMap.name })} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
+          <div className="maps-catalog__actions"><button type="button" className="secondary-button" aria-label={t(poiMap.id === activeMapId ? 'maps.openedNamed' : 'maps.openNamed', { name: poiMap.name })} disabled={poiMap.id === activeMapId} onClick={() => onOpen(poiMap.id)}>{t(poiMap.id === activeMapId ? 'maps.opened' : 'maps.open')}</button><button type="button" className="panel-icon-button" aria-label={`Rendre ${poiMap.name} disponible hors ligne`} title="Disponible hors ligne" onClick={() => setOfflineMap(poiMap)}><HardDriveDownload size={16} /></button>{poiMap.can_edit && <button type="button" className="panel-icon-button" aria-label={t('maps.configureFields', { name: poiMap.name })} title={t('maps.fields')} onClick={() => setSettingsMap(poiMap)}><Settings2 size={16} /></button>}{poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={t('maps.export', { name: poiMap.name })} title={t('maps.export', { name: poiMap.name })} onClick={() => onExport(poiMap)}><Download size={16} /></button>}{poiMap.can_manage_members && <button type="button" className="panel-icon-button" aria-label={t('maps.manageMembers', { name: poiMap.name })} title={t('maps.members')} onClick={() => onMembers(poiMap)}><Users size={16} /></button>}{poiMap.can_delete !== false && <button type="button" className="panel-icon-button danger" aria-label={t('maps.deleteNamed', { name: poiMap.name })} title={t('maps.deleteNamed', { name: poiMap.name })} onClick={() => onDelete(poiMap)}><Trash2 size={16} /></button>}</div>
         </li>)}
       </ul>
     </div>
     {creating && <CreateMapDialog onClose={closeCreateDialog} onCreated={(poiMap) => { closeCreateDialog(); onCreated(poiMap) }} />}
     {settingsMap && <PlaceFieldSettingsDialog poiMap={settingsMap} onClose={() => setSettingsMap(null)} onSaved={onAccessChanged} />}
+    {offlineMap && <OfflinePackageDialog map={offlineMap} onClose={() => setOfflineMap(null)} />}
   </aside>
 }
 

@@ -16,6 +16,7 @@ import {
 } from "react-router-dom";
 
 import { ApiError } from "./api/client";
+import { isNetworkFailure } from "./pwa/offlineData";
 import { deleteMap, getMaps } from "./api/maps";
 import { getMapPlaces, getPlaceDetails } from "./api/places";
 import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
@@ -113,6 +114,7 @@ const StatusesWorkspacePanel = lazy(async () => ({
   default: (await import("./components/layout/WorkspaceManagementPanels"))
     .StatusesWorkspacePanel,
 }));
+const AnnotationTemplatesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/AnnotationTemplatesWorkspacePanel')).AnnotationTemplatesWorkspacePanel }));
 const TrashWorkspacePanel = lazy(async () => ({
   default: (await import("./components/trash/TrashWorkspacePanel"))
     .TrashWorkspacePanel,
@@ -1191,6 +1193,8 @@ function WorkspaceApp() {
             setCollapsedWorkspacePanel(collapsed ? "statuses" : null)
           }
         />
+      ) : workspacePanel === "annotation-templates" && activeMapId !== null ? (
+        <AnnotationTemplatesWorkspacePanel mapId={activeMapId} canEdit={activeMap?.can_edit === true} collapsed={collapsedWorkspacePanel === "annotation-templates"} onCollapsedChange={(collapsed) => setCollapsedWorkspacePanel(collapsed ? "annotation-templates" : null)} />
       ) : workspacePanel === "trash" ? (
         <TrashWorkspacePanel
           collapsed={collapsedWorkspacePanel === "trash"}
@@ -1757,6 +1761,10 @@ function AppContent() {
     void getSetupStatus(controller.signal)
       .then(setSetupStatus)
       .catch((caught: unknown) => {
+        if (isNetworkFailure(caught)) {
+          setSetupStatus({ required: false, locked: true, checks: [] });
+          return;
+        }
         if (!isAbortError(caught)) {
           setSetupError(
             caught instanceof Error

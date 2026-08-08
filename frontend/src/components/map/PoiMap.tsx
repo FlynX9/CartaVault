@@ -24,6 +24,9 @@ import { MapTemporaryToolsLayer } from './MapTemporaryToolsLayer'
 import type { MapExtent } from './mapExtent'
 import type { InternalMapToolMode } from './mapToolMode'
 import type { Trip, TripDay, TripNightTarget } from '../../types/trip'
+import type { PlaceAnnotation } from '../../types/annotation'
+import { PlaceAnnotationLayer } from './PlaceAnnotationLayer'
+import { AnnotationDrawingLayer, type AnnotationDrawingState } from './AnnotationDrawingLayer'
 
 const WORLD_BOUNDS = new LatLngBounds([-90, -180], [90, 180])
 const MAP_MAX_ZOOM = 19
@@ -70,6 +73,9 @@ interface PoiMapProps {
   geolocationFix?: (MeasurementPoint & { accuracy: number }) | null
   onTemporaryExtentChange?: (extent: MapExtent) => void
   onTemporaryCoordinateChange?: (point: MeasurementPoint) => void
+  annotations?: PlaceAnnotation[]
+  annotationDrawing?: AnnotationDrawingState | null
+  onAnnotationDrawingPointsChange?: (points: MeasurementPoint[]) => void
 }
 
 const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
@@ -146,6 +152,9 @@ export function PoiMap({
   geolocationFix = null,
   onTemporaryExtentChange = () => undefined,
   onTemporaryCoordinateChange = () => undefined,
+  annotations = [],
+  annotationDrawing = null,
+  onAnnotationDrawingPointsChange = () => undefined,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const onPlaceSelectRef = useRef(onPlaceSelect)
@@ -182,6 +191,8 @@ export function PoiMap({
       <MapDoubleClickZoomController disabled={trip !== null} />
       <MapMeasurementLayer active={measurementActive} locale={measurementLocale} points={measurementPoints} onPointAdd={onMeasurementPointAdd} />
       <MapTemporaryToolsLayer mode={mapToolMode} extent={temporaryExtent} coordinate={temporaryCoordinate} geolocation={geolocationFix} onExtentChange={onTemporaryExtentChange} onCoordinateChange={onTemporaryCoordinateChange} />
+      <PlaceAnnotationLayer annotations={annotations} />
+      <AnnotationDrawingLayer drawing={annotationDrawing} onPointsChange={onAnnotationDrawingPointsChange} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="8.5"/><circle cx="14" cy="14" r="2.75"/><path d="M14 1.5v4M14 22.5v4M1.5 14h4M22.5 14h4"/></svg>', iconSize: [28, 28], iconAnchor: [14, 14] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}

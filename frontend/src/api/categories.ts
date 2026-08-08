@@ -5,6 +5,7 @@ import type {
 } from '../types/admin'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { isRecord, readNullableString, readNumber, readString, readUuid } from './validation'
+import { isNetworkFailure, offlineCategories } from '../pwa/offlineData'
 
 export function parseCategory(value: unknown): CategoryRead {
   const context = "La catégorie renvoyée par l'API"
@@ -28,9 +29,14 @@ export async function getCategories(
   const searchParams = new URLSearchParams()
   if (mapId) searchParams.set('map_id', mapId)
   if (q !== undefined && q.trim() !== '') searchParams.set('q', q.trim())
+  try {
   const payload = await getJson('/categories', searchParams, signal)
   if (!Array.isArray(payload)) throw new Error("La liste des catégories est invalide.")
   return payload.map(parseCategory)
+  } catch (error) {
+    if (!isNetworkFailure(error) || !mapId) throw error
+    return offlineCategories(mapId)
+  }
 }
 
 export async function getCategory(

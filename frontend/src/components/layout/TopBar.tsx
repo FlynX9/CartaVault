@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Braces, ChevronDown, LogOut, Moon, Settings2, ShieldCheck, Sun, UserRound } from 'lucide-react'
+import { Braces, ChevronDown, LogOut, Moon, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { accountAvatarUrl } from '../../api/account'
@@ -34,6 +34,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
   const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [online, setOnline] = useState(() => navigator.onLine)
   const trigger = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const avatar = accountAvatarUrl(user?.avatar_url ?? null)
@@ -72,6 +73,11 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
       window.removeEventListener('keydown', closeOnEscape)
     }
   }, [menuOpen])
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    window.addEventListener('online', update); window.addEventListener('offline', update)
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
+  }, [])
 
   useEffect(() => {
     if (!location.pathname.startsWith('/admin')) return
@@ -86,6 +92,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
         <h1 className="cartavault-wordmark"><span>Carta</span><strong>Vault</strong><small title={`CartaVault ${CARTAVAULT_VERSION}`}>v{CARTAVAULT_VERSION}</small></h1>
       </div>
       <nav className="app-header-actions" aria-label={t('topbar.mainNavigation')}>
+        {!online && <span className="marker-count offline-status" role="status"><WifiOff size={15} aria-hidden="true" /><span>{t('offline.status')}</span></span>}
         {isMapWorkspace && (
           <div className="marker-count" aria-live="polite">
             <strong>{markerCount}</strong>

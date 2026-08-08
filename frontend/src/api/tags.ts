@@ -2,6 +2,7 @@ import type { TagCreatePayload, TagRead, TagUpdatePayload } from '../types/admin
 import { normalizeTagColor } from '../tags/tagColors'
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { isRecord, readNumber, readString, readUuid } from './validation'
+import { isNetworkFailure, offlineTags } from '../pwa/offlineData'
 
 export function parseTag(value: unknown): TagRead {
   const context = "Le tag renvoyé par l'API"
@@ -13,9 +14,14 @@ export async function getTags(signal?: AbortSignal, q?: string, mapId?: string |
   const searchParams = new URLSearchParams()
   if (mapId) searchParams.set('map_id', mapId)
   if (q !== undefined && q.trim() !== '') searchParams.set('q', q.trim())
+  try {
   const payload = await getJson('/tags', searchParams, signal)
   if (!Array.isArray(payload)) throw new Error("La liste des tags est invalide.")
   return payload.map(parseTag)
+  } catch (error) {
+    if (!isNetworkFailure(error) || !mapId) throw error
+    return offlineTags(mapId)
+  }
 }
 
 export async function getTag(tagId: string, signal?: AbortSignal): Promise<TagRead> {

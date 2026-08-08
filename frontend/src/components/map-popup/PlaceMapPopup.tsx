@@ -22,6 +22,7 @@ import { buildGoogleMapsUrl } from "../../utils/googleMaps";
 import { CategoryIconPreview } from "../icons/CategoryIconPreview";
 import { PlacePopupActions } from "./PlacePopupActions";
 import { PlacePopupGallery } from "./PlacePopupGallery";
+import { PlaceAnnotations } from './PlaceAnnotations';
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { SkeletonList } from "../common/Skeleton";
 import { getTagColorStyle } from "../../tags/tagColors";
@@ -623,6 +624,7 @@ export function PlaceMapPopup({
         onDelete={() => void remove()}
         onClose={onClose}
       />
+      <PlaceAnnotations placeId={place.id} mapId={place.map_id} canEdit={canEdit} />
       {tripDayPickerOpen && (
         <section
           className="popup-trip-day-picker"

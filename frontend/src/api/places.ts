@@ -31,6 +31,7 @@ import {
   readString,
   readUuid,
 } from './validation'
+import { isNetworkFailure, offlinePlace, offlinePlaces } from '../pwa/offlineData'
 
 function parsePlaceCategory(value: unknown): PlaceCategory {
   const context = "La catégorie détaillée du POI"
@@ -220,9 +221,20 @@ export async function getMapPlaces(
   }
   searchParams.set('include_meta', 'true')
 
-  const payload = await getJson('/places/map', searchParams, signal)
-
-  return parseMapPlacesResult(payload)
+  try {
+    const payload = await getJson('/places/map', searchParams, signal)
+    return parseMapPlacesResult(payload)
+  } catch (error) {
+    if (!isNetworkFailure(error) || query.mapId === undefined) throw error
+    const cached = await offlinePlaces(query.mapId)
+    const items = cached.flatMap((place): MapPlace[] => {
+      if (place.latitude === null || place.longitude === null || place.latitude < query.bounds.minLatitude || place.latitude > query.bounds.maxLatitude || place.longitude < query.bounds.minLongitude || place.longitude > query.bounds.maxLongitude) return []
+      return [{ id: place.id, map_id: place.map_id, name: place.name, latitude: place.latitude, longitude: place.longitude, status: { id: place.status.id, color: place.status.color }, primary_category_icon: place.categories.find((category) => category.is_primary)?.icon ?? null, category_ids: place.categories.map((category) => category.id), tag_ids: place.tags.map((tag) => tag.id), is_favorite: place.is_favorite === true }]
+    })
+    if (items.length === 0 && cached.length === 0) throw error
+    const limited = items.slice(0, query.limit ?? items.length)
+    return { items: limited, total: items.length, returned: limited.length, truncated: limited.length < items.length }
+  }
 }
 
 export async function getPlaces(
@@ -237,20 +249,28 @@ export async function getPlaces(
   if (query.limit !== undefined) searchParams.set('limit', String(query.limit))
   if (query.offset !== undefined) searchParams.set('offset', String(query.offset))
 
-  return parsePlacesResponse(await getJson('/places', searchParams, signal))
+  try { return parsePlacesResponse(await getJson('/places', searchParams, signal)) }
+  catch (error) {
+    if (!isNetworkFailure(error) || query.mapId === undefined) throw error
+    const cached = await offlinePlaces(query.mapId)
+    if (cached.length === 0) throw error
+    return query.q ? cached.filter((place) => place.name.toLocaleLowerCase().includes(query.q!.toLocaleLowerCase())) : cached
+  }
 }
 
 export async function getPlaceDetails(
   placeId: string,
   signal: AbortSignal,
 ): Promise<PlaceDetails> {
-  const payload = await getJson(
-    `/places/${encodeURIComponent(placeId)}`,
-    new URLSearchParams(),
-    signal,
-  )
-
-  return parsePlaceDetailsResponse(payload)
+  try {
+    const payload = await getJson(`/places/${encodeURIComponent(placeId)}`, new URLSearchParams(), signal)
+    return parsePlaceDetailsResponse(payload)
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    const cached = await offlinePlace(placeId)
+    if (cached === null) throw error
+    return cached
+  }
 }
 
 export async function getPlaceListPosition(
