@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
 import { getPhotoFileUrl } from '../../api/photos'
 import type { Photo } from '../../types/photo'
@@ -23,7 +23,7 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
   )
   const t = photoViewerMessages()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setIndex(0)
     setFailed(false)
     setViewerOpen(false)
