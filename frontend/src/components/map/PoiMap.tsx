@@ -76,6 +76,7 @@ interface PoiMapProps {
   annotations?: PlaceAnnotation[]
   annotationDrawing?: AnnotationDrawingState | null
   onAnnotationDrawingPointsChange?: (points: MeasurementPoint[]) => void
+  onAnnotationDrawingComplete?: (points: MeasurementPoint[]) => void
 }
 
 const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
@@ -155,6 +156,7 @@ export function PoiMap({
   annotations = [],
   annotationDrawing = null,
   onAnnotationDrawingPointsChange = () => undefined,
+  onAnnotationDrawingComplete = () => undefined,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const onPlaceSelectRef = useRef(onPlaceSelect)
@@ -187,12 +189,12 @@ export function PoiMap({
       />
       <MapFocusController request={focusRequest} />
       <MapResizeWatcher layoutKey={layoutKey} />
-      <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} onMapClick={onPopupClose} />
+      <MapContextEvents onOpen={onMapContextMenuOpen} onClose={onMapContextMenuClose} onMapClick={annotationDrawing ? () => undefined : onPopupClose} />
       <MapDoubleClickZoomController disabled={trip !== null} />
       <MapMeasurementLayer active={measurementActive} locale={measurementLocale} points={measurementPoints} onPointAdd={onMeasurementPointAdd} />
       <MapTemporaryToolsLayer mode={mapToolMode} extent={temporaryExtent} coordinate={temporaryCoordinate} geolocation={geolocationFix} onExtentChange={onTemporaryExtentChange} onCoordinateChange={onTemporaryCoordinateChange} />
       <PlaceAnnotationLayer annotations={annotations} />
-      <AnnotationDrawingLayer drawing={annotationDrawing} onPointsChange={onAnnotationDrawingPointsChange} />
+      <AnnotationDrawingLayer drawing={annotationDrawing} onPointsChange={onAnnotationDrawingPointsChange} onComplete={onAnnotationDrawingComplete} />
 
       {temporarySearchResult && <Marker position={[temporarySearchResult.latitude, temporarySearchResult.longitude]} title="Résultat de recherche géographique" icon={divIcon({ className: 'geocoding-marker', html: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="8.5"/><circle cx="14" cy="14" r="2.75"/><path d="M14 1.5v4M14 22.5v4M1.5 14h4M22.5 14h4"/></svg>', iconSize: [28, 28], iconAnchor: [14, 14] })} />}
       {draftPosition && <DraftPositionMarker position={draftPosition} onPositionChange={onDraftPositionChange} />}
