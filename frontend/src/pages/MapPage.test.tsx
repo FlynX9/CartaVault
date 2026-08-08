@@ -356,4 +356,35 @@ describe('MapPage', () => {
     expect(map.getAttribute('data-layout-key')).not.toBe(previousLayoutKey)
     expect(screen.getByRole('button', { name: 'Quitter le plein écran' })).toBeVisible()
   })
+
+  it('portals mobile place details above workspace panels instead of raising the map', () => {
+    render(
+      <MemoryRouter>
+        <MapPage
+          places={[]}
+          selectedPlaceId="place-1"
+          initialView={{ center: [48, 2], zoom: 8 }}
+          isLoading={false}
+          errorMessage={null}
+          sidebarOpen
+          placeListOpen
+          statuses={[]}
+          sidebar={<aside aria-label="Sortie">Sortie</aside>}
+          placeList={null}
+          popupContent={<article>Fiche du POI</article>}
+          mobilePlaceDetailOpen
+          focusRequest={null}
+          onBoundsChange={vi.fn()}
+          onViewChange={vi.fn()}
+          onPlaceSelect={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    const detail = screen.getByRole('complementary', { name: 'Détails du lieu sélectionné' })
+    expect(detail).toHaveTextContent('Fiche du POI')
+    expect(detail.parentElement).toHaveClass('mobile-place-detail-layer')
+    expect(detail.closest('.map-layout')).toBeNull()
+    expect(screen.getByLabelText('Sortie')).toBeInTheDocument()
+  })
 })

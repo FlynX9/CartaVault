@@ -11855,7 +11855,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
   .trip-mobile-step-commands .trip-mobile-add-place { display: grid; width: 1.55rem; min-width: 1.55rem; height: 1.55rem; min-height: 1.55rem; margin: .42rem auto .05rem; padding: 0; place-items: center; color: var(--cv-color-gray); background: var(--cv-surface-muted); border: 1px solid var(--cv-border-strong); border-radius: 50%; cursor: pointer; }
   .trip-mobile-step-commands .trip-mobile-add-place:not(:disabled):is(:hover, :focus-visible, :active) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface)); border-color: var(--cv-color-teal); }
   .trip-mobile-step-commands ul { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
-  .trip-mobile-step-commands li { position: relative; overflow: hidden; padding: .45rem 0; border-top: 1px solid var(--cv-border-subtle); }
+  .trip-mobile-step-commands li { position: relative; overflow: hidden; padding: .45rem 0; border-top: 1px solid var(--cv-border-subtle); touch-action: pan-y; user-select: none; }
   .trip-mobile-step-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; align-items: center; position: relative; z-index: 1; min-height: 2.5rem; background: var(--cv-surface); transition: transform 160ms ease-out; touch-action: pan-y; }
   .trip-mobile-swipe-delete { position: absolute; inset: .45rem auto .45rem 0; z-index: 0; display: grid; width: 5.4rem; min-height: 2.5rem; place-items: center; color: #fff; background: #c93c35; border: 0; border-radius: .5rem; box-shadow: none; }
   .trip-mobile-swipe-delete:not(:disabled):is(:hover, :focus-visible, :active) { color: #fff; background: #a92b26; border-color: transparent; }
@@ -12682,16 +12682,27 @@ html[data-theme='dark'] .trip-preview-anchor--terminal .trip-preview-anchor-dot 
   .places-redesign-controls { display: none; }
   .places-redesign-controls.is-mobile-open { display: grid; }
 
-  /* A POI opened from Lieux is a temporary full-screen detail view. The list
-     remains mounted below it, so closing the card restores its exact state. */
-  .map-workspace.mobile-place-detail-open .map-layout { z-index: calc(var(--cv-z-modal) + 1); }
-  .map-workspace.mobile-place-detail-open .map-place-detail-overlay {
-    z-index: 2;
+  /* Mobile details are portalled above every workspace panel. Keeping the map
+     in its normal layer avoids visually collapsing Sorties when a stop opens. */
+  .mobile-place-detail-layer {
+    position: fixed;
+    z-index: calc(var(--cv-z-modal) + 10);
     inset: 0;
-    width: auto;
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--cv-surface);
+  }
+  .mobile-place-detail-layer .map-place-detail-overlay--mobile {
+    position: relative;
+    z-index: auto;
+    inset: auto;
+    width: 100%;
+    height: 100%;
     max-height: none;
   }
-  .map-workspace.mobile-place-detail-open .map-place-detail-overlay .place-map-popup {
+  .mobile-place-detail-layer .map-place-detail-overlay--mobile .place-map-popup {
     height: 100%;
     max-height: none;
     overflow-y: auto;

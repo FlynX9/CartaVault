@@ -742,6 +742,7 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={onTripChange} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     const selector = await screen.findByLabelText('Voyage actif')
+    await screen.findByRole('option', { name: otherTrip.name })
     fireEvent.change(selector, { target: { value: otherTrip.id } })
 
     await waitFor(() => expect(onTripChange).toHaveBeenLastCalledWith(otherTrip))
@@ -1392,25 +1393,28 @@ describe('TripPlannerPanel', () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={mobileTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onPreviewStopSelect={onPreviewStopSelect} onClose={vi.fn()} />)
 
     const stopRow = await screen.findByRole('button', { name: 'Ouvrir Musée' })
-    fireEvent.pointerDown(stopRow.closest('li')!, { pointerId: 1, clientX: 220, clientY: 120 })
-    fireEvent.pointerUp(stopRow.closest('li')!, { pointerId: 1, clientX: 220, clientY: 120 })
+    fireEvent.pointerDown(stopRow.closest('li')!, { pointerId: 1, pointerType: 'touch', clientX: 220, clientY: 120 })
+    fireEvent.pointerUp(stopRow.closest('li')!, { pointerId: 1, pointerType: 'touch', clientX: 220, clientY: 120 })
     fireEvent.click(stopRow)
     expect(onPreviewStopSelect).toHaveBeenCalledWith('stop-1')
 
     const stopItem = stopRow.closest('li')!
-    fireEvent.pointerDown(stopItem, { pointerId: 2, clientX: 240, clientY: 120 })
-    fireEvent.pointerMove(stopItem, { pointerId: 2, clientX: 100, clientY: 122 })
-    fireEvent.pointerUp(stopItem, { pointerId: 2, clientX: 100, clientY: 122 })
+    fireEvent.pointerDown(stopItem, { pointerId: 2, pointerType: 'touch', clientX: 240, clientY: 120 })
+    // Android may coalesce the whole gesture into pointerup under load. The
+    // final coordinates must still reveal the action rail.
+    fireEvent.pointerUp(stopItem, { pointerId: 2, pointerType: 'touch', clientX: 100, clientY: 122 })
     expect(stopItem).toHaveClass('is-more-revealed')
+    fireEvent.click(stopRow)
+    expect(onPreviewStopSelect).toHaveBeenCalledTimes(1)
     fireEvent.change(within(stopItem).getByLabelText('Envoyer Musée vers'), { target: { value: 'day:day-2' } })
     await waitFor(() => expect(moveTripStop).toHaveBeenCalledWith('stop-1', 'day-2', 0))
 
     const nextButton = container.querySelector<HTMLButtonElement>('.trip-mobile-active-day button:last-child')!
     fireEvent.click(nextButton)
     const nightRow = await screen.findByRole('button', { name: 'Ouvrir Hôtel central' })
-    fireEvent.pointerDown(nightRow, { pointerId: 3, clientX: 240, clientY: 180 })
-    fireEvent.pointerMove(nightRow, { pointerId: 3, clientX: 100, clientY: 182 })
-    fireEvent.pointerUp(nightRow, { pointerId: 3, clientX: 100, clientY: 182 })
+    fireEvent.pointerDown(nightRow, { pointerId: 3, pointerType: 'touch', clientX: 240, clientY: 180 })
+    fireEvent.pointerMove(nightRow, { pointerId: 3, pointerType: 'touch', clientX: 100, clientY: 182 })
+    fireEvent.pointerUp(nightRow, { pointerId: 3, pointerType: 'touch', clientX: 100, clientY: 182 })
     expect(nightRow).toHaveStyle({ transform: 'translateX(-132px)' })
     expect(screen.getByRole('link', { name: 'Ouvrir Hôtel central dans Google Maps' })).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Envoyer Hôtel central vers'), { target: { value: 'day:day-2' } })

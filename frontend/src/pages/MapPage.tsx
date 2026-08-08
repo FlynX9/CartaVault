@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { SquareDashed } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
@@ -497,7 +498,7 @@ export function MapPage({
           onTemporaryExtentChange={setTemporaryExtent}
           onTemporaryCoordinateChange={setTemporaryCoordinate}
         />
-        {popupContent && (
+        {popupContent && !mobilePlaceDetailOpen && (
           <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
             {popupContent}
           </aside>
@@ -598,6 +599,14 @@ export function MapPage({
       </div>
       {sidebar}
       {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" growDirection={tripPlanningActive ? 'right' : undefined} width={rightPanelWidth} minWidth={tripPlanningActive ? TRIP_PANEL_MIN_WIDTH : undefined} maxWidth={tripPlanningActive ? TRIP_PANEL_MAX_WIDTH : undefined} reservedWidth={tripPlanningActive ? 352 : undefined} panelSelector={tripPlanningActive ? '.trip-planner-panel' : undefined} boundarySelector={tripPlanningActive ? '.map-place-detail-overlay' : undefined} gapReferenceSelector={tripPlanningActive ? '.country-place-panel' : undefined} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
+      {popupContent && mobilePlaceDetailOpen && typeof document !== 'undefined' && createPortal(
+        <div className="mobile-place-detail-layer">
+          <aside className="map-place-detail-overlay map-place-detail-overlay--mobile" aria-label="Détails du lieu sélectionné">
+            {popupContent}
+          </aside>
+        </div>,
+        document.body,
+      )}
     </section>
   )
 }

@@ -564,7 +564,8 @@ function MobileTripNightNavigator({ previousDay, nextDay, night, days, nights, c
     if (!swipe || swipe.pointerId !== event.pointerId) return
     const deltaX = event.clientX - swipe.x
     const deltaY = event.clientY - swipe.y
-    if (swipe.axis === 'vertical') {
+    const horizontal = swipe.axis === 'horizontal' || (swipe.axis === 'pending' && Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05)
+    if (swipe.axis === 'vertical' || (!horizontal && Math.abs(deltaY) >= 12)) {
       setNightOffset(swipe.baseOffset)
       return
     }
@@ -573,7 +574,11 @@ function MobileTripNightNavigator({ previousDay, nextDay, night, days, nights, c
       onOpenPopup()
       return
     }
-    const offset = pointSwipeOffsetRef.current
+    const offset = horizontal ? Math.max(-138, Math.min(96, swipe.baseOffset + deltaX)) : pointSwipeOffsetRef.current
+    if (horizontal) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
     if (offset >= 86 && night && canEdit) {
       setNightOffset(0)
       onDelete(night)
@@ -607,7 +612,7 @@ function MobileTripDayCommands({ day, days, nights, busy, onAddPlaces, onOpenSto
   const draggedStopIdRef = useRef<string | null>(null)
   const swipeStartRef = useRef<{ stopId: string; pointerId: number; x: number; y: number; baseOffset: number; axis: 'pending' | 'horizontal' | 'vertical' } | null>(null)
   const swipeOffsetRef = useRef(0)
-  const swipeMovedRef = useRef(false)
+  const suppressClickUntilRef = useRef(0)
   const [draggedStopId, setDraggedStopId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ stopId: string; offset: number } | null>(null)
   const [deleteRevealedStopId, setDeleteRevealedStopId] = useState<string | null>(null)
@@ -640,11 +645,10 @@ function MobileTripDayCommands({ day, days, nights, busy, onAddPlaces, onOpenSto
     if (Number.isInteger(targetIndex) && targetIndex !== sourceIndex) onMove(stopId, day.id, targetIndex)
   }
   const beginSwipe = (event: ReactPointerEvent<HTMLLIElement>, stopId: string) => {
-    if (busy || event.pointerType === 'mouse' || (event.target as HTMLElement).closest('button, a, select, input')) return
+    if (busy || (event.target as HTMLElement).closest('button, a, select, input')) return
     event.currentTarget.setPointerCapture?.(event.pointerId)
     const baseOffset = deleteRevealedStopId === stopId ? 86 : moreRevealedStopId === stopId ? -132 : 0
     swipeStartRef.current = { stopId, pointerId: event.pointerId, x: event.clientX, y: event.clientY, baseOffset, axis: 'pending' }
-    swipeMovedRef.current = false
     swipeOffsetRef.current = baseOffset
     setSwipeOffset({ stopId, offset: baseOffset })
     if (deleteRevealedStopId !== stopId) setDeleteRevealedStopId(null)
@@ -661,19 +665,26 @@ function MobileTripDayCommands({ day, days, nights, busy, onAddPlaces, onOpenSto
     if (swipe.axis !== 'horizontal') return
     const offset = Math.max(-138, Math.min(96, swipe.baseOffset + deltaX))
     event.preventDefault()
-    swipeMovedRef.current = true
+    event.stopPropagation()
     swipeOffsetRef.current = offset
     setSwipeOffset({ stopId: swipe.stopId, offset })
   }
   const finishSwipe = (event: ReactPointerEvent<HTMLLIElement>, stopId: string, sourceIndex: number) => {
     const swipe = swipeStartRef.current
     if (!swipe || swipe.pointerId !== event.pointerId) return
-    const offset = swipeOffsetRef.current
+    const deltaX = event.clientX - swipe.x
+    const deltaY = event.clientY - swipe.y
+    const horizontal = swipe.axis === 'horizontal' || (swipe.axis === 'pending' && Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05)
+    const offset = horizontal ? Math.max(-138, Math.min(96, swipe.baseOffset + deltaX)) : swipe.baseOffset
     swipeStartRef.current = null
     swipeOffsetRef.current = 0
     setSwipeOffset(null)
-    window.setTimeout(() => { swipeMovedRef.current = false }, 0)
     if (swipe.axis === 'vertical') return
+    if (horizontal) {
+      event.preventDefault()
+      event.stopPropagation()
+      suppressClickUntilRef.current = window.performance.now() + 500
+    }
     if (offset >= 86) {
       setDeleteRevealedStopId(null)
       setMoreRevealedStopId(null)
@@ -688,7 +699,7 @@ function MobileTripDayCommands({ day, days, nights, busy, onAddPlaces, onOpenSto
     {day.stops.length === 0 ? <p>Ajoutez une étape avec le bouton +.</p> : <ul>{day.stops.map((stop, index) => <li key={stop.id} data-mobile-stop-index={index} className={`${draggedStopId === stop.id ? 'is-touch-dragging' : ''}${deleteRevealedStopId === stop.id ? ' is-delete-revealed' : ''}${moreRevealedStopId === stop.id ? ' is-more-revealed' : ''}`} onPointerDown={(event) => beginSwipe(event, stop.id)} onPointerMove={moveSwipe} onPointerUp={(event) => finishSwipe(event, stop.id, index)} onPointerCancel={() => { swipeStartRef.current = null; swipeOffsetRef.current = 0; setSwipeOffset(null) }}>
       <button className="trip-mobile-swipe-delete" type="button" aria-label={`Supprimer ${stop.name}`} title="Supprimer" disabled={busy} onClick={() => onDelete(stop.id, stop.name)}><Trash2 size={18} /></button>
       <div className="trip-mobile-swipe-more"><select aria-label={`Envoyer ${stop.name} vers`} disabled={busy} value="" onChange={(event) => { const [kind, id] = event.target.value.split(':'); if (kind === 'day') onMove(stop.id, id, days.find((item) => item.id === id)?.stops.length ?? 0); if (kind === 'night') { const destination = nights.find((item) => item.previousDayId === id); if (destination) onMoveToNight(stop, destination) } }}><option value="">Envoyer vers…</option><optgroup label="Jours">{days.filter((item) => item.id !== day.id).map((item) => <option key={item.id} value={`day:${item.id}`}>Jour {item.day_number}</option>)}</optgroup><optgroup label="Nuits">{nights.map((item) => <option key={item.previousDayId} value={`night:${item.previousDayId}`}>{item.label}</option>)}</optgroup></select><a href={googleMapsPointUrl(stop)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${stop.name} dans Google Maps`} title="Ouvrir dans Google Maps" onClick={(event) => event.stopPropagation()}><ExternalLink size={17} /></a></div>
-      <div className="trip-mobile-step-row" role="button" tabIndex={0} aria-label={`Ouvrir ${stop.name}`} onClick={() => { if (!swipeMovedRef.current) onOpenStop(stop) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpenStop(stop) } }} style={{ transform: `translateX(${swipeOffset?.stopId === stop.id ? swipeOffset.offset : deleteRevealedStopId === stop.id ? 86 : moreRevealedStopId === stop.id ? -132 : 0}px)` }}>
+      <div className="trip-mobile-step-row" role="button" tabIndex={0} aria-label={`Ouvrir ${stop.name}`} onClick={(event) => { if (window.performance.now() < suppressClickUntilRef.current) { event.preventDefault(); event.stopPropagation(); return } onOpenStop(stop) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpenStop(stop) } }} style={{ transform: `translateX(${swipeOffset?.stopId === stop.id ? swipeOffset.offset : deleteRevealedStopId === stop.id ? 86 : moreRevealedStopId === stop.id ? -132 : 0}px)` }}>
         <span><button className="trip-mobile-drag-handle" type="button" aria-label={`Maintenir pour déplacer ${stop.name}`} title="Maintenir pour déplacer" disabled={busy} onPointerDown={(event) => beginTouchReorder(event, stop.id)} onPointerMove={(event) => { if (draggedStopId === stop.id) event.preventDefault() }} onPointerUp={(event) => finishTouchReorder(event, stop.id, index)} onPointerCancel={cancelTouchReorder}><GripVertical size={18} /></button><b>{index + 1}</b><MapPin className="trip-mobile-step-pin" aria-hidden="true" size={15} /><strong>{stop.name}</strong></span>
       </div>
     </li>)}</ul>}
