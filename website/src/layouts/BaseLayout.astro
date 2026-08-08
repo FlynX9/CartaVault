@@ -4,11 +4,11 @@ import Footer from '../components/Footer.astro';
 import { X } from '@lucide/astro';
 import '../styles/global.css';
 import { copy, href, type Language } from '../content/site';
+import { isIndexableDeployment } from '../seo';
 
 interface Props { lang: Language; title: string; description: string; path?: string; image?: string; indexable?: boolean; }
 const { lang, title, description, path = '', image, indexable = true } = Astro.props;
-const deploymentIsIndexable = import.meta.env.PUBLIC_SITE_INDEXABLE === 'true';
-const pageIsIndexable = indexable && deploymentIsIndexable;
+const pageIsIndexable = indexable && isIndexableDeployment;
 const socialImage = image ?? `/images/app-places-${lang}.webp`;
 const canonical = new URL(href(lang, path), Astro.site);
 const other = lang === 'fr' ? 'en' : 'fr';

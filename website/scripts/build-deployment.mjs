@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const deploymentMode = process.argv[2] ?? 'preprod';
+const deploymentMode = process.argv[2] ?? 'public';
 const outputDirectory = process.argv[3] ?? (deploymentMode === 'public' ? 'dist-release' : 'dist-prod');
 if (!['preprod', 'public'].includes(deploymentMode)) throw new Error(`Unknown deployment mode: ${deploymentMode}`);
 

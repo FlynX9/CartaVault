@@ -1,6 +1,12 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
+
+const canonicalRedirects = new Set([
+  'https://cartavault.fr/',
+  'https://cartavault.fr/docs/',
+]);
 
 export default defineConfig({
   site: 'https://cartavault.fr',
@@ -8,6 +14,7 @@ export default defineConfig({
   trailingSlash: 'always',
   build: { format: 'directory' },
   integrations: [
+    sitemap({ filter: (page) => !canonicalRedirects.has(page) }),
     starlight({
       title: 'CartaVault Docs',
       description: 'Guides utilisateur, administration et références techniques CartaVault.',

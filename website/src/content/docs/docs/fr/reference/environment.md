@@ -28,6 +28,8 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `CARTAVAULT_FORWARDED_ALLOW_IPS` | required / empty | `backend/app/container_entrypoint.py` |
 | `CARTAVAULT_FRONTEND_DIST` | — | `backend/app/main.py` |
 | `CARTAVAULT_FRONTEND_VERSION` | — | `backend/app/instance_status/service.py` |
+| `CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL` | `https://tile.googleapis.com` | `backend/app/config.py` |
+| `CARTAVAULT_ORS_BASE_URL` | `https://api.openrouteservice.org` | `backend/app/config.py` |
 | `CARTAVAULT_PDF_MAP_TILES_ENABLED` | `true` | `backend/app/trips/pdf_export.py` |
 | `CARTAVAULT_PDF_MAP_TILE_CACHE` | dynamic | `backend/app/trips/pdf_export.py` |
 | `CARTAVAULT_PDF_MAP_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `backend/app/trips/pdf_export.py` |

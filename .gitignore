@@ -46,6 +46,7 @@ backend/.pytest*/
 /output/
 /website/dist-prod/
 /website/dist-release/
+/website/dist-preprod/
 
 # Test coverage reports
 .coverage

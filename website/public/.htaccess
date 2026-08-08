@@ -5,6 +5,9 @@ ErrorDocument 500 /500.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^$ /fr/ [R=301,L]
+  RewriteRule ^docs/?$ /docs/fr/ [R=301,L]
+
   RewriteCond %{HTTP_HOST} ^www\.cartavault\.fr$ [NC]
   RewriteRule ^ https://cartavault.fr%{REQUEST_URI} [R=301,L,NE]
 
@@ -14,6 +17,10 @@ ErrorDocument 500 /500.html
 </IfModule>
 
 <IfModule mod_headers.c>
+  # Prevent an inherited hosting rule from leaking a stale noindex header into
+  # the public site. The preproduction build appends its own explicit noindex.
+  Header always unset X-Robots-Tag
+  Header onsuccess unset X-Robots-Tag
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"

@@ -1,7 +1,7 @@
 import { appendFile, copyFile, rm, stat } from 'node:fs/promises';
 
 const outputDirectory = process.argv[2] ?? 'dist-prod';
-const deploymentMode = process.argv[3] ?? 'preprod';
+const deploymentMode = process.argv[3] ?? 'public';
 const output = new URL(`../${outputDirectory}/`, import.meta.url);
 await stat(output);
 
@@ -14,4 +14,4 @@ if (deploymentMode === 'preprod') {
   await appendFile(new URL('.htaccess', output), `\n<IfModule mod_headers.c>\n  <FilesMatch "\\.html?$">\n    Header always set X-Robots-Tag "noindex, nofollow, noarchive"\n  </FilesMatch>\n</IfModule>\n`);
 }
 
-console.log('Production artifact cleaned.');
+console.log(`${deploymentMode} artifact prepared in ${outputDirectory}.`);

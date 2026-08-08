@@ -7,9 +7,9 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
-    "build:prod": "node scripts/build-deployment.mjs preprod dist-prod",
-    "build:preprod": "node scripts/build-deployment.mjs preprod dist-prod",
+    "build": "node scripts/build-deployment.mjs public dist",
+    "build:prod": "node scripts/build-deployment.mjs public dist-prod",
+    "build:preprod": "node scripts/build-deployment.mjs preprod dist-preprod",
     "build:release": "node scripts/build-deployment.mjs public dist-release",
     "check": "astro check",
     "verify": "npm run docs:check && npm run check && npm run build && node scripts/check-site.mjs",
@@ -22,6 +22,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
     "@astrojs/starlight": "^0.41.7",
     "@lucide/astro": "^1.28.0",
     "astro": "^7.1.6"

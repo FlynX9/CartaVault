@@ -57,6 +57,9 @@
       },
       "AccountPreferences": {
         "properties": {
+          "basemaps": {
+            "$ref": "#/components/schemas/BasemapPreferences"
+          },
           "density": {
             "default": "compact",
             "enum": [
@@ -88,6 +91,7 @@
               "cartavault-light",
               "cartavault-dark",
               "satellite",
+              "google-satellite",
               "osm"
             ],
             "title": "Preferred Basemap",
@@ -1039,6 +1043,21 @@
           "last_controlled_error"
         ],
         "title": "BackupDiagnostic",
+        "type": "object"
+      },
+      "BasemapPreferences": {
+        "properties": {
+          "satellite_provider": {
+            "default": "stadia",
+            "enum": [
+              "stadia",
+              "google"
+            ],
+            "title": "Satellite Provider",
+            "type": "string"
+          }
+        },
+        "title": "BasemapPreferences",
         "type": "object"
       },
       "Body_preview_kmz_import_maps__map_id__imports_kmz_preview_post": {
@@ -9994,7 +10013,8 @@
             "default": "osrm",
             "enum": [
               "osrm",
-              "google"
+              "google",
+              "openrouteservice"
             ],
             "title": "Provider",
             "type": "string"
@@ -10016,6 +10036,47 @@
           }
         },
         "title": "RoutingPreferences",
+        "type": "object"
+      },
+      "SatelliteSettingsUpdate": {
+        "properties": {
+          "auto_disable_percent": {
+            "default": 100,
+            "maximum": 200.0,
+            "minimum": 50.0,
+            "title": "Auto Disable Percent",
+            "type": "integer"
+          },
+          "daily_soft_limit": {
+            "maximum": 100000000.0,
+            "minimum": 100.0,
+            "title": "Daily Soft Limit",
+            "type": "integer"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "monthly_soft_limit": {
+            "maximum": 1000000000.0,
+            "minimum": 100.0,
+            "title": "Monthly Soft Limit",
+            "type": "integer"
+          },
+          "repeated_error_limit": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 2.0,
+            "title": "Repeated Error Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "daily_soft_limit",
+          "monthly_soft_limit"
+        ],
+        "title": "SatelliteSettingsUpdate",
         "type": "object"
       },
       "SecurityCheck": {
@@ -12447,6 +12508,40 @@
         "title": "UsageDiagnostic",
         "type": "object"
       },
+      "UsageEvent": {
+        "properties": {
+          "tiles_cancelled": {
+            "default": 0,
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Tiles Cancelled",
+            "type": "integer"
+          },
+          "tiles_completed": {
+            "default": 0,
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Tiles Completed",
+            "type": "integer"
+          },
+          "tiles_failed": {
+            "default": 0,
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Tiles Failed",
+            "type": "integer"
+          },
+          "tiles_started": {
+            "default": 0,
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Tiles Started",
+            "type": "integer"
+          }
+        },
+        "title": "UsageEvent",
+        "type": "object"
+      },
       "UserAdminCreate": {
         "properties": {
           "display_name": {
@@ -12958,6 +13053,94 @@
         ]
       }
     },
+    "/account/integrations/google-map-tiles": {
+      "delete": {
+        "operationId": "delete_user_credential_account_integrations_google_map_tiles_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete User Credential Account Integrations Google Map Tiles Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete User Credential",
+        "tags": [
+          "account"
+        ]
+      },
+      "get": {
+        "operationId": "user_credential_status_account_integrations_google_map_tiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response User Credential Status Account Integrations Google Map Tiles Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "User Credential Status",
+        "tags": [
+          "account"
+        ]
+      },
+      "put": {
+        "operationId": "store_user_credential_account_integrations_google_map_tiles_put",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Store User Credential Account Integrations Google Map Tiles Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Store User Credential",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/integrations/google-map-tiles/verify": {
+      "post": {
+        "operationId": "verify_user_credential_account_integrations_google_map_tiles_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify User Credential Account Integrations Google Map Tiles Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Verify User Credential",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/account/integrations/google-places": {
       "delete": {
         "operationId": "remove_account_integrations_google_places_delete",
@@ -13207,6 +13390,289 @@
         "summary": "Verify Credential",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/account/integrations/openrouteservice": {
+      "delete": {
+        "operationId": "remove_credential_account_integrations_openrouteservice_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove Credential Account Integrations Openrouteservice Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Remove Credential",
+        "tags": [
+          "account"
+        ]
+      },
+      "get": {
+        "operationId": "credential_status_account_integrations_openrouteservice_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Credential Status Account Integrations Openrouteservice Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Credential Status",
+        "tags": [
+          "account"
+        ]
+      },
+      "put": {
+        "operationId": "store_credential_account_integrations_openrouteservice_put",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Store Credential Account Integrations Openrouteservice Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Store Credential",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/integrations/openrouteservice/verify": {
+      "post": {
+        "operationId": "verify_credential_account_integrations_openrouteservice_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify Credential Account Integrations Openrouteservice Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Verify Credential",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/integrations/stadia-maps": {
+      "delete": {
+        "operationId": "delete_credential_account_integrations_stadia_maps_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Credential Account Integrations Stadia Maps Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Credential",
+        "tags": [
+          "basemaps"
+        ]
+      },
+      "get": {
+        "operationId": "credential_status_account_integrations_stadia_maps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Credential Status Account Integrations Stadia Maps Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Credential Status",
+        "tags": [
+          "basemaps"
+        ]
+      },
+      "put": {
+        "operationId": "store_credential_account_integrations_stadia_maps_put",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Store Credential Account Integrations Stadia Maps Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Store Credential",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/account/integrations/stadia-maps/verify": {
+      "post": {
+        "operationId": "verify_credential_account_integrations_stadia_maps_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify Credential Account Integrations Stadia Maps Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Verify Credential",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/account/integrations/stadia-places": {
+      "delete": {
+        "operationId": "delete_credential_account_integrations_stadia_places_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Credential Account Integrations Stadia Places Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Credential",
+        "tags": [
+          "places"
+        ]
+      },
+      "get": {
+        "operationId": "credential_status_account_integrations_stadia_places_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Credential Status Account Integrations Stadia Places Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Credential Status",
+        "tags": [
+          "places"
+        ]
+      },
+      "put": {
+        "operationId": "store_credential_account_integrations_stadia_places_put",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Store Credential Account Integrations Stadia Places Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Store Credential",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/account/integrations/stadia-places/config": {
+      "get": {
+        "operationId": "search_config_account_integrations_stadia_places_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Search Config",
+        "tags": [
+          "places"
+        ]
+      }
+    },
+    "/account/integrations/stadia-places/verify": {
+      "post": {
+        "operationId": "verify_credential_account_integrations_stadia_places_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify Credential Account Integrations Stadia Places Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Verify Credential",
+        "tags": [
+          "places"
         ]
       }
     },
@@ -13531,6 +13997,95 @@
           }
         },
         "summary": "Verify Resend",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/google-satellite": {
+      "get": {
+        "operationId": "admin_status_admin_console_google_satellite_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Admin Status Admin Console Google Satellite Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Status",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/google-satellite/reset-errors": {
+      "post": {
+        "operationId": "reset_errors_admin_console_google_satellite_reset_errors_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Reset Errors Admin Console Google Satellite Reset Errors Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reset Errors",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/google-satellite/settings": {
+      "put": {
+        "operationId": "update_settings_admin_console_google_satellite_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SatelliteSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Settings Admin Console Google Satellite Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Settings",
         "tags": [
           "admin-console"
         ]
@@ -15052,6 +15607,105 @@
         "summary": "Registration Status",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/basemaps/google-satellite/session": {
+      "post": {
+        "operationId": "create_session_basemaps_google_satellite_session_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Session Basemaps Google Satellite Session Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Session",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/basemaps/google-satellite/status": {
+      "get": {
+        "operationId": "public_status_basemaps_google_satellite_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Public Status Basemaps Google Satellite Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Public Status",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/basemaps/google-satellite/usage": {
+      "post": {
+        "operationId": "record_usage_basemaps_google_satellite_usage_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsageEvent"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Record Usage",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/basemaps/stadia/config": {
+      "get": {
+        "operationId": "basemap_config_basemaps_stadia_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Basemap Config",
+        "tags": [
+          "basemaps"
         ]
       }
     },
