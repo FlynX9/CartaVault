@@ -2326,7 +2326,11 @@ html[data-theme='dark'] .action-history-error { color: #fecaca; background: #351
 
 .map-workspace:has(.cv-workspace-panel.is-collapsed) .cv-panel-resize-handle--left { display: none; }
 @media (max-width: 760px) {
-  .trip-planner-panel .trip-mobile-day-transition { animation: trip-mobile-day-enter 180ms cubic-bezier(.2, .8, .2, 1); }
+  .trip-planner-panel .trip-mobile-day-transition {
+    overflow: clip;
+    animation: trip-mobile-day-enter-forward 260ms cubic-bezier(.22, .9, .24, 1) both;
+  }
+  .trip-planner-panel .trip-mobile-day-transition--backward { animation-name: trip-mobile-day-enter-backward; }
   .map-workspace .cv-workspace-panel.is-collapsed {
     top: .7rem;
     right: .7rem;
@@ -11778,6 +11782,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
    timeline; touch devices get explicit, thumb-reachable commands instead. */
 .trip-mobile-active-day,
 .trip-mobile-day-metrics,
+.trip-mobile-night-page,
 .trip-mobile-step-commands,
 .trip-mobile-add-place,
 .trip-panel-mobile-global-metrics { display: none; }
@@ -11819,6 +11824,17 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
   .trip-mobile-step-commands button:not(:disabled):is(:hover, :focus-visible) { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface)); border-color: var(--cv-color-teal); }
   .trip-mobile-active-day button:disabled,
   .trip-mobile-step-commands button:disabled { opacity: .4; }
+  .trip-planner-panel .trip-mobile-night-page { display: grid; gap: .55rem; }
+  .trip-mobile-night-swipe { position: relative; overflow: hidden; border-radius: .78rem; }
+  .trip-mobile-night-swipe > .trip-mobile-swipe-delete { inset: 0 auto 0 0; }
+  .trip-mobile-night-swipe > .trip-mobile-swipe-more { inset: 0 0 0 auto; }
+  .trip-mobile-night-page__card { position: relative; z-index: 1; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .65rem; min-height: 5rem; padding: .8rem; color: var(--cv-color-slate); background: linear-gradient(135deg, color-mix(in srgb, var(--trip-mobile-night-from) 18%, var(--cv-surface)), color-mix(in srgb, var(--trip-mobile-night-to) 18%, var(--cv-surface))); border: 1px solid color-mix(in srgb, var(--trip-mobile-night-to) 35%, var(--cv-border-strong)); border-radius: .78rem; transition: transform 160ms ease-out; touch-action: pan-y; }
+  .trip-mobile-night-page__card > svg { color: var(--cv-color-slate); }
+  .trip-mobile-night-page__card > div { display: grid; min-width: 0; gap: .2rem; }
+  .trip-mobile-night-page__card.is-interactive { cursor: pointer; }
+  .trip-mobile-night-page__card.is-interactive:active { transform: scale(.99); }
+  .trip-mobile-night-page__card strong { overflow: hidden; color: var(--cv-color-navy); font-size: .84rem; text-overflow: ellipsis; white-space: nowrap; }
+  .trip-mobile-night-page__card span { overflow: hidden; color: var(--cv-color-gray); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
   .trip-planner-panel .trip-mobile-day-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: center; margin: 0 0 .45rem; padding: .38rem .45rem; background: color-mix(in srgb, var(--cv-color-teal) 4%, var(--cv-surface)); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 14%, var(--cv-border-subtle)); border-radius: .62rem; }
   .trip-planner-panel .trip-mobile-day-metrics > span { display: inline-flex; min-width: 0; align-items: center; justify-content: center; gap: .25rem; color: var(--cv-color-teal); }
   .trip-planner-panel .trip-mobile-day-metrics > span + span { border-left: 1px solid var(--cv-border-subtle); }
@@ -11845,6 +11861,9 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
   .trip-mobile-swipe-delete:not(:disabled):is(:hover, :focus-visible, :active) { color: #fff; background: #a92b26; border-color: transparent; }
   .trip-mobile-swipe-more { position: absolute; inset: .45rem 0 .45rem auto; z-index: 0; display: flex; width: 8.4rem; align-items: center; justify-content: flex-end; gap: .22rem; padding: .2rem; background: var(--cv-color-slate); border-radius: .5rem; }
   .trip-mobile-swipe-more select { width: 3.85rem; min-width: 0; height: 2.15rem; color: var(--cv-color-slate); background: var(--cv-surface); border-color: transparent; font-size: .62rem; }
+  .trip-mobile-swipe-more a { display: grid; width: 2.15rem; min-width: 2.15rem; height: 2.15rem; place-items: center; color: #fff; border: 1px solid rgb(255 255 255 / 35%); border-radius: .45rem; }
+  .trip-mobile-step-commands .trip-mobile-swipe-delete { width: 5.4rem; min-height: 2.5rem; color: #fff; background: #c93c35; border: 0; }
+  .trip-mobile-step-commands .trip-mobile-swipe-delete:not(:disabled):is(:hover, :focus-visible, :active) { color: #fff; background: #a92b26; border-color: transparent; }
   .trip-mobile-step-commands li.is-touch-dragging { position: relative; z-index: 2; background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface)); border-color: var(--cv-color-teal); border-radius: .55rem; box-shadow: 0 6px 16px color-mix(in srgb, var(--cv-color-teal) 18%, transparent); transform: scale(1.015); }
   .trip-mobile-step-commands .trip-mobile-step-row > span { display: flex; min-width: 0; align-items: center; gap: .48rem; }
   .trip-mobile-step-commands .trip-mobile-drag-handle { width: 2rem; min-width: 2rem; min-height: 2.3rem; color: var(--cv-color-gray); border-style: dashed; touch-action: none; }
@@ -11899,13 +11918,11 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-arrival .trip-night-head
   .app-header .user-account-menu__dropdown { right: auto; bottom: calc(100% + .45rem); left: 0; }
 }
 
-@keyframes trip-mobile-day-enter {
-  from { opacity: .15; transform: translateX(.55rem); }
-  to { opacity: 1; transform: translateX(0); }
-}
+@keyframes trip-mobile-day-enter-forward { from { opacity: .3; transform: translateX(104%) scale(.985); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@keyframes trip-mobile-day-enter-backward { from { opacity: .3; transform: translateX(-104%) scale(.985); } to { opacity: 1; transform: translateX(0) scale(1); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .trip-planner-panel .trip-mobile-day-transition { animation: none; }
+  .trip-planner-panel .trip-mobile-day-transition { animation: none !important; }
 }
 
 @media (min-width: 761px) {
@@ -12667,8 +12684,9 @@ html[data-theme='dark'] .trip-preview-anchor--terminal .trip-preview-anchor-dot 
 
   /* A POI opened from Lieux is a temporary full-screen detail view. The list
      remains mounted below it, so closing the card restores its exact state. */
-  .map-workspace.mobile-place-detail-open .map-layout { z-index: calc(var(--cv-z-panel) + 100); }
+  .map-workspace.mobile-place-detail-open .map-layout { z-index: calc(var(--cv-z-modal) + 1); }
   .map-workspace.mobile-place-detail-open .map-place-detail-overlay {
+    z-index: 2;
     inset: 0;
     width: auto;
     max-height: none;

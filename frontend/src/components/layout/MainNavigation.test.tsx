@@ -94,6 +94,16 @@ describe('MainNavigation', () => {
     expect(onPanelChange).not.toHaveBeenCalled()
   })
 
+  it('exposes the trash from the mobile Organisation menu', () => {
+    const onPanelChange = vi.fn()
+    render(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={onPanelChange} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Corbeille' }))
+
+    expect(onPanelChange).toHaveBeenCalledWith('trash')
+  })
+
   it('marks only Sorties active while trip planning extends the Places workspace', () => {
     render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
     const places = screen.getByRole('button', { name: 'Lieux' })

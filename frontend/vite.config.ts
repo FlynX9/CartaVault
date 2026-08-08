@@ -19,6 +19,11 @@ export default defineConfig({
     },
   },
   server: {
+    // The local development server is also used for real-device PWA checks on
+    // the private Wi-Fi network. The API stays loopback-only behind this proxy.
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

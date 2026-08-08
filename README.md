@@ -235,7 +235,7 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-The frontend is usually available at <http://localhost:5173>. The local API
+The frontend is usually available at <http://localhost:5173>. From another device on the same private Wi-Fi, use the computer's IPv4 address, for example <http://192.168.1.50:5173>. Vite is configured to listen on the private network; Windows may ask for permission the first time. The local API
 documentation is available at <http://127.0.0.1:8000/docs>; the unified Docker
 image exposes it below `/api/docs`.
 

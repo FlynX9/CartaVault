@@ -4,7 +4,7 @@ import { IconMaximize, IconMinimize, IconTimelineEvent } from '@tabler/icons-rea
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from '../../api/trips'
 import type { PoiMap } from '../../types/map'
-import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripOptimizationProposal, TripSummary } from '../../types/trip'
+import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripOptimizationProposal, TripStop, TripSummary } from '../../types/trip'
 import { CreateTripDialog } from './CreateTripDialog'
 import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } from './tripMetrics'
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from './TripTimePlanning'
@@ -21,6 +21,9 @@ interface Props { poiMap: PoiMap; trip: Trip | null; activeDayId: string | null;
 const DayCollapseContext = createContext<{ collapsedDayIds: ReadonlySet<string>; onToggle: (dayId: string) => void } | null>(null)
 const TripAnchorActionsContext = createContext<{ canEdit: boolean; reload: (id?: string) => Promise<void>; onOpenPopup: (target: 'departure' | 'arrival') => void; onPlaceDrop?: (target: 'departure' | 'arrival', placeId: string) => Promise<void> } | null>(null)
 type TripActionKey = 'route-all' | 'optimize-all' | `route:${string}` | `optimize:${string}`
+type MobileDayTransitionDirection = 'forward' | 'backward'
+type MobileTimelineTarget = { kind: 'day'; dayId: string } | { kind: 'night'; previousDayId: string; nextDayId: string } | null
+type MobileNightDestination = { previousDayId: string; nextDayId: string; label: string }
 
 export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onMobilePlacesOpen = () => undefined }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog()
@@ -57,6 +60,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const [activeNightTarget, setActiveNightTarget] = useState<TripNightTarget | null>(null)
   const [previewSelectionKey, setPreviewSelectionKey] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [mobileDayTransitionDirection, setMobileDayTransitionDirection] = useState<MobileDayTransitionDirection>('forward')
+  const [mobileTimelineTarget, setMobileTimelineTarget] = useState<MobileTimelineTarget>(null)
   useEffect(() => {
     const query = window.matchMedia?.('(max-width: 760px)')
     if (!query) return
@@ -80,6 +85,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   onActiveAnchorTargetChangeRef.current = onActiveAnchorTargetChange
 
   useEffect(() => { activeDayIdRef.current = activeDayId }, [activeDayId])
+  useEffect(() => {
+    if (!isMobile || !activeDayId) return
+    setMobileTimelineTarget((current) => current?.kind === 'night' || current?.kind === 'day' && current.dayId === activeDayId ? current : { kind: 'day', dayId: activeDayId })
+  }, [activeDayId, isMobile])
   useEffect(() => {
     const clearStopDropState = () => {
       setDraggedStopId(null)
@@ -377,6 +386,56 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     return next
   })
   const activateDay = (dayId: string) => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveAnchorTargetChange(null); onActiveDayChange(dayId) }
+  const activateMobileDay = (dayId: string, direction: MobileDayTransitionDirection) => {
+    setMobileDayTransitionDirection(direction)
+    setMobileTimelineTarget({ kind: 'day', dayId })
+    // Paint the new card first. Updating the map is deliberately deferred so a
+    // costly map refresh can never hold the navigation gesture hostage.
+    window.requestAnimationFrame(() => activateDay(dayId))
+  }
+  const activateMobileNight = (previousDayId: string, nextDayId: string, direction: MobileDayTransitionDirection) => {
+    setMobileDayTransitionDirection(direction)
+    setMobileTimelineTarget({ kind: 'night', previousDayId, nextDayId })
+    window.requestAnimationFrame(() => {
+      const target = { nightId: trip?.nights.find((night) => night.previous_day_id === previousDayId && night.next_day_id === nextDayId)?.id ?? null, previousDayId, nextDayId }
+      setActiveNightTarget(target)
+      onActiveAnchorTargetChange(null)
+      onActiveNightTargetChange(target)
+    })
+  }
+  const moveMobileStopToNight = (stop: TripStop, destination: MobileNightDestination) => {
+    if (!trip) return
+    void run(() => runUndoable('déplacement de l’étape vers une nuit', async () => {
+      const existingNight = trip.nights.find((night) => night.previous_day_id === destination.previousDayId && night.next_day_id === destination.nextDayId)
+      const payload = stop.place_id
+        ? { place_id: stop.place_id, source_type: 'place' as const }
+        : { source_type: 'map' as const, name: stop.name, latitude: stop.latitude, longitude: stop.longitude, address: stop.address ?? undefined }
+      if (existingNight) await updateTripNight(existingNight.id, payload)
+      else await addTripNight(trip.id, { previous_day_id: destination.previousDayId, next_day_id: destination.nextDayId, ...payload })
+      await deleteTripStop(stop.id)
+      await refreshTripSilently(trip.id)
+    }))
+  }
+  const moveMobileNightToDay = (night: Trip['nights'][number], targetDayId: string) => {
+    if (!trip) return
+    void run(() => runUndoable('déplacement du lieu de nuit vers une journée', async () => {
+      const payload = night.place_id ? { place_id: night.place_id, stop_type: 'place' } : { name: night.name, latitude: night.latitude, longitude: night.longitude, address: night.address ?? undefined, stop_type: 'free_location' }
+      await addTripStop(targetDayId, payload)
+      await deleteTripNight(night.id)
+      await refreshTripSilently(trip.id)
+    }))
+  }
+  const moveMobileNightToNight = (night: Trip['nights'][number], destination: MobileNightDestination) => {
+    if (!trip || night.previous_day_id === destination.previousDayId) return
+    void run(() => runUndoable('déplacement du lieu de nuit', async () => {
+      const existingNight = trip.nights.find((item) => item.previous_day_id === destination.previousDayId && item.next_day_id === destination.nextDayId)
+      const payload = night.place_id ? { place_id: night.place_id, source_type: 'place' as const } : { source_type: 'map' as const, name: night.name, latitude: night.latitude, longitude: night.longitude, address: night.address ?? undefined }
+      if (existingNight) await updateTripNight(existingNight.id, payload)
+      else await addTripNight(trip.id, { previous_day_id: destination.previousDayId, next_day_id: destination.nextDayId, ...payload })
+      await deleteTripNight(night.id)
+      await refreshTripSilently(trip.id)
+    }))
+  }
   const setAllTimelineCollapsed = (nextCollapsed: boolean) => {
     setCollapsedDayIds(nextCollapsed ? new Set(trip?.days.map((day) => day.id) ?? []) : new Set())
     setTimelineCollapseRequest((current) => ({ collapsed: nextCollapsed, version: current.version + 1 }))
@@ -385,12 +444,17 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const tripName = trip?.name ?? 'Préparation'
   const activeDay = trip?.days.find((day) => day.id === activeDayId) ?? trip?.days[0] ?? null
   const activeDaySummary = activeDay ? daySummaries[activeDay.id] : undefined
+  const mobileDay = mobileTimelineTarget?.kind === 'day' ? trip?.days.find((day) => day.id === mobileTimelineTarget.dayId) ?? activeDay : activeDay
+  const mobileNight = mobileTimelineTarget?.kind === 'night' ? trip?.nights.find((night) => night.previous_day_id === mobileTimelineTarget.previousDayId && night.next_day_id === mobileTimelineTarget.nextDayId) ?? null : null
+  const mobileNightPreviousDay = mobileTimelineTarget?.kind === 'night' ? trip?.days.find((day) => day.id === mobileTimelineTarget.previousDayId) ?? null : null
+  const mobileNightNextDay = mobileTimelineTarget?.kind === 'night' ? trip?.days.find((day) => day.id === mobileTimelineTarget.nextDayId) ?? null : null
+  const mobileNightDestinations: MobileNightDestination[] = trip?.days.slice(0, -1).map((day, index) => ({ previousDayId: day.id, nextDayId: trip.days[index + 1].id, label: `Nuit ${day.day_number}` })) ?? []
 
   return <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? ' trip-planner-panel--trip-view' : ''}${isArchivedTrip ? ' trip-planner-panel--read-only' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label="Préparation de sortie">
     {collapsed ? <header className="trip-panel-header trip-panel-header--collapsed cv-workspace-panel__header"><div className="cv-workspace-panel__heading"><h2 className="cv-workspace-panel__title">Sortie</h2><span className="trip-panel-collapsed-name" title={tripName}>{tripName}</span></div><button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Développer le panneau Sortie" aria-expanded="false" onClick={() => onCollapsedChange(false)}><IconMaximize size={18} aria-hidden="true" /></button></header> : <>
     <header className="trip-panel-header places-redesign-header"><div><div className="trip-panel-title-row places-redesign-title-row"><h2>{tripViewOnly ? 'Chronologie' : 'Sortie'}</h2>{trip && <span className={`places-redesign-count trip-panel-trip-status trip-panel-trip-status--${trip.status === 'completed' || trip.status === 'archived' ? 'completed' : 'active'}`}>{trip.status === 'completed' || trip.status === 'archived' ? 'Terminée' : 'En cours'}</span>}</div>{trip && <p className="trip-panel-header-meta places-redesign-map-meta"><span className="trip-panel-header-name" title={trip.name}>{trip.name}</span><span aria-hidden="true">·</span><span className="trip-panel-header-day-count">{trip.days.length} {trip.days.length > 1 ? 'jours' : 'jour'}</span>{summary && !tripViewOnly && <span className="trip-panel-mobile-global-metrics" aria-label="Résumé global de la sortie"><span title="Distance totale"><Road aria-hidden="true" size={12} /><strong>{formatRouteDistance(summary.total_route_distance_meters)}</strong></span><span title="Temps total"><Clock3 aria-hidden="true" size={12} /><strong>{formatMinutes(summary.total_planned_duration_minutes)}</strong></span></span>}</p>}</div>{tripViewOnly && summary && <TripSummaryMetrics summary={summary} preview />}<div className="trip-panel-header-actions places-redesign-header-actions"><button className={`panel-icon-button trip-view-button${tripViewOnly ? ' active' : ''}`} type="button" aria-label={tripViewOnly ? 'Quitter la chronologie du voyage' : 'Activer la chronologie du voyage'} aria-pressed={tripViewOnly} title={tripViewOnly ? 'Afficher la préparation complète' : 'Chronologie du voyage'} onClick={() => onTripViewOnlyChange(!tripViewOnly)}><IconTimelineEvent size={16} stroke={2} aria-hidden="true" /></button>{!tripViewOnly && <button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label="Réduire le panneau Sortie" aria-expanded="true" onClick={() => onCollapsedChange(true)}><IconMinimize size={17} aria-hidden="true" /></button>}</div></header>
     <div className="trip-panel-scroll" role="region" aria-label="Contenu de la sortie" tabIndex={0}>
-    {isMobile && !tripViewOnly && trip && activeDay && <div className="trip-mobile-day-transition" key={activeDay.id}><MobileTripDayNavigator day={activeDay} days={trip.days} canNavigate onActivate={activateDay} /><MobileTripDayMetrics summary={activeDaySummary} />{canEditTrip && <MobileTripDayCommands day={activeDay} days={trip.days} busy={busy} onAddPlaces={onMobilePlacesOpen} onMove={(stopId, targetDayId, targetIndex) => void run(() => runUndoable('déplacement de l’étape', async () => { await moveTripStop(stopId, targetDayId, targetIndex); await refreshTripSilently(trip.id); onActiveDayChange(targetDayId) }))} onDuration={(stopId, minutes) => void run(() => runUndoable('modification de la durée de visite', async () => { await updateTripStop(stopId, { visit_duration_minutes: minutes }); await reload(trip.id) }))} onDelete={(stopId, name) => void confirm({ title: 'Supprimer cette étape ?', message: `« ${name} » sera retirée de la journée.` }).then((confirmed) => { if (confirmed) void run(() => runUndoable('suppression de l’étape', async () => { await deleteTripStop(stopId); await refreshTripSilently(trip.id) })) })} />}</div>}
+    {isMobile && !tripViewOnly && trip && mobileDay && <div className={`trip-mobile-day-transition trip-mobile-day-transition--${mobileDayTransitionDirection}`} key={mobileTimelineTarget?.kind === 'night' ? `night:${mobileTimelineTarget.previousDayId}:${mobileTimelineTarget.nextDayId}` : mobileDay.id}>{mobileTimelineTarget?.kind === 'night' && mobileNightPreviousDay && mobileNightNextDay ? <MobileTripNightNavigator previousDay={mobileNightPreviousDay} nextDay={mobileNightNextDay} night={mobileNight} days={trip.days} nights={mobileNightDestinations} canEdit={canEditTrip} busy={busy} onPrevious={() => activateMobileDay(mobileNightPreviousDay.id, 'backward')} onNext={() => activateMobileDay(mobileNightNextDay.id, 'forward')} onOpenPopup={() => { if (!mobileNight) return; const target = { nightId: mobileNight.id, previousDayId: mobileNightPreviousDay.id, nextDayId: mobileNightNextDay.id }; setActiveNightTarget(target); onStopFocus?.(mobileNight.latitude, mobileNight.longitude); onActiveNightTargetChange(target, true) }} onDelete={(night) => void confirm({ title: 'Supprimer le lieu de nuit ?', message: `« ${night.name} » sera retiré de cette nuit.` }).then((confirmed) => { if (confirmed) void run(() => runUndoable('suppression du lieu de nuit', async () => { await deleteTripNight(night.id); await refreshTripSilently(trip.id) })) })} onMoveToDay={moveMobileNightToDay} onMoveToNight={moveMobileNightToNight} /> : <><MobileTripDayNavigator day={mobileDay} days={trip.days} canNavigate onPrevious={() => { const previousDay = trip.days[trip.days.findIndex((item) => item.id === mobileDay.id) - 1]; if (previousDay) activateMobileNight(previousDay.id, mobileDay.id, 'backward') }} onNext={() => { const nextDay = trip.days[trip.days.findIndex((item) => item.id === mobileDay.id) + 1]; if (nextDay) activateMobileNight(mobileDay.id, nextDay.id, 'forward') }} /><MobileTripDayMetrics summary={daySummaries[mobileDay.id] ?? activeDaySummary} />{canEditTrip && <MobileTripDayCommands day={mobileDay} days={trip.days} nights={mobileNightDestinations} busy={busy} onAddPlaces={onMobilePlacesOpen} onOpenStop={(stop) => { onStopFocus?.(stop.latitude, stop.longitude); onPreviewStopSelect(stop.id) }} onMove={(stopId, targetDayId, targetIndex) => void run(() => runUndoable('déplacement de l’étape', async () => { await moveTripStop(stopId, targetDayId, targetIndex); await refreshTripSilently(trip.id); onActiveDayChange(targetDayId) }))} onMoveToNight={moveMobileStopToNight} onDelete={(stopId, name) => void confirm({ title: 'Supprimer cette étape ?', message: `« ${name} » sera retirée de la journée.` }).then((confirmed) => { if (confirmed) void run(() => runUndoable('suppression de l’étape', async () => { await deleteTripStop(stopId); await refreshTripSilently(trip.id) })) })} />}</>}</div>}
     {tripViewOnly ? <div className="trip-panel-compact-summary">{summary && trip ? <TripPreviewTimeline trip={trip} activeDayId={activeDayId} selectedKey={previewSelectionKey} daySummaries={daySummaries} onSelectDay={(day) => { setPreviewSelectionKey(`day:${day.id}`); onPreviewStopSelect(null); activateDay(day.id) }} onSelectNight={(night) => { setPreviewSelectionKey(`night:${night.id}`); onPreviewStopSelect(null); const target = { nightId: night.id, previousDayId: night.previous_day_id, nextDayId: night.next_day_id }; setActiveNightTarget(target); onActiveNightTargetChange(target, true); onActiveDayChange(night.next_day_id) }} onSelectLocation={(key, dayId, stopId) => { setPreviewSelectionKey(key); onPreviewStopSelect(stopId); activateDay(dayId) }} onNavigateItem={(key, stopId) => { setPreviewSelectionKey(key); onPreviewStopSelect(stopId); if (key.startsWith('night:')) { const night = trip.nights.find((item) => `night:${item.id}` === key); if (night) { const target = { nightId: night.id, previousDayId: night.previous_day_id, nextDayId: night.next_day_id }; setActiveNightTarget(target); onActiveNightTargetChange(target, true) } } else { setActiveNightTarget(null); onActiveNightTargetChange(null) } }} /> : <div className="trip-panel-empty" role="status"><Route size={24} /><strong>Chargement du résumé…</strong></div>}</div> : <>
     {error && <p className="trip-panel-error" role="alert">{error === 'Internal Server Error' ? 'Une erreur serveur empêche cette opération.' : error}</p>}
     <div className="trip-panel-selector"><select aria-label="Voyage actif" value={loadingTripId ?? trip?.id ?? ''} onChange={(event) => changeSelectedTrip(event.target.value)}><option value="">Choisir un voyage</option>{trips.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{canEdit && <button className="panel-icon-button primary" type="button" aria-label="Créer une sortie" title="Ajouter une sortie" onClick={() => setCreateOpen(true)}><Plus size={16} /></button>}{trip && <button className={`panel-icon-button trip-settings-button${settingsOpen ? ' active' : ''}`} type="button" aria-label={settingsOpen ? 'Masquer les paramètres de la sortie' : 'Afficher les paramètres de la sortie'} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres de la sortie" onClick={toggleSettings}><SlidersHorizontal size={16} /></button>}{trip && <TripExportMenu onGpx={() => void run(exportGpx)} onPdf={(trigger) => { setPdfExportTrigger(trigger); setPdfExportOpen(true) }} />}</div>
@@ -423,12 +487,12 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   </aside>
 }
 
-function MobileTripDayNavigator({ day, days, canNavigate, onActivate }: { day: TripDay; days: TripDay[]; canNavigate: boolean; onActivate: (dayId: string) => void }) {
+function MobileTripDayNavigator({ day, days, canNavigate, onPrevious, onNext }: { day: TripDay; days: TripDay[]; canNavigate: boolean; onPrevious: () => void; onNext: () => void }) {
   const swipeStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null)
   const dayIndex = days.findIndex((item) => item.id === day.id)
   const activateRelativeDay = (offset: number) => {
-    const target = days[dayIndex + offset]
-    if (target) onActivate(target.id)
+    if (offset < 0 && dayIndex > 0) onPrevious()
+    if (offset > 0 && dayIndex < days.length - 1) onNext()
   }
   const startSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === 'mouse' || (event.target as HTMLElement).closest('button')) return
@@ -452,6 +516,84 @@ function MobileTripDayNavigator({ day, days, canNavigate, onActivate }: { day: T
   </div>
 }
 
+function MobileTripNightNavigator({ previousDay, nextDay, night, days, nights, canEdit, busy, onPrevious, onNext, onOpenPopup, onDelete, onMoveToDay, onMoveToNight }: { previousDay: TripDay; nextDay: TripDay; night: Trip['nights'][number] | null; days: TripDay[]; nights: MobileNightDestination[]; canEdit: boolean; busy: boolean; onPrevious: () => void; onNext: () => void; onOpenPopup: () => void; onDelete: (night: Trip['nights'][number]) => void; onMoveToDay: (night: Trip['nights'][number], dayId: string) => void; onMoveToNight: (night: Trip['nights'][number], destination: MobileNightDestination) => void }) {
+  const navigationSwipeRef = useRef<{ pointerId: number; x: number; y: number } | null>(null)
+  const pointSwipeRef = useRef<{ pointerId: number; x: number; y: number; baseOffset: number; axis: 'pending' | 'horizontal' | 'vertical' } | null>(null)
+  const pointSwipeOffsetRef = useRef(0)
+  const [pointSwipeOffset, setPointSwipeOffset] = useState(0)
+  const setNightOffset = (offset: number) => {
+    pointSwipeOffsetRef.current = offset
+    setPointSwipeOffset(offset)
+  }
+  const startNavigationSwipe = (event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'mouse' || (event.target as HTMLElement).closest('button, a, select, input')) return
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    navigationSwipeRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+  }
+  const finishNavigationSwipe = (event: ReactPointerEvent<HTMLElement>) => {
+    const start = navigationSwipeRef.current
+    navigationSwipeRef.current = null
+    if (!start || start.pointerId !== event.pointerId) return
+    const deltaX = event.clientX - start.x
+    const deltaY = event.clientY - start.y
+    if (Math.abs(deltaX) < 44 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return
+    if (deltaX < 0) onNext()
+    else onPrevious()
+  }
+  const startPointSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!night || (event.target as HTMLElement).closest('button, a, select, input')) return
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    pointSwipeRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, baseOffset: pointSwipeOffsetRef.current, axis: 'pending' }
+  }
+  const movePointSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const swipe = pointSwipeRef.current
+    if (!swipe || swipe.pointerId !== event.pointerId) return
+    const deltaX = event.clientX - swipe.x
+    const deltaY = event.clientY - swipe.y
+    if (swipe.axis === 'pending' && (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6)) {
+      swipe.axis = Math.abs(deltaX) > Math.abs(deltaY) * 1.15 ? 'horizontal' : 'vertical'
+    }
+    if (swipe.axis !== 'horizontal') return
+    event.preventDefault()
+    setNightOffset(Math.max(-138, Math.min(96, swipe.baseOffset + deltaX)))
+  }
+  const finishPointSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const swipe = pointSwipeRef.current
+    pointSwipeRef.current = null
+    if (!swipe || swipe.pointerId !== event.pointerId) return
+    const deltaX = event.clientX - swipe.x
+    const deltaY = event.clientY - swipe.y
+    if (swipe.axis === 'vertical') {
+      setNightOffset(swipe.baseOffset)
+      return
+    }
+    if (Math.abs(deltaX) < 12 && Math.abs(deltaY) < 12) {
+      setNightOffset(0)
+      onOpenPopup()
+      return
+    }
+    const offset = pointSwipeOffsetRef.current
+    if (offset >= 86 && night && canEdit) {
+      setNightOffset(0)
+      onDelete(night)
+      return
+    }
+    setNightOffset(offset >= 46 ? 86 : offset <= -54 ? -132 : 0)
+  }
+  return <section className="trip-mobile-night-page" aria-label={`Nuit ${previousDay.day_number}`} onPointerDown={startNavigationSwipe} onPointerUp={finishNavigationSwipe} onPointerCancel={() => { navigationSwipeRef.current = null }}>
+    <header className="trip-mobile-active-day"><button type="button" aria-label={`Revenir au jour ${previousDay.day_number}`} onClick={onPrevious}><ChevronLeft size={16} aria-hidden="true" /></button><strong>Nuit {previousDay.day_number}</strong><span>Transition</span><button type="button" aria-label={`Aller au jour ${nextDay.day_number}`} onClick={onNext}><ChevronRight size={16} aria-hidden="true" /></button></header>
+    <div className="trip-mobile-night-swipe">
+      {night && canEdit && <button className="trip-mobile-swipe-delete" type="button" aria-label={`Supprimer ${night.name}`} disabled={busy} onClick={() => onDelete(night)}><Trash2 size={18} /></button>}
+      {night && <div className="trip-mobile-swipe-more" onPointerDown={(event) => event.stopPropagation()}>
+        <select aria-label={`Envoyer ${night.name} vers`} disabled={busy || !canEdit} value="" onChange={(event) => { const [kind, id] = event.target.value.split(':'); setNightOffset(0); if (kind === 'day') onMoveToDay(night, id); if (kind === 'night') { const destination = nights.find((item) => item.previousDayId === id); if (destination) onMoveToNight(night, destination) } }}><option value="">Envoyer vers…</option><optgroup label="Jours">{days.map((day) => <option key={day.id} value={`day:${day.id}`}>Jour {day.day_number}</option>)}</optgroup><optgroup label="Nuits">{nights.filter((item) => item.previousDayId !== night.previous_day_id).map((item) => <option key={item.previousDayId} value={`night:${item.previousDayId}`}>{item.label}</option>)}</optgroup></select>
+        <a href={googleMapsPointUrl(night)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${night.name} dans Google Maps`} onClick={(event) => event.stopPropagation()}><ExternalLink size={17} /></a>
+      </div>}
+      <div className={`trip-mobile-night-page__card${night ? ' is-interactive' : ''}`} role={night ? 'button' : undefined} tabIndex={night ? 0 : undefined} aria-label={night ? `Ouvrir ${night.name}` : undefined} onPointerDown={startPointSwipe} onPointerMove={movePointSwipe} onPointerUp={finishPointSwipe} onPointerCancel={() => { pointSwipeRef.current = null; setNightOffset(0) }} onKeyDown={(event) => { if (night && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onOpenPopup() } }} style={{ '--trip-mobile-night-from': previousDay.color ?? '#0FA68A', '--trip-mobile-night-to': nextDay.color ?? '#0FA68A', transform: `translateX(${pointSwipeOffset}px)` } as CSSProperties}><Moon size={21} aria-hidden="true" /><div><strong>{night?.name ?? 'Nuit non renseignée'}</strong><span>{night?.address ?? `Entre le jour ${previousDay.day_number} et le jour ${nextDay.day_number}`}</span></div></div>
+    </div>
+  </section>
+}
+
 function MobileTripDayMetrics({ summary }: { summary: TripDayTimeSummary | undefined }) {
   return <section className="trip-mobile-day-metrics" aria-label="Résumé de la journée active">
     <span title="Distance de la journée"><Road aria-hidden="true" size={14} /><strong>{formatRouteDistance(summary?.route_distance_meters ?? null)}</strong></span>
@@ -460,12 +602,12 @@ function MobileTripDayMetrics({ summary }: { summary: TripDayTimeSummary | undef
   </section>
 }
 
-function MobileTripDayCommands({ day, days, busy, onAddPlaces, onMove, onDuration, onDelete }: { day: TripDay; days: TripDay[]; busy: boolean; onAddPlaces: () => void; onMove: (stopId: string, dayId: string, index: number) => void; onDuration: (stopId: string, minutes: number) => void; onDelete: (stopId: string, name: string) => void }) {
-  const durationOptions = [15, 30, 45, 60, 90, 120]
+function MobileTripDayCommands({ day, days, nights, busy, onAddPlaces, onOpenStop, onMove, onMoveToNight, onDelete }: { day: TripDay; days: TripDay[]; nights: MobileNightDestination[]; busy: boolean; onAddPlaces: () => void; onOpenStop: (stop: TripStop) => void; onMove: (stopId: string, dayId: string, index: number) => void; onMoveToNight: (stop: TripStop, destination: MobileNightDestination) => void; onDelete: (stopId: string, name: string) => void }) {
   const holdTimer = useRef<number | null>(null)
   const draggedStopIdRef = useRef<string | null>(null)
-  const swipeStartRef = useRef<{ stopId: string; pointerId: number; x: number } | null>(null)
+  const swipeStartRef = useRef<{ stopId: string; pointerId: number; x: number; y: number; baseOffset: number; axis: 'pending' | 'horizontal' | 'vertical' } | null>(null)
   const swipeOffsetRef = useRef(0)
+  const swipeMovedRef = useRef(false)
   const [draggedStopId, setDraggedStopId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ stopId: string; offset: number } | null>(null)
   const [deleteRevealedStopId, setDeleteRevealedStopId] = useState<string | null>(null)
@@ -498,20 +640,28 @@ function MobileTripDayCommands({ day, days, busy, onAddPlaces, onMove, onDuratio
     if (Number.isInteger(targetIndex) && targetIndex !== sourceIndex) onMove(stopId, day.id, targetIndex)
   }
   const beginSwipe = (event: ReactPointerEvent<HTMLLIElement>, stopId: string) => {
-    if (busy || event.pointerType === 'mouse' || (event.target as HTMLElement).closest('button, select')) return
+    if (busy || event.pointerType === 'mouse' || (event.target as HTMLElement).closest('button, a, select, input')) return
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    swipeStartRef.current = { stopId, pointerId: event.pointerId, x: event.clientX }
-    const offset = deleteRevealedStopId === stopId ? 86 : moreRevealedStopId === stopId ? -132 : 0
-    swipeOffsetRef.current = offset
-    setSwipeOffset({ stopId, offset })
+    const baseOffset = deleteRevealedStopId === stopId ? 86 : moreRevealedStopId === stopId ? -132 : 0
+    swipeStartRef.current = { stopId, pointerId: event.pointerId, x: event.clientX, y: event.clientY, baseOffset, axis: 'pending' }
+    swipeMovedRef.current = false
+    swipeOffsetRef.current = baseOffset
+    setSwipeOffset({ stopId, offset: baseOffset })
     if (deleteRevealedStopId !== stopId) setDeleteRevealedStopId(null)
     if (moreRevealedStopId !== stopId) setMoreRevealedStopId(null)
   }
   const moveSwipe = (event: ReactPointerEvent<HTMLLIElement>) => {
     const swipe = swipeStartRef.current
     if (!swipe || swipe.pointerId !== event.pointerId) return
-    const offset = Math.max(-138, Math.min(96, event.clientX - swipe.x + (deleteRevealedStopId === swipe.stopId ? 86 : moreRevealedStopId === swipe.stopId ? -132 : 0)))
-    if (Math.abs(offset) > 4) event.preventDefault()
+    const deltaX = event.clientX - swipe.x
+    const deltaY = event.clientY - swipe.y
+    if (swipe.axis === 'pending' && (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6)) {
+      swipe.axis = Math.abs(deltaX) > Math.abs(deltaY) * 1.15 ? 'horizontal' : 'vertical'
+    }
+    if (swipe.axis !== 'horizontal') return
+    const offset = Math.max(-138, Math.min(96, swipe.baseOffset + deltaX))
+    event.preventDefault()
+    swipeMovedRef.current = true
     swipeOffsetRef.current = offset
     setSwipeOffset({ stopId: swipe.stopId, offset })
   }
@@ -522,6 +672,8 @@ function MobileTripDayCommands({ day, days, busy, onAddPlaces, onMove, onDuratio
     swipeStartRef.current = null
     swipeOffsetRef.current = 0
     setSwipeOffset(null)
+    window.setTimeout(() => { swipeMovedRef.current = false }, 0)
+    if (swipe.axis === 'vertical') return
     if (offset >= 86) {
       setDeleteRevealedStopId(null)
       setMoreRevealedStopId(null)
@@ -535,8 +687,8 @@ function MobileTripDayCommands({ day, days, busy, onAddPlaces, onMove, onDuratio
     <header><strong>{day.title || `Jour ${day.day_number}`}</strong><span>{day.stops.length} étape{day.stops.length > 1 ? 's' : ''}</span></header>
     {day.stops.length === 0 ? <p>Ajoutez une étape avec le bouton +.</p> : <ul>{day.stops.map((stop, index) => <li key={stop.id} data-mobile-stop-index={index} className={`${draggedStopId === stop.id ? 'is-touch-dragging' : ''}${deleteRevealedStopId === stop.id ? ' is-delete-revealed' : ''}${moreRevealedStopId === stop.id ? ' is-more-revealed' : ''}`} onPointerDown={(event) => beginSwipe(event, stop.id)} onPointerMove={moveSwipe} onPointerUp={(event) => finishSwipe(event, stop.id, index)} onPointerCancel={() => { swipeStartRef.current = null; swipeOffsetRef.current = 0; setSwipeOffset(null) }}>
       <button className="trip-mobile-swipe-delete" type="button" aria-label={`Supprimer ${stop.name}`} title="Supprimer" disabled={busy} onClick={() => onDelete(stop.id, stop.name)}><Trash2 size={18} /></button>
-      <div className="trip-mobile-swipe-more"><select aria-label={`Durée de visite de ${stop.name}`} disabled={busy} value={stop.visit_duration_minutes ?? 30} onChange={(event) => onDuration(stop.id, Number(event.target.value))}>{durationOptions.map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}</select>{days.length > 1 && <select aria-label={`Déplacer ${stop.name} vers une journée`} disabled={busy} value="" onChange={(event) => { if (event.target.value) onMove(stop.id, event.target.value, days.find((item) => item.id === event.target.value)?.stops.length ?? 0) }}><option value="">Vers…</option>{days.filter((item) => item.id !== day.id).map((item) => <option key={item.id} value={item.id}>Jour {item.day_number}</option>)}</select>}</div>
-      <div className="trip-mobile-step-row" style={{ transform: `translateX(${swipeOffset?.stopId === stop.id ? swipeOffset.offset : deleteRevealedStopId === stop.id ? 86 : moreRevealedStopId === stop.id ? -132 : 0}px)` }}>
+      <div className="trip-mobile-swipe-more"><select aria-label={`Envoyer ${stop.name} vers`} disabled={busy} value="" onChange={(event) => { const [kind, id] = event.target.value.split(':'); if (kind === 'day') onMove(stop.id, id, days.find((item) => item.id === id)?.stops.length ?? 0); if (kind === 'night') { const destination = nights.find((item) => item.previousDayId === id); if (destination) onMoveToNight(stop, destination) } }}><option value="">Envoyer vers…</option><optgroup label="Jours">{days.filter((item) => item.id !== day.id).map((item) => <option key={item.id} value={`day:${item.id}`}>Jour {item.day_number}</option>)}</optgroup><optgroup label="Nuits">{nights.map((item) => <option key={item.previousDayId} value={`night:${item.previousDayId}`}>{item.label}</option>)}</optgroup></select><a href={googleMapsPointUrl(stop)} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${stop.name} dans Google Maps`} title="Ouvrir dans Google Maps" onClick={(event) => event.stopPropagation()}><ExternalLink size={17} /></a></div>
+      <div className="trip-mobile-step-row" role="button" tabIndex={0} aria-label={`Ouvrir ${stop.name}`} onClick={() => { if (!swipeMovedRef.current) onOpenStop(stop) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpenStop(stop) } }} style={{ transform: `translateX(${swipeOffset?.stopId === stop.id ? swipeOffset.offset : deleteRevealedStopId === stop.id ? 86 : moreRevealedStopId === stop.id ? -132 : 0}px)` }}>
         <span><button className="trip-mobile-drag-handle" type="button" aria-label={`Maintenir pour déplacer ${stop.name}`} title="Maintenir pour déplacer" disabled={busy} onPointerDown={(event) => beginTouchReorder(event, stop.id)} onPointerMove={(event) => { if (draggedStopId === stop.id) event.preventDefault() }} onPointerUp={(event) => finishTouchReorder(event, stop.id, index)} onPointerCancel={cancelTouchReorder}><GripVertical size={18} /></button><b>{index + 1}</b><MapPin className="trip-mobile-step-pin" aria-hidden="true" size={15} /><strong>{stop.name}</strong></span>
       </div>
     </li>)}</ul>}
@@ -1363,7 +1515,11 @@ function nightSourceLabel(sourceType: Trip['nights'][number]['source_type'] | un
 }
 
 function googleMapsAnchorUrl(anchor: NonNullable<Trip['departure']> | NonNullable<Trip['arrival']>) {
-  const query = `${anchor.latitude},${anchor.longitude}`
+  return googleMapsPointUrl(anchor)
+}
+
+function googleMapsPointUrl(point: Pick<TripStop, 'latitude' | 'longitude'>) {
+  const query = `${point.latitude},${point.longitude}`
   return `https://www.google.com/maps/search/?${new URLSearchParams({ api: '1', query }).toString()}`
 }
 

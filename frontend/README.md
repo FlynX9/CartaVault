@@ -54,6 +54,8 @@ Copy-Item .env.example .env
 
 Keep `.env` untracked. Leave `VITE_API_BASE_URL` empty for the local Vite proxy to `http://127.0.0.1:8000` unless a different API origin is intentionally configured.
 
+`npm run dev` listens on the local private network as well as `localhost`, so a phone on the same Wi-Fi can open `http://<PC-IP>:5173`. Keep the API URL empty: the browser then reaches the loopback-only backend through Vite's `/api` proxy.
+
 ## Application theme
 
 CartaVault supports light, dark, and system preferences. The selection is persisted per user and also applied before application rendering to avoid an obvious theme flash. Every panel, form, modal, popup, loading state, empty state, and error state must follow the active theme.

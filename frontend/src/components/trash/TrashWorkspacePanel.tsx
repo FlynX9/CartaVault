@@ -8,6 +8,7 @@ import { useConfirmDialog } from '../common/useConfirmDialog'
 import { useI18n } from '../../i18n/useI18n'
 import { SkeletonList } from '../common/Skeleton'
 import { EmptyState } from '../common/EmptyState'
+import { WorkspacePanelHeader } from '../layout/WorkspacePanelHeader'
 
 interface Props {
   collapsed?: boolean
@@ -75,18 +76,13 @@ export function TrashWorkspacePanel({ collapsed = false, onCollapsedChange = () 
   }
 
   return <aside id="workspace-trash-panel" className={`country-place-panel trash-workspace-panel cv-workspace-panel${collapsed ? ' is-collapsed' : ''}`} aria-labelledby="trash-panel-title" tabIndex={-1}>
-    <header className="cv-workspace-panel__header">
-      <div className="cv-workspace-panel__heading">
-        <p className="cv-workspace-panel__eyebrow">{t('trash.eyebrow')}</p>
-        <div className="cv-workspace-panel__title-row">
-          <h2 id="trash-panel-title" className="cv-workspace-panel__title">{t('trash.title')}</h2>
-          <span className="cv-workspace-panel__count">{items.length}</span>
-        </div>
-      </div>
-      <button className="panel-icon-button" type="button" aria-label={collapsed ? t('trash.expand') : t('trash.collapse')} onClick={() => onCollapsedChange(!collapsed)}>
-        {collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}
-      </button>
-    </header>
+    <WorkspacePanelHeader
+      eyebrow={t('trash.eyebrow')}
+      title={t('trash.title')}
+      titleId="trash-panel-title"
+      count={`${items.length} élément${items.length > 1 ? 's' : ''}`}
+      action={<button className="panel-icon-button workspace-panel-collapse-toggle" type="button" aria-label={collapsed ? t('trash.expand') : t('trash.collapse')} onClick={() => onCollapsedChange(!collapsed)}>{collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}</button>}
+    />
     {!collapsed && <div className="trash-workspace-content cv-workspace-panel__content">
       <div className="trash-filter" role="group" aria-label={t('trash.filter')}>
         {([['all', 'trash.filter.all'], ['map', 'trash.filter.map'], ['place', 'trash.filter.place'], ['trip', 'trash.filter.trip']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}>{t(label)}</button>)}

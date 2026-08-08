@@ -32,7 +32,10 @@ const deferred = <T,>() => {
 }
 
 describe('TripPlannerPanel', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(listTrips).mockResolvedValue([trip])
@@ -1374,5 +1377,43 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'Belgique', country: { iso_alpha2: 'BE' }, effective_center_latitude: 50.5, effective_center_longitude: 4.5, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(screen.queryByRole('button', { name: /Lieu libre/ })).not.toBeInTheDocument()
     expect(document.querySelector('.trip-panel-free-stop')).not.toBeInTheDocument()
+  })
+
+  it('opens mobile stops and keeps swipe action menus interactive for days and nights', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const firstDay = { ...trip.days[0], stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: 'place-1', stop_type: 'place' as const, name: 'Musée', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const night = { id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Hôtel central', latitude: 48.5, longitude: 2.5, address: 'Paris', google_place_id: null, notes: null, check_in_time: null, check_out_time: null }
+    const mobileTrip = { ...trip, days: [firstDay, secondDay], nights: [night] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([mobileTrip])
+    vi.mocked(getTrip).mockResolvedValue(mobileTrip)
+    const onPreviewStopSelect = vi.fn()
+
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={mobileTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onPreviewStopSelect={onPreviewStopSelect} onClose={vi.fn()} />)
+
+    const stopRow = await screen.findByRole('button', { name: 'Ouvrir Musée' })
+    fireEvent.pointerDown(stopRow.closest('li')!, { pointerId: 1, clientX: 220, clientY: 120 })
+    fireEvent.pointerUp(stopRow.closest('li')!, { pointerId: 1, clientX: 220, clientY: 120 })
+    fireEvent.click(stopRow)
+    expect(onPreviewStopSelect).toHaveBeenCalledWith('stop-1')
+
+    const stopItem = stopRow.closest('li')!
+    fireEvent.pointerDown(stopItem, { pointerId: 2, clientX: 240, clientY: 120 })
+    fireEvent.pointerMove(stopItem, { pointerId: 2, clientX: 100, clientY: 122 })
+    fireEvent.pointerUp(stopItem, { pointerId: 2, clientX: 100, clientY: 122 })
+    expect(stopItem).toHaveClass('is-more-revealed')
+    fireEvent.change(within(stopItem).getByLabelText('Envoyer Musée vers'), { target: { value: 'day:day-2' } })
+    await waitFor(() => expect(moveTripStop).toHaveBeenCalledWith('stop-1', 'day-2', 0))
+
+    const nextButton = container.querySelector<HTMLButtonElement>('.trip-mobile-active-day button:last-child')!
+    fireEvent.click(nextButton)
+    const nightRow = await screen.findByRole('button', { name: 'Ouvrir Hôtel central' })
+    fireEvent.pointerDown(nightRow, { pointerId: 3, clientX: 240, clientY: 180 })
+    fireEvent.pointerMove(nightRow, { pointerId: 3, clientX: 100, clientY: 182 })
+    fireEvent.pointerUp(nightRow, { pointerId: 3, clientX: 100, clientY: 182 })
+    expect(nightRow).toHaveStyle({ transform: 'translateX(-132px)' })
+    expect(screen.getByRole('link', { name: 'Ouvrir Hôtel central dans Google Maps' })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Envoyer Hôtel central vers'), { target: { value: 'day:day-2' } })
+    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-2', expect.objectContaining({ name: 'Hôtel central' })))
   })
 })

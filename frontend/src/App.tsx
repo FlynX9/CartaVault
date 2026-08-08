@@ -558,7 +558,7 @@ function WorkspaceApp() {
   };
   const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true, openMobileDetail = false) => {
     setSelectedPlace(place);
-    setMobilePlaceDetailOpen(openMobileDetail && window.matchMedia('(max-width: 760px)').matches);
+    setMobilePlaceDetailOpen(openMobileDetail && window.matchMedia?.('(max-width: 760px)').matches === true);
     setWorkspacePanel(tripViewOnly ? null : "places");
     suppressedRouteFocusPlaceId.current = focusPlace ? null : place.id;
     navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
@@ -1071,7 +1071,7 @@ function WorkspaceApp() {
         }}
         onClose={closePopup}
       />
-    ) : tripViewOnly && selectedPreviewStop && selectedPreviewStop.place_id === null ? (
+    ) : selectedPreviewStop && selectedPreviewStop.place_id === null ? (
       <TripStopMapPopup stop={selectedPreviewStop} onClose={() => setTripPreviewStopId(null)} />
     ) : null;
   const workspaceContent = (
@@ -1215,7 +1215,7 @@ function WorkspaceApp() {
   const handleTripPlaceSelect = async (placeId: string, focusPlace = true) => {
     const visiblePlace = places.find((item) => item.id === placeId);
     if (visiblePlace) {
-      handleSelect(visiblePlace, false, focusPlace);
+      handleSelect(visiblePlace, false, focusPlace, true);
       return;
     }
     try {
@@ -1243,7 +1243,7 @@ function WorkspaceApp() {
           ? current
           : [...current, marker],
       );
-      handleSelect(marker, false, focusPlace);
+      handleSelect(marker, false, focusPlace, true);
     } catch (caught) {
       showTripNotice(
         caught instanceof Error
@@ -1433,7 +1433,7 @@ function WorkspaceApp() {
   };
 
   const toggleTripsFromNavigation = () => {
-    if (window.matchMedia('(max-width: 760px)').matches && tripPlannerOpen) {
+    if (window.matchMedia?.('(max-width: 760px)').matches === true && tripPlannerOpen) {
       setTripPlannerOpen(false);
       setTripPlannerCollapsed(false);
       setWorkspacePanel(null);
@@ -1515,7 +1515,7 @@ function WorkspaceApp() {
                     }
                   }}
                   onImportKmz={(mapId) => {
-                    if (window.matchMedia('(max-width: 760px)').matches) return;
+                    if (window.matchMedia?.('(max-width: 760px)').matches === true) return;
                     const target = maps.find((map) => map.id === mapId);
                     if (
                       target?.can_import !== false &&
@@ -1591,7 +1591,14 @@ function WorkspaceApp() {
                   statuses={statuses}
                   focusRequest={focusRequest}
                   popupContent={popupContent}
-                  mobilePlaceDetailOpen={mobilePlaceDetailOpen && selectedPlaceId !== null && !editorOpen}
+                  mobilePlaceDetailOpen={
+                    (mobilePlaceDetailOpen && selectedPlaceId !== null && !editorOpen) ||
+                    (tripPlannerOpen && (
+                      selectedTripNight !== null ||
+                      selectedTripAnchor !== null ||
+                      (selectedPreviewStop !== null && selectedPreviewStop.place_id === null)
+                    ))
+                  }
                   activeCountryCode={activeMap?.country.iso_alpha2}
                   activeCountryId={activeMap?.country.id}
                   temporarySearchResult={temporarySearchResult}
