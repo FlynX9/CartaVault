@@ -1216,6 +1216,23 @@ function WorkspaceApp() {
       view: { center: [latitude, longitude], zoom: Math.max(mapView.zoom, 15) },
     });
   };
+  const changeTripViewOnly = (enabled: boolean) => {
+    if (enabled) closePopup();
+    setTripPreviewStopId(null);
+    if (!enabled) setTripPreviewSelectionKey(null);
+    setTripViewOnly(enabled);
+    setTripPlannerCollapsed(false);
+    setWorkspacePanel(enabled ? null : "places");
+    if (enabled) {
+      const tripBounds = getTripMapBounds(activeTrip);
+      if (tripBounds)
+        setFocusRequest({
+          id: ++focusSequence.current,
+          bounds: tripBounds,
+          maxZoom: 15,
+        });
+    }
+  };
   const handleTripPlaceSelect = async (placeId: string, focusPlace = true) => {
     const visiblePlace = places.find((item) => item.id === placeId);
     if (visiblePlace) {
@@ -1277,23 +1294,7 @@ function WorkspaceApp() {
           collapsed={tripPlannerCollapsed}
           createRequest={createTripRequest}
           onCollapsedChange={setTripPlannerCollapsed}
-          onTripViewOnlyChange={(enabled) => {
-            if (enabled) closePopup();
-            setTripPreviewStopId(null);
-            if (!enabled) setTripPreviewSelectionKey(null);
-            setTripViewOnly(enabled);
-            setTripPlannerCollapsed(false);
-            setWorkspacePanel(enabled ? null : "places");
-            if (enabled) {
-              const tripBounds = getTripMapBounds(activeTrip);
-              if (tripBounds)
-                setFocusRequest({
-                  id: ++focusSequence.current,
-                  bounds: tripBounds,
-                  maxZoom: 15,
-                });
-            }
-          }}
+          onTripViewOnlyChange={changeTripViewOnly}
           onDayVisibilityChange={(dayId, visible) =>
             setHiddenTripDayIds((current) => {
               const next = new Set(current);
@@ -1438,9 +1439,7 @@ function WorkspaceApp() {
 
   const toggleTripsFromNavigation = () => {
     if (window.matchMedia?.('(max-width: 760px)').matches === true && tripPlannerOpen) {
-      setTripPlannerOpen(false);
-      setTripPlannerCollapsed(false);
-      setWorkspacePanel(null);
+      changeTripViewOnly(!tripViewOnly);
       return;
     }
     openTrips();

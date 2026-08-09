@@ -482,7 +482,8 @@ describe('TripPlannerPanel', () => {
 
     expect(await screen.findByRole('heading', { name: 'Frise interactive du voyage' })).toHaveClass('visually-hidden')
     expect(screen.getByRole('button', { name: 'Départ : Gare' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveClass('is-active')
+    expect(screen.getByRole('button', { name: 'Départ : Gare' })).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
     expect(screen.getByRole('button', { name: 'Jour 1' }).closest('.trip-preview-day-group')).toHaveStyle({ '--trip-preview-color': firstDay.color, '--trip-preview-next-color': secondDay.color })
     expect(screen.getByRole('button', { name: 'Jour 2' }).closest('.trip-preview-day-group')).not.toHaveClass('is-active')
     expect(document.querySelectorAll('.trip-preview-day-label')).toHaveLength(2)
@@ -1156,11 +1157,11 @@ describe('TripPlannerPanel', () => {
 
     expect(await screen.findByRole('heading', { name: 'Résultat pour 1 journée' })).toBeVisible()
     expect(screen.getByText('Gain total : 38 km · 44 min')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Appliquer l’optimisation' })).toHaveClass('primary')
+    expect(screen.getByRole('button', { name: 'Accepter' })).toHaveClass('primary')
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(confirmTripOptimizations).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Appliquer l’optimisation' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Accepter' }))
     await waitFor(() => expect(confirmTripOptimizations).toHaveBeenCalledWith(trip.id, 'proposal-1'))
   })
 
@@ -1399,25 +1400,139 @@ describe('TripPlannerPanel', () => {
     expect(onPreviewStopSelect).toHaveBeenCalledWith('stop-1')
 
     const stopItem = stopRow.closest('li')!
+    fireEvent.pointerDown(stopItem, { pointerId: 10, pointerType: 'touch', clientX: 100, clientY: 120 })
+    fireEvent.pointerUp(stopItem, { pointerId: 10, pointerType: 'touch', clientX: 240, clientY: 122 })
+    expect(stopItem).toHaveClass('is-delete-revealed')
+    expect(screen.queryByRole('alertdialog', { name: 'Supprimer cette étape ?' })).not.toBeInTheDocument()
+    fireEvent.click(within(stopItem).getByRole('button', { name: 'Supprimer Musée' }))
+    const stopDeleteConfirmation = await screen.findByRole('alertdialog', { name: 'Supprimer cette étape ?' })
+    fireEvent.click(within(stopDeleteConfirmation).getByRole('button', { name: 'Annuler' }))
     fireEvent.pointerDown(stopItem, { pointerId: 2, pointerType: 'touch', clientX: 240, clientY: 120 })
     // Android may coalesce the whole gesture into pointerup under load. The
     // final coordinates must still reveal the action rail.
     fireEvent.pointerUp(stopItem, { pointerId: 2, pointerType: 'touch', clientX: 100, clientY: 122 })
     expect(stopItem).toHaveClass('is-more-revealed')
+    fireEvent.pointerDown(document.body, { pointerId: 20, pointerType: 'touch', clientX: 20, clientY: 20 })
+    expect(stopItem).not.toHaveClass('is-more-revealed')
+    expect(stopRow).toHaveStyle({ transform: 'translateX(0px)' })
+    fireEvent.pointerDown(stopItem, { pointerId: 21, pointerType: 'touch', clientX: 240, clientY: 120 })
+    fireEvent.pointerUp(stopItem, { pointerId: 21, pointerType: 'touch', clientX: 100, clientY: 122 })
     fireEvent.click(stopRow)
     expect(onPreviewStopSelect).toHaveBeenCalledTimes(1)
-    fireEvent.change(within(stopItem).getByLabelText('Envoyer Musée vers'), { target: { value: 'day:day-2' } })
+    fireEvent.click(within(stopItem).getByRole('button', { name: 'Déplacer Musée vers un autre jour' }))
+    const moveDialog = screen.getByRole('dialog', { name: 'Envoyer vers un jour' })
+    fireEvent.click(within(moveDialog).getByRole('button', { name: /Jour 2/ }))
     await waitFor(() => expect(moveTripStop).toHaveBeenCalledWith('stop-1', 'day-2', 0))
 
     const nextButton = container.querySelector<HTMLButtonElement>('.trip-mobile-active-day button:last-child')!
     fireEvent.click(nextButton)
     const nightRow = await screen.findByRole('button', { name: 'Ouvrir Hôtel central' })
+    fireEvent.pointerDown(nightRow, { pointerId: 32, pointerType: 'touch', clientX: 100, clientY: 180 })
+    fireEvent.pointerMove(nightRow, { pointerId: 32, pointerType: 'touch', clientX: 240, clientY: 182 })
+    fireEvent.pointerUp(nightRow, { pointerId: 32, pointerType: 'touch', clientX: 240, clientY: 182 })
+    expect(nightRow).toHaveStyle({ transform: 'translateX(38px)' })
+    expect(screen.queryByRole('alertdialog', { name: 'Supprimer le lieu de nuit ?' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer Hôtel central' }))
+    const nightDeleteConfirmation = await screen.findByRole('alertdialog', { name: 'Supprimer le lieu de nuit ?' })
+    fireEvent.click(within(nightDeleteConfirmation).getByRole('button', { name: 'Annuler' }))
     fireEvent.pointerDown(nightRow, { pointerId: 3, pointerType: 'touch', clientX: 240, clientY: 180 })
     fireEvent.pointerMove(nightRow, { pointerId: 3, pointerType: 'touch', clientX: 100, clientY: 182 })
     fireEvent.pointerUp(nightRow, { pointerId: 3, pointerType: 'touch', clientX: 100, clientY: 182 })
-    expect(nightRow).toHaveStyle({ transform: 'translateX(-132px)' })
+    expect(nightRow).toHaveStyle({ transform: 'translateX(-78px)' })
     expect(screen.getByRole('link', { name: 'Ouvrir Hôtel central dans Google Maps' })).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Envoyer Hôtel central vers'), { target: { value: 'day:day-2' } })
+    fireEvent.pointerDown(document.body, { pointerId: 30, pointerType: 'touch', clientX: 20, clientY: 20 })
+    expect(nightRow).toHaveStyle({ transform: 'translateX(0px)' })
+    fireEvent.pointerDown(nightRow, { pointerId: 31, pointerType: 'touch', clientX: 240, clientY: 180 })
+    fireEvent.pointerMove(nightRow, { pointerId: 31, pointerType: 'touch', clientX: 100, clientY: 182 })
+    fireEvent.pointerUp(nightRow, { pointerId: 31, pointerType: 'touch', clientX: 100, clientY: 182 })
+    fireEvent.click(screen.getByRole('button', { name: 'Déplacer Hôtel central' }))
+    const nightMoveDialog = screen.getByRole('dialog', { name: 'Envoyer vers' })
+    fireEvent.click(within(nightMoveDialog).getByRole('button', { name: /Jour 2/ }))
     await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-2', expect.objectContaining({ name: 'Hôtel central' })))
+  })
+
+  it('opens the trip picker from the mobile folder action', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    vi.mocked(listTrips).mockResolvedValue([trip])
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir une sortie' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Ouvrir une sortie' })).toBeInTheDocument()
+  })
+
+  it('uses the standard two-line CartaVault header for a trip on mobile', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'France', country: { name: 'France', iso_alpha2: 'FR' }, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const overview = await screen.findByRole('region', { name: 'Résumé de la sortie' })
+    const header = overview.querySelector('header')!
+    expect(within(header).getByRole('heading', { name: 'Sortie' })).toBeVisible()
+    expect(within(header).getByText('Voyage test')).toBeVisible()
+    expect(within(header).getByText('Brouillon')).toBeVisible()
+    expect(within(header).getByText('France')).toBeVisible()
+    expect(within(header).getByText('1 jour')).toBeVisible()
+    expect(header.querySelector('.trip-mobile-overview__icon')).not.toBeInTheDocument()
+    expect(overview.querySelector('.trip-mobile-overview__actions')).toBeInTheDocument()
+    const navigator = container.querySelector('.trip-planner-panel > .trip-mobile-active-day') as HTMLElement
+    expect(within(navigator).getByText('Départ')).toBeVisible()
+    expect(within(navigator).getByText('Glisser pour naviguer')).toBeVisible()
+    expect(within(navigator).getByText('Arrivée')).toBeVisible()
+
+    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'France', country: { name: 'France', iso_alpha2: 'FR' }, can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Chronologie' })).toBeVisible()
+    const closeTimeline = screen.getByRole('button', { name: 'Quitter la chronologie du voyage' })
+    expect(closeTimeline.querySelector('.lucide-x')).toBeInTheDocument()
+  })
+
+  it('offers trip creation without the desktop hint in the mobile empty state', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    vi.mocked(listTrips).mockResolvedValue([])
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'France', can_edit: true } as never} trip={null} activeDayId={null} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.queryByText('Créez un voyage puis ajoutez les POI depuis le panneau Lieux.')).not.toBeInTheDocument()
+    const emptyState = (await screen.findByText('Aucune sortie préparée')).closest('section')!
+    fireEvent.click(within(emptyState).getByRole('button', { name: 'Créer une sortie' }))
+    expect(await screen.findByRole('dialog', { name: 'Préparer une sortie' })).toBeVisible()
+  })
+
+  it('asks for confirmation before adding a day from the mobile action bar', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const addDayButton = await waitFor(() => container.querySelector<HTMLButtonElement>('.trip-mobile-day-actions__add'))
+    expect(addDayButton).not.toBeNull()
+    fireEvent.click(addDayButton!)
+    const confirmation = await screen.findByRole('alertdialog', { name: 'Ajouter une journée ?' })
+    expect(confirmation).toHaveClass('confirmation-dialog--positive')
+    expect(within(confirmation).getByRole('button', { name: 'Ajouter' })).toHaveClass('positive-button')
+    expect(addTripDay).not.toHaveBeenCalled()
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'Ajouter' }))
+
+    await waitFor(() => expect(addTripDay).toHaveBeenCalledWith('trip-1'))
+  })
+
+  it('reviews daily optimization metrics in a mobile confirmation dialog', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const stops = [0, 1].map((index) => ({ id: `mobile-opt-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
+    const optimizable = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([optimizable])
+    vi.mocked(getTrip).mockResolvedValue(optimizable)
+    const optimizationRequest = deferred<Awaited<ReturnType<typeof optimizeTripDay>>>()
+    vi.mocked(optimizeTripDay).mockReturnValueOnce(optimizationRequest.promise)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={optimizable} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const optimizeButton = await screen.findByRole('button', { name: 'Optimiser le jour' })
+    fireEvent.click(optimizeButton)
+    expect(optimizeButton).toHaveAttribute('aria-busy', 'true')
+    expect(optimizeButton.querySelector('.trip-action-spinner')).toBeInTheDocument()
+    await act(async () => optimizationRequest.resolve({ proposal_id: 'mobile-day-proposal', day_id: 'day-1', day_number: 1, manual_stop_ids: ['mobile-opt-0', 'mobile-opt-1'], optimized_stop_ids: ['mobile-opt-1', 'mobile-opt-0'], before: 7_200, after: 5_400, gain: 1_800, metric: 'duration', before_distance_meters: 120_000, after_distance_meters: 90_000, distance_gain_meters: 30_000, before_duration_seconds: 7_200, after_duration_seconds: 5_400, duration_gain_seconds: 1_800 }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Résultat du jour 1' })
+    expect(dialog).toBeVisible()
+    expect(within(dialog).getByText('Distance : 30 km')).toBeVisible()
+    expect(within(dialog).getByText('Conduite : 30 min')).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'Refuser' })).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'Accepter' })).toBeVisible()
   })
 })

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowUpDown,
   Check,
+  ChevronDown,
   Download,
   ExternalLink,
   Filter,
@@ -148,6 +150,8 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [details, setDetails] = useState<MediaItem | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false)
   const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
@@ -204,16 +208,28 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Suppression groupée impossible.') }
   }
 
-  return <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? ' is-collapsed' : ''}`} aria-label="Médiathèque" tabIndex={-1}>
+  return <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? ' is-collapsed' : ''}${mobileFiltersOpen ? ' mobile-filters-open' : ''}`} aria-label="Médiathèque" tabIndex={-1}>
     <header className="cv-workspace-panel__header">
       <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Bibliothèque</p><h1 className="cv-workspace-panel__title">{t.title}</h1></div>
-      <div className="cv-workspace-panel__header-actions"><span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span><button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}</button></div>
+      <div className="cv-workspace-panel__header-actions">
+        <span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span>
+        <button type="button" className={`panel-icon-button media-mobile-filters-toggle${mobileFiltersOpen ? ' active' : ''}`} aria-label={mobileFiltersOpen ? 'Masquer les filtres' : 'Afficher les filtres'} title={mobileFiltersOpen ? 'Masquer les filtres' : 'Afficher les filtres'} aria-expanded={mobileFiltersOpen} onClick={() => setMobileFiltersOpen((value) => !value)}><Filter size={17} /></button>
+        <button type="button" className="panel-icon-button media-mobile-view-toggle" aria-label={viewMode === 'grid' ? 'Afficher en liste' : 'Afficher en galerie'} title={viewMode === 'grid' ? 'Afficher en liste' : 'Afficher en galerie'} onClick={() => setViewMode((current) => current === 'grid' ? 'list' : 'grid')}>
+          {viewMode === 'grid' ? <List size={18} /> : <Grid2X2 size={17} />}
+        </button>
+        <button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}</button>
+      </div>
     </header>
     <div className="media-toolbar">
       <label className="media-search"><Search size={17} /><input value={query.query} onChange={(event) => change('query', event.target.value)} placeholder={t.search} /></label>
+      {data && mobileFiltersOpen && <div className="media-aggregates media-aggregates--mobile-filters" aria-label="Résumé du stockage">
+        <span><i><ImageIcon size={19} /></i><b>{data.aggregates.total_count}<small>fichiers</small></b></span>
+        <span><i className="primary"><Star size={19} fill="currentColor" /></i><b>{data.aggregates.primary_count}<small>principales</small></b></span>
+        <span><i className="warning"><AlertTriangle size={19} /></i><b>{data.aggregates.missing_count + data.aggregates.error_count}<small>à vérifier</small></b></span>
+      </div>}
       <div className="media-toolbar__actions">
-      <details className="media-filters">
-        <summary><Filter size={16} />{t.filters}</summary>
+      <details className="media-filters" open={advancedFiltersOpen} onToggle={(event) => setAdvancedFiltersOpen((event.currentTarget as HTMLDetailsElement).open)}>
+        <summary><Filter size={16} />{t.filters}<ChevronDown className="media-filters__chevron" size={15} aria-hidden="true" /></summary>
         <div>
           <label>Carte<select value={query.mapId} onChange={(event) => change('mapId', event.target.value)}><option value="">Toutes</option>{data?.filters.maps.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>Pays<select value={query.countryCode} onChange={(event) => change('countryCode', event.target.value)}><option value="">Tous</option>{countryOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
@@ -229,18 +245,13 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
           <label>Hauteur min. (px)<input type="number" min="1" value={query.minHeight} onChange={(event) => change('minHeight', event.target.value)} /></label>
         </div>
       </details>
-      <label className="media-sort">Trier<select value={query.sortBy} onChange={(event) => change('sortBy', event.target.value as MediaQuery['sortBy'])}><option value="created_at">Ajout récent</option><option value="name">Nom</option><option value="place">Lieu</option><option value="map">Carte</option><option value="size">Taille</option></select></label>
+      <label className="media-sort"><ArrowUpDown size={16} aria-hidden="true" /><span className="sr-only">Trier</span><select aria-label="Trier les médias" value={query.sortBy} onChange={(event) => change('sortBy', event.target.value as MediaQuery['sortBy'])}><option value="created_at">Ajout récent</option><option value="name">Nom</option><option value="place">Lieu</option><option value="map">Carte</option><option value="size">Taille</option></select><ChevronDown className="media-sort__chevron" size={15} aria-hidden="true" /></label>
       <div className="media-view-switch" role="group" aria-label="Mode d’affichage">
         <button type="button" className={viewMode === 'grid' ? 'active' : ''} aria-label="Affichage en grille" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Grid2X2 size={17} /></button>
         <button type="button" className={viewMode === 'list' ? 'active' : ''} aria-label="Affichage en liste" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><List size={18} /></button>
       </div>
       </div>
     </div>
-    {data && <div className="media-aggregates" aria-label="Résumé du stockage">
-      <span><i><ImageIcon size={19} /></i><b>{data.aggregates.total_count}<small>fichiers</small></b></span>
-      <span><i className="primary"><Star size={19} fill="currentColor" /></i><b>{data.aggregates.primary_count}<small>principales</small></b></span>
-      <span><i className="warning"><AlertTriangle size={19} /></i><b>{data.aggregates.missing_count + data.aggregates.error_count}<small>à vérifier</small></b></span>
-    </div>}
     {error && <div className="form-alert" role="alert">{error}<button type="button" onClick={reload}>Réessayer</button></div>}
     {loading && <p className="media-state" role="status">{t.loading}</p>}
     {!loading && data?.items.length === 0 && <p className="media-state">{t.empty}</p>}

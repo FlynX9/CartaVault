@@ -38,6 +38,7 @@ class TripCreate(BaseModel):
     description: str | None = Field(default=None, max_length=10_000)
     start_date: DateValue | None = None
     routing_profile: str = Field(default="driving", pattern="^(driving|walking|cycling)$")
+    stay_in_country: bool = False
 
     @model_validator(mode="after")
     def dates(self) -> Self:
@@ -53,6 +54,7 @@ class TripUpdate(BaseModel):
     end_date: DateValue | None = None
     status: TripStatus | None = None
     routing_profile: str | None = Field(default=None, pattern="^(driving|walking|cycling)$")
+    stay_in_country: bool | None = None
 
     @model_validator(mode="after")
     def values(self) -> Self:
@@ -317,7 +319,7 @@ class DayRead(ORMRead):
 
 class TripRead(ORMRead):
     id: UUID; map_id: UUID; created_by_user_id: UUID; name: str; description: str | None; start_date: DateValue | None; end_date: DateValue | None
-    status: str; routing_profile: str; created_at: datetime; updated_at: datetime; completed_at: datetime | None; archived_at: datetime | None
+    status: str; routing_profile: str; stay_in_country: bool; created_at: datetime; updated_at: datetime; completed_at: datetime | None; archived_at: datetime | None
     low_load_max_minutes: int; medium_load_max_minutes: int; low_load_color: str; medium_load_color: str; high_load_color: str
     days: list[DayRead] = Field(default_factory=list); nights: list[NightRead] = Field(default_factory=list); departure: DepartureRead | None = None; arrival: ArrivalRead | None = None
 

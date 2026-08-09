@@ -156,6 +156,21 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
+  it('opens the timeline when the active Sorties navigation is tapped again on mobile', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === '(max-width: 760px)', media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+
+    const tripsNavigation = await screen.findByRole('button', { name: 'Sorties' })
+    fireEvent.click(tripsNavigation)
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+
+    fireEvent.click(tripsNavigation)
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
+
+    fireEvent.click(tripsNavigation)
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+  })
+
   it('opens linked and free stop cards from the trip timeline without changing its fitted map view', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))

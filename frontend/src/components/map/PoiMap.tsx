@@ -263,10 +263,11 @@ function tripDayEnd(trip: Trip, day: TripDay, dayIndex: number) {
 
 function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, selectedTimelineKey, showAllDays, hiddenDayIds }: { trip: Trip; activeDayId: string | null; activeNightTarget: TripNightTarget | null; selectedStopId: string | null; selectedTimelineKey: string | null; showAllDays: boolean; hiddenDayIds: ReadonlySet<string> }) {
   const visibleDays = trip.days.filter((day) => !hiddenDayIds.has(day.id))
-  const hasSelectedStop = selectedStopId !== null && visibleDays.some((day) => day.stops.some((stop) => stop.id === selectedStopId))
+  const highlightedStopId = selectedTimelineKey?.startsWith('stop:') ? selectedTimelineKey.slice(5) : selectedStopId
+  const hasSelectedStop = highlightedStopId !== null && visibleDays.some((day) => day.stops.some((stop) => stop.id === highlightedStopId))
   const activeDayIds = new Set<string>()
   if (hasSelectedStop) {
-    const selectedDay = visibleDays.find((day) => day.stops.some((stop) => stop.id === selectedStopId))
+    const selectedDay = visibleDays.find((day) => day.stops.some((stop) => stop.id === highlightedStopId))
     if (selectedDay) activeDayIds.add(selectedDay.id)
   } else if (activeNightTarget?.nightId) {
     activeDayIds.add(activeNightTarget.previousDayId)
@@ -275,7 +276,7 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
 
   const endpointDayIds = new Set<string>()
   if (hasSelectedStop) {
-    const selectedDay = visibleDays.find((day) => day.stops.some((stop) => stop.id === selectedStopId))
+    const selectedDay = visibleDays.find((day) => day.stops.some((stop) => stop.id === highlightedStopId))
     if (selectedDay) endpointDayIds.add(selectedDay.id)
   } else if (activeNightTarget?.nightId) {
     endpointDayIds.add(activeNightTarget.nextDayId)
@@ -317,12 +318,12 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
     {visibleDays.map((day) => {
       const dayIndex = trip.days.findIndex((item) => item.id === day.id)
       const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]
-      const containsSelectedStop = day.stops.some((stop) => stop.id === selectedStopId)
+      const containsSelectedStop = day.stops.some((stop) => stop.id === highlightedStopId)
       const active = hasSelectedStop ? containsSelectedStop : activeNightTarget?.nightId ? activeDayIds.has(day.id) : activeDayId === null || day.id === activeDayId
       return <Fragment key={day.id}>
         {day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 6 : 3, opacity: active ? .95 : inactiveOpacity }} />}
         {day.stops.map((stop, index) => {
-          const selected = stop.id === selectedStopId
+          const selected = stop.id === highlightedStopId
           if (selected && stop.place_id) return <Marker key={stop.id} position={[stop.latitude, stop.longitude]} icon={getSelectedTripStopIcon(color, index + 1)} interactive={false} keyboard={false} />
           return <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={selected ? 14 : active ? 10 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: selected || active ? 1 : inactiveOpacity, weight: selected ? 5 : active ? 3 : 2 }}><Tooltip permanent direction="center" className={`trip-stop-number${selected ? ' trip-stop-number--selected' : ''}`}>{index + 1}</Tooltip></CircleMarker>
         })}

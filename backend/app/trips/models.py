@@ -38,6 +38,7 @@ class Trip(Base):
     end_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(24), nullable=False, server_default=text("'draft'"))
     routing_profile: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'driving'"))
+    stay_in_country: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     low_load_max_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("240"))
     medium_load_max_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("480"))
     low_load_color: Mapped[str] = mapped_column(String(7), nullable=False, server_default=text("'#0FA68A'"))

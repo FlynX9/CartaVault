@@ -48,8 +48,8 @@ def get_routing_provider(session: Session = Depends(get_db), user: User = Depend
         raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
 
 
-def _routing_constraints(user: User) -> RoutingConstraints:
-    return RoutingConstraints(stay_in_country=routing_preferences(user.preferences)["stay_in_country"] is True)
+def _routing_constraints(trip: Trip) -> RoutingConstraints:
+    return RoutingConstraints(stay_in_country=trip.stay_in_country is True)
 
 
 @router.get("/routing/providers")
@@ -58,7 +58,7 @@ def routing_providers(session: Session = Depends(get_db), user: User = Depends(g
 
 
 def _day_constraint_summary(session: Session, user: User, day: TripDay) -> dict[str, object]:
-    constraints = _routing_constraints(user)
+    constraints = _routing_constraints(day.trip)
     if not constraints.stay_in_country:
         return {"country_constraint_enabled": False, "country_constraint_status": "not_applicable", "constraint_country_code": None, "constraint_country_name": None}
     try:
@@ -73,7 +73,7 @@ def _day_constraint_summary(session: Session, user: User, day: TripDay) -> dict[
 
 
 def _assert_export_routes(session: Session, user: User, trip: Trip) -> None:
-    if not _routing_constraints(user).stay_in_country:
+    if not _routing_constraints(trip).stay_in_country:
         return
     for day in trip.days:
         state = _day_constraint_summary(session, user, day)
@@ -282,7 +282,7 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
     if owner_id is None:
         raise HTTPException(404, "Map not found")
     quotas.ensure_can_create(owner_id, QuotaKey.TRIPS_TOTAL_MAX)
-    copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile, low_load_max_minutes=source.low_load_max_minutes, medium_load_max_minutes=source.medium_load_max_minutes, low_load_color=source.low_load_color, medium_load_color=source.medium_load_color, high_load_color=source.high_load_color)
+    copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile, stay_in_country=source.stay_in_country, low_load_max_minutes=source.low_load_max_minutes, medium_load_max_minutes=source.medium_load_max_minutes, low_load_color=source.low_load_color, medium_load_color=source.medium_load_color, high_load_color=source.high_load_color)
     session.add(copy); session.flush(); days: dict[UUID, TripDay] = {}
     quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=copy.id, increment=len(source.days))
     for item in source.days:
@@ -731,7 +731,7 @@ def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Dep
     _, access = require_day_role(session, day_id, user, "editor")
     trip = load_trip(session, access.trip.id)
     day = next(item for item in trip.days if item.id == day_id)
-    return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(user)))
+    return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(trip)))
 
 
 def _routing_failure(error: RoutingError) -> HTTPException:
@@ -969,7 +969,7 @@ def _apply_optimization_proposal(session: Session, user: User, trip: Trip, propo
             for index, stop_id in enumerate(UUID(str(item)) for item in stored["optimized_stop_ids"]):
                 lookup[stop_id].sort_order = index
             day.stops.sort(key=lambda item: item.sort_order)
-            apply_day_route_result(session, day, _route_from_payload(stored["route"]), provider.provider_id, _routing_constraints(user))
+            apply_day_route_result(session, day, _route_from_payload(stored["route"]), provider.provider_id, _routing_constraints(trip))
         session.commit()
     except Exception:
         session.rollback()
@@ -990,7 +990,7 @@ def trip_summary_endpoint(trip_id: UUID, session: Session = Depends(get_db), use
     require_trip_viewer(session, trip_id, user)
     trip = load_trip(session, trip_id)
     result = trip_summary(trip)
-    constraints = _routing_constraints(user)
+    constraints = _routing_constraints(trip)
     if constraints.stay_in_country and trip.days:
         status = _day_constraint_summary(session, user, trip.days[0])
         result.update({key: status[key] for key in ("country_constraint_enabled", "constraint_country_code", "constraint_country_name")})
@@ -1030,7 +1030,7 @@ def apply_place_statuses(trip_id: UUID, data: ApplyPlaceStatuses, session: Sessi
 def export_google(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_trip_viewer(session, trip_id, user); trip = load_trip(session, trip_id); _assert_export_routes(session, user, trip); links = google_maps_links(trip)
     warnings = ["Large days are split into several Google Maps links"] if len(links) > len(trip.days) else []
-    if _routing_constraints(user).stay_in_country: warnings.append("Google Maps peut choisir un itinéraire différent et ne garantit pas le respect de cette contrainte.")
+    if _routing_constraints(trip).stay_in_country: warnings.append("Google Maps peut choisir un itinéraire différent et ne garantit pas le respect de cette contrainte.")
     return {"links": links, "warnings": warnings}
 
 

@@ -6,6 +6,7 @@ interface ConfirmDialogOptions {
   title: string
   message: string
   confirmLabel?: string
+  variant?: 'danger' | 'positive'
 }
 
 export function useConfirmDialog() {

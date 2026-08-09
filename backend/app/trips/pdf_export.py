@@ -468,10 +468,7 @@ def _day_metrics(summary: dict, locale: str, styles: dict[str, ParagraphStyle]) 
         (t["distance"], _distance(summary["route_distance_meters"], t)),
         (t["driving"], _duration(summary["route_duration_minutes"], t)),
         (t["visits"], _duration(summary["visit_duration_minutes"], t)),
-        (t["buffer"], _duration(summary["buffer_duration_minutes"], t)),
-        (t["margin"], _duration(summary["safety_margin_minutes"], t)),
         (t["recommended_start"], _clock(summary["recommended_start_time"], summary["recommended_start_day_offset"], t)),
-        (t["estimated_arrival"], _clock(summary["estimated_arrival_time"], summary["estimated_arrival_day_offset"], t)),
         (t["total"], _duration(summary["total_duration_minutes"], t)),
     ]
     missing_label = "À recalculer" if locale == "fr" else "Recalculate"
