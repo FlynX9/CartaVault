@@ -18,6 +18,7 @@ import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
 import type { Trip, TripNightTarget } from '../types/trip'
 import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
+import { DESKTOP_PANEL_LAYOUT_MODE_EVENT, FloatingPanelWindow, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from '../components/layout/FloatingPanelWindow'
 import { useTheme } from '../theme/useTheme'
 import { useI18n } from '../i18n/useI18n'
 import type { MeasurementPoint } from '../components/map/measurement'
@@ -36,6 +37,12 @@ import { distanceBetweenPoints } from '../components/map/measurement'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
+const PLACES_WINDOW_KEY = 'cartavault:desktop-places-window'
+const TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window'
+const CUSTOM_TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window-custom'
+const PLACE_DETAIL_WINDOW_KEY = 'cartavault:desktop-place-detail-window-v2'
+const PLACE_EDITOR_WINDOW_KEY = 'cartavault:desktop-place-editor-window'
+const PANEL_LAYOUT_MODE_KEY = 'cartavault:desktop-panel-layout-mode'
 const TRIP_PANEL_MIN_WIDTH = 640
 const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
@@ -59,6 +66,41 @@ function savePanelWidth(key: string, width: number): void {
   try { window.localStorage.setItem(key, String(Math.round(width))) } catch { /* Storage may be unavailable in private contexts. */ }
 }
 
+function defaultFloatingPanelLayout(width: number, height: number) {
+  const margin = 12
+  const gap = 8
+  const usableWidth = Math.max(740, width - margin * 2 - gap)
+  const combinedWidth = Math.min(usableWidth, Math.max(740, Math.round(width * .91)))
+  const placesWidth = Math.min(720, Math.round(combinedWidth * .49))
+  const tripsWidth = Math.min(900, combinedWidth - placesWidth)
+  const panelHeight = Math.max(360, height - margin * 2)
+  return {
+    places: { x: margin, y: margin, width: placesWidth, height: panelHeight },
+    trips: { x: margin + placesWidth + gap, y: margin, width: tripsWidth, height: panelHeight },
+  }
+}
+
+function defaultPlaceDetailGeometry(width: number, height: number) {
+  const margin = 12
+  const panelWidth = Math.min(672, Math.max(360, Math.round(width * .42)))
+  const panelHeight = Math.min(620, Math.max(420, height - margin * 2))
+  return { x: Math.max(margin, width - panelWidth - margin), y: margin, width: panelWidth, height: panelHeight }
+}
+
+function defaultPlaceEditorGeometry(width: number, height: number) {
+  const margin = 12
+  const panelWidth = Math.min(560, Math.max(380, Math.round(width * .38)))
+  return { x: Math.max(margin, width - panelWidth - margin), y: margin, width: panelWidth, height: Math.max(360, height - margin * 2) }
+}
+
+function readFloatingPanelGeometry(key: string) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? '') as { x?: number; y?: number; width?: number; height?: number }
+    if ([value.x, value.y, value.width, value.height].every(Number.isFinite)) return value as { x: number; y: number; width: number; height: number }
+  } catch { /* Missing or invalid layout falls back to the responsive default. */ }
+  return null
+}
+
 function loadCountryMaskPreference(): boolean {
   try { return window.localStorage.getItem(COUNTRY_MASK_PREFERENCE_KEY) !== 'false' } catch { return true }
 }
@@ -79,6 +121,10 @@ interface MapPageProps {
   sidebarResizable?: boolean
   tripPlanningActive?: boolean
   tripPlannerCollapsed?: boolean
+  placesPanelCollapsed?: boolean
+  workspacePanelCollapsed?: boolean
+  workspacePanelCanFillWidth?: boolean
+  workspacePanelId?: string
   placeCreationActive?: boolean
   placeListOpen: boolean
   statuses: PlaceStatusSummary[]
@@ -132,6 +178,10 @@ export function MapPage({
   sidebarResizable = false,
   tripPlanningActive = false,
   tripPlannerCollapsed = false,
+  placesPanelCollapsed = false,
+  workspacePanelCollapsed = placesPanelCollapsed,
+  workspacePanelCanFillWidth = false,
+  workspacePanelId = 'places',
   placeCreationActive = false,
   placeListOpen,
   statuses,
@@ -197,6 +247,10 @@ export function MapPage({
   const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
+  const [floatingPanelResetVersion, setFloatingPanelResetVersion] = useState(0)
+  const [activeFloatingPanel, setActiveFloatingPanel] = useState<'workspace' | 'trips' | 'detail' | 'editor'>(() => tripPlanningActive ? 'trips' : 'workspace')
+  const [defaultLayoutActive, setDefaultLayoutActive] = useState(() => window.localStorage.getItem(PANEL_LAYOUT_MODE_KEY) === 'default')
+  const defaultLayoutActiveRef = useRef(defaultLayoutActive)
   const [measurementActive, setMeasurementActive] = useState(false)
   const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([])
   const [internalToolMode, setInternalToolMode] = useState<InternalMapToolMode>('navigation')
@@ -229,6 +283,58 @@ export function MapPage({
     nights: trip.nights ?? [],
     days: (trip.days ?? []).map((day) => ({ ...day, stops: day.stops ?? [] })),
   }, [trip])
+  const initialFloatingLayoutRef = useRef(defaultFloatingPanelLayout(window.innerWidth - 76, window.innerHeight - 76))
+  const initialDetailGeometryRef = useRef(defaultPlaceDetailGeometry(window.innerWidth - 76, window.innerHeight - 76))
+  const initialEditorGeometryRef = useRef(defaultPlaceEditorGeometry(window.innerWidth - 76, window.innerHeight - 76))
+  const [placesWindowInitialGeometry, setPlacesWindowInitialGeometry] = useState(initialFloatingLayoutRef.current.places)
+  const [tripsWindowInitialGeometry, setTripsWindowInitialGeometry] = useState(initialFloatingLayoutRef.current.trips)
+  const [detailWindowInitialGeometry, setDetailWindowInitialGeometry] = useState(initialDetailGeometryRef.current)
+  const [editorWindowInitialGeometry, setEditorWindowInitialGeometry] = useState(initialEditorGeometryRef.current)
+  const workspaceRef = useRef<HTMLElement>(null)
+  const workspaceWindowKey = workspacePanelId === 'places' ? PLACES_WINDOW_KEY : `cartavault:desktop-workspace-window:${workspacePanelId}`
+  const customWorkspaceWindowKey = `${workspaceWindowKey}-custom`
+
+  useEffect(() => {
+    const reset = () => {
+      const owner = workspaceRef.current
+      const width = owner?.clientWidth ?? window.innerWidth - 76
+      const height = owner?.clientHeight ?? window.innerHeight - 76
+      const layout = defaultFloatingPanelLayout(width, height)
+      const detailLayout = defaultPlaceDetailGeometry(width, height)
+      const editorLayout = defaultPlaceEditorGeometry(width, height)
+      if (!defaultLayoutActiveRef.current) {
+        const currentPlaces = readFloatingPanelGeometry(workspaceWindowKey)
+        const currentTrips = readFloatingPanelGeometry(TRIPS_WINDOW_KEY)
+        const currentDetail = readFloatingPanelGeometry(PLACE_DETAIL_WINDOW_KEY)
+        const currentEditor = readFloatingPanelGeometry(PLACE_EDITOR_WINDOW_KEY)
+        if (currentPlaces) window.localStorage.setItem(customWorkspaceWindowKey, JSON.stringify(currentPlaces))
+        if (currentTrips) window.localStorage.setItem(CUSTOM_TRIPS_WINDOW_KEY, JSON.stringify(currentTrips))
+        if (currentDetail) window.localStorage.setItem(`${PLACE_DETAIL_WINDOW_KEY}-custom`, JSON.stringify(currentDetail))
+        if (currentEditor) window.localStorage.setItem(`${PLACE_EDITOR_WINDOW_KEY}-custom`, JSON.stringify(currentEditor))
+        setPlacesWindowInitialGeometry(layout.places)
+        setTripsWindowInitialGeometry(layout.trips)
+        setDetailWindowInitialGeometry(detailLayout)
+        setEditorWindowInitialGeometry(editorLayout)
+        defaultLayoutActiveRef.current = true
+        setDefaultLayoutActive(true)
+        window.localStorage.setItem(PANEL_LAYOUT_MODE_KEY, 'default')
+        window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode: 'default' } }))
+      } else {
+        setPlacesWindowInitialGeometry(readFloatingPanelGeometry(customWorkspaceWindowKey) ?? readFloatingPanelGeometry(workspaceWindowKey) ?? layout.places)
+        setTripsWindowInitialGeometry(readFloatingPanelGeometry(CUSTOM_TRIPS_WINDOW_KEY) ?? layout.trips)
+        setDetailWindowInitialGeometry(readFloatingPanelGeometry(`${PLACE_DETAIL_WINDOW_KEY}-custom`) ?? readFloatingPanelGeometry(PLACE_DETAIL_WINDOW_KEY) ?? detailLayout)
+        setEditorWindowInitialGeometry(readFloatingPanelGeometry(`${PLACE_EDITOR_WINDOW_KEY}-custom`) ?? readFloatingPanelGeometry(PLACE_EDITOR_WINDOW_KEY) ?? editorLayout)
+        defaultLayoutActiveRef.current = false
+        setDefaultLayoutActive(false)
+        window.localStorage.setItem(PANEL_LAYOUT_MODE_KEY, 'custom')
+        window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode: 'custom' } }))
+      }
+      setActiveFloatingPanel('trips')
+      setFloatingPanelResetVersion((version) => version + 1)
+    }
+    window.addEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, reset)
+    return () => window.removeEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, reset)
+  }, [customWorkspaceWindowKey, workspaceWindowKey])
 
   useEffect(() => {
     let current = true
@@ -486,11 +592,13 @@ export function MapPage({
   }
   return (
     <section
-      className={`map-workspace${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}${tripPlannerCollapsed ? ' trip-planner-collapsed' : ''}${mobilePlaceDetailOpen ? ' mobile-place-detail-open' : ''}`}
+      ref={workspaceRef}
+      className={`map-workspace${placeListOpen || tripPlanningActive ? ' desktop-floating-panels' : ''}${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}${tripPlannerCollapsed ? ' trip-planner-collapsed' : ''}${mobilePlaceDetailOpen ? ' mobile-place-detail-open' : ''}`}
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
-      <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
-      {placeListOpen && <PanelResizeHandle side="left" width={leftPanelWidth} onResize={setLeftPanelWidth} onResizeCommit={(width) => savePanelWidth(LEFT_PANEL_WIDTH_KEY, width)} />}
+      {placeListOpen ? <FloatingPanelWindow key={workspaceWindowKey} kind="workspace" label="Panneau de navigation" storageKey={workspaceWindowKey} initialGeometry={placesWindowInitialGeometry} minWidth={320} maxWidth={workspacePanelCanFillWidth || workspacePanelId === 'places' ? Number.POSITIVE_INFINITY : 720} collapsed={workspacePanelCollapsed} locked={defaultLayoutActive} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'workspace'} onActivate={() => setActiveFloatingPanel('workspace')} onGeometryCommit={(next) => { setLeftPanelWidth(next.width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, next.width) }}>
+        <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
+      </FloatingPanelWindow> : <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>}
       <div ref={mapLayoutRef} className="map-layout" aria-label="Carte des points d'intérêt">
         <PoiMap
           places={places}
@@ -539,9 +647,13 @@ export function MapPage({
           onAnnotationDrawingComplete={(points) => void finishAnnotationDrawing(points)}
         />
         {popupContent && !mobilePlaceDetailOpen && (
-          <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
+          defaultLayoutActive ? <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
             {popupContent}
-          </aside>
+          </aside> : <FloatingPanelWindow key={PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={PLACE_DETAIL_WINDOW_KEY} initialGeometry={detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector=".place-map-popup" fitContentMaxHeight={720} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} onActivate={() => setActiveFloatingPanel('detail')}>
+            <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
+              {popupContent}
+            </aside>
+          </FloatingPanelWindow>
         )}
         {contextMenu && <MapContextMenu state={contextMenu} canCreate={canEdit} tripDays={onTripCoordinateAdd ? trip?.days.map((day) => ({ id: day.id, label: `Jour ${day.day_number}${day.title ? ` · ${day.title}` : ''}` })) : []} onAddToTripDay={onTripCoordinateAdd ? (dayId) => { const { latitude, longitude } = contextMenu; setContextMenu(null); onTripCoordinateAdd(dayId, latitude, longitude) } : undefined} onClose={() => setContextMenu(null)} onCreate={() => { const { latitude, longitude } = contextMenu; setContextMenu(null); onCreateFromCoordinates(latitude, longitude) }} onCopy={() => { void navigator.clipboard?.writeText(`${contextMenu.latitude.toFixed(6)}, ${contextMenu.longitude.toFixed(6)}`).then(() => setContextNotice('Coordonnées copiées')).catch(() => setContextNotice('Copie indisponible')); setContextMenu(null) }} />}
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
@@ -638,8 +750,8 @@ export function MapPage({
         )}
 
       </div>
-      {sidebar}
-      {sidebarOpen && sidebarResizable && !tripViewOnly && <PanelResizeHandle side="right" growDirection={tripPlanningActive ? 'right' : undefined} width={rightPanelWidth} minWidth={tripPlanningActive ? TRIP_PANEL_MIN_WIDTH : undefined} maxWidth={tripPlanningActive ? TRIP_PANEL_MAX_WIDTH : undefined} reservedWidth={tripPlanningActive ? 352 : undefined} panelSelector={tripPlanningActive ? '.trip-planner-panel' : undefined} boundarySelector={tripPlanningActive ? '.map-place-detail-overlay' : undefined} gapReferenceSelector={tripPlanningActive ? '.country-place-panel' : undefined} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
+      {tripPlanningActive ? <FloatingPanelWindow kind="trips" label="Panneau Sortie" storageKey={TRIPS_WINDOW_KEY} initialGeometry={tripsWindowInitialGeometry} minWidth={420} collapsed={tripPlannerCollapsed} locked={defaultLayoutActive} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'trips'} hidden={!sidebarOpen} onActivate={() => setActiveFloatingPanel('trips')} onGeometryCommit={(next) => { setRightPanelWidth(next.width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, next.width) }}>{sidebar}</FloatingPanelWindow> : sidebarOpen ? defaultLayoutActive ? sidebar : <FloatingPanelWindow kind="editor" label="Éditeur du lieu" storageKey={PLACE_EDITOR_WINDOW_KEY} initialGeometry={editorWindowInitialGeometry} minWidth={380} minHeight={360} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'editor'} onActivate={() => setActiveFloatingPanel('editor')}>{sidebar}</FloatingPanelWindow> : sidebar}
+      {sidebarOpen && sidebarResizable && !tripPlanningActive && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
       {popupContent && mobilePlaceDetailOpen && typeof document !== 'undefined' && createPortal(
         <div className="mobile-place-detail-layer">
           <aside className="map-place-detail-overlay map-place-detail-overlay--mobile" aria-label="Détails du lieu sélectionné">

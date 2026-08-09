@@ -422,7 +422,7 @@ describe('TripPlannerPanel', () => {
     expect(viewButton).toHaveAttribute('title', 'Chronologie du voyage')
     expect(viewButton.querySelector('.tabler-icon-timeline-event')).toBeInTheDocument()
     const collapseButton = screen.getByRole('button', { name: 'Réduire le panneau Sortie' })
-    expect(collapseButton.querySelector('.tabler-icon-minimize')).toBeInTheDocument()
+    expect(collapseButton.querySelector('.lucide-minus')).toBeInTheDocument()
     expect(viewButton.compareDocumentPosition(collapseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     fireEvent.click(viewButton)
     expect(onTripViewOnlyChange).toHaveBeenCalledWith(true)

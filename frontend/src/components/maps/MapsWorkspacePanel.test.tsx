@@ -54,7 +54,7 @@ describe('MapsWorkspacePanel', () => {
 
     expect(document.getElementById('workspace-maps-panel')).toHaveClass('is-collapsed')
     const maximize = screen.getByRole('button', { name: 'Agrandir le panneau' })
-    expect(maximize.querySelector('.tabler-icon-maximize')).toBeInTheDocument()
+    expect(maximize.querySelector('.lucide-plus')).toBeInTheDocument()
     fireEvent.click(maximize)
 
     expect(onCollapsedChange).toHaveBeenCalledWith(false)

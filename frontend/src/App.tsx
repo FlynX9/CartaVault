@@ -23,6 +23,7 @@ import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
 import { getStatuses } from "./api/statuses";
 import { addTripArrival, addTripDeparture, addTripNight, addTripStop, deleteTripArrival, deleteTripDeparture, getTrip, restoreTripState, setTripAnchorPlace, updateTripArrival, updateTripDeparture, updateTripNight } from "./api/trips";
 import { TopBar } from "./components/layout/TopBar";
+import { RESET_DESKTOP_PANEL_LAYOUT_EVENT } from "./components/layout/FloatingPanelWindow";
 import {
   MainNavigation,
   type WorkspacePanel,
@@ -240,6 +241,26 @@ function WorkspaceApp() {
   const [membersMap, setMembersMap] = useState<PoiMap | null>(null);
   const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
   const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false);
+  useEffect(() => {
+    const toggleDefaultPanelLayout = () => {
+      const enteringDefault = window.localStorage.getItem("cartavault:desktop-panel-layout-mode") !== "default";
+      if (enteringDefault) {
+        window.localStorage.setItem("cartavault:desktop-custom-collapsed-panels", JSON.stringify({ places: placesPanelCollapsed, workspace: collapsedWorkspacePanel, trip: tripPlannerCollapsed }));
+        setPlacesPanelCollapsed(false);
+        setCollapsedWorkspacePanel(null);
+        setTripPlannerCollapsed(false);
+        return;
+      }
+      try {
+        const saved = JSON.parse(window.localStorage.getItem("cartavault:desktop-custom-collapsed-panels") ?? "null") as { places?: boolean; workspace?: Exclude<WorkspacePanel, "places" | null> | null; trip?: boolean } | null;
+        setPlacesPanelCollapsed(saved?.places === true);
+        setCollapsedWorkspacePanel(saved?.workspace ?? null);
+        setTripPlannerCollapsed(saved?.trip === true);
+      } catch { /* Invalid saved state leaves panels expanded. */ }
+    };
+    window.addEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, toggleDefaultPanelLayout);
+    return () => window.removeEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, toggleDefaultPanelLayout);
+  }, [collapsedWorkspacePanel, placesPanelCollapsed, tripPlannerCollapsed]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [activeTripDayId, setActiveTripDayId] = useState<string | null>(null);
   const [activeTripNightTarget, setActiveTripNightTarget] =
@@ -1589,6 +1610,10 @@ function WorkspaceApp() {
                   sidebarResizable={tripPlannerOpen && !tripPlannerCollapsed}
                   tripPlanningActive={tripPlannerOpen}
                   tripPlannerCollapsed={tripPlannerCollapsed}
+                  placesPanelCollapsed={placesPanelCollapsed}
+                  workspacePanelCollapsed={workspacePanel === "places" ? placesPanelCollapsed : collapsedWorkspacePanel === workspacePanel}
+                  workspacePanelCanFillWidth={workspacePanel === "media"}
+                  workspacePanelId={workspacePanel ?? "places"}
                   placeCreationActive={sidebarState.mode === "create"}
                   placeListOpen={workspacePanel !== null}
                   statuses={statuses}

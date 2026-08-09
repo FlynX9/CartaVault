@@ -9,6 +9,7 @@ import {
   LayoutList,
   List,
   MapPinned,
+  Minus,
   Pencil,
   Plus,
   Search,
@@ -17,7 +18,6 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { IconMaximize, IconMinimize } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import {
   useCallback,
@@ -981,9 +981,9 @@ export function MapPlaceList({
             onClick={() => onCollapsedChange(!collapsed)}
           >
             {collapsed ? (
-              <IconMaximize size={18} aria-hidden="true" />
+              <Plus size={18} aria-hidden="true" />
             ) : (
-              <IconMinimize size={18} aria-hidden="true" />
+              <Minus size={18} aria-hidden="true" />
             )}
           </button>
         </div>

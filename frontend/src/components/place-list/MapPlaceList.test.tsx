@@ -63,7 +63,7 @@ describe('MapPlaceList', () => {
     const { container, rerender } = render(<MemoryRouter><MapPlaceList {...props} /></MemoryRouter>)
 
     const minimize = screen.getByRole('button', { name: 'Réduire le panneau Lieux' })
-    expect(minimize.querySelector('.tabler-icon-minimize')).toBeInTheDocument()
+    expect(minimize.querySelector('.lucide-minus')).toBeInTheDocument()
     fireEvent.click(minimize)
     expect(onCollapsedChange).toHaveBeenCalledWith(true)
 
@@ -73,7 +73,7 @@ describe('MapPlaceList', () => {
     expect(screen.getByText('0 lieu')).toBeVisible()
     expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-collapsed')
     const maximize = screen.getByRole('button', { name: 'Déployer le panneau Lieux' })
-    expect(maximize.querySelector('.tabler-icon-maximize')).toBeInTheDocument()
+    expect(maximize.querySelector('.lucide-plus')).toBeInTheDocument()
     fireEvent.click(maximize)
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Braces, ChevronDown, LogOut, Moon, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from 'lucide-react'
+import { Braces, ChevronDown, Lock, LockOpen, LogOut, Moon, PanelsTopLeft, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { accountAvatarUrl } from '../../api/account'
@@ -11,6 +11,7 @@ import { AccountModal } from '../account/AccountModal'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { ActionHistoryControls } from './ActionHistoryControls'
 import { clearActionHistory } from '../../ui/actionHistory'
+import { DESKTOP_PANEL_LAYOUT_MODE_EVENT, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from './FloatingPanelWindow'
 
 interface TopBarProps {
   isMapWorkspace: boolean
@@ -35,6 +36,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const [online, setOnline] = useState(() => navigator.onLine)
+  const [defaultPanelLayoutLocked, setDefaultPanelLayoutLocked] = useState(() => window.localStorage.getItem('cartavault:desktop-panel-layout-mode') === 'default')
   const trigger = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const avatar = accountAvatarUrl(user?.avatar_url ?? null)
@@ -78,6 +80,11 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
     window.addEventListener('online', update); window.addEventListener('offline', update)
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
   }, [])
+  useEffect(() => {
+    const updatePanelLayoutMode = (event: Event) => setDefaultPanelLayoutLocked((event as CustomEvent<{ mode: 'default' | 'custom' }>).detail.mode === 'default')
+    window.addEventListener(DESKTOP_PANEL_LAYOUT_MODE_EVENT, updatePanelLayoutMode)
+    return () => window.removeEventListener(DESKTOP_PANEL_LAYOUT_MODE_EVENT, updatePanelLayoutMode)
+  }, [])
 
   useEffect(() => {
     if (!location.pathname.startsWith('/admin')) return
@@ -99,6 +106,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
             <span>{t('topbar.marker', { count: markerCount })}</span>
           </div>
         )}
+        {isMapWorkspace && <button className={`panel-icon-button desktop-panel-layout-reset${defaultPanelLayoutLocked ? ' is-locked' : ''}`} type="button" aria-label={defaultPanelLayoutLocked ? 'Rétablir la disposition personnelle des panneaux' : 'Activer la disposition par défaut verrouillée'} title={defaultPanelLayoutLocked ? 'Disposition par défaut verrouillée · cliquer pour restaurer votre disposition' : 'Disposition personnelle · cliquer pour restaurer et verrouiller la disposition par défaut'} aria-pressed={defaultPanelLayoutLocked} onClick={() => window.dispatchEvent(new Event(RESET_DESKTOP_PANEL_LAYOUT_EVENT))}><PanelsTopLeft className="desktop-panel-layout-reset__display" size={18} aria-hidden="true" /><span className="desktop-panel-layout-reset__lock" aria-hidden="true">{defaultPanelLayoutLocked ? <Lock size={10} /> : <LockOpen size={10} />}</span></button>}
         {isMapWorkspace && <ActionHistoryControls />}
         {user && <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />}
         {user && (

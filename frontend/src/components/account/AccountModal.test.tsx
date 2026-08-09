@@ -82,7 +82,7 @@ describe('AccountModal', () => {
     expect(screen.getByPlaceholderText('Confirmez votre nouveau mot de passe')).toBeVisible()
   })
 
-  it('persists the country-routing preference', async () => {
+  it('keeps the country-routing preference scoped to individual trips', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
     expect(screen.getByRole('heading', { name: 'Général' }).closest('section')).toHaveClass('account-preference-card')
@@ -91,11 +91,7 @@ describe('AccountModal', () => {
     openApiGroup('Routage')
     expect(screen.getByRole('heading', { name: 'Routage' }).closest('section')).toHaveClass('account-preference-card--routing')
     expect(screen.getByRole('heading', { name: 'Options d’itinéraire' })).toBeVisible()
-    const checkbox = screen.getByRole('checkbox', { name: 'Rester dans le pays' })
-    expect(checkbox).not.toBeChecked()
-    fireEvent.click(checkbox)
-    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }))
+    expect(screen.queryByRole('checkbox', { name: 'Rester dans le pays' })).not.toBeInTheDocument()
   })
 
   it('persists the selected interface language', async () => {

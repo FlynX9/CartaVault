@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArchiveRestore, MapPinned, MapPin, Route, Trash2 } from 'lucide-react'
-import { IconMaximize, IconMinimize } from '@tabler/icons-react'
+import { ArchiveRestore, MapPinned, MapPin, Minus as IconMinimize, Plus as IconMaximize, Route, Trash2 } from 'lucide-react'
 
 import { getTrash, permanentlyDeleteTrashItem, restoreTrashItem } from '../../api/trash'
 import type { TrashItem, TrashItemType } from '../../types/trash'

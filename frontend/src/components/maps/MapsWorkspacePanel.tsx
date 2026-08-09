@@ -1,5 +1,4 @@
-import { Check, Download, HardDriveDownload, LockKeyhole, Map, MapPin, Plus, Route, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
-import { IconMaximize, IconMinimize } from '@tabler/icons-react'
+import { Check, Download, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings2, Share2, Trash2, Users, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from '../../api/maps'

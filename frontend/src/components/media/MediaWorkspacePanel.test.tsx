@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bulkDeleteMedia, deleteMedia, getMedia, setMainMedia, updateMedia } from '../../api/media'
 import type { MediaPage } from '../../types/media'
 import { MediaWorkspacePanel } from './MediaWorkspacePanel'
+import { FloatingPanelWindowContext } from '../layout/FloatingPanelWindow'
 
 vi.mock('../../api/media', async () => {
   const actual = await vi.importActual<typeof import('../../api/media')>('../../api/media')
@@ -81,5 +82,18 @@ describe('MediaWorkspacePanel', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Sélectionner' }))
     expect(screen.getByText('1 sélectionné(s)')).toBeVisible()
     expect(screen.getAllByRole('button', { name: /Supprimer/ }).at(-1)).toBeVisible()
+  })
+
+  it('maximizes its floating desktop window on request', async () => {
+    const toggleMaximize = vi.fn()
+    const { rerender } = render(<FloatingPanelWindowContext.Provider value={{ locked: false, maximized: false, toggleMaximize }}><MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} /></FloatingPanelWindowContext.Provider>)
+    await screen.findByText('chapelle.webp')
+    fireEvent.click(screen.getByRole('button', { name: 'Agrandir la fenêtre Médias au maximum' }))
+    expect(toggleMaximize).toHaveBeenCalledOnce()
+    rerender(<FloatingPanelWindowContext.Provider value={{ locked: false, maximized: true, toggleMaximize }}><MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} /></FloatingPanelWindowContext.Provider>)
+    const restore = screen.getByRole('button', { name: 'Rétablir la taille précédente de la fenêtre Médias' })
+    expect(restore.querySelector('.lucide-minimize-2')).toBeInTheDocument()
+    fireEvent.click(restore)
+    expect(toggleMaximize).toHaveBeenCalledTimes(2)
   })
 })
