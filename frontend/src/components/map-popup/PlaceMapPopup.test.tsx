@@ -2,17 +2,19 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { deletePlace, getPlaceDetails, getPlaceHistory, updatePlace } from '../../api/places'
 import { getPlacePhotos, uploadPlacePhoto } from '../../api/photos'
+import { getAnnotationTemplates, getPlaceAnnotations } from '../../api/annotations'
 import { PlaceMapPopup } from './PlaceMapPopup'
 
 vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaceHistory: vi.fn(), deletePlace: vi.fn(), updatePlace: vi.fn() }))
 vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/photos')>()), getPlacePhotos: vi.fn(), uploadPlacePhoto: vi.fn() }))
+vi.mock('../../api/annotations', () => ({ getAnnotationTemplates: vi.fn(), getPlaceAnnotations: vi.fn(), deletePlaceAnnotation: vi.fn() }))
 const PLACE_ID = '11111111-1111-4111-8111-111111111111'
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const PLACE = { id: PLACE_ID, name: 'Manufacture', map_id: MAP_ID, map: { id: MAP_ID, name: 'Carte France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, status: { id: 'status-id', map_id: MAP_ID, name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' as const }, description: 'Ancienne usine', region: null, construction_date: '1890', abandonment_date: '1999', condition: 'Dégradé', access: 'Interdit', danger_level: 'Élevé', longitude: 6.45, latitude: 48.17, categories: [{ id: 'category-id', name: 'Industrie', description: null, icon: 'mdi:church', is_primary: true }], tags: [{ id: 'tag-id', name: 'Brique' }], custom_fields: { gx_media_links: 'technical-data' }, links: [{ id: '44444444-4444-4444-8444-444444444444', label: 'Site officiel', url: 'https://example.org', sort_order: 0, created_at: '2026-01-01', updated_at: '2026-01-01' }], interest_rating: null, visit_rating: null, created_at: '2026-01-01', updated_at: '2026-02-02' }
 const PHOTO = { id: '22222222-2222-4222-8222-222222222222', place_id: PLACE_ID, filename: 'photo.jpg', original_name: null, path: 'must-not-be-used.jpg', description: 'Façade', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
 const SECOND_PHOTO = { ...PHOTO, id: '33333333-3333-4333-8333-333333333333', filename: 'second.jpg', description: 'Cour intérieure', sort_order: 1, is_primary: false }
 
-beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlaceHistory).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(uploadPlacePhoto).mockResolvedValue(SECOND_PHOTO); vi.mocked(deletePlace).mockResolvedValue(); vi.mocked(updatePlace).mockResolvedValue(PLACE) })
+beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocked(getPlaceHistory).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 50 }); vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO]); vi.mocked(uploadPlacePhoto).mockResolvedValue(SECOND_PHOTO); vi.mocked(deletePlace).mockResolvedValue(); vi.mocked(updatePlace).mockResolvedValue(PLACE); vi.mocked(getAnnotationTemplates).mockResolvedValue([]); vi.mocked(getPlaceAnnotations).mockResolvedValue([]) })
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('PlaceMapPopup', () => {
@@ -117,6 +119,11 @@ describe('PlaceMapPopup', () => {
     expect(await screen.findByRole('heading', { name: 'Manufacture' })).toBeVisible()
     expect(screen.getByText('Ancienne usine')).toBeVisible()
     expect(screen.getByText('Description')).toBeVisible()
+    const descriptionSection = screen.getByText('Description').closest('.popup-description') as HTMLElement
+    const annotationsSection = screen.getByText('Plan / annotations').closest('.popup-annotations') as HTMLElement
+    const summarySection = screen.getByRole('article', { name: 'Région administrative' }).closest('.popup-summary') as HTMLElement
+    expect(descriptionSection.compareDocumentPosition(annotationsSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(annotationsSection.compareDocumentPosition(summarySection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     const coordinates = screen.getByRole('article', { name: 'Coordonnées GPS' })
     expect(within(coordinates).getByText('48.17000, 6.45000')).toBeVisible()
     expect(within(coordinates).getByRole('button', { name: 'Copier les coordonnées GPS' })).toBeVisible()

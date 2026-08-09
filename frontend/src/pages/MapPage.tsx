@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { SquareDashed } from 'lucide-react'
+import { Check, RotateCcw, SquareDashed, X } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
@@ -264,6 +264,7 @@ export function MapPage({
   const [fullscreen, setFullscreen] = useState(false)
   const [fullscreenLayoutVersion, setFullscreenLayoutVersion] = useState(0)
   const [annotations, setAnnotations] = useState<PlaceAnnotation[]>([])
+  const [hiddenAnnotationIds, setHiddenAnnotationIds] = useState<Set<string>>(() => new Set())
   const [annotationDrawing, setAnnotationDrawing] = useState<(AnnotationDrawingState & { placeId: string; template: AnnotationTemplate; title: string | null }) | null>(null)
   const mapLayoutRef = useRef<HTMLDivElement>(null)
   const selectionFitControllerRef = useRef<AbortController | null>(null)
@@ -427,6 +428,7 @@ export function MapPage({
   }, [focusRequest])
 
   useEffect(() => {
+    setHiddenAnnotationIds(new Set())
     if (!selectedPlaceId) { setAnnotations([]); return }
     const controller = new AbortController()
     const load = () => void getPlaceAnnotations(selectedPlaceId, controller.signal).then(setAnnotations).catch(() => { if (!controller.signal.aborted) setAnnotations([]) })
@@ -437,6 +439,21 @@ export function MapPage({
   }, [selectedPlaceId])
 
   useEffect(() => {
+    const changeVisibility = (event: Event) => {
+      const detail = (event as CustomEvent<{ annotationId?: string; visible?: boolean }>).detail
+      if (!detail?.annotationId || typeof detail.visible !== 'boolean') return
+      setHiddenAnnotationIds((current) => {
+        const next = new Set(current)
+        if (detail.visible) next.delete(detail.annotationId as string)
+        else next.add(detail.annotationId as string)
+        return next
+      })
+    }
+    window.addEventListener('cartavault:annotation-visibility-changed', changeVisibility)
+    return () => window.removeEventListener('cartavault:annotation-visibility-changed', changeVisibility)
+  }, [])
+
+  useEffect(() => {
     const start = (event: Event) => {
       const detail = (event as CustomEvent<{ placeId: string; template: AnnotationTemplate; title?: string | null }>).detail
       if (!detail?.placeId || !detail.template) return
@@ -445,10 +462,16 @@ export function MapPage({
     window.addEventListener('cartavault:annotation-draw-requested', start)
     return () => window.removeEventListener('cartavault:annotation-draw-requested', start)
   }, [])
-  const finishAnnotationDrawing = async (completedPoints?: MeasurementPoint[]) => {
+  const annotationDrawingComplete = annotationDrawing ? (
+    annotationDrawing.template.shape_type === 'triangle'
+      ? annotationDrawing.points.length === 3
+      : annotationDrawing.points.length >= 2
+  ) : false
+
+  const finishAnnotationDrawing = async () => {
     if (!annotationDrawing) return
     const { template, placeId, title } = annotationDrawing
-    const points = completedPoints ?? annotationDrawing.points
+    const points = annotationDrawing.points
     const complete = (template.shape_type === 'circle' || template.shape_type === 'rectangle' || template.shape_type === 'line') ? points.length === 2 : template.shape_type === 'triangle' ? points.length === 3 : points.length >= 2
     if (!complete) { setMapToolsNotice('Ajoutez davantage de points pour terminer cette annotation.'); return }
     const coordinates = points.map((point) => [point.longitude, point.latitude])
@@ -641,10 +664,10 @@ export function MapPage({
           geolocationFix={geolocationFix}
           onTemporaryExtentChange={setTemporaryExtent}
           onTemporaryCoordinateChange={setTemporaryCoordinate}
-          annotations={annotations}
+          annotations={annotations.filter((annotation) => !hiddenAnnotationIds.has(annotation.id))}
           annotationDrawing={annotationDrawing}
           onAnnotationDrawingPointsChange={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
-          onAnnotationDrawingComplete={(points) => void finishAnnotationDrawing(points)}
+          onAnnotationDrawingComplete={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
         />
         {popupContent && !mobilePlaceDetailOpen && (
           defaultLayoutActive ? <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
@@ -659,7 +682,12 @@ export function MapPage({
         {contextNotice && <p className="context-notice" role="status">{contextNotice}</p>}
         {tripNotice && <p className="context-notice trip-notice" role="status">{tripNotice}</p>}
         {mapNotice && <p className="map-results-notice" role="status">{mapNotice}</p>}
-        {annotationDrawing && <div className="annotation-drawing-controls" role="status"><span>Dessin : {annotationDrawing.template.name} · glissez sur la carte</span><button type="button" className="secondary-button" onClick={() => setAnnotationDrawing(null)}>Annuler</button></div>}
+        {annotationDrawing && <div className="annotation-drawing-controls" role="region" aria-label="Contrôles du dessin d’annotation">
+          <span style={{ '--annotation-color': annotationDrawing.color } as CSSProperties}><i />Dessin : {annotationDrawing.template.name} · {annotationDrawingComplete ? 'vérifiez le tracé' : 'glissez sur la carte'}</span>
+          {annotationDrawingComplete && <button type="button" className="secondary-button" onClick={() => setAnnotationDrawing((current) => current ? { ...current, points: [] } : null)}><RotateCcw size={14} />Refaire</button>}
+          <button type="button" className="secondary-button" onClick={() => setAnnotationDrawing(null)}><X size={14} />Annuler</button>
+          {annotationDrawingComplete && <button type="button" className="primary-button" onClick={() => void finishAnnotationDrawing()}><Check size={14} />Valider</button>}
+        </div>}
         <div className="map-overlay-controls">
           <MapToolsControl
             mode={effectiveMode}

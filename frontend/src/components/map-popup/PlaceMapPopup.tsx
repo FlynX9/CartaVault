@@ -533,6 +533,7 @@ export function PlaceMapPopup({
           <p>{place.description || "\u00A0"}</p>
         </section>
       )}
+      <PlaceAnnotations placeId={place.id} mapId={place.map_id} canEdit={canEdit} />
       {fieldEnabled("links") && (place.links?.length ?? 0) > 0 && (
         <details className="popup-links">
           <summary>
@@ -624,7 +625,6 @@ export function PlaceMapPopup({
         onDelete={() => void remove()}
         onClose={onClose}
       />
-      <PlaceAnnotations placeId={place.id} mapId={place.map_id} canEdit={canEdit} />
       {tripDayPickerOpen && (
         <section
           className="popup-trip-day-picker"
