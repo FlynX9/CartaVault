@@ -47,7 +47,7 @@ export function LoginPage() {
   }, [])
 
   if (loading) {
-    return <main className="auth-loading" aria-live="polite">Chargement de CartaVault…</main>
+    return <main className="auth-loading" aria-live="polite">{t('auth.login.loading')}</main>
   }
   if (user) return <Navigate to="/dashboard" replace />
 
@@ -87,11 +87,11 @@ export function LoginPage() {
         footer={registrationEnabled ? <p>{t('auth.login.noAccount')} <Link to="/register">{t('auth.login.createAccount')}</Link></p> : undefined}
       >
         {(totpChallenge || emailMfaChallenge) ? <form className="auth-form" onSubmit={(event) => void verifySecondFactor(event)}>
-          <AuthInput label={recoveryMode ? 'Code de récupération' : 'Code d’authentification'} icon={KeyRound} type="text" inputMode="numeric" autoComplete="one-time-code" placeholder={recoveryMode ? 'ABCDE-FGHIJ-KLMNO' : '123456'} required value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
-          <p className="auth-form__hint">{emailMfaChallenge ? 'Un code à 6 chiffres vient d’être envoyé à votre adresse email.' : recoveryMode ? 'Saisissez un code de récupération non utilisé.' : 'Saisissez le code à 6 chiffres généré par votre application d’authentification.'}</p>
+          <AuthInput label={recoveryMode ? t('auth.login.recoveryCode') : t('auth.login.mfaCode')} icon={KeyRound} type="text" inputMode="numeric" autoComplete="one-time-code" placeholder={recoveryMode ? 'ABCDE-FGHIJ-KLMNO' : '123456'} required value={totpCode} onChange={(event) => setTotpCode(event.target.value)} />
+          <p className="auth-form__hint">{emailMfaChallenge ? t('auth.login.emailMfaHint') : recoveryMode ? t('auth.login.recoveryHint') : t('auth.login.totpHint')}</p>
           {error && <p className="auth-alert" role="alert">{error}</p>}
-          <AuthSubmitButton disabled={submitting}><KeyRound aria-hidden="true" />{submitting ? t('auth.login.submitting') : 'Vérifier'}</AuthSubmitButton>
-          {!emailMfaChallenge && <button className="auth-link-button" type="button" onClick={() => { setRecoveryMode((value) => !value); setTotpCode(''); setError(null) }}>{recoveryMode ? 'Utiliser un code d’authentification' : 'Utiliser un code de récupération'}</button>}
+          <AuthSubmitButton disabled={submitting}><KeyRound aria-hidden="true" />{submitting ? t('auth.login.submitting') : t('auth.login.verify')}</AuthSubmitButton>
+          {!emailMfaChallenge && <button className="auth-link-button" type="button" onClick={() => { setRecoveryMode((value) => !value); setTotpCode(''); setError(null) }}>{recoveryMode ? t('auth.login.useAuthenticator') : t('auth.login.useRecovery')}</button>}
         </form> : <form className="auth-form" onSubmit={(event) => void submit(event)}>
           <AuthInput
             label={t('auth.email')}

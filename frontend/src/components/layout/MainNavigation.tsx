@@ -62,29 +62,29 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
         <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={() => { closeMobileModalLayers(); onOpenDashboard?.() }}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>
       </div>
       <div className="cv-main-navigation__separator" role="separator" />
-      <div className="cv-main-navigation__group" aria-label="Cartographie">
+      <div className="cv-main-navigation__group" aria-label={t('app.workspace')}>
         <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={23} /><span>{t('nav.maps')}</span></button>
         {hasMaps && <><button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => { closeMobileModalLayers(); placesActive ? onPlacesPanelToggle() : onPanelChange('places') }}><MapPin size={23} /><span>{t('nav.places')}</span></button>
         <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={() => { closeMobileModalLayers(); onOpenTrips() }}><Route size={23} /><span>{t('nav.trips')}</span></button></>}
       </div>
-      {hasMaps && <><div className="cv-main-navigation__separator" role="separator" aria-label="Médias" />
-      <div className="cv-main-navigation__group" aria-label="Médias">
+      {hasMaps && <><div className="cv-main-navigation__separator" role="separator" aria-label={t('nav.media')} />
+      <div className="cv-main-navigation__group" aria-label={t('nav.media')}>
         <button type="button" className={navClass(activePanel === 'media')} aria-label={t('nav.media')} aria-pressed={activePanel === 'media'} onClick={() => togglePanel('media')}><Images size={23} /><span>{t('nav.media')}</span></button>
       </div></>}
-      <div className="cv-main-navigation__separator" role="separator" aria-label="Organisation" />
-      <div className="cv-main-navigation__group cv-main-navigation__organization-desktop" aria-label="Organisation">
+      <div className="cv-main-navigation__separator" role="separator" aria-label={t('nav.organization')} />
+      <div className="cv-main-navigation__group cv-main-navigation__organization-desktop" aria-label={t('nav.organization')}>
         {hasMaps && <><button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>
         <button type="button" className={navClass(activePanel === 'tags')} aria-label={t('nav.tags')} aria-pressed={activePanel === 'tags'} onClick={() => togglePanel('tags')}><Tag size={23} /><span>{t('nav.tags')}</span></button>
-        <button type="button" className={navClass(activePanel === 'annotation-templates')} aria-label="Annotations" aria-pressed={activePanel === 'annotation-templates'} onClick={() => togglePanel('annotation-templates')}><Spline size={23} /><span>Annotations</span></button>
+        <button type="button" className={navClass(activePanel === 'annotation-templates')} aria-label={t('nav.annotations')} aria-pressed={activePanel === 'annotation-templates'} onClick={() => togglePanel('annotation-templates')}><Spline size={23} /><span>{t('nav.annotations')}</span></button>
         {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}</>}
         <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => togglePanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
       </div>
       {hasMaps && <div ref={organizationMenuRef} className="cv-main-navigation__organization-mobile">
-        <button type="button" className={navClass(organizationOpen || activePanel === 'categories' || activePanel === 'tags' || activePanel === 'annotation-templates' || activePanel === 'statuses' || activePanel === 'trash')} aria-label="Organisation" aria-expanded={organizationOpen} onClick={() => { closeMobileModalLayers(); setOrganizationOpen((open) => !open) }}><Shapes size={23} /><span>Organisation</span></button>
-        {organizationOpen && <div className="cv-main-navigation__organization-menu" role="menu" aria-label="Organisation">
+        <button type="button" className={navClass(organizationOpen || activePanel === 'categories' || activePanel === 'tags' || activePanel === 'annotation-templates' || activePanel === 'statuses' || activePanel === 'trash')} aria-label={t('nav.organization')} aria-expanded={organizationOpen} onClick={() => { closeMobileModalLayers(); setOrganizationOpen((open) => !open) }}><Shapes size={23} /><span>{t('nav.organization')}</span></button>
+        {organizationOpen && <div className="cv-main-navigation__organization-menu" role="menu" aria-label={t('nav.organization')}>
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('categories')}><Shapes size={18} /><span>{t('nav.categories')}</span></button>
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('tags')}><Tag size={18} /><span>{t('nav.tags')}</span></button>
-          <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('annotation-templates')}><Spline size={18} /><span>Annotations</span></button>
+          <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('annotation-templates')}><Spline size={18} /><span>{t('nav.annotations')}</span></button>
           {isAdmin && <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('statuses')}><CircleDot size={18} /><span>{t('nav.statuses')}</span></button>}
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('trash')}><Trash2 size={18} /><span>{t('nav.trash')}</span></button>
         </div>}
