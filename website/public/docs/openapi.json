@@ -1578,6 +1578,30 @@
         "title": "CategoryUpdate",
         "type": "object"
       },
+      "ContactMessage": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "incident",
+              "suggestion"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "message"
+        ],
+        "title": "ContactMessage",
+        "type": "object"
+      },
       "CountryBoundaryGeometry": {
         "properties": {
           "coordinates": {
@@ -9770,6 +9794,11 @@
       },
       "PublicRegistrationSettings": {
         "properties": {
+          "approval_required": {
+            "default": true,
+            "title": "Approval Required",
+            "type": "boolean"
+          },
           "enabled": {
             "title": "Enabled",
             "type": "boolean"
@@ -10846,6 +10875,17 @@
           "worker_source"
         ],
         "title": "RuntimeResourcesDiagnostic",
+        "type": "object"
+      },
+      "SaasSettings": {
+        "properties": {
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "SaasSettings",
         "type": "object"
       },
       "SatelliteSettingsUpdate": {
@@ -15766,6 +15806,66 @@
         ]
       }
     },
+    "/admin/console/saas/settings": {
+      "get": {
+        "operationId": "get_saas_settings_admin_console_saas_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaasSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Saas Settings",
+        "tags": [
+          "admin-console"
+        ]
+      },
+      "put": {
+        "operationId": "update_saas_settings_admin_console_saas_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaasSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaasSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Saas Settings",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
     "/admin/console/users": {
       "get": {
         "operationId": "list_users_admin_console_users_get",
@@ -18080,6 +18180,40 @@
         "summary": "Update Category",
         "tags": [
           "categories"
+        ]
+      }
+    },
+    "/contact": {
+      "post": {
+        "operationId": "send_contact_message_contact_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send Contact Message",
+        "tags": [
+          "saas"
         ]
       }
     },
@@ -23682,6 +23816,27 @@
         "summary": "Routing Providers",
         "tags": [
           "trips"
+        ]
+      }
+    },
+    "/saas/status": {
+      "get": {
+        "operationId": "get_saas_status_saas_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaasSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Saas Status",
+        "tags": [
+          "saas"
         ]
       }
     },

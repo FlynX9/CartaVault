@@ -10,6 +10,7 @@ type Scenario = {
   theme?: 'light' | 'dark'
   language?: 'fr' | 'en'
   view?: 'place-popup' | 'trip' | 'timeline' | 'media' | 'account' | 'admin'
+  mobile?: boolean
 }
 
 const scenarios = JSON.parse(readFileSync(resolve('/demo/screenshots.json'), 'utf8')) as Scenario[]
@@ -23,6 +24,7 @@ type AuthenticationCookie = Awaited<ReturnType<ReturnType<Page['context']>['cook
 const authenticationCookies = new Map<keyof typeof credentials, AuthenticationCookie[]>()
 
 async function stabilize(page: Page, scenario: Scenario) {
+  if (scenario.mobile) await page.setViewportSize({ width: 390, height: 844 })
   await page.addInitScript(({ theme, language }) => {
     if (theme) localStorage.setItem('cartavault.theme', theme)
     if (language) {
@@ -76,7 +78,7 @@ async function login(page: Page, user: keyof typeof credentials) {
 async function prepareScenario(page: Page, scenario: Scenario) {
   const isFrench = scenario.language !== 'en'
   if (scenario.view === 'place-popup') {
-    const placeCard = page.getByRole('button', { name: 'Atelier des Ocres', exact: true })
+    const placeCard = page.getByRole('complementary', { name: isFrench ? 'Lieux' : 'Places' }).getByRole('button', { name: 'Atelier des Ocres', exact: true })
     await expect(placeCard).toBeVisible()
     await placeCard.click()
     const popup = page.locator('.place-map-popup')
@@ -90,13 +92,13 @@ async function prepareScenario(page: Page, scenario: Scenario) {
 
   if (scenario.view === 'trip' || scenario.view === 'timeline') {
     await page.getByRole('button', { name: isFrench ? 'Sorties' : 'Trips', exact: true }).click()
-    const panel = page.getByRole('complementary', { name: 'Préparation de sortie' })
+    const panel = page.getByRole('complementary', { name: isFrench ? 'Sortie' : 'Trips' })
     await expect(panel).toBeVisible()
-    const tripSelector = panel.getByRole('combobox', { name: 'Voyage actif' })
+    const tripSelector = panel.getByRole('combobox', { name: isFrench ? 'Choisir un voyage' : 'Choose a trip' })
     await expect(tripSelector).toBeVisible()
     await tripSelector.selectOption({ label: 'Escapade culturelle' })
     await expect(panel.getByText('Escapade culturelle', { exact: true }).first()).toBeVisible()
-    await expect(panel.getByText('Journée 1', { exact: true })).toBeVisible()
+    await expect(panel.getByText(isFrench ? 'Jour 1' : 'Day 1', { exact: true })).toBeVisible()
     if (scenario.view === 'timeline') {
       await panel.getByRole('button', { name: 'Activer la chronologie du voyage' }).click()
       await expect(panel.getByRole('heading', { name: 'Chronologie' })).toBeVisible()
@@ -152,6 +154,8 @@ for (const scenario of scenarios) {
     }
     await expect(page.locator('body')).not.toContainText('Internal Server Error')
     await mkdir('/demo/output', { recursive: true })
-    await page.screenshot({ path: `/demo/output/${scenario.id}.png`, fullPage: true, animations: 'disabled' })
+    // A mobile capture represents the actual handset viewport rather than a
+    // long, stitched desktop-style page.
+    await page.screenshot({ path: `/demo/output/${scenario.id}.png`, fullPage: !scenario.mobile, animations: 'disabled' })
   })
 }
