@@ -81,6 +81,14 @@ interface DetailsProps {
   onClose: () => void
   onChanged: () => void
   onOpenPlace: (media: MediaItem) => void
+  onCreatePlace: (media: MediaItem) => void
+}
+
+function requestPlaceCreationFromMedia(media: MediaItem) {
+  if (!media.can_create_place || media.latitude == null || media.longitude == null) return
+  window.dispatchEvent(new CustomEvent('cartavault:create-place-from-media', {
+    detail: { mediaId: media.id, mapId: media.map.id, latitude: media.latitude, longitude: media.longitude },
+  }))
 }
 
 function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
@@ -97,7 +105,7 @@ function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; onDone: (
   return createPortal(<div className="media-details-overlay" role="presentation"><section className="media-details-dialog media-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title"><header><div><p className="cv-workspace-panel__eyebrow">Médiathèque</p><h2 id="media-upload-title">Importer des photos</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button></header><div className="media-details-fields"><label>Carte<select value={mapId} onChange={(event) => setMapId(event.target.value)}>{maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.country.name}</option>)}</select></label><p>Les images sont compressées automatiquement. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>{error && <p className="form-alert">{error}</p>}</div><footer><input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => void submit(event.target.files)} /><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => void submit(event.target.files)} /><button className="secondary-button" disabled={busy || !mapId} type="button" onClick={() => fileRef.current?.click()}><Upload size={16} />Choisir des photos</button><button className="primary-button media-upload-camera" disabled={busy || !mapId} type="button" onClick={() => cameraRef.current?.click()}><Camera size={16} />Prendre une photo</button></footer></section></div>, document.body)
 }
 
-function MediaDetails({ media, onClose, onChanged, onOpenPlace }: DetailsProps) {
+function MediaDetails({ media, onClose, onChanged, onOpenPlace, onCreatePlace }: DetailsProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const [caption, setCaption] = useState(media.caption ?? '')
   const [takenAt, setTakenAt] = useState(media.taken_at ?? '')
@@ -151,6 +159,7 @@ function MediaDetails({ media, onClose, onChanged, onOpenPlace }: DetailsProps) 
       </div>}
       {error && <p className="form-alert" role="alert">{error}</p>}
       <footer>
+        {media.can_create_place && <button type="button" className="secondary-button" onClick={() => onCreatePlace(media)}><MapPin size={16} />Créer un POI</button>}
         {media.place && <button type="button" className="secondary-button" onClick={() => onOpenPlace(media)}><MapPin size={16} />Ouvrir le lieu</button>}
         <a className="secondary-button" href={getMediaDownloadUrl(media.id)}><Download size={16} />Télécharger</a>
         {media.can_edit && <button type="button" className="primary-button" data-cv-save="true" disabled={busy} onClick={() => void save()}>Enregistrer</button>}
@@ -298,7 +307,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
           <div className="media-card__body">
             <strong title={media.original_name ?? media.place?.name ?? 'Média non rattaché'}>{media.original_name || media.place?.name || 'Média non rattaché'}</strong>
             {media.place ? <button type="button" onClick={() => onOpenPlace(media)}><MapPin size={14} />{media.place.name}</button> : <span className="media-card__unattached">Non rattaché à un POI</span>}
-            {media.can_create_place && <button type="button" className="media-card__create-place" onClick={() => window.dispatchEvent(new CustomEvent('cartavault:create-place-from-media', { detail: { mediaId: media.id, mapId: media.map.id, latitude: media.latitude, longitude: media.longitude } }))}><MapPin size={15} />Créer un POI</button>}
+            {media.can_create_place && <button type="button" className="media-card__create-place" onClick={() => requestPlaceCreationFromMedia(media)}><MapPin size={15} />Créer un POI</button>}
             <span>{media.map.name} · {media.map.country_code}</span>
             <small>{media.format ?? '—'} · {formatBytes(media.file_size_bytes)} · {media.width && media.height ? `${media.width}×${media.height}` : 'dimensions inconnues'}</small>
           </div>
@@ -325,7 +334,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
     </footer>}
     {selected.size > 0 && <div className="media-bulk-bar"><span><Check size={16} />{selected.size} sélectionné(s)</span><button type="button" onClick={() => setSelected(new Set())}>Tout désélectionner</button>{editableSelection.length > 0 && <button type="button" className="danger" onClick={() => void removeSelected()}><Trash2 size={15} />Supprimer</button>}</div>}
     {uploadOpen && <MediaUploadDialog onClose={() => setUploadOpen(false)} onDone={reload} />}
-    {details && <MediaDetails media={details} onClose={() => setDetails(null)} onChanged={() => { setDetails(null); reload() }} onOpenPlace={onOpenPlace} />}
+    {details && <MediaDetails media={details} onClose={() => setDetails(null)} onChanged={() => { setDetails(null); reload() }} onOpenPlace={onOpenPlace} onCreatePlace={requestPlaceCreationFromMedia} />}
     {confirmationDialog}
   </aside>
 }

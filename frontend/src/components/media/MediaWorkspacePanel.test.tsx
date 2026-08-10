@@ -69,6 +69,25 @@ describe('MediaWorkspacePanel', () => {
     expect(openPlace).toHaveBeenCalledWith(page.items[0])
   })
 
+  it('keeps the create-place action available from an orphaned GPS photo and its details', async () => {
+    const orphaned = { ...page.items[0], place: null, latitude: 48.8566, longitude: 2.3522, can_create_place: true }
+    vi.mocked(getMedia).mockResolvedValue({ ...page, items: [orphaned] })
+    const onCreate = vi.fn()
+    window.addEventListener('cartavault:create-place-from-media', onCreate)
+    try {
+      render(<MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />)
+      const createButton = await screen.findByRole('button', { name: 'Créer un POI' })
+      fireEvent.click(createButton)
+      expect(onCreate).toHaveBeenCalledOnce()
+      fireEvent.click(screen.getByRole('button', { name: /Ouvrir chapelle.webp/i }))
+      const dialog = await screen.findByRole('dialog', { name: 'chapelle.webp' })
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Créer un POI' }))
+      expect(onCreate).toHaveBeenCalledTimes(2)
+    } finally {
+      window.removeEventListener('cartavault:create-place-from-media', onCreate)
+    }
+  })
+
   it('debounces search and applies server-side filters', async () => {
     render(<MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />)
     await screen.findByText('chapelle.webp')
