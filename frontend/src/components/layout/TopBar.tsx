@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Braces, ChevronDown, Lock, LockOpen, LogOut, Moon, PanelsTopLeft, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from 'lucide-react'
+import { Braces, ChevronDown, Lock, LockOpen, LogOut, Mail, Moon, PanelsTopLeft, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { accountAvatarUrl } from '../../api/account'
+import { getSaasStatus } from '../../api/contact'
 import { useAuth } from '../../auth/useAuth'
 import { API_BASE_URL } from '../../config'
 import { useI18n } from '../../i18n/useI18n'
 import { useTheme } from '../../theme/useTheme'
 import { AccountModal } from '../account/AccountModal'
+import { ContactModal } from '../contact/ContactModal'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { ActionHistoryControls } from './ActionHistoryControls'
 import { clearActionHistory } from '../../ui/actionHistory'
@@ -35,6 +37,8 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
   const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
+  const [saasEnabled, setSaasEnabled] = useState(false)
   const [online, setOnline] = useState(() => navigator.onLine)
   const [defaultPanelLayoutLocked, setDefaultPanelLayoutLocked] = useState(() => window.localStorage.getItem('cartavault:desktop-panel-layout-mode') === 'default')
   const trigger = useRef<HTMLButtonElement>(null)
@@ -91,6 +95,12 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
     setMenuOpen(false)
     setAccountOpen(false)
   }, [location.pathname])
+  useEffect(() => {
+    if (!user) { setSaasEnabled(false); return }
+    const controller = new AbortController()
+    void getSaasStatus(controller.signal).then((value) => { if (!controller.signal.aborted) setSaasEnabled(value.enabled) }).catch(() => { if (!controller.signal.aborted) setSaasEnabled(false) })
+    return () => controller.abort()
+  }, [user?.id])
 
   return (
     <header className="app-header">
@@ -161,6 +171,9 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
                     <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); closeAdminForAccount(); setAccountOpen(true) }}>
                       <Settings2 size={17} aria-hidden="true" />{t('topbar.options')}
                     </button>
+                    {saasEnabled && <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); setContactOpen(true) }}>
+                      <Mail size={17} aria-hidden="true" />{t('contact.menu')}
+                    </button>}
                     {user.is_admin && (
                       <button role="menuitem" type="button" onClick={() => { setMenuOpen(false); setAccountOpen(false); onOpenAdmin() }}>
                         <ShieldCheck size={17} aria-hidden="true" />{t('app.administration')}
@@ -182,6 +195,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
         )}
       </nav>
       {accountOpen && <AccountModal trigger={trigger.current} onClose={() => setAccountOpen(false)} />}
+      {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
     </header>
   )
 }

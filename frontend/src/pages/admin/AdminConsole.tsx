@@ -5,7 +5,7 @@ import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'reac
 
 import {
   assignUserQuotaProfile, cancelBackgroundTask, deleteResendCredential, getAdminCredentials, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
-  optimizeStoredMedia, saveMediaUploadSettings,
+  getSaasSettings, optimizeStoredMedia, saveMediaUploadSettings, saveSaasSettings,
   saveResendCredential, updateAdminUser, verifyResendCredential,
 } from '../../api/adminConsole'
 import { accountAvatarUrl } from '../../api/account'
@@ -170,7 +170,33 @@ function AdminCredentialsSection() {
   const remove = async () => { if (!await confirm({ title: 'Supprimer la clé Resend', message: 'Les emails CartaVault ne pourront plus être envoyés.', confirmLabel: 'Supprimer' })) return; await deleteResendCredential(); load() }
   return <section><SectionHeading eyebrow="Intégrations" title="Clés API" description="Credentials globaux et état sécurisé des intégrations." />{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}
     <div className="admin-console__credential-grid">{items.map((item) => <article className="admin-console__card" key={item.provider}><header><KeyRound size={19} /><div><h3>{item.label}</h3><p>{item.scope === 'personal' ? 'Clé personnelle, gérée dans le compte utilisateur.' : item.scope === 'infrastructure' ? 'Secret d’infrastructure en lecture seule.' : 'Clé globale de l’instance.'}</p></div><span className={item.configured ? 'ok' : 'warning'}>{item.configured ? 'Configuré' : 'Non configuré'}</span></header><dl><dt>Source</dt><dd>{sourceLabel(item.source)}</dd><dt>Valeur</dt><dd>{item.masked_value ?? 'Jamais exposée'}</dd>{item.configured_user_count !== null && <><dt>Utilisateurs configurés</dt><dd>{item.configured_user_count}</dd></>}<dt>Dernière vérification</dt><dd>{formatDate(item.verified_at)}</dd><dt>Dernière utilisation</dt><dd>{formatDate(item.last_used_at)}</dd><dt>Dernière erreur</dt><dd>{item.last_error_code ?? 'Aucune'}</dd></dl></article>)}</div>
-    <section className="admin-console__card"><h3>Configuration Resend</h3><form className="admin-console__credential-form" onSubmit={submit}><label>Nouvelle clé API<input type="password" value={value} required autoComplete="off" placeholder="re_••••••••" onChange={(event) => setValue(event.target.value)} /></label><button className="primary-button" data-cv-save={!resend?.configured ? 'true' : undefined} disabled={busy}><Save size={16} />{resend?.configured ? 'Remplacer' : 'Enregistrer'}</button>{resend?.configured && <><button type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={16} />{busy ? 'Envoi…' : 'Envoyer un email de test'}</button><button className="danger" type="button" disabled={busy} onClick={() => void remove()}><Trash2 size={16} />Supprimer</button></>}</form></section><MediaMaintenancePanel /><GoogleSatelliteAdminPanel />{confirmationDialog}
+    <section className="admin-console__card"><h3>Configuration Resend</h3><form className="admin-console__credential-form" onSubmit={submit}><label>Nouvelle clé API<input type="password" value={value} required autoComplete="off" placeholder="re_••••••••" onChange={(event) => setValue(event.target.value)} /></label><button className="primary-button" data-cv-save={!resend?.configured ? 'true' : undefined} disabled={busy}><Save size={16} />{resend?.configured ? 'Remplacer' : 'Enregistrer'}</button>{resend?.configured && <><button type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={16} />{busy ? 'Envoi…' : 'Envoyer un email de test'}</button><button className="danger" type="button" disabled={busy} onClick={() => void remove()}><Trash2 size={16} />Supprimer</button></>}</form></section><SaasSettingsPanel /><MediaMaintenancePanel /><GoogleSatelliteAdminPanel />{confirmationDialog}
+  </section>
+}
+
+function SaasSettingsPanel() {
+  const [enabled, setEnabled] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    void getSaasSettings(controller.signal)
+      .then((settings) => { if (!controller.signal.aborted) setEnabled(settings.enabled) })
+      .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Réglage SaaS indisponible.') })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [])
+  const save = async () => {
+    setBusy(true); setError(null)
+    try { setEnabled((await saveSaasSettings(!enabled)).enabled) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.') }
+    finally { setBusy(false) }
+  }
+  return <section className="admin-console__card" aria-labelledby="saas-settings-title">
+    <header><ShieldCheck size={19} /><div><h3 id="saas-settings-title">Mode SaaS</h3><p>Active les fonctions destinées à une instance ouverte au public. Pour le moment, cela affiche le menu Contact aux utilisateurs.</p></div><span className={enabled ? 'ok' : 'warning'}>{enabled ? 'Actif' : 'Inactif'}</span></header>
+    {error && <div className="form-alert" role="alert">{error}</div>}
+    <button className="primary-button" type="button" disabled={loading || busy} onClick={() => void save()}>{enabled ? 'Désactiver le mode SaaS' : 'Activer le mode SaaS'}</button>
   </section>
 }
 

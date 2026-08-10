@@ -69,6 +69,10 @@ class MediaUploadSettings(BaseModel):
     max_upload_megabytes: int = Field(default=5, ge=1, le=100)
 
 
+class SaasSettings(BaseModel):
+    enabled: bool = False
+
+
 class ServiceHealth(BaseModel):
     status: Literal["ok", "warning", "unavailable"]
     detail: str

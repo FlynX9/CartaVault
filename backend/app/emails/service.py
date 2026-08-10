@@ -31,6 +31,7 @@ SUBJECTS = {
         "map_ownership_registration": "Une carte CartaVault vous est proposée",
         "resend_verification": "Votre configuration email CartaVault fonctionne",
         "email_mfa_code": "Votre code de sécurité CartaVault",
+        "contact_message": "Nouveau message CartaVault — $kind",
     },
     "en": {
         "registration_admin": "New CartaVault registration request",
@@ -45,6 +46,7 @@ SUBJECTS = {
         "map_ownership_registration": "A CartaVault map is waiting for you",
         "resend_verification": "Your CartaVault email configuration works",
         "email_mfa_code": "Your CartaVault security code",
+        "contact_message": "New CartaVault message — $kind",
     },
 }
 
@@ -93,7 +95,7 @@ class EmailService:
         common = {"app_url": email_settings.frontend_public_url, **values}
         return self.provider.send(EmailMessage(
             recipients,
-            SUBJECTS[resolved_locale][template],
+            Template(SUBJECTS[resolved_locale][template]).safe_substitute(common),
             _render(f"{template}.{resolved_locale}.html", {key: escape(value, quote=True) for key, value in common.items()}),
             _render(f"{template}.{resolved_locale}.txt", common),
         ))
@@ -192,3 +194,21 @@ class EmailService:
 
     def send_email_mfa_code(self, recipient: str, display_name: str, code: str, locale: str = "fr") -> str | None:
         return self._send("email_mfa_code", [recipient], {"display_name": display_name, "code": code, "ttl_minutes": "10"}, locale)
+
+    def send_contact_message(self, sender_email: str, sender_name: str, kind: str, message: str, locale: str = "fr") -> str | None:
+        labels = {
+            "fr": {"incident": "Incident", "suggestion": "Suggestion"},
+            "en": {"incident": "Incident", "suggestion": "Suggestion"},
+        }
+        resolved_locale = locale if locale in SUPPORTED_LOCALES else "fr"
+        return self._send(
+            "contact_message",
+            ["contact@cartavault.fr"],
+            {
+                "sender_email": sender_email,
+                "sender_name": sender_name,
+                "kind": labels[resolved_locale].get(kind, kind),
+                "message": message,
+            },
+            resolved_locale,
+        )

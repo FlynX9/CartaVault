@@ -51,6 +51,7 @@ from app.places.router import router as places_router
 from app.statuses.router import router as statuses_router
 from app.setup.router import router as setup_router
 from app.setup.service import setup_token
+from app.saas.router import admin_router as saas_admin_router, router as saas_router
 from app.security_headers import SecurityHeadersMiddleware
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
@@ -242,6 +243,8 @@ app.include_router(media_router, prefix=API_PREFIX)
 app.include_router(media_upload_router, prefix=API_PREFIX)
 app.include_router(trips_router, prefix=API_PREFIX)
 app.include_router(tasks_router, prefix=API_PREFIX)
+app.include_router(saas_router, prefix=API_PREFIX)
+app.include_router(saas_admin_router, prefix=API_PREFIX)
 app.include_router(trash_router, prefix=API_PREFIX)
 
 

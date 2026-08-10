@@ -1,0 +1,7 @@
+Nouveau message CartaVault
+
+Type : $kind
+Utilisateur : $sender_name
+E-mail : $sender_email
+
+$message
