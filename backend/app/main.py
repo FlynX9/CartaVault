@@ -38,7 +38,7 @@ from app.database import SessionLocal, get_db
 from app.exports.router import router as exports_router
 from app.imports.router import router as imports_router
 from app.instance_status.router import router as instance_status_router
-from app.instance_status.logs import install_instance_log_handler
+from app.instance_status.logs import install_instance_log_handler, record_instance_log
 from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
@@ -159,6 +159,7 @@ async def lifespan(_: FastAPI):
     # Logging can be reconfigured by the ASGI server after module import.
     # Re-attach the bounded, sanitized administrative log collector at startup.
     install_instance_log_handler()
+    record_instance_log(logging.INFO, "app.instance", "CartaVault instance log collector started")
     purge_task: asyncio.Task[None] | None = None
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")

@@ -67,14 +67,35 @@ class InstanceLogHandler(logging.Handler):
             self.handleError(record)
 
 
+def record_instance_log(level: int, logger_name: str, message: str) -> None:
+    """Store a trusted internal event even when the hosting server owns logging."""
+
+    record = logging.LogRecord(logger_name, level, __file__, 0, message, (), None)
+    InstanceLogHandler().emit(record)
+
+
 def install_instance_log_handler() -> None:
     global _installed
     root_logger = logging.getLogger()
-    if any(isinstance(handler, InstanceLogHandler) for handler in root_logger.handlers):
-        _installed = True
-        return
-    handler = InstanceLogHandler(level=logging.DEBUG)
-    root_logger.addHandler(handler)
+    handler = next(
+        (item for item in root_logger.handlers if isinstance(item, InstanceLogHandler)),
+        None,
+    )
+    if handler is None:
+        handler = InstanceLogHandler(level=logging.DEBUG)
+        root_logger.addHandler(handler)
+    # Uvicorn owns separate non-propagating loggers in production. Attach the
+    # collector there as well, otherwise the administrator only sees messages
+    # emitted by application loggers.
+    for logger_name in ("uvicorn.access", "uvicorn.error"):
+        service_logger = logging.getLogger(logger_name)
+        # Development configurations commonly propagate these loggers to the
+        # root logger. In that case the root handler is sufficient and adding
+        # it again would duplicate every entry in the administration panel.
+        if service_logger.propagate:
+            continue
+        if not any(isinstance(item, InstanceLogHandler) for item in service_logger.handlers):
+            service_logger.addHandler(handler)
     _installed = True
 
 
