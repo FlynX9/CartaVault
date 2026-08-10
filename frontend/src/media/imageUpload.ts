@@ -1,6 +1,6 @@
 import { gps } from 'exifr'
 
-const MAX_DIMENSION = 2560
+export const DEFAULT_MAX_DIMENSION = 2560
 
 export interface ImageLocation { latitude: number; longitude: number }
 
@@ -27,10 +27,11 @@ export async function readImageLocation(file: File): Promise<ImageLocation | nul
   }
 }
 
-export async function compressImage(file: File): Promise<File> {
+export async function compressImage(file: File, maxDimension = DEFAULT_MAX_DIMENSION): Promise<File> {
   if (!file.type.startsWith('image/') || !('createImageBitmap' in window)) return file
   const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height)); const width = Math.max(1, Math.round(bitmap.width * scale)); const height = Math.max(1, Math.round(bitmap.height * scale))
+  const safeDimension = Math.max(1, Number.isFinite(maxDimension) ? Math.round(maxDimension) : DEFAULT_MAX_DIMENSION)
+  const scale = Math.min(1, safeDimension / Math.max(bitmap.width, bitmap.height)); const width = Math.max(1, Math.round(bitmap.width * scale)); const height = Math.max(1, Math.round(bitmap.height * scale))
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height; canvas.getContext('2d')?.drawImage(bitmap, 0, 0, width, height); bitmap.close()
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', .84))
   return blob ? new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.webp`, { type: 'image/webp', lastModified: file.lastModified }) : file

@@ -32,6 +32,7 @@ from app.imports.schemas import (
     KmzPreviewRead,
 )
 from app.maps.models import PoiMap
+from app.media.settings import get_max_image_dimension, get_max_upload_megabytes
 from app.photos.models import Photo
 from app.photos.storage import PhotoStorageError, delete_photo_file, store_photo_file
 from app.imports.remote_images import RemoteImageError, download_remote_image
@@ -452,7 +453,14 @@ def _store_image(
     if image.payload is None:
         return
     photo_id = uuid4()
-    stored = store_photo_file(BytesIO(image.payload), image.mime_type, place.id, photo_id)
+    stored = store_photo_file(
+        BytesIO(image.payload),
+        image.mime_type,
+        place.id,
+        photo_id,
+        max_size_bytes=get_max_upload_megabytes(database_session) * 1024 * 1024,
+        max_dimension=get_max_image_dimension(database_session),
+    )
     stored_files.append((stored.relative_path, place.id, photo_id))
     database_session.add(
         Photo(

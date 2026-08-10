@@ -37,7 +37,7 @@ from app.photos.storage import (
     resolve_photo_file,
     store_photo_file,
 )
-from app.media.settings import get_max_upload_megabytes
+from app.media.settings import get_max_image_dimension, get_max_upload_megabytes
 from app.places.models import Place
 
 
@@ -226,6 +226,7 @@ def upload_place_photo(
             place_id=place_id,
             photo_id=photo_id,
             max_size_bytes=get_max_upload_megabytes(database_session) * 1024 * 1024,
+            max_dimension=get_max_image_dimension(database_session),
         )
     except UnsupportedPhotoTypeError as error:
         raise HTTPException(

@@ -105,15 +105,22 @@ def test_admin_credentials_never_expose_secrets(integration_client, database_ses
 def test_media_upload_limit_is_administrable(integration_client) -> None:
     current = integration_client.get("/admin/console/media/settings")
     assert current.status_code == 200
-    assert current.json() == {"max_upload_megabytes": 5}
+    assert current.json() == {"max_upload_megabytes": 5, "max_image_dimension": 2560}
 
-    updated = integration_client.put("/admin/console/media/settings", json={"max_upload_megabytes": 9})
+    updated = integration_client.put(
+        "/admin/console/media/settings",
+        json={"max_upload_megabytes": 9, "max_image_dimension": 1920},
+    )
     assert updated.status_code == 200
-    assert updated.json() == {"max_upload_megabytes": 9}
+    assert updated.json() == {"max_upload_megabytes": 9, "max_image_dimension": 1920}
 
     policy = integration_client.get("/media/upload-policy")
     assert policy.status_code == 200
-    assert policy.json() == {"max_upload_megabytes": 9, "max_upload_bytes": 9 * 1024 * 1024}
+    assert policy.json() == {
+        "max_upload_megabytes": 9,
+        "max_upload_bytes": 9 * 1024 * 1024,
+        "max_image_dimension": 1920,
+    }
 
 
 def test_resend_verification_sends_a_test_email_to_the_admin(

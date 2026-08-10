@@ -92,3 +92,4 @@ class MediaBulkDeleteResult(BaseModel):
 class MediaUploadPolicy(BaseModel):
     max_upload_megabytes: int
     max_upload_bytes: int
+    max_image_dimension: int

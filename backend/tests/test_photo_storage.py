@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
+from PIL import Image
 
 from app.photos import storage
 from app.photos.storage import (
@@ -95,6 +96,26 @@ def test_store_supported_images(
         photo_id,
     )
     assert not stored.absolute_path.exists()
+
+
+def test_store_downscales_valid_images_to_configured_dimension(photo_storage: Path) -> None:
+    source = BytesIO()
+    Image.new("RGB", (3000, 1500), color="teal").save(source, format="JPEG")
+    source.seek(0)
+
+    stored = store_photo_file(
+        source,
+        "image/jpeg",
+        uuid4(),
+        uuid4(),
+        max_dimension=1920,
+    )
+
+    assert stored.width == 1920
+    assert stored.height == 960
+    with Image.open(stored.absolute_path) as image:
+        assert image.size == (1920, 960)
+    assert delete_photo_file(stored.relative_path, UUID(stored.relative_path.split("/", 1)[0]), UUID(stored.filename.split(".", 1)[0]))
 
 
 def test_rejects_fake_jpeg(photo_storage: Path) -> None:

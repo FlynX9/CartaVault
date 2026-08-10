@@ -5,6 +5,9 @@ from app.admin.models import SystemSetting
 DEFAULT_MAX_UPLOAD_MEGABYTES = 5
 MIN_MAX_UPLOAD_MEGABYTES = 1
 MAX_MAX_UPLOAD_MEGABYTES = 100
+DEFAULT_MAX_IMAGE_DIMENSION = 2560
+MIN_MAX_IMAGE_DIMENSION = 1024
+MAX_MAX_IMAGE_DIMENSION = 7680
 
 
 def get_max_upload_megabytes(session: Session) -> int:
@@ -17,13 +20,39 @@ def get_max_upload_megabytes(session: Session) -> int:
     return min(MAX_MAX_UPLOAD_MEGABYTES, max(MIN_MAX_UPLOAD_MEGABYTES, parsed))
 
 
-def set_max_upload_megabytes(session: Session, value: int) -> int:
-    normalized = min(MAX_MAX_UPLOAD_MEGABYTES, max(MIN_MAX_UPLOAD_MEGABYTES, int(value)))
+def get_max_image_dimension(session: Session) -> int:
+    setting = session.get(SystemSetting, "media_upload")
+    value = (setting.value or {}).get("max_image_dimension") if setting else None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_MAX_IMAGE_DIMENSION
+    return min(MAX_MAX_IMAGE_DIMENSION, max(MIN_MAX_IMAGE_DIMENSION, parsed))
+
+
+def set_media_upload_settings(
+    session: Session,
+    *,
+    max_upload_megabytes: int,
+    max_image_dimension: int,
+) -> tuple[int, int]:
+    normalized_upload = min(MAX_MAX_UPLOAD_MEGABYTES, max(MIN_MAX_UPLOAD_MEGABYTES, int(max_upload_megabytes)))
+    normalized_dimension = min(MAX_MAX_IMAGE_DIMENSION, max(MIN_MAX_IMAGE_DIMENSION, int(max_image_dimension)))
     setting = session.get(SystemSetting, "media_upload")
     if setting is None:
-        setting = SystemSetting(key="media_upload", value={"max_upload_megabytes": normalized})
+        setting = SystemSetting(
+            key="media_upload",
+            value={
+                "max_upload_megabytes": normalized_upload,
+                "max_image_dimension": normalized_dimension,
+            },
+        )
         session.add(setting)
     else:
-        setting.value = {**(setting.value or {}), "max_upload_megabytes": normalized}
+        setting.value = {
+            **(setting.value or {}),
+            "max_upload_megabytes": normalized_upload,
+            "max_image_dimension": normalized_dimension,
+        }
     session.commit()
-    return normalized
+    return normalized_upload, normalized_dimension

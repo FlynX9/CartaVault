@@ -68,6 +68,7 @@ class CredentialValue(BaseModel):
 
 class MediaUploadSettings(BaseModel):
     max_upload_megabytes: int = Field(default=5, ge=1, le=100)
+    max_image_dimension: int = Field(default=2560, ge=1024, le=7680)
 
 
 class InstanceLogRetentionSettings(BaseModel):

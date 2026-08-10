@@ -20,7 +20,7 @@ function parseMediaItem(value: unknown): MediaItem {
   return value as unknown as MediaItem
 }
 
-export interface MediaUploadPolicy { max_upload_megabytes: number; max_upload_bytes: number }
+export interface MediaUploadPolicy { max_upload_megabytes: number; max_upload_bytes: number; max_image_dimension: number }
 
 export function getMediaUploadPolicy(signal?: AbortSignal): Promise<MediaUploadPolicy> {
   return getJson('/media/upload-policy', new URLSearchParams(), signal) as Promise<MediaUploadPolicy>

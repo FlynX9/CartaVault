@@ -23,7 +23,11 @@ from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
-from app.media.settings import get_max_upload_megabytes, set_max_upload_megabytes
+from app.media.settings import (
+    get_max_image_dimension,
+    get_max_upload_megabytes,
+    set_media_upload_settings,
+)
 from app.media.optimization import MEDIA_OPTIMIZATION_TASK
 from app.instance_status.settings import get_log_retention_days, set_log_retention_days
 from app.tasks.schemas import TaskStart
@@ -45,12 +49,20 @@ def update_instance_log_retention(payload: InstanceLogRetentionSettings, session
 
 @router.get("/media/settings", response_model=MediaUploadSettings)
 def get_media_upload_settings(session: Session = Depends(get_db)) -> MediaUploadSettings:
-    return MediaUploadSettings(max_upload_megabytes=get_max_upload_megabytes(session))
+    return MediaUploadSettings(
+        max_upload_megabytes=get_max_upload_megabytes(session),
+        max_image_dimension=get_max_image_dimension(session),
+    )
 
 
 @router.put("/media/settings", response_model=MediaUploadSettings)
 def update_media_upload_settings(payload: MediaUploadSettings, session: Session = Depends(get_db)) -> MediaUploadSettings:
-    return MediaUploadSettings(max_upload_megabytes=set_max_upload_megabytes(session, payload.max_upload_megabytes))
+    maximum, dimension = set_media_upload_settings(
+        session,
+        max_upload_megabytes=payload.max_upload_megabytes,
+        max_image_dimension=payload.max_image_dimension,
+    )
+    return MediaUploadSettings(max_upload_megabytes=maximum, max_image_dimension=dimension)
 
 
 @router.post("/media/optimize", response_model=TaskStart, status_code=status.HTTP_202_ACCEPTED)

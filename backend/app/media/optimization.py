@@ -8,16 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.photos.models import Photo
 from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, delete_photo_thumbnail, resolve_photo_file
+from app.media.settings import get_max_image_dimension
 from app.tasks.models import BackgroundTask
 from app.tasks.registry import ProgressCallback, task_handler
 
 MEDIA_OPTIMIZATION_TASK = "media_optimization"
-MAX_DIMENSION = 2560
-
-
 @task_handler(MEDIA_OPTIMIZATION_TASK)
 def optimize_existing_media(session: Session, task: BackgroundTask, progress: ProgressCallback) -> dict:
     photos = session.scalars(select(Photo).where(Photo.path.is_not(None)).order_by(Photo.created_at, Photo.id)).all()
+    max_dimension = get_max_image_dimension(session)
     total = max(1, len(photos))
     optimized = skipped = failed = saved_bytes = 0
     for index, photo in enumerate(photos, start=1):
@@ -32,7 +31,7 @@ def optimize_existing_media(session: Session, task: BackgroundTask, progress: Pr
             temporary = target.with_suffix(".partial")
             with Image.open(source) as image:
                 image = ImageOps.exif_transpose(image)
-                image.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+                image.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
                 if image.mode not in {"RGB", "RGBA"}:
                     image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
                 image.save(temporary, format="WEBP", quality=84, method=6)

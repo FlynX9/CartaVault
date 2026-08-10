@@ -1,7 +1,7 @@
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, InstanceLogLevel, InstanceLogPage, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
 
-export interface MediaUploadSettings { max_upload_megabytes: number }
+export interface MediaUploadSettings { max_upload_megabytes: number; max_image_dimension: number }
 export interface BackgroundTaskResult { task_id: string; status: string }
 export interface SaasSettings { enabled: boolean }
 export interface InstanceLogRetentionSettings { retention_days: number }
@@ -24,7 +24,7 @@ export function saveResendCredential(value: string) { return sendJson('/admin/co
 export function verifyResendCredential() { return sendJson('/admin/console/credentials/resend/verify', 'POST', {}) as Promise<CredentialStatus> }
 export function deleteResendCredential() { return sendWithoutResponse('/admin/console/credentials/resend', 'DELETE') }
 export function getMediaUploadSettings(signal?: AbortSignal) { return getJson('/admin/console/media/settings', empty(), signal) as Promise<MediaUploadSettings> }
-export function saveMediaUploadSettings(maxUploadMegabytes: number) { return sendJson('/admin/console/media/settings', 'PUT', { max_upload_megabytes: maxUploadMegabytes }) as Promise<MediaUploadSettings> }
+export function saveMediaUploadSettings(maxUploadMegabytes: number, maxImageDimension: number) { return sendJson('/admin/console/media/settings', 'PUT', { max_upload_megabytes: maxUploadMegabytes, max_image_dimension: maxImageDimension }) as Promise<MediaUploadSettings> }
 export function optimizeStoredMedia() { return sendJson('/admin/console/media/optimize', 'POST', {}) as Promise<BackgroundTaskResult> }
 export function getBackgroundTask(taskId: string, signal?: AbortSignal) { return getJson(`/tasks/${encodeURIComponent(taskId)}`, empty(), signal) as Promise<{ status: string; progress_current: number; progress_total: number; percent: number; progress_message: string | null; result: Record<string, unknown> | null; error_message: string | null }> }
 export function cancelBackgroundTask(taskId: string) { return sendWithoutResponse(`/tasks/${encodeURIComponent(taskId)}`, 'DELETE') }

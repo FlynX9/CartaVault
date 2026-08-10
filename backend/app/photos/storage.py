@@ -129,6 +129,7 @@ def store_photo_file(
     photo_id: UUID,
     *,
     max_size_bytes: int = MAX_PHOTO_SIZE,
+    max_dimension: int = MAX_PHOTO_DIMENSION,
 ) -> StoredPhoto:
     """Validate and stream one image to its generated storage location."""
 
@@ -202,6 +203,12 @@ def store_photo_file(
     relative_path = PurePosixPath(str(place_id), filename).as_posix()
     try:
         dimensions = read_photo_dimensions(final_path)
+        dimensions = _limit_photo_dimensions(
+            final_path,
+            content_type=detected_type,
+            max_dimension=max_dimension,
+            dimensions=dimensions,
+        )
     except PhotoStorageError:
         final_path.unlink(missing_ok=True)
         _remove_directory_if_empty(place_directory, storage_root)
@@ -212,10 +219,45 @@ def store_photo_file(
         relative_path=relative_path,
         absolute_path=final_path,
         media_type=detected_type,
-        file_size_bytes=total_size,
+        file_size_bytes=final_path.stat().st_size,
         width=dimensions[0],
         height=dimensions[1],
     )
+
+
+def _limit_photo_dimensions(
+    file_path: Path,
+    *,
+    content_type: str,
+    max_dimension: int,
+    dimensions: tuple[int | None, int | None],
+) -> tuple[int | None, int | None]:
+    """Downscale valid images without enlarging them or trusting the browser."""
+
+    width, height = dimensions
+    normalized_maximum = min(MAX_PHOTO_DIMENSION, max(1, int(max_dimension)))
+    if width is None or height is None or max(width, height) <= normalized_maximum:
+        return dimensions
+
+    temporary_path = file_path.with_suffix(f"{file_path.suffix}.resizing")
+    try:
+        with Image.open(file_path) as image:
+            image = ImageOps.exif_transpose(image)
+            image.thumbnail((normalized_maximum, normalized_maximum), Image.Resampling.LANCZOS)
+            if content_type == "image/jpeg":
+                if image.mode not in {"RGB", "L"}:
+                    image = image.convert("RGB")
+                image.save(temporary_path, format="JPEG", quality=88, optimize=True)
+            elif content_type == "image/png":
+                image.save(temporary_path, format="PNG", optimize=True)
+            else:
+                image.save(temporary_path, format="WEBP", quality=84, method=6)
+            resized_dimensions = image.size
+        temporary_path.replace(file_path)
+        return resized_dimensions
+    except (OSError, UnidentifiedImageError, ValueError) as error:
+        temporary_path.unlink(missing_ok=True)
+        raise PhotoStorageError("Unable to resize the uploaded image") from error
 
 
 def read_photo_dimensions(file_path: Path) -> tuple[int | None, int | None]:
