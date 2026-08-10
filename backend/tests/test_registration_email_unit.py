@@ -42,6 +42,7 @@ def test_each_email_function_uses_a_repository_template() -> None:
     assert len(provider.messages) == 11
     assert all("Carta" in message.html and "Vault" in message.html for message in provider.messages)
     assert all("#0FA68A" in message.html for message in provider.messages)
+    assert all("cartavault-logo.png" in message.html and "Espace cartographique" in message.html for message in provider.messages)
     assert "candidate@example.test" in provider.messages[0].text
     assert "verification-token" in provider.messages[1].text
     assert "Candidate" in provider.messages[2].text

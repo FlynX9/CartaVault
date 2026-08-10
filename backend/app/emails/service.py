@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from html import escape
+import re
 from string import Template
 
 from sqlalchemy.orm import Session
@@ -55,6 +56,33 @@ def _render(name: str, values: dict[str, str]) -> str:
     return Template((TEMPLATES / name).read_text(encoding="utf-8")).safe_substitute(values)
 
 
+def _email_content(rendered: str) -> str:
+    """Keep repository templates as message fragments while retiring legacy shells."""
+    legacy = re.search(r'<td style="padding:30px">(.*)</td></tr></table></td></tr></table></body>', rendered, flags=re.DOTALL)
+    content = legacy.group(1) if legacy else rendered
+    return re.sub(r'<p[^>]*>Carta<span[^>]*>Vault</span></p>', '', content, count=1)
+
+
+def _email_shell(content: str, locale: str, app_url: str) -> str:
+    language = "fr" if locale == "fr" else "en"
+    footer = "Vous recevez cet e-mail car une action a été effectuée dans CartaVault." if language == "fr" else "You received this email because an action was performed in CartaVault."
+    logo_url = escape(f"{app_url.rstrip('/')}/cartavault-logo.png", quote=True)
+    return f'''<!doctype html>
+<html lang="{language}"><body style="margin:0;padding:0;background:#edf3f5;color:#102234;font-family:Inter,Arial,sans-serif">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;background:#edf3f5"><tr><td align="center" style="padding:32px 16px">
+    <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #dce8ea;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(13,27,42,.08)">
+      <tr><td style="padding:20px 28px;background:linear-gradient(135deg,#073a43,#0fa68a);color:#ffffff">
+        <table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="width:42px;padding-right:12px"><img src="{logo_url}" width="42" height="42" alt="CartaVault" style="display:block;border:0;border-radius:11px;background:#ffffff" /></td><td><strong style="font-size:21px;letter-spacing:-.4px">Carta<span style="color:#bff8e9">Vault</span></strong><br><span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#d7fff6">Espace cartographique</span></td></tr></table>
+      </td></tr>
+      <tr><td style="padding:30px 32px 26px;font-size:15px;line-height:1.6;color:#304456">
+        {content}
+      </td></tr>
+      <tr><td style="padding:18px 32px;background:#f4f8f8;border-top:1px solid #e2ecec;color:#6b7b88;font-size:12px;line-height:1.45">{footer}</td></tr>
+    </table>
+  </td></tr></table>
+</body></html>'''
+
+
 def provider_from_database(
     session: Session,
     *,
@@ -93,10 +121,11 @@ class EmailService:
     def _send(self, template: str, recipients: list[str], values: dict[str, str], locale: str = "fr") -> str | None:
         resolved_locale = locale if locale in SUPPORTED_LOCALES else "fr"
         common = {"app_url": email_settings.frontend_public_url, **values}
+        escaped_common = {key: escape(value, quote=True) for key, value in common.items()}
         return self.provider.send(EmailMessage(
             recipients,
             Template(SUBJECTS[resolved_locale][template]).safe_substitute(common),
-            _render(f"{template}.{resolved_locale}.html", {key: escape(value, quote=True) for key, value in common.items()}),
+            _email_shell(_email_content(_render(f"{template}.{resolved_locale}.html", escaped_common)), resolved_locale, common["app_url"]),
             _render(f"{template}.{resolved_locale}.txt", common),
         ))
 
