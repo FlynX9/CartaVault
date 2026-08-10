@@ -126,7 +126,7 @@ export function InstanceStatusPage() {
   const [error, setError] = useState<string | null>(null)
   const [logs, setLogs] = useState<InstanceLogEntry[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
-  const [logMeta, setLogMeta] = useState({ nextBefore: null as number | null, truncated: false, retention: 0 })
+  const [logMeta, setLogMeta] = useState({ nextBefore: null as number | null, truncated: false, retention: 7 })
   const [level, setLevel] = useState<InstanceLogLevel | ''>('')
   const [component, setComponent] = useState('')
   const [search, setSearch] = useState('')
@@ -146,7 +146,7 @@ export function InstanceStatusPage() {
       const result = await getInstanceLogs({ level, component, search: search.trim(), order, before: options.append ? logMeta.nextBefore : null }, options.signal)
       if (!options.signal?.aborted) {
         setLogs((current) => options.append ? [...current, ...result.items] : result.items)
-        setLogMeta({ nextBefore: result.next_before, truncated: result.truncated, retention: result.retention_entries })
+        setLogMeta({ nextBefore: result.next_before, truncated: result.truncated, retention: result.retention_days })
       }
     } catch (reason) {
       if (!options.signal?.aborted) setError(reason instanceof Error ? reason.message : 'Logs unavailable.')
@@ -217,7 +217,7 @@ export function InstanceStatusPage() {
           <label className="instance-status__auto-refresh"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} />{t.autoRefresh}</label>
           <button type="button" className="panel-icon-button" aria-label={t.refresh} disabled={logsLoading} onClick={() => void loadLogs()}><RefreshCw className={logsLoading ? 'is-spinning' : ''} size={15} /></button>
         </div>
-        <p className="instance-status__log-retention">{logMeta.retention} {t.retained}{logMeta.truncated ? ` · ${language === 'fr' ? 'liste bornée ou tronquée' : 'bounded or truncated list'}` : ''}</p>
+        <p className="instance-status__log-retention">{language === 'fr' ? `Conservation : ${logMeta.retention} jours` : `Retention: ${logMeta.retention} days`}{logMeta.truncated ? ` · ${language === 'fr' ? 'liste paginée' : 'paginated list'}` : ''}</p>
         {logs.length === 0 && !logsLoading ? <p className="instance-status__empty">{t.emptyLogs}</p> : <ol className="instance-status__log-list">{logs.map((entry) => <li key={entry.id}><time dateTime={entry.timestamp}>{new Date(entry.timestamp).toLocaleTimeString(locale)}</time><b data-level={entry.level}>{entry.level}</b><strong>{entry.component}</strong><span>{entry.message}</span><button type="button" aria-label={`${language === 'fr' ? 'Copier' : 'Copy'} ${entry.id}`} onClick={() => void navigator.clipboard.writeText(`${entry.timestamp} ${entry.level} ${entry.component} ${entry.message}`).then(() => { setCopyNotice(t.copied); window.setTimeout(() => setCopyNotice(null), 2000) })}><Copy size={13} /></button></li>)}</ol>}
         {copyNotice && <p className="instance-status__copy-notice" role="status">{copyNotice}</p>}
         {logMeta.nextBefore && order === 'newest' && <button type="button" className="secondary-button instance-status__load-more" disabled={logsLoading} onClick={() => void loadLogs({ append: true })}>{t.loadMore}</button>}

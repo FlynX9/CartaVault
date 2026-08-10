@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import require_admin
 from app.database import get_db
 from app.instance_status.logs import MAX_LOG_ENTRIES, query_logs
+from app.instance_status.settings import get_log_retention_days
 from app.instance_status.schemas import InstanceLogPage, InstanceStatusResponse
 from app.instance_status.service import get_instance_status
 
@@ -31,6 +32,7 @@ def instance_logs(
     limit: int = Query(default=100, ge=1, le=200),
     before: int | None = Query(default=None, ge=1),
     order: Literal["newest", "oldest"] = "newest",
+    session: Session = Depends(get_db),
 ) -> InstanceLogPage:
     items, truncated, next_before = query_logs(
         level=level, component=component.upper() if component else None,
@@ -38,5 +40,5 @@ def instance_logs(
     )
     return InstanceLogPage(
         items=items, truncated=truncated, next_before=next_before,
-        max_limit=200, retention_entries=MAX_LOG_ENTRIES,
+        max_limit=200, retention_entries=MAX_LOG_ENTRIES, retention_days=get_log_retention_days(session),
     )

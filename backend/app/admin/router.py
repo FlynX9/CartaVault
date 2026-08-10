@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.admin.schemas import (
-    AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, MediaUploadSettings,
+    AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
 )
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
@@ -25,11 +25,22 @@ from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
 from app.media.settings import get_max_upload_megabytes, set_max_upload_megabytes
 from app.media.optimization import MEDIA_OPTIMIZATION_TASK
+from app.instance_status.settings import get_log_retention_days, set_log_retention_days
 from app.tasks.schemas import TaskStart
 from app.tasks.service import create_task, submit_task
 
 
 router = APIRouter(prefix="/admin/console", tags=["admin-console"], dependencies=[Depends(require_admin)])
+
+
+@router.get("/instance/log-retention", response_model=InstanceLogRetentionSettings)
+def get_instance_log_retention(session: Session = Depends(get_db)) -> InstanceLogRetentionSettings:
+    return InstanceLogRetentionSettings(retention_days=get_log_retention_days(session))
+
+
+@router.put("/instance/log-retention", response_model=InstanceLogRetentionSettings)
+def update_instance_log_retention(payload: InstanceLogRetentionSettings, session: Session = Depends(get_db)) -> InstanceLogRetentionSettings:
+    return InstanceLogRetentionSettings(retention_days=set_log_retention_days(session, payload.retention_days))
 
 
 @router.get("/media/settings", response_model=MediaUploadSettings)

@@ -4,14 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getInstanceLogs, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
+import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
 import { getPublicRegistrationSettings } from '../../api/registration'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
-  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogs: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
-  saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
+  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
+  saveInstanceLogRetention: vi.fn(), saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
@@ -24,7 +24,8 @@ beforeEach(() => {
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
-  vi.mocked(getInstanceLogs).mockResolvedValue({ items: [], truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, source: 'application-memory' })
+  vi.mocked(getInstanceLogRetention).mockResolvedValue({ retention_days: 7 })
+  vi.mocked(getInstanceLogs).mockResolvedValue({ items: [], truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, retention_days: 7, source: 'database' })
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ available: false, warning_level: 0, settings: { enabled: false, daily_soft_limit: 10000, monthly_soft_limit: 100000, auto_disable_percent: 100, repeated_error_limit: 5, consecutive_errors: 0, disabled_reason: null }, usage: { sessions_today: 0, tiles_started_today: 0, tiles_completed_today: 0, tiles_failed_today: 0, tiles_cancelled_today: 0, tiles_started_month: 0 }, authoritative_monitoring: { connected: false, console_url: 'https://console.cloud.google.com/google/maps-apis/metrics', notice: 'Authoritative' } })
 })
@@ -166,7 +167,7 @@ describe('AdminConsole', () => {
   it('loads bounded application logs from the merged instance screen', async () => {
     vi.mocked(getInstanceLogs).mockResolvedValue({
       items: [{ id: 7, timestamp: '2026-07-22T12:00:00Z', level: 'WARNING', component: 'ROUTING', logger: 'app.routing', message: 'Provider unavailable' }],
-      truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, source: 'application-memory',
+      truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, retention_days: 7, source: 'database',
     })
 
     render(<MemoryRouter initialEntries={['/admin/instance']}><AdminConsole /></MemoryRouter>)

@@ -269,7 +269,8 @@ class InstanceLogPage(BaseModel):
     next_before: int | None
     max_limit: int
     retention_entries: int
-    source: str = "application-memory"
+    retention_days: int = 7
+    source: str = "database"
 
 
 class InstanceComponents(BaseModel):

@@ -5,7 +5,7 @@ import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'reac
 
 import {
   assignUserQuotaProfile, cancelBackgroundTask, deleteResendCredential, getAdminCredentials, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
-  getSaasSettings, optimizeStoredMedia, saveMediaUploadSettings, saveSaasSettings,
+  getInstanceLogRetention, getSaasSettings, optimizeStoredMedia, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings,
   saveResendCredential, updateAdminUser, verifyResendCredential,
 } from '../../api/adminConsole'
 import { accountAvatarUrl } from '../../api/account'
@@ -185,7 +185,7 @@ function AdminCredentialsSection() {
 }
 
 function AdminGeneralSection() {
-  return <section><SectionHeading eyebrow="Instance" title="Général" description="Réglages généraux de l’instance et maintenance de la médiathèque." /><SaasSettingsPanel /><MediaMaintenancePanel /></section>
+  return <section><SectionHeading eyebrow="Instance" title="Général" description="Réglages généraux de l’instance et maintenance de la médiathèque." /><SaasSettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
 }
 
 function SaasSettingsPanel() {
@@ -227,6 +227,13 @@ function MediaMaintenancePanel() {
   const cancel = async () => { if (!task) return; try { await cancelBackgroundTask(task.id); setTask({ ...task, status: 'cancelled', message: 'Annulation demandée.' }) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Annulation impossible.') } }
   const active = task && ['pending', 'running'].includes(task.status)
   return <section className="admin-console__card admin-console__setting-card" aria-labelledby="media-maintenance-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ImageDown size={17} /></span><div><h3 id="media-maintenance-title">Médiathèque</h3><p>Limite d’import et optimisation contrôlée des images déjà stockées.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}<form className="admin-console__setting-form" onSubmit={save}><label>Taille maximale par image (Mo)<input type="number" min="1" max="100" value={limit} onChange={(event) => setLimit(Number(event.target.value))} /></label><button className="primary-button" disabled={busy}><Save size={16} />Enregistrer</button></form><div className="admin-console__setting-actions"><button type="button" className="primary-button" disabled={busy || !!active} onClick={() => void optimize()}><ImageDown size={16} />Optimiser les médias existants</button>{active && <button type="button" className="danger" onClick={() => void cancel()}>Annuler</button>}</div>{task && <div className="admin-console__hint" role="status"><strong>{task.status === 'succeeded' ? 'Optimisation terminée' : task.status === 'failed' ? 'Optimisation en erreur' : task.status === 'cancelled' ? 'Optimisation annulée' : `${task.percent} %`}</strong><span>{task.message}</span>{task.result && <span> · {String(task.result.optimized ?? 0)} optimisé(s), {String(task.result.skipped ?? 0)} ignoré(s), {String(task.result.failed ?? 0)} erreur(s), {Math.round(Number(task.result.saved_bytes ?? 0) / 1024 / 1024 * 10) / 10} Mo libérés.</span>}{task.error && <span> · {task.error}</span>}</div>}</section>
+}
+
+function LogRetentionPanel() {
+  const [days, setDays] = useState(7); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState<string | null>(null); const [error, setError] = useState<string | null>(null)
+  useEffect(() => { const controller = new AbortController(); void getInstanceLogRetention(controller.signal).then((value) => setDays(value.retention_days)).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Log settings unavailable.') }); return () => controller.abort() }, [])
+  const save = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(null); setNotice(null); try { const updated = await saveInstanceLogRetention(days); setDays(updated.retention_days); setNotice('Log retention saved.') } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save settings.') } finally { setBusy(false) } }
+  return <section className="admin-console__card admin-console__setting-card" aria-labelledby="log-retention-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><Activity size={17} /></span><div><h3 id="log-retention-title">Journaux d’instance</h3><p>Les journaux applicatifs sont conservés en base puis nettoyés automatiquement après la durée choisie.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}<form className="admin-console__setting-form" onSubmit={save}><label>Durée de conservation (jours)<input type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /></label><button className="primary-button" disabled={busy}><Save size={16} />Enregistrer</button></form><p className="admin-console__hint">Valeur par défaut : 7 jours. Les messages sont filtrés pour retirer les secrets et limiter les données personnelles.</p></section>
 }
 
 export function GoogleSatelliteAdminPanel() {

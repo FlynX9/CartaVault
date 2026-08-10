@@ -139,7 +139,7 @@ export interface InstanceLogEntry {
 }
 export interface InstanceLogPage {
   items: InstanceLogEntry[]; truncated: boolean; next_before: number | null; max_limit: number
-  retention_entries: number; source: string
+  retention_entries: number; retention_days: number; source: string
 }
 export interface InstanceHealth {
   checked_at: string; global_status: InstanceStatusValue

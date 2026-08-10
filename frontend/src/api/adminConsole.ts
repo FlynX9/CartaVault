@@ -4,6 +4,7 @@ import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, Effect
 export interface MediaUploadSettings { max_upload_megabytes: number }
 export interface BackgroundTaskResult { task_id: string; status: string }
 export interface SaasSettings { enabled: boolean }
+export interface InstanceLogRetentionSettings { retention_days: number }
 
 const empty = () => new URLSearchParams()
 
@@ -29,6 +30,8 @@ export function getBackgroundTask(taskId: string, signal?: AbortSignal) { return
 export function cancelBackgroundTask(taskId: string) { return sendWithoutResponse(`/tasks/${encodeURIComponent(taskId)}`, 'DELETE') }
 export function getSaasSettings(signal?: AbortSignal) { return getJson('/admin/console/saas/settings', empty(), signal) as Promise<SaasSettings> }
 export function saveSaasSettings(enabled: boolean) { return sendJson('/admin/console/saas/settings', 'PUT', { enabled }) as Promise<SaasSettings> }
+export function getInstanceLogRetention(signal?: AbortSignal) { return getJson('/admin/console/instance/log-retention', empty(), signal) as Promise<InstanceLogRetentionSettings> }
+export function saveInstanceLogRetention(retentionDays: number) { return sendJson('/admin/console/instance/log-retention', 'PUT', { retention_days: retentionDays }) as Promise<InstanceLogRetentionSettings> }
 export function getQuotaProfiles(signal?: AbortSignal) { return getJson('/admin/quota-profiles', empty(), signal) as Promise<QuotaProfile[]> }
 export function getQuotaRegistry(signal?: AbortSignal) { return getJson('/admin/quota-registry', empty(), signal) as Promise<QuotaRegistryItem[]> }
 export function createQuotaProfile(payload: { name: string; description: string | null; is_active: boolean; limits: QuotaLimits }) { return sendJson('/admin/quota-profiles', 'POST', payload) as Promise<QuotaProfile> }

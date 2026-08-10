@@ -70,6 +70,10 @@ class MediaUploadSettings(BaseModel):
     max_upload_megabytes: int = Field(default=5, ge=1, le=100)
 
 
+class InstanceLogRetentionSettings(BaseModel):
+    retention_days: int = Field(default=7, ge=1, le=365)
+
+
 class SaasSettings(BaseModel):
     enabled: bool = False
 

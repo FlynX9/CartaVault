@@ -4528,12 +4528,17 @@
             ],
             "title": "Next Before"
           },
+          "retention_days": {
+            "default": 7,
+            "title": "Retention Days",
+            "type": "integer"
+          },
           "retention_entries": {
             "title": "Retention Entries",
             "type": "integer"
           },
           "source": {
-            "default": "application-memory",
+            "default": "database",
             "title": "Source",
             "type": "string"
           },
@@ -4550,6 +4555,19 @@
           "retention_entries"
         ],
         "title": "InstanceLogPage",
+        "type": "object"
+      },
+      "InstanceLogRetentionSettings": {
+        "properties": {
+          "retention_days": {
+            "default": 7,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Retention Days",
+            "type": "integer"
+          }
+        },
+        "title": "InstanceLogRetentionSettings",
         "type": "object"
       },
       "InstanceStatusResponse": {
@@ -15565,6 +15583,66 @@
           }
         },
         "summary": "Instance Status",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/instance/log-retention": {
+      "get": {
+        "operationId": "get_instance_log_retention_admin_console_instance_log_retention_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceLogRetentionSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Instance Log Retention",
+        "tags": [
+          "admin-console"
+        ]
+      },
+      "put": {
+        "operationId": "update_instance_log_retention_admin_console_instance_log_retention_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceLogRetentionSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceLogRetentionSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Instance Log Retention",
         "tags": [
           "admin-console"
         ]

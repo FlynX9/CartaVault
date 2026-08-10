@@ -19,7 +19,5 @@
   {"id":"account-profile-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"account"},
   {"id":"admin-users-en-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"admin"}
   ,{"id":"places-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","mobile":true}
-  ,{"id":"place-popup-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"place-popup","mobile":true}
-  ,{"id":"trip-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trip","mobile":true}
-  ,{"id":"timeline-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"timeline","mobile":true}
+  ,{"id":"places-france-en-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","mobile":true}
 ]
