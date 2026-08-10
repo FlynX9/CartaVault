@@ -1,0 +1,5 @@
+Hello $display_name,
+
+Your CartaVault security code is: $code
+
+It expires in $ttl_minutes minutes. Do not share it with anyone.

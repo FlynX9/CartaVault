@@ -43,7 +43,7 @@ def status(database_session: Session = Depends(get_db), current: UserSession = D
 @router.post("/setup", response_model=TotpSetupRead, responses={200: {"headers": {"Cache-Control": {"schema": {"type": "string"}}}}})
 def setup(response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> TotpSetupRead:
     public_auth_rate_limiter.check(rate_limit_key("totp-setup", str(current.user_id)))
-    if current.user.totp_enabled:
+    if current.user.totp_enabled or current.user.email_mfa_enabled:
         raise HTTPException(409, "Two-factor authentication is already enabled")
     secret = generate_secret()
     enroll_secret(current.user, secret)

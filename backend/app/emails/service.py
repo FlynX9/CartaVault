@@ -30,6 +30,7 @@ SUBJECTS = {
         "map_ownership": "Validez le transfert d’une carte CartaVault",
         "map_ownership_registration": "Une carte CartaVault vous est proposée",
         "resend_verification": "Votre configuration email CartaVault fonctionne",
+        "email_mfa_code": "Votre code de sécurité CartaVault",
     },
     "en": {
         "registration_admin": "New CartaVault registration request",
@@ -43,6 +44,7 @@ SUBJECTS = {
         "map_ownership": "Approve a CartaVault map ownership transfer",
         "map_ownership_registration": "A CartaVault map is waiting for you",
         "resend_verification": "Your CartaVault email configuration works",
+        "email_mfa_code": "Your CartaVault security code",
     },
 }
 
@@ -187,3 +189,6 @@ class EmailService:
             {"display_name": display_name},
             locale,
         )
+
+    def send_email_mfa_code(self, recipient: str, display_name: str, code: str, locale: str = "fr") -> str | None:
+        return self._send("email_mfa_code", [recipient], {"display_name": display_name, "code": code, "ttl_minutes": "10"}, locale)

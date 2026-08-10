@@ -4115,6 +4115,29 @@
         "title": "EmailDiagnostic",
         "type": "object"
       },
+      "EmailMfaVerification": {
+        "properties": {
+          "challenge_token": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Challenge Token",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 6,
+            "minLength": 6,
+            "pattern": "^\\d{6}$",
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_token",
+          "code"
+        ],
+        "title": "EmailMfaVerification",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -14910,6 +14933,153 @@
         ]
       }
     },
+    "/account/security/email-mfa": {
+      "get": {
+        "operationId": "status_account_security_email_mfa_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status Account Security Email Mfa Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/email-mfa/confirm": {
+      "post": {
+        "operationId": "confirm_account_security_email_mfa_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailMfaVerification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Confirm Account Security Email Mfa Confirm Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/email-mfa/disable": {
+      "post": {
+        "operationId": "disable_account_security_email_mfa_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/email-mfa/setup": {
+      "post": {
+        "operationId": "setup_account_security_email_mfa_setup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Payload",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Setup Account Security Email Mfa Setup Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/account/security/totp": {
       "get": {
         "operationId": "status_account_security_totp_get",
@@ -17133,6 +17303,47 @@
           }
         },
         "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/email-mfa/verify": {
+      "post": {
+        "operationId": "verify_email_mfa_login_auth_email_mfa_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailMfaVerification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSelfRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Email Mfa Login",
         "tags": [
           "auth"
         ]

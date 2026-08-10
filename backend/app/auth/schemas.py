@@ -169,6 +169,16 @@ class TotpLoginChallenge(BaseModel):
     challenge_token: str = Field(min_length=32, max_length=512)
 
 
+class EmailMfaLoginChallenge(BaseModel):
+    requires_email_mfa: Literal[True] = True
+    challenge_token: str = Field(min_length=32, max_length=512)
+
+
+class EmailMfaVerification(BaseModel):
+    challenge_token: str = Field(min_length=32, max_length=512)
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
 class TotpLoginVerification(BaseModel):
     challenge_token: str = Field(min_length=32, max_length=512)
     code: str = Field(min_length=1, max_length=64)

@@ -43,6 +43,8 @@ class User(Base):
     totp_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     totp_enrollment_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     totp_last_used_counter: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    email_mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    email_mfa_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     quota_profile_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("quota_profiles.id", ondelete="RESTRICT"),
@@ -154,7 +156,7 @@ class AuthSecurityEvent(Base):
 class AuthActionToken(Base):
     __tablename__ = "auth_action_tokens"
     __table_args__ = (
-        CheckConstraint("token_type IN ('password_reset', 'totp_login')", name="auth_action_tokens_type_check"),
+        CheckConstraint("token_type IN ('password_reset', 'totp_login', 'email_mfa_login', 'email_mfa_enable')", name="auth_action_tokens_type_check"),
         Index("auth_action_tokens_token_hash_key", "token_hash", unique=True),
         Index("auth_action_tokens_user_type_idx", "user_id", "token_type"),
         Index("auth_action_tokens_expires_at_idx", "expires_at"),
@@ -168,6 +170,23 @@ class AuthActionToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class EmailMfaCode(Base):
+    __tablename__ = "email_mfa_codes"
+    __table_args__ = (
+        Index("email_mfa_codes_challenge_idx", "challenge_token_hash", unique=True),
+        Index("email_mfa_codes_user_purpose_idx", "user_id", "purpose", "created_at"),
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False)
+    challenge_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
 
 class TotpRecoveryCode(Base):

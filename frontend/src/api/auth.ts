@@ -1,5 +1,5 @@
 import { getJson, sendJson, sendWithoutResponse, setCsrfToken } from './client'
-import type { AuthUser, LoginPayload, TotpLoginChallenge } from '../auth/authTypes'
+import type { AuthUser, EmailMfaLoginChallenge, LoginPayload, TotpLoginChallenge } from '../auth/authTypes'
 import { isRecord, readBoolean, readDateTime, readString, readUuid } from './validation'
 
 function parseUser(value: unknown): AuthUser {
@@ -22,13 +22,15 @@ export async function restoreSession(signal?: AbortSignal): Promise<AuthUser> {
   return user
 }
 
-export async function login(payload: LoginPayload): Promise<AuthUser | TotpLoginChallenge> {
+export async function login(payload: LoginPayload): Promise<AuthUser | TotpLoginChallenge | EmailMfaLoginChallenge> {
   const result = await sendJson('/auth/login', 'POST', payload)
   if (isRecord(result) && result.requires_totp === true && typeof result.challenge_token === 'string') return { requires_totp: true, challenge_token: result.challenge_token }
+  if (isRecord(result) && result.requires_email_mfa === true && typeof result.challenge_token === 'string') return { requires_email_mfa: true, challenge_token: result.challenge_token }
   const user = parseUser(result)
   setCsrfToken(user.csrf_token)
   return user
 }
+export async function verifyEmailMfaLogin(challenge_token: string, code: string): Promise<AuthUser> { const user = parseUser(await sendJson('/auth/email-mfa/verify', 'POST', { challenge_token, code })); setCsrfToken(user.csrf_token); return user }
 
 export async function verifyTotpLogin(challenge_token: string, code: string, recovery = false): Promise<AuthUser> {
   const user = parseUser(await sendJson(recovery ? '/auth/totp/recovery' : '/auth/totp/verify', 'POST', { challenge_token, code }))

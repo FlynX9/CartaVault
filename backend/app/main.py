@@ -27,6 +27,7 @@ from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
 from app.auth.totp_router import router as totp_router
+from app.auth.email_mfa_router import router as email_mfa_router
 from app.auth.public_router import router as public_auth_router
 from app.auth.registration_admin_router import router as registration_admin_router
 from app.categories.router import router as categories_router
@@ -207,6 +208,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(setup_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(totp_router, prefix=API_PREFIX)
+app.include_router(email_mfa_router, prefix=API_PREFIX)
 app.include_router(public_auth_router, prefix=API_PREFIX)
 app.include_router(account_router, prefix=API_PREFIX)
 app.include_router(credential_router, prefix=API_PREFIX)

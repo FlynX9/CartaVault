@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { createPortal } from 'react-dom'
 import { AlertTriangle, CalendarDays, ChevronDown, Clock3, HardDriveDownload, Image as ImageIcon, Info, KeyRound, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
-import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, confirmTotpSetup, deleteAccountAvatar, deleteOwnAccount, disableTotp, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, getTotpStatus, regenerateTotpRecoveryCodes, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, startTotpSetup, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, confirmEmailMfaSetup, confirmTotpSetup, deleteAccountAvatar, deleteOwnAccount, disableEmailMfa, disableTotp, getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, getTotpStatus, regenerateTotpRecoveryCodes, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, startEmailMfaSetup, startTotpSetup, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
 import { getGoogleSatelliteStatus } from '../../api/googleSatellite'
@@ -180,6 +180,7 @@ function SecuritySection({ profile, run, refreshProfile }: { profile: AccountPro
       <button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button>
     </form>
     <TotpSection run={run} />
+    <EmailMfaSection run={run} />
     <section className="account-preference-card account-security-overview">
       <PreferenceCardHeading icon={ShieldCheck} title="État de sécurité du compte" />
       <div className="account-security-overview__items">
@@ -189,6 +190,13 @@ function SecuritySection({ profile, run, refreshProfile }: { profile: AccountPro
       </div>
     </section>
   </div></>
+}
+
+function EmailMfaSection({ run }: { run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
+  const [status, setStatus] = useState<{ enabled: boolean; verified_at: string | null; available: boolean } | null>(null); const [password, setPassword] = useState(''); const [challenge, setChallenge] = useState(''); const [code, setCode] = useState(''); const [error, setError] = useState<string | null>(null)
+  useEffect(() => { void getEmailMfaStatus().then(setStatus).catch(() => setError('Impossible de vérifier la disponibilité du MFA e-mail.')) }, [])
+  if (!status) return null
+  return <section className="account-preference-card account-security-card"><PreferenceCardHeading icon={Mail} title="Authentification à deux facteurs par e-mail" />{!status.available && <p className="account-card-description">Disponible lorsque Resend ou SMTP est configuré.</p>}{!status.enabled && status.available && !challenge && <><p className="account-card-description">Recevez un code de sécurité à chaque connexion. Cette méthode remplace le TOTP, elle ne peut pas être active en même temps.</p><label>Mot de passe actuel<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label><button className="account-button account-button--primary" type="button" onClick={() => void startEmailMfaSetup(password).then((value) => { setChallenge(value.challenge_token); setError(null) }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Activation impossible.'))}>Envoyer un code</button></>}{challenge && <><label>Code reçu par e-mail<input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} /></label><button className="account-button account-button--primary" type="button" onClick={() => void confirmEmailMfaSetup(challenge, code).then(() => { setStatus({ ...status, enabled: true, verified_at: new Date().toISOString() }); setChallenge(''); notifyNotificationsChanged() }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Code invalide.'))}>Vérifier et activer</button></>}{status.enabled && <><p className="account-card-description">Activée{status.verified_at ? ` le ${formatDate(status.verified_at)}` : ''}.</p><label>Mot de passe actuel<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label><button className="account-button account-button--danger-hover" type="button" onClick={() => void run(() => disableEmailMfa(password), 'Authentification e-mail désactivée.').then((ok) => { if (ok) { setStatus({ ...status, enabled: false, verified_at: null }); notifyNotificationsChanged() } })}>Désactiver</button></>}{error && <p className="form-alert" role="alert">{error}</p>}</section>
 }
 
 function TotpSection({ run }: { run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {

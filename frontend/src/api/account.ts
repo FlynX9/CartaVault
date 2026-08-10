@@ -13,6 +13,10 @@ export async function getAccountSessions(signal?: AbortSignal): Promise<AccountS
 export async function revokeAccountSession(id: string): Promise<void> { await sendWithoutResponse(`/account/sessions/${encodeURIComponent(id)}`, 'DELETE') }
 export async function revokeOtherAccountSessions(): Promise<void> { await sendWithoutResponse('/account/sessions/revoke-others', 'POST') }
 export async function getTotpStatus(): Promise<TotpSecurityStatus> { return getJson('/account/security/totp', new URLSearchParams()) as Promise<TotpSecurityStatus> }
+export async function getEmailMfaStatus(): Promise<{ enabled: boolean; verified_at: string | null; available: boolean }> { return getJson('/account/security/email-mfa', new URLSearchParams()) as Promise<{ enabled: boolean; verified_at: string | null; available: boolean }> }
+export async function startEmailMfaSetup(current_password: string): Promise<{ challenge_token: string }> { return sendJson('/account/security/email-mfa/setup', 'POST', { current_password }) as Promise<{ challenge_token: string }> }
+export async function confirmEmailMfaSetup(challenge_token: string, code: string): Promise<void> { await sendJson('/account/security/email-mfa/confirm', 'POST', { challenge_token, code }) }
+export async function disableEmailMfa(current_password: string): Promise<void> { await sendBodyWithoutResponse('/account/security/email-mfa/disable', 'POST', { current_password }) }
 export async function startTotpSetup(): Promise<TotpSetup> { return sendJson('/account/security/totp/setup', 'POST', {}) as Promise<TotpSetup> }
 export async function confirmTotpSetup(code: string): Promise<TotpRecoveryCodes> { return sendJson('/account/security/totp/confirm', 'POST', { code }) as Promise<TotpRecoveryCodes> }
 export async function regenerateTotpRecoveryCodes(current_password: string, code: string): Promise<TotpRecoveryCodes> { return sendJson('/account/security/totp/recovery-codes/regenerate', 'POST', { current_password, code }) as Promise<TotpRecoveryCodes> }

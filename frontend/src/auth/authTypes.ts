@@ -20,3 +20,4 @@ export interface TotpLoginChallenge {
   requires_totp: true
   challenge_token: string
 }
+export interface EmailMfaLoginChallenge { requires_email_mfa: true; challenge_token: string }
