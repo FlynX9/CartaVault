@@ -243,18 +243,22 @@ function WorkspaceApp() {
   useEffect(() => {
     const startFromMedia = (event: Event) => {
       const detail = (event as CustomEvent<{ mediaId?: string; mapId?: string; latitude?: number | null; longitude?: number | null }>).detail;
-      if (!detail?.mediaId || !detail.mapId || detail.latitude == null || detail.longitude == null) return;
+      if (!detail?.mediaId || !detail.mapId) return;
+      const sourceMap = maps.find((item) => item.id === detail.mapId);
+      const latitude = detail.latitude ?? sourceMap?.effective_center_latitude;
+      const longitude = detail.longitude ?? sourceMap?.effective_center_longitude;
+      if (latitude == null || longitude == null) return;
       setPendingMediaAttachmentId(detail.mediaId);
       setTemporarySearchResult(null);
       setDraftPosition(null);
-      setCoordinatePrefill({ latitude: detail.latitude, longitude: detail.longitude });
+      setCoordinatePrefill({ latitude, longitude });
       setWorkspacePanel("places");
       setPlacesPanelCollapsed(false);
       navigate(withMap("/places/new", detail.mapId, activeStatusId));
     };
     window.addEventListener("cartavault:create-place-from-media", startFromMedia);
     return () => window.removeEventListener("cartavault:create-place-from-media", startFromMedia);
-  }, [activeStatusId, navigate]);
+  }, [activeStatusId, maps, navigate]);
   const [exportMap, setExportMap] = useState<PoiMap | null>(null);
   const [membersMap, setMembersMap] = useState<PoiMap | null>(null);
   const [tripPlannerOpen, setTripPlannerOpen] = useState(false);

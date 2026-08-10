@@ -151,7 +151,10 @@ def to_media_read(row, current_user_id: UUID) -> MediaItemRead:
         ),
         latitude=photo.latitude,
         longitude=photo.longitude,
-        can_create_place=place is None and photo.latitude is not None and photo.longitude is not None and role in {"owner", "editor"},
+        # An unattached image can always start POI creation for an editor. GPS
+        # coordinates are used as a prefill when available; otherwise the UI
+        # opens the map's default location for manual placement.
+        can_create_place=place is None and role in {"owner", "editor"},
     )
 
 

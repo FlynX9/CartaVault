@@ -85,7 +85,7 @@ interface DetailsProps {
 }
 
 function requestPlaceCreationFromMedia(media: MediaItem) {
-  if (!media.can_create_place || media.latitude == null || media.longitude == null) return
+  if (!media.can_create_place) return
   window.dispatchEvent(new CustomEvent('cartavault:create-place-from-media', {
     detail: { mediaId: media.id, mapId: media.map.id, latitude: media.latitude, longitude: media.longitude },
   }))

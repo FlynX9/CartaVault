@@ -135,6 +135,7 @@ def test_attached_media_keeps_its_original_storage_scope(
         files={"file": ("geotagged.png", png_bytes(), "image/png")},
     )
     assert uploaded.status_code == 201
+    assert uploaded.json()["can_create_place"] is True
     media_id = uploaded.json()["id"]
 
     place = integration_client.post(
@@ -161,3 +162,19 @@ def test_attached_media_keeps_its_original_storage_scope(
 
     deleted = integration_client.delete(f"/photos/{media_id}")
     assert deleted.status_code == 204
+
+
+def test_unassigned_media_without_gps_can_still_start_manual_place_creation(
+    integration_client: TestClient,
+    poi_map: PoiMap,
+) -> None:
+    uploaded = integration_client.post(
+        "/media-actions/upload",
+        data={"map_id": str(poi_map.id)},
+        files={"file": ("manual-location.png", png_bytes(), "image/png")},
+    )
+
+    assert uploaded.status_code == 201
+    assert uploaded.json()["latitude"] is None
+    assert uploaded.json()["longitude"] is None
+    assert uploaded.json()["can_create_place"] is True
