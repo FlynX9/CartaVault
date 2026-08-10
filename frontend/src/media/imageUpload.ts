@@ -27,7 +27,11 @@ export async function readImageLocation(file: File): Promise<ImageLocation | nul
     // Some Android editors write location in XMP rather than in the EXIF GPS IFD.
     // The full parser exposes these fields while `gps()` deliberately only reads
     // the compact EXIF GPS block.
-    const metadata = await parse(file, true) as Record<string, unknown> | undefined
+    const metadata = await parse(file, {
+      gps: true,
+      xmp: true,
+      translateValues: false,
+    }) as Record<string, unknown> | undefined
     return validCoordinates(
       metadata?.latitude ?? metadata?.GPSLatitude,
       metadata?.longitude ?? metadata?.GPSLongitude,

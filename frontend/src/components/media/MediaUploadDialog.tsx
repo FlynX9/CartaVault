@@ -1,61 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Camera, Upload, X } from 'lucide-react'
 
-import { getMediaUploadPolicy, uploadMedia } from '../../api/media'
-import { getMaps } from '../../api/maps'
-import { compressImage, readImageLocation } from '../../media/imageUpload'
 import type { PoiMap } from '../../types/map'
 
 interface MediaUploadDialogProps {
+  maps: PoiMap[]
   onClose: () => void
   onDone: () => void
 }
 
-/** The importer uses an isolated portal rather than the media-viewer sheet. */
-export function MediaUploadDialog({ onClose, onDone }: MediaUploadDialogProps) {
+/**
+ * Deliberately plain, application-owned upload dialog.
+ *
+ * It has no portal, no API request and no EXIF import while it opens. This is
+ * important on Android: selecting the toolbar action must always paint this
+ * dialog before a file picker or a metadata parser can run.
+ */
+export function MediaUploadDialog({ maps, onClose, onDone }: MediaUploadDialogProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
-  const [maps, setMaps] = useState<PoiMap[]>([])
-  const [mapId, setMapId] = useState('')
-  const [maxUploadBytes, setMaxUploadBytes] = useState(5 * 1024 * 1024)
-  const [maxImageDimension, setMaxImageDimension] = useState(2560)
+  const [mapId, setMapId] = useState(() => maps.find((map) => map.can_edit)?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const editableMaps = maps.filter((map) => map.can_edit)
 
   useEffect(() => {
-    const controller = new AbortController()
-    void Promise.all([getMaps(controller.signal), getMediaUploadPolicy(controller.signal)])
-      .then(([items, policy]) => {
-        if (controller.signal.aborted) return
-        const editableMaps = items.filter((map) => map.can_edit)
-        setMaps(editableMaps)
-        setMapId((current) => current || editableMaps[0]?.id || '')
-        setMaxUploadBytes(policy.max_upload_bytes)
-        setMaxImageDimension(policy.max_image_dimension)
-      })
-      .catch((caught) => {
-        if (controller.signal.aborted || (caught instanceof DOMException && caught.name === 'AbortError')) return
-        setError(caught instanceof Error ? caught.message : 'Cartes indisponibles.')
-      })
-    return () => controller.abort()
-  }, [])
+    setMapId((current) => editableMaps.some((map) => map.id === current) ? current : (editableMaps[0]?.id ?? ''))
+  }, [editableMaps])
 
   const submit = async (files: FileList | null) => {
     if (!files?.length || !mapId) return
     setBusy(true)
     setError(null)
     try {
-      for (const source of Array.from(files)) {
-        const [coordinates, compressed] = await Promise.all([
-          readImageLocation(source),
-          compressImage(source, maxImageDimension),
-        ])
-        if (compressed.size > maxUploadBytes) {
-          throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString('fr-FR')} Mo.`)
-        }
-        await uploadMedia(compressed, mapId, coordinates, undefined, source)
-      }
+      // The processing module — including EXIF parsing — is loaded only once
+      // a real image has been selected. It cannot affect dialog rendering.
+      const { uploadPreparedMedia } = await import('../../media/uploadProcessing')
+      await uploadPreparedMedia(Array.from(files), mapId)
       onDone()
       onClose()
     } catch (caught) {
@@ -65,7 +46,7 @@ export function MediaUploadDialog({ onClose, onDone }: MediaUploadDialogProps) {
     }
   }
 
-  return createPortal(
+  return (
     <div className="media-upload-modal" role="presentation">
       <section className="media-upload-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title">
         <header className="media-upload-modal__header">
@@ -76,10 +57,15 @@ export function MediaUploadDialog({ onClose, onDone }: MediaUploadDialogProps) {
           <button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button>
         </header>
         <div className="media-upload-modal__content">
-          <label>Carte<select value={mapId} onChange={(event) => setMapId(event.target.value)}>
-            {maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.country.name}</option>)}
-          </select></label>
-          <p>Les images sont compressées automatiquement jusqu’à {maxImageDimension.toLocaleString('fr-FR')} px sur leur plus grand côté. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>
+          <label>
+            Carte
+            <select value={mapId} onChange={(event) => setMapId(event.target.value)} disabled={busy || editableMaps.length === 0}>
+              {editableMaps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.country.name}</option>)}
+            </select>
+          </label>
+          {editableMaps.length === 0
+            ? <p className="form-alert" role="alert">Aucune carte modifiable n’est disponible pour importer ces photos.</p>
+            : <p>Les images sont compressées automatiquement selon les réglages de l’instance. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>}
           {error && <p className="form-alert" role="alert">{error}</p>}
         </div>
         <footer className="media-upload-modal__actions">
@@ -89,7 +75,6 @@ export function MediaUploadDialog({ onClose, onDone }: MediaUploadDialogProps) {
           <button className="primary-button media-upload-camera" disabled={busy || !mapId} type="button" onClick={() => cameraRef.current?.click()}><Camera size={16} />Prendre une photo</button>
         </footer>
       </section>
-    </div>,
-    document.body,
+    </div>
   )
 }

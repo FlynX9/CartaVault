@@ -80,7 +80,6 @@ import { getSetupStatus, type SetupStatus } from "./api/setup";
 import { useConfirmDialog } from "./components/common/useConfirmDialog";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { useI18n } from "./i18n/useI18n";
-import { MediaUploadDialog } from "./components/media/MediaUploadDialog";
 
 const MapsWorkspacePanel = lazy(async () => ({
   default: (await import("./components/maps/MapsWorkspacePanel"))
@@ -219,12 +218,11 @@ function WorkspaceApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
-  const [mediaUploadOpen, setMediaUploadOpen] = useState(false);
   useEffect(() => {
-    const openMediaUpload = () => setMediaUploadOpen(true);
+    const openMediaUpload = () => window.dispatchEvent(new CustomEvent("cartavault:show-media-upload", { detail: { maps } }));
     window.addEventListener("cartavault:open-media-upload", openMediaUpload);
     return () => window.removeEventListener("cartavault:open-media-upload", openMediaUpload);
-  }, []);
+  }, [maps]);
   useEffect(() => {
     const refreshWorkspace = () => setRefreshVersion((value) => value + 1);
     window.addEventListener(WORKSPACE_CHANGED_EVENT, refreshWorkspace);
@@ -1823,15 +1821,6 @@ function WorkspaceApp() {
             <AdminConsole onClose={closeAdmin} />
           </Suspense>
         </RequireAdmin>
-      )}
-      {mediaUploadOpen && (
-        <MediaUploadDialog
-          onClose={() => setMediaUploadOpen(false)}
-          onDone={() => {
-            setRefreshVersion((value) => value + 1);
-            window.dispatchEvent(new Event("cartavault:media-uploaded"));
-          }}
-        />
       )}
       {confirmationDialog}
     </main>
