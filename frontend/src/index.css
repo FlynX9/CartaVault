@@ -7037,6 +7037,16 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
 .media-upload-dialog .media-details-fields > p:not(.form-alert) { margin: 0; padding: .7rem .75rem; color: var(--cv-color-slate); background: color-mix(in srgb, var(--cv-color-teal) 6%, var(--cv-surface)); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 18%, var(--cv-border-strong)); border-radius: .55rem; font-size: .76rem; line-height: 1.45; }
 .media-upload-dialog > footer { justify-content: flex-end; }
 .media-upload-dialog > footer .media-upload-camera { min-width: 9.2rem; }
+.media-upload-modal { position:fixed; z-index:calc(var(--cv-z-toast) + 10); inset:0; display:grid; align-items:center; justify-items:center; padding:1rem; background:rgb(13 27 42 / 48%); }
+.media-upload-modal__dialog { display:flex; flex-direction:column; width:min(34rem, 100%); max-height:min(35rem, calc(100dvh - 2rem)); overflow:hidden auto; color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid var(--cv-border-subtle); border-radius:var(--cv-radius-lg); box-shadow:var(--cv-shadow-md); }
+.media-upload-modal__header { display:flex; flex:0 0 auto; align-items:flex-start; justify-content:space-between; gap:.8rem; padding:1rem 1.1rem; border-bottom:1px solid var(--cv-border-subtle); }
+.media-upload-modal__header h2 { margin:.16rem 0 0; font-size:1.05rem; }
+.media-upload-modal__content { display:grid; gap:.8rem; padding:1rem 1.1rem; }
+.media-upload-modal__content > label { display:grid; gap:.3rem; color:var(--cv-color-slate); font-size:.76rem; font-weight:700; }
+.media-upload-modal__content select { min-height:2.35rem; padding:.4rem .6rem; color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid var(--cv-border-subtle); border-radius:.55rem; font:400 .8rem/1.2 inherit; }
+.media-upload-modal__content > p:not(.form-alert) { margin:0; padding:.7rem .75rem; color:var(--cv-color-slate); background:color-mix(in srgb, var(--cv-color-teal) 6%, var(--cv-surface)); border:1px solid color-mix(in srgb, var(--cv-color-teal) 18%, var(--cv-border-strong)); border-radius:.55rem; font-size:.76rem; line-height:1.45; }
+.media-upload-modal__actions { display:flex; flex:0 0 auto; justify-content:flex-end; gap:.5rem; padding:.8rem 1.1rem; border-top:1px solid var(--cv-border-subtle); }
+.media-upload-modal__actions .media-upload-camera { min-width:9.2rem; }
 .media-details-dialog > footer { display: flex; justify-content: flex-end; gap: .45rem; padding: .7rem 1rem; background: var(--cv-color-off-white); border-top: 1px solid rgb(43 62 89 / 10%); }
 .media-details-dialog > footer :is(button, a) { display: inline-flex; min-height: 2.2rem; align-items: center; justify-content: center; gap: .38rem; padding: .38rem .7rem; border: 1px solid var(--cv-border-strong); border-radius: .5rem; box-shadow: 0 1px 1px rgb(13 27 42 / 4%); font-size: .75rem; font-weight: 700; text-decoration: none; }
 .media-details-dialog > footer .secondary-button { color: var(--cv-color-slate); background: var(--cv-surface); }
@@ -14017,6 +14027,11 @@ html[data-theme='dark'] .danger-level-control {
    dialogs edge-to-edge removes the visual gutter and leaves their own content
    area responsible for scrolling. */
 @media (max-width: 760px) {
+  .media-upload-modal { inset:var(--cv-topbar-height) 0 calc(var(--cv-mobile-nav-height) + env(safe-area-inset-bottom)); padding:.65rem; }
+  .media-upload-modal__dialog { width:min(34rem, 100%); max-height:100%; }
+  .media-upload-modal__actions { justify-content:stretch; }
+  .media-upload-modal__actions > button { flex:1 1 0; min-width:0; }
+
   .cv-overlay:not(.confirmation-overlay) {
     inset: var(--cv-topbar-height) 0 calc(var(--cv-mobile-nav-height) + env(safe-area-inset-bottom));
     align-items: stretch;

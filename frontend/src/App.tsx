@@ -80,6 +80,7 @@ import { getSetupStatus, type SetupStatus } from "./api/setup";
 import { useConfirmDialog } from "./components/common/useConfirmDialog";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { useI18n } from "./i18n/useI18n";
+import { MediaUploadDialog } from "./components/media/MediaUploadDialog";
 
 const MapsWorkspacePanel = lazy(async () => ({
   default: (await import("./components/maps/MapsWorkspacePanel"))
@@ -115,10 +116,6 @@ const TagsWorkspacePanel = lazy(async () => ({
 const StatusesWorkspacePanel = lazy(async () => ({
   default: (await import("./components/layout/WorkspaceManagementPanels"))
     .StatusesWorkspacePanel,
-}));
-const MediaUploadDialog = lazy(async () => ({
-  default: (await import("./components/media/MediaWorkspacePanel"))
-    .MediaUploadDialog,
 }));
 const AnnotationTemplatesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/AnnotationTemplatesWorkspacePanel')).AnnotationTemplatesWorkspacePanel }));
 const TrashWorkspacePanel = lazy(async () => ({
@@ -1828,15 +1825,13 @@ function WorkspaceApp() {
         </RequireAdmin>
       )}
       {mediaUploadOpen && (
-        <Suspense fallback={null}>
-          <MediaUploadDialog
-            onClose={() => setMediaUploadOpen(false)}
-            onDone={() => {
-              setRefreshVersion((value) => value + 1);
-              window.dispatchEvent(new Event("cartavault:media-uploaded"));
-            }}
-          />
-        </Suspense>
+        <MediaUploadDialog
+          onClose={() => setMediaUploadOpen(false)}
+          onDone={() => {
+            setRefreshVersion((value) => value + 1);
+            window.dispatchEvent(new Event("cartavault:media-uploaded"));
+          }}
+        />
       )}
       {confirmationDialog}
     </main>
