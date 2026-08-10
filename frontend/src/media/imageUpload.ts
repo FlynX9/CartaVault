@@ -1,5 +1,3 @@
-import { gps, parse } from 'exifr'
-
 export const DEFAULT_MAX_DIMENSION = 2560
 
 export interface ImageLocation { latitude: number; longitude: number }
@@ -18,6 +16,10 @@ function validCoordinates(latitude: unknown, longitude: unknown): ImageLocation 
  */
 export async function readImageLocation(file: File): Promise<ImageLocation | null> {
   try {
+    // Loading the EXIF parser only after a file has been selected prevents a
+    // third-party parser from participating in the render path of the import
+    // dialog on mobile browsers.
+    const { gps, parse } = await import('exifr')
     const coordinates = await gps(file)
     const direct = validCoordinates(coordinates?.latitude, coordinates?.longitude)
     if (direct) return direct
