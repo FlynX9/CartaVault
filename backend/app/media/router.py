@@ -1,6 +1,7 @@
 from datetime import date
 from io import BytesIO
 from math import ceil
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
@@ -91,33 +92,65 @@ def read_uploaded_gps(source: UploadFile) -> tuple[float, float] | None:
     """Read GPS from an uncompressed client source without retaining that file."""
     try:
         content = source.file.read()
+    except OSError:
+        return None
+    try:
         with Image.open(BytesIO(content)) as image:
             gps = image.getexif().get_ifd(34853)
-        if not gps:
-            return None
-        latitude_values, longitude_values = gps.get(2), gps.get(4)
-        latitude_ref, longitude_ref = gps.get(1), gps.get(3)
-        if not latitude_values or not longitude_values:
-            return None
+        if gps:
+            latitude_values, longitude_values = gps.get(2), gps.get(4)
+            latitude_ref, longitude_ref = gps.get(1), gps.get(3)
+            if latitude_values and longitude_values:
+                def to_decimal(values) -> float:
+                    degrees, minutes, seconds = (float(value) for value in values)
+                    return degrees + minutes / 60 + seconds / 3600
 
-        def to_decimal(values) -> float:
-            degrees, minutes, seconds = (float(value) for value in values)
-            return degrees + minutes / 60 + seconds / 3600
+                latitude, longitude = to_decimal(latitude_values), to_decimal(longitude_values)
+                if isinstance(latitude_ref, bytes):
+                    latitude_ref = latitude_ref.decode(errors="ignore")
+                if isinstance(longitude_ref, bytes):
+                    longitude_ref = longitude_ref.decode(errors="ignore")
+                if str(latitude_ref).upper() == "S":
+                    latitude = -latitude
+                if str(longitude_ref).upper() == "W":
+                    longitude = -longitude
+                if -90 <= latitude <= 90 and -180 <= longitude <= 180:
+                    return latitude, longitude
 
-        latitude, longitude = to_decimal(latitude_values), to_decimal(longitude_values)
-        if isinstance(latitude_ref, bytes):
-            latitude_ref = latitude_ref.decode(errors="ignore")
-        if isinstance(longitude_ref, bytes):
-            longitude_ref = longitude_ref.decode(errors="ignore")
-        if str(latitude_ref).upper() == "S":
-            latitude = -latitude
-        if str(longitude_ref).upper() == "W":
-            longitude = -longitude
-        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return _read_xmp_gps(content)
+    except (UnidentifiedImageError, ValueError, TypeError, ZeroDivisionError):
+        return _read_xmp_gps(content)
+
+
+def _read_xmp_gps(content: bytes) -> tuple[float, float] | None:
+    """Read the location fields used by Android photo editors in XMP blocks."""
+
+    xmp = content.decode("utf-8", errors="ignore")
+
+    def value_for(field: str) -> str | None:
+        attribute = re.search(rf"(?:exif:)?{field}\s*=\s*[\"']([^\"']+)", xmp, flags=re.IGNORECASE)
+        element = re.search(rf"<(?:exif:)?{field}[^>]*>\s*([^<]+)", xmp, flags=re.IGNORECASE)
+        return (attribute or element).group(1).strip() if attribute or element else None
+
+    def decimal(value: str | None, negative_ref: str) -> float | None:
+        if not value:
             return None
-        return latitude, longitude
-    except (OSError, UnidentifiedImageError, ValueError, TypeError, ZeroDivisionError):
+        unsigned = value.strip().upper().rstrip("NSEW ")
+        decimal_comma = re.fullmatch(r"\d+,\d{3,}", unsigned)
+        if decimal_comma:
+            result = float(unsigned.replace(",", "."))
+            return -result if negative_ref in value.upper() or value.lstrip().startswith("-") else result
+        numbers = [float(item) for item in re.findall(r"\d+(?:\.\d+)?", value)]
+        if not numbers:
+            return None
+        result = numbers[0] + (numbers[1] / 60 if len(numbers) > 1 else 0) + (numbers[2] / 3600 if len(numbers) > 2 else 0)
+        return -result if negative_ref in value.upper() or value.lstrip().startswith("-") else result
+
+    latitude = decimal(value_for("GPSLatitude"), "S")
+    longitude = decimal(value_for("GPSLongitude"), "W")
+    if latitude is None or longitude is None or not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
         return None
+    return latitude, longitude
 
 
 def to_media_read(row, current_user_id: UUID) -> MediaItemRead:

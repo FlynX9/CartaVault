@@ -1,8 +1,15 @@
-import { gps } from 'exifr'
+import { gps, parse } from 'exifr'
 
 export const DEFAULT_MAX_DIMENSION = 2560
 
 export interface ImageLocation { latitude: number; longitude: number }
+
+function validCoordinates(latitude: unknown, longitude: unknown): ImageLocation | null {
+  const lat = typeof latitude === 'number' ? latitude : Number(latitude)
+  const lon = typeof longitude === 'number' ? longitude : Number(longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
+  return { latitude: lat, longitude: lon }
+}
 
 /**
  * Read EXIF/XMP GPS metadata from the original file before canvas compression
@@ -12,15 +19,17 @@ export interface ImageLocation { latitude: number; longitude: number }
 export async function readImageLocation(file: File): Promise<ImageLocation | null> {
   try {
     const coordinates = await gps(file)
-    const latitude = coordinates?.latitude
-    const longitude = coordinates?.longitude
-    if (
-      !Number.isFinite(latitude) ||
-      !Number.isFinite(longitude) ||
-      latitude < -90 || latitude > 90 ||
-      longitude < -180 || longitude > 180
-    ) return null
-    return { latitude, longitude }
+    const direct = validCoordinates(coordinates?.latitude, coordinates?.longitude)
+    if (direct) return direct
+
+    // Some Android editors write location in XMP rather than in the EXIF GPS IFD.
+    // The full parser exposes these fields while `gps()` deliberately only reads
+    // the compact EXIF GPS block.
+    const metadata = await parse(file, true) as Record<string, unknown> | undefined
+    return validCoordinates(
+      metadata?.latitude ?? metadata?.GPSLatitude,
+      metadata?.longitude ?? metadata?.GPSLongitude,
+    )
   } catch {
     // A photograph without metadata remains a valid media upload.
     return null
