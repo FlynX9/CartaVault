@@ -14081,7 +14081,34 @@ html[data-theme='dark'] .danger-level-control {
      detail sheet, it must not be dismissed by a workspace/navigation event
      while Android is handing control back from its file picker. */
   .media-upload-overlay {
+    inset: var(--cv-topbar-height) 0 calc(var(--cv-mobile-nav-height) + env(safe-area-inset-bottom)) !important;
+    display: grid;
+    align-items: center;
+    justify-items: stretch;
+    padding: .65rem !important;
+    overflow-y: auto;
     z-index: calc(var(--cv-z-toast) + 10);
+  }
+
+  /* The upload sheet contains only a compact form.  It must keep its natural
+     height: forcing the generic media detail sheet to fill the viewport left
+     Android with an opaque, apparently empty layer. */
+  .media-upload-overlay .media-upload-dialog {
+    display: flex;
+    flex-direction: column;
+    width: min(34rem, 100%);
+    height: auto;
+    max-height: 100%;
+    min-height: 0;
+    margin: auto;
+    overflow-y: auto;
+    border: 1px solid var(--cv-border-subtle);
+    border-radius: var(--cv-radius-lg);
+    box-shadow: var(--cv-shadow-md);
+  }
+
+  .media-upload-overlay .media-upload-dialog > footer {
+    flex: 0 0 auto;
   }
 
   .photo-viewer-overlay {
