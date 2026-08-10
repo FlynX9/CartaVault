@@ -83,18 +83,108 @@ interface DetailsProps {
   onOpenPlace: (media: MediaItem) => void
 }
 
+interface UploadDialogState {
+  maps: PoiMap[]
+  mapId: string
+  maxUploadBytes: number
+  loading: boolean
+  error: string | null
+}
+
+const DEFAULT_UPLOAD_LIMIT_BYTES = 5 * 1024 * 1024
+
+function mapCountryLabel(map: PoiMap): string {
+  const country = (map as PoiMap & { country?: { name?: string } | null }).country
+  return country?.name?.trim() || 'Pays inconnu'
+}
+
 function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const fileRef = useRef<HTMLInputElement>(null); const cameraRef = useRef<HTMLInputElement>(null)
-  const [maps, setMaps] = useState<PoiMap[]>([]); const [mapId, setMapId] = useState(''); const [maxUploadBytes, setMaxUploadBytes] = useState(5 * 1024 * 1024); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null)
-  useEffect(() => { const controller = new AbortController(); void Promise.all([getMaps(controller.signal), getMediaUploadPolicy(controller.signal)]).then(([items, policy]) => { if (controller.signal.aborted) return; setMaps(items.filter((map) => map.can_edit)); setMapId((current) => current || items.find((map) => map.can_edit)?.id || ''); setMaxUploadBytes(policy.max_upload_bytes) }).catch((caught) => { if (controller.signal.aborted || (caught instanceof DOMException && caught.name === 'AbortError')) return; setError(caught instanceof Error ? caught.message : 'Cartes indisponibles.') }); return () => controller.abort() }, [])
-  useEffect(() => { window.addEventListener('cartavault:close-mobile-modal-layers', onClose); return () => window.removeEventListener('cartavault:close-mobile-modal-layers', onClose) }, [onClose])
+  const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const [state, setState] = useState<UploadDialogState>({ maps: [], mapId: '', maxUploadBytes: DEFAULT_UPLOAD_LIMIT_BYTES, loading: true, error: null })
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void Promise.allSettled([getMaps(controller.signal), getMediaUploadPolicy(controller.signal)]).then(([mapsResult, policyResult]) => {
+      if (controller.signal.aborted) return
+      const editableMaps = mapsResult.status === 'fulfilled' && Array.isArray(mapsResult.value)
+        ? mapsResult.value.filter((map) => map?.can_edit === true && typeof map.id === 'string')
+        : []
+      const requestedLimit = policyResult.status === 'fulfilled' ? Number(policyResult.value?.max_upload_bytes) : Number.NaN
+      const maxUploadBytes = Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : DEFAULT_UPLOAD_LIMIT_BYTES
+      const loadingError = mapsResult.status === 'rejected'
+        ? mapsResult.reason instanceof Error ? mapsResult.reason.message : 'Cartes indisponibles.'
+        : editableMaps.length === 0
+          ? 'Aucune carte modifiable n’est disponible pour cet import.'
+          : policyResult.status === 'rejected'
+            ? 'La limite d’import n’a pas pu être chargée. La valeur de sécurité par défaut est utilisée.'
+            : null
+      setState({
+        maps: editableMaps,
+        mapId: editableMaps[0]?.id ?? '',
+        maxUploadBytes,
+        loading: false,
+        error: loadingError,
+      })
+    })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('cartavault:close-mobile-modal-layers', onClose)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', onClose)
+  }, [onClose])
+
   const submit = async (files: FileList | null) => {
-    if (!files?.length || !mapId) return
-    setBusy(true); setError(null)
-    try { for (const source of Array.from(files)) { const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source)]); if (compressed.size > maxUploadBytes) throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString('fr-FR')} Mo.`); await uploadMedia(compressed, mapId, coordinates, undefined, source) }; onDone(); onClose() }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Import impossible.') } finally { setBusy(false) }
+    if (!files?.length || !state.mapId) return
+    setBusy(true)
+    setState((current) => ({ ...current, error: null }))
+    try {
+      for (const source of Array.from(files)) {
+        const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source)])
+        if (compressed.size > state.maxUploadBytes) {
+          throw new Error(`« ${source.name} » dépasse la limite d’import de ${(state.maxUploadBytes / 1024 / 1024).toLocaleString('fr-FR')} Mo.`)
+        }
+        await uploadMedia(compressed, state.mapId, coordinates, undefined, source)
+      }
+      onDone()
+      onClose()
+    } catch (caught) {
+      setState((current) => ({ ...current, error: caught instanceof Error ? caught.message : 'Import impossible.' }))
+    } finally {
+      setBusy(false)
+    }
   }
-  return createPortal(<div className="media-details-overlay" role="presentation"><section className="media-details-dialog media-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title"><header><div><p className="cv-workspace-panel__eyebrow">Médiathèque</p><h2 id="media-upload-title">Importer des photos</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button></header><div className="media-details-fields"><label>Carte<select value={mapId} onChange={(event) => setMapId(event.target.value)}>{maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.country.name}</option>)}</select></label><p>Les images sont compressées automatiquement. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>{error && <p className="form-alert">{error}</p>}</div><footer><input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => void submit(event.target.files)} /><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => void submit(event.target.files)} /><button className="secondary-button" disabled={busy || !mapId} type="button" onClick={() => fileRef.current?.click()}><Upload size={16} />Choisir des photos</button><button className="primary-button media-upload-camera" disabled={busy || !mapId} type="button" onClick={() => cameraRef.current?.click()}><Camera size={16} />Prendre une photo</button></footer></section></div>, document.body)
+
+  return createPortal(
+    <div className="media-details-overlay" role="presentation">
+      <section className="media-details-dialog media-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title">
+        <header>
+          <div><p className="cv-workspace-panel__eyebrow">Médiathèque</p><h2 id="media-upload-title">Importer des photos</h2></div>
+          <button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button>
+        </header>
+        <div className="media-details-fields">
+          <label>Carte
+            <select value={state.mapId} disabled={state.loading || state.maps.length === 0} onChange={(event) => setState((current) => ({ ...current, mapId: event.target.value }))}>
+              {state.loading && <option value="">Chargement…</option>}
+              {!state.loading && state.maps.length === 0 && <option value="">Aucune carte disponible</option>}
+              {state.maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {mapCountryLabel(map)}</option>)}
+            </select>
+          </label>
+          <p>Les images sont compressées automatiquement. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>
+          {state.error && <p className="form-alert" role="alert">{state.error}</p>}
+        </div>
+        <footer>
+          <input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => void submit(event.target.files)} />
+          <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => void submit(event.target.files)} />
+          <button className="secondary-button" disabled={busy || state.loading || !state.mapId} type="button" onClick={() => fileRef.current?.click()}><Upload size={16} />Choisir des photos</button>
+          <button className="primary-button media-upload-camera" disabled={busy || state.loading || !state.mapId} type="button" onClick={() => cameraRef.current?.click()}><Camera size={16} />Prendre une photo</button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  )
 }
 
 function MediaDetails({ media, onClose, onChanged, onOpenPlace }: DetailsProps) {
