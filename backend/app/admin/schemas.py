@@ -65,6 +65,10 @@ class CredentialValue(BaseModel):
     value: str = Field(min_length=3, max_length=512)
 
 
+class MediaUploadSettings(BaseModel):
+    max_upload_megabytes: int = Field(default=5, ge=1, le=100)
+
+
 class ServiceHealth(BaseModel):
     status: Literal["ok", "warning", "unavailable"]
     detail: str

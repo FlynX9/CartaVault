@@ -15,6 +15,7 @@ from app.trips.models import Trip
 from app.trips.pdf_export import create_pdf
 from app.trips.permissions import require_trip_viewer
 from app.trips.schemas import TripPdfExportOptions
+from app.media.optimization import optimize_existing_media  # noqa: F401
 from app.trips.service import load_trip
 
 KMZ_IMPORT_TASK = "kmz_import"

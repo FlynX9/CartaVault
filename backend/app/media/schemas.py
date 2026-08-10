@@ -87,3 +87,8 @@ class MediaBulkDelete(BaseModel):
 class MediaBulkDeleteResult(BaseModel):
     selected_count: int
     deleted_count: int
+
+
+class MediaUploadPolicy(BaseModel):
+    max_upload_megabytes: int
+    max_upload_bytes: int

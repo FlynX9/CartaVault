@@ -127,6 +127,8 @@ def store_photo_file(
     content_type: str | None,
     place_id: UUID,
     photo_id: UUID,
+    *,
+    max_size_bytes: int = MAX_PHOTO_SIZE,
 ) -> StoredPhoto:
     """Validate and stream one image to its generated storage location."""
 
@@ -177,9 +179,9 @@ def store_photo_file(
             while chunk:
                 total_size += len(chunk)
 
-                if total_size > MAX_PHOTO_SIZE:
+                if total_size > max_size_bytes:
                     raise PhotoTooLargeError(
-                        "The uploaded image exceeds the 20 MiB limit"
+                        f"The uploaded image exceeds the {max_size_bytes // (1024 * 1024)} MiB limit"
                     )
 
                 destination.write(chunk)

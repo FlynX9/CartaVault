@@ -6533,6 +6533,37 @@
         "title": "MediaUpdate",
         "type": "object"
       },
+      "MediaUploadPolicy": {
+        "properties": {
+          "max_upload_bytes": {
+            "title": "Max Upload Bytes",
+            "type": "integer"
+          },
+          "max_upload_megabytes": {
+            "title": "Max Upload Megabytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_upload_megabytes",
+          "max_upload_bytes"
+        ],
+        "title": "MediaUploadPolicy",
+        "type": "object"
+      },
+      "MediaUploadSettings": {
+        "properties": {
+          "max_upload_megabytes": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Upload Megabytes",
+            "type": "integer"
+          }
+        },
+        "title": "MediaUploadSettings",
+        "type": "object"
+      },
       "MediaUploaderSummary": {
         "properties": {
           "id": {
@@ -15484,6 +15515,87 @@
         ]
       }
     },
+    "/admin/console/media/optimize": {
+      "post": {
+        "operationId": "optimize_media_admin_console_media_optimize_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStart"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Optimize Media",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/media/settings": {
+      "get": {
+        "operationId": "get_media_upload_settings_admin_console_media_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Media Upload Settings",
+        "tags": [
+          "admin-console"
+        ]
+      },
+      "put": {
+        "operationId": "update_media_upload_settings_admin_console_media_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUploadSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Media Upload Settings",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
     "/admin/console/users": {
       "get": {
         "operationId": "list_users_admin_console_users_get",
@@ -19751,6 +19863,27 @@
           }
         },
         "summary": "Bulk Delete Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media/upload-policy": {
+      "get": {
+        "operationId": "get_media_upload_policy_media_upload_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadPolicy"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Media Upload Policy",
         "tags": [
           "media"
         ]

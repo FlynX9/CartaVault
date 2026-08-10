@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.admin.schemas import (
-    AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue,
+    AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, MediaUploadSettings,
 )
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
@@ -23,9 +23,30 @@ from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
+from app.media.settings import get_max_upload_megabytes, set_max_upload_megabytes
+from app.media.optimization import MEDIA_OPTIMIZATION_TASK
+from app.tasks.schemas import TaskStart
+from app.tasks.service import create_task, submit_task
 
 
 router = APIRouter(prefix="/admin/console", tags=["admin-console"], dependencies=[Depends(require_admin)])
+
+
+@router.get("/media/settings", response_model=MediaUploadSettings)
+def get_media_upload_settings(session: Session = Depends(get_db)) -> MediaUploadSettings:
+    return MediaUploadSettings(max_upload_megabytes=get_max_upload_megabytes(session))
+
+
+@router.put("/media/settings", response_model=MediaUploadSettings)
+def update_media_upload_settings(payload: MediaUploadSettings, session: Session = Depends(get_db)) -> MediaUploadSettings:
+    return MediaUploadSettings(max_upload_megabytes=set_max_upload_megabytes(session, payload.max_upload_megabytes))
+
+
+@router.post("/media/optimize", response_model=TaskStart, status_code=status.HTTP_202_ACCEPTED)
+def optimize_media(session: Session = Depends(get_db), current: User = Depends(require_admin)) -> TaskStart:
+    task = create_task(session, task_type=MEDIA_OPTIMIZATION_TASK, user_id=current.id, map_id=None, resource_type="instance", dedupe_key="media-optimization", max_attempts=1)
+    submit_task(session, task)
+    return TaskStart(task_id=task.id, status=task.status)
 
 
 UserCounts = tuple[int, int, int]
