@@ -96,9 +96,7 @@ def test_admin_credentials_never_expose_secrets(integration_client, database_ses
     assert secret not in body
     resend = next(item for item in response.json() if item["provider"] == "resend")
     assert resend["masked_value"].endswith("rned")
-    google = next(item for item in response.json() if item["provider"] == "google_routes")
-    assert google["scope"] == "personal"
-    assert google["editable"] is False
+    assert "google_routes" not in {item["provider"] for item in response.json()}
     encryption = next(item for item in response.json() if item["provider"] == "credential_encryption")
     assert encryption["editable"] is False
     assert "value" not in encryption

@@ -335,6 +335,7 @@ describe('MapPlaceList', () => {
 
     const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(container.querySelector('.place-list-load-sentinel')).not.toBeNull())
+    await waitFor(() => expect(intersectionCallback).not.toBeNull())
 
     await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
 

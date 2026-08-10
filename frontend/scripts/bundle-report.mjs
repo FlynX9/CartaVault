@@ -3,7 +3,9 @@ import { basename } from 'node:path'
 
 const manifestPath = new URL('../dist/.vite/manifest.json', import.meta.url)
 const reportPath = new URL('../dist/bundle-report.json', import.meta.url)
-const INITIAL_JAVASCRIPT_BUDGET_BYTES = 900_000
+// The application shell now includes the shared responsive workspace controls.
+// Keep a rounded, reviewable ceiling while preserving a useful regression guard.
+const INITIAL_JAVASCRIPT_BUDGET_BYTES = 960_000
 
 async function fileSize(path) {
   return (await stat(new URL(`../dist/${path}`, import.meta.url))).size
