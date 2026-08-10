@@ -31,10 +31,10 @@ const refresh = vi.fn()
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, avatar_url: null }, refresh }) }))
 
 const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, is_active: true, avatar_url: null, created_at: '2026-01-01', updated_at: '2026-01-01', last_login_at: null, owned_maps: [], shared_map_count: 1, active_session_count: 1, can_delete: true }
-const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const, stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' as const }, places: { provider: 'stadia' as const } }
+const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const }, places: { provider: 'stadia' as const } }
 const noCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
 
-beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }, { id: 'openrouteservice', label: 'OpenRouteService', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getOpenRouteServiceCredential).mockResolvedValue({ ...noCredential, self_hosted: false }); vi.mocked(getGoogleSatelliteCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaMapsCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaPlacesCredential).mockResolvedValue(noCredential); vi.mocked(getGoogleSatelliteStatus).mockResolvedValue({ available: false, warning_level: 0 }); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue({ ...preferences, routing: { ...preferences.routing, stay_in_country: true } }) })
+beforeEach(() => { vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }, { id: 'openrouteservice', label: 'OpenRouteService', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getOpenRouteServiceCredential).mockResolvedValue({ ...noCredential, self_hosted: false }); vi.mocked(getGoogleSatelliteCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaMapsCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaPlacesCredential).mockResolvedValue(noCredential); vi.mocked(getGoogleSatelliteStatus).mockResolvedValue({ available: false, warning_level: 0 }); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue(preferences) })
 
 function openApiGroup(name: 'Routage' | 'Recherche de lieux' | 'Fonds de carte') {
   fireEvent.click(screen.getByRole('button', { name }))
@@ -90,8 +90,10 @@ describe('AccountModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clés API' }))
     openApiGroup('Routage')
     expect(screen.getByRole('heading', { name: 'Routage' }).closest('section')).toHaveClass('account-preference-card--routing')
-    expect(screen.getByRole('heading', { name: 'Options d’itinéraire' })).toBeVisible()
+    expect(screen.queryByText('Options d’itinéraire')).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: 'Rester dans le pays' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Éviter les péages' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Prise en compte du trafic')).not.toBeInTheDocument()
   })
 
   it('persists the selected interface language', async () => {
@@ -135,8 +137,8 @@ describe('AccountModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     expect(await screen.findByRole('alert')).toBeVisible()
     expect(updateAccountPreferences).not.toHaveBeenCalled()
-    expect(screen.getByRole('checkbox', { name: 'Éviter les péages' })).toBeVisible()
-    expect(screen.getByLabelText('Prise en compte du trafic')).toBeVisible()
+    expect(screen.queryByRole('checkbox', { name: 'Éviter les péages' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Prise en compte du trafic')).not.toBeInTheDocument()
   })
 
   it('stores a personal key without rendering it again and verifies the masked credential', async () => {

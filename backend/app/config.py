@@ -106,10 +106,12 @@ class GoogleRoutesSettings:
     base_url: str = os.getenv("GOOGLE_MAPS_ROUTES_BASE_URL", "https://routes.googleapis.com")
     timeout_seconds: int = _positive_int("GOOGLE_MAPS_ROUTES_TIMEOUT_SECONDS", 15)
     connect_timeout_seconds: int = _positive_int("GOOGLE_MAPS_ROUTES_CONNECT_TIMEOUT_SECONDS", 5)
-    routing_preference: str = os.getenv("GOOGLE_MAPS_ROUTING_PREFERENCE", "TRAFFIC_UNAWARE").upper()
-    avoid_tolls: bool = _boolean("GOOGLE_MAPS_AVOID_TOLLS", False)
-    avoid_highways: bool = _boolean("GOOGLE_MAPS_AVOID_HIGHWAYS", False)
-    avoid_ferries: bool = _boolean("GOOGLE_MAPS_AVOID_FERRIES", False)
+    # Route-shaping choices are persisted per trip. These values are only the
+    # neutral defaults used by credential verification and direct providers.
+    routing_preference: str = "TRAFFIC_UNAWARE"
+    avoid_tolls: bool = False
+    avoid_highways: bool = False
+    avoid_ferries: bool = False
 
     def __post_init__(self) -> None:
         if self.routing_preference not in {"TRAFFIC_UNAWARE", "TRAFFIC_AWARE", "TRAFFIC_AWARE_OPTIMAL"}:

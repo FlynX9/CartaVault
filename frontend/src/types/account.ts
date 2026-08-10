@@ -7,6 +7,9 @@ export interface AccountProfile {
 export interface AccountSession {
   id: string; created_at: string; last_used_at: string; expires_at: string; user_agent: string | null; is_current: boolean
 }
+export interface TotpSecurityStatus { enabled: boolean; verified_at: string | null; recovery_codes_remaining: number }
+export interface TotpSetup { secret: string; provisioning_uri: string; qr_code_data_url: string; expires_at: string; issuer: string; account: string; digits: number; period: number }
+export interface TotpRecoveryCodes { recovery_codes: string[] }
 
 export interface AccountPreferences {
   language: 'fr' | 'en'
@@ -21,11 +24,6 @@ export interface AccountPreferences {
   }
   routing: {
     provider: 'osrm' | 'google' | 'openrouteservice'
-    stay_in_country: boolean
-    avoid_tolls: boolean
-    avoid_highways: boolean
-    avoid_ferries: boolean
-    traffic_mode: 'traffic_unaware' | 'traffic_aware' | 'traffic_aware_optimal'
   }
   places: { provider: 'stadia' | 'google' }
   basemaps?: { satellite_provider: 'stadia' | 'google' }

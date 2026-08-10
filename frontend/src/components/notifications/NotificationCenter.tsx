@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, Check, MapPinned, UserRoundPlus, X } from 'lucide-react'
+import { Bell, Check, MapPinned, ShieldAlert, UserRoundPlus, X } from 'lucide-react'
 
+import { getTotpStatus } from '../../api/account'
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations } from '../../api/maps'
 import { getRegistrationRequests, type RegistrationRequest } from '../../api/registration'
 import type { PendingMapInvitation } from '../../types/map'
@@ -19,12 +20,14 @@ interface NotificationCenterProps {
 type NotificationItem =
   | { kind: 'invitation'; item: PendingMapInvitation }
   | { kind: 'registration'; item: RegistrationRequest }
+  | { kind: 'mfa-disabled'; item: { id: 'mfa-disabled'; created_at: string } }
 
 const notificationId = (notification: NotificationItem) => `${notification.kind}:${notification.item.id}`
 
 export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenRegistrationRequests }: NotificationCenterProps) {
   const [invitations, setInvitations] = useState<PendingMapInvitation[]>([])
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
+  const [mfaDisabled, setMfaDisabled] = useState(false)
   const [toastNotification, setToastNotification] = useState<NotificationItem | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -34,16 +37,17 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
   const loadController = useRef<AbortController | null>(null)
 
   const notifications = useMemo<NotificationItem[]>(() => [
+    ...(mfaDisabled ? [{ kind: 'mfa-disabled' as const, item: { id: 'mfa-disabled' as const, created_at: '9999-12-31T23:59:59' } }] : []),
     ...registrationRequests.map((item) => ({ kind: 'registration' as const, item })),
     ...invitations.map((item) => ({ kind: 'invitation' as const, item })),
-  ].sort((left, right) => right.item.created_at.localeCompare(left.item.created_at)), [invitations, registrationRequests])
+  ].sort((left, right) => right.item.created_at.localeCompare(left.item.created_at)), [invitations, mfaDisabled, registrationRequests])
 
   const load = useCallback(() => {
     loadController.current?.abort()
     const controller = new AbortController()
     loadController.current = controller
     const pendingRegistrations = isAdmin ? getRegistrationRequests(controller.signal) : Promise.resolve([])
-    void Promise.all([getPendingMapInvitations(controller.signal), pendingRegistrations]).then(([pending, requests]) => {
+    void Promise.all([getPendingMapInvitations(controller.signal), pendingRegistrations, getTotpStatus().catch(() => null)]).then(([pending, requests, totpStatus]) => {
       if (controller.signal.aborted) return
       const registrations = requests.filter((item) => item.status === 'pending')
       const received: NotificationItem[] = [
@@ -52,6 +56,7 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
       ]
       setInvitations(pending)
       setRegistrationRequests(registrations)
+      setMfaDisabled(totpStatus !== null && !totpStatus.enabled)
       setError(null)
       const newlyReceived = received.filter((item) => !announcedIds.current.has(notificationId(item)))
       received.forEach((item) => announcedIds.current.add(notificationId(item)))
@@ -137,6 +142,9 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
   </div>
 
   const notificationContent = (notification: NotificationItem, isToast = false) => {
+    if (notification.kind === 'mfa-disabled') {
+      return <><ShieldAlert className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>Authentification à deux facteurs désactivée.</strong></p><small>Activez-la dans Options utilisateur → Sécurité pour mieux protéger votre compte.</small></div></>
+    }
     if (notification.kind === 'registration') {
       const request = notification.item
       return <><UserRoundPlus className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><button type="button" className="notification-center__registration-link" onClick={() => openRegistrationRequests(request)}><p><strong>{request.display_name}</strong> demande à créer un compte avec <strong>{request.email}</strong>.</p><span className="secondary-button notification-center__review">Examiner la demande</span></button></div></>

@@ -114,11 +114,6 @@ class AccountDelete(BaseModel):
 
 class RoutingPreferences(BaseModel):
     provider: Literal["osrm", "google", "openrouteservice"] = "osrm"
-    stay_in_country: bool = False
-    avoid_tolls: bool = False
-    avoid_highways: bool = False
-    avoid_ferries: bool = False
-    traffic_mode: Literal["traffic_unaware", "traffic_aware", "traffic_aware_optimal"] = "traffic_unaware"
 
 
 class PlacesPreferences(BaseModel):
@@ -153,7 +148,8 @@ class AccountPreferences(BaseModel):
             return value
         migrated = dict(value)
         if "routing" not in migrated and "keep_routes_in_country" in migrated:
-            migrated["routing"] = {"stay_in_country": migrated.pop("keep_routes_in_country")}
+            migrated["routing"] = {"provider": "osrm"}
+            migrated.pop("keep_routes_in_country", None)
         if "basemaps" not in migrated:
             migrated["basemaps"] = {"satellite_provider": "google" if migrated.get("preferred_basemap") == "google-satellite" else "stadia"}
         return migrated
@@ -166,6 +162,46 @@ class PasswordReset(BaseModel):
 class LoginRequest(EmailModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=1024)
+
+
+class TotpLoginChallenge(BaseModel):
+    requires_totp: Literal[True] = True
+    challenge_token: str = Field(min_length=32, max_length=512)
+
+
+class TotpLoginVerification(BaseModel):
+    challenge_token: str = Field(min_length=32, max_length=512)
+    code: str = Field(min_length=1, max_length=64)
+
+
+class TotpSecurityStatus(BaseModel):
+    enabled: bool
+    verified_at: datetime | None
+    recovery_codes_remaining: int
+
+
+class TotpSetupRead(BaseModel):
+    secret: str
+    provisioning_uri: str
+    qr_code_data_url: str
+    expires_at: datetime
+    issuer: str = "CartaVault"
+    account: str
+    digits: int = 6
+    period: int = 30
+
+
+class TotpConfirmRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+
+
+class TotpRecoveryCodesRead(BaseModel):
+    recovery_codes: list[str]
+
+
+class TotpSensitiveAction(BaseModel):
+    current_password: str = Field(min_length=1, max_length=1024)
+    code: str = Field(min_length=1, max_length=64)
 
 
 class RegistrationCreate(EmailModel):

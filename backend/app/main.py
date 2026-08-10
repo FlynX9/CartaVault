@@ -7,9 +7,9 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -26,20 +26,22 @@ from app.basemaps.stadia_router import router as stadia_basemap_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
+from app.auth.totp_router import router as totp_router
 from app.auth.public_router import router as public_auth_router
 from app.auth.registration_admin_router import router as registration_admin_router
 from app.categories.router import router as categories_router
 from app.annotations.router import router as annotations_router
 from app.countries.router import router as countries_router
 from app.dashboard.router import router as dashboard_router
-from app.database import SessionLocal
+from app.database import SessionLocal, get_db
 from app.exports.router import router as exports_router
 from app.imports.router import router as imports_router
 from app.instance_status.router import router as instance_status_router
+from app.instance_status.logs import install_instance_log_handler
 from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
-from app.media.router import router as media_router
+from app.media.router import router as media_router, upload_router as media_upload_router
 from app.photos.router import router as photos_router
 from app.quotas.router import router as quotas_router
 from app.places.map_router import router as places_map_router
@@ -152,6 +154,9 @@ def _purge_expired_maintenance() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Logging can be reconfigured by the ASGI server after module import.
+    # Re-attach the bounded, sanitized administrative log collector at startup.
+    install_instance_log_handler()
     purge_task: asyncio.Task[None] | None = None
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
@@ -201,6 +206,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(setup_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)
+app.include_router(totp_router, prefix=API_PREFIX)
 app.include_router(public_auth_router, prefix=API_PREFIX)
 app.include_router(account_router, prefix=API_PREFIX)
 app.include_router(credential_router, prefix=API_PREFIX)
@@ -231,6 +237,7 @@ app.include_router(tags_router, prefix=API_PREFIX)
 app.include_router(statuses_router, prefix=API_PREFIX)
 app.include_router(photos_router, prefix=API_PREFIX)
 app.include_router(media_router, prefix=API_PREFIX)
+app.include_router(media_upload_router, prefix=API_PREFIX)
 app.include_router(trips_router, prefix=API_PREFIX)
 app.include_router(tasks_router, prefix=API_PREFIX)
 app.include_router(trash_router, prefix=API_PREFIX)
@@ -247,6 +254,19 @@ def root() -> dict[str, str]:
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/ready", include_in_schema=False)
+def readiness(response: Response, session: Session = Depends(get_db)) -> dict[str, str]:
+    """Return a deliberately minimal readiness signal without diagnostic details."""
+
+    try:
+        session.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        session.rollback()
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "not_ready"}
+    return {"status": "ready"}
 
 
 if FRONTEND_DIST:

@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, CalendarDays, ChevronDown, Clock3, HardDriveDownload, Image as ImageIcon, Info, KeyRound, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, SlidersHorizontal, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, ChevronDown, Clock3, HardDriveDownload, Image as ImageIcon, Info, KeyRound, Languages, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
-import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, deleteAccountAvatar, deleteOwnAccount, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, confirmTotpSetup, deleteAccountAvatar, deleteOwnAccount, disableTotp, getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, getTotpStatus, regenerateTotpRecoveryCodes, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, startTotpSetup, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { getRoutingProviders } from '../../api/routing'
 import { getGoogleSatelliteStatus } from '../../api/googleSatellite'
 import { useAuth } from '../../auth/useAuth'
+import { notifyNotificationsChanged } from '../notifications/events'
 import { useI18n } from '../../i18n/useI18n'
 import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
-import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialStatus, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialStatus } from '../../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialStatus, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialStatus, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 import { GooglePlacesCredentialPanel } from './GooglePlacesCredentialPanel'
@@ -24,7 +25,7 @@ import { OfflineDataSection } from './OfflineDataSection'
 
 type Section = 'profile' | 'security' | 'sessions' | 'preferences' | 'api_keys' | 'offline' | 'danger'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm', stay_in_country: false, avoid_tolls: false, avoid_highways: false, avoid_ferries: false, traffic_mode: 'traffic_unaware' }, places: { provider: 'stadia' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' } }
 
 const fallbackTimeZones = ['Europe/Paris', 'Europe/London', 'Europe/Brussels', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Zurich', 'America/New_York', 'America/Los_Angeles', 'America/Toronto', 'Asia/Tbilisi', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney', 'Pacific/Auckland', 'UTC']
 const supportedTimeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : fallbackTimeZones
@@ -87,6 +88,11 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   }, [trigger, t])
 
   const requestClose = () => { if (!dirty || window.confirm(t('account.discard'))) onClose() }
+  useEffect(() => {
+    const closeFromMobileNavigation = () => requestClose()
+    window.addEventListener('cartavault:close-mobile-modal-layers', closeFromMobileNavigation)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', closeFromMobileNavigation)
+  }, [requestClose])
   const selectSection = (next: Section) => { if (next === section || !dirty || window.confirm(t('account.discard'))) setSection(next) }
   const run = async (action: () => Promise<void>, success: string): Promise<boolean> => {
     setError(null); setMessage(null)
@@ -173,6 +179,7 @@ function SecuritySection({ profile, run, refreshProfile }: { profile: AccountPro
       <label>Mot de passe actuel<input name="current_password" type="password" placeholder="Saisissez votre mot de passe actuel" required autoComplete="current-password" /></label><label>Nouveau mot de passe<input name="new_password" type="password" placeholder="Minimum 12 caractères" minLength={12} required autoComplete="new-password" /></label><label>Confirmation<input name="confirmation" type="password" placeholder="Confirmez votre nouveau mot de passe" minLength={12} required autoComplete="new-password" /></label>
       <button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button>
     </form>
+    <TotpSection run={run} />
     <section className="account-preference-card account-security-overview">
       <PreferenceCardHeading icon={ShieldCheck} title="État de sécurité du compte" />
       <div className="account-security-overview__items">
@@ -182,6 +189,25 @@ function SecuritySection({ profile, run, refreshProfile }: { profile: AccountPro
       </div>
     </section>
   </div></>
+}
+
+function TotpSection({ run }: { run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
+  const [status, setStatus] = useState<TotpSecurityStatus | null>(null)
+  const [setup, setSetup] = useState<TotpSetup | null>(null)
+  const [code, setCode] = useState('')
+  const [recovery, setRecovery] = useState<TotpRecoveryCodes | null>(null)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => { void getTotpStatus().then(setStatus).catch(() => setError('Impossible de charger l’état de l’authentification à deux facteurs.')) }, [])
+  const copy = async (value: string) => { try { await navigator.clipboard.writeText(value) } catch { setError('Copiez la valeur affichée manuellement.') } }
+  if (!status) return null
+  return <section className="account-preference-card account-security-card">
+    <PreferenceCardHeading icon={ShieldCheck} title="Authentification à deux facteurs" />
+    {!status.enabled && !setup && <><p className="account-card-description">{error ?? 'Protégez votre compte avec une application d’authentification compatible TOTP.'}</p><button className="account-button account-button--primary" type="button" onClick={() => void startTotpSetup().then((value) => { setSetup(value); setError(null) }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Impossible de démarrer la configuration.'))}>Activer l’authentification à deux facteurs</button></>}
+    {setup && !recovery && <><p className="account-card-description">Ajoutez CartaVault à votre application, puis saisissez le code généré.</p><img className="totp-qr-code" src={setup.qr_code_data_url} alt="Code QR de configuration CartaVault" /><label>Clé de configuration<input readOnly value={setup.secret.replace(/(.{4})/g, '$1 ').trim()} /></label><div className="dialog-actions"><button className="secondary-button" type="button" onClick={() => void copy(setup.secret)}>Copier la clé</button><button className="secondary-button" type="button" onClick={() => void copy(setup.provisioning_uri)}>Copier le lien de configuration</button></div><label>Code à 6 chiffres<input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} /></label>{error && <p className="form-alert" role="alert">{error}</p>}<button className="account-button account-button--primary" type="button" onClick={() => void confirmTotpSetup(code).then((value) => { setRecovery(value); setSetup(null); setStatus({ ...status, enabled: true }); notifyNotificationsChanged() }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Code invalide.'))}>Vérifier et activer</button></>}
+    {recovery && <><p className="form-alert">Enregistrez ces codes maintenant. Ils ne seront plus affichés.</p><pre className="totp-recovery-codes">{recovery.recovery_codes.join('\n')}</pre><button className="account-button account-button--secondary" type="button" onClick={() => void copy(recovery.recovery_codes.join('\n'))}>Copier tous les codes</button></>}
+    {status.enabled && !recovery && <><p className="account-card-description">Activée{status.verified_at ? ` le ${formatDate(status.verified_at)}` : ''}. {status.recovery_codes_remaining} code(s) de récupération restant(s).</p><label>Mot de passe actuel<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /></label><label>Code d’authentification<input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} /></label>{error && <p className="form-alert" role="alert">{error}</p>}<div className="dialog-actions"><button className="account-button account-button--secondary" type="button" onClick={() => void regenerateTotpRecoveryCodes(password, code).then(setRecovery).catch((reason) => setError(reason instanceof Error ? reason.message : 'Impossible de régénérer les codes.'))}>Régénérer les codes</button><button className="account-button account-button--danger-hover" type="button" onClick={() => void run(() => disableTotp(password, code), 'Authentification à deux facteurs désactivée.').then((ok) => { if (ok) { setStatus({ enabled: false, verified_at: null, recovery_codes_remaining: 0 }); notifyNotificationsChanged() } })}>Désactiver</button></div></>}
+  </section>
 }
 
 function SessionsSection({ sessions, run, reload }: { sessions: AccountSession[]; run: (action: () => Promise<void>, success: string) => Promise<boolean>; reload: () => Promise<void> }) {
@@ -302,10 +328,6 @@ function ApiKeysSection({ preferences, setPreferences, onSatelliteAvailabilityCh
         <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-integration-engine">
           <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="openrouteservice" disabled={!orsAvailable}>OpenRouteService</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
         </PreferenceField>
-        <div className="account-route-options">
-          <header className="account-route-options__heading"><SlidersHorizontal size={16} aria-hidden="true" /><h4>{t('account.preferences.routeOptions')}</h4><FieldHelp>{t('account.preferences.countryNotice')}</FieldHelp></header>
-          {googleSelected && <><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_tolls} onChange={(event) => updateRouting('avoid_tolls', event.target.checked)} /><span>{t('account.preferences.avoidTolls')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_highways} onChange={(event) => updateRouting('avoid_highways', event.target.checked)} /><span>{t('account.preferences.avoidHighways')}</span></label><label className="checkbox-field account-route-option"><input type="checkbox" checked={preferences.routing.avoid_ferries} onChange={(event) => updateRouting('avoid_ferries', event.target.checked)} /><span>{t('account.preferences.avoidFerries')}</span></label><PreferenceField label={t('account.preferences.traffic')} htmlFor="account-traffic" className="account-route-traffic"><select id="account-traffic" aria-labelledby="account-traffic-label" value={preferences.routing.traffic_mode} onChange={(event) => updateRouting('traffic_mode', event.target.value as AccountPreferences['routing']['traffic_mode'])}><option value="traffic_unaware">{t('account.preferences.noTraffic')}</option><option value="traffic_aware">{t('account.preferences.currentTraffic')}</option><option value="traffic_aware_optimal">{t('account.preferences.optimalTraffic')}</option></select></PreferenceField></>}
-        </div>
         {preferences.routing.provider === 'google' && <GoogleRoutesCredentialPanel status={routes} storageAvailable={storageAvailable} onChanged={(next, reset) => { setRoutes(next); resetRouting(reset) }} />}
         {preferences.routing.provider === 'openrouteservice' && <OpenRouteServiceCredentialPanel status={ors} storageAvailable={storageAvailable} onChanged={(next, reset) => { setOrs(next); resetRouting(reset) }} />}
       </ApiKeyGroup>

@@ -37,6 +37,12 @@ class User(Base):
     avatar_updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     preferences: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    totp_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    totp_encryption_version: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    totp_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    totp_enrollment_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    totp_last_used_counter: Mapped[int | None] = mapped_column(nullable=True)
     quota_profile_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("quota_profiles.id", ondelete="RESTRICT"),
@@ -51,6 +57,7 @@ class User(Base):
     created_invitations: Mapped[list["MapInvitation"]] = relationship(back_populates="created_by", foreign_keys="MapInvitation.created_by_user_id")
     created_trips: Mapped[list["Trip"]] = relationship(back_populates="created_by", foreign_keys="Trip.created_by_user_id")
     quota_profile: Mapped["QuotaProfile"] = relationship(back_populates="users")
+    recovery_codes: Mapped[list["TotpRecoveryCode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSession(Base):
@@ -147,7 +154,7 @@ class AuthSecurityEvent(Base):
 class AuthActionToken(Base):
     __tablename__ = "auth_action_tokens"
     __table_args__ = (
-        CheckConstraint("token_type IN ('password_reset')", name="auth_action_tokens_type_check"),
+        CheckConstraint("token_type IN ('password_reset', 'totp_login')", name="auth_action_tokens_type_check"),
         Index("auth_action_tokens_token_hash_key", "token_hash", unique=True),
         Index("auth_action_tokens_user_type_idx", "user_id", "token_type"),
         Index("auth_action_tokens_expires_at_idx", "expires_at"),
@@ -161,6 +168,22 @@ class AuthActionToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class TotpRecoveryCode(Base):
+    __tablename__ = "totp_recovery_codes"
+    __table_args__ = (
+        UniqueConstraint("code_hash", name="totp_recovery_codes_code_hash_key"),
+        Index("totp_recovery_codes_user_id_idx", "user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="recovery_codes")
 
 
 class SystemCredential(Base):

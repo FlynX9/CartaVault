@@ -15,3 +15,8 @@ export interface LoginPayload {
   email: string
   password: string
 }
+
+export interface TotpLoginChallenge {
+  requires_totp: true
+  challenge_token: string
+}

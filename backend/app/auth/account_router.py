@@ -15,6 +15,7 @@ from app.auth.models import User, UserApiCredential, UserSession
 from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
 from app.auth.security import hash_password, normalize_email, verify_password
 from app.auth.sessions import issue_session, revoke_user_sessions
+from app.auth.totp import clear_totp
 from app.config import openroute_service_settings, security_settings
 from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
@@ -184,6 +185,7 @@ def delete_account(data: AccountDelete, response: Response, database_session: Se
     if database_session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id)): raise HTTPException(409, "Transfer or delete owned maps first")
     if user.is_admin and (database_session.scalar(select(func.count()).select_from(User).where(User.is_admin.is_(True), User.is_active.is_(True))) or 0) <= 1: raise HTTPException(409, "The last active administrator cannot be deleted")
     now = datetime.now(UTC).replace(tzinfo=None); old_avatar = user.avatar_filename
+    clear_totp(database_session, user)
     database_session.execute(update(UserSession).where(UserSession.user_id == user.id).values(revoked_at=now))
     database_session.execute(delete(MapMembership).where(MapMembership.user_id == user.id))
     database_session.execute(delete(UserApiCredential).where(UserApiCredential.user_id == user.id))

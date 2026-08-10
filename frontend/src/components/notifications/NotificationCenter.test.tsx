@@ -3,10 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations } from '../../api/maps'
 import { getRegistrationRequests } from '../../api/registration'
+import { getTotpStatus } from '../../api/account'
 import { NotificationCenter } from './NotificationCenter'
 
 vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn(), getPendingMapInvitations: vi.fn() }))
 vi.mock('../../api/registration', () => ({ getRegistrationRequests: vi.fn() }))
+vi.mock('../../api/account', () => ({ getTotpStatus: vi.fn() }))
 
 const INVITATION = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', map_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', map_name: 'Carte partagée', role: 'editor' as const, invited_by_display_name: 'Alice Martin', created_at: '2026-07-16T08:00:00', expires_at: '2026-07-23T08:00:00' }
 const REGISTRATION = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', email: 'new@example.test', display_name: 'New user', status: 'pending' as const, created_at: '2026-07-17T08:00:00', reviewed_at: null, notification_sent_at: null, notification_error_code: null, email_verified_at: '2026-07-17T08:05:00', verification_expires_at: null }
@@ -15,6 +17,7 @@ beforeEach(() => {
   window.localStorage.clear()
   vi.mocked(getPendingMapInvitations).mockResolvedValue([INVITATION])
   vi.mocked(getRegistrationRequests).mockResolvedValue([])
+  vi.mocked(getTotpStatus).mockResolvedValue({ enabled: true, verified_at: null, recovery_codes_remaining: 0 })
   vi.mocked(acceptPendingMapInvitation).mockResolvedValue()
   vi.mocked(declinePendingMapInvitation).mockResolvedValue()
 })
@@ -72,6 +75,17 @@ describe('NotificationCenter', () => {
 
     expect(onOpenRegistrationRequests).toHaveBeenCalledOnce()
     expect(screen.queryByLabelText('Centre de notifications')).not.toBeInTheDocument()
+  })
+
+  it('shows a security notification when two-factor authentication is disabled', async () => {
+    vi.mocked(getPendingMapInvitations).mockResolvedValue([])
+    vi.mocked(getTotpStatus).mockResolvedValue({ enabled: false, verified_at: null, recovery_codes_remaining: 0 })
+
+    render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Notifications, 1 en attente' })).toBeVisible())
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
+    expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('Authentification à deux facteurs désactivée')
   })
 })
 

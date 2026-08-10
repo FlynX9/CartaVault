@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_session
-from app.auth.models import RegistrationRequest, User, UserSession
+from app.auth.models import AuthActionToken, RegistrationRequest, User, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
-from app.auth.schemas import LoginRequest, PasswordChange, UserSelfRead
-from app.auth.security import hash_password, hash_token, normalize_email, verify_password
+from app.auth.schemas import LoginRequest, PasswordChange, TotpLoginChallenge, TotpLoginVerification, UserSelfRead
+from app.auth.registration_security import record_auth_event
+from app.auth.security import generate_token, hash_password, hash_token, normalize_email, verify_password
 from app.auth.sessions import issue_session, revoke_user_sessions
+from app.auth.totp import consume_recovery_code, verify_code
 from app.config import security_settings
 from app.database import get_db
 from app.emails.notifications import notify_password_changed
@@ -44,8 +46,8 @@ def _set_session_cookies(response: Response, token: str, csrf_token: str, max_ag
     )
 
 
-@router.post("/login", response_model=UserSelfRead)
-def login(data: LoginRequest, request: Request, response: Response, database_session: Session = Depends(get_db)) -> UserSelfRead:
+@router.post("/login", response_model=UserSelfRead | TotpLoginChallenge)
+def login(data: LoginRequest, request: Request, response: Response, database_session: Session = Depends(get_db)) -> UserSelfRead | TotpLoginChallenge:
     email = normalize_email(str(data.email))
     client_host = request.client.host if request.client else "unknown"
     public_auth_rate_limiter.check(rate_limit_key("login", client_host, email))
@@ -73,6 +75,11 @@ def login(data: LoginRequest, request: Request, response: Response, database_ses
     if needs_rehash:
         user.password_hash = hash_password(data.password)
     now = datetime.now(UTC).replace(tzinfo=None)
+    if user.totp_enabled:
+        raw_challenge = generate_token()
+        database_session.add(AuthActionToken(user_id=user.id, token_type="totp_login", token_hash=hash_token(raw_challenge), expires_at=now + timedelta(minutes=5)))
+        database_session.commit()
+        return TotpLoginChallenge(challenge_token=raw_challenge)
     raw_token, csrf_token = issue_session(
         database_session,
         user.id,
@@ -82,6 +89,40 @@ def login(data: LoginRequest, request: Request, response: Response, database_ses
     database_session.commit()
     _set_session_cookies(response, raw_token, csrf_token, security_settings.session_days * 86400)
     return _self_read(user, csrf_token)
+
+
+def _complete_totp_login(data: TotpLoginVerification, request: Request, response: Response, database_session: Session, *, recovery: bool) -> UserSelfRead:
+    client_host = request.client.host if request.client else "unknown"
+    public_auth_rate_limiter.check(rate_limit_key("totp-recovery-login" if recovery else "totp-login", client_host, data.challenge_token))
+    now = datetime.now(UTC).replace(tzinfo=None)
+    challenge = database_session.scalar(select(AuthActionToken).where(AuthActionToken.token_hash == hash_token(data.challenge_token), AuthActionToken.token_type == "totp_login").with_for_update())
+    if challenge is None or challenge.used_at is not None or challenge.revoked_at is not None or challenge.expires_at <= now:
+        raise HTTPException(401, "Authentication challenge expired")
+    user = database_session.get(User, challenge.user_id)
+    valid = user is not None and user.is_active and user.totp_enabled
+    if valid:
+        valid = consume_recovery_code(database_session, user, data.code) if recovery else verify_code(user, data.code, reject_replay=True)
+    if not valid:
+        record_auth_event(database_session, "recovery_code_used" if recovery else "totp_login_failed", "failed", actor_user_id=challenge.user_id, client_ip=client_host)
+        database_session.commit()
+        raise HTTPException(401, "Invalid authentication code")
+    challenge.used_at = now
+    raw_token, csrf_token = issue_session(database_session, user.id, user_agent=request.headers.get("user-agent"))
+    user.last_login_at = now
+    record_auth_event(database_session, "recovery_code_used" if recovery else "totp_login_succeeded", "accepted", actor_user_id=user.id, client_ip=client_host)
+    database_session.commit()
+    _set_session_cookies(response, raw_token, csrf_token, security_settings.session_days * 86400)
+    return _self_read(user, csrf_token)
+
+
+@router.post("/totp/verify", response_model=UserSelfRead)
+def verify_totp_login(data: TotpLoginVerification, request: Request, response: Response, database_session: Session = Depends(get_db)) -> UserSelfRead:
+    return _complete_totp_login(data, request, response, database_session, recovery=False)
+
+
+@router.post("/totp/recovery", response_model=UserSelfRead)
+def verify_recovery_login(data: TotpLoginVerification, request: Request, response: Response, database_session: Session = Depends(get_db)) -> UserSelfRead:
+    return _complete_totp_login(data, request, response, database_session, recovery=True)
 
 
 @router.get("/me", response_model=UserSelfRead)

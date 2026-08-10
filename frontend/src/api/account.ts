@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialDeletion, GooglePlacesCredentialStatus, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialDeletion, OpenRouteServiceCredentialStatus } from '../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialDeletion, GooglePlacesCredentialStatus, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialDeletion, OpenRouteServiceCredentialStatus, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../types/account'
 
 export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
 
@@ -12,6 +12,11 @@ export async function changeAccountPassword(current_password: string, new_passwo
 export async function getAccountSessions(signal?: AbortSignal): Promise<AccountSession[]> { return getJson('/account/sessions', new URLSearchParams(), signal) as Promise<AccountSession[]> }
 export async function revokeAccountSession(id: string): Promise<void> { await sendWithoutResponse(`/account/sessions/${encodeURIComponent(id)}`, 'DELETE') }
 export async function revokeOtherAccountSessions(): Promise<void> { await sendWithoutResponse('/account/sessions/revoke-others', 'POST') }
+export async function getTotpStatus(): Promise<TotpSecurityStatus> { return getJson('/account/security/totp', new URLSearchParams()) as Promise<TotpSecurityStatus> }
+export async function startTotpSetup(): Promise<TotpSetup> { return sendJson('/account/security/totp/setup', 'POST', {}) as Promise<TotpSetup> }
+export async function confirmTotpSetup(code: string): Promise<TotpRecoveryCodes> { return sendJson('/account/security/totp/confirm', 'POST', { code }) as Promise<TotpRecoveryCodes> }
+export async function regenerateTotpRecoveryCodes(current_password: string, code: string): Promise<TotpRecoveryCodes> { return sendJson('/account/security/totp/recovery-codes/regenerate', 'POST', { current_password, code }) as Promise<TotpRecoveryCodes> }
+export async function disableTotp(current_password: string, code: string): Promise<void> { await sendBodyWithoutResponse('/account/security/totp/disable', 'POST', { current_password, code }) }
 export async function uploadAccountAvatar(file: File): Promise<{ avatar_url: string }> { const data = new FormData(); data.append('file', file); return sendFormData('/account/avatar', 'POST', data) as Promise<{ avatar_url: string }> }
 export async function deleteAccountAvatar(): Promise<void> { await sendWithoutResponse('/account/avatar', 'DELETE') }
 export async function deleteOwnAccount(current_password: string, confirmation: string, acknowledged: boolean): Promise<void> { await sendBodyWithoutResponse('/account', 'DELETE', { current_password, confirmation, acknowledged }) }
