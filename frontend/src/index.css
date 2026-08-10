@@ -7032,6 +7032,7 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
 .media-details-fields :is(textarea, input, select) { width: 100%; min-height: 2.4rem; padding: .55rem; color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid var(--cv-border-strong); border-radius: .55rem; font: inherit; }
 .media-details-fields textarea { min-height: 5rem; resize: vertical; }
 .media-upload-dialog { width: min(34rem, 100%); }
+.media-upload-overlay { z-index: calc(var(--cv-z-toast) + 10); isolation: isolate; }
 .media-upload-dialog .media-details-fields { grid-template-columns: 1fr; gap: .8rem; padding: 1rem 1.1rem 1.15rem; }
 .media-upload-dialog .media-details-fields > p:not(.form-alert) { margin: 0; padding: .7rem .75rem; color: var(--cv-color-slate); background: color-mix(in srgb, var(--cv-color-teal) 6%, var(--cv-surface)); border: 1px solid color-mix(in srgb, var(--cv-color-teal) 18%, var(--cv-border-strong)); border-radius: .55rem; font-size: .76rem; line-height: 1.45; }
 .media-upload-dialog > footer { justify-content: flex-end; }
@@ -14074,6 +14075,13 @@ html[data-theme='dark'] .danger-level-control {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  /* Uploading is initiated from the media workspace itself.  Unlike a media
+     detail sheet, it must not be dismissed by a workspace/navigation event
+     while Android is handing control back from its file picker. */
+  .media-upload-overlay {
+    z-index: calc(var(--cv-z-toast) + 10);
   }
 
   .photo-viewer-overlay {

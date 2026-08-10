@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { bulkDeleteMedia, deleteMedia, getMedia, setMainMedia, updateMedia } from '../../api/media'
+import { bulkDeleteMedia, deleteMedia, getMedia, getMediaUploadPolicy, setMainMedia, updateMedia } from '../../api/media'
+import { getMaps } from '../../api/maps'
 import type { MediaPage } from '../../types/media'
 import { MediaWorkspacePanel } from './MediaWorkspacePanel'
 import { FloatingPanelWindowContext } from '../layout/FloatingPanelWindow'
@@ -15,8 +16,11 @@ vi.mock('../../api/media', async () => {
     setMainMedia: vi.fn(),
     deleteMedia: vi.fn(),
     bulkDeleteMedia: vi.fn(),
+    getMediaUploadPolicy: vi.fn(),
   }
 })
+
+vi.mock('../../api/maps', () => ({ getMaps: vi.fn() }))
 
 const page: MediaPage = {
   items: [{
@@ -53,6 +57,8 @@ describe('MediaWorkspacePanel', () => {
     vi.mocked(setMainMedia).mockResolvedValue(page.items[0])
     vi.mocked(deleteMedia).mockResolvedValue()
     vi.mocked(bulkDeleteMedia).mockResolvedValue()
+    vi.mocked(getMaps).mockResolvedValue([{ id: 'map-1', name: 'France', country: { name: 'France' }, can_edit: true }] as never)
+    vi.mocked(getMediaUploadPolicy).mockResolvedValue({ max_upload_bytes: 5 * 1024 * 1024, max_upload_megabytes: 5, max_image_dimension: 2560 })
   })
   afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers() })
 
@@ -114,5 +120,14 @@ describe('MediaWorkspacePanel', () => {
     expect(restore.querySelector('.lucide-minimize-2')).toBeInTheDocument()
     fireEvent.click(restore)
     expect(toggleMaximize).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the upload dialog open when mobile navigation layers are closed', async () => {
+    render(<MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />)
+    await screen.findByText('chapelle.webp')
+    fireEvent.click(screen.getByRole('button', { name: 'Importer des photos' }))
+    expect(await screen.findByRole('dialog', { name: 'Importer des photos' })).toBeVisible()
+    window.dispatchEvent(new Event('cartavault:close-mobile-modal-layers'))
+    expect(screen.getByRole('dialog', { name: 'Importer des photos' })).toBeVisible()
   })
 })
