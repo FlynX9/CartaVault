@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 
 import { getPhotoFileUrl } from '../../api/photos'
 import type { Photo } from '../../types/photo'
+import { CategoryIconPreview } from '../icons/CategoryIconPreview'
 import { PhotoViewer } from '../photos/PhotoViewer'
 import { photoViewerMessages } from '../photos/photoViewerI18n'
 import { offlineThumbnail } from '../../pwa/offlineData'
@@ -12,9 +13,11 @@ interface Props {
   photos: Photo[]
   isLoading: boolean
   error: string | null
+  statusColor: string
+  categoryIcon?: string
 }
 
-export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props) {
+export function PlacePopupGallery({ placeName, photos, isLoading, error, statusColor, categoryIcon }: Props) {
   const [index, setIndex] = useState(0)
   const [failed, setFailed] = useState(false)
   const [viewerOpen, setViewerOpen] = useState(false)
@@ -63,7 +66,15 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error }: Props
 
   if (isLoading) return <div className="popup-photo-placeholder" role="status">Chargement des photos…</div>
   if (error) return <div className="popup-photo-placeholder" role="alert">Photos indisponibles</div>
-  if (orderedPhotos.length === 0) return <div className="popup-photo-placeholder">Aucune photo</div>
+  const categoryFallback = () => (
+    <div className="popup-photo-placeholder popup-photo-placeholder--category" role="img" aria-label={`Icône de ${placeName}`}>
+      <span style={{ backgroundColor: statusColor, borderColor: statusColor }}>
+        <CategoryIconPreview iconId={categoryIcon} size={54} showLabel={false} />
+      </span>
+    </div>
+  )
+
+  if (orderedPhotos.length === 0) return categoryFallback()
 
   const photo = orderedPhotos[index]
   const alternativeText = photo.description || `Photo de ${placeName}`

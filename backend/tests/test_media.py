@@ -122,3 +122,42 @@ def test_media_library_is_paginated_and_does_not_expose_storage_paths(
     )
     assert deleted.status_code == 200
     assert deleted.json() == {"selected_count": 2, "deleted_count": 2}
+
+
+def test_attached_media_keeps_its_original_storage_scope(
+    integration_client: TestClient,
+    poi_map: PoiMap,
+) -> None:
+    """An orphan media file is stored under its map, not under a later POI id."""
+    uploaded = integration_client.post(
+        "/media-actions/upload",
+        data={"map_id": str(poi_map.id), "latitude": "45.764", "longitude": "4.8357"},
+        files={"file": ("geotagged.png", png_bytes(), "image/png")},
+    )
+    assert uploaded.status_code == 201
+    media_id = uploaded.json()["id"]
+
+    place = integration_client.post(
+        "/places",
+        json={
+            "name": f"Attached media place {uuid4().hex}",
+            "map_id": str(poi_map.id),
+            "latitude": 45.764,
+            "longitude": 4.8357,
+        },
+    )
+    assert place.status_code == 201
+
+    attached = integration_client.post(
+        f"/media-actions/{media_id}/attach-place",
+        json={"place_id": place.json()["id"]},
+    )
+    assert attached.status_code == 200
+    assert attached.json()["place"]["id"] == place.json()["id"]
+
+    file_response = integration_client.get(f"/photos/{media_id}/file")
+    assert file_response.status_code == 200
+    assert file_response.headers["content-type"].startswith("image/png")
+
+    deleted = integration_client.delete(f"/photos/{media_id}")
+    assert deleted.status_code == 204

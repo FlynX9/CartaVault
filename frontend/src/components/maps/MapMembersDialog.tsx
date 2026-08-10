@@ -41,6 +41,10 @@ export function MapMembersDialog({ poiMap, onClose }: MapMembersDialogProps) {
   }, [poiMap.id])
 
   useEffect(() => load(), [load])
+  useEffect(() => {
+    window.addEventListener('cartavault:close-mobile-modal-layers', onClose)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', onClose)
+  }, [onClose])
 
   const pendingInvitations = invitations.filter((item) => item.accepted_at === null && item.revoked_at === null)
 

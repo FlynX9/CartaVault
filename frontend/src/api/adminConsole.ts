@@ -1,5 +1,5 @@
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
+import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, InstanceLogLevel, InstanceLogPage, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
 
 const empty = () => new URLSearchParams()
 
@@ -30,3 +30,13 @@ export function assignUserQuotaProfile(userId: string, profileId: string) { retu
 export function getUserQuotas(userId: string, signal?: AbortSignal) { return getJson(`/admin/users/${encodeURIComponent(userId)}/quotas`, empty(), signal) as Promise<EffectiveQuota> }
 export function getInstanceHealth(signal?: AbortSignal) { return getJson('/admin/console/instance', empty(), signal) as Promise<InstanceHealth> }
 export function refreshInstanceHealth() { return sendJson('/admin/console/instance/refresh', 'POST', {}) as Promise<InstanceHealth> }
+export function getInstanceLogs(filters: { level?: InstanceLogLevel | ''; component?: string; search?: string; limit?: number; before?: number | null; order?: 'newest' | 'oldest' }, signal?: AbortSignal) {
+  const params = empty()
+  if (filters.level) params.set('level', filters.level)
+  if (filters.component) params.set('component', filters.component)
+  if (filters.search) params.set('search', filters.search)
+  params.set('limit', String(filters.limit ?? 100))
+  params.set('order', filters.order ?? 'newest')
+  if (filters.before) params.set('before', String(filters.before))
+  return getJson('/admin/console/instance/logs', params, signal) as Promise<InstanceLogPage>
+}

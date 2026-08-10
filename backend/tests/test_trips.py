@@ -66,6 +66,35 @@ class CountingGoogleRoutingProvider(StubGoogleRoutingProvider):
         return WaypointOptimizationResult(order, self._route(reordered))
 
 
+def test_trip_owns_its_route_shaping_options(integration_client, poi_map) -> None:
+    created = integration_client.post(
+        f"/maps/{poi_map.id}/trips",
+        json={
+            "name": "Options de trajet",
+            "avoid_tolls": True,
+            "avoid_highways": True,
+            "avoid_ferries": True,
+            "traffic_mode": "traffic_aware",
+        },
+    )
+
+    assert created.status_code == 201, created.text
+    assert created.json()["avoid_tolls"] is True
+    assert created.json()["avoid_highways"] is True
+    assert created.json()["avoid_ferries"] is True
+    assert created.json()["traffic_mode"] == "traffic_aware"
+
+    updated = integration_client.patch(
+        f"/trips/{created.json()['id']}",
+        json={"avoid_tolls": False, "traffic_mode": "traffic_aware_optimal"},
+    )
+
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["avoid_tolls"] is False
+    assert updated.json()["avoid_highways"] is True
+    assert updated.json()["traffic_mode"] == "traffic_aware_optimal"
+
+
 def test_trip_night_description_and_private_gallery_are_not_media(integration_client, photo_storage, poi_map) -> None:
     trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Nuits privées"}).json()
     second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()

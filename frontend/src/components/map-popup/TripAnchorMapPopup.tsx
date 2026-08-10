@@ -1,6 +1,7 @@
-import { ExternalLink, MapPin, Trash2, X } from 'lucide-react'
+import { MapPin, Trash2, X } from 'lucide-react'
 
 import type { TripArrival, TripDeparture } from '../../types/trip'
+import { GoogleMapsIcon } from '../common/GoogleMapsIcon'
 
 interface Props {
   anchor: TripDeparture | TripArrival
@@ -25,7 +26,7 @@ export function TripAnchorMapPopup({ anchor, kind, canEdit, onDelete, onClose }:
     {anchor.address && <p className="trip-night-map-popup__address"><MapPin aria-hidden="true" size={15} /><span>{anchor.address}</span></p>}
     {anchor.notes && <section className="trip-night-map-popup__description"><strong>Notes</strong><p>{anchor.notes}</p></section>}
     <footer className="popup-actions">
-      <a href={googleMapsUrl(anchor)} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" size={15} /><span>Google Maps</span></a>
+      <a href={googleMapsUrl(anchor)} target="_blank" rel="noreferrer"><GoogleMapsIcon size={15} /><span>Google Maps</span></a>
       {canEdit && <button className="danger-button" type="button" onClick={onDelete}><Trash2 aria-hidden="true" size={15} /><span>Supprimer</span></button>}
     </footer>
   </article>

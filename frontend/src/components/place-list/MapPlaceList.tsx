@@ -4,11 +4,12 @@ import {
   CalendarPlus,
   Check,
   CheckSquare,
+  ChevronDown,
   Import,
   Heart,
+  Grid2X2,
   LayoutList,
   List,
-  MapPinned,
   Minus,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { GoogleMapsIcon } from "../common/GoogleMapsIcon";
 import {
   useCallback,
   useContext,
@@ -69,6 +71,7 @@ import { CountryFlag } from "../maps/CountryFlag";
 import { getTagColorStyle } from "../../tags/tagColors";
 import { VirtualPlaceRows } from "./VirtualPlaceRows";
 import { PlaceListThumbnail } from "./PlaceListThumbnail";
+import { PlaceGallery } from "./PlaceGallery";
 import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
 
@@ -205,12 +208,13 @@ export function MapPlaceList({
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches,
   );
-  const [displayMode, setDisplayMode] = useState<"compact" | "expanded">(
+  const [displayMode, setDisplayMode] = useState<"compact" | "expanded" | "gallery">(
     "expanded",
   );
   const mobileSwipeStart = useRef<{ placeId: string; pointerId: number; x: number } | null>(null);
   const mobileSwipeMoved = useRef(false);
   const mobileSwipeOffset = useRef(0);
+  const mobilePanelSwipeStart = useRef<{ pointerId: number; y: number } | null>(null);
   const [mobilePlaceSwipe, setMobilePlaceSwipe] = useState<{ placeId: string; offset: number } | null>(null);
   const [mobilePlaceSwipeOpen, setMobilePlaceSwipeOpen] = useState<{ placeId: string; direction: 'delete' | 'more' } | null>(null);
   const [queryInput, setQueryInput] = useState(filters.query);
@@ -634,6 +638,19 @@ export function MapPlaceList({
     setMobilePlaceSwipe(null);
     setMobilePlaceSwipeOpen(Math.abs(offset) >= 44 ? { placeId: swipe.placeId, direction: offset > 0 ? 'delete' : 'more' } : null);
   };
+  const beginMobilePanelSwipe = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!isMobileViewport || (event.target as HTMLElement).closest('button, a, input, select, textarea')) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    mobilePanelSwipeStart.current = { pointerId: event.pointerId, y: event.clientY };
+  };
+  const finishMobilePanelSwipe = (event: ReactPointerEvent<HTMLElement>) => {
+    const gesture = mobilePanelSwipeStart.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    mobilePanelSwipeStart.current = null;
+    const deltaY = event.clientY - gesture.y;
+    if (deltaY <= -42 && collapsed) onCollapsedChange(false);
+    else if (deltaY >= 42 && !collapsed) onCollapsedChange(true);
+  };
   const togglePage = () => {
     const ids = visible.map((place) => place.id);
     const next = new Set(selectedIds);
@@ -890,7 +907,12 @@ export function MapPlaceList({
       tabIndex={-1}
       aria-labelledby="map-place-list-title"
     >
-      <header className="places-redesign-header">
+      <header
+        className="places-redesign-header"
+        onPointerDown={beginMobilePanelSwipe}
+        onPointerUp={finishMobilePanelSwipe}
+        onPointerCancel={() => { mobilePanelSwipeStart.current = null; }}
+      >
         <div>
           <div className="places-redesign-title-row">
             <h2 id="map-place-list-title">{t("places.title")}</h2>
@@ -929,6 +951,16 @@ export function MapPlaceList({
           )}
         </div>
         <div className="places-redesign-header-actions">
+          {collapsed && (
+            <button
+              className="places-mobile-expand-toggle"
+              type="button"
+              aria-label="Développer le panneau Lieux"
+              onClick={() => onCollapsedChange(false)}
+            >
+              <ChevronDown size={18} aria-hidden="true" />
+            </button>
+          )}
           {!collapsed &&
             poiMap &&
             canImportKmz && (
@@ -955,6 +987,33 @@ export function MapPlaceList({
                 <SlidersHorizontal size={17} aria-hidden="true" />
               </button>
             )}
+          {!collapsed && poiMap && !tripPlanningActive && (
+            <button
+              className="panel-icon-button places-mobile-view-toggle"
+              type="button"
+              aria-label={
+                displayMode === "gallery"
+                  ? "Passer à l'affichage en liste"
+                  : "Passer à l'affichage en galerie"
+              }
+              title={
+                displayMode === "gallery"
+                  ? "Affichage en liste"
+                  : "Affichage en galerie"
+              }
+              onClick={() =>
+                setDisplayMode((mode) =>
+                  mode === "gallery" ? "expanded" : "gallery",
+                )
+              }
+            >
+              {displayMode === "gallery" ? (
+                <LayoutList size={17} aria-hidden="true" />
+              ) : (
+                <Grid2X2 size={17} aria-hidden="true" />
+              )}
+            </button>
+          )}
           {!collapsed &&
             poiMap &&
             !tripPlanningActive &&
@@ -1099,6 +1158,16 @@ export function MapPlaceList({
                 onClick={() => setDisplayMode("expanded")}
               >
                 <LayoutList size={18} />
+              </button>
+              <button
+                type="button"
+                className={displayMode === "gallery" ? "active" : ""}
+                aria-pressed={displayMode === "gallery"}
+                aria-label="Affichage en galerie"
+                title="Affichage en galerie"
+                onClick={() => setDisplayMode("gallery")}
+              >
+                <Grid2X2 size={18} />
               </button>
             </div>
             {poiMap && (
@@ -1432,7 +1501,19 @@ export function MapPlaceList({
             </button>
           </p>
         )}
-        {visible.length > 0 && (
+        {visible.length > 0 && displayMode === 'gallery' && (
+          <PlaceGallery
+            places={visible}
+            selectedPlaceId={selectedPlaceId}
+            selectedIds={selectedIds}
+            selectionMode={selectionMode}
+            tripPlaceIds={tripPlaceIds}
+            tripPlanningActive={tripPlanningActive}
+            onPlaceSelect={onPlaceSelect}
+            onToggleSelected={toggleSelected}
+          />
+        )}
+        {visible.length > 0 && displayMode !== 'gallery' && (
           <VirtualPlaceRows
             items={visible}
             scrollRoot={listBodyRef}
@@ -1466,7 +1547,7 @@ export function MapPlaceList({
                 >
                   {poiMap?.can_edit !== false && <button className="places-mobile-swipe-action places-mobile-swipe-action--delete" style={{ width: `${deleteRevealWidth}px` }} type="button" aria-hidden={swipeOffset <= 0} tabIndex={swipeOffset > 0 ? 0 : -1} aria-label={`Supprimer ${place.name}`} onClick={() => void removePlace(place)}><Trash2 size={18} /></button>}
                   <div className="places-mobile-swipe-action places-mobile-swipe-action--more" style={{ width: `${moreRevealWidth}px` }} aria-hidden={swipeOffset >= 0}>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`}><MapPinned size={17} /></a>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`}><GoogleMapsIcon size={26} /></a>
                     {poiMap?.can_edit !== false && <Link to={withMap(`/places/${place.id}/edit`, poiMap?.id)} aria-label={`Éditer ${place.name}`}><Pencil size={17} /></Link>}
                   </div>
                   <div className="places-place-card-row" style={{ transform: `translateX(${swipeOffset}px)` }}>
@@ -1659,7 +1740,7 @@ export function MapPlaceList({
                               aria-label={`Ouvrir ${place.name} dans Google Maps`}
                               onClick={(event) => event.stopPropagation()}
                             >
-                              <MapPinned size={16} />
+                              <GoogleMapsIcon size={24} />
                             </a>
                           </span>
                           {poiMap?.can_edit !== false && (

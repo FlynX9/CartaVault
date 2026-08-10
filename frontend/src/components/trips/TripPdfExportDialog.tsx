@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { CarFront, Check, FileImage, FileText, LoaderCircle, Map as MapIcon, MapPin, QrCode, ShieldCheck, X } from 'lucide-react'
+import { CarFront, Check, FileImage, FileText, LoaderCircle, Map as MapIcon, QrCode, ShieldCheck, X } from 'lucide-react'
 
 import type { TripPdfExportOptions, TripPdfNavigationProvider } from '../../api/trips'
 import { useModalFocus } from '../../hooks/useModalFocus'
+import { GoogleMapsIcon } from '../common/GoogleMapsIcon'
 
 const DEFAULT_TRIP_PDF_EXPORT_OPTIONS: TripPdfExportOptions = {
   include_overview_map: true,
@@ -88,7 +89,7 @@ export function TripPdfExportDialog({ trigger, onClose, onExport }: Props) {
             {options.include_navigation_qr_codes && <fieldset className="trip-pdf-export-section trip-pdf-export-providers">
               <legend>Applications de navigation</legend>
               <p>Les coordonnées restent dans le PDF : aucun appel aux API Google Maps ou Waze n’est effectué.</p>
-              <ProviderCard provider="google_maps" selected={options.navigation_providers.includes('google_maps')} icon={<MapPin size={19} />} label="Google Maps" description="Ouvre les coordonnées du lieu dans Google Maps." onToggle={toggleProvider} />
+              <ProviderCard provider="google_maps" selected={options.navigation_providers.includes('google_maps')} icon={<GoogleMapsIcon size={22} />} label="Google Maps" description="Ouvre les coordonnées du lieu dans Google Maps." onToggle={toggleProvider} />
               <ProviderCard provider="waze" selected={options.navigation_providers.includes('waze')} icon={<CarFront size={19} />} label="Waze" description="Ouvre directement la navigation vers le lieu dans Waze." onToggle={toggleProvider} />
               {invalid && <p className="trip-pdf-export-provider-error" role="alert">Sélectionnez au moins une application de navigation.</p>}
               <aside className="trip-pdf-export-qr-note" aria-label="Information sur les QR codes">

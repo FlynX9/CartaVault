@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
+import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getInstanceLogs, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
 import { getPublicRegistrationSettings } from '../../api/registration'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
-  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
+  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogs: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
   saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
@@ -24,6 +24,7 @@ beforeEach(() => {
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false })
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
+  vi.mocked(getInstanceLogs).mockResolvedValue({ items: [], truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, source: 'application-memory' })
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ available: false, warning_level: 0, settings: { enabled: false, daily_soft_limit: 10000, monthly_soft_limit: 100000, auto_disable_percent: 100, repeated_error_limit: 5, consecutive_errors: 0, disabled_reason: null }, usage: { sessions_today: 0, tiles_started_today: 0, tiles_completed_today: 0, tiles_failed_today: 0, tiles_cancelled_today: 0, tiles_started_month: 0 }, authoritative_monitoring: { connected: false, console_url: 'https://console.cloud.google.com/google/maps-apis/metrics', notice: 'Authoritative' } })
 })
@@ -154,11 +155,26 @@ describe('AdminConsole', () => {
     render(<MemoryRouter initialEntries={['/admin/instance']}><AdminConsole /></MemoryRouter>)
 
     expect(await screen.findByRole('heading', { name: 'État de l’instance' })).toBeVisible()
-    expect(screen.getByText('PostgreSQL')).toBeVisible()
-    expect(screen.getByText('Sauvegardes')).toBeVisible()
+    expect(await screen.findByText('PostgreSQL / PostGIS')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Diagnostics' }))
+    expect(await screen.findByText('Sauvegardes')).toBeVisible()
     expect(screen.getAllByText('Inconnu').length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: 'Actualiser' }))
     await waitFor(() => expect(refreshInstanceHealth).toHaveBeenCalledOnce())
+  })
+
+  it('loads bounded application logs from the merged instance screen', async () => {
+    vi.mocked(getInstanceLogs).mockResolvedValue({
+      items: [{ id: 7, timestamp: '2026-07-22T12:00:00Z', level: 'WARNING', component: 'ROUTING', logger: 'app.routing', message: 'Provider unavailable' }],
+      truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, source: 'application-memory',
+    })
+
+    render(<MemoryRouter initialEntries={['/admin/instance']}><AdminConsole /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Journaux' }))
+
+    expect(await screen.findByText('Provider unavailable')).toBeVisible()
+    expect(screen.getAllByText('ROUTING').length).toBeGreaterThan(0)
+    expect(getInstanceLogs).toHaveBeenCalled()
   })
 
   it('renders quota profiles without duplicating instance usage metrics', async () => {
@@ -196,6 +212,7 @@ const instanceHealth = {
   summary: { version: '1.0.0', environment: 'test', uptime_seconds: 3600, public_url: null }, cache_ttl_seconds: 30, warnings: [], recent_errors: [],
   components: {
     application: { ...diagnosticBase, version: '1.0.0', backend_version: '1.0.0', frontend_version: null, build_commit: null, build_date: null, environment: 'test', started_at: '2026-07-22T11:00:00Z', uptime_seconds: 3600, public_url_configured: null, public_url_detected: null, deployment_mode: 'test', backend_replicas: null, debug_enabled: false },
+    resources: { ...diagnosticBase, cpu_percent: null, cpu_scope: 'unavailable', cpu_limit_cores: null, memory_used_bytes: null, memory_limit_bytes: null, memory_percent: null, memory_scope: 'unavailable', worker_count: null, worker_source: null },
     database: { ...diagnosticBase, connection_ok: true, latency_ms: 2, postgresql_version: 'PostgreSQL', postgis_available: true, postgis_version: '3.5', database_size_bytes: 1024, active_connections: 2, max_connections: 100, pool_size: 5, pool_checked_out: 1, pool_overflow: 0, alembic_current_revision: 'head', alembic_expected_revision: 'head', alembic_status: 'up_to_date' as const, last_controlled_error: null },
     storage: { ...diagnosticBase, backend_type: 'local' as const, logical_identifier: 'local-media', readable: true, writable: true, total_bytes: 1000, used_bytes: 500, free_bytes: 500, usage_percent: 50, photo_count: 2, photo_storage_bytes: null, temporary_export_count: 0, temporary_export_bytes: 0, temporary_file_count: null, orphan_file_count: null, warning_threshold_percent: 70, high_threshold_percent: 85, critical_threshold_percent: 95, last_controlled_error: null },
     usage: { ...diagnosticBase, users_total: 2, users_active: 2, users_unverified: null, users_disabled: 0, administrators_total: 1, maps_total: 3, maps_private: 2, maps_shared: 1, places_total: 4, trashed_places: 0, photos_total: 2, trips_total: 1, memberships_total: 2, invitations_pending: 0, storage_average_per_user_bytes: null, new_users_7d: 1, new_users_30d: 1, new_places_7d: 2, new_places_30d: 4 },
@@ -208,4 +225,5 @@ const instanceHealth = {
     backups: { ...diagnosticBase, status: 'unknown' as const, configured: false, known: false, last_database_backup_at: null, last_media_backup_at: null, last_secrets_backup_at: null, last_backup_status: null, last_backup_size_bytes: null, destination_type: null, last_restore_test_at: null, retention_policy_known: false, last_controlled_error: 'BACKUP_STATUS_UNKNOWN' },
     security: { ...diagnosticBase, status: 'degraded' as const, disclaimer: 'Diagnostic seulement.', checks: [{ code: 'security.backup_known', severity: 'high' as const, passed: null, message_key: 'backup', details: {}, action: null }] },
   },
+  alerts: [],
 }

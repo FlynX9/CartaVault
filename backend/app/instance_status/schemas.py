@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 InstanceStatusValue = Literal["operational", "degraded", "unavailable", "misconfigured", "unknown"]
 AlembicStatusValue = Literal["up_to_date", "behind", "ahead", "diverged", "unknown"]
 SecuritySeverity = Literal["info", "warning", "high", "critical"]
+LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
 class DiagnosticBase(BaseModel):
@@ -77,6 +78,18 @@ class StorageDiagnostic(DiagnosticBase):
     high_threshold_percent: float = 85
     critical_threshold_percent: float = 95
     last_controlled_error: str | None
+
+
+class RuntimeResourcesDiagnostic(DiagnosticBase):
+    cpu_percent: float | None
+    cpu_scope: str
+    cpu_limit_cores: float | None
+    memory_used_bytes: int | None
+    memory_limit_bytes: int | None
+    memory_percent: float | None
+    memory_scope: str
+    worker_count: int | None
+    worker_source: str | None
 
 
 class UsageDiagnostic(DiagnosticBase):
@@ -233,8 +246,35 @@ class RecentControlledError(BaseModel):
     resolved: bool
 
 
+class OperationalAlert(BaseModel):
+    severity: Literal["warning", "critical"]
+    component: str
+    code: str
+    message: str
+    action: str | None = None
+
+
+class InstanceLogEntry(BaseModel):
+    id: int
+    timestamp: datetime
+    level: LogLevel
+    component: str
+    logger: str
+    message: str
+
+
+class InstanceLogPage(BaseModel):
+    items: list[InstanceLogEntry]
+    truncated: bool
+    next_before: int | None
+    max_limit: int
+    retention_entries: int
+    source: str = "application-memory"
+
+
 class InstanceComponents(BaseModel):
     application: ApplicationDiagnostic
+    resources: RuntimeResourcesDiagnostic
     database: DatabaseDiagnostic
     storage: StorageDiagnostic
     usage: UsageDiagnostic
@@ -254,5 +294,6 @@ class InstanceStatusResponse(BaseModel):
     summary: InstanceSummary
     components: InstanceComponents
     recent_errors: list[RecentControlledError]
+    alerts: list[OperationalAlert]
     warnings: list[str]
     cache_ttl_seconds: int

@@ -1,8 +1,9 @@
 from datetime import date
+from io import BytesIO
 from math import ceil
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,6 +14,7 @@ from app.auth.models import User
 from app.countries.models import Country
 from app.database import get_db
 from app.maps.models import PoiMap
+from app.auth.permissions import require_map_role, require_place_role
 from app.media.schemas import (
     MediaAggregates,
     MediaBulkDelete,
@@ -20,6 +22,7 @@ from app.media.schemas import (
     MediaFilterOptions,
     MediaItemRead,
     MediaMapSummary,
+    MediaPlaceAttachment,
     MediaPage,
     MediaPlaceSummary,
     MediaUpdate,
@@ -44,12 +47,62 @@ from app.photos.storage import (
     get_photo_thumbnail,
     normalize_original_name,
     resolve_photo_file,
+    store_photo_file,
+    UnsupportedPhotoTypeError,
+    PhotoTooLargeError,
 )
+from app.quotas.service import QuotaKey, QuotaService
+from app.statuses.models import PlaceStatus
+from geoalchemy2.elements import WKTElement
 from app.places.history import add_place_history
 from app.places.models import Place
+from PIL import Image, UnidentifiedImageError
 
 
 router = APIRouter(prefix="/media", tags=["media"])
+# Keep write operations on a non-parameterised prefix.  The application router
+# gives a generic ``/media/{media_id}`` route precedence for unsupported HTTP
+# methods, which would otherwise turn uploads into 405 responses.
+upload_router = APIRouter(prefix="/media-actions", tags=["media"])
+
+
+def media_name(photo: Photo) -> str:
+    """Turn a filename into a useful, editable initial POI name."""
+    raw = (photo.original_name or photo.filename).rsplit(".", 1)[0]
+    return raw.replace("_", " ").replace("-", " ").strip()[:255] or "Photo géolocalisée"
+
+
+def read_uploaded_gps(source: UploadFile) -> tuple[float, float] | None:
+    """Read GPS from an uncompressed client source without retaining that file."""
+    try:
+        content = source.file.read()
+        with Image.open(BytesIO(content)) as image:
+            gps = image.getexif().get_ifd(34853)
+        if not gps:
+            return None
+        latitude_values, longitude_values = gps.get(2), gps.get(4)
+        latitude_ref, longitude_ref = gps.get(1), gps.get(3)
+        if not latitude_values or not longitude_values:
+            return None
+
+        def to_decimal(values) -> float:
+            degrees, minutes, seconds = (float(value) for value in values)
+            return degrees + minutes / 60 + seconds / 3600
+
+        latitude, longitude = to_decimal(latitude_values), to_decimal(longitude_values)
+        if isinstance(latitude_ref, bytes):
+            latitude_ref = latitude_ref.decode(errors="ignore")
+        if isinstance(longitude_ref, bytes):
+            longitude_ref = longitude_ref.decode(errors="ignore")
+        if str(latitude_ref).upper() == "S":
+            latitude = -latitude
+        if str(longitude_ref).upper() == "W":
+            longitude = -longitude
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            return None
+        return latitude, longitude
+    except (OSError, UnidentifiedImageError, ValueError, TypeError, ZeroDivisionError):
+        return None
 
 
 def to_media_read(row, current_user_id: UUID) -> MediaItemRead:
@@ -70,11 +123,7 @@ def to_media_read(row, current_user_id: UUID) -> MediaItemRead:
         height=photo.height,
         file_state=infer_file_state(photo),
         can_edit=role in {"owner", "editor"},
-        place=MediaPlaceSummary(
-            id=place.id,
-            name=place.name,
-            region=place.region,
-        ),
+        place=(MediaPlaceSummary(id=place.id, name=place.name, region=place.region) if place is not None else None),
         map=MediaMapSummary(
             id=poi_map.id,
             name=poi_map.name,
@@ -86,6 +135,9 @@ def to_media_read(row, current_user_id: UUID) -> MediaItemRead:
             if uploader is not None
             else None
         ),
+        latitude=photo.latitude,
+        longitude=photo.longitude,
+        can_create_place=place is None and photo.latitude is not None and photo.longitude is not None and role in {"owner", "editor"},
     )
 
 
@@ -237,6 +289,116 @@ def list_media(
     )
 
 
+@upload_router.post("/upload", response_model=MediaItemRead, status_code=status.HTTP_201_CREATED)
+def upload_unassigned_media(
+    map_id: UUID = Form(...),
+    file: UploadFile = File(...),
+    latitude: float | None = Form(default=None, ge=-90, le=90),
+    longitude: float | None = Form(default=None, ge=-180, le=180),
+    gps_source: UploadFile | None = File(default=None),
+    taken_at: date | None = Form(default=None),
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MediaItemRead:
+    """Store one compressed browser upload until the user chooses its POI."""
+    if latitude is None and longitude is None and gps_source is not None:
+        coordinates = read_uploaded_gps(gps_source)
+        if coordinates is not None:
+            latitude, longitude = coordinates
+    if (latitude is None) != (longitude is None):
+        raise HTTPException(status_code=422, detail="Latitude and longitude must be provided together")
+    access = require_map_role(database_session, map_id, current_user, "editor")
+    quotas = QuotaService(database_session)
+    quotas.ensure_can_create(access.map.owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
+    from uuid import uuid4
+    photo_id = uuid4()
+    try:
+        stored = store_photo_file(file.file, file.content_type, map_id, photo_id)
+        quotas.ensure_can_create(access.map.owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
+        photo = Photo(
+            id=photo_id, map_id=map_id, storage_scope_id=map_id,
+            filename=stored.filename, original_name=normalize_original_name(file.filename), path=stored.relative_path,
+            mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, width=stored.width, height=stored.height,
+            uploaded_by_user_id=current_user.id, latitude=latitude, longitude=longitude, taken_at=taken_at,
+            sort_order=0, is_primary=False,
+        )
+        database_session.add(photo); database_session.commit()
+    except (UnsupportedPhotoTypeError, PhotoTooLargeError) as error:
+        database_session.rollback(); raise HTTPException(status_code=415, detail=str(error)) from error
+    except Exception as error:
+        database_session.rollback(); raise HTTPException(status_code=500, detail="Unable to store media") from error
+    row = database_session.execute(accessible_media_statement(current_user.id).where(Photo.id == photo_id)).one()
+    return to_media_read(row, current_user.id)
+
+
+@upload_router.post("/{media_id}/create-place", response_model=MediaItemRead)
+def create_place_from_media(
+    media_id: UUID,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MediaItemRead:
+    """Create the POI at EXIF coordinates and attach the previously orphaned image."""
+    access = get_media_access(database_session, media_id, current_user, require_editor=True)
+    photo = access.photo
+    if photo.place_id is not None:
+        raise HTTPException(status_code=409, detail="Media is already attached to a place")
+    if photo.latitude is None or photo.longitude is None:
+        raise HTTPException(status_code=422, detail="Media has no GPS coordinates")
+    default_status = database_session.scalar(select(PlaceStatus).where(PlaceStatus.map_id == photo.map_id, PlaceStatus.is_default.is_(True)))
+    if default_status is None:
+        raise HTTPException(status_code=409, detail="No default place status is configured")
+    QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.PLACES_PER_MAP_MAX, scope_id=photo.map_id)
+    place = Place(name=media_name(photo), map_id=photo.map_id, status_id=default_status.id, location=WKTElement(f"POINT({photo.longitude} {photo.latitude})", srid=4326))
+    try:
+        database_session.add(place); database_session.flush()
+        photo.place_id = place.id; photo.is_primary = True; photo.sort_order = 0
+        add_place_history(database_session, place.id, current_user.id, "created", {"name": {"old": None, "new": place.name}, "source": "media"})
+        add_place_history(database_session, place.id, current_user.id, "photo_added", {"photo": {"old": None, "new": {"id": str(photo.id), "original_name": photo.original_name}}})
+        database_session.commit()
+    except SQLAlchemyError as error:
+        database_session.rollback(); raise HTTPException(status_code=500, detail="Unable to create place from media") from error
+    row = database_session.execute(accessible_media_statement(current_user.id).where(Photo.id == media_id)).one()
+    return to_media_read(row, current_user.id)
+
+
+@upload_router.post("/{media_id}/attach-place", response_model=MediaItemRead)
+def attach_media_to_place(
+    media_id: UUID,
+    data: MediaPlaceAttachment,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MediaItemRead:
+    """Attach a previously uploaded geotagged image after its POI is saved."""
+    access = get_media_access(database_session, media_id, current_user, require_editor=True)
+    photo = access.photo
+    if photo.place_id is not None:
+        raise HTTPException(status_code=409, detail="Media is already attached to a place")
+    place = require_place_role(database_session, data.place_id, current_user, "editor")
+    if place.map_id != photo.map_id:
+        raise HTTPException(status_code=422, detail="The place and media must belong to the same map")
+    try:
+        photo.place_id = place.id
+        has_primary_photo = database_session.scalar(
+            select(Photo.id).where(Photo.place_id == place.id, Photo.is_primary.is_(True))
+        )
+        if has_primary_photo is None:
+            photo.is_primary = True
+            photo.sort_order = 0
+        add_place_history(
+            database_session,
+            place.id,
+            current_user.id,
+            "photo_added",
+            {"photo": {"old": None, "new": {"id": str(photo.id), "original_name": photo.original_name}}},
+        )
+        database_session.commit()
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to attach media to place") from error
+    row = database_session.execute(accessible_media_statement(current_user.id).where(Photo.id == media_id)).one()
+    return to_media_read(row, current_user.id)
+
+
 @router.get("/{media_id}", response_model=MediaItemRead)
 def get_media(
     media_id: UUID,
@@ -258,12 +420,12 @@ def get_media_thumbnail(
     current_user: User = Depends(get_current_user),
 ) -> FileResponse:
     access = get_media_access(database_session, media_id, current_user)
-    if access.photo.path is None or access.photo.place_id is None:
+    if access.photo.path is None:
         raise HTTPException(status_code=404, detail="Media file not found")
     try:
         thumbnail = get_photo_thumbnail(
             access.photo.path,
-            access.photo.place_id,
+            access.photo.storage_scope_id,
             access.photo.id,
         )
     except PhotoFileNotFoundError as error:
@@ -284,12 +446,12 @@ def download_media(
 ) -> FileResponse:
     access = get_media_access(database_session, media_id, current_user)
     photo = access.photo
-    if photo.path is None or photo.place_id is None:
+    if photo.path is None:
         raise HTTPException(status_code=404, detail="Media file not found")
     try:
         path = resolve_photo_file(
             photo.path,
-            photo.place_id,
+            photo.storage_scope_id,
             photo.id,
             require_file=True,
         )
@@ -346,6 +508,8 @@ def set_main_media(
         current_user,
         require_editor=True,
     )
+    if access.photo.place_id is None:
+        raise HTTPException(status_code=409, detail="Unattached media cannot be a primary place photo")
     database_session.execute(
         update(Photo)
         .where(
@@ -356,13 +520,8 @@ def set_main_media(
     )
     access.photo.is_primary = True
     try:
-        add_place_history(
-            database_session,
-            access.place.id,
-            current_user.id,
-            "photo_primary_changed",
-            {"photo_id": str(media_id)},
-        )
+        if access.place is not None:
+            add_place_history(database_session, access.place.id, current_user.id, "photo_primary_changed", {"photo_id": str(media_id)})
         database_session.commit()
     except SQLAlchemyError as error:
         database_session.rollback()
@@ -383,23 +542,19 @@ def delete_accesses(
     try:
         for access in accesses:
             photo = access.photo
-            affected_places.add(access.place.id)
-            if photo.path is not None and photo.place_id is not None:
+            if access.place is not None:
+                affected_places.add(access.place.id)
+            if photo.path is not None:
                 resolve_photo_file(
                     photo.path,
-                    photo.place_id,
+                    photo.storage_scope_id,
                     photo.id,
                     require_file=False,
                 )
-                stored_files.append((photo.path, photo.place_id, photo.id))
+                stored_files.append((photo.path, photo.storage_scope_id, photo.id))
             database_session.delete(photo)
-            add_place_history(
-                database_session,
-                access.place.id,
-                current_user.id,
-                "photo_removed",
-                {"photo": {"old": {"id": str(photo.id)}, "new": None}},
-            )
+            if access.place is not None:
+                add_place_history(database_session, access.place.id, current_user.id, "photo_removed", {"photo": {"old": {"id": str(photo.id)}, "new": None}})
         database_session.flush()
         for place_id in affected_places:
             remaining = database_session.scalars(

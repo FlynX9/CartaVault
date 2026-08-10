@@ -37,6 +37,7 @@ interface Props {
   tripDays?: Array<{ id: string; label: string }>;
   onAddToTrip?: (place: PlaceDetails, dayId?: string) => Promise<void> | void;
   onUpdated?: (place: PlaceDetails) => void;
+  onShowOnMap?: () => void;
   onEdit: () => void;
   onDeleted: (placeId: string) => void;
   onClose: () => void;
@@ -63,6 +64,7 @@ export function PlaceMapPopup({
   tripDays = [],
   onAddToTrip = () => undefined,
   onUpdated = () => undefined,
+  onShowOnMap,
   onEdit,
   onDeleted,
   onClose,
@@ -357,6 +359,8 @@ export function PlaceMapPopup({
           photos={photos}
           isLoading={photosLoading}
           error={photosError}
+          statusColor={place.status.color}
+          categoryIcon={primaryCategory?.icon}
         />
         <div className="popup-overview">
           <div className="popup-heading">
@@ -621,6 +625,7 @@ export function PlaceMapPopup({
         canChooseTripDay={tripDays.length > 0}
         isAddingToTrip={addingToTrip}
         onAddToTrip={requestTripAdd}
+        onShowOnMap={onShowOnMap}
         onEdit={onEdit}
         onDelete={() => void remove()}
         onClose={onClose}

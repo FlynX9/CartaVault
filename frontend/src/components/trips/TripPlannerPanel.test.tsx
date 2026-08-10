@@ -223,6 +223,13 @@ describe('TripPlannerPanel', () => {
     expect(within(controls).getByRole('button', { name: 'Supprimer le voyage' })).toBeVisible()
     expect(within(settings!).getByLabelText('Charge faible jusqu’à (min)')).toBeVisible()
     expect(within(settings!).getByLabelText('Charge modérée jusqu’à (min)')).toBeVisible()
+    const stayInCountry = within(settings!).getByRole('checkbox', { name: /Rester dans le pays de la carte/ })
+    expect(stayInCountry.closest('.trip-country-setting__control')).not.toBeNull()
+    expect(within(settings!).getByText(/routes situées dans le pays associé/)).toBeVisible()
+    expect(within(settings!).getByRole('checkbox', { name: 'Éviter les péages' })).toBeVisible()
+    expect(within(settings!).getByRole('checkbox', { name: 'Éviter les autoroutes' })).toBeVisible()
+    expect(within(settings!).getByRole('checkbox', { name: 'Éviter les ferries' })).toBeVisible()
+    expect(within(settings!).getByLabelText('Prise en compte du trafic')).toHaveValue('traffic_unaware')
     const lowColor = within(settings!).getByLabelText('Couleur faible')
     expect(lowColor.previousElementSibling).toHaveTextContent('Couleur faible')
     expect(settings!.querySelectorAll('.trip-load-colors input[type="color"]')).toHaveLength(3)
@@ -304,6 +311,24 @@ describe('TripPlannerPanel', () => {
 
     await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', { name: 'Voyage sauvegardé' }))
     await waitFor(() => expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument())
+  })
+
+  it('persists routing constraints on the current trip', async () => {
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Afficher les paramètres de la sortie' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Éviter les péages' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Éviter les autoroutes' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Éviter les ferries' }))
+    fireEvent.change(screen.getByLabelText('Prise en compte du trafic'), { target: { value: 'traffic_aware' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(updateTrip).toHaveBeenCalledWith('trip-1', {
+      avoid_tolls: true,
+      avoid_highways: true,
+      avoid_ferries: true,
+      traffic_mode: 'traffic_aware',
+    }))
   })
 
   it('guards trip selection and exposes the same warning to application navigation', async () => {
@@ -1403,6 +1428,7 @@ describe('TripPlannerPanel', () => {
     fireEvent.pointerDown(stopItem, { pointerId: 10, pointerType: 'touch', clientX: 100, clientY: 120 })
     fireEvent.pointerUp(stopItem, { pointerId: 10, pointerType: 'touch', clientX: 240, clientY: 122 })
     expect(stopItem).toHaveClass('is-delete-revealed')
+    expect(container.querySelector('.trip-mobile-night-page')).not.toBeInTheDocument()
     expect(screen.queryByRole('alertdialog', { name: 'Supprimer cette étape ?' })).not.toBeInTheDocument()
     fireEvent.click(within(stopItem).getByRole('button', { name: 'Supprimer Musée' }))
     const stopDeleteConfirmation = await screen.findByRole('alertdialog', { name: 'Supprimer cette étape ?' })
@@ -1424,8 +1450,10 @@ describe('TripPlannerPanel', () => {
     fireEvent.click(within(moveDialog).getByRole('button', { name: /Jour 2/ }))
     await waitFor(() => expect(moveTripStop).toHaveBeenCalledWith('stop-1', 'day-2', 0))
 
-    const nextButton = container.querySelector<HTMLButtonElement>('.trip-mobile-active-day button:last-child')!
-    fireEvent.click(nextButton)
+    const dayMetrics = container.querySelector<HTMLElement>('.trip-mobile-day-metrics')!
+    fireEvent.pointerDown(dayMetrics, { pointerId: 40, pointerType: 'touch', clientX: 240, clientY: 160 })
+    fireEvent.pointerMove(dayMetrics, { pointerId: 40, pointerType: 'touch', clientX: 100, clientY: 162 })
+    fireEvent.pointerUp(dayMetrics, { pointerId: 40, pointerType: 'touch', clientX: 100, clientY: 162 })
     const nightRow = await screen.findByRole('button', { name: 'Ouvrir Hôtel central' })
     fireEvent.pointerDown(nightRow, { pointerId: 32, pointerType: 'touch', clientX: 100, clientY: 180 })
     fireEvent.pointerMove(nightRow, { pointerId: 32, pointerType: 'touch', clientX: 240, clientY: 182 })
@@ -1449,6 +1477,14 @@ describe('TripPlannerPanel', () => {
     const nightMoveDialog = screen.getByRole('dialog', { name: 'Envoyer vers' })
     fireEvent.click(within(nightMoveDialog).getByRole('button', { name: /Jour 2/ }))
     await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-2', expect.objectContaining({ name: 'Hôtel central' })))
+
+    const nightSurface = container.querySelector<HTMLElement>('.trip-mobile-day-transition')!
+    fireEvent.pointerDown(nightSurface, { pointerId: 41, pointerType: 'touch', clientX: 240, clientY: 90 })
+    fireEvent.pointerMove(nightSurface, { pointerId: 41, pointerType: 'touch', clientX: 100, clientY: 92 })
+    expect(nightSurface.style.getPropertyValue('--trip-mobile-swipe-offset')).toBe('-140px')
+    fireEvent.pointerUp(nightSurface, { pointerId: 41, pointerType: 'touch', clientX: 100, clientY: 92 })
+    expect(await screen.findByText('Jour 2', { selector: '.trip-mobile-step-commands > header strong' })).toBeVisible()
+
   })
 
   it('opens the trip picker from the mobile folder action', async () => {

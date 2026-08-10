@@ -44,6 +44,22 @@ class Photo(Base):
         nullable=True,
     )
 
+    # A media upload can exist before the user creates a POI.  Keeping the
+    # owning map on the photo gives those uploads the same ACL as the map.
+    map_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        ForeignKey("poi_maps.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    # Storage must not move when an unassigned upload is later attached to a
+    # POI, therefore it has its own immutable directory key.
+    storage_scope_id: Mapped[UUID | None] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), nullable=True,
+    )
+    latitude: Mapped[float | None] = mapped_column(nullable=True)
+    longitude: Mapped[float | None] = mapped_column(nullable=True)
+
     filename: Mapped[str] = mapped_column(
         Text,
         nullable=False,

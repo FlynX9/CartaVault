@@ -25,7 +25,7 @@ def upgrade() -> None:
     op.alter_column("poi_maps", "owner_id", nullable=False)
     op.create_unique_constraint("poi_maps_owner_country_key", "poi_maps", ["owner_id", "country_id"])
     connection.execute(sa.text("""
-        CREATE FUNCTION enforce_map_owner_membership() RETURNS trigger AS $$
+        CREATE OR REPLACE FUNCTION enforce_map_owner_membership() RETURNS trigger AS $$
         DECLARE checked_map_id uuid;
         BEGIN
           IF TG_TABLE_NAME = 'poi_maps' THEN

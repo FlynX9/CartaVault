@@ -12,6 +12,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
+try:
+    import psutil
+except ImportError:  # pragma: no cover - deployments install the pinned dependency
+    psutil = None
+
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from fastapi import Request as FastAPIRequest
@@ -29,8 +34,9 @@ from app.trips.models import Trip
 from app.instance_status.schemas import (
     ApplicationDiagnostic, AuthenticationDiagnostic, BackupDiagnostic, DatabaseDiagnostic,
     EmailDiagnostic, HttpsDiagnostic, InstanceComponents, InstanceStatusResponse, InstanceSummary,
-    MaintenanceDiagnostic, MappingDiagnostic, RecentControlledError, RoutingDiagnostic,
-    SecurityCheck, SecurityDiagnostic, StorageDiagnostic, UsageDiagnostic,
+    MaintenanceDiagnostic, MappingDiagnostic, OperationalAlert, RecentControlledError,
+    RoutingDiagnostic, RuntimeResourcesDiagnostic, SecurityCheck, SecurityDiagnostic,
+    StorageDiagnostic, UsageDiagnostic,
 )
 
 
@@ -39,6 +45,8 @@ CACHE_TTL_SECONDS = 30
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 _cache_lock = Lock()
 _cache: tuple[float, InstanceStatusResponse] | None = None
+_cpu_sample_lock = Lock()
+_cpu_sample: tuple[float, int] | None = None
 
 
 def _now() -> datetime:
@@ -52,6 +60,88 @@ def _naive_now() -> datetime:
 def _env_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
     return default if value is None else value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _read_int(path: Path) -> int | None:
+    try:
+        value = path.read_text(encoding="ascii").strip()
+        return None if value == "max" else int(value)
+    except (OSError, ValueError):
+        return None
+
+
+def _cgroup_cpu(root: Path) -> tuple[int | None, float | None]:
+    """Return cumulative CPU microseconds and an optional CPU quota in cores."""
+
+    try:
+        stats = dict(line.split(maxsplit=1) for line in (root / "cpu.stat").read_text(encoding="ascii").splitlines() if " " in line)
+        usage = int(stats["usage_usec"])
+        quota_parts = (root / "cpu.max").read_text(encoding="ascii").split()
+        quota = None if quota_parts[0] == "max" else int(quota_parts[0]) / int(quota_parts[1])
+        return usage, quota
+    except (OSError, ValueError, KeyError, ZeroDivisionError, IndexError):
+        usage_ns = _read_int(root / "cpuacct" / "cpuacct.usage") or _read_int(root / "cpuacct.usage")
+        quota_us = _read_int(root / "cpu" / "cpu.cfs_quota_us") or _read_int(root / "cpu.cfs_quota_us")
+        period_us = _read_int(root / "cpu" / "cpu.cfs_period_us") or _read_int(root / "cpu.cfs_period_us")
+        quota = quota_us / period_us if quota_us and quota_us > 0 and period_us else None
+        return (usage_ns // 1_000 if usage_ns is not None else None), quota
+
+
+def _runtime_resources(checked_at: datetime) -> RuntimeResourcesDiagnostic:
+    global _cpu_sample
+    root = Path(os.getenv("CARTAVAULT_CGROUP_ROOT", "/sys/fs/cgroup"))
+    usage_usec, cpu_limit = _cgroup_cpu(root)
+    cpu_scope = "container-cgroup" if usage_usec is not None else "unavailable"
+    cpu_percent = None
+    if usage_usec is not None:
+        sampled_at = monotonic()
+        with _cpu_sample_lock:
+            previous = _cpu_sample
+            _cpu_sample = (sampled_at, usage_usec)
+        if previous and sampled_at > previous[0] and usage_usec >= previous[1]:
+            reference_cores = cpu_limit or float(max(1, os.cpu_count() or 1))
+            cpu_percent = round(((usage_usec - previous[1]) / 1_000_000) / (sampled_at - previous[0]) / reference_cores * 100, 2)
+
+    memory_used = _read_int(root / "memory.current")
+    memory_limit = _read_int(root / "memory.max")
+    if memory_used is None:
+        memory_used = _read_int(root / "memory" / "memory.usage_in_bytes") or _read_int(root / "memory.usage_in_bytes")
+        memory_limit = _read_int(root / "memory" / "memory.limit_in_bytes") or _read_int(root / "memory.limit_in_bytes")
+    memory_scope = "container-cgroup" if memory_used is not None else "unavailable"
+    if memory_limit is not None and memory_limit >= 2**60:
+        memory_limit = None
+    memory_percent = round(memory_used * 100 / memory_limit, 2) if memory_used is not None and memory_limit else None
+
+    # Local development and native installations do not expose Linux cgroups.
+    # Fall back to host metrics while keeping the scope explicit in the API.
+    if usage_usec is None and psutil is not None:
+        try:
+            cpu_percent = round(float(psutil.cpu_percent(interval=0.05)), 2)
+            cpu_limit = float(psutil.cpu_count() or os.cpu_count() or 1)
+            cpu_scope = "host-system"
+        except (OSError, RuntimeError, ValueError):
+            cpu_percent = None
+    if memory_used is None and psutil is not None:
+        try:
+            host_memory = psutil.virtual_memory()
+            memory_used = int(host_memory.total - host_memory.available)
+            memory_limit = int(host_memory.total)
+            memory_percent = round(float(host_memory.percent), 2)
+            memory_scope = "host-system"
+        except (OSError, RuntimeError, ValueError):
+            memory_used = memory_limit = None
+            memory_percent = None
+
+    worker_raw = os.getenv("CARTAVAULT_WORKERS") or os.getenv("WEB_CONCURRENCY")
+    worker_count = int(worker_raw) if worker_raw and worker_raw.isdigit() and int(worker_raw) > 0 else None
+    status = "operational" if cpu_percent is not None or memory_used is not None else "unknown"
+    return RuntimeResourcesDiagnostic(
+        status=status, checked_at=checked_at, cpu_percent=cpu_percent, cpu_scope=cpu_scope,
+        cpu_limit_cores=round(cpu_limit, 2) if cpu_limit is not None else None,
+        memory_used_bytes=memory_used, memory_limit_bytes=memory_limit,
+        memory_percent=memory_percent, memory_scope=memory_scope,
+        worker_count=worker_count, worker_source="configuration" if worker_count is not None else None,
+    )
 
 
 def _application(request: FastAPIRequest, checked_at: datetime) -> ApplicationDiagnostic:
@@ -161,6 +251,7 @@ def _storage(session: Session, checked_at: datetime) -> StorageDiagnostic:
     except OSError:
         disk = None; usage = None; error_code = "INSTANCE_STORAGE_PROBE_FAILED"
     photo_count = session.scalar(select(func.count()).select_from(Photo)) or 0
+    photo_storage_bytes = session.scalar(select(func.coalesce(func.sum(Photo.file_size_bytes), 0))) or 0
     export_files = [item for item in EXPORT_ROOT.glob("*") if item.is_file()] if EXPORT_ROOT.exists() else []
     status = "unavailable" if not readable or not writable else "degraded" if usage is not None and usage >= 85 else "operational"
     return StorageDiagnostic(
@@ -168,7 +259,7 @@ def _storage(session: Session, checked_at: datetime) -> StorageDiagnostic:
         logical_identifier="local-media", readable=readable, writable=writable,
         total_bytes=disk.total if disk else None, used_bytes=disk.used if disk else None,
         free_bytes=disk.free if disk else None, usage_percent=usage, photo_count=photo_count,
-        photo_storage_bytes=None, temporary_export_count=len(export_files),
+        photo_storage_bytes=int(photo_storage_bytes), temporary_export_count=len(export_files),
         temporary_export_bytes=sum(item.stat().st_size for item in export_files),
         temporary_file_count=None, orphan_file_count=None, last_controlled_error=error_code,
     )
@@ -352,7 +443,7 @@ def _aggregate(components: InstanceComponents) -> str:
     if any(item.status == "misconfigured" for item in mandatory) or components.security.status == "misconfigured":
         return "misconfigured"
     values = [
-        components.application.status, components.database.status, components.storage.status,
+        components.application.status, components.resources.status, components.database.status, components.storage.status,
         components.usage.status, components.authentication.status, components.https.status,
         components.email.status, components.mapping.status, components.routing.status,
         components.maintenance.status, components.backups.status, components.security.status,
@@ -362,6 +453,32 @@ def _aggregate(components: InstanceComponents) -> str:
     if all(value == "unknown" for value in values):
         return "unknown"
     return "operational"
+
+
+def _alerts(components: InstanceComponents) -> list[OperationalAlert]:
+    alerts: list[OperationalAlert] = []
+    storage = components.storage
+    if storage.usage_percent is not None and storage.usage_percent >= storage.warning_threshold_percent:
+        critical = storage.usage_percent >= storage.high_threshold_percent
+        alerts.append(OperationalAlert(
+            severity="critical" if critical else "warning", component="storage",
+            code="STORAGE_USAGE_HIGH", message=f"Le stockage utilisé atteint {storage.usage_percent:.1f} %.",
+            action="Libérez de l’espace ou augmentez la capacité du volume persistant.",
+        ))
+    resources = components.resources
+    if resources.memory_percent is not None and resources.memory_percent >= 85:
+        alerts.append(OperationalAlert(
+            severity="critical" if resources.memory_percent >= 95 else "warning", component="runtime",
+            code="MEMORY_USAGE_HIGH", message=f"La mémoire du runtime atteint {resources.memory_percent:.1f} %.",
+            action="Vérifiez les tâches actives et la limite mémoire du conteneur.",
+        ))
+    if components.database.status == "unavailable":
+        alerts.append(OperationalAlert(severity="critical", component="database", code="DATABASE_UNAVAILABLE", message="PostgreSQL ne répond pas.", action="Vérifiez le service PostgreSQL et sa connectivité."))
+    if components.database.alembic_status not in {"up_to_date", "unknown"}:
+        alerts.append(OperationalAlert(severity="warning", component="database", code="MIGRATION_MISMATCH", message="La révision de base ne correspond pas aux migrations attendues.", action="Exécutez la migration CartaVault avant de poursuivre."))
+    if components.storage.status == "unavailable":
+        alerts.append(OperationalAlert(severity="critical", component="storage", code="MEDIA_STORAGE_UNAVAILABLE", message="Le stockage des médias est indisponible.", action="Vérifiez le montage et les permissions du volume média."))
+    return alerts
 
 
 def _rollback(session: Session) -> None:
@@ -437,6 +554,7 @@ def _unknown_maintenance(checked_at: datetime, code: str) -> MaintenanceDiagnost
 def collect_instance_status(session: Session, request: FastAPIRequest) -> InstanceStatusResponse:
     checked_at = _now()
     application = _application(request, checked_at)
+    resources = _runtime_resources(checked_at)
     database = _database(session, checked_at)
     try:
         storage = _storage(session, checked_at)
@@ -466,13 +584,13 @@ def collect_instance_status(session: Session, request: FastAPIRequest) -> Instan
         _rollback(session); maintenance = _unknown_maintenance(checked_at, "INSTANCE_MAINTENANCE_CHECK_FAILED")
     backups = _backups(checked_at)
     security = _security(application, https, email, backups, checked_at)
-    components = InstanceComponents(application=application, database=database, storage=storage, usage=usage, authentication=authentication, https=https, email=email, mapping=mapping, routing=routing, maintenance=maintenance, backups=backups, security=security)
+    components = InstanceComponents(application=application, resources=resources, database=database, storage=storage, usage=usage, authentication=authentication, https=https, email=email, mapping=mapping, routing=routing, maintenance=maintenance, backups=backups, security=security)
     global_status = _aggregate(components)
     warnings = [item.code for item in security.checks if item.passed is not True]
     return InstanceStatusResponse(
         checked_at=checked_at, global_status=global_status,
         summary=InstanceSummary(version=application.version, environment=application.environment, uptime_seconds=application.uptime_seconds, public_url=application.public_url_configured),
-        components=components, recent_errors=_errors(components, checked_at), warnings=warnings,
+        components=components, recent_errors=_errors(components, checked_at), alerts=_alerts(components), warnings=warnings,
         cache_ttl_seconds=CACHE_TTL_SECONDS,
     )
 

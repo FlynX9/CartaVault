@@ -12,6 +12,7 @@ import { withMap } from '../utils/map'
 import { useConfirmDialog } from '../components/common/useConfirmDialog'
 import { getTagColorStyle } from '../tags/tagColors'
 import { SkeletonList } from '../components/common/Skeleton'
+import { GoogleMapsIcon } from '../components/common/GoogleMapsIcon'
 import { announceWorkspaceChanged, recordReversibleAction } from '../ui/actionHistory'
 
 interface Props { placeId?: string; embedded?: boolean; activeMapId?: string | null; onPlaceDeleted?: (placeId: string) => void }
@@ -32,7 +33,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, a
   return <article className={`details-page${embedded ? ' embedded' : ''}`}>
     <div className="details-toolbar">{!embedded && <Link className="back-link" to={withMap('/', activeMapId)}>← Retour à la carte</Link>}<div className="details-actions"><Link className="secondary-button" to={withMap(`/places/${place.id}/edit`, activeMapId)}>Modifier</Link><button className="danger-button" type="button" onClick={() => void remove()}>Supprimer</button></div></div>
     {deleteError && <div className="form-alert" role="alert">{deleteError}</div>}
-    <header className="details-hero"><p className="details-kicker">Point d’intérêt</p><h2>{place.name}</h2>{place.description && <p>{place.description}</p>}{place.latitude !== null && place.longitude !== null && <p>{place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}</p>}{externalUrl && <a className="external-map-link" href={externalUrl} target="_blank" rel="noopener noreferrer">Ouvrir dans Google Maps</a>}</header>
+    <header className="details-hero"><p className="details-kicker">Point d’intérêt</p><h2>{place.name}</h2>{place.description && <p>{place.description}</p>}{place.latitude !== null && place.longitude !== null && <p>{place.latitude.toFixed(5)}, {place.longitude.toFixed(5)}</p>}{externalUrl && <a className="external-map-link" href={externalUrl} target="_blank" rel="noopener noreferrer"><GoogleMapsIcon size={16} />Ouvrir dans Google Maps</a>}</header>
     <div className="details-content"><div className="details-main-column">
       <section className="details-section"><h3>Localisation</h3><dl className="details-list"><div className="detail-item"><dt>Carte</dt><dd>{place.map.name}</dd></div><div className="detail-item"><dt>Pays</dt><dd>{place.map.country.name}</dd></div>{place.region && <div className="detail-item"><dt>Région</dt><dd>{place.region}</dd></div>}</dl></section>
       {(place.categories.length > 0 || place.tags.length > 0) && <section className="details-section"><h3>Classement</h3><ul className="chip-list">{place.categories.map((item) => <li className="chip" key={item.id}>{item.name}</li>)}{place.tags.map((item) => <li className="chip tag" key={item.id} style={getTagColorStyle(item.color)}>{item.name}</li>)}</ul></section>}

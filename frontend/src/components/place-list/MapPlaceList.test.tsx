@@ -78,6 +78,28 @@ describe('MapPlaceList', () => {
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
 
+  it('uses vertical swipes on the mobile header to collapse and expand Lieux', async () => {
+    const originalMatchMedia = window.matchMedia
+    try {
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })) })
+      const onCollapsedChange = vi.fn()
+      const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn(), onCollapsedChange }
+      const { container, rerender } = render(<MemoryRouter><MapPlaceList {...props} /></MemoryRouter>)
+
+      const header = container.querySelector('.places-redesign-header')!
+      fireEvent.pointerDown(header, { pointerId: 1, clientY: 100 })
+      fireEvent.pointerUp(header, { pointerId: 1, clientY: 156 })
+      expect(onCollapsedChange).toHaveBeenLastCalledWith(true)
+
+      rerender(<MemoryRouter><MapPlaceList {...props} collapsed /></MemoryRouter>)
+      fireEvent.pointerDown(container.querySelector('.places-redesign-header')!, { pointerId: 2, clientY: 156 })
+      fireEvent.pointerUp(container.querySelector('.places-redesign-header')!, { pointerId: 2, clientY: 100 })
+      expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia })
+    }
+  })
+
   it('hides the new-place action while trip planning is active', async () => {
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive onPlaceSelect={vi.fn()} /></MemoryRouter>)
 

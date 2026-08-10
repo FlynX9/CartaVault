@@ -119,7 +119,7 @@ def upgrade() -> None:
     op.create_index("categories_map_name_key", "categories", ["map_id", sa.text("lower(btrim(name))")], unique=True)
     op.create_index("tags_map_name_key", "tags", ["map_id", sa.text("lower(btrim(name))")], unique=True)
     connection.execute(sa.text("""
-        CREATE FUNCTION enforce_place_category_same_map() RETURNS trigger AS $$
+        CREATE OR REPLACE FUNCTION enforce_place_category_same_map() RETURNS trigger AS $$
         BEGIN
           IF (SELECT map_id FROM places WHERE id = NEW.place_id) IS DISTINCT FROM (SELECT map_id FROM categories WHERE id = NEW.category_id) THEN
             RAISE EXCEPTION 'place and category must belong to the same map' USING ERRCODE = '23514';
@@ -127,7 +127,7 @@ def upgrade() -> None:
           RETURN NEW;
         END; $$ LANGUAGE plpgsql;
         CREATE TRIGGER place_categories_same_map BEFORE INSERT OR UPDATE ON place_categories FOR EACH ROW EXECUTE FUNCTION enforce_place_category_same_map();
-        CREATE FUNCTION enforce_place_tag_same_map() RETURNS trigger AS $$
+        CREATE OR REPLACE FUNCTION enforce_place_tag_same_map() RETURNS trigger AS $$
         BEGIN
           IF (SELECT map_id FROM places WHERE id = NEW.place_id) IS DISTINCT FROM (SELECT map_id FROM tags WHERE id = NEW.tag_id) THEN
             RAISE EXCEPTION 'place and tag must belong to the same map' USING ERRCODE = '23514';

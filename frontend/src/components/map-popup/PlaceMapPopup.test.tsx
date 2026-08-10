@@ -33,6 +33,15 @@ describe('PlaceMapPopup', () => {
     Object.defineProperty(window, 'matchMedia', { configurable: true, value: originalMatchMedia })
   })
 
+  it('offers a mobile action to return to the selected POI on the map', async () => {
+    const showOnMap = vi.fn()
+    render(<PlaceMapPopup placeId={PLACE_ID} onShowOnMap={showOnMap} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('heading', { name: 'Manufacture' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher sur la carte' }))
+    expect(showOnMap).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps named links collapsed until requested and opens them safely', async () => {
     render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     const summary = await screen.findByText('Liens externes')

@@ -18,6 +18,7 @@ import {
 import { ApiError } from "./api/client";
 import { isNetworkFailure } from "./pwa/offlineData";
 import { deleteMap, getMaps } from "./api/maps";
+import { attachMediaToPlace } from "./api/media";
 import { getMapPlaces, getPlaceDetails } from "./api/places";
 import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
 import { getStatuses } from "./api/statuses";
@@ -199,6 +200,7 @@ function WorkspaceApp() {
   const [places, setPlaces] = useState<MapPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PreviewPlace | MapPlace | null>(null);
   const [mobilePlaceDetailOpen, setMobilePlaceDetailOpen] = useState(false);
+  const [mobilePlaceDetailOrigin, setMobilePlaceDetailOrigin] = useState<"list" | "map" | null>(null);
   const [placeSelectionMode, setPlaceSelectionMode] = useState(false);
   const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<string>>(
     () => new Set(),
@@ -234,9 +236,25 @@ function WorkspaceApp() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [pendingMediaAttachmentId, setPendingMediaAttachmentId] = useState<string | null>(null);
   const [draftPosition, setDraftPosition] = useState<DraftPosition | null>(
     null,
   );
+  useEffect(() => {
+    const startFromMedia = (event: Event) => {
+      const detail = (event as CustomEvent<{ mediaId?: string; mapId?: string; latitude?: number | null; longitude?: number | null }>).detail;
+      if (!detail?.mediaId || !detail.mapId || detail.latitude == null || detail.longitude == null) return;
+      setPendingMediaAttachmentId(detail.mediaId);
+      setTemporarySearchResult(null);
+      setDraftPosition(null);
+      setCoordinatePrefill({ latitude: detail.latitude, longitude: detail.longitude });
+      setWorkspacePanel("places");
+      setPlacesPanelCollapsed(false);
+      navigate(withMap("/places/new", detail.mapId, activeStatusId));
+    };
+    window.addEventListener("cartavault:create-place-from-media", startFromMedia);
+    return () => window.removeEventListener("cartavault:create-place-from-media", startFromMedia);
+  }, [activeStatusId, navigate]);
   const [exportMap, setExportMap] = useState<PoiMap | null>(null);
   const [membersMap, setMembersMap] = useState<PoiMap | null>(null);
   const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
@@ -551,6 +569,13 @@ function WorkspaceApp() {
   }, [places, selectedRoutePlaceId]);
 
   const handleMutation = (mutation: PlaceMutation) => {
+    const mediaId = pendingMediaAttachmentId;
+    if (mediaId !== null) {
+      setPendingMediaAttachmentId(null);
+      void attachMediaToPlace(mediaId, mutation.placeId).catch((error: unknown) =>
+        setErrorMessage(error instanceof Error ? error.message : "La photo n’a pas pu être rattachée au POI."),
+      );
+    }
     setCoordinatePrefill(null);
     setDraftPosition(null);
     setSelectedPlace(null);
@@ -579,9 +604,12 @@ function WorkspaceApp() {
     setRemovedPlaceId(id);
     setRefreshVersion((value) => value + 1);
   };
-  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true, openMobileDetail = false) => {
+  const handleSelect = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true, fromPlacesList = false) => {
+    const isMobile = window.matchMedia?.('(max-width: 760px)').matches === true;
     setSelectedPlace(place);
-    setMobilePlaceDetailOpen(openMobileDetail && window.matchMedia?.('(max-width: 760px)').matches === true);
+    setMobilePlaceDetailOpen(isMobile);
+    setMobilePlaceDetailOrigin(isMobile ? (fromPlacesList ? "list" : "map") : null);
+    if (isMobile && !fromPlacesList) setPlacesPanelCollapsed(true);
     setWorkspacePanel(tripViewOnly ? null : "places");
     suppressedRouteFocusPlaceId.current = focusPlace ? null : place.id;
     navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
@@ -954,10 +982,35 @@ function WorkspaceApp() {
   ]);
   const closePopup = () => {
     setMobilePlaceDetailOpen(false);
+    setMobilePlaceDetailOrigin(null);
     if (sidebarState.mode === "details" || sidebarState.mode === "preview") {
       setSelectedPlace(null);
       navigate(withMap("/", activeMapId, activeStatusId));
     }
+  };
+  const showSelectedPlaceOnMap = () => {
+    const place = selectedPlace;
+    if (!place || place.latitude === null || place.longitude === null) {
+      setMobilePlaceDetailOpen(false);
+      setMobilePlaceDetailOrigin(null);
+      return;
+    }
+    const { latitude, longitude } = place;
+    setMobilePlaceDetailOpen(false);
+    setMobilePlaceDetailOrigin(null);
+    setWorkspacePanel("places");
+    setPlacesPanelCollapsed(true);
+    setSelectedPlace(null);
+    navigate(withMap("/", activeMapId, activeStatusId));
+    focusedRoutePlaceId.current = place.id;
+    setFocusRequest({
+      id: ++focusSequence.current,
+      view: {
+        center: [latitude, longitude],
+        zoom: Math.max(mapView.zoom, 13),
+      },
+      centerInVisibleWorkspace: tripPlannerOpen,
+    });
   };
   const openWorkspacePanel = (panel: WorkspacePanel) => {
     setWorkspacePanel(panel);
@@ -1092,6 +1145,7 @@ function WorkspaceApp() {
           handleDeletePlace(id);
           navigate(withMap("/", activeMapId, activeStatusId));
         }}
+        onShowOnMap={mobilePlaceDetailOrigin === "list" ? showSelectedPlaceOnMap : undefined}
         onClose={closePopup}
       />
     ) : selectedPreviewStop && selectedPreviewStop.place_id === null ? (
@@ -1183,6 +1237,7 @@ function WorkspaceApp() {
             setCollapsedWorkspacePanel(collapsed ? "media" : null)
           }
           onOpenPlace={(media) => {
+            if (!media.place) return;
             setWorkspacePanel("places");
             navigate(withMap(`/places/${media.place.id}`, media.map.id, null));
           }}
@@ -1314,6 +1369,7 @@ function WorkspaceApp() {
           hiddenDayIds={hiddenTripDayIds}
           collapsed={tripPlannerCollapsed}
           createRequest={createTripRequest}
+          restoreCachedState={activeTrip !== null}
           onCollapsedChange={setTripPlannerCollapsed}
           onTripViewOnlyChange={changeTripViewOnly}
           onDayVisibilityChange={(dayId, visible) =>
@@ -1389,9 +1445,12 @@ function WorkspaceApp() {
         draftPosition={draftPosition}
         onDraftPositionChange={setDraftPosition}
         onClose={() => {
+          const returnToMedia = pendingMediaAttachmentId !== null;
+          setPendingMediaAttachmentId(null);
           setCoordinatePrefill(null);
           setDraftPosition(null);
           setSelectedPlace(null);
+          if (returnToMedia) setWorkspacePanel("media");
           navigate(withMap("/", activeMapId, activeStatusId));
         }}
         onPlaceMutated={handleMutation}
@@ -1404,13 +1463,7 @@ function WorkspaceApp() {
     if (panel !== "places" || tripPlannerOpen) {
       setTripPlannerOpen(false);
       setTripPlannerCollapsed(false);
-      setActiveTrip(null);
-      setActiveTripDayId(null);
-      setActiveTripNightTarget(null);
-      changeActiveTripAnchorTarget(null);
       setTripAnchorPopupTarget(null);
-      setTripViewOnly(false);
-      setHiddenTripDayIds(new Set());
     }
     if (panel === "places") setPlacesPanelCollapsed(false);
     else if (panel !== null) setCollapsedWorkspacePanel(null);
@@ -1451,7 +1504,6 @@ function WorkspaceApp() {
     setTripViewOnly(false);
     setTripPlannerCollapsed(false);
     setPlacesPanelCollapsed(false);
-    setHiddenTripDayIds(new Set());
     navigate(withMap("/", activeMapId, activeStatusId));
     setWorkspacePanel("places");
     setTripPlannerOpen(true);

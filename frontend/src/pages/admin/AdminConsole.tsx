@@ -44,6 +44,10 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     window.addEventListener('keydown', onKeyDown)
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown) }
   }, [requestClose])
+  useEffect(() => {
+    window.addEventListener('cartavault:close-mobile-modal-layers', requestClose)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', requestClose)
+  }, [requestClose])
   return createPortal(<div className="account-overlay admin-console-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
     <section ref={modal} className="admin-console" role="dialog" aria-modal="true" aria-labelledby="admin-console-title">
       <header className="admin-console__header"><div className="admin-console__header-icon"><ShieldCheck size={20} /></div><div><h2 id="admin-console-title">Administration</h2><p>Configuration et supervision de l’instance CartaVault.</p></div><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label="Fermer l’administration" onClick={requestClose}><X size={14} /></button></header>

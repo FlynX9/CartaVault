@@ -22,6 +22,7 @@ class Trip(Base):
         CheckConstraint("status IN ('draft','planned','in_progress','completed','archived')", name="trips_status_check"),
         CheckConstraint("end_date IS NULL OR start_date IS NULL OR end_date >= start_date", name="trips_dates_check"),
         CheckConstraint("low_load_max_minutes > 0 AND medium_load_max_minutes > low_load_max_minutes", name="trips_load_thresholds_check"),
+        CheckConstraint("traffic_mode IN ('traffic_unaware','traffic_aware','traffic_aware_optimal')", name="trips_traffic_mode_check"),
         CheckConstraint("low_load_color ~ '^#[0-9A-Fa-f]{6}$' AND medium_load_color ~ '^#[0-9A-Fa-f]{6}$' AND high_load_color ~ '^#[0-9A-Fa-f]{6}$'", name="trips_load_colors_check"),
         Index("trips_map_id_idx", "map_id"),
         Index("trips_created_by_user_id_idx", "created_by_user_id"),
@@ -39,6 +40,10 @@ class Trip(Base):
     status: Mapped[str] = mapped_column(String(24), nullable=False, server_default=text("'draft'"))
     routing_profile: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'driving'"))
     stay_in_country: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    avoid_tolls: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    avoid_highways: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    avoid_ferries: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    traffic_mode: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'traffic_unaware'"))
     low_load_max_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("240"))
     medium_load_max_minutes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("480"))
     low_load_color: Mapped[str] = mapped_column(String(7), nullable=False, server_default=text("'#0FA68A'"))

@@ -65,6 +65,11 @@ export interface StorageDiagnostic extends DiagnosticBase {
   orphan_file_count: number | null; warning_threshold_percent: number; high_threshold_percent: number
   critical_threshold_percent: number; last_controlled_error: string | null
 }
+export interface RuntimeResourcesDiagnostic extends DiagnosticBase {
+  cpu_percent: number | null; cpu_scope: string; cpu_limit_cores: number | null
+  memory_used_bytes: number | null; memory_limit_bytes: number | null; memory_percent: number | null
+  memory_scope: string; worker_count: number | null; worker_source: string | null
+}
 export interface UsageDiagnostic extends DiagnosticBase {
   users_total: number | null; users_active: number | null; users_unverified: number | null; users_disabled: number | null
   administrators_total: number | null; maps_total: number | null; maps_private: number | null; maps_shared: number | null
@@ -125,14 +130,25 @@ export interface RecentControlledError {
   timestamp: string; component: string; code: string; severity: SecuritySeverity
   occurrence_count: number; status: string; summary_key: string; resolved: boolean
 }
+export interface OperationalAlert {
+  severity: 'warning' | 'critical'; component: string; code: string; message: string; action: string | null
+}
+export type InstanceLogLevel = 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
+export interface InstanceLogEntry {
+  id: number; timestamp: string; level: InstanceLogLevel; component: string; logger: string; message: string
+}
+export interface InstanceLogPage {
+  items: InstanceLogEntry[]; truncated: boolean; next_before: number | null; max_limit: number
+  retention_entries: number; source: string
+}
 export interface InstanceHealth {
   checked_at: string; global_status: InstanceStatusValue
   summary: { version: string; environment: string; uptime_seconds: number; public_url: string | null }
   components: {
-    application: ApplicationDiagnostic; database: DatabaseDiagnostic; storage: StorageDiagnostic
+    application: ApplicationDiagnostic; resources: RuntimeResourcesDiagnostic; database: DatabaseDiagnostic; storage: StorageDiagnostic
     usage: UsageDiagnostic; authentication: AuthenticationDiagnostic; https: HttpsDiagnostic
     email: EmailDiagnostic; mapping: MappingDiagnostic; routing: RoutingDiagnostic
     maintenance: MaintenanceDiagnostic; backups: BackupDiagnostic; security: SecurityDiagnostic
   }
-  recent_errors: RecentControlledError[]; warnings: string[]; cache_ttl_seconds: number
+  recent_errors: RecentControlledError[]; alerts: OperationalAlert[]; warnings: string[]; cache_ttl_seconds: number
 }

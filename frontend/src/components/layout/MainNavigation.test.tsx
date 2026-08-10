@@ -94,14 +94,30 @@ describe('MainNavigation', () => {
     expect(onPanelChange).not.toHaveBeenCalled()
   })
 
-  it('exposes the trash from the mobile Organisation menu', () => {
+  it('exposes annotations and trash from the mobile Organisation menu', () => {
     const onPanelChange = vi.fn()
     render(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={onPanelChange} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Annotations' }))
+
+    expect(onPanelChange).toHaveBeenCalledWith('annotation-templates')
+    expect(screen.queryByRole('menu', { name: 'Organisation' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Corbeille' }))
 
     expect(onPanelChange).toHaveBeenCalledWith('trash')
+  })
+
+  it('closes the mobile Organisation menu when pressing elsewhere', () => {
+    render(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={vi.fn()} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
+    expect(screen.getByRole('menu', { name: 'Organisation' })).toBeInTheDocument()
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Accueil' }))
+
+    expect(screen.queryByRole('menu', { name: 'Organisation' })).not.toBeInTheDocument()
   })
 
   it('marks only Sorties active while trip planning extends the Places workspace', () => {

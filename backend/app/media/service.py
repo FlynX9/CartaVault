@@ -23,7 +23,7 @@ from app.places.models import Place
 @dataclass(frozen=True)
 class MediaAccess:
     photo: Photo
-    place: Place
+    place: Place | None
     poi_map: PoiMap
     country: Country
     uploader: User | None
@@ -39,8 +39,8 @@ def accessible_media_statement(user_id: UUID) -> Select:
 
     return (
         select(Photo, Place, PoiMap, Country, User, MapMembership.role)
-        .join(Place, Photo.place_id == Place.id)
-        .join(PoiMap, Place.map_id == PoiMap.id)
+        .outerjoin(Place, Photo.place_id == Place.id)
+        .join(PoiMap, Photo.map_id == PoiMap.id)
         .join(Country, PoiMap.country_id == Country.id)
         .outerjoin(User, Photo.uploaded_by_user_id == User.id)
         .outerjoin(
@@ -51,7 +51,7 @@ def accessible_media_statement(user_id: UUID) -> Select:
             ),
         )
         .where(
-            Place.deleted_at.is_(None),
+            or_(Place.id.is_(None), Place.deleted_at.is_(None)),
             or_(
                 PoiMap.owner_id == user_id,
                 MapMembership.user_id == user_id,
@@ -87,10 +87,10 @@ def get_media_access(
 
 
 def infer_file_state(photo: Photo) -> str:
-    if photo.path is None or photo.place_id is None:
+    if photo.path is None or photo.storage_scope_id is None:
         return "missing"
     try:
-        metadata = inspect_photo_file(photo.path, photo.place_id, photo.id)
+        metadata = inspect_photo_file(photo.path, photo.storage_scope_id, photo.id)
     except PhotoFileNotFoundError:
         return "missing"
     except (InvalidPhotoPathError, PhotoStorageError):

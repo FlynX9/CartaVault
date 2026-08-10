@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, FileText, ImagePlus, Link2, Ma
 
 import { deleteTripNightPhoto, tripNightPhotoUrl, updateTripNight, uploadTripNightPhoto } from '../../api/trips'
 import type { TripNight, TripNightPhoto } from '../../types/trip'
+import { GoogleMapsIcon } from '../common/GoogleMapsIcon'
 
 interface Props {
   night: TripNight
@@ -209,7 +210,7 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
         <button type="button" disabled={pending} onClick={() => fileInput.current?.click()}><ImagePlus aria-hidden="true" size={15} /><span>Ajouter des photos</span></button>
         <button type="button" disabled={pending || !detailsChanged} onClick={() => void run(async () => { const updated = await updateTripNight(night.id, { description: description.trim() || null, website_url: normalizedWebsite(websiteUrl), check_in_from_time: checkInFromTime || null, check_in_until_time: checkInUntilTime || null, check_out_from_time: checkOutFromTime || null, check_out_until_time: checkOutUntilTime || null }); setWebsiteEditing(false); return updated })}><Save aria-hidden="true" size={15} /><span>Enregistrer</span></button>
       </>}
-      {night.google_place_id && <a href={`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(night.google_place_id)}`} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" size={15} /><span>Google Maps</span></a>}
+      {night.google_place_id && <a href={`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(night.google_place_id)}`} target="_blank" rel="noreferrer"><GoogleMapsIcon size={20} /><span>Google Maps</span></a>}
     </footer>
   </article>
     {lightboxOpen && activePhoto && createPortal(<div className="trip-night-lightbox" role="dialog" aria-modal="true" aria-label={`Photo ${activeIndex + 1} de ${night.name}`} onMouseDown={(event) => { if (event.target === event.currentTarget) setLightboxOpen(false) }}>

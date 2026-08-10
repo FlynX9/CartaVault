@@ -57,7 +57,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
             for index, photo in enumerate(place.photos, 1):
                 if len(images) >= MAX_IMAGES: skipped_images += 1; warnings.append("Image export limit reached"); break
                 try:
-                    source = resolve_photo_file(photo.path or "", place.id, photo.id, require_file=True)
+                    source = resolve_photo_file(photo.path or "", photo.storage_scope_id or place.id, photo.id, require_file=True)
                     extension = get_photo_media_type(source)
                     relative = f"files/{place.id}/{index:03d}-{photo.id}{source.suffix}"
                     images.append((source, relative))

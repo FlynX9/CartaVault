@@ -1,4 +1,5 @@
 import { CalendarPlus, MapPinned, Pencil, Trash2, X } from "lucide-react";
+import { GoogleMapsIcon } from "../common/GoogleMapsIcon";
 
 interface Props {
   googleMapsUrl: string | null;
@@ -10,6 +11,7 @@ interface Props {
   canChooseTripDay?: boolean;
   isAddingToTrip?: boolean;
   onAddToTrip?: () => void;
+  onShowOnMap?: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -25,6 +27,7 @@ export function PlacePopupActions({
   canChooseTripDay = false,
   isAddingToTrip = false,
   onAddToTrip = () => undefined,
+  onShowOnMap,
   onEdit,
   onDelete,
   onClose,
@@ -73,6 +76,18 @@ export function PlacePopupActions({
           <span>Supprimer</span>
         </button>
       )}
+      {onShowOnMap && (
+        <button
+          className="popup-action-show-on-map"
+          type="button"
+          aria-label="Afficher sur la carte"
+          title="Afficher sur la carte"
+          onClick={onShowOnMap}
+        >
+          <MapPinned aria-hidden="true" size={17} />
+          <span>Afficher sur la carte</span>
+        </button>
+      )}
       {googleMapsUrl && (
         <a
           href={googleMapsUrl}
@@ -81,7 +96,7 @@ export function PlacePopupActions({
           aria-label="Ouvrir dans Google Maps"
           title="Ouvrir dans Google Maps"
         >
-          <MapPinned aria-hidden="true" size={17} />
+          <GoogleMapsIcon size={24} />
           <span>Ouvrir dans Google Maps</span>
         </a>
       )}

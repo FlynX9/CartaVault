@@ -44,6 +44,11 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   useEffect(() => {
     if (createRequest > 0) setCreating(true)
   }, [createRequest])
+  useEffect(() => {
+    const closeDialogs = () => { setCreating(false); setSettingsMap(null); setOfflineMap(null) }
+    window.addEventListener('cartavault:close-mobile-modal-layers', closeDialogs)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', closeDialogs)
+  }, [])
 
   const loadInvitations = useCallback(() => {
     invitationController.current?.abort()

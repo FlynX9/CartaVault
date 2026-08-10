@@ -26,7 +26,10 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        // Port 8000 can be occupied by a production/stale local API. Keep the
+        // hot-reloaded development API isolated, while allowing a recovery
+        // port when Windows retains a loopback socket after a forced stop.
+        target: process.env.CARTAVAULT_DEV_API_URL ?? 'http://127.0.0.1:8001',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

@@ -26,6 +26,11 @@ export function useConfirmDialog() {
   }), [])
 
   useEffect(() => () => resolverRef.current?.(false), [])
+  useEffect(() => {
+    const closeFromMobileNavigation = () => settle(false)
+    window.addEventListener('cartavault:close-mobile-modal-layers', closeFromMobileNavigation)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', closeFromMobileNavigation)
+  }, [settle])
 
   return {
     confirm,

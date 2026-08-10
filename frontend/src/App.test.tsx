@@ -156,6 +156,18 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
+  it('keeps the active trip when returning from another workspace', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Charger une sortie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sélectionner l’étape POI' }))
+
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
+  })
+
   it('opens the timeline when the active Sorties navigation is tapped again on mobile', async () => {
     vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === '(max-width: 760px)', media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)

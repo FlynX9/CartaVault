@@ -81,6 +81,11 @@ export function PhotoViewer({ photos, placeName, initialPhotoId = null, onClose 
     return () => document.removeEventListener('keydown', handleKeyDown, true)
   }, [onClose, orderedPhotos.length])
 
+  useEffect(() => {
+    window.addEventListener('cartavault:close-mobile-modal-layers', onClose)
+    return () => window.removeEventListener('cartavault:close-mobile-modal-layers', onClose)
+  }, [onClose])
+
   if (!photo) return null
 
   const failed = failedPhotoIds.has(photo.id)

@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from urllib.error import URLError
 from uuid import uuid4
 
@@ -176,7 +177,8 @@ def test_instance_diagnostics_isolate_service_failure_and_hide_sensitive_values(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["components"]["database"]["status"] == "operational"
+    assert payload["components"]["database"]["connection_ok"] is True
+    assert payload["components"]["database"]["status"] in {"operational", "degraded"}
     assert payload["components"]["database"]["postgis_available"] is True
     assert payload["components"]["routing"]["status"] == "degraded"
     assert payload["components"]["routing"]["last_error_code"] == "OSRM_UNAVAILABLE"
@@ -203,3 +205,27 @@ def test_instance_diagnostics_requires_authentication(integration_client, auth_u
         app.dependency_overrides[get_current_user] = lambda: auth_user
 
     assert response.status_code == 401
+
+
+def test_instance_logs_are_admin_only_and_sanitized(integration_client, database_session, auth_user) -> None:
+    from app.instance_status.logs import InstanceLogHandler, clear_logs_for_tests
+
+    clear_logs_for_tests()
+    handler = InstanceLogHandler()
+    handler.emit(logging.LogRecord(
+        "app.auth.login", logging.ERROR, __file__, 1,
+        "Login failed password=not-for-admins for owner@example.test", (), None,
+    ))
+
+    response = integration_client.get("/admin/console/instance/logs", params={"level": "ERROR", "component": "AUTH"})
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["component"] == "AUTH"
+    assert "not-for-admins" not in response.text
+    assert "owner@example.test" not in response.text
+
+    auth_user.is_admin = False
+    database_session.flush()
+    forbidden = integration_client.get("/admin/console/instance/logs")
+    assert forbidden.status_code == 403
+    clear_logs_for_tests()

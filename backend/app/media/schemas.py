@@ -39,9 +39,12 @@ class MediaItemRead(BaseModel):
     height: int | None
     file_state: str
     can_edit: bool
-    place: MediaPlaceSummary
+    place: MediaPlaceSummary | None
     map: MediaMapSummary
     uploader: MediaUploaderSummary | None
+    latitude: float | None = None
+    longitude: float | None = None
+    can_create_place: bool = False
 
 
 class MediaFilterOptions(BaseModel):
@@ -71,6 +74,10 @@ class MediaPage(BaseModel):
 class MediaUpdate(BaseModel):
     caption: str | None = Field(default=None, max_length=2000)
     taken_at: date | None = None
+
+
+class MediaPlaceAttachment(BaseModel):
+    place_id: UUID
 
 
 class MediaBulkDelete(BaseModel):

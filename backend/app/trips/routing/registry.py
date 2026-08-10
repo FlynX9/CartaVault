@@ -224,10 +224,5 @@ def routing_preferences(preferences: object) -> dict[str, object]:
     routing = root.get("routing") if isinstance(root.get("routing"), dict) else {}
     return {
         "provider": routing.get("provider", "osrm"),
-        "stay_in_country": routing.get("stay_in_country", root.get("keep_routes_in_country", False)) is True,
-        "avoid_tolls": routing.get("avoid_tolls", False) is True,
-        "avoid_highways": routing.get("avoid_highways", False) is True,
-        "avoid_ferries": routing.get("avoid_ferries", False) is True,
-        "traffic_mode": routing.get("traffic_mode", "traffic_unaware"),
         "language": root.get("language", "fr"),
     }

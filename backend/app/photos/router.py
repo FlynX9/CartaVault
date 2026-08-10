@@ -131,6 +131,8 @@ def create_place_photo(
     next_order = database_session.scalar(select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place_id))
     photo = Photo(
         place_id=place_id,
+        map_id=place.map_id,
+        storage_scope_id=place_id,
         filename=photo_data.filename,
         original_name=photo_data.original_name,
         description=photo_data.description,
@@ -253,6 +255,8 @@ def upload_place_photo(
     photo = Photo(
         id=photo_id,
         place_id=place_id,
+        map_id=place.map_id,
+        storage_scope_id=place_id,
         filename=stored_photo.filename,
         original_name=normalize_original_name(file.filename),
         path=stored_photo.relative_path,
@@ -362,7 +366,7 @@ def get_photo_file(
             detail=f"Photo with id {photo_id} was not found",
         )
 
-    if photo.path is None or photo.place_id is None:
+    if photo.path is None or photo.storage_scope_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="The physical photo file was not found",
@@ -371,7 +375,7 @@ def get_photo_file(
     try:
         file_path = resolve_photo_file(
             photo.path,
-            photo.place_id,
+            photo.storage_scope_id,
             photo.id,
             require_file=True,
         )
@@ -501,7 +505,7 @@ def delete_photo(
         )
 
     if photo.path is not None:
-        if photo.place_id is None:
+        if photo.storage_scope_id is None:
             database_session.rollback()
 
             raise HTTPException(
@@ -512,7 +516,7 @@ def delete_photo(
         try:
             resolve_photo_file(
                 photo.path,
-                photo.place_id,
+                photo.storage_scope_id,
                 photo.id,
                 require_file=False,
             )
@@ -526,6 +530,7 @@ def delete_photo(
 
     stored_path = photo.path
     stored_place_id = photo.place_id
+    stored_scope_id = photo.storage_scope_id
 
     try:
         database_session.delete(photo)
@@ -545,11 +550,11 @@ def delete_photo(
             detail="Unable to delete the photo metadata",
         ) from error
 
-    if stored_path is not None and stored_place_id is not None:
+    if stored_path is not None and stored_scope_id is not None:
         try:
             delete_photo_file(
                 stored_path,
-                stored_place_id,
+                stored_scope_id,
                 photo_id,
             )
         except PhotoStorageError as error:

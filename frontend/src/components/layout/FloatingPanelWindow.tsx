@@ -191,7 +191,7 @@ export function FloatingPanelWindow({
   }, [])
 
   const beginMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || locked) return
+    if (event.button !== 0 || locked || window.matchMedia?.('(max-width: 760px)').matches) return
     const target = event.target as HTMLElement
     if (target.closest('button, a, input, select, textarea, [role="button"], [data-panel-no-drag]')) return
     if (!target.closest('.cv-workspace-panel__header, .places-redesign-header, .trip-panel-header, .popup-heading, .sidebar-header')) return
@@ -204,7 +204,7 @@ export function FloatingPanelWindow({
   }
 
   const beginResize = (event: PointerEvent<HTMLDivElement>, edge: ResizeEdge) => {
-    if (event.button !== 0 || collapsed || locked) return
+    if (event.button !== 0 || collapsed || locked || window.matchMedia?.('(max-width: 760px)').matches) return
     if (edge.includes('n') || edge.includes('s')) heightManuallyResizedRef.current = true
     updateMaximized(false)
     interactionRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, geometry, mode: edge }

@@ -40,10 +40,22 @@ from app.tasks.service import create_task, submit_task
 router = APIRouter(tags=["trips"])
 
 
-def get_routing_provider(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> RoutingProvider:
+def get_routing_provider() -> RoutingProvider | None:
+    """Test seam; production providers are resolved after the trip is loaded."""
+    return None
+
+
+def _routing_provider_for_trip(session: Session, user: User, trip: Trip) -> RoutingProvider:
     preferences = routing_preferences(user.preferences)
+    options = {
+        **preferences,
+        "avoid_tolls": trip.avoid_tolls is True,
+        "avoid_highways": trip.avoid_highways is True,
+        "avoid_ferries": trip.avoid_ferries is True,
+        "traffic_mode": trip.traffic_mode,
+    }
     try:
-        return routing_provider_registry.resolve(session, user, str(preferences["provider"]), preferences)
+        return routing_provider_registry.resolve(session, user, str(preferences["provider"]), options)
     except RoutingError as error:
         raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
 
@@ -179,6 +191,7 @@ def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends
 
     for field in (
         "name", "description", "start_date", "end_date", "status", "routing_profile",
+        "stay_in_country", "avoid_tolls", "avoid_highways", "avoid_ferries", "traffic_mode",
         "low_load_max_minutes", "medium_load_max_minutes", "low_load_color",
         "medium_load_color", "high_load_color", "completed_at", "archived_at",
     ):
@@ -215,6 +228,8 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
     # end date, which can violate the database date constraint.
     trip = load_trip(session, trip_id)
     values = data.model_dump(exclude_unset=True)
+    routing_option_keys = {"stay_in_country", "avoid_tolls", "avoid_highways", "avoid_ferries", "traffic_mode"}
+    routing_options_changed = any(key in values and values[key] != getattr(trip, key) for key in routing_option_keys)
     end_date_was_set = "end_date" in data.model_fields_set
     requested_end_date = values.pop("end_date", None)
     target_start_date = values.get("start_date", trip.start_date)
@@ -235,6 +250,9 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
         resize_trip_days(session, trip, target_day_count)
     else:
         synchronize_trip_dates(trip)
+    if routing_options_changed:
+        for day in trip.days:
+            stale(day)
     session.commit(); return _trip_read(session, trip_id)
 
 
@@ -282,7 +300,7 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
     if owner_id is None:
         raise HTTPException(404, "Map not found")
     quotas.ensure_can_create(owner_id, QuotaKey.TRIPS_TOTAL_MAX)
-    copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile, stay_in_country=source.stay_in_country, low_load_max_minutes=source.low_load_max_minutes, medium_load_max_minutes=source.medium_load_max_minutes, low_load_color=source.low_load_color, medium_load_color=source.medium_load_color, high_load_color=source.high_load_color)
+    copy = Trip(map_id=source.map_id, created_by_user_id=user.id, name=f"{source.name} — copie", description=source.description, start_date=source.start_date, end_date=source.end_date, routing_profile=source.routing_profile, stay_in_country=source.stay_in_country, avoid_tolls=source.avoid_tolls, avoid_highways=source.avoid_highways, avoid_ferries=source.avoid_ferries, traffic_mode=source.traffic_mode, low_load_max_minutes=source.low_load_max_minutes, medium_load_max_minutes=source.medium_load_max_minutes, low_load_color=source.low_load_color, medium_load_color=source.medium_load_color, high_load_color=source.high_load_color)
     session.add(copy); session.flush(); days: dict[UUID, TripDay] = {}
     quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=copy.id, increment=len(source.days))
     for item in source.days:
@@ -727,10 +745,11 @@ def remove_arrival(arrival_id: UUID, session: Session = Depends(get_db), user: U
 
 @router.post("/trip-days/{day_id}/route", response_model=DayRead)
 @router.post("/trip-days/{day_id}/route/recalculate", response_model=DayRead)
-def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     _, access = require_day_role(session, day_id, user, "editor")
     trip = load_trip(session, access.trip.id)
     day = next(item for item in trip.days if item.id == day_id)
+    provider = provider or _routing_provider_for_trip(session, user, trip)
     return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(trip)))
 
 
@@ -850,17 +869,21 @@ def _store_optimization(user: User, trip: Trip, days: list[dict[str, object]]) -
 
 
 @router.post("/trip-days/{day_id}/optimize", response_model=DayOptimizationRead)
-def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
-    day, access = require_day_role(session, day_id, user, "editor")
+def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
+    _, access = require_day_role(session, day_id, user, "editor")
+    trip = load_trip(session, access.trip.id)
+    day = next(item for item in trip.days if item.id == day_id)
+    provider = provider or _routing_provider_for_trip(session, user, trip)
     metrics, stored = _build_day_optimization(day, provider, options)
     proposal_id = _store_optimization(user, access.trip, [stored])
     return {**metrics, "proposal_id": proposal_id}
 
 
 @router.post("/trips/{trip_id}/optimize", response_model=TripOptimizationRead)
-def optimize_trip(trip_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+def optimize_trip(trip_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     require_trip_editor(session, trip_id, user)
     trip = load_trip(session, trip_id)
+    provider = provider or _routing_provider_for_trip(session, user, trip)
     optimizable = [day for day in sorted(trip.days, key=lambda item: item.sort_order) if len(day.stops) >= 2]
     if not optimizable:
         raise HTTPException(422, "At least one day with two stops is required for optimization")
@@ -921,16 +944,19 @@ def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], st
 
 
 @router.post("/trip-days/{day_id}/optimize/confirm", response_model=DayRead)
-def confirm_optimization(day_id: UUID, data: OptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+def confirm_optimization(day_id: UUID, data: OptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     day, access = require_day_role(session, day_id, user, "editor")
-    _apply_optimization_proposal(session, user, access.trip, data.proposal_id, provider, expected_day_id=day_id)
+    trip = load_trip(session, access.trip.id)
+    provider = provider or _routing_provider_for_trip(session, user, trip)
+    _apply_optimization_proposal(session, user, trip, data.proposal_id, provider, expected_day_id=day_id)
     return DayRead.model_validate(next(item for item in load_trip(session, access.trip.id).days if item.id == day_id))
 
 
 @router.post("/trips/{trip_id}/optimize/confirm", response_model=TripRead)
-def confirm_trip_optimization(trip_id: UUID, data: TripOptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider = Depends(get_routing_provider)):
+def confirm_trip_optimization(trip_id: UUID, data: TripOptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     require_trip_editor(session, trip_id, user)
     trip = load_trip(session, trip_id)
+    provider = provider or _routing_provider_for_trip(session, user, trip)
     _apply_optimization_proposal(session, user, trip, data.proposal_id, provider)
     return TripRead.model_validate(load_trip(session, trip_id))
 

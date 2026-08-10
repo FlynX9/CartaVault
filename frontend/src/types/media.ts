@@ -33,9 +33,12 @@ export interface MediaItem {
   height: number | null
   file_state: MediaFileState
   can_edit: boolean
-  place: MediaPlaceSummary
+  place: MediaPlaceSummary | null
   map: MediaMapSummary
   uploader: MediaUploaderSummary | null
+  latitude?: number | null
+  longitude?: number | null
+  can_create_place?: boolean
 }
 
 export interface MediaPage {

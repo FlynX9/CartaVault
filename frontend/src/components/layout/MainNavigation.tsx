@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag, Trash2, Spline } from 'lucide-react'
 import { useI18n } from '../../i18n/useI18n'
@@ -22,10 +22,26 @@ function navClass(active: boolean): string {
   return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
 }
 
+const closeMobileModalLayers = () => {
+  if (window.matchMedia?.('(max-width: 760px)').matches) {
+    window.dispatchEvent(new Event('cartavault:close-mobile-modal-layers'))
+  }
+}
+
 export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, dashboardActive = false, onOpenDashboard, hasMaps = true }: Props) {
   const { t } = useI18n()
   const [organizationOpen, setOrganizationOpen] = useState(false)
+  const organizationMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!organizationOpen) return
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !organizationMenuRef.current?.contains(event.target)) setOrganizationOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => document.removeEventListener('pointerdown', closeOutside)
+  }, [organizationOpen])
   const togglePanel = (panel: Exclude<WorkspacePanel, null>) => {
+    closeMobileModalLayers()
     // On touch, Media is a full workspace view rather than a collapsible
     // sidebar. A second tap must therefore keep it open.
     if (panel === 'media' && activePanel === panel && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 760px)').matches) return
@@ -33,7 +49,8 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
     else onPanelChange(panel)
   }
   const placesActive = activePanel === 'places' && !tripPlanningActive
-  const selectOrganizationPanel = (panel: 'categories' | 'tags' | 'statuses' | 'trash') => {
+  const selectOrganizationPanel = (panel: 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates') => {
+    closeMobileModalLayers()
     setOrganizationOpen(false)
     togglePanel(panel)
   }
@@ -42,13 +59,13 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
     <Link className="main-navigation-brand" to="/dashboard" aria-label="CartaVault" onClick={onOpenDashboard ? (event) => { event.preventDefault(); onOpenDashboard() } : undefined}><img src="/cartavault-logo.png" alt="CartaVault" /></Link>
     <div className="main-navigation-links cv-main-navigation__items">
       <div className="cv-main-navigation__group">
-        <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={onOpenDashboard}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>
+        <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={() => { closeMobileModalLayers(); onOpenDashboard?.() }}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>
       </div>
       <div className="cv-main-navigation__separator" role="separator" />
       <div className="cv-main-navigation__group" aria-label="Cartographie">
         <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={23} /><span>{t('nav.maps')}</span></button>
-        {hasMaps && <><button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => placesActive ? onPlacesPanelToggle() : onPanelChange('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>
-        <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={23} /><span>{t('nav.trips')}</span></button></>}
+        {hasMaps && <><button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => { closeMobileModalLayers(); placesActive ? onPlacesPanelToggle() : onPanelChange('places') }}><MapPin size={23} /><span>{t('nav.places')}</span></button>
+        <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={() => { closeMobileModalLayers(); onOpenTrips() }}><Route size={23} /><span>{t('nav.trips')}</span></button></>}
       </div>
       {hasMaps && <><div className="cv-main-navigation__separator" role="separator" aria-label="Médias" />
       <div className="cv-main-navigation__group" aria-label="Médias">
@@ -62,11 +79,12 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
         {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}</>}
         <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => togglePanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
       </div>
-      {hasMaps && <div className="cv-main-navigation__organization-mobile">
-        <button type="button" className={navClass(organizationOpen || activePanel === 'categories' || activePanel === 'tags' || activePanel === 'statuses' || activePanel === 'trash')} aria-label="Organisation" aria-expanded={organizationOpen} onClick={() => setOrganizationOpen((open) => !open)}><Shapes size={23} /><span>Organisation</span></button>
+      {hasMaps && <div ref={organizationMenuRef} className="cv-main-navigation__organization-mobile">
+        <button type="button" className={navClass(organizationOpen || activePanel === 'categories' || activePanel === 'tags' || activePanel === 'annotation-templates' || activePanel === 'statuses' || activePanel === 'trash')} aria-label="Organisation" aria-expanded={organizationOpen} onClick={() => { closeMobileModalLayers(); setOrganizationOpen((open) => !open) }}><Shapes size={23} /><span>Organisation</span></button>
         {organizationOpen && <div className="cv-main-navigation__organization-menu" role="menu" aria-label="Organisation">
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('categories')}><Shapes size={18} /><span>{t('nav.categories')}</span></button>
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('tags')}><Tag size={18} /><span>{t('nav.tags')}</span></button>
+          <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('annotation-templates')}><Spline size={18} /><span>Annotations</span></button>
           {isAdmin && <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('statuses')}><CircleDot size={18} /><span>{t('nav.statuses')}</span></button>}
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('trash')}><Trash2 size={18} /><span>{t('nav.trash')}</span></button>
         </div>}

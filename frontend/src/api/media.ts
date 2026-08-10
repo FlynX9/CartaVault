@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import type { MediaItem, MediaPage, MediaQuery } from '../types/media'
-import { getJson, sendJson, sendWithoutResponse } from './client'
+import { getJson, sendFormData, sendJson, sendWithoutResponse } from './client'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -68,4 +68,18 @@ export async function deleteMedia(mediaId: string): Promise<void> {
 
 export async function bulkDeleteMedia(mediaIds: string[]): Promise<void> {
   await sendJson('/media/bulk-delete', 'POST', { media_ids: mediaIds })
+}
+
+export async function uploadMedia(file: File, mapId: string, coordinates: { latitude: number; longitude: number } | null, takenAt?: string | null, gpsSource?: File | null): Promise<MediaItem> {
+  const data = new FormData()
+  data.append('file', file)
+  data.append('map_id', mapId)
+  if (coordinates) { data.append('latitude', String(coordinates.latitude)); data.append('longitude', String(coordinates.longitude)) }
+  if (takenAt) data.append('taken_at', takenAt)
+  if (!coordinates && gpsSource) data.append('gps_source', gpsSource)
+  return parseMediaItem(await sendFormData('/media-actions/upload', 'POST', data))
+}
+
+export async function attachMediaToPlace(mediaId: string, placeId: string): Promise<MediaItem> {
+  return parseMediaItem(await sendJson(`/media-actions/${encodeURIComponent(mediaId)}/attach-place`, 'POST', { place_id: placeId }))
 }
