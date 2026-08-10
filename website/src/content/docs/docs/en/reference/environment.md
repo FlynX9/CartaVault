@@ -20,6 +20,7 @@ Sensitive values are never reproduced. A `dynamic` value is computed in code.
 | `CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD` | sensitive value | `backend/app/cli.py` |
 | `CARTAVAULT_BUILD_COMMIT` | — | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_BUILD_DATE` | — | `backend/app/instance_status/service.py` |
+| `CARTAVAULT_CGROUP_ROOT` | `/sys/fs/cgroup` | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` | sensitive value | `backend/app/config.py` |
 | `CARTAVAULT_CSRF_COOKIE_NAME` | `cartavault_csrf` | `backend/app/config.py` |
 | `CARTAVAULT_DEPLOYMENT_MODE` | `local` | `backend/app/instance_status/service.py` |
@@ -42,6 +43,7 @@ Sensitive values are never reproduced. A `dynamic` value is computed in code.
 | `CARTAVAULT_TASK_MODE` | `sync` | `backend/app/config.py` |
 | `CARTAVAULT_TASK_QUEUE` | `cartavault` | `backend/app/config.py` |
 | `CARTAVAULT_VERSION` | `0.1.0` | `backend/app/instance_status/service.py` |
+| `CARTAVAULT_WORKERS` | — | `backend/app/instance_status/service.py` |
 | `CORS_ALLOWED_ORIGINS` | — | `backend/app/main.py` |
 | `DATABASE_URL` | — | `backend/app/database.py` |
 | `EMAIL_FROM_ADDRESS` | `no-reply@cartavault.fr` | `backend/app/config.py` |
@@ -57,10 +59,10 @@ Sensitive values are never reproduced. A `dynamic` value is computed in code.
 | `FRONTEND_PUBLIC_URL` | `http://localhost:5173` | `backend/app/config.py` |
 | `GOOGLE_MAPS_ROUTES_API_KEY` | sensitive value | `backend/app/config.py` |
 | `GOOGLE_MAPS_ROUTES_BASE_URL` | `https://routes.googleapis.com` | `backend/app/config.py` |
-| `GOOGLE_MAPS_ROUTING_PREFERENCE` | `TRAFFIC_UNAWARE` | `backend/app/config.py` |
 | `IMPORT_STORAGE_PATH` | dynamic | `backend/app/imports/service.py` |
 | `OSRM_BASE_URL` | `https://router.project-osrm.org` | `backend/app/config.py` |
 | `OSRM_PROFILE` | `driving` | `backend/app/config.py` |
 | `PHOTO_STORAGE_PATH` | dynamic | `backend/app/photos/storage.py` |
 | `PYTEST_CURRENT_TEST` | — | `backend/app/main.py` |
 | `REDIS_URL` | `redis://localhost:6379/0` | `backend/app/config.py` |
+| `WEB_CONCURRENCY` | — | `backend/app/instance_status/service.py` |

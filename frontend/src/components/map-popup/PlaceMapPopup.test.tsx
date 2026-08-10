@@ -279,7 +279,7 @@ describe('PlaceMapPopup', () => {
   it('keeps textual details visible with no photo, a missing file, or photo API failure', async () => {
     vi.mocked(getPlacePhotos).mockResolvedValue([])
     const { rerender } = render(<PlaceMapPopup placeId={PLACE_ID} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
-    expect(await screen.findByText('Aucune photo')).toBeVisible(); expect(screen.getByText('Ancienne usine')).toBeVisible()
+    expect(await screen.findByRole('img', { name: 'Icône de Manufacture' })).toBeVisible(); expect(screen.getByText('Ancienne usine')).toBeVisible()
     vi.mocked(getPlacePhotos).mockResolvedValue([PHOTO])
     rerender(<PlaceMapPopup placeId="another-id" onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
     fireEvent.error(await screen.findByRole('img', { name: 'Façade' })); expect(await screen.findByText('Image indisponible')).toBeVisible()

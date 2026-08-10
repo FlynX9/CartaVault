@@ -27,6 +27,7 @@ class Photo(Base):
         Index("photos_one_primary_per_place_idx", "place_id", unique=True, postgresql_where=text("is_primary")),
         Index("photos_created_at_idx", "created_at"),
         Index("photos_uploaded_by_user_id_idx", "uploaded_by_user_id"),
+        Index("photos_map_id_idx", "map_id"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -50,7 +51,6 @@ class Photo(Base):
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("poi_maps.id", ondelete="CASCADE"),
         nullable=True,
-        index=True,
     )
     # Storage must not move when an unassigned upload is later attached to a
     # POI, therefore it has its own immutable directory key.

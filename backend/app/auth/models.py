@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String, Text, UniqueConstraint, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, SmallInteger, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,7 +42,7 @@ class User(Base):
     totp_encryption_version: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     totp_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     totp_enrollment_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    totp_last_used_counter: Mapped[int | None] = mapped_column(nullable=True)
+    totp_last_used_counter: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     quota_profile_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("quota_profiles.id", ondelete="RESTRICT"),

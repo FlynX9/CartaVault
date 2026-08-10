@@ -318,6 +318,210 @@
         "title": "AdminUserUpdate",
         "type": "object"
       },
+      "AnnotationTemplateCreate": {
+        "properties": {
+          "color": {
+            "default": "#0FA68A",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "icon": {
+            "default": "tabler:map-pin",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Icon",
+            "type": "string"
+          },
+          "is_active": {
+            "default": true,
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "map_id": {
+            "format": "uuid",
+            "title": "Map Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "shape_type": {
+            "enum": [
+              "rectangle",
+              "triangle",
+              "circle",
+              "line",
+              "path"
+            ],
+            "title": "Shape Type",
+            "type": "string"
+          },
+          "sort_order": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "map_id",
+          "name",
+          "shape_type"
+        ],
+        "title": "AnnotationTemplateCreate",
+        "type": "object"
+      },
+      "AnnotationTemplateRead": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "icon": {
+            "title": "Icon",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "map_id": {
+            "format": "uuid",
+            "title": "Map Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "shape_type": {
+            "enum": [
+              "rectangle",
+              "triangle",
+              "circle",
+              "line",
+              "path"
+            ],
+            "title": "Shape Type",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "usage_count": {
+            "default": 0,
+            "title": "Usage Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "map_id",
+          "name",
+          "shape_type",
+          "icon",
+          "color",
+          "sort_order",
+          "is_active"
+        ],
+        "title": "AnnotationTemplateRead",
+        "type": "object"
+      },
+      "AnnotationTemplateUpdate": {
+        "properties": {
+          "color": {
+            "anyOf": [
+              {
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "shape_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "rectangle",
+                  "triangle",
+                  "circle",
+                  "line",
+                  "path"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shape Type"
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort Order"
+          }
+        },
+        "title": "AnnotationTemplateUpdate",
+        "type": "object"
+      },
       "ApplicationDiagnostic": {
         "properties": {
           "backend_replicas": {
@@ -1153,6 +1357,76 @@
           "file"
         ],
         "title": "Body_upload_place_photo_places__place_id__photos_upload_post",
+        "type": "object"
+      },
+      "Body_upload_unassigned_media_media_actions_upload_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "gps_source": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gps Source"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "map_id": {
+            "format": "uuid",
+            "title": "Map Id",
+            "type": "string"
+          },
+          "taken_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taken At"
+          }
+        },
+        "required": [
+          "map_id",
+          "file"
+        ],
+        "title": "Body_upload_unassigned_media_media_actions_upload_post",
         "type": "object"
       },
       "CategoryCreate": {
@@ -4103,6 +4377,9 @@
           "mapping": {
             "$ref": "#/components/schemas/MappingDiagnostic"
           },
+          "resources": {
+            "$ref": "#/components/schemas/RuntimeResourcesDiagnostic"
+          },
           "routing": {
             "$ref": "#/components/schemas/RoutingDiagnostic"
           },
@@ -4118,6 +4395,7 @@
         },
         "required": [
           "application",
+          "resources",
           "database",
           "storage",
           "usage",
@@ -4133,8 +4411,109 @@
         "title": "InstanceComponents",
         "type": "object"
       },
+      "InstanceLogEntry": {
+        "properties": {
+          "component": {
+            "title": "Component",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "level": {
+            "enum": [
+              "DEBUG",
+              "INFO",
+              "WARNING",
+              "ERROR",
+              "CRITICAL"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "logger": {
+            "title": "Logger",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "timestamp",
+          "level",
+          "component",
+          "logger",
+          "message"
+        ],
+        "title": "InstanceLogEntry",
+        "type": "object"
+      },
+      "InstanceLogPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InstanceLogEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "max_limit": {
+            "title": "Max Limit",
+            "type": "integer"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before"
+          },
+          "retention_entries": {
+            "title": "Retention Entries",
+            "type": "integer"
+          },
+          "source": {
+            "default": "application-memory",
+            "title": "Source",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "truncated",
+          "next_before",
+          "max_limit",
+          "retention_entries"
+        ],
+        "title": "InstanceLogPage",
+        "type": "object"
+      },
       "InstanceStatusResponse": {
         "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/OperationalAlert"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
           "cache_ttl_seconds": {
             "title": "Cache Ttl Seconds",
             "type": "integer"
@@ -4182,6 +4561,7 @@
           "summary",
           "components",
           "recent_errors",
+          "alerts",
           "warnings",
           "cache_ttl_seconds"
         ],
@@ -5802,6 +6182,11 @@
       },
       "MediaItemRead": {
         "properties": {
+          "can_create_place": {
+            "default": false,
+            "title": "Can Create Place",
+            "type": "boolean"
+          },
           "can_edit": {
             "title": "Can Edit",
             "type": "boolean"
@@ -5875,6 +6260,28 @@
             "title": "Is Primary",
             "type": "boolean"
           },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
           "map": {
             "$ref": "#/components/schemas/MediaMapSummary"
           },
@@ -5901,7 +6308,14 @@
             "title": "Original Name"
           },
           "place": {
-            "$ref": "#/components/schemas/MediaPlaceSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaPlaceSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "taken_at": {
             "anyOf": [
@@ -6042,6 +6456,20 @@
           "filters"
         ],
         "title": "MediaPage",
+        "type": "object"
+      },
+      "MediaPlaceAttachment": {
+        "properties": {
+          "place_id": {
+            "format": "uuid",
+            "title": "Place Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "place_id"
+        ],
+        "title": "MediaPlaceAttachment",
         "type": "object"
       },
       "MediaPlaceSummary": {
@@ -6807,6 +7235,49 @@
         "title": "OnboardingPreferences",
         "type": "object"
       },
+      "OperationalAlert": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "component": {
+            "title": "Component",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "component",
+          "code",
+          "message"
+        ],
+        "title": "OperationalAlert",
+        "type": "object"
+      },
       "OptimizeConfirm": {
         "properties": {
           "proposal_id": {
@@ -7215,6 +7686,190 @@
           }
         },
         "title": "PhotoUpdate",
+        "type": "object"
+      },
+      "PlaceAnnotationCreate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "geometry": {
+            "additionalProperties": true,
+            "title": "Geometry",
+            "type": "object"
+          },
+          "radius_meters": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 1000000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radius Meters"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "template_id",
+          "geometry"
+        ],
+        "title": "PlaceAnnotationCreate",
+        "type": "object"
+      },
+      "PlaceAnnotationRead": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "geometry": {
+            "additionalProperties": true,
+            "title": "Geometry",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "place_id": {
+            "format": "uuid",
+            "title": "Place Id",
+            "type": "string"
+          },
+          "radius_meters": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radius Meters"
+          },
+          "template": {
+            "$ref": "#/components/schemas/AnnotationTemplateRead"
+          },
+          "template_id": {
+            "format": "uuid",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "place_id",
+          "template_id",
+          "geometry",
+          "radius_meters",
+          "title",
+          "description",
+          "template"
+        ],
+        "title": "PlaceAnnotationRead",
+        "type": "object"
+      },
+      "PlaceAnnotationUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry"
+          },
+          "radius_meters": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 1000000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Radius Meters"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "PlaceAnnotationUpdate",
         "type": "object"
       },
       "PlaceBulkAction": {
@@ -9994,21 +10649,6 @@
       },
       "RoutingPreferences": {
         "properties": {
-          "avoid_ferries": {
-            "default": false,
-            "title": "Avoid Ferries",
-            "type": "boolean"
-          },
-          "avoid_highways": {
-            "default": false,
-            "title": "Avoid Highways",
-            "type": "boolean"
-          },
-          "avoid_tolls": {
-            "default": false,
-            "title": "Avoid Tolls",
-            "type": "boolean"
-          },
           "provider": {
             "default": "osrm",
             "enum": [
@@ -10018,24 +10658,140 @@
             ],
             "title": "Provider",
             "type": "string"
-          },
-          "stay_in_country": {
-            "default": false,
-            "title": "Stay In Country",
-            "type": "boolean"
-          },
-          "traffic_mode": {
-            "default": "traffic_unaware",
-            "enum": [
-              "traffic_unaware",
-              "traffic_aware",
-              "traffic_aware_optimal"
-            ],
-            "title": "Traffic Mode",
-            "type": "string"
           }
         },
         "title": "RoutingPreferences",
+        "type": "object"
+      },
+      "RuntimeResourcesDiagnostic": {
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "cpu_limit_cores": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Limit Cores"
+          },
+          "cpu_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Percent"
+          },
+          "cpu_scope": {
+            "title": "Cpu Scope",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "memory_limit_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Limit Bytes"
+          },
+          "memory_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Percent"
+          },
+          "memory_scope": {
+            "title": "Memory Scope",
+            "type": "string"
+          },
+          "memory_used_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Used Bytes"
+          },
+          "status": {
+            "enum": [
+              "operational",
+              "degraded",
+              "unavailable",
+              "misconfigured",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "worker_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Count"
+          },
+          "worker_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Source"
+          }
+        },
+        "required": [
+          "status",
+          "checked_at",
+          "cpu_percent",
+          "cpu_scope",
+          "cpu_limit_cores",
+          "memory_used_bytes",
+          "memory_limit_bytes",
+          "memory_percent",
+          "memory_scope",
+          "worker_count",
+          "worker_source"
+        ],
+        "title": "RuntimeResourcesDiagnostic",
         "type": "object"
       },
       "SatelliteSettingsUpdate": {
@@ -11480,6 +12236,182 @@
         "title": "TaskStart",
         "type": "object"
       },
+      "TotpConfirmRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "TotpConfirmRequest",
+        "type": "object"
+      },
+      "TotpLoginChallenge": {
+        "properties": {
+          "challenge_token": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Challenge Token",
+            "type": "string"
+          },
+          "requires_totp": {
+            "const": true,
+            "default": true,
+            "title": "Requires Totp",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "challenge_token"
+        ],
+        "title": "TotpLoginChallenge",
+        "type": "object"
+      },
+      "TotpLoginVerification": {
+        "properties": {
+          "challenge_token": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Challenge Token",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "challenge_token",
+          "code"
+        ],
+        "title": "TotpLoginVerification",
+        "type": "object"
+      },
+      "TotpRecoveryCodesRead": {
+        "properties": {
+          "recovery_codes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recovery Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "recovery_codes"
+        ],
+        "title": "TotpRecoveryCodesRead",
+        "type": "object"
+      },
+      "TotpSecurityStatus": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "recovery_codes_remaining": {
+            "title": "Recovery Codes Remaining",
+            "type": "integer"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "enabled",
+          "verified_at",
+          "recovery_codes_remaining"
+        ],
+        "title": "TotpSecurityStatus",
+        "type": "object"
+      },
+      "TotpSensitiveAction": {
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "current_password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "code"
+        ],
+        "title": "TotpSensitiveAction",
+        "type": "object"
+      },
+      "TotpSetupRead": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "digits": {
+            "default": 6,
+            "title": "Digits",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "issuer": {
+            "default": "CartaVault",
+            "title": "Issuer",
+            "type": "string"
+          },
+          "period": {
+            "default": 30,
+            "title": "Period",
+            "type": "integer"
+          },
+          "provisioning_uri": {
+            "title": "Provisioning Uri",
+            "type": "string"
+          },
+          "qr_code_data_url": {
+            "title": "Qr Code Data Url",
+            "type": "string"
+          },
+          "secret": {
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "provisioning_uri",
+          "qr_code_data_url",
+          "expires_at",
+          "account"
+        ],
+        "title": "TotpSetupRead",
+        "type": "object"
+      },
       "TransferOwnership": {
         "properties": {
           "email": {
@@ -11578,6 +12510,21 @@
       },
       "TripCreate": {
         "properties": {
+          "avoid_ferries": {
+            "default": false,
+            "title": "Avoid Ferries",
+            "type": "boolean"
+          },
+          "avoid_highways": {
+            "default": false,
+            "title": "Avoid Highways",
+            "type": "boolean"
+          },
+          "avoid_tolls": {
+            "default": false,
+            "title": "Avoid Tolls",
+            "type": "boolean"
+          },
           "description": {
             "anyOf": [
               {
@@ -11613,6 +12560,21 @@
               }
             ],
             "title": "Start Date"
+          },
+          "stay_in_country": {
+            "default": false,
+            "title": "Stay In Country",
+            "type": "boolean"
+          },
+          "traffic_mode": {
+            "default": "traffic_unaware",
+            "enum": [
+              "traffic_unaware",
+              "traffic_aware",
+              "traffic_aware_optimal"
+            ],
+            "title": "Traffic Mode",
+            "type": "string"
           }
         },
         "required": [
@@ -11799,6 +12761,18 @@
               }
             ]
           },
+          "avoid_ferries": {
+            "title": "Avoid Ferries",
+            "type": "boolean"
+          },
+          "avoid_highways": {
+            "title": "Avoid Highways",
+            "type": "boolean"
+          },
+          "avoid_tolls": {
+            "title": "Avoid Tolls",
+            "type": "boolean"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -11922,6 +12896,19 @@
             "title": "Status",
             "type": "string"
           },
+          "stay_in_country": {
+            "title": "Stay In Country",
+            "type": "boolean"
+          },
+          "traffic_mode": {
+            "enum": [
+              "traffic_unaware",
+              "traffic_aware",
+              "traffic_aware_optimal"
+            ],
+            "title": "Traffic Mode",
+            "type": "string"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -11938,6 +12925,11 @@
           "end_date",
           "status",
           "routing_profile",
+          "stay_in_country",
+          "avoid_tolls",
+          "avoid_highways",
+          "avoid_ferries",
+          "traffic_mode",
           "created_at",
           "updated_at",
           "completed_at",
@@ -12160,6 +13152,39 @@
       },
       "TripUpdate": {
         "properties": {
+          "avoid_ferries": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoid Ferries"
+          },
+          "avoid_highways": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoid Highways"
+          },
+          "avoid_tolls": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avoid Tolls"
+          },
           "description": {
             "anyOf": [
               {
@@ -12238,6 +13263,33 @@
               }
             ],
             "title": "Status"
+          },
+          "stay_in_country": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay In Country"
+          },
+          "traffic_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "traffic_unaware",
+                  "traffic_aware",
+                  "traffic_aware_optimal"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traffic Mode"
           }
         },
         "title": "TripUpdate",
@@ -13827,6 +14879,171 @@
         ]
       }
     },
+    "/account/security/totp": {
+      "get": {
+        "operationId": "status_account_security_totp_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSecurityStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/totp/confirm": {
+      "post": {
+        "operationId": "confirm_account_security_totp_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpRecoveryCodesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/totp/disable": {
+      "post": {
+        "operationId": "disable_account_security_totp_disable_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpSensitiveAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/totp/recovery-codes/regenerate": {
+      "post": {
+        "operationId": "regenerate_account_security_totp_recovery_codes_regenerate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpSensitiveAction"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpRecoveryCodesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Regenerate",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/security/totp/setup": {
+      "post": {
+        "operationId": "setup_account_security_totp_setup_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpSetupRead"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Setup",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/account/sessions": {
       "get": {
         "operationId": "sessions_account_sessions_get",
@@ -14107,6 +15324,140 @@
           }
         },
         "summary": "Instance Status",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/instance/logs": {
+      "get": {
+        "operationId": "instance_logs_admin_console_instance_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "DEBUG",
+                    "INFO",
+                    "WARNING",
+                    "ERROR",
+                    "CRITICAL"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          },
+          {
+            "in": "query",
+            "name": "component",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Component"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "enum": [
+                "newest",
+                "oldest"
+              ],
+              "title": "Order",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceLogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Instance Logs",
         "tags": [
           "admin-console"
         ]
@@ -15263,6 +16614,384 @@
         ]
       }
     },
+    "/annotations/places/{place_id}": {
+      "get": {
+        "operationId": "get_place_annotations_annotations_places__place_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Place Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlaceAnnotationRead"
+                  },
+                  "title": "Response Get Place Annotations Annotations Places  Place Id  Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Place Annotations",
+        "tags": [
+          "annotations"
+        ]
+      },
+      "post": {
+        "operationId": "create_place_annotation_annotations_places__place_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Place Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceAnnotationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceAnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Place Annotation",
+        "tags": [
+          "annotations"
+        ]
+      }
+    },
+    "/annotations/places/{place_id}/{annotation_id}": {
+      "delete": {
+        "operationId": "delete_place_annotation_annotations_places__place_id___annotation_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Place Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "annotation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Annotation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Place Annotation",
+        "tags": [
+          "annotations"
+        ]
+      },
+      "patch": {
+        "operationId": "update_place_annotation_annotations_places__place_id___annotation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Place Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "annotation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Annotation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceAnnotationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceAnnotationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Place Annotation",
+        "tags": [
+          "annotations"
+        ]
+      }
+    },
+    "/annotations/templates": {
+      "get": {
+        "operationId": "get_templates_annotations_templates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Map Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnnotationTemplateRead"
+                  },
+                  "title": "Response Get Templates Annotations Templates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Templates",
+        "tags": [
+          "annotations"
+        ]
+      },
+      "post": {
+        "operationId": "create_template_annotations_templates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationTemplateCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationTemplateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Template",
+        "tags": [
+          "annotations"
+        ]
+      }
+    },
+    "/annotations/templates/{template_id}": {
+      "delete": {
+        "operationId": "delete_template_annotations_templates__template_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Template",
+        "tags": [
+          "annotations"
+        ]
+      },
+      "patch": {
+        "operationId": "update_template_annotations_templates__template_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationTemplateUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationTemplateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Template",
+        "tags": [
+          "annotations"
+        ]
+      }
+    },
     "/auth/change-password": {
       "post": {
         "operationId": "change_password_auth_change_password_post",
@@ -15315,7 +17044,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserSelfRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UserSelfRead"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TotpLoginChallenge"
+                    }
+                  ],
+                  "title": "Response Login Auth Login Post"
                 }
               }
             },
@@ -15605,6 +17342,88 @@
           }
         },
         "summary": "Registration Status",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/totp/recovery": {
+      "post": {
+        "operationId": "verify_recovery_login_auth_totp_recovery_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpLoginVerification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSelfRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Recovery Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/auth/totp/verify": {
+      "post": {
+        "operationId": "verify_totp_login_auth_totp_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpLoginVerification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSelfRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Totp Login",
         "tags": [
           "auth"
         ]
@@ -17751,6 +19570,146 @@
           }
         },
         "summary": "List Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media-actions/upload": {
+      "post": {
+        "description": "Store one compressed browser upload until the user chooses its POI.",
+        "operationId": "upload_unassigned_media_media_actions_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_unassigned_media_media_actions_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaItemRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Unassigned Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media-actions/{media_id}/attach-place": {
+      "post": {
+        "description": "Attach a previously uploaded geotagged image after its POI is saved.",
+        "operationId": "attach_media_to_place_media_actions__media_id__attach_place_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaPlaceAttachment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaItemRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attach Media To Place",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/media-actions/{media_id}/create-place": {
+      "post": {
+        "description": "Create the POI at EXIF coordinates and attach the previously orphaned image.",
+        "operationId": "create_place_from_media_media_actions__media_id__create_place_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaItemRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Place From Media",
         "tags": [
           "media"
         ]

@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { PlaceLinksEditor } from './PlaceLinksEditor'
 
 describe('PlaceLinksEditor', () => {
+  afterEach(cleanup)
   it('adds, edits, removes and reorders named links without submitting the place form', () => {
     const onChange = vi.fn()
     const links = [
@@ -15,7 +16,7 @@ describe('PlaceLinksEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Descendre Site officiel' }))
     expect(onChange).toHaveBeenLastCalledWith([links[1], links[0]])
 
-    fireEvent.change(screen.getByLabelText('Nom du lien 1'), { target: { value: 'Article' } })
+    fireEvent.change(screen.getAllByLabelText('Nom du lien')[0], { target: { value: 'Article' } })
     expect(onChange).toHaveBeenLastCalledWith([{ ...links[0], label: 'Article' }, links[1]])
 
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer Archive' }))
