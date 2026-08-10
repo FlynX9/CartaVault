@@ -148,6 +148,15 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1);
 };
 
+const formatMapLabel = (map: PoiMap, locale: string) => {
+  if (map.name !== map.country?.name || !map.country?.iso_alpha2) return map.name;
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(map.country.iso_alpha2) ?? map.name;
+  } catch {
+    return map.name;
+  }
+};
+
 export function MapPlaceList({
   poiMap,
   statuses = [],
@@ -174,7 +183,7 @@ export function MapPlaceList({
   onSelectionModeChange,
   onSelectedPlaceIdsChange,
 }: Props) {
-  const { t, formatDate } = useI18n();
+  const { t, formatDate, locale } = useI18n();
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [places, setPlaces] = useState<PlaceDetails[]>([]);
   const [loading, setLoading] = useState(false);
@@ -934,7 +943,7 @@ export function MapPlaceList({
                   className="places-redesign-map-flag"
                   fallbackSize={15}
                 />
-                <span>{poiMap.name}</span>
+                <span>{formatMapLabel(poiMap, locale)}</span>
               </span>
               <span aria-hidden="true">·</span>
               <span>
@@ -955,7 +964,7 @@ export function MapPlaceList({
             <button
               className="places-mobile-expand-toggle"
               type="button"
-              aria-label="Développer le panneau Lieux"
+              aria-label={t("places.openPanel")}
               onClick={() => onCollapsedChange(false)}
             >
               <ChevronDown size={18} aria-hidden="true" />
@@ -979,8 +988,8 @@ export function MapPlaceList({
               <button
                 className={`panel-icon-button places-mobile-controls-toggle${mobileControlsOpen ? " active" : ""}`}
                 type="button"
-                aria-label={mobileControlsOpen ? "Masquer la recherche et les filtres" : "Afficher la recherche et les filtres"}
-                title={mobileControlsOpen ? "Masquer les filtres" : "Afficher les filtres"}
+                aria-label={mobileControlsOpen ? t("places.hideControls") : t("places.showControls")}
+                title={mobileControlsOpen ? t("places.hideControls") : t("places.showControls")}
                 aria-expanded={mobileControlsOpen}
                 onClick={() => setMobileControlsOpen((open) => !open)}
               >
@@ -993,13 +1002,13 @@ export function MapPlaceList({
               type="button"
               aria-label={
                 displayMode === "gallery"
-                  ? "Passer à l'affichage en liste"
-                  : "Passer à l'affichage en galerie"
+                  ? t("places.listView")
+                  : t("places.galleryView")
               }
               title={
                 displayMode === "gallery"
-                  ? "Affichage en liste"
-                  : "Affichage en galerie"
+                  ? t("places.listView")
+                  : t("places.galleryView")
               }
               onClick={() =>
                 setDisplayMode((mode) =>
@@ -1773,7 +1782,7 @@ export function MapPlaceList({
             }}
           />
         )}
-        {!loading && poiMap && visible.length === 0 && <EmptyState className="place-list-message" icon={<Search size={24} />} title="Aucun POI ne correspond aux filtres." />}
+        {!loading && poiMap && visible.length === 0 && <EmptyState className="place-list-message" icon={<Search size={24} />} title={t("places.empty")} />}
         {hasMore && (
           <div
             ref={loadMoreSentinel}
@@ -1783,7 +1792,7 @@ export function MapPlaceList({
         )}
         {loadingMore && (
           <p className="place-list-loading-more" role="status">
-            Chargement de lieux supplémentaires…
+            {t("places.loadingMore")}
           </p>
         )}
         {hasMore && typeof IntersectionObserver === "undefined" && (
@@ -1792,7 +1801,7 @@ export function MapPlaceList({
             type="button"
             onClick={() => void loadMore()}
           >
-            Charger plus
+            {t("places.loadMore")}
           </button>
         )}
       </div>

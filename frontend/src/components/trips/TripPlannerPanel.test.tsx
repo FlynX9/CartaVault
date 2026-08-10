@@ -67,14 +67,14 @@ describe('TripPlannerPanel', () => {
 
   it('renders as the right workspace panel and not as a modal', async () => {
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={null} activeDayId={null} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('map-sidebar', 'trip-planner-panel')
+    expect(await screen.findByRole('complementary', { name: 'Sortie' })).toHaveClass('map-sidebar', 'trip-planner-panel')
     const header = screen.getByRole('button', { name: 'Réduire le panneau Sortie' }).closest('header')
     expect(header).toHaveClass('trip-panel-header', 'places-redesign-header')
     expect(header?.querySelector('.places-redesign-title-row')).toBeInTheDocument()
     expect(header?.querySelector('.places-redesign-header-actions')).toBeInTheDocument()
     const scrollRegion = screen.getByRole('region', { name: 'Contenu de la sortie' })
     expect(scrollRegion).toHaveClass('trip-panel-scroll')
-    expect(scrollRegion).toContainElement(screen.getByLabelText('Voyage actif'))
+    expect(scrollRegion).toContainElement(screen.getByLabelText('Choisir un voyage'))
     expect(scrollRegion).not.toContainElement(header)
     expect(container.querySelector('.trip-planner-overlay')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -103,9 +103,9 @@ describe('TripPlannerPanel', () => {
     const onCollapsedChange = vi.fn()
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" collapsed onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('is-collapsed')
+    expect(screen.getByRole('complementary', { name: 'Sortie' })).toHaveClass('is-collapsed')
     expect(screen.queryByRole('region', { name: 'Contenu de la sortie' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Développer le panneau Sortie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir le panneau Sortie' }))
     expect(onCollapsedChange).toHaveBeenCalledWith(false)
   })
 
@@ -203,7 +203,7 @@ describe('TripPlannerPanel', () => {
     expect(journeyToolbar).not.toBeNull()
     expect(within(journeyToolbar).getAllByRole('button')).toHaveLength(4)
 
-    const selector = screen.getByLabelText('Voyage actif').closest<HTMLElement>('.trip-panel-selector')!
+    const selector = screen.getByLabelText('Choisir un voyage').closest<HTMLElement>('.trip-panel-selector')!
     const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })
     const settingsButton = within(selector).getByRole('button', { name: 'Afficher les paramètres de la sortie' })
     const exportButton = within(selector).getByLabelText('Exporter la sortie')
@@ -344,10 +344,10 @@ describe('TripPlannerPanel', () => {
     fireEvent.change(nameInput, { target: { value: 'Brouillon' } })
     await waitFor(() => expect(navigationGuard).not.toBeNull())
 
-    fireEvent.change(screen.getByLabelText('Voyage actif'), { target: { value: secondTrip.id } })
+    fireEvent.change(screen.getByLabelText('Choisir un voyage'), { target: { value: secondTrip.id } })
     expect(screen.getByRole('alertdialog', { name: 'Enregistrer les paramètres ?' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
-    expect(screen.getByLabelText('Voyage actif')).toHaveValue(trip.id)
+    expect(screen.getByLabelText('Choisir un voyage')).toHaveValue(trip.id)
     expect(vi.mocked(getTrip).mock.calls.some(([id]) => id === secondTrip.id)).toBe(false)
 
     let canNavigate = false
@@ -368,7 +368,7 @@ describe('TripPlannerPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Archiver la sortie' }))
 
     await waitFor(() => expect(archiveTrip).toHaveBeenCalledWith('trip-1'))
-    expect(screen.getByRole('combobox', { name: 'Voyage actif' })).toHaveValue('trip-1')
+    expect(screen.getByRole('combobox', { name: 'Choisir un voyage' })).toHaveValue('trip-1')
   })
 
   it('renders a completed trip as read-only and allows it to be reactivated', async () => {
@@ -376,7 +376,7 @@ describe('TripPlannerPanel', () => {
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={completedTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     expect(await screen.findByText('Terminée')).toBeVisible()
-    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('trip-planner-panel--read-only')
+    expect(screen.getByRole('complementary', { name: 'Sortie' })).toHaveClass('trip-planner-panel--read-only')
     expect(screen.queryByRole('button', { name: 'Archiver la sortie' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Réactiver la sortie' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
@@ -466,7 +466,7 @@ describe('TripPlannerPanel', () => {
     expect(document.querySelector('.trip-panel-compact-summary .trip-summary-shell')).not.toBeInTheDocument()
     expect(screen.queryByText('Paramètres de la sortie')).not.toBeInTheDocument()
     expect(screen.queryByText('Trajets')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Choisir un voyage')).not.toBeInTheDocument()
   })
 
   it('keeps empty days readable and marks missing stops and nights', async () => {
@@ -706,12 +706,12 @@ describe('TripPlannerPanel', () => {
     expect(onCollapsedChange).toHaveBeenCalledWith(true)
 
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" collapsed onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveClass('is-collapsed')
+    expect(screen.getByRole('complementary', { name: 'Sortie' })).toHaveClass('is-collapsed')
     expect(screen.getByText('Sortie')).toBeVisible()
     expect(screen.getByText('Voyage test')).toBeVisible()
-    expect(screen.queryByLabelText('Voyage actif')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Choisir un voyage')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Développer le panneau Sortie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir le panneau Sortie' }))
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
 
@@ -735,8 +735,9 @@ describe('TripPlannerPanel', () => {
     expect(hideToggle).toHaveAttribute('aria-checked', 'true')
     expect(hideToggle).toHaveClass('trip-panel-day-number', 'trip-day-visibility-bubble')
     expect(hideToggle.querySelector('.lucide-eye')).toBeInTheDocument()
-    expect(hideToggle.closest('summary')?.querySelector('.trip-panel-day-actions')).not.toContainElement(hideToggle)
     const dayDetails = hideToggle.closest('details')
+    expect(dayDetails?.querySelector('summary')).not.toContainElement(hideToggle)
+    expect(dayDetails?.querySelector('.trip-panel-day-header-controls')).toContainElement(hideToggle)
     const footerActions = dayDetails?.querySelector('.trip-panel-route-actions')
     expect(dayDetails?.querySelector('summary')).not.toContainElement(screen.getByRole('button', { name: 'Dupliquer la journée' }))
     expect(footerActions).toContainElement(screen.getByRole('button', { name: 'Dupliquer la journée' }))
@@ -767,7 +768,7 @@ describe('TripPlannerPanel', () => {
 
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={onTripChange} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const selector = await screen.findByLabelText('Voyage actif')
+    const selector = await screen.findByLabelText('Choisir un voyage')
     await screen.findByRole('option', { name: otherTrip.name })
     fireEvent.change(selector, { target: { value: otherTrip.id } })
 
@@ -782,7 +783,7 @@ describe('TripPlannerPanel', () => {
     }
 
     render(<ParentWithInlineCallbacks />)
-    expect(await screen.findByLabelText('Voyage actif')).toHaveValue('trip-1')
+    expect(await screen.findByLabelText('Choisir un voyage')).toHaveValue('trip-1')
     await new Promise((resolve) => window.setTimeout(resolve, 50))
     expect(listTrips).toHaveBeenCalledTimes(1)
     expect(getTrip).toHaveBeenCalledTimes(1)
@@ -805,7 +806,7 @@ describe('TripPlannerPanel', () => {
     }
 
     render(<StatefulPanel />)
-    const selector = await screen.findByLabelText('Voyage actif')
+    const selector = await screen.findByLabelText('Choisir un voyage')
     fireEvent.change(selector, { target: { value: secondTrip.id } })
     expect(await screen.findByRole('status')).toHaveTextContent('Chargement du voyage')
     fireEvent.change(selector, { target: { value: trip.id } })

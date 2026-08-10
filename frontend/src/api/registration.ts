@@ -6,7 +6,7 @@ export interface RegistrationRequest {
   email_verified_at: string | null; verification_expires_at: string | null
 }
 export interface EmailSettingsStatus { configured: boolean; last4: string | null }
-export interface PublicRegistrationSettings { enabled: boolean }
+export interface PublicRegistrationSettings { enabled: boolean; approval_required: boolean }
 export interface PublicRegistrationStatus extends PublicRegistrationSettings { terms_version: string }
 
 export async function getPublicRegistrationStatus(signal?: AbortSignal): Promise<PublicRegistrationStatus> {
@@ -34,8 +34,8 @@ export async function getRegistrationRequests(signal?: AbortSignal): Promise<Reg
 export async function getPublicRegistrationSettings(signal?: AbortSignal): Promise<PublicRegistrationSettings> {
   return getJson('/admin/public-registration', new URLSearchParams(), signal) as Promise<PublicRegistrationSettings>
 }
-export async function updatePublicRegistrationSettings(enabled: boolean): Promise<PublicRegistrationSettings> {
-  return sendJson('/admin/public-registration', 'PUT', { enabled }) as Promise<PublicRegistrationSettings>
+export async function updatePublicRegistrationSettings(settings: PublicRegistrationSettings): Promise<PublicRegistrationSettings> {
+  return sendJson('/admin/public-registration', 'PUT', settings) as Promise<PublicRegistrationSettings>
 }
 export async function reviewRegistration(id: string, decision: 'approve' | 'reject', quotaProfileId?: string): Promise<RegistrationRequest> {
   return sendJson(`/admin/registration-requests/${encodeURIComponent(id)}/${decision}`, 'POST', decision === 'approve' ? { quota_profile_id: quotaProfileId ?? null } : {}) as Promise<RegistrationRequest>

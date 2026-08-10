@@ -13,7 +13,7 @@ vi.mock('../../api/adminConsole', () => ({
   getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogs: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
   saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
-vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
+vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
 
@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.mocked(getAdminUsers).mockResolvedValue({ items: [], total: 0, page: 1, page_size: 25, pages: 1 })
   vi.mocked(getAdminCredentials).mockResolvedValue([])
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
-  vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false })
+  vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getInstanceLogs).mockResolvedValue({ items: [], truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, source: 'application-memory' })
@@ -81,7 +81,7 @@ describe('AdminConsole', () => {
     })
 
     render(<MemoryRouter initialEntries={['/admin/credentials']}><AdminConsole /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un email de test' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un e-mail de test' }))
 
     await waitFor(() => expect(verifyResendCredential).toHaveBeenCalledOnce())
     expect(await screen.findByText('Email de test envoyé à votre adresse administrateur.')).toBeVisible()

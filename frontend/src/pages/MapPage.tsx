@@ -70,7 +70,7 @@ function defaultFloatingPanelLayout(width: number, height: number) {
   const margin = 12
   const gap = 8
   const usableWidth = Math.max(740, width - margin * 2 - gap)
-  const combinedWidth = Math.min(usableWidth, Math.max(740, Math.round(width * .91)))
+  const combinedWidth = Math.min(usableWidth, Math.max(740, Math.round(width * .84)))
   const placesWidth = Math.min(720, Math.round(combinedWidth * .49))
   const tripsWidth = Math.min(900, combinedWidth - placesWidth)
   const panelHeight = Math.max(360, height - margin * 2)

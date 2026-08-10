@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from app.auth.models import AuthActionToken, RegistrationRequest, User, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
 from app.auth.registration_security import CURRENT_TERMS_VERSION, expire_stale_registration_requests, record_auth_event, validate_registration_password
-from app.auth.registration_settings import public_registration_enabled
+from app.auth.registration_settings import public_registration_enabled, registration_approval_required
+from app.quotas.service import QuotaService
 from app.auth.schemas import PasswordResetConfirm, PasswordResetRequest, RegistrationCreate, RegistrationVerification, RegistrationVerificationResend
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email
 from app.config import email_settings, security_settings
@@ -29,7 +30,11 @@ GENERIC_RESET_MESSAGE = "Si un compte correspond à cette adresse, un email de r
 
 @router.get("/registration-status")
 def registration_status(database_session: Session = Depends(get_db)) -> dict[str, object]:
-    return {"enabled": public_registration_enabled(database_session), "terms_version": CURRENT_TERMS_VERSION}
+    return {
+        "enabled": public_registration_enabled(database_session),
+        "approval_required": registration_approval_required(database_session),
+        "terms_version": CURRENT_TERMS_VERSION,
+    }
 
 
 def _send_verification(database_session: Session, registration: RegistrationRequest, raw_token: str) -> None:
@@ -106,10 +111,41 @@ def verify_registration_email(data: RegistrationVerification, request: Request, 
         record_auth_event(database_session, "registration.email_verification", "invalid", client_ip=client_host)
         database_session.commit()
         raise HTTPException(400, "Le lien de vérification est invalide ou expiré.")
-    registration.status = "pending"
     registration.email_verified_at = now
     registration.verification_token_hash = None
     record_auth_event(database_session, "registration.email_verification", "verified", email=registration.email, client_ip=client_host, request=registration)
+    if not registration_approval_required(database_session):
+        if database_session.scalar(select(User.id).where(User.email == registration.email)) is not None:
+            raise HTTPException(409, "Un compte utilise déjà cette adresse email.")
+        profile = QuotaService(database_session).resolve_profile(None, lock=True)
+        user = User(
+            email=registration.email,
+            display_name=registration.display_name,
+            password_hash=registration.password_hash,
+            is_admin=False,
+            is_active=True,
+            quota_profile_id=profile.id,
+            preferences={"language": registration.locale},
+        )
+        registration.status = "approved"
+        registration.reviewed_at = now
+        record_auth_event(database_session, "registration.review", "auto_approved", email=registration.email, client_ip=client_host, request=registration)
+        try:
+            database_session.add(user)
+            database_session.commit()
+        except IntegrityError as error:
+            database_session.rollback()
+            raise HTTPException(409, "Un compte utilise déjà cette adresse email.") from error
+        try:
+            EmailService(provider_from_database(database_session)).notify_registration_approved(user.email, user.display_name, registration.locale)
+            registration.notification_sent_at = now
+            registration.notification_error_code = None
+        except EmailDeliveryError as error:
+            registration.notification_error_code = error.code
+        database_session.commit()
+        return {"status": "approved", "message": "Votre adresse est vérifiée. Votre compte CartaVault est prêt."}
+
+    registration.status = "pending"
     admins = list(database_session.scalars(select(User).where(User.is_admin.is_(True), User.is_active.is_(True))))
     database_session.commit()
     try:

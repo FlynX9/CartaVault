@@ -119,6 +119,28 @@ def test_registration_requires_admin_approval_before_user_creation(integration_c
     assert provider.messages[-1].recipients == [email]
 
 
+def test_registration_can_be_activated_after_email_confirmation_without_admin_review(integration_client, database_session, monkeypatch) -> None:
+    provider = _install_provider(monkeypatch)
+    monkeypatch.setattr("app.auth.public_router.hash_password", lambda password: f"automatic::{password}")
+    from app.auth.registration_settings import update_public_registration_settings
+    update_public_registration_settings(database_session, enabled=True, approval_required=False)
+    database_session.commit()
+    email = f"automatic-{uuid4()}@example.test"
+
+    registered = integration_client.post("/auth/register", json={"email": email, "password": "a sufficiently long password", "confirmation": "a sufficiently long password", "terms_accepted": True})
+    assert registered.status_code == 202
+    verification_match = re.search(r"token=([A-Za-z0-9_-]+)", provider.messages[0].text)
+    assert verification_match is not None
+
+    verified = integration_client.post("/auth/register/verify", json={"token": verification_match.group(1)})
+    assert verified.status_code == 202
+    assert verified.json()["status"] == "approved"
+    request = database_session.scalar(select(RegistrationRequest).where(RegistrationRequest.email == email))
+    created = database_session.scalar(select(User).where(User.email == email))
+    assert request is not None and request.status == "approved"
+    assert created is not None and created.password_hash == "automatic::a sufficiently long password"
+
+
 def test_rejected_registration_does_not_create_a_user(integration_client, database_session, monkeypatch) -> None:
     _install_provider(monkeypatch)
     monkeypatch.setattr("app.auth.public_router.hash_password", lambda password: f"pending::{password}")

@@ -1729,7 +1729,7 @@ function WorkspaceApp() {
                   }}
                   placeList={workspaceContent}
                   sidebar={rightSidebar}
-                  trip={activeTrip}
+                  trip={tripPlannerOpen ? activeTrip : null}
                   tripViewOnly={tripViewOnly}
                   selectedTripStopId={tripPreviewStopId}
                   selectedTripTimelineKey={tripPreviewSelectionKey}

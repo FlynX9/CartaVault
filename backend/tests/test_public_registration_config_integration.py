@@ -19,6 +19,7 @@ def test_public_registration_is_disabled_without_explicit_instance_setting(integ
 
     status = integration_client.get("/auth/registration-status").json()
     assert status["enabled"] is False
+    assert status["approval_required"] is True
     assert status["terms_version"]
     response = integration_client.post("/auth/register", json={"email": "visitor@example.test", "password": "a sufficiently long password", "confirmation": "a sufficiently long password", "terms_accepted": True})
 
@@ -29,13 +30,13 @@ def test_admin_can_enable_registration_but_regular_users_cannot(integration_clie
     database_session.delete(database_session.get(SystemSetting, "instance"))
     database_session.commit()
 
-    assert integration_client.put("/admin/public-registration", json={"enabled": True}).json() == {"enabled": True}
+    assert integration_client.put("/admin/public-registration", json={"enabled": True, "approval_required": False}).json() == {"enabled": True, "approval_required": False}
     assert integration_client.get("/auth/registration-status").json()["enabled"] is True
 
     previous_override = app.dependency_overrides[get_current_user]
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=None, is_admin=False, is_active=True)
     try:
-        response = integration_client.put("/admin/public-registration", json={"enabled": False})
+        response = integration_client.put("/admin/public-registration", json={"enabled": False, "approval_required": True})
     finally:
         app.dependency_overrides[get_current_user] = previous_override
 

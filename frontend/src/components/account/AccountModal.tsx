@@ -16,6 +16,7 @@ import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
 import { GooglePlacesCredentialPanel } from './GooglePlacesCredentialPanel'
 import { OpenRouteServiceCredentialPanel } from './OpenRouteServiceCredentialPanel'
 import { GoogleSatelliteCredentialPanel } from './GoogleSatelliteCredentialPanel'
+import { GoogleSatelliteAdminPanel } from './GoogleSatelliteAdminPanel'
 import { StadiaMapsCredentialPanel } from './StadiaMapsCredentialPanel'
 import { StadiaPlacesCredentialPanel } from './StadiaPlacesCredentialPanel'
 import { getStadiaMapsCredential, type StadiaMapsCredentialStatus } from '../../api/stadiaMaps'
@@ -126,7 +127,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'security' && profile && <SecuritySection profile={profile} run={run} refreshProfile={async () => { await refresh(); await load() }} />}
           {section === 'sessions' && <SessionsSection sessions={sessions} run={run} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
-          {section === 'api_keys' && <ApiKeysSection preferences={preferences} setPreferences={setPreferences} onSatelliteAvailabilityChanged={setGoogleSatelliteAvailable} />}
+          {section === 'api_keys' && <ApiKeysSection preferences={preferences} setPreferences={setPreferences} onSatelliteAvailabilityChanged={setGoogleSatelliteAvailable} isAdmin={Boolean(user?.is_admin)} />}
           {section === 'offline' && <OfflineDataSection />}
           {section === 'danger' && profile && <DangerSection profile={profile} run={run} />}
         </main>
@@ -295,7 +296,7 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
   </div></div></>
 }
 
-function ApiKeysSection({ preferences, setPreferences, onSatelliteAvailabilityChanged }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; onSatelliteAvailabilityChanged: (available: boolean) => void }) {
+function ApiKeysSection({ preferences, setPreferences, onSatelliteAvailabilityChanged, isAdmin }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; onSatelliteAvailabilityChanged: (available: boolean) => void; isAdmin: boolean }) {
   const { t } = useI18n()
   const emptyCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
   const [routes, setRoutes] = useState<GoogleRoutesCredentialStatus>(emptyCredential)
@@ -371,7 +372,18 @@ function ApiKeysSection({ preferences, setPreferences, onSatelliteAvailabilityCh
           <select id="account-basemap-provider" aria-labelledby="account-basemap-provider-label" value={satelliteProvider} onChange={(event) => { const provider = event.target.value as 'stadia' | 'google'; setError(null); setPreferences({ ...preferences, basemaps: { satellite_provider: provider }, preferred_basemap: preferences.preferred_basemap === 'satellite' || preferences.preferred_basemap === 'google-satellite' ? (provider === 'google' ? 'google-satellite' : 'satellite') : preferences.preferred_basemap }) }}><option value="stadia">Stadia Maps</option><option value="google">Google Map Tiles</option></select>
         </PreferenceField>
         {satelliteProvider === 'stadia' && <StadiaMapsCredentialPanel status={stadiaMaps} storageAvailable={storageAvailable} onChanged={setStadiaMaps} />}
-        {satelliteProvider === 'google' && <GoogleSatelliteCredentialPanel status={satellite} storageAvailable={storageAvailable} onChanged={(next, reset) => { setSatellite(next); resetBasemap(reset); refreshSatelliteAvailability() }} />}
+        {satelliteProvider === 'google' && <>
+          <GoogleSatelliteCredentialPanel
+            status={satellite}
+            storageAvailable={storageAvailable}
+            onChanged={(next, reset) => {
+              setSatellite(next)
+              resetBasemap(reset)
+              refreshSatelliteAvailability()
+            }}
+          />
+          {isAdmin && <GoogleSatelliteAdminPanel />}
+        </>}
       </ApiKeyGroup>
       {message && <div className="account-success" role="status">{message}</div>}
       <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={() => void saveIntegrations()}>{t('common.save')}</button></div>

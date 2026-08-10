@@ -13,7 +13,11 @@ from app.admin.schemas import PublicRegistrationSettings
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.models import RegistrationRequest, SystemCredential, User
-from app.auth.registration_settings import public_registration_enabled, set_public_registration_enabled
+from app.auth.registration_settings import (
+    public_registration_enabled,
+    registration_approval_required,
+    update_public_registration_settings as persist_public_registration_settings,
+)
 from app.auth.registration_security import expire_stale_registration_requests, record_auth_event
 from app.auth.schemas import RegistrationRequestRead
 from app.database import get_db
@@ -29,16 +33,24 @@ router = APIRouter(prefix="/admin", tags=["administration"], dependencies=[Depen
 
 @router.get("/public-registration", response_model=PublicRegistrationSettings)
 def get_public_registration_settings(database_session: Session = Depends(get_db)) -> PublicRegistrationSettings:
-    return PublicRegistrationSettings(enabled=public_registration_enabled(database_session))
+    return PublicRegistrationSettings(
+        enabled=public_registration_enabled(database_session),
+        approval_required=registration_approval_required(database_session),
+    )
 
 
 @router.put("/public-registration", response_model=PublicRegistrationSettings)
 def update_public_registration_settings(payload: PublicRegistrationSettings, database_session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> PublicRegistrationSettings:
-    enabled = set_public_registration_enabled(database_session, payload.enabled)
+    enabled, approval_required = persist_public_registration_settings(
+        database_session,
+        enabled=payload.enabled,
+        approval_required=payload.approval_required,
+    )
     record_auth_event(database_session, "registration.setting", "enabled" if enabled else "disabled", actor_user_id=admin.id)
+    record_auth_event(database_session, "registration.setting", "approval_required" if approval_required else "approval_not_required", actor_user_id=admin.id)
     database_session.commit()
     logger.info("public_registration_updated admin_id=%s enabled=%s", admin.id, enabled)
-    return PublicRegistrationSettings(enabled=enabled)
+    return PublicRegistrationSettings(enabled=enabled, approval_required=approval_required)
 
 
 @router.get("/registration-requests", response_model=list[RegistrationRequestRead])

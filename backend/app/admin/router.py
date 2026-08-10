@@ -16,7 +16,7 @@ from app.admin.schemas import (
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.avatar_storage import resolve_avatar
-from app.auth.models import SystemCredential, User, UserApiCredential, UserSession
+from app.auth.models import SystemCredential, User, UserSession
 from app.config import credential_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
@@ -179,18 +179,6 @@ def update_user(
 
 def _credential_statuses(session: Session) -> list[CredentialStatus]:
     resend = session.get(SystemCredential, "resend")
-    personal_providers = (
-        ("google_routes", "Google Routes"),
-        ("openrouteservice", "OpenRouteService"),
-        ("google_places", "Google Places"),
-        ("google_map_tiles", "Google Map Tiles"),
-        ("stadia_maps", "Stadia Maps"),
-        ("stadia_places", "Stadia Places"),
-    )
-    personal_counts = {
-        provider: session.scalar(select(func.count()).select_from(UserApiCredential).where(UserApiCredential.provider == provider)) or 0
-        for provider, _label in personal_providers
-    }
     return [
         CredentialStatus(
             provider="resend", label="Resend", scope="instance", configured=resend is not None,
@@ -199,11 +187,6 @@ def _credential_statuses(session: Session) -> list[CredentialStatus]:
             verified_at=resend.verified_at if resend else None, last_used_at=resend.last_used_at if resend else None,
             last_error_code=resend.last_error_code if resend else None,
         ),
-        *(CredentialStatus(
-            provider=provider, label=f"{label} (clés personnelles)", scope="personal",
-            configured=personal_counts[provider] > 0, editable=False, source="database" if personal_counts[provider] else "none",
-            configured_user_count=personal_counts[provider],
-        ) for provider, label in personal_providers),
         CredentialStatus(
             provider="credential_encryption", label="Clé maîtresse de chiffrement", scope="infrastructure",
             configured=bool(credential_settings.encryption_key), editable=False,

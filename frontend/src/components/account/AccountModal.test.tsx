@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountModal } from './AccountModal'
 import { getAccountPreferences, getAccountProfile, getAccountSessions, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, storeGooglePlacesCredential, storeGoogleRoutesCredential, updateAccountPreferences, updateAccountProfile, verifyGooglePlacesCredential, verifyGoogleRoutesCredential } from '../../api/account'
 import { getRoutingProviders } from '../../api/routing'
-import { getGoogleSatelliteCredential, getGoogleSatelliteStatus, storeGoogleSatelliteCredential, verifyGoogleSatelliteCredential } from '../../api/googleSatellite'
+import { getGoogleSatelliteAdminStatus, getGoogleSatelliteCredential, getGoogleSatelliteStatus, storeGoogleSatelliteCredential, verifyGoogleSatelliteCredential } from '../../api/googleSatellite'
 import { getStadiaMapsCredential, storeStadiaMapsCredential, verifyStadiaMapsCredential } from '../../api/stadiaMaps'
 import { getStadiaPlacesCredential } from '../../api/stadiaPlaces'
 
@@ -20,7 +20,7 @@ vi.mock('../../api/account', () => ({
 }))
 vi.mock('../../api/routing', () => ({ getRoutingProviders: vi.fn() }))
 vi.mock('../../api/googleSatellite', () => ({
-  getGoogleSatelliteStatus: vi.fn(), getGoogleSatelliteCredential: vi.fn(), storeGoogleSatelliteCredential: vi.fn(), verifyGoogleSatelliteCredential: vi.fn(), deleteGoogleSatelliteCredential: vi.fn(),
+  getGoogleSatelliteStatus: vi.fn(), getGoogleSatelliteAdminStatus: vi.fn(), resetGoogleSatelliteErrors: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), getGoogleSatelliteCredential: vi.fn(), storeGoogleSatelliteCredential: vi.fn(), verifyGoogleSatelliteCredential: vi.fn(), deleteGoogleSatelliteCredential: vi.fn(),
 }))
 vi.mock('../../api/stadiaMaps', () => ({
   getStadiaMapsCredential: vi.fn(), storeStadiaMapsCredential: vi.fn(), verifyStadiaMapsCredential: vi.fn(), deleteStadiaMapsCredential: vi.fn(),
@@ -35,7 +35,7 @@ const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', 
 const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const }, places: { provider: 'stadia' as const } }
 const noCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
 
-beforeEach(async () => { const account = await import('../../api/account'); vi.mocked(account.getTotpStatus).mockResolvedValue({ enabled: false, verified_at: null, recovery_codes_remaining: 0 }); vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }, { id: 'openrouteservice', label: 'OpenRouteService', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getOpenRouteServiceCredential).mockResolvedValue({ ...noCredential, self_hosted: false }); vi.mocked(getGoogleSatelliteCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaMapsCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaPlacesCredential).mockResolvedValue(noCredential); vi.mocked(getGoogleSatelliteStatus).mockResolvedValue({ available: false, warning_level: 0 }); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue(preferences) })
+beforeEach(async () => { const account = await import('../../api/account'); vi.mocked(account.getTotpStatus).mockResolvedValue({ enabled: false, verified_at: null, recovery_codes_remaining: 0 }); vi.mocked(getRoutingProviders).mockResolvedValue({ providers: [{ id: 'osrm', label: 'OSRM', available: true, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }, { id: 'google', label: 'Google Routes', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: false, supports_waypoint_optimization: true }, { id: 'openrouteservice', label: 'OpenRouteService', available: false, credential_configured: false, credential_verified: false, supports_route: true, supports_matrix: true, supports_waypoint_optimization: false }], default_provider: 'osrm', credential_storage_available: true }); vi.mocked(getGoogleRoutesCredential).mockResolvedValue(noCredential); vi.mocked(getGooglePlacesCredential).mockResolvedValue(noCredential); vi.mocked(getOpenRouteServiceCredential).mockResolvedValue({ ...noCredential, self_hosted: false }); vi.mocked(getGoogleSatelliteCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaMapsCredential).mockResolvedValue(noCredential); vi.mocked(getStadiaPlacesCredential).mockResolvedValue(noCredential); vi.mocked(getGoogleSatelliteStatus).mockResolvedValue({ available: false, warning_level: 0 }); vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ available: false, warning_level: 0, settings: { enabled: false, daily_soft_limit: 10000, monthly_soft_limit: 100000, auto_disable_percent: 100, repeated_error_limit: 5, consecutive_errors: 0, disabled_reason: null }, usage: { sessions_today: 0, tiles_started_today: 0, tiles_completed_today: 0, tiles_failed_today: 0, tiles_cancelled_today: 0, tiles_started_month: 0 }, authoritative_monitoring: { connected: false, console_url: 'https://console.cloud.google.com/google/maps-apis/metrics', notice: 'Authoritative' } }); vi.mocked(getAccountProfile).mockResolvedValue(profile); vi.mocked(getAccountSessions).mockResolvedValue([]); vi.mocked(getAccountPreferences).mockResolvedValue(preferences); vi.mocked(updateAccountProfile).mockResolvedValue(profile); vi.mocked(updateAccountPreferences).mockResolvedValue(preferences) })
 
 function openApiGroup(name: 'Routage' | 'Recherche de lieux' | 'Fonds de carte') {
   fireEvent.click(screen.getByRole('button', { name }))
@@ -75,12 +75,10 @@ describe('AccountModal', () => {
     expect(screen.getByRole('heading', { name: 'Informations du compte' }).closest('section')).toHaveClass('account-preference-card')
 
     fireEvent.click(screen.getByRole('button', { name: 'Sécurité' }))
-    expect(screen.getByRole('heading', { name: 'Changer l’adresse e-mail' }).closest('form')).toHaveClass('account-security-card')
-    expect(screen.getByRole('heading', { name: 'Changer le mot de passe' }).closest('form')).toHaveClass('account-security-card')
+    expect(screen.getByRole('heading', { name: 'Changer l’adresse e-mail' }).closest('section')).toHaveClass('account-security-group')
+    expect(screen.getByRole('heading', { name: 'Changer le mot de passe' }).closest('section')).toHaveClass('account-security-group')
     expect(screen.getByRole('heading', { name: 'État de sécurité du compte' }).closest('section')).toHaveClass('account-security-overview')
-    expect(screen.getAllByPlaceholderText('Saisissez votre mot de passe actuel')).toHaveLength(2)
-    expect(screen.getByPlaceholderText('Minimum 12 caractères')).toBeVisible()
-    expect(screen.getByPlaceholderText('Confirmez votre nouveau mot de passe')).toBeVisible()
+    expect(screen.queryByPlaceholderText('Saisissez votre mot de passe actuel')).not.toBeInTheDocument()
   })
 
   it('keeps the country-routing preference scoped to individual trips', async () => {

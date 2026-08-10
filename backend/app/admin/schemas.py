@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class PublicRegistrationSettings(BaseModel):
     enabled: bool
+    approval_required: bool = True
 
 
 class AdminUserRead(BaseModel):
