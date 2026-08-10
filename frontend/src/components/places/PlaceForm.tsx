@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { Check, ChevronDown, LoaderCircle, RefreshCw, Star, X } from 'lucide-react'
 
 import { validatePlaceForm } from '../../forms/placeForm'
@@ -43,8 +43,22 @@ const GENERAL_FIELDS = [
 const PRACTICAL_FIELDS = [
   ['condition', 'État', 50],
   ['access', 'Accès', 50],
-  ['danger_level', 'Niveau de danger', 50],
 ] as const
+
+const DANGER_LEVELS = [
+  { value: 'Faible', label: 'Faible', color: '#159f83' },
+  { value: 'Normal', label: 'Normal', color: '#2788c8' },
+  { value: 'Moyen', label: 'Moyen', color: '#e27a18' },
+  { value: 'Élevé', label: 'Élevé', color: '#d94d4d' },
+] as const
+
+function dangerLevelIndex(value: string): number {
+  const normalized = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase()
+  if (normalized.includes('faible') || normalized.includes('bas')) return 0
+  if (normalized.includes('moyen')) return 2
+  if (normalized.includes('eleve') || normalized.includes('haut')) return 3
+  return 1
+}
 
 const CHRONOLOGY_FIELDS = [
   ['construction_date', 'Construction', 100],
@@ -321,6 +335,26 @@ export function PlaceForm({
               {errors[field] && <small className="field-error">{errors[field]}</small>}
             </label>
           ))}
+          {fieldEnabled('danger_level') && <label className="form-field form-field-wide danger-level-field">
+            <span>Niveau de danger</span>
+            <div className="danger-level-control" style={{ '--danger-level-color': DANGER_LEVELS[dangerLevelIndex(values.danger_level)].color } as CSSProperties}>
+              <input
+                name="danger_level"
+                type="range"
+                min="0"
+                max="3"
+                step="1"
+                value={dangerLevelIndex(values.danger_level)}
+                aria-valuetext={values.danger_level || 'Non renseigné'}
+                onChange={(event) => setValue('danger_level', DANGER_LEVELS[Number(event.target.value)].value)}
+              />
+              <div className="danger-level-control__labels" aria-hidden="true">
+                {DANGER_LEVELS.map((level) => <span key={level.value} style={{ color: level.color }}>{level.label}</span>)}
+              </div>
+              <output>{values.danger_level || 'Non renseigné'}</output>
+            </div>
+            {errors.danger_level && <small className="field-error">{errors.danger_level}</small>}
+          </label>}
         </div>
       </section>
 
