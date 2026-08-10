@@ -116,6 +116,10 @@ const StatusesWorkspacePanel = lazy(async () => ({
   default: (await import("./components/layout/WorkspaceManagementPanels"))
     .StatusesWorkspacePanel,
 }));
+const MediaUploadDialog = lazy(async () => ({
+  default: (await import("./components/media/MediaWorkspacePanel"))
+    .MediaUploadDialog,
+}));
 const AnnotationTemplatesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/AnnotationTemplatesWorkspacePanel')).AnnotationTemplatesWorkspacePanel }));
 const TrashWorkspacePanel = lazy(async () => ({
   default: (await import("./components/trash/TrashWorkspacePanel"))
@@ -218,6 +222,12 @@ function WorkspaceApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [mediaUploadOpen, setMediaUploadOpen] = useState(false);
+  useEffect(() => {
+    const openMediaUpload = () => setMediaUploadOpen(true);
+    window.addEventListener("cartavault:open-media-upload", openMediaUpload);
+    return () => window.removeEventListener("cartavault:open-media-upload", openMediaUpload);
+  }, []);
   useEffect(() => {
     const refreshWorkspace = () => setRefreshVersion((value) => value + 1);
     window.addEventListener(WORKSPACE_CHANGED_EVENT, refreshWorkspace);
@@ -1816,6 +1826,17 @@ function WorkspaceApp() {
             <AdminConsole onClose={closeAdmin} />
           </Suspense>
         </RequireAdmin>
+      )}
+      {mediaUploadOpen && (
+        <Suspense fallback={null}>
+          <MediaUploadDialog
+            onClose={() => setMediaUploadOpen(false)}
+            onDone={() => {
+              setRefreshVersion((value) => value + 1);
+              window.dispatchEvent(new Event("cartavault:media-uploaded"));
+            }}
+          />
+        </Suspense>
       )}
       {confirmationDialog}
     </main>

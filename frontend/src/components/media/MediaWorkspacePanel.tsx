@@ -91,7 +91,7 @@ function requestPlaceCreationFromMedia(media: MediaItem) {
   }))
 }
 
-function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+export function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null); const cameraRef = useRef<HTMLInputElement>(null)
   const [maps, setMaps] = useState<PoiMap[]>([]); const [mapId, setMapId] = useState(''); const [maxUploadBytes, setMaxUploadBytes] = useState(5 * 1024 * 1024); const [maxImageDimension, setMaxImageDimension] = useState(2560); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null)
   useEffect(() => { const controller = new AbortController(); void Promise.all([getMaps(controller.signal), getMediaUploadPolicy(controller.signal)]).then(([items, policy]) => { if (controller.signal.aborted) return; setMaps(items.filter((map) => map.can_edit)); setMapId((current) => current || items.find((map) => map.can_edit)?.id || ''); setMaxUploadBytes(policy.max_upload_bytes); setMaxImageDimension(policy.max_image_dimension) }).catch((caught) => { if (controller.signal.aborted || (caught instanceof DOMException && caught.name === 'AbortError')) return; setError(caught instanceof Error ? caught.message : 'Cartes indisponibles.') }); return () => controller.abort() }, [])
@@ -189,7 +189,6 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false)
   const [refresh, setRefresh] = useState(0)
-  const [uploadOpen, setUploadOpen] = useState(false)
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query), 300)
@@ -213,6 +212,10 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
     setQuery((current) => ({ ...current, page: 1, [key]: value }))
   }
   const reload = useCallback(() => setRefresh((value) => value + 1), [])
+  useEffect(() => {
+    window.addEventListener('cartavault:media-uploaded', reload)
+    return () => window.removeEventListener('cartavault:media-uploaded', reload)
+  }, [reload])
   const editableSelection = useMemo(
     () => data?.items.filter((item) => selected.has(item.id) && item.can_edit) ?? [],
     [data, selected],
@@ -250,7 +253,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
       <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Bibliothèque</p><h1 className="cv-workspace-panel__title">{t.title}</h1></div>
       <div className="cv-workspace-panel__header-actions">
         <span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span>
-        <button type="button" className="panel-icon-button" aria-label="Importer des photos" title="Importer des photos" onClick={() => setUploadOpen(true)}><Upload size={17} /></button>
+        <button type="button" className="panel-icon-button" aria-label="Importer des photos" title="Importer des photos" onClick={() => window.dispatchEvent(new Event('cartavault:open-media-upload'))}><Upload size={17} /></button>
         <button type="button" className={`panel-icon-button media-mobile-filters-toggle${mobileFiltersOpen ? ' active' : ''}`} aria-label={mobileFiltersOpen ? 'Masquer les filtres' : 'Afficher les filtres'} title={mobileFiltersOpen ? 'Masquer les filtres' : 'Afficher les filtres'} aria-expanded={mobileFiltersOpen} onClick={() => setMobileFiltersOpen((value) => !value)}><Filter size={17} /></button>
         <button type="button" className="panel-icon-button media-mobile-view-toggle" aria-label={viewMode === 'grid' ? 'Afficher en liste' : 'Afficher en galerie'} title={viewMode === 'grid' ? 'Afficher en liste' : 'Afficher en galerie'} onClick={() => setViewMode((current) => current === 'grid' ? 'list' : 'grid')}>
           {viewMode === 'grid' ? <List size={18} /> : <Grid2X2 size={17} />}
@@ -332,7 +335,6 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
       <span>Page {query.page} sur {data.pages}</span>
     </footer>}
     {selected.size > 0 && <div className="media-bulk-bar"><span><Check size={16} />{selected.size} sélectionné(s)</span><button type="button" onClick={() => setSelected(new Set())}>Tout désélectionner</button>{editableSelection.length > 0 && <button type="button" className="danger" onClick={() => void removeSelected()}><Trash2 size={15} />Supprimer</button>}</div>}
-    {uploadOpen && <MediaUploadDialog onClose={() => setUploadOpen(false)} onDone={reload} />}
     {details && <MediaDetails media={details} onClose={() => setDetails(null)} onChanged={() => { setDetails(null); reload() }} onOpenPlace={onOpenPlace} onCreatePlace={requestPlaceCreationFromMedia} />}
     {confirmationDialog}
   </aside>

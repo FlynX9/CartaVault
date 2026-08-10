@@ -122,12 +122,13 @@ describe('MediaWorkspacePanel', () => {
     expect(toggleMaximize).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps the upload dialog open when mobile navigation layers are closed', async () => {
+  it('requests an upload from the application-level modal host', async () => {
+    const onOpenUpload = vi.fn()
+    window.addEventListener('cartavault:open-media-upload', onOpenUpload)
     render(<MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />)
     await screen.findByText('chapelle.webp')
     fireEvent.click(screen.getByRole('button', { name: 'Importer des photos' }))
-    expect(await screen.findByRole('dialog', { name: 'Importer des photos' })).toBeVisible()
-    window.dispatchEvent(new Event('cartavault:close-mobile-modal-layers'))
-    expect(screen.getByRole('dialog', { name: 'Importer des photos' })).toBeVisible()
+    expect(onOpenUpload).toHaveBeenCalledOnce()
+    window.removeEventListener('cartavault:open-media-upload', onOpenUpload)
   })
 })
