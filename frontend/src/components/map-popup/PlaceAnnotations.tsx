@@ -96,7 +96,7 @@ export function PlaceAnnotations({ placeId, mapId, canEdit, onChanged }: { place
           </div>
           <p className="popup-annotations__hint">Maintenez puis faites glisser sur la carte pour tracer la forme.</p>
         </div>}
-        {canEdit && activeTemplates.length === 0 && <p>Créez d’abord un modèle dans l’organisation de la carte.</p>}
+        {canEdit && activeTemplates.length === 0 && <p className="popup-annotations__template-hint">Créez d’abord un modèle dans l’organisation de la carte.</p>}
         {error && <p className="form-alert" role="alert">{error}</p>}
       </>}
     </div>}

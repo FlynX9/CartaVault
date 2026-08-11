@@ -128,7 +128,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   </aside>
 }
 
-const FIELD_LABELS: Record<string, string> = { description: 'Description', region: 'Région', construction_date: 'Date de construction', abandonment_date: 'Date d’abandon', condition: 'État de conservation', access: 'Accès', danger_level: 'Niveau de danger', links: 'Liens externes', ratings: 'Notations', favorite: 'Favori' }
+const FIELD_LABELS: Record<string, string> = { description: 'Description', region: 'Région', condition: 'État de conservation', danger_level: 'Niveau de danger', links: 'Liens externes', ratings: 'Notations', favorite: 'Favori' }
 
 function PlaceFieldSettingsDialog({ poiMap, onClose, onSaved }: { poiMap: PoiMap; onClose: () => void; onSaved: () => void }) {
   const [fields, setFields] = useState<Record<string, boolean>>(() => Object.fromEntries(Object.keys(FIELD_LABELS).map((key) => [key, poiMap.place_field_config?.[key] !== false])))

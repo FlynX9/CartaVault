@@ -3,15 +3,15 @@ import type { PlaceFilters } from '../types/place'
 export const DEFAULT_PLACE_FILTERS: PlaceFilters = {
   query: '', categoryIds: [], tagIds: [], statusIds: [], regions: [], hasPhotos: null,
   createdFrom: null, createdTo: null, updatedFrom: null, updatedTo: null,
-  accessValues: [], dangerLevels: [], conditionValues: [], hasValidCoordinates: null, inTrip: null,
+  dangerLevels: [], conditionValues: [], hasValidCoordinates: null, inTrip: null,
   isFavorite: null, functionalState: null, ratingMin: null, sortBy: 'name', sortDirection: 'asc',
 }
 
-const listKeys = ['categoryIds', 'tagIds', 'statusIds', 'regions', 'accessValues', 'dangerLevels', 'conditionValues'] as const
+const listKeys = ['categoryIds', 'tagIds', 'statusIds', 'regions', 'dangerLevels', 'conditionValues'] as const
 const queryKeys: Record<keyof PlaceFilters, string> = {
   query: 'q', categoryIds: 'categories', tagIds: 'tags', statusIds: 'statuses', regions: 'regions', hasPhotos: 'has_photos',
   createdFrom: 'created_from', createdTo: 'created_to', updatedFrom: 'updated_from', updatedTo: 'updated_to',
-  accessValues: 'access', dangerLevels: 'danger', conditionValues: 'condition', hasValidCoordinates: 'has_coordinates', inTrip: 'in_trip',
+  dangerLevels: 'danger', conditionValues: 'condition', hasValidCoordinates: 'has_coordinates', inTrip: 'in_trip',
   isFavorite: 'favorite', functionalState: 'visit_state', ratingMin: 'rating_min', sortBy: 'sort', sortDirection: 'direction',
 }
 
@@ -74,7 +74,6 @@ export function resetPlaceFilters(filters: PlaceFilters): PlaceFilters {
     tagIds: [],
     statusIds: [],
     regions: [],
-    accessValues: [],
     dangerLevels: [],
     conditionValues: [],
     sortBy: filters.sortBy,
@@ -85,7 +84,7 @@ export function resetPlaceFilters(filters: PlaceFilters): PlaceFilters {
 export function buildPlaceFilterSearchParams(filters: PlaceFilters): URLSearchParams {
   const value = normalizePlaceFilters(filters); const params = new URLSearchParams()
   if (value.query) params.set('q', value.query)
-  const backendLists: Array<[keyof PlaceFilters, string]> = [['categoryIds', 'category_ids'], ['tagIds', 'tag_ids'], ['statusIds', 'status_ids'], ['regions', 'regions'], ['accessValues', 'access_values'], ['dangerLevels', 'danger_levels'], ['conditionValues', 'condition_values']]
+  const backendLists: Array<[keyof PlaceFilters, string]> = [['categoryIds', 'category_ids'], ['tagIds', 'tag_ids'], ['statusIds', 'status_ids'], ['regions', 'regions'], ['dangerLevels', 'danger_levels'], ['conditionValues', 'condition_values']]
   for (const [key, parameter] of backendLists) for (const item of value[key] as string[]) params.append(parameter, item)
   const scalar: Array<[keyof PlaceFilters, string]> = [['createdFrom', 'created_from'], ['createdTo', 'created_to'], ['updatedFrom', 'updated_from'], ['updatedTo', 'updated_to']]
   for (const [key, parameter] of scalar) { const item = value[key] as string | null; if (item) params.set(parameter, item) }

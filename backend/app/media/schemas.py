@@ -40,7 +40,7 @@ class MediaItemRead(BaseModel):
     file_state: str
     can_edit: bool
     place: MediaPlaceSummary | None
-    map: MediaMapSummary
+    map: MediaMapSummary | None
     uploader: MediaUploaderSummary | None
     latitude: float | None = None
     longitude: float | None = None

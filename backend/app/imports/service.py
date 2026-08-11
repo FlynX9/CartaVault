@@ -324,10 +324,7 @@ def confirm_import(
                 description=mapped_fields.get("description"),
                 location=WKTElement(f"POINT({item.longitude} {item.latitude})", srid=4326),
                 region=mapped_fields.get("region"),
-                construction_date=mapped_fields.get("construction_date"),
-                abandonment_date=mapped_fields.get("abandonment_date"),
                 condition=mapped_fields.get("condition"),
-                access=mapped_fields.get("access"),
                 danger_level=mapped_fields.get("danger_level"),
                 custom_fields=custom_fields,
             )

@@ -23,10 +23,7 @@ class PlaceCreate(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     region: str | None = Field(default=None, max_length=100)
-    construction_date: str | None = Field(default=None, max_length=100)
-    abandonment_date: str | None = Field(default=None, max_length=100)
     condition: str | None = Field(default=None, max_length=50)
-    access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
     is_favorite: bool = False
     interest_rating: float | None = Field(default=None, ge=0.5, le=5, multiple_of=0.5)
@@ -43,10 +40,7 @@ class PlaceUpdate(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     region: str | None = Field(default=None, max_length=100)
-    construction_date: str | None = Field(default=None, max_length=100)
-    abandonment_date: str | None = Field(default=None, max_length=100)
     condition: str | None = Field(default=None, max_length=50)
-    access: str | None = Field(default=None, max_length=50)
     danger_level: str | None = Field(default=None, max_length=50)
     is_favorite: bool | None = None
     interest_rating: float | None = Field(default=None, ge=0.5, le=5, multiple_of=0.5)
@@ -193,10 +187,7 @@ class PlaceRead(BaseModel):
     region_source: str | None
     region_resolved_at: datetime | None
     region_manually_overridden: bool
-    construction_date: str | None
-    abandonment_date: str | None
     condition: str | None
-    access: str | None
     danger_level: str | None
     custom_fields: dict[str, str | list[str]]
     longitude: float | None
@@ -279,7 +270,6 @@ class PlaceFacets(BaseModel):
     tags: list[PlaceFacetItem]
     statuses: list[PlaceFacetItem]
     regions: list[PlaceFacetItem]
-    access_values: list[PlaceFacetItem]
     danger_levels: list[PlaceFacetItem]
     condition_values: list[PlaceFacetItem]
     with_photos: int

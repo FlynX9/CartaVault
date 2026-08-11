@@ -86,7 +86,6 @@ const emptyFacets: PlaceFacets = {
   tags: [],
   statuses: [],
   regions: [],
-  access_values: [],
   danger_levels: [],
   condition_values: [],
   with_photos: 0,

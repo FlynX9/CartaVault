@@ -205,10 +205,7 @@ def place_to_read(
         region_source=place.region_source,
         region_resolved_at=place.region_resolved_at,
         region_manually_overridden=place.region_manually_overridden,
-        construction_date=place.construction_date,
-        abandonment_date=place.abandonment_date,
         condition=place.condition,
-        access=place.access,
         danger_level=place.danger_level,
         default_visit_duration_minutes=place.default_visit_duration_minutes,
         custom_fields=place.custom_fields,
@@ -532,7 +529,6 @@ def get_place_facets(
         tags=tags,
         statuses=statuses,
         regions=regions,
-        access_values=value_facets(Place.access),
         danger_levels=value_facets(Place.danger_level),
         condition_values=value_facets(Place.condition),
         with_photos=int(filtered_counts.with_photos or 0),
@@ -676,10 +672,7 @@ def create_place(
         description=place_data.description,
         location=location,
         region=place_data.region,
-        construction_date=place_data.construction_date,
-        abandonment_date=place_data.abandonment_date,
         condition=place_data.condition,
-        access=place_data.access,
         danger_level=place_data.danger_level,
         is_favorite=place_data.is_favorite,
         interest_rating=place_data.interest_rating,
@@ -735,7 +728,7 @@ def update_place(
 
     supplied_data = place_data.model_dump(exclude_unset=True)
     confirmed_outside_country = supplied_data.pop("confirm_outside_country", False)
-    audited_fields = {"name", "map_id", "status_id", "description", "region", "construction_date", "abandonment_date", "condition", "access", "danger_level", "is_favorite", "interest_rating", "visit_rating", "default_visit_duration_minutes"}
+    audited_fields = {"name", "map_id", "status_id", "description", "region", "condition", "danger_level", "is_favorite", "interest_rating", "visit_rating", "default_visit_duration_minutes"}
     before = {field: getattr(place, field) for field in audited_fields}
     current_longitude, current_latitude = database_session.execute(
         select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(

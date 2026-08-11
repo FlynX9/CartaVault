@@ -596,7 +596,7 @@ export function PlaceMapPopup({
             <TriangleAlert aria-hidden="true" />
             <p>
               <b>Danger</b>
-              <span>{place.danger_level || "Non renseigné"}</span>
+              <span><span className="popup-danger-value"><i aria-hidden="true" />{place.danger_level || "Non renseigné"}</span></span>
             </p>
           </article>
         )}

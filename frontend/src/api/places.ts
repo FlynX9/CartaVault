@@ -157,18 +157,7 @@ export function parsePlaceDetailsResponse(payload: unknown): PlaceDetails {
     region_source: readOptionalNullableString(payload, 'region_source', context),
     region_resolved_at: typeof payload.region_resolved_at === 'string' ? readDateTime(payload, 'region_resolved_at', context) : null,
     region_manually_overridden: payload.region_manually_overridden === true,
-    construction_date: readNullableString(
-      payload,
-      'construction_date',
-      context,
-    ),
-    abandonment_date: readNullableString(
-      payload,
-      'abandonment_date',
-      context,
-    ),
     condition: readNullableString(payload, 'condition', context),
-    access: readNullableString(payload, 'access', context),
     danger_level: readNullableString(payload, 'danger_level', context),
     custom_fields: isRecord(payload.custom_fields) ? payload.custom_fields : {},
     longitude: readNullableNumber(payload, 'longitude', context),
@@ -392,7 +381,7 @@ export async function getPlaceFacets(mapId: string, filters: import('../types/pl
     if (!isRecord(item)) throw new Error('Une facette est invalide.')
     return { id: typeof item.id === 'string' ? item.id : '', name: typeof item.name === 'string' ? item.name : '', value: typeof item.value === 'string' ? item.value : undefined, icon: typeof item.icon === 'string' ? item.icon : undefined, color: typeof item.color === 'string' ? item.color : undefined, count: readNumber(item, 'count', 'Une facette') }
   })
-  return { total: readNumber(value, 'total', 'Les facettes'), non_visited: readNumber(value, 'non_visited', 'Les facettes'), visited: readNumber(value, 'visited', 'Les facettes'), favorites: readNumber(value, 'favorites', 'Les facettes'), categories: list('categories'), tags: list('tags'), statuses: list('statuses'), regions: list('regions'), access_values: list('access_values'), danger_levels: list('danger_levels'), condition_values: list('condition_values'), with_photos: readNumber(value, 'with_photos', 'Les facettes'), without_photos: readNumber(value, 'without_photos', 'Les facettes'), with_coordinates: readNumber(value, 'with_coordinates', 'Les facettes'), without_coordinates: readNumber(value, 'without_coordinates', 'Les facettes'), in_trip: readNumber(value, 'in_trip', 'Les facettes'), not_in_trip: readNumber(value, 'not_in_trip', 'Les facettes') }
+  return { total: readNumber(value, 'total', 'Les facettes'), non_visited: readNumber(value, 'non_visited', 'Les facettes'), visited: readNumber(value, 'visited', 'Les facettes'), favorites: readNumber(value, 'favorites', 'Les facettes'), categories: list('categories'), tags: list('tags'), statuses: list('statuses'), regions: list('regions'), danger_levels: list('danger_levels'), condition_values: list('condition_values'), with_photos: readNumber(value, 'with_photos', 'Les facettes'), without_photos: readNumber(value, 'without_photos', 'Les facettes'), with_coordinates: readNumber(value, 'with_coordinates', 'Les facettes'), without_coordinates: readNumber(value, 'without_coordinates', 'Les facettes'), in_trip: readNumber(value, 'in_trip', 'Les facettes'), not_in_trip: readNumber(value, 'not_in_trip', 'Les facettes') }
 }
 
 export async function bulkAddPlacesToTrip(payload: { place_ids: string[]; trip_id: string; day_id: string }, signal?: AbortSignal): Promise<PlaceBulkTripResult> {

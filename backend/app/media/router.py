@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.countries.models import Country
 from app.database import get_db
-from app.maps.models import PoiMap
+from app.maps.models import MapMembership, PoiMap
 from app.auth.permissions import require_map_role, require_place_role
 from app.media.schemas import (
     MediaAggregates,
@@ -59,6 +59,7 @@ from app.statuses.models import PlaceStatus
 from geoalchemy2.elements import WKTElement
 from app.places.history import add_place_history
 from app.places.models import Place
+from app.countries.point_validator import validate_point_country
 from PIL import Image, UnidentifiedImageError
 
 
@@ -155,7 +156,9 @@ def _read_xmp_gps(content: bytes) -> tuple[float, float] | None:
 
 def to_media_read(row, current_user_id: UUID) -> MediaItemRead:
     photo, place, poi_map, country, uploader, membership_role = row
-    role = "owner" if poi_map.owner_id == current_user_id else membership_role
+    role = "owner" if poi_map is not None and poi_map.owner_id == current_user_id else membership_role
+    if poi_map is None and photo.uploaded_by_user_id == current_user_id:
+        role = "owner"
     return MediaItemRead(
         id=photo.id,
         original_name=photo.original_name,
@@ -172,12 +175,12 @@ def to_media_read(row, current_user_id: UUID) -> MediaItemRead:
         file_state=infer_file_state(photo),
         can_edit=role in {"owner", "editor"},
         place=(MediaPlaceSummary(id=place.id, name=place.name, region=place.region) if place is not None else None),
-        map=MediaMapSummary(
+        map=(MediaMapSummary(
             id=poi_map.id,
             name=poi_map.name,
             country_code=country.iso_alpha2,
             country_name=country.name,
-        ),
+        ) if poi_map is not None and country is not None else None),
         uploader=(
             MediaUploaderSummary(id=uploader.id, name=uploader.display_name)
             if uploader is not None
@@ -288,6 +291,7 @@ def list_media(
             Country.iso_alpha2,
             Country.name,
         )
+        .where(PoiMap.id.is_not(None))
         .distinct()
         .order_by(PoiMap.name, PoiMap.id)
     ).all()
@@ -342,7 +346,6 @@ def list_media(
 
 @upload_router.post("/upload", response_model=MediaItemRead, status_code=status.HTTP_201_CREATED)
 def upload_unassigned_media(
-    map_id: UUID = Form(...),
     file: UploadFile = File(...),
     latitude: float | None = Form(default=None, ge=-90, le=90),
     longitude: float | None = Form(default=None, ge=-180, le=180),
@@ -358,23 +361,22 @@ def upload_unassigned_media(
             latitude, longitude = coordinates
     if (latitude is None) != (longitude is None):
         raise HTTPException(status_code=422, detail="Latitude and longitude must be provided together")
-    access = require_map_role(database_session, map_id, current_user, "editor")
     quotas = QuotaService(database_session)
-    quotas.ensure_can_create(access.map.owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
+    quotas.ensure_can_create(current_user.id, QuotaKey.PHOTOS_TOTAL_MAX)
     from uuid import uuid4
     photo_id = uuid4()
     try:
         stored = store_photo_file(
             file.file,
             file.content_type,
-            map_id,
+            photo_id,
             photo_id,
             max_size_bytes=get_max_upload_megabytes(database_session) * 1024 * 1024,
             max_dimension=get_max_image_dimension(database_session),
         )
-        quotas.ensure_can_create(access.map.owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
+        quotas.ensure_can_create(current_user.id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
         photo = Photo(
-            id=photo_id, map_id=map_id, storage_scope_id=map_id,
+            id=photo_id, map_id=None, storage_scope_id=photo_id,
             filename=stored.filename, original_name=normalize_original_name(file.filename), path=stored.relative_path,
             mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, width=stored.width, height=stored.height,
             uploaded_by_user_id=current_user.id, latitude=latitude, longitude=longitude, taken_at=taken_at,
@@ -419,6 +421,33 @@ def create_place_from_media(
     return to_media_read(row, current_user.id)
 
 
+@upload_router.get("/{media_id}/suggested-map")
+def suggested_map_for_media(
+    media_id: UUID,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str | None]:
+    """Return the first editable map whose country contains the media GPS point."""
+    access = get_media_access(database_session, media_id, current_user, require_editor=True)
+    if access.photo.latitude is None or access.photo.longitude is None:
+        return {"map_id": None}
+    candidates = database_session.execute(
+        select(PoiMap, Country)
+        .join(Country, PoiMap.country_id == Country.id)
+        .outerjoin(MapMembership, (MapMembership.map_id == PoiMap.id) & (MapMembership.user_id == current_user.id))
+        .where(
+            PoiMap.deleted_at.is_(None),
+            or_(PoiMap.owner_id == current_user.id, MapMembership.role.in_(("owner", "editor"))),
+        )
+        .order_by(PoiMap.name, PoiMap.id)
+    ).all()
+    for poi_map, country in candidates:
+        match = validate_point_country(access.photo.latitude, access.photo.longitude, country.iso_alpha3)
+        if match.status in {"inside", "border_tolerance"}:
+            return {"map_id": str(poi_map.id)}
+    return {"map_id": None}
+
+
 @upload_router.post("/{media_id}/attach-place", response_model=MediaItemRead)
 def attach_media_to_place(
     media_id: UUID,
@@ -432,9 +461,8 @@ def attach_media_to_place(
     if photo.place_id is not None:
         raise HTTPException(status_code=409, detail="Media is already attached to a place")
     place = require_place_role(database_session, data.place_id, current_user, "editor")
-    if place.map_id != photo.map_id:
-        raise HTTPException(status_code=422, detail="The place and media must belong to the same map")
     try:
+        photo.map_id = place.map_id
         photo.place_id = place.id
         has_primary_photo = database_session.scalar(
             select(Photo.id).where(Photo.place_id == place.id, Photo.is_primary.is_(True))

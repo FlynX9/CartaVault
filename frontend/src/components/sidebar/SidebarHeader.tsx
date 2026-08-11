@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 interface SidebarHeaderProps {
   title: string
   onClose: () => void
+  actions?: ReactNode
 }
 
-export function SidebarHeader({ title, onClose }: SidebarHeaderProps) {
+export function SidebarHeader({ title, onClose, actions = null }: SidebarHeaderProps) {
   const closeButton = useRef<HTMLButtonElement>(null)
 
   useEffect(() => closeButton.current?.focus(), [])
@@ -13,7 +14,7 @@ export function SidebarHeader({ title, onClose }: SidebarHeaderProps) {
   return (
     <header className="sidebar-header">
       <h2>{title}</h2>
-      <button
+      <div className="sidebar-header__actions">{actions}<button
         ref={closeButton}
         className="close-button"
         type="button"
@@ -21,7 +22,7 @@ export function SidebarHeader({ title, onClose }: SidebarHeaderProps) {
         aria-label="Fermer le volet"
       >
         ×
-      </button>
+      </button></div>
     </header>
   )
 }

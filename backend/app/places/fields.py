@@ -1,8 +1,8 @@
 """Map-scoped optional place field configuration."""
 
 CONFIGURABLE_PLACE_FIELDS = (
-    "description", "region", "construction_date", "abandonment_date", "condition",
-    "access", "danger_level", "links", "ratings", "favorite",
+    "description", "region", "condition",
+    "danger_level", "links", "ratings", "favorite",
 )
 
 

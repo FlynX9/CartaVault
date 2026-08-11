@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Maximize2, Star, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize2, SendHorizontal, Star, Trash2 } from 'lucide-react'
 
 import {
   deletePhoto,
@@ -44,6 +44,14 @@ export function PhotoGalleryManager({ placeId, placeName = 'Photos du lieu', onC
       })
     return () => controller.abort()
   }, [placeId])
+
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { pendingPhotos: files.length > 0 } }))
+  }, [files.length])
+
+  useEffect(() => () => {
+    document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { pendingPhotos: false } }))
+  }, [])
 
   const refresh = async () => {
     await reload()
@@ -108,8 +116,7 @@ export function PhotoGalleryManager({ placeId, placeName = 'Photos du lieu', onC
 
   return (
     <div className="photo-manager">
-      <PhotoUploader files={files} onChange={setFiles} disabled={busy} />
-      {files.length > 0 && <button className="primary-button" type="button" disabled={busy} onClick={() => void upload()}>Envoyer les photos</button>}
+      <PhotoUploader files={files} onChange={setFiles} disabled={busy} headerAction={files.length > 0 ? <button className="primary-button photo-manager__upload" type="button" disabled={busy} onClick={() => void upload()}><SendHorizontal aria-hidden="true" size={16} />Envoyer</button> : null} />
       {error && <p className="form-alert" role="alert">{error}</p>}
       <div className="photo-manager-grid">
         {photos.map((photo, index) => (

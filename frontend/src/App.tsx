@@ -248,18 +248,17 @@ function WorkspaceApp() {
   useEffect(() => {
     const startFromMedia = (event: Event) => {
       const detail = (event as CustomEvent<{ mediaId?: string; mapId?: string; latitude?: number | null; longitude?: number | null }>).detail;
-      if (!detail?.mediaId || !detail.mapId) return;
+      if (!detail?.mediaId) return;
       const sourceMap = maps.find((item) => item.id === detail.mapId);
-      const latitude = detail.latitude ?? sourceMap?.effective_center_latitude;
-      const longitude = detail.longitude ?? sourceMap?.effective_center_longitude;
-      if (latitude == null || longitude == null) return;
+      const latitude = detail.latitude ?? sourceMap?.effective_center_latitude ?? null;
+      const longitude = detail.longitude ?? sourceMap?.effective_center_longitude ?? null;
       setPendingMediaAttachmentId(detail.mediaId);
       setTemporarySearchResult(null);
       setDraftPosition(null);
-      setCoordinatePrefill({ latitude, longitude });
+      setCoordinatePrefill(latitude != null && longitude != null ? { latitude, longitude } : null);
       setWorkspacePanel("places");
       setPlacesPanelCollapsed(false);
-      navigate(withMap("/places/new", detail.mapId, activeStatusId));
+      navigate(withMap("/places/new", detail.mapId ?? null, activeStatusId));
     };
     window.addEventListener("cartavault:create-place-from-media", startFromMedia);
     return () => window.removeEventListener("cartavault:create-place-from-media", startFromMedia);
@@ -1248,7 +1247,7 @@ function WorkspaceApp() {
           onOpenPlace={(media) => {
             if (!media.place) return;
             setWorkspacePanel("places");
-            navigate(withMap(`/places/${media.place.id}`, media.map.id, null));
+            navigate(withMap(`/places/${media.place.id}`, media.map?.id ?? null, null));
           }}
         />
       ) : workspacePanel === "categories" && activeMapId !== null ? (

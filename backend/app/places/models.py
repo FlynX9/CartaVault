@@ -103,22 +103,7 @@ class Place(Base):
         server_default=text("false"),
     )
 
-    construction_date: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-    )
-
-    abandonment_date: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-    )
-
     condition: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
-    )
-
-    access: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
     )

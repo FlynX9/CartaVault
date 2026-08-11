@@ -30,6 +30,7 @@ import {
   deleteMedia,
   getMedia,
   getMediaDownloadUrl,
+  getSuggestedMediaMap,
   getMediaThumbnailUrl,
   getMediaUploadPolicy,
   setMainMedia,
@@ -83,10 +84,11 @@ interface DetailsProps {
   onCreatePlace: (media: MediaItem) => void
 }
 
-function requestPlaceCreationFromMedia(media: MediaItem) {
+async function requestPlaceCreationFromMedia(media: MediaItem) {
   if (!media.can_create_place) return
+  const mapId = media.map?.id ?? await getSuggestedMediaMap(media.id)
   window.dispatchEvent(new CustomEvent('cartavault:create-place-from-media', {
-    detail: { mediaId: media.id, mapId: media.map.id, latitude: media.latitude, longitude: media.longitude },
+    detail: { mediaId: media.id, mapId, latitude: media.latitude, longitude: media.longitude },
   }))
 }
 
@@ -97,7 +99,7 @@ export function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; on
   const submit = async (files: FileList | null) => {
     if (!files?.length || !mapId) return
     setBusy(true); setError(null)
-    try { const { readImageLocation, compressImage } = await import('../../media/imageUpload'); for (const source of Array.from(files)) { const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source, maxImageDimension)]); if (compressed.size > maxUploadBytes) throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString('fr-FR')} Mo.`); await uploadMedia(compressed, mapId, coordinates, undefined, source) }; onDone(); onClose() }
+    try { const { readImageLocation, compressImage } = await import('../../media/imageUpload'); for (const source of Array.from(files)) { const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source, maxImageDimension)]); if (compressed.size > maxUploadBytes) throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString('fr-FR')} Mo.`); await uploadMedia(compressed, coordinates, undefined, source) }; onDone(); onClose() }
     catch (caught) { setError(caught instanceof Error ? caught.message : 'Import impossible.') } finally { setBusy(false) }
   }
   return createPortal(<div className="media-details-overlay media-upload-overlay" role="presentation"><section className="media-details-dialog media-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title"><header><div><p className="cv-workspace-panel__eyebrow">Médiathèque</p><h2 id="media-upload-title">Importer des photos</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button></header><div className="media-details-fields"><label>Carte<select value={mapId} onChange={(event) => setMapId(event.target.value)}>{maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.country.name}</option>)}</select></label><p>Les images sont compressées automatiquement jusqu’à {maxImageDimension.toLocaleString('fr-FR')} px sur leur plus grand côté. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>{error && <p className="form-alert">{error}</p>}</div><footer><input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => void submit(event.target.files)} /><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => void submit(event.target.files)} /><button className="secondary-button" disabled={busy || !mapId} type="button" onClick={(event) => { event.stopPropagation(); fileRef.current?.click() }}><Upload size={16} />Choisir des photos</button><button className="primary-button media-upload-camera" disabled={busy || !mapId} type="button" onClick={(event) => { event.stopPropagation(); cameraRef.current?.click() }}><Camera size={16} />Prendre une photo</button></footer></section></div>, document.body)
@@ -144,7 +146,7 @@ function MediaDetails({ media, onClose, onChanged, onOpenPlace, onCreatePlace }:
         <img src={getMediaThumbnailUrl(media.id)} alt={media.caption || media.original_name || media.place?.name || 'Média'} />
         <dl>
           <div><dt>Lieu</dt><dd>{media.place?.name ?? 'Non rattaché à un POI'}</dd></div>
-          <div><dt>Carte</dt><dd>{media.map.name} · {media.map.country_name}</dd></div>
+          <div><dt>Carte</dt><dd>{media.map ? `${media.map.name} · ${media.map.country_name}` : 'À choisir lors de la création du POI'}</dd></div>
           <div><dt>Fichier</dt><dd>{media.format ?? '—'} · {formatBytes(media.file_size_bytes)}</dd></div>
           <div><dt>Dimensions</dt><dd>{media.width && media.height ? `${media.width} × ${media.height} px` : '—'}</dd></div>
           <div><dt>Ajouté le</dt><dd>{formatDate(media.created_at)}</dd></div>
@@ -309,7 +311,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
             <strong title={media.original_name ?? media.place?.name ?? 'Média non rattaché'}>{media.original_name || media.place?.name || 'Média non rattaché'}</strong>
             {media.place ? <button type="button" onClick={() => onOpenPlace(media)}><MapPin size={14} />{media.place.name}</button> : <span className="media-card__unattached">Non rattaché à un POI</span>}
             {media.can_create_place && <button type="button" className="media-card__create-place" onClick={() => requestPlaceCreationFromMedia(media)}><MapPin size={15} />Créer un POI</button>}
-            <span>{media.map.name} · {media.map.country_code}</span>
+            <span>{media.map ? `${media.map.name} · ${media.map.country_code}` : 'Carte à définir'}</span>
             <small>{media.format ?? '—'} · {formatBytes(media.file_size_bytes)} · {media.width && media.height ? `${media.width}×${media.height}` : 'dimensions inconnues'}</small>
           </div>
           <details className="media-card__menu">

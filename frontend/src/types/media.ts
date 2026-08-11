@@ -34,7 +34,7 @@ export interface MediaItem {
   file_state: MediaFileState
   can_edit: boolean
   place: MediaPlaceSummary | null
-  map: MediaMapSummary
+  map: MediaMapSummary | null
   uploader: MediaUploaderSummary | null
   latitude?: number | null
   longitude?: number | null

@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
-import { Check, ChevronDown, LoaderCircle, RefreshCw, Star, X } from 'lucide-react'
+import { Building2, Check, ChevronDown, LoaderCircle, RefreshCw, Shield, Star, X } from 'lucide-react'
 
 import { validatePlaceForm } from '../../forms/placeForm'
 import type {
@@ -40,9 +40,11 @@ const GENERAL_FIELDS = [
   ['region', 'Région', 100],
 ] as const
 
-const PRACTICAL_FIELDS = [
-  ['condition', 'État', 50],
-  ['access', 'Accès', 50],
+const CONDITION_LEVELS = [
+  { value: 'Bon état', label: 'Bon état', color: '#159f83' },
+  { value: 'Correct', label: 'Correct', color: '#2788c8' },
+  { value: 'Dégradé', label: 'Dégradé', color: '#e27a18' },
+  { value: 'Effondré', label: 'Effondré', color: '#d94d4d' },
 ] as const
 
 const DANGER_LEVELS = [
@@ -59,11 +61,6 @@ function dangerLevelIndex(value: string): number {
   if (normalized.includes('eleve') || normalized.includes('haut')) return 3
   return 1
 }
-
-const CHRONOLOGY_FIELDS = [
-  ['construction_date', 'Construction', 100],
-  ['abandonment_date', 'Abandon', 100],
-] as const
 
 const RATING_STARS = [1, 2, 3, 4, 5]
 
@@ -156,6 +153,14 @@ export function PlaceForm({
   }, [initialValues])
 
   useEffect(() => {
+    document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { formDirty: JSON.stringify(values) !== JSON.stringify(initialValues) } }))
+  }, [initialValues, values])
+
+  useEffect(() => () => {
+    document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { formDirty: false } }))
+  }, [])
+
+  useEffect(() => {
     if (draftPosition === null) return
     setValues((current) => ({ ...current, latitude: String(draftPosition.latitude), longitude: String(draftPosition.longitude) }))
   }, [draftPosition])
@@ -217,7 +222,7 @@ export function PlaceForm({
   }
 
   return (
-    <form className="place-form" onSubmit={handleSubmit} noValidate>
+    <form id="poi-edit-form" className="place-form" onSubmit={handleSubmit} noValidate>
       {globalError && <div className="form-alert" role="alert">{globalError}</div>}
 
       <div className="place-form__editor-grid">
@@ -238,34 +243,28 @@ export function PlaceForm({
             </select>
             {errors.mapId && <small className="field-error">{errors.mapId}</small>}
           </label>
-          <label className="form-field form-field-wide status-field">
-            <span>Statut de suivi *</span>
-            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={statusMenuOpen} onClick={() => setStatusMenuOpen((open) => !open)}><i className="status-dot" style={{ backgroundColor: selectedStatus?.color ?? 'transparent' }} aria-hidden="true" /><span>{selectedStatus?.name ?? 'Choisir un statut'}</span><ChevronDown aria-hidden="true" size={18} /></button>{statusMenuOpen && <div className="status-picker-options" role="listbox" aria-label="Statut de suivi">{selectableStatuses.map((placeStatus) => <button key={placeStatus.id} type="button" role="option" aria-selected={placeStatus.id === values.statusId} onClick={() => { setValue('statusId', placeStatus.id); setStatusMenuOpen(false) }}><i className="status-dot" style={{ backgroundColor: placeStatus.color }} aria-hidden="true" />{placeStatus.name}{placeStatus.is_active ? '' : ' (inactif)'}</button>)}</div>}</div>
-            {errors.statusId && <small className="field-error">{errors.statusId}</small>}
-          </label>
           {GENERAL_FIELDS.filter(([field]) => fieldEnabled(field)).map(([field, label, maxLength]) => (
             <label className={`form-field form-field-wide ${field === 'name' ? 'general-name' : 'general-region'}`} key={field}>
-              <span>{label}{field === 'name' ? ' *' : ''}</span>
-              <input
+              <span>{label}{field === 'name' ? ' *' : ''}{field === 'region' && <FieldHelp label="Aide sur la région">{regionEdited || regionMetadata?.manuallyOverridden ? 'Valeur corrigée manuellement' : regionMetadata?.resolvedAt ? 'Déterminée automatiquement depuis les coordonnées' : 'Région non déterminée'}</FieldHelp>}</span>
+              {field === 'region' ? <div className="region-input-action">
+                <input
+                  value={values[field]}
+                  maxLength={maxLength}
+                  onChange={(event) => setValue(field, event.target.value)}
+                  aria-invalid={Boolean(errors[field])}
+                  aria-label="Région"
+                />
+                {onRefreshRegion && <button className="region-refresh-button" type="button" title="Recalculer la région depuis les coordonnées" aria-label="Recalculer la région depuis les coordonnées" disabled={regionRefreshState === 'loading'} onClick={() => void refreshRegion()}>
+                  {regionRefreshState === 'loading' ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : regionRefreshState === 'success' ? <Check size={15} aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
+                </button>}
+              </div> : <input
                 value={values[field]}
                 maxLength={maxLength}
                 onChange={(event) => setValue(field, event.target.value)}
                 aria-invalid={Boolean(errors[field])}
-                aria-label={field === 'region' ? 'Région' : undefined}
-              />
+              />}
               {errors[field] && <small className="field-error">{errors[field]}</small>}
               {field === 'region' && <>
-                <small className="form-hint region-source-hint">
-                  {regionEdited || regionMetadata?.manuallyOverridden
-                    ? 'Valeur corrigée manuellement'
-                    : regionMetadata?.resolvedAt
-                      ? 'Déterminée automatiquement depuis les coordonnées'
-                      : 'Région non déterminée'}
-                </small>
-                {onRefreshRegion && <button className="region-refresh-button" type="button" disabled={regionRefreshState === 'loading'} onClick={() => void refreshRegion()}>
-                  {regionRefreshState === 'loading' ? <LoaderCircle className="spin" size={15} aria-hidden="true" /> : regionRefreshState === 'success' ? <Check size={15} aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
-                  {regionRefreshState === 'loading' ? 'Recalcul en cours…' : regionRefreshState === 'success' ? 'Région recalculée' : 'Recalculer depuis les coordonnées'}
-                </button>}
                 {regionRefreshError && <small className="field-error" role="alert">{regionRefreshError}</small>}
               </>}
             </label>
@@ -275,9 +274,8 @@ export function PlaceForm({
             <textarea value={values.description} rows={5} onChange={(event) => setValue('description', event.target.value)} />
           </label>}
           <label className="form-field form-field-wide">
-            <span>Durée de visite</span>
+            <span>Durée de visite<FieldHelp label="Aide sur la durée de visite">En minutes. Laissez vide pour utiliser 30 minutes.</FieldHelp></span>
             <input type="number" min={0} max={1440} step={5} value={values.visitDuration} placeholder="30 minutes par défaut" title="Durée suggérée lors de l’ajout de ce POI à une journée" aria-invalid={Boolean(errors.visitDuration)} onChange={(event) => setValue('visitDuration', event.target.value)} />
-            <small className="form-hint">En minutes. Laissez vide pour utiliser 30 minutes.</small>
             {errors.visitDuration && <small className="field-error">{errors.visitDuration}</small>}
           </label>
           {fieldEnabled('ratings') && ratingField && <div className="form-field form-field-wide place-rating-fields">
@@ -285,17 +283,6 @@ export function PlaceForm({
             {ratingField === 'interest' && <EditableRating label="Envie avant visite" value={values.interestRating} onChange={(rating) => setValue('interestRating', rating)} />}
             {ratingField === 'visit' && <EditableRating label="Évaluation après visite" value={values.visitRating} onChange={(rating) => setValue('visitRating', rating)} />}
           </div>}
-          <label className="form-field form-field-wide category-field">
-            <span>Catégorie</span>
-            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)}>{selectedCategory ? <CategoryIconPreview iconId={selectedCategory.icon} size={17} showLabel={false} /> : <span className="category-picker-placeholder" />}<span>{selectedCategory?.name ?? 'Aucune catégorie'}</span><ChevronDown aria-hidden="true" size={18} /></button>{categoryMenuOpen && <div className="status-picker-options category-picker-options" role="listbox" aria-label="Catégorie">{selectableCategories.map((category) => <button key={category.id} type="button" role="option" aria-selected={category.id === selectedCategory?.id} onClick={() => { selectAssociation('categoryIds', category.id); setCategoryMenuOpen(false) }}><CategoryIconPreview iconId={category.icon} size={17} showLabel={false} />{category.name}</button>)}</div>}</div>
-            {categories.length === 0 && <small className="form-hint">Aucune catégorie disponible.</small>}
-          </label>
-          <label className="form-field form-field-wide tag-field">
-            <span>Tags</span>
-            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={tagMenuOpen} onClick={() => setTagMenuOpen((open) => !open)}><span className="status-picker-spacer" /><span>{values.tagIds.length ? `${values.tagIds.length} tag${values.tagIds.length > 1 ? 's' : ''} sélectionné${values.tagIds.length > 1 ? 's' : ''}` : 'Ajouter des tags'}</span><ChevronDown aria-hidden="true" size={18} /></button>{tagMenuOpen && <div className="status-picker-options tag-picker-options" role="listbox" aria-label="Tags"><input type="search" autoFocus placeholder="Rechercher un tag" value={tagQuery} onChange={(event) => setTagQuery(event.target.value)} />{visibleTags.map((tag) => <button key={tag.id} type="button" role="option" aria-selected={values.tagIds.includes(tag.id)} onClick={() => toggleTag(tag.id)}>{tag.name}</button>)}</div>}</div>
-            {values.tagIds.length > 0 && <div className="selected-tag-list" aria-label="Tags sélectionnés">{values.tagIds.map((tagId) => { const tag = tags.find((item) => item.id === tagId); return tag ? <span key={tag.id} style={getTagColorStyle(tag.color)}>{tag.name}<button type="button" aria-label={`Retirer ${tag.name}`} onClick={() => toggleTag(tag.id)}><X aria-hidden="true" size={13} /></button></span> : null })}</div>}
-            {tags.length === 0 && <small className="form-hint">Aucun tag disponible.</small>}
-          </label>
         </div>
       </section>
 
@@ -324,82 +311,47 @@ export function PlaceForm({
         <div className="form-section-heading">
           <div>
             <p className="form-section-eyebrow">Le lieu</p>
-            <h3>État</h3>
+            <h3>Classification</h3>
           </div>
         </div>
         <div className="form-grid">
-          {PRACTICAL_FIELDS.filter(([field]) => field !== 'access' && fieldEnabled(field)).map(([field, label, maxLength]) => (
-            <label className="form-field" key={field}>
-              <span>{label}</span>
-              <input value={values[field]} maxLength={maxLength} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
-              {errors[field] && <small className="field-error">{errors[field]}</small>}
-            </label>
-          ))}
+          <label className="form-field form-field-wide status-field">
+            <span>Statut de suivi *</span>
+            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={statusMenuOpen} onClick={() => setStatusMenuOpen((open) => !open)}><i className="status-dot" style={{ backgroundColor: selectedStatus?.color ?? 'transparent' }} aria-hidden="true" /><span>{selectedStatus?.name ?? 'Choisir un statut'}</span><ChevronDown aria-hidden="true" size={18} /></button>{statusMenuOpen && <div className="status-picker-options" role="listbox" aria-label="Statut de suivi">{selectableStatuses.map((placeStatus) => <button key={placeStatus.id} type="button" role="option" aria-selected={placeStatus.id === values.statusId} onClick={() => { setValue('statusId', placeStatus.id); setStatusMenuOpen(false) }}><i className="status-dot" style={{ backgroundColor: placeStatus.color }} aria-hidden="true" />{placeStatus.name}{placeStatus.is_active ? '' : ' (inactif)'}</button>)}</div>}</div>
+            {errors.statusId && <small className="field-error">{errors.statusId}</small>}
+          </label>
+          <label className="form-field form-field-wide category-field">
+            <span>Catégorie</span>
+            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)}>{selectedCategory ? <CategoryIconPreview iconId={selectedCategory.icon} size={17} showLabel={false} /> : <span className="category-picker-placeholder" />}<span>{selectedCategory?.name ?? 'Aucune catégorie'}</span><ChevronDown aria-hidden="true" size={18} /></button>{categoryMenuOpen && <div className="status-picker-options category-picker-options" role="listbox" aria-label="Catégorie">{selectableCategories.map((category) => <button key={category.id} type="button" role="option" aria-selected={category.id === selectedCategory?.id} onClick={() => { selectAssociation('categoryIds', category.id); setCategoryMenuOpen(false) }}><CategoryIconPreview iconId={category.icon} size={17} showLabel={false} />{category.name}</button>)}</div>}</div>
+            {categories.length === 0 && <small className="form-hint">Aucune catégorie disponible.</small>}
+          </label>
+          <label className="form-field form-field-wide tag-field">
+            <span>Tags</span>
+            <div className="status-picker"><button type="button" className="status-picker-trigger" aria-haspopup="listbox" aria-expanded={tagMenuOpen} onClick={() => setTagMenuOpen((open) => !open)}><span className="status-picker-spacer" /><span>{values.tagIds.length ? `${values.tagIds.length} tag${values.tagIds.length > 1 ? 's' : ''} sélectionné${values.tagIds.length > 1 ? 's' : ''}` : 'Ajouter des tags'}</span><ChevronDown aria-hidden="true" size={18} /></button>{tagMenuOpen && <div className="status-picker-options tag-picker-options" role="listbox" aria-label="Tags"><input type="search" autoFocus placeholder="Rechercher un tag" value={tagQuery} onChange={(event) => setTagQuery(event.target.value)} />{visibleTags.map((tag) => <button key={tag.id} type="button" role="option" aria-selected={values.tagIds.includes(tag.id)} onClick={() => toggleTag(tag.id)}>{tag.name}</button>)}</div>}</div>
+            {values.tagIds.length > 0 && <div className="selected-tag-list" aria-label="Tags sélectionnés">{values.tagIds.map((tagId) => { const tag = tags.find((item) => item.id === tagId); return tag ? <span key={tag.id} style={getTagColorStyle(tag.color)}>{tag.name}<button type="button" aria-label={`Retirer ${tag.name}`} onClick={() => toggleTag(tag.id)}><X aria-hidden="true" size={13} /></button></span> : null })}</div>}
+            {tags.length === 0 && <small className="form-hint">Aucun tag disponible.</small>}
+          </label>
+          {fieldEnabled('condition') && <label className="form-field form-field-wide condition-level-field">
+            <span>État</span>
+            <div className="condition-level-control">
+              <div className="condition-level-control__options" role="group" aria-label="État">
+                {CONDITION_LEVELS.map((level) => <button key={level.value} type="button" className={level.value === values.condition ? 'is-selected' : ''} style={{ '--condition-option-color': level.color } as CSSProperties} aria-pressed={level.value === values.condition} onClick={() => setValue('condition', level.value)}><Building2 aria-hidden="true" size={18} />{level.label}</button>)}
+              </div>
+            </div>
+            {errors.condition && <small className="field-error">{errors.condition}</small>}
+          </label>}
           {fieldEnabled('danger_level') && <label className="form-field form-field-wide danger-level-field">
             <span>Niveau de danger</span>
             <div className="danger-level-control" style={{ '--danger-level-color': DANGER_LEVELS[dangerLevelIndex(values.danger_level)].color } as CSSProperties}>
-              <input
-                name="danger_level"
-                type="range"
-                min="0"
-                max="3"
-                step="1"
-                value={dangerLevelIndex(values.danger_level)}
-                aria-valuetext={values.danger_level || 'Non renseigné'}
-                onChange={(event) => setValue('danger_level', DANGER_LEVELS[Number(event.target.value)].value)}
-              />
-              <div className="danger-level-control__labels" aria-hidden="true">
-                {DANGER_LEVELS.map((level) => <span key={level.value} style={{ color: level.color }}>{level.label}</span>)}
+              <div className="danger-level-control__options" role="group" aria-label="Niveau de danger">
+                {DANGER_LEVELS.map((level) => <button key={level.value} type="button" className={level.value === (values.danger_level || 'Normal') ? 'is-selected' : ''} style={{ '--danger-option-color': level.color } as CSSProperties} aria-pressed={level.value === (values.danger_level || 'Normal')} onClick={() => setValue('danger_level', level.value)}><Shield aria-hidden="true" size={18} />{level.label}</button>)}
               </div>
-              <output>{values.danger_level || 'Non renseigné'}</output>
             </div>
             {errors.danger_level && <small className="field-error">{errors.danger_level}</small>}
           </label>}
         </div>
       </section>
 
-      <section className="form-section form-section--access">
-        <div className="form-section-heading">
-          <div>
-            <p className="form-section-eyebrow">Le lieu</p>
-            <h3>Accès</h3>
-          </div>
-        </div>
-        <div className="form-grid">
-          {PRACTICAL_FIELDS.filter(([field]) => field === 'access' && fieldEnabled(field)).map(([field, label, maxLength]) => (
-            <label className="form-field" key={field}>
-              <span>{label}</span>
-              <input value={values[field]} maxLength={maxLength} onChange={(event) => setValue(field, event.target.value)} aria-invalid={Boolean(errors[field])} />
-              {errors[field] && <small className="field-error">{errors[field]}</small>}
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <section className="form-section form-section--chronology">
-        <div className="form-section-heading">
-          <div>
-            <p className="form-section-eyebrow">Le lieu</p>
-            <h3>Chronologie</h3>
-          </div>
-        </div>
-        <div className="form-grid">
-          {CHRONOLOGY_FIELDS.filter(([field]) => fieldEnabled(field)).map(([field, label, maxLength]) => (
-            <label className="form-field" key={field}>
-              <span>{label}</span>
-              <input
-                value={values[field]}
-                maxLength={maxLength}
-                onChange={(event) => setValue(field, event.target.value)}
-                aria-invalid={Boolean(errors[field])}
-              />
-              {errors[field] && (
-                <small className="field-error">{errors[field]}</small>
-              )}
-            </label>
-          ))}
-        </div>
-      </section>
       </div>
       </div>
 

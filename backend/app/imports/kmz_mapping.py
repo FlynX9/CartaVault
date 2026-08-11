@@ -10,10 +10,7 @@ PLACE_FIELD_ALIASES = {
     "name": {"name", "nom", "title", "titre"},
     "description": {"description", "desc"},
     "region": {"region", "region"},
-    "construction_date": {"construction_date", "construction", "date_construction"},
-    "abandonment_date": {"abandonment_date", "abandonment", "date_abandon"},
     "condition": {"condition", "etat"},
-    "access": {"access", "acces"},
     "danger_level": {"danger", "danger_level", "niveau_danger"},
 }
 

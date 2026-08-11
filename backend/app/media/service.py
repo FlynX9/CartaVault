@@ -24,8 +24,8 @@ from app.places.models import Place
 class MediaAccess:
     photo: Photo
     place: Place | None
-    poi_map: PoiMap
-    country: Country
+    poi_map: PoiMap | None
+    country: Country | None
     uploader: User | None
     role: str
 
@@ -40,8 +40,8 @@ def accessible_media_statement(user_id: UUID) -> Select:
     return (
         select(Photo, Place, PoiMap, Country, User, MapMembership.role)
         .outerjoin(Place, Photo.place_id == Place.id)
-        .join(PoiMap, Photo.map_id == PoiMap.id)
-        .join(Country, PoiMap.country_id == Country.id)
+        .outerjoin(PoiMap, Photo.map_id == PoiMap.id)
+        .outerjoin(Country, PoiMap.country_id == Country.id)
         .outerjoin(User, Photo.uploaded_by_user_id == User.id)
         .outerjoin(
             MapMembership,
@@ -53,6 +53,7 @@ def accessible_media_statement(user_id: UUID) -> Select:
         .where(
             or_(Place.id.is_(None), Place.deleted_at.is_(None)),
             or_(
+                and_(Photo.map_id.is_(None), Photo.uploaded_by_user_id == user_id),
                 PoiMap.owner_id == user_id,
                 MapMembership.user_id == user_id,
             ),
@@ -76,7 +77,9 @@ def get_media_access(
             detail="Media not found",
         )
     photo, place, poi_map, country, uploader, membership_role = row
-    role = "owner" if poi_map.owner_id == current_user.id else membership_role
+    role = "owner" if poi_map is not None and poi_map.owner_id == current_user.id else membership_role
+    if poi_map is None and photo.uploaded_by_user_id == current_user.id:
+        role = "owner"
     access = MediaAccess(photo, place, poi_map, country, uploader, role)
     if require_editor and not access.can_edit:
         raise HTTPException(

@@ -28,7 +28,6 @@ class PlaceFilters:
     created_to: date | None
     updated_from: date | None
     updated_to: date | None
-    access_values: tuple[str, ...]
     danger_levels: tuple[str, ...]
     condition_values: tuple[str, ...]
     has_valid_coordinates: bool | None
@@ -51,7 +50,6 @@ def get_place_filters(
     created_to: date | None = Query(default=None),
     updated_from: date | None = Query(default=None),
     updated_to: date | None = Query(default=None),
-    access_values: list[str] = Query(default=[], max_length=50),
     danger_levels: list[str] = Query(default=[], max_length=50),
     condition_values: list[str] = Query(default=[], max_length=50),
     has_valid_coordinates: bool | None = Query(default=None),
@@ -78,7 +76,7 @@ def get_place_filters(
         query=q.strip() if q else None,
         category_ids=tuple(dict.fromkeys(category_ids)), tag_ids=tuple(dict.fromkeys(tag_ids)), status_ids=tuple(dict.fromkeys(status_ids)),
         regions=normalise(regions), has_photos=has_photos, created_from=created_from, created_to=created_to,
-        updated_from=updated_from, updated_to=updated_to, access_values=normalise(access_values),
+        updated_from=updated_from, updated_to=updated_to,
         danger_levels=normalise(danger_levels), condition_values=normalise(condition_values),
         has_valid_coordinates=has_valid_coordinates, in_trip=in_trip,
         is_favorite=is_favorite, functional_state=resolved_functional_state, rating_min=rating_min,
@@ -105,7 +103,6 @@ def apply_place_filters(statement: Select[tuple[Place]], filters: PlaceFilters) 
     if filters.created_to: statement = statement.where(Place.created_at < datetime.combine(filters.created_to, time.max))
     if filters.updated_from: statement = statement.where(Place.updated_at >= datetime.combine(filters.updated_from, time.min))
     if filters.updated_to: statement = statement.where(Place.updated_at < datetime.combine(filters.updated_to, time.max))
-    if filters.access_values: statement = statement.where(Place.access.in_(filters.access_values))
     if filters.danger_levels: statement = statement.where(Place.danger_level.in_(filters.danger_levels))
     if filters.condition_values: statement = statement.where(Place.condition.in_(filters.condition_values))
     if filters.has_valid_coordinates is not None: statement = statement.where(Place.location.is_not(None) if filters.has_valid_coordinates else Place.location.is_(None))
