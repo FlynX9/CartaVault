@@ -1,4 +1,6 @@
+from app.categories.models import Category
 from app.map_profiles.catalog import EXPECTED_PROFILE_IDS, PROFILE_CATALOG, public_profiles
+from app.statuses.models import PlaceStatus
 
 
 def test_profile_catalog_is_complete_ordered_and_localized() -> None:
@@ -14,3 +16,40 @@ def test_profile_catalog_is_complete_ordered_and_localized() -> None:
     assert french[0].statuses[0].color == "#3B82F6"
     assert french[0].categories[0].icon_id == "material-symbols:location-on-outline"
     assert french[-1].categories == french[-1].tags == french[-1].statuses == []
+
+
+def test_import_profile_categories_skips_existing_names(integration_client, poi_map, database_session) -> None:
+    existing_name = public_profiles("fr")[0].categories[0].name
+    database_session.add(Category(map_id=poi_map.id, name=f"  {existing_name.upper()}  ", icon="mdi:church"))
+    database_session.commit()
+
+    response = integration_client.post(
+        "/map-profiles/general/import",
+        json={"map_id": str(poi_map.id), "resource_type": "categories"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"created": 6, "skipped": 1}
+    assert database_session.query(Category).filter_by(map_id=poi_map.id).count() == 7
+
+
+def test_import_profile_statuses_preserves_current_default_and_is_idempotent(
+    integration_client, poi_map, database_session,
+) -> None:
+    original_default_id = database_session.query(PlaceStatus).filter_by(map_id=poi_map.id, is_default=True).one().id
+
+    first = integration_client.post(
+        "/map-profiles/urbex/import",
+        json={"map_id": str(poi_map.id), "resource_type": "statuses"},
+    )
+    second = integration_client.post(
+        "/map-profiles/urbex/import",
+        json={"map_id": str(poi_map.id), "resource_type": "statuses"},
+    )
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["created"] > 0
+    assert second.json() == {"created": 0, "skipped": 9}
+    database_session.expire_all()
+    defaults = database_session.query(PlaceStatus).filter_by(map_id=poi_map.id, is_default=True).all()
+    assert [item.id for item in defaults] == [original_default_id]

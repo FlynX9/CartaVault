@@ -18,7 +18,7 @@ import type { PlaceStatusSummary } from '../types/status'
 import type { GeocodingResult } from '../geocoding/types'
 import type { Trip, TripNightTarget } from '../types/trip'
 import { PanelResizeHandle } from '../components/layout/PanelResizeHandle'
-import { DESKTOP_PANEL_LAYOUT_MODE_EVENT, FloatingPanelWindow, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from '../components/layout/FloatingPanelWindow'
+import { DESKTOP_PANEL_LAYOUT_MODE_EVENT, FloatingPanelWindow, panelLayoutModeStorageKey, readPanelLayoutMode, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from '../components/layout/FloatingPanelWindow'
 import { useTheme } from '../theme/useTheme'
 import { useI18n } from '../i18n/useI18n'
 import type { MeasurementPoint } from '../components/map/measurement'
@@ -38,11 +38,11 @@ import { distanceBetweenPoints } from '../components/map/measurement'
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
 const PLACES_WINDOW_KEY = 'cartavault:desktop-places-window'
+const TRIPS_PLACES_WINDOW_KEY = 'cartavault:desktop-trips-places-window'
 const TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window'
 const CUSTOM_TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window-custom'
 const PLACE_DETAIL_WINDOW_KEY = 'cartavault:desktop-place-detail-window-v2'
 const PLACE_EDITOR_WINDOW_KEY = 'cartavault:desktop-place-editor-window'
-const PANEL_LAYOUT_MODE_KEY = 'cartavault:desktop-panel-layout-mode'
 const TRIP_PANEL_MIN_WIDTH = 640
 const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
@@ -248,9 +248,14 @@ export function MapPage({
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
   const [floatingPanelResetVersion, setFloatingPanelResetVersion] = useState(0)
+  const [workspacePanelResetVersion, setWorkspacePanelResetVersion] = useState(0)
+  const [tripsPanelResetVersion, setTripsPanelResetVersion] = useState(0)
+  const workspaceLayoutScope = workspacePanelId ?? 'map'
+  const panelLayoutScope = tripPlanningActive ? 'trips' : workspaceLayoutScope
+  const initialPanelLayoutRef = useRef({ scope: panelLayoutScope, mode: readPanelLayoutMode(panelLayoutScope, true) })
   const [activeFloatingPanel, setActiveFloatingPanel] = useState<'workspace' | 'trips' | 'detail' | 'editor'>(() => tripPlanningActive ? 'trips' : 'workspace')
-  const [defaultLayoutActive, setDefaultLayoutActive] = useState(() => window.localStorage.getItem(PANEL_LAYOUT_MODE_KEY) === 'default')
-  const defaultLayoutActiveRef = useRef(defaultLayoutActive)
+  const [workspaceLayoutLocked, setWorkspaceLayoutLocked] = useState(() => initialPanelLayoutRef.current.mode === 'default')
+  const [tripsLayoutLocked, setTripsLayoutLocked] = useState(() => (initialPanelLayoutRef.current.scope === 'trips' ? initialPanelLayoutRef.current.mode : readPanelLayoutMode('trips')) === 'default')
   const [measurementActive, setMeasurementActive] = useState(false)
   const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([])
   const [internalToolMode, setInternalToolMode] = useState<InternalMapToolMode>('navigation')
@@ -292,8 +297,18 @@ export function MapPage({
   const [detailWindowInitialGeometry, setDetailWindowInitialGeometry] = useState(initialDetailGeometryRef.current)
   const [editorWindowInitialGeometry, setEditorWindowInitialGeometry] = useState(initialEditorGeometryRef.current)
   const workspaceRef = useRef<HTMLElement>(null)
-  const workspaceWindowKey = workspacePanelId === 'places' ? PLACES_WINDOW_KEY : `cartavault:desktop-workspace-window:${workspacePanelId}`
+  const workspaceWindowKey = workspacePanelId === 'places'
+    ? tripPlanningActive ? TRIPS_PLACES_WINDOW_KEY : PLACES_WINDOW_KEY
+    : `cartavault:desktop-workspace-window:${workspacePanelId}`
   const customWorkspaceWindowKey = `${workspaceWindowKey}-custom`
+
+  useEffect(() => {
+    const mode = readPanelLayoutMode(panelLayoutScope)
+    const locked = mode === 'default'
+    setWorkspaceLayoutLocked(locked)
+    if (panelLayoutScope === 'trips') setTripsLayoutLocked(locked)
+    window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode, scope: panelLayoutScope } }))
+  }, [panelLayoutScope])
 
   useEffect(() => {
     const reset = () => {
@@ -303,39 +318,59 @@ export function MapPage({
       const layout = defaultFloatingPanelLayout(width, height)
       const detailLayout = defaultPlaceDetailGeometry(width, height)
       const editorLayout = defaultPlaceEditorGeometry(width, height)
-      if (!defaultLayoutActiveRef.current) {
-        const currentPlaces = readFloatingPanelGeometry(workspaceWindowKey)
+      const enteringDefault = readPanelLayoutMode(panelLayoutScope) !== 'default'
+      if (enteringDefault) {
         const currentTrips = readFloatingPanelGeometry(TRIPS_WINDOW_KEY)
-        const currentDetail = readFloatingPanelGeometry(PLACE_DETAIL_WINDOW_KEY)
-        const currentEditor = readFloatingPanelGeometry(PLACE_EDITOR_WINDOW_KEY)
-        if (currentPlaces) window.localStorage.setItem(customWorkspaceWindowKey, JSON.stringify(currentPlaces))
-        if (currentTrips) window.localStorage.setItem(CUSTOM_TRIPS_WINDOW_KEY, JSON.stringify(currentTrips))
-        if (currentDetail) window.localStorage.setItem(`${PLACE_DETAIL_WINDOW_KEY}-custom`, JSON.stringify(currentDetail))
-        if (currentEditor) window.localStorage.setItem(`${PLACE_EDITOR_WINDOW_KEY}-custom`, JSON.stringify(currentEditor))
-        setPlacesWindowInitialGeometry(layout.places)
-        setTripsWindowInitialGeometry(layout.trips)
-        setDetailWindowInitialGeometry(detailLayout)
-        setEditorWindowInitialGeometry(editorLayout)
-        defaultLayoutActiveRef.current = true
-        setDefaultLayoutActive(true)
-        window.localStorage.setItem(PANEL_LAYOUT_MODE_KEY, 'default')
-        window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode: 'default' } }))
+        if (panelLayoutScope === 'trips') {
+          const currentPlaces = readFloatingPanelGeometry(workspaceWindowKey)
+          if (currentTrips) window.localStorage.setItem(CUSTOM_TRIPS_WINDOW_KEY, JSON.stringify(currentTrips))
+          if (currentPlaces) window.localStorage.setItem(customWorkspaceWindowKey, JSON.stringify(currentPlaces))
+          setPlacesWindowInitialGeometry(layout.places)
+          setTripsWindowInitialGeometry(layout.trips)
+          setWorkspaceLayoutLocked(true)
+          setTripsLayoutLocked(true)
+          setWorkspacePanelResetVersion((version) => version + 1)
+          setTripsPanelResetVersion((version) => version + 1)
+        } else {
+          const currentPlaces = readFloatingPanelGeometry(workspaceWindowKey)
+          const currentDetail = readFloatingPanelGeometry(PLACE_DETAIL_WINDOW_KEY)
+          const currentEditor = readFloatingPanelGeometry(PLACE_EDITOR_WINDOW_KEY)
+          if (currentPlaces) window.localStorage.setItem(customWorkspaceWindowKey, JSON.stringify(currentPlaces))
+          if (currentDetail) window.localStorage.setItem(`${PLACE_DETAIL_WINDOW_KEY}-custom`, JSON.stringify(currentDetail))
+          if (currentEditor) window.localStorage.setItem(`${PLACE_EDITOR_WINDOW_KEY}-custom`, JSON.stringify(currentEditor))
+          setPlacesWindowInitialGeometry(layout.places)
+          setDetailWindowInitialGeometry(detailLayout)
+          setEditorWindowInitialGeometry(editorLayout)
+          setWorkspaceLayoutLocked(true)
+          setWorkspacePanelResetVersion((version) => version + 1)
+          setFloatingPanelResetVersion((version) => version + 1)
+        }
+        window.localStorage.setItem(panelLayoutModeStorageKey(panelLayoutScope), 'default')
+        window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode: 'default', scope: panelLayoutScope } }))
       } else {
-        setPlacesWindowInitialGeometry(readFloatingPanelGeometry(customWorkspaceWindowKey) ?? readFloatingPanelGeometry(workspaceWindowKey) ?? layout.places)
-        setTripsWindowInitialGeometry(readFloatingPanelGeometry(CUSTOM_TRIPS_WINDOW_KEY) ?? layout.trips)
-        setDetailWindowInitialGeometry(readFloatingPanelGeometry(`${PLACE_DETAIL_WINDOW_KEY}-custom`) ?? readFloatingPanelGeometry(PLACE_DETAIL_WINDOW_KEY) ?? detailLayout)
-        setEditorWindowInitialGeometry(readFloatingPanelGeometry(`${PLACE_EDITOR_WINDOW_KEY}-custom`) ?? readFloatingPanelGeometry(PLACE_EDITOR_WINDOW_KEY) ?? editorLayout)
-        defaultLayoutActiveRef.current = false
-        setDefaultLayoutActive(false)
-        window.localStorage.setItem(PANEL_LAYOUT_MODE_KEY, 'custom')
-        window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode: 'custom' } }))
+        if (panelLayoutScope === 'trips') {
+          setPlacesWindowInitialGeometry(readFloatingPanelGeometry(customWorkspaceWindowKey) ?? readFloatingPanelGeometry(workspaceWindowKey) ?? layout.places)
+          setTripsWindowInitialGeometry(readFloatingPanelGeometry(CUSTOM_TRIPS_WINDOW_KEY) ?? readFloatingPanelGeometry(TRIPS_WINDOW_KEY) ?? layout.trips)
+          setWorkspaceLayoutLocked(false)
+          setTripsLayoutLocked(false)
+          setWorkspacePanelResetVersion((version) => version + 1)
+          setTripsPanelResetVersion((version) => version + 1)
+        } else {
+          setPlacesWindowInitialGeometry(readFloatingPanelGeometry(customWorkspaceWindowKey) ?? readFloatingPanelGeometry(workspaceWindowKey) ?? layout.places)
+          setDetailWindowInitialGeometry(readFloatingPanelGeometry(`${PLACE_DETAIL_WINDOW_KEY}-custom`) ?? readFloatingPanelGeometry(PLACE_DETAIL_WINDOW_KEY) ?? detailLayout)
+          setEditorWindowInitialGeometry(readFloatingPanelGeometry(`${PLACE_EDITOR_WINDOW_KEY}-custom`) ?? readFloatingPanelGeometry(PLACE_EDITOR_WINDOW_KEY) ?? editorLayout)
+          setWorkspaceLayoutLocked(false)
+          setWorkspacePanelResetVersion((version) => version + 1)
+          setFloatingPanelResetVersion((version) => version + 1)
+        }
+        window.localStorage.setItem(panelLayoutModeStorageKey(panelLayoutScope), 'custom')
+        window.dispatchEvent(new CustomEvent(DESKTOP_PANEL_LAYOUT_MODE_EVENT, { detail: { mode: 'custom', scope: panelLayoutScope } }))
       }
-      setActiveFloatingPanel('trips')
-      setFloatingPanelResetVersion((version) => version + 1)
+      setActiveFloatingPanel(panelLayoutScope === 'trips' ? 'trips' : 'workspace')
     }
     window.addEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, reset)
     return () => window.removeEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, reset)
-  }, [customWorkspaceWindowKey, workspaceWindowKey])
+  }, [customWorkspaceWindowKey, panelLayoutScope, workspaceWindowKey])
 
   useEffect(() => {
     let current = true
@@ -629,7 +664,7 @@ export function MapPage({
       className={`map-workspace${placeListOpen || tripPlanningActive ? ' desktop-floating-panels' : ''}${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}${tripPlannerCollapsed ? ' trip-planner-collapsed' : ''}${mobilePlaceDetailOpen ? ' mobile-place-detail-open' : ''}`}
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
-      {placeListOpen ? <FloatingPanelWindow key={workspaceWindowKey} kind="workspace" label="Panneau de navigation" storageKey={workspaceWindowKey} initialGeometry={placesWindowInitialGeometry} minWidth={320} maxWidth={workspacePanelCanFillWidth || workspacePanelId === 'places' ? Number.POSITIVE_INFINITY : 720} collapsed={workspacePanelCollapsed} locked={defaultLayoutActive} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'workspace'} onActivate={() => setActiveFloatingPanel('workspace')} onGeometryCommit={(next) => { setLeftPanelWidth(next.width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, next.width) }}>
+      {placeListOpen ? <FloatingPanelWindow key={workspaceWindowKey} kind="workspace" label="Panneau de navigation" storageKey={workspaceWindowKey} initialGeometry={placesWindowInitialGeometry} minWidth={320} maxWidth={workspacePanelCanFillWidth || workspacePanelId === 'places' ? Number.POSITIVE_INFINITY : 720} collapsed={workspacePanelCollapsed} locked={workspaceLayoutLocked} resetVersion={workspacePanelResetVersion} active={activeFloatingPanel === 'workspace'} onActivate={() => setActiveFloatingPanel('workspace')} onGeometryCommit={(next) => { setLeftPanelWidth(next.width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, next.width) }}>
         <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
       </FloatingPanelWindow> : <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>}
       <div ref={mapLayoutRef} className="map-layout" aria-label="Carte des points d'intérêt">
@@ -680,7 +715,7 @@ export function MapPage({
           onAnnotationDrawingComplete={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
         />
         {popupContent && !mobilePlaceDetailOpen && (
-          defaultLayoutActive ? <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
+          workspaceLayoutLocked ? <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
             {popupContent}
           </aside> : <FloatingPanelWindow key={PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={PLACE_DETAIL_WINDOW_KEY} initialGeometry={detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector=".place-map-popup" fitContentMaxHeight={720} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} onActivate={() => setActiveFloatingPanel('detail')}>
             <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
@@ -788,7 +823,7 @@ export function MapPage({
         )}
 
       </div>
-      {tripPlanningActive ? <FloatingPanelWindow kind="trips" label="Panneau Sortie" storageKey={TRIPS_WINDOW_KEY} initialGeometry={tripsWindowInitialGeometry} minWidth={420} collapsed={tripPlannerCollapsed} locked={defaultLayoutActive} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'trips'} hidden={!sidebarOpen} onActivate={() => setActiveFloatingPanel('trips')} onGeometryCommit={(next) => { setRightPanelWidth(next.width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, next.width) }}>{sidebar}</FloatingPanelWindow> : sidebarOpen ? defaultLayoutActive ? sidebar : <FloatingPanelWindow kind="editor" label="Éditeur du lieu" storageKey={PLACE_EDITOR_WINDOW_KEY} initialGeometry={editorWindowInitialGeometry} minWidth={380} minHeight={360} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'editor'} onActivate={() => setActiveFloatingPanel('editor')}>{sidebar}</FloatingPanelWindow> : sidebar}
+      {tripPlanningActive ? <FloatingPanelWindow kind="trips" label="Panneau Sortie" storageKey={TRIPS_WINDOW_KEY} initialGeometry={tripsWindowInitialGeometry} minWidth={420} collapsed={tripPlannerCollapsed} locked={tripsLayoutLocked} resetVersion={tripsPanelResetVersion} active={activeFloatingPanel === 'trips'} hidden={!sidebarOpen} onActivate={() => setActiveFloatingPanel('trips')} onGeometryCommit={(next) => { setRightPanelWidth(next.width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, next.width) }}>{sidebar}</FloatingPanelWindow> : sidebarOpen ? workspaceLayoutLocked ? sidebar : <FloatingPanelWindow kind="editor" label="Éditeur du lieu" storageKey={PLACE_EDITOR_WINDOW_KEY} initialGeometry={editorWindowInitialGeometry} minWidth={380} minHeight={360} resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'editor'} onActivate={() => setActiveFloatingPanel('editor')}>{sidebar}</FloatingPanelWindow> : sidebar}
       {sidebarOpen && sidebarResizable && !tripPlanningActive && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
       {popupContent && mobilePlaceDetailOpen && typeof document !== 'undefined' && createPortal(
         <div className="mobile-place-detail-layer">

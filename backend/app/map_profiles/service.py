@@ -1,13 +1,77 @@
+import re
+import unicodedata
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.categories.models import Category
 from app.map_profiles.catalog import PROFILE_BY_ID
-from app.map_profiles.schemas import StarterProfileOptions
+from app.map_profiles.schemas import StarterProfileOptions, StarterProfileResourceType
 from app.statuses.models import PlaceStatus
 from app.statuses.service import create_default_statuses
 from app.tags.models import Tag
+
+
+def _normalized_name(value: str) -> str:
+    return unicodedata.normalize("NFKC", value).strip().casefold()
+
+
+def _status_slug(value: str) -> str:
+    ascii_name = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", ascii_name.lower()).strip("-")[:100] or "statut"
+
+
+def import_profile_resources(
+    database_session: Session,
+    map_id: UUID,
+    profile_id: str,
+    resource_type: StarterProfileResourceType,
+    locale: str,
+) -> tuple[int, int]:
+    """Append one profile resource type while preserving every existing item."""
+
+    profile = PROFILE_BY_ID[profile_id]
+    language = "en" if locale == "en" else "fr"
+    definitions = profile[resource_type]
+    model = {"categories": Category, "tags": Tag, "statuses": PlaceStatus}[resource_type]
+    existing = list(database_session.scalars(select(model).where(model.map_id == map_id)))
+    names = {_normalized_name(item.name) for item in existing}
+    created = 0
+
+    if resource_type == "statuses":
+        used_slugs = {item.slug for item in existing}
+        next_order = int(database_session.scalar(select(func.max(PlaceStatus.sort_order)).where(PlaceStatus.map_id == map_id)) or 0)
+
+    for definition in definitions:
+        name = definition["name"][language]
+        aliases = {_normalized_name(value) for value in definition["name"].values()}
+        if aliases & names:
+            continue
+        if resource_type == "categories":
+            item = Category(map_id=map_id, name=name, icon=definition["icon_id"])
+        elif resource_type == "tags":
+            item = Tag(map_id=map_id, name=name, color=definition["color"])
+        else:
+            base_slug = _status_slug(name)
+            slug = base_slug
+            suffix = 2
+            while slug in used_slugs:
+                suffix_text = f"-{suffix}"
+                slug = f"{base_slug[:100 - len(suffix_text)].rstrip('-')}{suffix_text}"
+                suffix += 1
+            used_slugs.add(slug)
+            next_order += 10
+            item = PlaceStatus(
+                map_id=map_id, name=name, slug=slug, color=definition["color"],
+                functional_state=definition["functional_state"], sort_order=next_order,
+                is_default=False, is_active=True,
+            )
+        database_session.add(item)
+        names.update(aliases)
+        created += 1
+
+    return created, len(definitions) - created
 
 
 def profile_resource_counts(profile_id: str, options: StarterProfileOptions) -> tuple[int, int, int]:

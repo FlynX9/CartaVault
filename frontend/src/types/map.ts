@@ -92,6 +92,9 @@ export interface StarterProfile {
   statuses: StarterProfileStatus[]
 }
 
+export type StarterProfileResourceType = 'categories' | 'tags' | 'statuses'
+export interface StarterProfileImportResult { created: number; skipped: number }
+
 export type MapRole = 'owner' | 'editor' | 'viewer'
 
 export interface MapMember {

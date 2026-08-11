@@ -4,7 +4,7 @@ import { Eye, EyeOff, KeyRound, RefreshCw, Trash2 } from 'lucide-react'
 import { deleteStadiaPlacesCredential, storeStadiaPlacesCredential, verifyStadiaPlacesCredential, type StadiaPlacesCredentialStatus } from '../../api/stadiaPlaces'
 import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
-import { formatCredentialDate } from './credentialDate'
+import { CredentialVerificationBadge, useCredentialVerificationState } from './CredentialVerificationBadge'
 
 export function StadiaPlacesCredentialPanel({ status, storageAvailable, onChanged }: { status: StadiaPlacesCredentialStatus; storageAvailable: boolean; onChanged: (status: StadiaPlacesCredentialStatus) => Promise<void> | void }) {
   const { confirm, confirmationDialog } = useConfirmDialog()
@@ -16,6 +16,7 @@ export function StadiaPlacesCredentialPanel({ status, storageAvailable, onChange
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const verification = useCredentialVerificationState('stadia_places', status.last4, status.last_error_code)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError(null); setMessage(null)
@@ -25,8 +26,8 @@ export function StadiaPlacesCredentialPanel({ status, storageAvailable, onChange
   }
   const verify = async () => {
     setBusy(true); setError(null); setMessage(null)
-    try { const next = await verifyStadiaPlacesCredential(); await onChanged(next); setMessage('La clé Stadia Places est valide.') }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'La vérification a échoué.') }
+    try { const next = await verifyStadiaPlacesCredential(); await onChanged(next); verification.clearVerificationFailure(); setMessage('La clé Stadia Places est valide.') }
+    catch (reason) { verification.markVerificationFailed(); setError(reason instanceof Error ? reason.message : 'La vérification a échoué.') }
     finally { setBusy(false) }
   }
   const remove = async (event: FormEvent) => {
@@ -42,7 +43,7 @@ export function StadiaPlacesCredentialPanel({ status, storageAvailable, onChange
   }
 
   return <section className="account-credential" aria-labelledby="stadia-places-credential-title">
-    <div className="account-credential__heading"><span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span><div><h3 id="stadia-places-credential-title">Clé Stadia Places <span className="account-credential__optional">(facultative)</span><FieldHelp>Sans clé, CartaVault utilise l’accès public. Avec une clé vérifiée, les recherches consomment le forfait Stadia associé.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Accès public sans clé personnelle'}</p></div>{status.configured && status.verified && <span className="account-credential__verification"><span className="account-credential__status">Vérifiée</span>{status.verified_at && <time dateTime={status.verified_at}>{formatCredentialDate(status.verified_at)}</time>}</span>}</div>
+    <div className="account-credential__heading"><span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span><div><h3 id="stadia-places-credential-title">Clé Stadia Places <span className="account-credential__optional">(facultative)</span><FieldHelp>Sans clé, CartaVault utilise l’accès public. Avec une clé vérifiée, les recherches consomment le forfait Stadia associé.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Accès public sans clé personnelle'}</p></div><CredentialVerificationBadge status={status} failedAt={verification.failedAt} /></div>
     {!storageAvailable && <p className="account-credential__warning">Le stockage sécurisé des clés utilisateur n’est pas configuré.</p>}
     {status.last_error_code && <p className="account-credential__warning">La clé Stadia doit autoriser l’API de géocodage.</p>}
     {(editing || !status.configured) && storageAvailable && <form className="account-credential__form" onSubmit={submit}><label>Nouvelle clé<span className="account-secret-input"><input aria-label="Clé Stadia Places" type={revealed ? 'text' : 'password'} value={apiKey} required maxLength={512} autoComplete="off" onChange={(event) => setApiKey(event.target.value)} /><button type="button" aria-label={revealed ? 'Masquer la clé' : 'Afficher la clé'} onClick={() => setRevealed((value) => !value)}>{revealed ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label><div className="account-credential__actions"><button className="account-button account-button--primary" type="submit" disabled={busy}>Enregistrer cette clé</button>{status.configured && <button className="account-button account-button--secondary" type="button" onClick={() => setEditing(false)}>Annuler</button>}</div></form>}

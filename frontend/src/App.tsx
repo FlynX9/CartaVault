@@ -24,7 +24,7 @@ import { areMapPlacesEqual } from "./components/map/mapPlaceEquality";
 import { getStatuses } from "./api/statuses";
 import { addTripArrival, addTripDeparture, addTripNight, addTripStop, deleteTripArrival, deleteTripDeparture, getTrip, restoreTripState, setTripAnchorPlace, updateTripArrival, updateTripDeparture, updateTripNight } from "./api/trips";
 import { TopBar } from "./components/layout/TopBar";
-import { RESET_DESKTOP_PANEL_LAYOUT_EVENT } from "./components/layout/FloatingPanelWindow";
+import { readPanelLayoutMode, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from "./components/layout/FloatingPanelWindow";
 import {
   MainNavigation,
   type WorkspacePanel,
@@ -267,9 +267,10 @@ function WorkspaceApp() {
   const [membersMap, setMembersMap] = useState<PoiMap | null>(null);
   const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
   const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false);
+  const activePanelLayoutScope = tripPlannerOpen ? "trips" : (workspacePanel ?? "map");
   useEffect(() => {
     const toggleDefaultPanelLayout = () => {
-      const enteringDefault = window.localStorage.getItem("cartavault:desktop-panel-layout-mode") !== "default";
+      const enteringDefault = readPanelLayoutMode(activePanelLayoutScope) !== "default";
       if (enteringDefault) {
         window.localStorage.setItem("cartavault:desktop-custom-collapsed-panels", JSON.stringify({ places: placesPanelCollapsed, workspace: collapsedWorkspacePanel, trip: tripPlannerCollapsed }));
         setPlacesPanelCollapsed(false);
@@ -286,7 +287,7 @@ function WorkspaceApp() {
     };
     window.addEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, toggleDefaultPanelLayout);
     return () => window.removeEventListener(RESET_DESKTOP_PANEL_LAYOUT_EVENT, toggleDefaultPanelLayout);
-  }, [collapsedWorkspacePanel, placesPanelCollapsed, tripPlannerCollapsed]);
+  }, [activePanelLayoutScope, collapsedWorkspacePanel, placesPanelCollapsed, tripPlannerCollapsed]);
   const [activeTrip, setActiveTrip] = useState<Trip | null>(null);
   const [activeTripDayId, setActiveTripDayId] = useState<string | null>(null);
   const [activeTripNightTarget, setActiveTripNightTarget] =
@@ -1562,6 +1563,7 @@ function WorkspaceApp() {
       <div className="app-body">
         <TopBar
           isMapWorkspace={isMapWorkspace}
+          panelLayoutScope={activePanelLayoutScope}
           contextLabel={dashboardOpen ? t("dashboard.title") : undefined}
           markerCount={places.length}
           onMapAccessChanged={() => setRefreshVersion((value) => value + 1)}

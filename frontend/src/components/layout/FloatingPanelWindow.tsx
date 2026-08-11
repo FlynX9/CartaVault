@@ -2,6 +2,29 @@ import { Children, createContext, isValidElement, useEffect, useRef, useState, t
 
 export const RESET_DESKTOP_PANEL_LAYOUT_EVENT = 'cartavault:reset-desktop-panel-layout'
 export const DESKTOP_PANEL_LAYOUT_MODE_EVENT = 'cartavault:desktop-panel-layout-mode-changed'
+const LEGACY_PANEL_LAYOUT_MODE_KEY = 'cartavault:desktop-panel-layout-mode'
+const PANEL_LAYOUT_MODE_KEY_PREFIX = 'cartavault:desktop-panel-layout-mode:'
+
+export type DesktopPanelLayoutMode = 'default' | 'custom'
+
+export function panelLayoutModeStorageKey(scope: string): string {
+  return `${PANEL_LAYOUT_MODE_KEY_PREFIX}${scope}`
+}
+
+export function readPanelLayoutMode(scope: string, migrateLegacy = false): DesktopPanelLayoutMode {
+  const key = panelLayoutModeStorageKey(scope)
+  const scoped = window.localStorage.getItem(key)
+  if (scoped === 'default' || scoped === 'custom') return scoped
+  if (migrateLegacy) {
+    const legacy = window.localStorage.getItem(LEGACY_PANEL_LAYOUT_MODE_KEY)
+    if (legacy === 'default' || legacy === 'custom') {
+      window.localStorage.setItem(key, legacy)
+      window.localStorage.removeItem(LEGACY_PANEL_LAYOUT_MODE_KEY)
+      return legacy
+    }
+  }
+  return 'custom'
+}
 
 export interface FloatingPanelGeometry {
   x: number
@@ -179,6 +202,11 @@ export function FloatingPanelWindow({
     const owner = workspace()
     return owner ? clampGeometry(candidate, owner, minWidth, maxWidth, minHeight) : candidate
   }
+  const fillLockedHeight = (candidate: FloatingPanelGeometry, owner: HTMLElement) => clampGeometry({
+    ...candidate,
+    y: VIEWPORT_MARGIN,
+    height: owner.clientHeight - VIEWPORT_MARGIN * 2,
+  }, owner, minWidth, maxWidth, minHeight)
   const commit = (candidate: FloatingPanelGeometry) => {
     const next = normalize(candidate)
     updateGeometry(next)
@@ -191,7 +219,12 @@ export function FloatingPanelWindow({
     initialResetVersionRef.current = resetVersion
     heightManuallyResizedRef.current = false
     updateMaximized(false)
-    commit(initialGeometry)
+    const owner = workspace()
+    if (locked) {
+      updateGeometry(owner && !isTimelinePanel ? fillLockedHeight(initialGeometry, owner) : initialGeometry)
+    } else {
+      commit(initialGeometry)
+    }
   }, [initialGeometry, resetVersion])
 
   useEffect(() => {
@@ -201,7 +234,9 @@ export function FloatingPanelWindow({
       : initialGeometry
     heightManuallyResizedRef.current = !locked && hasSavedGeometry(effectiveStorageKey)
     updateMaximized(false)
-    updateGeometry(locked ? fallback : readGeometry(effectiveStorageKey, fallback))
+    updateGeometry(locked && owner && !isTimelinePanel
+      ? fillLockedHeight(fallback, owner)
+      : locked ? fallback : readGeometry(effectiveStorageKey, fallback))
   }, [effectiveStorageKey, initialGeometry, isTimelinePanel, locked, minHeight, minWidth])
 
   useEffect(() => {
@@ -238,6 +273,8 @@ export function FloatingPanelWindow({
     const keepVisible = () => {
       const next = locked && isTimelinePanel
         ? timelineGeometry(owner, minWidth, minHeight)
+        : locked
+        ? fillLockedHeight(geometryRef.current, owner)
         : maximizedRef.current
         ? clampGeometry({ x: VIEWPORT_MARGIN, y: VIEWPORT_MARGIN, width: owner.clientWidth - VIEWPORT_MARGIN * 2, height: owner.clientHeight - VIEWPORT_MARGIN * 2 }, owner, minWidth, maxWidth, minHeight)
         : clampGeometry(geometryRef.current, owner, minWidth, maxWidth, minHeight)

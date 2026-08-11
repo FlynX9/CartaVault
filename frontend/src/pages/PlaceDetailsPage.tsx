@@ -14,6 +14,7 @@ import { getTagColorStyle } from '../tags/tagColors'
 import { SkeletonList } from '../components/common/Skeleton'
 import { GoogleMapsIcon } from '../components/common/GoogleMapsIcon'
 import { announceWorkspaceChanged, recordReversibleAction } from '../ui/actionHistory'
+import { publishGlobalFeedback } from '../components/common/globalFeedback'
 
 interface Props { placeId?: string; embedded?: boolean; activeMapId?: string | null; onPlaceDeleted?: (placeId: string) => void }
 const isAbortError = (error: unknown) => error instanceof Error && error.name === 'AbortError'
@@ -29,7 +30,7 @@ export function PlaceDetailsPage({ placeId: providedPlaceId, embedded = false, a
   if (notFound) return <section className="details-state details-error"><h2>POI introuvable</h2><Link to={withMap('/', activeMapId)}>← Retour à la carte</Link></section>
   if (!place) return <section className="details-state details-error" role="alert"><h2>Impossible d’afficher ce POI</h2><p>{error}</p></section>
   const externalUrl = buildGoogleMapsUrl(place.latitude, place.longitude)
-  const remove = async () => { if (!placeId || !await confirm({ title: 'Supprimer ce lieu ?', message: `« ${place.name} » sera placé dans la corbeille.` })) return; try { await deletePlace(placeId); const deletedId = placeId; recordReversibleAction({ label: `suppression du POI « ${place.name} »`, undo: async () => { await restorePlace(deletedId); announceWorkspaceChanged() }, redo: async () => { await deletePlace(deletedId); announceWorkspaceChanged() } }); onPlaceDeleted?.(placeId); navigate(withMap('/', activeMapId)) } catch (caught) { setDeleteError(caught instanceof Error ? caught.message : 'Suppression impossible.') } }
+  const remove = async () => { if (!placeId || !await confirm({ title: 'Supprimer ce lieu ?', message: `« ${place.name} » sera placé dans la corbeille.` })) return; try { await deletePlace(placeId); const deletedId = placeId; recordReversibleAction({ label: `suppression du POI « ${place.name} »`, undo: async () => { await restorePlace(deletedId); announceWorkspaceChanged() }, redo: async () => { await deletePlace(deletedId); announceWorkspaceChanged() } }); publishGlobalFeedback('success', `POI « ${place.name} » déplacé dans la corbeille.`); onPlaceDeleted?.(placeId); navigate(withMap('/', activeMapId)) } catch (caught) { setDeleteError(caught instanceof Error ? caught.message : 'Suppression impossible.') } }
   return <article className={`details-page${embedded ? ' embedded' : ''}`}>
     <div className="details-toolbar">{!embedded && <Link className="back-link" to={withMap('/', activeMapId)}>← Retour à la carte</Link>}<div className="details-actions"><Link className="secondary-button" to={withMap(`/places/${place.id}/edit`, activeMapId)}>Modifier</Link><button className="danger-button" type="button" onClick={() => void remove()}>Supprimer</button></div></div>
     {deleteError && <div className="form-alert" role="alert">{deleteError}</div>}

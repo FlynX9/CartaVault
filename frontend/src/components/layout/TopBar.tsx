@@ -13,10 +13,11 @@ import { ContactModal } from '../contact/ContactModal'
 import { NotificationCenter } from '../notifications/NotificationCenter'
 import { ActionHistoryControls } from './ActionHistoryControls'
 import { clearActionHistory } from '../../ui/actionHistory'
-import { DESKTOP_PANEL_LAYOUT_MODE_EVENT, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from './FloatingPanelWindow'
+import { DESKTOP_PANEL_LAYOUT_MODE_EVENT, readPanelLayoutMode, RESET_DESKTOP_PANEL_LAYOUT_EVENT } from './FloatingPanelWindow'
 
 interface TopBarProps {
   isMapWorkspace: boolean
+  panelLayoutScope?: string
   contextLabel?: string
   markerCount: number
   onMapAccessChanged: () => void
@@ -29,7 +30,7 @@ const API_DOCUMENTATION_URL = /^https?:\/\//.test(API_BASE_URL)
   : new URL(`${API_BASE_URL}/docs`, window.location.origin).toString()
 const CARTAVAULT_VERSION = import.meta.env.VITE_CARTAVAULT_VERSION?.trim() || 'development'
 
-export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
+export function TopBar({ isMapWorkspace, panelLayoutScope = 'map', contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -40,7 +41,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
   const [contactOpen, setContactOpen] = useState(false)
   const [saasEnabled, setSaasEnabled] = useState(false)
   const [online, setOnline] = useState(() => navigator.onLine)
-  const [defaultPanelLayoutLocked, setDefaultPanelLayoutLocked] = useState(() => window.localStorage.getItem('cartavault:desktop-panel-layout-mode') === 'default')
+  const [defaultPanelLayoutLocked, setDefaultPanelLayoutLocked] = useState(() => readPanelLayoutMode(panelLayoutScope, true) === 'default')
   const trigger = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const avatar = accountAvatarUrl(user?.avatar_url ?? null)
@@ -85,10 +86,14 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
   }, [])
   useEffect(() => {
-    const updatePanelLayoutMode = (event: Event) => setDefaultPanelLayoutLocked((event as CustomEvent<{ mode: 'default' | 'custom' }>).detail.mode === 'default')
+    setDefaultPanelLayoutLocked(readPanelLayoutMode(panelLayoutScope) === 'default')
+    const updatePanelLayoutMode = (event: Event) => {
+      const detail = (event as CustomEvent<{ mode: 'default' | 'custom'; scope?: string }>).detail
+      if (!detail.scope || detail.scope === panelLayoutScope) setDefaultPanelLayoutLocked(detail.mode === 'default')
+    }
     window.addEventListener(DESKTOP_PANEL_LAYOUT_MODE_EVENT, updatePanelLayoutMode)
     return () => window.removeEventListener(DESKTOP_PANEL_LAYOUT_MODE_EVENT, updatePanelLayoutMode)
-  }, [])
+  }, [panelLayoutScope])
 
   useEffect(() => {
     if (!location.pathname.startsWith('/admin')) return

@@ -169,6 +169,7 @@ describe('MapPage', () => {
 
   it('toggles between the responsive default layout and the saved custom geometry', async () => {
     window.localStorage.setItem('cartavault:desktop-places-window', JSON.stringify({ x: 44, y: 30, width: 390, height: 540 }))
+    window.localStorage.setItem('cartavault:desktop-trips-places-window', JSON.stringify({ x: 44, y: 30, width: 390, height: 540 }))
     window.localStorage.setItem('cartavault:desktop-trips-window', JSON.stringify({ x: 470, y: 48, width: 520, height: 610 }))
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen tripPlanningActive placeListOpen statuses={[]} sidebar={<aside>Sorties</aside>} placeList={<aside>Lieux</aside>} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
@@ -179,22 +180,130 @@ describe('MapPage', () => {
 
     const placesWindow = screen.getByLabelText('Panneau de navigation')
     const tripsWindow = screen.getByLabelText('Panneau Sortie')
-    await waitFor(() => expect(placesWindow.style.left).toBe('12px'))
+    await waitFor(() => expect(tripsWindow.style.height).toBe('776px'))
+    expect(placesWindow.style.top).toBe('12px')
+    expect(placesWindow.style.height).toBe('776px')
+    expect(tripsWindow.style.top).toBe('12px')
     expect(Number.parseFloat(tripsWindow.style.left) + Number.parseFloat(tripsWindow.style.width)).toBeLessThan(1188)
-    expect(window.localStorage.getItem('cartavault:desktop-panel-layout-mode')).toBe('default')
+    expect(window.localStorage.getItem('cartavault:desktop-panel-layout-mode:trips')).toBe('default')
     expect(placesWindow).toHaveClass('is-locked')
     expect(tripsWindow).toHaveClass('is-locked')
     expect(screen.queryByRole('separator', { name: 'Redimensionner le panneau Sorties' })).not.toBeInTheDocument()
 
     fireEvent(window, new Event(RESET_DESKTOP_PANEL_LAYOUT_EVENT))
-    await waitFor(() => expect(placesWindow.style.left).toBe('44px'))
+    await waitFor(() => expect(tripsWindow.style.left).toBe('470px'))
+    expect(placesWindow.style.left).toBe('44px')
     expect(placesWindow.style.width).toBe('390px')
-    expect(tripsWindow.style.left).toBe('470px')
     expect(tripsWindow.style.height).toBe('610px')
-    expect(window.localStorage.getItem('cartavault:desktop-panel-layout-mode')).toBe('custom')
+    expect(window.localStorage.getItem('cartavault:desktop-panel-layout-mode:trips')).toBe('custom')
     expect(placesWindow).not.toHaveClass('is-locked')
     expect(tripsWindow).not.toHaveClass('is-locked')
     expect(screen.getByRole('separator', { name: 'Redimensionner le panneau Sorties' })).toBeInTheDocument()
+  })
+
+  it('keeps an independent custom geometry for every workspace screen', async () => {
+    const commonProps = {
+      places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 8 }, isLoading: false,
+      errorMessage: null, sidebarOpen: false, placeListOpen: true, statuses: [], sidebar: null,
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...commonProps} workspacePanelId="places" placeList={<aside>Lieux</aside>} /></MemoryRouter>)
+    const placesWindow = screen.getByLabelText('Panneau de navigation')
+    const placesInitialHeight = Number.parseFloat(placesWindow.style.height)
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner Panneau de navigation (s)' }), { key: 'ArrowDown' })
+    const placesSavedHeight = placesInitialHeight + 24
+    expect(placesWindow.style.height).toBe(`${placesSavedHeight}px`)
+
+    rerender(<MemoryRouter><MapPage {...commonProps} workspacePanelId="categories" placeList={<aside>Catégories</aside>} /></MemoryRouter>)
+    const categoriesWindow = screen.getByLabelText('Panneau de navigation')
+    expect(categoriesWindow.style.height).toBe(`${placesInitialHeight}px`)
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner Panneau de navigation (s)' }), { key: 'ArrowDown', shiftKey: true })
+    expect(categoriesWindow.style.height).toBe(`${placesInitialHeight + 64}px`)
+
+    rerender(<MemoryRouter><MapPage {...commonProps} workspacePanelId="places" placeList={<aside>Lieux</aside>} /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByLabelText('Panneau de navigation').style.height).toBe(`${placesSavedHeight}px`))
+    expect(JSON.parse(window.localStorage.getItem('cartavault:desktop-places-window') ?? '{}').height).toBe(placesSavedHeight)
+    expect(JSON.parse(window.localStorage.getItem('cartavault:desktop-workspace-window:categories') ?? '{}').height).toBe(placesInitialHeight + 64)
+  })
+
+  it('keeps a separate places geometry inside the trips screen', async () => {
+    window.localStorage.setItem('cartavault:desktop-places-window', JSON.stringify({ x: 24, y: 24, width: 410, height: 500 }))
+    window.localStorage.setItem('cartavault:desktop-trips-places-window', JSON.stringify({ x: 36, y: 36, width: 470, height: 620 }))
+    const commonProps = {
+      places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 8 }, isLoading: false,
+      errorMessage: null, sidebarOpen: false, placeListOpen: true, statuses: [], workspacePanelId: 'places',
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+      placeList: <aside>Lieux</aside>,
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...commonProps} tripPlanningActive={false} sidebar={null} /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByLabelText('Panneau de navigation').style.height).toBe('500px'))
+
+    rerender(<MemoryRouter><MapPage {...commonProps} tripPlanningActive sidebar={<aside>Sorties</aside>} /></MemoryRouter>)
+    const tripPlacesWindow = screen.getByLabelText('Panneau de navigation')
+    await waitFor(() => expect(tripPlacesWindow.style.height).toBe('620px'))
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Redimensionner Panneau de navigation (s)' }), { key: 'ArrowDown' })
+    expect(tripPlacesWindow.style.height).toBe('644px')
+
+    rerender(<MemoryRouter><MapPage {...commonProps} tripPlanningActive={false} sidebar={null} /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByLabelText('Panneau de navigation').style.height).toBe('500px'))
+    expect(JSON.parse(window.localStorage.getItem('cartavault:desktop-trips-places-window') ?? '{}').height).toBe(644)
+  })
+
+  it('does not inherit the places lock state inside the trips screen', async () => {
+    window.localStorage.setItem('cartavault:desktop-panel-layout-mode:places', 'default')
+    window.localStorage.setItem('cartavault:desktop-panel-layout-mode:trips', 'custom')
+    const commonProps = {
+      places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 8 }, isLoading: false,
+      errorMessage: null, sidebarOpen: true, placeListOpen: true, statuses: [], workspacePanelId: 'places',
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+      placeList: <aside>Lieux</aside>, sidebar: <aside>Sorties</aside>,
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...commonProps} tripPlanningActive /></MemoryRouter>)
+    expect(screen.getByLabelText('Panneau de navigation')).not.toHaveClass('is-locked')
+    expect(screen.getByLabelText('Panneau Sortie')).not.toHaveClass('is-locked')
+
+    rerender(<MemoryRouter><MapPage {...commonProps} tripPlanningActive={false} /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByLabelText('Panneau de navigation')).toHaveClass('is-locked'))
+  })
+
+  it('keeps the locked or custom layout mode independent for every screen', async () => {
+    window.localStorage.setItem('cartavault:desktop-panel-layout-mode:places', 'default')
+    window.localStorage.setItem('cartavault:desktop-panel-layout-mode:categories', 'custom')
+    const commonProps = {
+      places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 8 }, isLoading: false,
+      errorMessage: null, sidebarOpen: false, placeListOpen: true, statuses: [], sidebar: null,
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...commonProps} workspacePanelId="places" placeList={<aside>Lieux</aside>} /></MemoryRouter>)
+    expect(screen.getByLabelText('Panneau de navigation')).toHaveClass('is-locked')
+    expect(screen.queryByRole('separator', { name: 'Redimensionner Panneau de navigation (s)' })).not.toBeInTheDocument()
+
+    rerender(<MemoryRouter><MapPage {...commonProps} workspacePanelId="categories" placeList={<aside>Catégories</aside>} /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByLabelText('Panneau de navigation')).not.toHaveClass('is-locked'))
+    expect(screen.getByRole('separator', { name: 'Redimensionner Panneau de navigation (s)' })).toBeInTheDocument()
+
+    rerender(<MemoryRouter><MapPage {...commonProps} workspacePanelId="places" placeList={<aside>Lieux</aside>} /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByLabelText('Panneau de navigation')).toHaveClass('is-locked'))
+  })
+
+  it('fills the available map height when a workspace screen is locked', async () => {
+    const commonProps = {
+      places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 8 }, isLoading: false,
+      errorMessage: null, sidebarOpen: false, placeListOpen: true, statuses: [], sidebar: null,
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+    }
+    render(<MemoryRouter><MapPage {...commonProps} workspacePanelId="places" placeList={<aside>Lieux</aside>} /></MemoryRouter>)
+    const workspace = screen.getByTestId('poi-map').closest('.map-workspace') as HTMLElement
+    Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1200 })
+    Object.defineProperty(workspace, 'clientHeight', { configurable: true, value: 800 })
+
+    fireEvent(window, new Event(RESET_DESKTOP_PANEL_LAYOUT_EVENT))
+
+    const placesWindow = screen.getByLabelText('Panneau de navigation')
+    await waitFor(() => expect(placesWindow).toHaveClass('is-locked'))
+    expect(placesWindow.style.top).toBe('12px')
+    expect(placesWindow.style.height).toBe('776px')
+    expect(window.localStorage.getItem('cartavault:desktop-panel-layout-mode:places')).toBe('default')
   })
 
   it('ignores saved custom geometry while the default layout is locked', () => {
@@ -444,6 +553,7 @@ describe('MapPage', () => {
       template_id: 'template-id',
       geometry: { type: 'Polygon', coordinates: [[[2, 48], [2.1, 48], [2.1, 48.1], [2, 48.1], [2, 48]]] },
       title: 'Zone visiteurs',
+      description: null,
     }))
   })
 

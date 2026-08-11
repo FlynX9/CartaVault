@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config'
 import { announceApiMutationFailure, announceApiMutationStart, announceApiMutationSuccess } from './mutationEvents'
 import type { ApiMutationEventDetail } from './mutationEvents'
+import { reportCredentialIssue } from '../components/notifications/important'
 
 export type ApiFieldErrors = Record<string, string>
 
@@ -26,6 +27,22 @@ export class ApiError extends Error {
 let csrfToken: string | null = null
 const trackedMutations = new WeakMap<Response, ApiMutationEventDetail>()
 export const SESSION_EXPIRED_EVENT = 'cartavault:session-expired'
+
+function reportCredentialRequestFailure(path: string, code: string | null) {
+  if (path.includes('/verify') || code === null) return
+  const provider = code.startsWith('GOOGLE_ROUTES_') ? 'google_routes'
+    : code.startsWith('GOOGLE_PLACES_') ? 'google_places'
+      : code.startsWith('OPENROUTESERVICE_') || code.startsWith('ORS_') ? 'openrouteservice'
+        : code.startsWith('GOOGLE_MAP_TILES_') || code.startsWith('GOOGLE_SATELLITE_') ? 'google_map_tiles'
+          : code.startsWith('STADIA_MAPS_') ? 'stadia_maps'
+            : code.startsWith('STADIA_PLACES_') ? 'stadia_places'
+              : null
+  if (provider) reportCredentialIssue(provider, `La clé API ${providerLabel(provider)} ne fonctionne plus. Vérifiez-la ou remplacez-la.`)
+}
+
+function providerLabel(provider: string) {
+  return ({ google_routes: 'Google Routes', google_places: 'Google Places', openrouteservice: 'OpenRouteService', google_map_tiles: 'Google Map Tiles', stadia_maps: 'Stadia Maps', stadia_places: 'Stadia Places' } as Record<string, string>)[provider] ?? provider
+}
 
 export function setCsrfToken(value: string | null): void {
   csrfToken = value
@@ -153,6 +170,7 @@ async function request(
 
     if (!response.ok) {
       const error = await getResponseError(response)
+      reportCredentialRequestFailure(path, error.code)
       if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
         setCsrfToken(null)
         window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))

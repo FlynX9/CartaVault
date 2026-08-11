@@ -161,7 +161,7 @@ describe('AccountModal', () => {
     fireEvent.click(within(routesPanel).getByRole('button', { name: 'Vérifier' }))
     await waitFor(() => expect(verifyGoogleRoutesCredential).toHaveBeenCalled())
     expect(await screen.findByText('La clé Google Routes est valide.')).toBeVisible()
-    expect(screen.getByText('19/07/2026')).toBeVisible()
+    expect(screen.getAllByText('19/07/2026')).toHaveLength(2)
   })
 
   it('keeps Stadia as the default Places engine and requires a separate verified Google Places key', async () => {

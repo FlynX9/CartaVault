@@ -9,6 +9,7 @@ import { installButtonFeedback } from './ui/buttonFeedback.ts'
 import { installInteractiveTitles } from './ui/interactiveTitles.ts'
 import { PwaUpdatePrompt } from './components/pwa/PwaUpdatePrompt.tsx'
 import { MediaUploadHost } from './components/media/MediaUploadHost.tsx'
+import { GlobalFeedbackToasts } from './components/common/GlobalFeedbackToasts.tsx'
 
 const uninstallButtonFeedback = installButtonFeedback()
 const uninstallInteractiveTitles = installInteractiveTitles()
@@ -20,7 +21,7 @@ if (import.meta.hot) import.meta.hot.dispose(() => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider><I18nProvider><App /><MediaUploadHost /><PwaUpdatePrompt /></I18nProvider></AuthProvider>
+      <AuthProvider><I18nProvider><App /><MediaUploadHost /><PwaUpdatePrompt /><GlobalFeedbackToasts /></I18nProvider></AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 )

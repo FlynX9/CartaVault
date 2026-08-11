@@ -5,7 +5,7 @@ import { deleteGoogleRoutesCredential, storeGoogleRoutesCredential, verifyGoogle
 import type { GoogleRoutesCredentialStatus } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
-import { formatCredentialDate } from './credentialDate'
+import { CredentialVerificationBadge, useCredentialVerificationState } from './CredentialVerificationBadge'
 
 interface GoogleRoutesCredentialPanelProps {
   status: GoogleRoutesCredentialStatus
@@ -23,6 +23,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const verification = useCredentialVerificationState('google_routes', status.last4, status.last_error_code)
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -43,8 +44,9 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
     try {
       const next = await verifyGoogleRoutesCredential()
       await onChanged(next)
+      verification.clearVerificationFailure()
       setMessage('La clé Google Routes est valide.')
-    } catch (reason) { setError(messageFor(reason, 'La vérification a échoué.')) } finally { setBusy(false) }
+    } catch (reason) { verification.markVerificationFailed(); setError(messageFor(reason, 'La vérification a échoué.')) } finally { setBusy(false) }
   }
 
   const remove = async (event: FormEvent<HTMLFormElement>) => {
@@ -66,7 +68,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
     <div className="account-credential__heading">
       <span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span>
       <div><h3 id="google-routes-credential-title">Clé Google Routes<FieldHelp>La clé est chiffrée sur le serveur et n’est jamais renvoyée à votre navigateur après son enregistrement.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div>
-      {status.configured && status.verified && <span className="account-credential__verification"><span className="account-credential__status">Vérifiée</span>{status.verified_at && <time dateTime={status.verified_at}>{formatCredentialDate(status.verified_at)}</time>}</span>}
+      <CredentialVerificationBadge status={status} failedAt={verification.failedAt} />
     </div>
     {!storageAvailable && <p className="account-credential__warning" role="status">Le stockage sécurisé des clés utilisateur n’est pas configuré sur ce serveur.</p>}
     {status.last_error_code && <p className="account-credential__warning">La clé doit être vérifiée ou remplacée avant utilisation.</p>}

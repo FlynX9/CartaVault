@@ -75,8 +75,9 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
       <div className="cv-main-navigation__group cv-main-navigation__organization-desktop" aria-label={t('nav.organization')}>
         {hasMaps && <><button type="button" className={navClass(activePanel === 'categories')} aria-label={t('nav.categories')} aria-pressed={activePanel === 'categories'} onClick={() => togglePanel('categories')}><Shapes size={23} /><span>{t('nav.categories')}</span></button>
         <button type="button" className={navClass(activePanel === 'tags')} aria-label={t('nav.tags')} aria-pressed={activePanel === 'tags'} onClick={() => togglePanel('tags')}><Tag size={23} /><span>{t('nav.tags')}</span></button>
-        <button type="button" className={navClass(activePanel === 'annotation-templates')} aria-label={t('nav.annotations')} aria-pressed={activePanel === 'annotation-templates'} onClick={() => togglePanel('annotation-templates')}><Spline size={23} /><span>{t('nav.annotations')}</span></button>
-        {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}</>}
+        {isAdmin && <button type="button" className={navClass(activePanel === 'statuses')} aria-label={t('nav.statuses')} aria-pressed={activePanel === 'statuses'} onClick={() => togglePanel('statuses')}><CircleDot size={23} /><span>{t('nav.statuses')}</span></button>}
+        <button type="button" className={navClass(activePanel === 'annotation-templates')} aria-label={t('nav.annotations')} aria-pressed={activePanel === 'annotation-templates'} onClick={() => togglePanel('annotation-templates')}><Spline size={23} /><span>{t('nav.annotations')}</span></button></>}
+        {hasMaps && <div className="cv-main-navigation__separator" role="separator" />}
         <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => togglePanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
       </div>
       {hasMaps && <div ref={organizationMenuRef} className="cv-main-navigation__organization-mobile">
@@ -84,8 +85,9 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
         {organizationOpen && <div className="cv-main-navigation__organization-menu" role="menu" aria-label={t('nav.organization')}>
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('categories')}><Shapes size={18} /><span>{t('nav.categories')}</span></button>
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('tags')}><Tag size={18} /><span>{t('nav.tags')}</span></button>
-          <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('annotation-templates')}><Spline size={18} /><span>{t('nav.annotations')}</span></button>
           {isAdmin && <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('statuses')}><CircleDot size={18} /><span>{t('nav.statuses')}</span></button>}
+          <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('annotation-templates')}><Spline size={18} /><span>{t('nav.annotations')}</span></button>
+          <div className="cv-main-navigation__organization-menu-separator" role="separator" />
           <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('trash')}><Trash2 size={18} /><span>{t('nav.trash')}</span></button>
         </div>}
       </div>}

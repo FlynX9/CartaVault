@@ -1,4 +1,4 @@
-import { ArrowLeft, Camera, Check, Eye, Factory, Landmark, Luggage, Map as MapIcon, MapPinned, Mountain, Route, Search, SlidersHorizontal, Utensils, X, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, Camera, Check, Factory, Landmark, Luggage, Map as MapIcon, MapPinned, Mountain, Route, Search, SlidersHorizontal, Utensils, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -33,7 +33,6 @@ export function CreateMapDialog({ onClose, onCreated }: CreateMapDialogProps) {
   const [profiles, setProfiles] = useState<StarterProfile[]>([])
   const [profileId, setProfileId] = useState<StarterProfileId>('general')
   const [options, setOptions] = useState<StarterProfileOptions>({ categories: true, tags: true, statuses: true })
-  const [previewOpen, setPreviewOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,7 +64,7 @@ export function CreateMapDialog({ onClose, onCreated }: CreateMapDialogProps) {
 
   const selectedProfile = profiles.find((profile) => profile.id === profileId)
   const selectCountry = (country: Country) => { setCountryId(country.id); setName(country.name) }
-  const selectProfile = (id: StarterProfileId) => { setProfileId(id); setPreviewOpen(false) }
+  const selectProfile = (id: StarterProfileId) => setProfileId(id)
   const toggleOption = (key: keyof StarterProfileOptions) => setOptions((current) => ({ ...current, [key]: !current[key] }))
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -105,8 +104,7 @@ export function CreateMapDialog({ onClose, onCreated }: CreateMapDialogProps) {
             </div>
             {selectedProfile && <div className="starter-profile-config">
               <fieldset disabled={profileId === 'custom'}><legend>{t('maps.create.include')}</legend>{(['categories', 'tags', 'statuses'] as const).map((key) => <label key={key}><input type="checkbox" checked={profileId !== 'custom' && options[key]} onChange={() => toggleOption(key)} /><span>{t(INCLUDE_KEYS[key])}</span><small>{selectedProfile[key].length}</small></label>)}</fieldset>
-              {profileId !== 'custom' && <button className="starter-profile-preview-toggle" type="button" aria-expanded={previewOpen} onClick={() => setPreviewOpen((open) => !open)}><Eye aria-hidden="true" />{previewOpen ? t('maps.create.hidePreview') : t('maps.create.showPreview')}</button>}
-              {previewOpen && profileId !== 'custom' && <div className="starter-profile-preview">
+              {profileId !== 'custom' && <div className="starter-profile-preview">
                 {options.categories && <ProfilePreview title={t('maps.create.include.categories')} items={selectedProfile.categories} kind="category" defaultLabel={t('maps.create.defaultStatus')} />}
                 {options.tags && <ProfilePreview title={t('maps.create.include.tags')} items={selectedProfile.tags} kind="tag" defaultLabel={t('maps.create.defaultStatus')} />}
                 {options.statuses && <ProfilePreview title={t('maps.create.include.statuses')} items={selectedProfile.statuses} kind="status" defaultLabel={t('maps.create.defaultStatus')} />}
@@ -114,8 +112,8 @@ export function CreateMapDialog({ onClose, onCreated }: CreateMapDialogProps) {
             </div>}
           </section>}
           <div className="dialog-actions">
-            <button className="secondary-button" type="button" onClick={() => step === 1 ? onClose() : setStep(1)}>{step === 2 && <ArrowLeft aria-hidden="true" />}{step === 1 ? t('common.cancel') : t('maps.create.back')}</button>
-            <button className="primary-button" type="submit" disabled={!countryId || !name.trim() || (step === 1 && profiles.length === 0) || (step === 2 && (!selectedProfile || isSubmitting))}><MapPinned aria-hidden="true" />{step === 1 ? t('maps.create.continue') : isSubmitting ? t('maps.create.submitting') : t('maps.create.submit')}</button>
+            <button className="secondary-button cv-action-button" type="button" onClick={() => step === 1 ? onClose() : setStep(1)}>{step === 2 && <ArrowLeft aria-hidden="true" />}{step === 1 ? t('common.cancel') : t('maps.create.back')}</button>
+            <button className="primary-button cv-action-button is-primary" type="submit" disabled={!countryId || !name.trim() || (step === 2 && (!selectedProfile || isSubmitting))}><MapPinned aria-hidden="true" />{step === 1 ? t('maps.create.continue') : isSubmitting ? t('maps.create.submitting') : t('maps.create.submit')}</button>
           </div>
         </form>
       </div>

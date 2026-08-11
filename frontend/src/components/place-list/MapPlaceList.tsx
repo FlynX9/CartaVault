@@ -41,6 +41,7 @@ import {
   restorePlace,
   updatePlace,
 } from "../../api/places";
+import { publishGlobalFeedback } from "../common/globalFeedback";
 import { getCategories } from "../../api/categories";
 import { getTags } from "../../api/tags";
 import { getTrip, listTrips, restoreTripState } from "../../api/trips";
@@ -599,6 +600,7 @@ export function MapPlaceList({
       return;
     try {
       await deletePlace(place.id);
+      publishGlobalFeedback("success", `POI « ${place.name} » déplacé dans la corbeille.`);
       onBulkChanged();
       recordReversibleAction({
         label: `suppression du POI « ${place.name} »`,

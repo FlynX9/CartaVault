@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { deletePlace, getPlaceDetails, getPlaceHistory, updatePlace } from "../../api/places";
+import { publishGlobalFeedback } from "../common/globalFeedback";
 import { getPlacePhotos, uploadPlacePhoto } from "../../api/photos";
 import type { Photo } from "../../types/photo";
 import type { PlaceDetails, PlaceHistoryEvent } from "../../types/place";
@@ -288,6 +289,7 @@ export function PlaceMapPopup({
     setDeleting(true);
     try {
       await deletePlace(place.id);
+      publishGlobalFeedback("success", `POI « ${place.name} » déplacé dans la corbeille.`);
       onDeleted(place.id);
     } catch (error) {
       setDetailsError(

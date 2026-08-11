@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ThemeProvider } from '../../theme/ThemeProvider'
 import { TopBar } from './TopBar'
+import { panelLayoutModeStorageKey } from './FloatingPanelWindow'
 
 const logout = vi.fn()
 let currentUser = { id: 'user-id', email: 'admin@example.test', display_name: 'Admin', is_admin: true, avatar_url: null }
@@ -12,11 +13,11 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: currentUser, logo
 vi.mock('../notifications/NotificationCenter', () => ({ NotificationCenter: () => <button type="button" aria-label="Notifications">Notifications</button> }))
 vi.mock('../account/AccountModal', () => ({ AccountModal: ({ onClose }: { onClose: () => void }) => <div role="dialog" aria-label="Espace compte"><button onClick={onClose}>Fermer</button></div> }))
 
-function renderTopBar(markerCount = 0, initialEntry = '/workspace') {
+function renderTopBar(markerCount = 0, initialEntry = '/workspace', panelLayoutScope = 'map') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <ThemeProvider>
-        <TopBar isMapWorkspace markerCount={markerCount} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
+        <TopBar isMapWorkspace markerCount={markerCount} panelLayoutScope={panelLayoutScope} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
         <CurrentPath />
       </ThemeProvider>
     </MemoryRouter>,
@@ -38,6 +39,25 @@ afterEach(() => {
 })
 
 describe('TopBar account entry', () => {
+  it('shows the layout lock state of the active screen only', () => {
+    localStorage.setItem(panelLayoutModeStorageKey('places'), 'default')
+    localStorage.setItem(panelLayoutModeStorageKey('categories'), 'custom')
+    const { container, rerender } = renderTopBar(0, '/workspace', 'places')
+    const layoutButton = container.querySelector('.desktop-panel-layout-reset')
+    expect(layoutButton).toHaveAttribute('aria-pressed', 'true')
+
+    rerender(
+      <MemoryRouter initialEntries={['/workspace']}>
+        <ThemeProvider>
+          <TopBar isMapWorkspace markerCount={0} panelLayoutScope="categories" onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
+          <CurrentPath />
+        </ThemeProvider>
+      </MemoryRouter>,
+    )
+
+    expect(container.querySelector('.desktop-panel-layout-reset')).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('places notifications before the user menu and opens account options explicitly', () => {
     renderTopBar(2)
     const notifications = screen.getByRole('button', { name: 'Notifications' })

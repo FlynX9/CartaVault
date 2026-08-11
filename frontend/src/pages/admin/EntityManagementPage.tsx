@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
+import { IconPackageImport } from '@tabler/icons-react'
 import { Plus } from 'lucide-react'
 
 import { ApiError } from '../../api/client'
 import { DeleteConfirmation } from '../../components/admin/DeleteConfirmation'
 import { EntityForm, type EntityFormValues } from '../../components/admin/EntityForm'
 import { EntityList, type ManagedEntity } from '../../components/admin/EntityList'
+import { ProfileImportDialog } from '../../components/admin/ProfileImportDialog'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
 import { SkeletonList } from '../../components/common/Skeleton'
+import { publishGlobalFeedback } from '../../components/common/globalFeedback'
 import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import { DEFAULT_TAG_COLOR } from '../../tags/tagColors'
+import type { StarterProfileResourceType } from '../../types/map'
 
 export interface EntityManagementConfig {
   singularLabel: string
@@ -19,6 +23,8 @@ export interface EntityManagementConfig {
   supportsIcon?: boolean
   supportsVisited?: boolean
   supportsColor?: boolean
+  mapId?: string
+  profileResourceType?: StarterProfileResourceType
   load: (signal: AbortSignal, q?: string) => Promise<ManagedEntity[]>
   save: (entity: ManagedEntity | null, values: EntityFormValues) => Promise<ManagedEntity>
   remove: (id: string) => Promise<void>
@@ -32,6 +38,9 @@ interface EntityManagementPageProps {
 }
 
 export function EntityManagementPage({ config, variant = 'page', readOnly = false }: EntityManagementPageProps) {
+  const entityLabel = config.singularLabel.replace(/^(?:un|une)\s+/i, '')
+  const displayEntityLabel = entityLabel.charAt(0).toLocaleUpperCase('fr-FR') + entityLabel.slice(1)
+  const feminineEntity = /^une\s+/i.test(config.singularLabel)
   const [queryInput, setQueryInput] = useState('')
   const [query, setQuery] = useState('')
   const [entities, setEntities] = useState<ManagedEntity[]>([])
@@ -44,6 +53,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
   const [success, setSuccess] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [refreshVersion, setRefreshVersion] = useState(0)
+  const [showProfileImport, setShowProfileImport] = useState(false)
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setQuery(queryInput.trim()), 300)
@@ -69,9 +79,10 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
     if (isSubmitting || readOnly) return
     setIsSubmitting(true); setError(null); setSuccess(null); setFieldErrors({})
     try {
+      const wasEditing = editing !== null
       const saved = await config.save(editing ?? null, values)
       setEditing(undefined)
-      setSuccess(`${saved.name} a bien été enregistré.`)
+      publishGlobalFeedback('success', `${displayEntityLabel} « ${saved.name} » ${wasEditing ? feminineEntity ? 'modifiée' : 'modifié' : feminineEntity ? 'créée' : 'créé'}.`)
       setRefreshVersion((value) => value + 1)
     } catch (caught) {
       if (caught instanceof ApiError) {
@@ -87,7 +98,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
     try {
       await config.remove(deleting.id)
       setEntities((current) => current.filter((entity) => entity.id !== deleting.id))
-      setSuccess(`${deleting.name} a bien été supprimé.`)
+      publishGlobalFeedback('success', `${displayEntityLabel} « ${deleting.name} » ${feminineEntity ? 'supprimée' : 'supprimé'}.`)
       setDeleting(null)
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 404) {
@@ -100,7 +111,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
 
   const create = () => { if (!readOnly) { setEditing(null); setFieldErrors({}); setError(null) } }
   const isPanel = variant === 'panel'
-  const createAction = readOnly ? undefined : <button className="panel-icon-button primary panel-create-action" type="button" aria-label={`Créer ${config.singularLabel}`} title={config.newLabel} onClick={create}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{config.newLabel}</span></button>
+  const createAction = readOnly ? undefined : <div className="cv-workspace-panel__resource-actions">{config.mapId && config.profileResourceType && <button className="panel-icon-button panel-import-action" type="button" aria-label={`Importer ${config.singularLabel} depuis un profil`} title="Importer depuis un profil" onClick={() => setShowProfileImport(true)}><IconPackageImport size={18} stroke={1.8} aria-hidden="true" /></button>}<button className="panel-icon-button primary panel-create-action" type="button" aria-label={`Créer ${config.singularLabel}`} title={config.newLabel} onClick={create}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{config.newLabel}</span></button></div>
 
   return <section className={`admin-page${isPanel ? ' cv-management-panel' : ''}`}>
     {isPanel
@@ -113,6 +124,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
     {success && <p className="admin-success" role="status">{success}</p>}
     {!readOnly && editing !== undefined && <EntityForm key={editing?.id ?? 'new'} title={editing === null ? `Créer ${config.singularLabel}` : `Modifier ${editing.name}`} initialValues={{ name: editing?.name ?? '', description: editing?.description ?? '', icon: 'icon' in (editing ?? {}) ? editing?.icon as string : DEFAULT_CATEGORY_ICON_ID, marksAsVisited: 'marks_as_visited' in (editing ?? {}) ? editing?.marks_as_visited === true : false, color: editing?.color ?? DEFAULT_TAG_COLOR }} supportsDescription={config.supportsDescription} supportsIcon={config.supportsIcon} supportsVisited={config.supportsVisited} supportsColor={config.supportsColor} isSubmitting={isSubmitting} fieldErrors={fieldErrors} onCancel={() => setEditing(undefined)} onSubmit={submit} />}
     {!readOnly && deleting && <DeleteConfirmation entityName={deleting.name} isDeleting={isDeleting} onCancel={() => setDeleting(null)} onConfirm={() => void confirmDelete()} />}
+    {!readOnly && showProfileImport && config.mapId && config.profileResourceType && <ProfileImportDialog mapId={config.mapId} resourceType={config.profileResourceType} onClose={() => setShowProfileImport(false)} onImported={(message) => { setSuccess(message); setRefreshVersion((value) => value + 1) }} />}
     {!isPanel && <div className="admin-list-heading"><h3>Liste</h3><span aria-live="polite">{entities.length} résultat{entities.length > 1 ? 's' : ''}</span></div>}
     {isLoading ? <SkeletonList rows={5} label={`Chargement des ${config.pluralLabel.toLowerCase()}`} /> : <EntityList variant={variant} entities={entities} emptyMessage={`Aucun élément dans les ${config.pluralLabel.toLowerCase()}.`} onEdit={setEditing} onDelete={setDeleting} canDelete={config.canDelete} readOnly={readOnly} />}
   </section>

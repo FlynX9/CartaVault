@@ -18,6 +18,7 @@ import { withMap } from '../utils/map'
 import { SkeletonList } from '../components/common/Skeleton'
 import { useConfirmDialog } from '../components/common/useConfirmDialog'
 import { announceWorkspaceChanged, recordReversibleAction } from '../ui/actionHistory'
+import { publishGlobalFeedback } from '../components/common/globalFeedback'
 
 interface Props { mode: 'create' | 'edit'; placeId?: string; embedded?: boolean; activeMapId?: string | null; activeStatusId?: string | null; maps: PoiMap[]; onPlaceMutated: (mutation: PlaceMutation) => void; formId?: string; hideSubmit?: boolean; geographicPrefill?: GeocodingResult | null; coordinatePrefill?: Pick<GeocodingResult, 'latitude' | 'longitude'> | null; draftPosition?: DraftPosition | null; onDraftPositionChange?: (position: DraftPosition | null) => void }
 async function syncAssociations(placeId: string, initial: PlaceFormValues, current: PlaceFormValues) { const categories = calculateAssociationDiff(initial.categoryIds, current.categoryIds); const tags = calculateAssociationDiff(initial.tagIds, current.tagIds); for (const id of categories.added) await addPlaceCategory(placeId, id); for (const id of categories.removed) await removePlaceCategory(placeId, id); if (current.primaryCategoryId && current.primaryCategoryId !== initial.primaryCategoryId) await setPrimaryPlaceCategory(placeId, current.primaryCategoryId); for (const id of tags.added) await addPlaceTag(placeId, id); for (const id of tags.removed) await removePlaceTag(placeId, id) }
@@ -163,6 +164,7 @@ export function PlaceEditorPage({ mode, placeId: providedPlaceId, embedded = fal
         })
       }
       onPlaceMutated({ placeId: savedId, mapId: values.mapId })
+      publishGlobalFeedback('success', `POI « ${values.name} » ${mode === 'create' ? 'créé' : 'enregistré'}.`)
       navigate(withMap(`/places/${savedId}`, values.mapId, activeStatusId))
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 422) {

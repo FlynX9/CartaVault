@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { IconPackageImport } from '@tabler/icons-react'
 import { GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 
 import { createStatus, deleteStatus, getStatuses, reorderStatuses, updateStatus } from '../../api/statuses'
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
+import { ProfileImportDialog } from '../../components/admin/ProfileImportDialog'
 import { FieldHelp } from '../../components/common/FieldHelp'
+import { publishGlobalFeedback } from '../../components/common/globalFeedback'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
 import type { PlaceStatus } from '../../types/status'
@@ -44,10 +47,12 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
   const [refresh, setRefresh] = useState(0)
   const [showForm, setShowForm] = useState(variant === 'page')
   const [draggedStatusId, setDraggedStatusId] = useState<string | null>(null)
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: 'before' | 'after' } | null>(null)
   const swipeStart = useRef<{ id: string; pointerId: number; x: number } | null>(null)
   const [swipe, setSwipe] = useState<{ id: string; offset: number } | null>(null)
   const [revealed, setRevealed] = useState<{ id: string; direction: 'delete' | 'edit' } | null>(null)
+  const [showProfileImport, setShowProfileImport] = useState(false)
+  const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (!mapId) {
@@ -140,12 +145,14 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
     ) return
 
     try {
+      const editedName = editing?.name
       if (editing) {
         const { map_id: _mapId, ...updatePayload } = payload
         await updateStatus(editing.id, updatePayload)
       } else {
         await createStatus(payload)
       }
+      publishGlobalFeedback('success', `Statut « ${payload.name} » ${editedName ? 'modifié' : 'créé'}.`)
       reset()
       setRefresh((value) => value + 1)
     } catch (caught) {
@@ -157,6 +164,7 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
     if (!await confirm({ title: 'Supprimer ce statut ?', message: `Le statut « ${item.name} » sera définitivement supprimé.` })) return
     try {
       await deleteStatus(item.id)
+      publishGlobalFeedback('success', `Statut « ${item.name} » supprimé.`)
       if (editing?.id === item.id) reset()
       setRefresh((value) => value + 1)
     } catch (caught) {
@@ -175,10 +183,12 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
 
     const next = [...current]
     const [moved] = next.splice(sourceIndex, 1)
-    next.splice(targetIndex, 0, moved)
+    const position = dropTarget?.id === targetId ? dropTarget.position : 'after'
+    const insertionIndex = targetIndex - Number(sourceIndex < targetIndex) + Number(position === 'after')
+    next.splice(insertionIndex, 0, moved)
     setStatuses(next)
     setDraggedStatusId(null)
-    setDropTargetId(null)
+    setDropTarget(null)
 
     try {
       setStatuses(await reorderStatuses(mapId, next.map((item) => item.id)))
@@ -194,11 +204,12 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       eyebrow="Organisation"
       title="Statuts"
       count={`${statuses.length} élément${statuses.length > 1 ? 's' : ''}`}
-      action={canEdit ? (
+      action={canEdit ? (<div className="cv-workspace-panel__resource-actions">
+        {mapId && <button className="panel-icon-button panel-import-action" type="button" aria-label="Importer des statuts depuis un profil" title="Importer depuis un profil" onClick={() => setShowProfileImport(true)}><IconPackageImport size={18} stroke={1.8} aria-hidden="true" /></button>}
         <button className="panel-icon-button primary panel-create-action" type="button" aria-label="Créer un statut" title="Nouveau statut" onClick={create}>
           <Plus size={18} aria-hidden="true" />
           <span className="panel-create-action__label">Nouveau statut</span>
-        </button>
+        </button></div>
       ) : undefined}
     />
   )
@@ -217,6 +228,8 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
         <label className="admin-search"><span>Rechercher par nom ou slug</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
       )}
       {error && <p className="form-alert" role="alert">{error}</p>}
+      {success && <p className="admin-success" role="status">{success}</p>}
+      {showProfileImport && mapId && <ProfileImportDialog mapId={mapId} resourceType="statuses" onClose={() => setShowProfileImport(false)} onImported={(message) => { setSuccess(message); setRefresh((value) => value + 1) }} />}
       {showForm && canEdit && (
         <form className={`admin-form${isPanel ? ' cv-workspace-panel__form' : ''}`} onSubmit={(event) => void submit(event)}>
           <h3>{editing ? `Modifier ${editing.name}` : 'Créer un statut'}</h3>
@@ -253,13 +266,14 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
       <ul className={`admin-entity-list${isPanel ? ' cv-panel-status-list cv-workspace-panel__list' : ''}`}>
         {statuses.map((item) => (
           <li
-            className={`${isPanel ? 'cv-workspace-panel__card cv-mobile-swipe-entity' : ''}${draggedStatusId === item.id ? ' is-dragging' : ''}${dropTargetId === item.id ? ' is-drop-target' : ''}`}
+            className={`${isPanel ? 'cv-workspace-panel__card cv-mobile-swipe-entity' : ''}${draggedStatusId === item.id ? ' is-dragging' : ''}${dropTarget?.id === item.id ? ` is-drop-${dropTarget.position}` : ''}`}
             key={item.id}
             draggable={canEdit && !search}
             onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedStatusId(item.id) }}
-            onDragOver={(event) => { if (canEdit && !search && draggedStatusId !== item.id) { event.preventDefault(); setDropTargetId(item.id) } }}
+            onDragOver={(event) => { if (canEdit && !search && draggedStatusId !== item.id) { event.preventDefault(); const bounds = event.currentTarget.getBoundingClientRect(); setDropTarget({ id: item.id, position: event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after' }) } }}
+            onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget((current) => current?.id === item.id ? null : current) }}
             onDrop={(event) => void reorder(event, item.id)}
-            onDragEnd={() => { setDraggedStatusId(null); setDropTargetId(null) }}
+            onDragEnd={() => { setDraggedStatusId(null); setDropTarget(null) }}
             onPointerDown={(event) => startSwipe(event, item.id)}
             onPointerMove={moveSwipe}
             onPointerUp={endSwipe}

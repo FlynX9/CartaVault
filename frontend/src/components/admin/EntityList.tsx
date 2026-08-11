@@ -61,7 +61,7 @@ export function EntityList({ entities, emptyMessage, onEdit, onDelete, canDelete
           {variant === 'panel' && !readOnly && canDelete(entity) && <button className="cv-mobile-swipe-entity__delete" type="button" aria-hidden={!(revealed?.id === entity.id && revealed.direction === 'delete')} tabIndex={revealed?.id === entity.id && revealed.direction === 'delete' ? 0 : -1} aria-label={`Supprimer ${entity.name}`} onClick={() => onDelete(entity)}><Trash2 size={17} /></button>}
           {variant === 'panel' && !readOnly && <button className="cv-mobile-swipe-entity__edit" type="button" aria-hidden={!(revealed?.id === entity.id && revealed.direction === 'edit')} tabIndex={revealed?.id === entity.id && revealed.direction === 'edit' ? 0 : -1} aria-label={`Modifier ${entity.name}`} onClick={() => onEdit(entity)}><Pencil size={17} /></button>}
           <div className="cv-mobile-swipe-entity__row" style={variant === 'panel' ? { transform: `translateX(${swipe?.id === entity.id ? swipe.offset : revealed?.id === entity.id ? revealed.direction === 'delete' ? 86 : -70 : 0}px)` } : undefined}>
-          {variant === 'panel' && entity.icon && <CategoryIconPreview iconId={entity.icon} size={18} showLabel={false} />}
+          {variant === 'panel' && entity.icon && <CategoryIconPreview iconId={entity.icon} size={24} showLabel={false} />}
           {variant === 'panel' && entity.color && (
             <span className="entity-list-color" style={{ backgroundColor: entity.color }} aria-label={`Couleur ${entity.color}`} />
           )}

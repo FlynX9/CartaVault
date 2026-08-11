@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations } from '../../api/maps'
 import { getRegistrationRequests } from '../../api/registration'
 import { getTotpStatus } from '../../api/account'
+import { GlobalFeedbackToasts } from '../common/GlobalFeedbackToasts'
+import { reportCredentialIssue } from './important'
 import { NotificationCenter } from './NotificationCenter'
 
 vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn(), getPendingMapInvitations: vi.fn() }))
@@ -86,6 +88,47 @@ describe('NotificationCenter', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Notifications, 1 en attente' })).toBeVisible())
     fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
     expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('Authentification à deux facteurs désactivée')
+  })
+
+  it('shows the latest transient messages in a separate history section', async () => {
+    window.localStorage.setItem('cartavault:notification-history', JSON.stringify([
+      { id: 'history-1', kind: 'success', message: 'La carte a été enregistrée.', createdAt: '2026-08-11T12:30:00.000Z' },
+    ]))
+
+    render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
+    await screen.findByRole('status')
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
+
+    const panel = screen.getByLabelText('Centre de notifications')
+    expect(panel).toHaveTextContent('Notifications importantes')
+    expect(panel).toHaveTextContent('Historique')
+    expect(panel).toHaveTextContent('La carte a été enregistrée.')
+    expect(panel).toHaveTextContent('Alice Martin partage la carte Carte partagée avec vous.')
+  })
+
+  it('lists every displayed three-second feedback toast in history', async () => {
+    vi.mocked(getPendingMapInvitations).mockResolvedValue([])
+    render(<>
+      <NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />
+      <GlobalFeedbackToasts />
+      <p className="admin-success" role="status">Le lieu a bien été enregistré.</p>
+    </>)
+
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
+      expect.objectContaining({ kind: 'success', message: 'Le lieu a bien été enregistré.' }),
+    ]))
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 0 en attente' }))
+
+    expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('Le lieu a bien été enregistré.')
+  })
+
+  it('shows a failed API key in important notifications', async () => {
+    vi.mocked(getPendingMapInvitations).mockResolvedValue([])
+    reportCredentialIssue('google_routes', 'La clé API Google Routes ne fonctionne plus. Vérifiez-la ou remplacez-la.')
+    render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
+    expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('La clé API Google Routes ne fonctionne plus')
   })
 })
 
