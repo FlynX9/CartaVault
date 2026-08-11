@@ -51,6 +51,11 @@ describe('PlaceMapPopup', () => {
     const link = screen.getByRole('link', { name: 'Site officiel' })
     expect(link).toHaveAttribute('href', 'https://example.org')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(within(link).getByText('Site officiel').tagName).toBe('STRONG')
+    expect(within(link).getByText('https://example.org').tagName).toBe('SMALL')
+    expect(link.querySelector('.place-links-editor__favicon')).toBeInTheDocument()
+    expect(link.querySelector('.popup-links__item-link-icon')).not.toBeInTheDocument()
+    expect(within(details as HTMLElement).queryByRole('button', { name: /modifier|supprimer/i })).not.toBeInTheDocument()
   })
   it('adds a clipboard image to the currently opened editable POI', async () => {
     const timeoutSpy = vi.spyOn(window, 'setTimeout')

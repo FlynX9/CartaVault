@@ -8,7 +8,7 @@ import { EntityList, type ManagedEntity } from '../../components/admin/EntityLis
 import { WorkspaceSearchField } from '../../components/admin/WorkspaceSearchField'
 import { WorkspacePanelHeader } from '../../components/layout/WorkspacePanelHeader'
 import { SkeletonList } from '../../components/common/Skeleton'
-import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
+import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import { DEFAULT_TAG_COLOR } from '../../tags/tagColors'
 
 export interface EntityManagementConfig {

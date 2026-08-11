@@ -95,7 +95,7 @@ export function EntityForm({
               className="cv-status-color-input"
               type="color"
               value={values.color}
-              aria-label="Couleur du tag"
+              aria-label={supportsIcon ? 'Couleur de la catégorie' : 'Couleur du tag'}
               onChange={(event) => setValues((current) => ({ ...current, color: event.target.value.toUpperCase() }))}
             />
           </span>

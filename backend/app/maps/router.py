@@ -24,13 +24,13 @@ from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapInvitation, MapMembership, PoiMap
+from app.map_profiles.service import initialize_map_profile, profile_resource_counts
 from app.maps.schemas import (
     InvitationCreate, InvitationRead, MapCreate, MapPlaceFieldConfig, MapRead, MapUpdate,
     MembershipRead, MembershipUpdate, TransferOwnership,
 )
 from app.places.models import Place
 from app.places.fields import normalize_place_field_config
-from app.statuses.service import create_default_statuses
 from app.trash.service import trash_deadline
 from app.trips.models import Trip
 
@@ -163,9 +163,15 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
     try:
         database_session.add(poi_map)
         database_session.flush()
-        quotas.ensure_can_create(current_user.id, QuotaKey.STATUSES_PER_MAP_MAX, scope_id=poi_map.id, increment=5)
+        category_count, tag_count, status_count = profile_resource_counts(map_data.starter_profile, map_data.profile_options)
+        if category_count:
+            quotas.ensure_can_create(current_user.id, QuotaKey.CATEGORIES_PER_MAP_MAX, scope_id=poi_map.id, increment=category_count)
+        if tag_count:
+            quotas.ensure_can_create(current_user.id, QuotaKey.TAGS_PER_MAP_MAX, scope_id=poi_map.id, increment=tag_count)
+        quotas.ensure_can_create(current_user.id, QuotaKey.STATUSES_PER_MAP_MAX, scope_id=poi_map.id, increment=status_count)
         database_session.add(MapMembership(map_id=poi_map.id, user_id=current_user.id, role="owner"))
-        create_default_statuses(database_session, poi_map.id)
+        locale = str((current_user.preferences or {}).get("language") or "fr")
+        initialize_map_profile(database_session, poi_map.id, map_data.starter_profile, map_data.profile_options, locale)
         database_session.commit()
         result = read_map(database_session, poi_map.id)
         assert result is not None
@@ -173,6 +179,12 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
     except IntegrityError as error:
         database_session.rollback()
         raise HTTPException(status_code=409, detail="A map already exists for this owner and country") from error
+    except HTTPException:
+        database_session.rollback()
+        raise
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to initialize the map") from error
 
 
 @router.patch("/{map_id}", response_model=MapRead)

@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useReducer, useRef, type CSSProperties } from 'react'
 import { divIcon, LatLngBounds, type Marker as LeafletMarker } from 'leaflet'
 import { CircleMarker, MapContainer, Marker, Polyline, Tooltip } from 'react-leaflet'
 import { Flag, Play } from 'lucide-react'
@@ -12,7 +12,8 @@ import { MapFocusController } from './MapFocusController'
 import { MapResizeWatcher } from './MapResizeWatcher'
 import { MapContextEvents } from './MapContextEvents'
 import type { MapContextMenuState } from './mapContextMenuUtils'
-import { getStatusMarkerIcon } from './markerIcons'
+import { getStatusMarkerIcon, invalidateStatusMarkerIcons } from './markerIcons'
+import { loadCategoryIconData } from '../../icons/categoryIconData'
 import { DraftPositionMarker } from './DraftPositionMarker'
 import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
 import { MapClusterLayer } from './MapClusterLayer'
@@ -81,8 +82,18 @@ interface PoiMapProps {
 
 const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
   const markerRef = useRef<LeafletMarker | null>(null)
+  const [, iconRevision] = useReducer((value: number) => value + 1, 0)
   const selectPlace = useCallback(() => onSelect(place), [onSelect, place])
   const toggleSelection = useCallback(() => onSelectionToggle(place.id), [onSelectionToggle, place.id])
+  useEffect(() => {
+    let active = true
+    void loadCategoryIconData(place.primary_category_icon).then(() => {
+      if (!active) return
+      invalidateStatusMarkerIcons(place.primary_category_icon)
+      iconRevision()
+    })
+    return () => { active = false }
+  }, [place.primary_category_icon])
   useEffect(() => {
     const element = markerRef.current?.getElement()
     if (!element) return

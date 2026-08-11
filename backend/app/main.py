@@ -42,6 +42,7 @@ from app.instance_status.logs import install_instance_log_handler, record_instan
 from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
+from app.map_profiles.router import router as map_profiles_router
 from app.media.router import router as media_router, upload_router as media_upload_router
 from app.photos.router import router as photos_router
 from app.quotas.router import router as quotas_router
@@ -234,6 +235,7 @@ app.include_router(places_router, prefix=API_PREFIX)
 app.include_router(categories_router, prefix=API_PREFIX)
 app.include_router(annotations_router, prefix=API_PREFIX)
 app.include_router(countries_router, prefix=API_PREFIX)
+app.include_router(map_profiles_router, prefix=API_PREFIX)
 app.include_router(maps_router, prefix=API_PREFIX)
 app.include_router(imports_router, prefix=API_PREFIX)
 app.include_router(exports_router, prefix=API_PREFIX)

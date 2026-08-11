@@ -27,10 +27,21 @@ CATEGORY_ICON_GROUPS = frozenset({
     "accommodation",
     "administration",
     "heritage",
+    "gastronomy",
+    "photography",
+    "hiking",
+    "water",
+    "mountain",
+    "agriculture",
+    "energy",
+    "maritime",
+    "sport",
+    "archaeology",
     "other",
 })
 ALLOWED_ICON_PREFIXES = ("mdi:", "material-symbols:")
-EXPECTED_CATEGORY_ICON_COUNT = 300
+MIN_CATEGORY_ICON_COUNT = 1400
+MAX_CATEGORY_ICON_COUNT = 1600
 CATALOG_ENTRY_FIELDS = frozenset({"id", "label", "group", "keywords"})
 CATALOG_PATH = Path(__file__).resolve().parents[3] / "shared" / "category-icons.json"
 
@@ -89,10 +100,10 @@ def load_category_icon_catalog(path: Path = CATALOG_PATH) -> tuple[CategoryIconC
     if not isinstance(raw_catalog, list):
         raise _catalog_error(None, "must be a JSON array")
 
-    if len(raw_catalog) != EXPECTED_CATEGORY_ICON_COUNT:
+    if not MIN_CATEGORY_ICON_COUNT <= len(raw_catalog) <= MAX_CATEGORY_ICON_COUNT:
         raise _catalog_error(
             None,
-            f"must contain exactly {EXPECTED_CATEGORY_ICON_COUNT} entries, found {len(raw_catalog)}",
+            f"must contain between {MIN_CATEGORY_ICON_COUNT} and {MAX_CATEGORY_ICON_COUNT} entries, found {len(raw_catalog)}",
         )
 
     entries: list[CategoryIconCatalogEntry] = []

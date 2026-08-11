@@ -1,10 +1,14 @@
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from app.countries.models import Country
+from app.categories.models import Category
 from app.maps.models import PoiMap
+from app.statuses.models import PlaceStatus
+from app.tags.models import Tag
 
 
 pytestmark = pytest.mark.integration
@@ -38,6 +42,55 @@ def test_map_crud_conflict_and_empty_delete(integration_client: TestClient, fran
     assert integration_client.get(f"/maps/{map_id}").status_code == 200
     assert integration_client.patch(f"/maps/{map_id}", json={"name": "Carte France"}).json()["name"] == "Carte France"
     assert integration_client.delete(f"/maps/{map_id}").status_code == 204
+
+
+def test_starter_profiles_are_localized_and_materialized_once(
+    integration_client: TestClient,
+    france_country: Country,
+    database_session: Session,
+) -> None:
+    profiles = integration_client.get("/map-profiles")
+    assert profiles.status_code == 200
+    general = next(profile for profile in profiles.json() if profile["id"] == "general")
+    assert general["name"] == "Général"
+    assert general["categories"][0] == {
+        "key": "place", "name": "Lieu", "icon_id": "material-symbols:location-on-outline",
+        "sort_order": 10,
+    }
+    assert general["statuses"][0]["color"] == "#3B82F6"
+    assert general["statuses"][0]["is_default"] is True
+
+    created = integration_client.post("/maps", json={
+        "country_id": str(france_country.id), "name": "France générale",
+        "starter_profile": "general",
+        "profile_options": {"categories": True, "tags": True, "statuses": True},
+    })
+    assert created.status_code == 201
+    map_id = created.json()["id"]
+    categories = database_session.query(Category).filter_by(map_id=map_id).all()
+    tags = database_session.query(Tag).filter_by(map_id=map_id).all()
+    statuses = database_session.query(PlaceStatus).filter_by(map_id=map_id).order_by(PlaceStatus.sort_order).all()
+    assert [(item.name, item.icon) for item in categories][:1] == [("Lieu", "material-symbols:location-on-outline")]
+    assert len(categories) == 7
+    assert len(tags) == 3
+    assert len(statuses) == 5
+    assert [(item.name, item.color, item.is_default) for item in statuses][:1] == [("À faire", "#3B82F6", True)]
+
+
+def test_starter_profile_options_can_skip_optional_catalogs(
+    integration_client: TestClient,
+    france_country: Country,
+    database_session: Session,
+) -> None:
+    created = integration_client.post("/maps", json={
+        "country_id": str(france_country.id), "starter_profile": "urbex",
+        "profile_options": {"categories": False, "tags": False, "statuses": False},
+    })
+    assert created.status_code == 201
+    map_id = created.json()["id"]
+    assert database_session.query(Category).filter_by(map_id=map_id).count() == 0
+    assert database_session.query(Tag).filter_by(map_id=map_id).count() == 0
+    assert database_session.query(PlaceStatus).filter_by(map_id=map_id).count() == 4
 
 
 def test_map_catalog_exposes_active_place_and_trip_counts(integration_client: TestClient, poi_map: PoiMap) -> None:

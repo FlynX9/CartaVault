@@ -121,6 +121,25 @@ npm run test
 npm run build
 ```
 
+### Local category icon catalog
+
+`../shared/category-icons.json` is the single source of truth for the curated
+catalog of roughly 1,500 category icons. It contains stable IDs, French labels,
+groups, and search keywords. The catalog primarily uses the local MDI package;
+the two historical Material Symbols IDs remain supported for compatibility.
+The 28 groups cover buildings, travel, nature, gastronomy, photography,
+outdoor activities, heritage, services, and other POI-oriented domains.
+
+After adding or editing an entry, run `npm run generate:category-icons`, then
+`npm run validate:category-icons`. Generation verifies metadata, duplicates,
+supported prefixes, locally resolvable icon modules, the 1,400–1,600 target,
+and retention of every ID in `../shared/category-icons.legacy.json`. It creates
+the eager 300-icon compatibility registry plus lazy, group-level registries for
+the expanded picker. Generated files carry an auto-generated warning and must
+not be edited manually. Remote Iconify lookups, arbitrary SVG/HTML, data URLs,
+and runtime icon APIs are deliberately prohibited so rendering stays offline
+and the backend allowlist remains authoritative.
+
 GitHub Actions installs this dependency tree exclusively with `npm ci`, then
 runs all four validation commands. The committed lockfile is also audited on
 pull requests and weekly. See

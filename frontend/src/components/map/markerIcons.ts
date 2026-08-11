@@ -5,6 +5,11 @@ import { getCategoryIconData } from '../../icons/categoryIconData'
 const cache = new Map<string, DivIcon>()
 const MAX_CACHED_ICONS = 256
 
+export function invalidateStatusMarkerIcons(iconId: string | null | undefined): void {
+  const fragment = `:${iconId ?? 'fallback'}:`
+  for (const key of cache.keys()) if (key.includes(fragment)) cache.delete(key)
+}
+
 function buildSafeIconSvg(icon: string | null | undefined): string {
   const iconData = getCategoryIconData(icon)
   const left = iconData.left ?? 0

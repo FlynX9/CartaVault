@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 
-import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
-import { CategoryIconPicker } from './CategoryIconPicker'
+import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import { CategoryIconPreview } from './CategoryIconPreview'
+
+const CategoryIconPicker = lazy(() => import('./CategoryIconPicker').then((module) => ({ default: module.CategoryIconPicker })))
 
 interface CategoryIconFieldProps {
   value: string | null | undefined
@@ -26,7 +27,7 @@ export function CategoryIconField({ value, onChange }: CategoryIconFieldProps) {
         <CategoryIconPreview iconId={iconId} />
         <button ref={changeButton} className="secondary-button" type="button" onClick={() => setIsPickerOpen(true)}>Changer</button>
       </div>
-      {isPickerOpen && <CategoryIconPicker initialIconId={iconId} onCancel={closePicker} onChoose={(selectedIconId) => { onChange(selectedIconId); closePicker() }} />}
+      {isPickerOpen && <Suspense fallback={<p className="category-icon-picker-loading" role="status">Chargement des icônes…</p>}><CategoryIconPicker initialIconId={iconId} onCancel={closePicker} onChoose={(selectedIconId) => { onChange(selectedIconId); closePicker() }} /></Suspense>}
     </fieldset>
   )
 }

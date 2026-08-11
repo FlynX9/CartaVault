@@ -11,6 +11,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "generate:category-icons": "node scripts/generate-category-icon-data.mjs",
+    "validate:category-icons": "node scripts/generate-category-icon-data.mjs --check",
     "verify:category-icons": "node scripts/generate-category-icon-data.mjs --check",
     "preview": "vite preview"
   },

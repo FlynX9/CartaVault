@@ -28,11 +28,11 @@ describe('CategoryIconField', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('opens with focus in search and searches labels, keywords, accents, and multiple words', () => {
+  it('opens with focus in search and searches labels, keywords, accents, and multiple words', async () => {
     renderField()
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
 
-    const search = screen.getByRole('searchbox', { name: 'Rechercher une icône' })
+    const search = await screen.findByRole('searchbox', { name: 'Rechercher une icône' })
     expect(screen.getByRole('dialog').parentElement).toHaveClass('category-icon-modal-backdrop')
     expect(document.body.contains(screen.getByRole('dialog'))).toBe(true)
     expect(search).toHaveFocus()
@@ -44,10 +44,10 @@ describe('CategoryIconField', () => {
     expect(screen.getByRole('gridcell', { name: 'Gare' })).toBeVisible()
   })
 
-  it('filters by group without clearing the active search', () => {
+  it('filters by group without clearing the active search', async () => {
     renderField()
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
-    const search = screen.getByRole('searchbox', { name: 'Rechercher une icône' })
+    const search = await screen.findByRole('searchbox', { name: 'Rechercher une icône' })
     fireEvent.change(search, { target: { value: 'église' } })
     fireEvent.click(screen.getByRole('button', { name: 'Religion' }))
 
@@ -55,13 +55,22 @@ describe('CategoryIconField', () => {
     expect(screen.getByRole('gridcell', { name: /^Église/ })).toBeVisible()
   })
 
+  it('keeps the 1,500-icon catalog windowed to a bounded number of DOM choices', async () => {
+    renderField()
+    fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
+
+    await screen.findByRole('searchbox', { name: 'Rechercher une icône' })
+    expect(screen.getByText('1500 icônes')).toBeVisible()
+    expect(screen.getAllByRole('gridcell').length).toBeLessThan(100)
+  })
+
   it('selects an icon only after confirmation and supports keyboard grid navigation', async () => {
     const onChange = renderField()
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
-    const church = screen.getByRole('gridcell', { name: 'Église, sélectionnée' })
+    const church = await screen.findByRole('gridcell', { name: 'Église, sélectionnée' })
     church.focus()
     fireEvent.keyDown(church, { key: 'ArrowRight' })
-    expect(screen.getByRole('gridcell', { name: 'Croix' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('gridcell', { name: 'Croix' })).toHaveFocus())
 
     fireEvent.click(screen.getByRole('gridcell', { name: 'Château' }))
     fireEvent.click(screen.getByRole('button', { name: 'Choisir' }))
@@ -74,7 +83,7 @@ describe('CategoryIconField', () => {
     const onChange = renderField()
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
 
-    fireEvent.doubleClick(screen.getByRole('gridcell', { name: 'Château' }))
+    fireEvent.doubleClick(await screen.findByRole('gridcell', { name: 'Château' }))
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('mdi:castle'))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -84,7 +93,7 @@ describe('CategoryIconField', () => {
     const onChange = renderField()
     const changeButton = screen.getByRole('button', { name: 'Changer' })
     fireEvent.click(changeButton)
-    fireEvent.click(screen.getByRole('gridcell', { name: 'Château' }))
+    fireEvent.click(await screen.findByRole('gridcell', { name: 'Château' }))
     fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
 
     await waitFor(() => expect(changeButton).toHaveFocus())

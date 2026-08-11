@@ -1,6 +1,7 @@
 import rawCatalog from '../../../shared/category-icons.json'
+import { DEFAULT_CATEGORY_ICON_ID, FALLBACK_CATEGORY_ICON_ID } from './categoryIconRuntime'
 
-export const CATEGORY_ICON_GROUPS = ['buildings', 'religion', 'industry', 'military', 'health', 'education', 'culture', 'transport', 'tourism', 'infrastructure', 'nature', 'access', 'urban', 'commerce', 'accommodation', 'administration', 'heritage', 'other'] as const
+export const CATEGORY_ICON_GROUPS = ['buildings', 'religion', 'industry', 'military', 'health', 'education', 'culture', 'transport', 'tourism', 'infrastructure', 'nature', 'access', 'urban', 'commerce', 'accommodation', 'administration', 'heritage', 'gastronomy', 'photography', 'hiking', 'water', 'mountain', 'agriculture', 'energy', 'maritime', 'sport', 'archaeology', 'other'] as const
 export type CategoryIconGroup = typeof CATEGORY_ICON_GROUPS[number]
 
 export interface CategoryIconCatalogEntry {
@@ -12,9 +13,8 @@ export interface CategoryIconCatalogEntry {
 
 const CATALOG_ENTRY_FIELDS = new Set(['id', 'label', 'group', 'keywords'])
 
-export const DEFAULT_CATEGORY_ICON_ID = 'material-symbols:location-on-outline'
-export const FALLBACK_CATEGORY_ICON_ID = 'material-symbols:help-outline'
-export const GROUP_LABELS: Readonly<Record<CategoryIconGroup, string>> = {
+export { DEFAULT_CATEGORY_ICON_ID, FALLBACK_CATEGORY_ICON_ID }
+export const GROUP_LABELS_FR: Readonly<Record<CategoryIconGroup, string>> = {
   buildings: 'Bâtiments',
   religion: 'Religion',
   industry: 'Industrie',
@@ -32,13 +32,32 @@ export const GROUP_LABELS: Readonly<Record<CategoryIconGroup, string>> = {
   accommodation: 'Hébergement',
   administration: 'Administration',
   heritage: 'Patrimoine',
+  gastronomy: 'Gastronomie',
+  photography: 'Photographie',
+  hiking: 'Randonnée',
+  water: 'Eau',
+  mountain: 'Montagne',
+  agriculture: 'Agriculture',
+  energy: 'Énergie',
+  maritime: 'Maritime',
+  sport: 'Sport',
+  archaeology: 'Archéologie',
   other: 'Divers',
 }
+export const GROUP_LABELS_EN: Readonly<Record<CategoryIconGroup, string>> = {
+  buildings: 'Buildings', religion: 'Religion', industry: 'Industry', military: 'Military', health: 'Health',
+  education: 'Education', culture: 'Culture', transport: 'Transport', tourism: 'Tourism', infrastructure: 'Infrastructure',
+  nature: 'Nature', access: 'Access & safety', urban: 'Urban', commerce: 'Commerce', accommodation: 'Accommodation',
+  administration: 'Administration', heritage: 'Heritage', gastronomy: 'Gastronomy', photography: 'Photography', hiking: 'Hiking',
+  water: 'Water', mountain: 'Mountain', agriculture: 'Agriculture', energy: 'Energy', maritime: 'Maritime', sport: 'Sport',
+  archaeology: 'Archaeology', other: 'Other',
+}
+export const GROUP_LABELS = GROUP_LABELS_FR
 
 export const normalizeIconSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ')
 
 function validate(entries: unknown): readonly CategoryIconCatalogEntry[] {
-  if (!Array.isArray(entries) || entries.length !== 300) throw new Error('Invalid category icon catalog size')
+  if (!Array.isArray(entries) || entries.length < 1400 || entries.length > 1600) throw new Error('Invalid category icon catalog size')
 
   const ids = new Set<string>()
   for (const entry of entries) {

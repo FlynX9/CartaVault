@@ -1,6 +1,6 @@
 import { createCategory, deleteCategory, getCategories, updateCategory } from '../../api/categories'
 import { createTag, deleteTag, getTags, updateTag } from '../../api/tags'
-import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
+import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import type { CategoryUpdatePayload } from '../../types/admin'
 import type { EntityManagementConfig } from '../../pages/admin/EntityManagementPage'
 import type { EntityFormValues } from './EntityForm'
@@ -17,7 +17,7 @@ export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
   load: (signal, q) => mapId ? getCategories(signal, q, mapId) : getCategories(signal, q),
   save: async (entity: ManagedEntity | null, values: EntityFormValues) => {
     const name = values.name.trim(); const description = normalizeDescription(values.description); const icon = values.icon ?? DEFAULT_CATEGORY_ICON_ID
-    if (entity === null) return createCategory({ ...(mapId ? { map_id: mapId } : {}), name, description, ...(icon === DEFAULT_CATEGORY_ICON_ID ? {} : { icon }) })
+    if (entity === null) return createCategory({ ...(mapId ? { map_id: mapId } : {}), name, description, icon })
     const payload: CategoryUpdatePayload = {}
     if (name !== entity.name) payload.name = name
     if (description !== (entity.description ?? null)) payload.description = description

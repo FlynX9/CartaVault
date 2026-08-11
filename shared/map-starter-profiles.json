@@ -1,0 +1,3595 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "id": "general",
+      "name": {
+        "fr": "Général",
+        "en": "General"
+      },
+      "description": {
+        "fr": "Une base polyvalente pour commencer.",
+        "en": "A versatile starting point."
+      },
+      "ui_icon": "map",
+      "default_status_key": "to_do",
+      "categories": [
+        {
+          "key": "place",
+          "name": {
+            "fr": "Lieu",
+            "en": "Place"
+          },
+          "icon_id": "material-symbols:location-on-outline",
+          "sort_order": 10
+        },
+        {
+          "key": "activity",
+          "name": {
+            "fr": "Activité",
+            "en": "Activity"
+          },
+          "icon_id": "mdi:ticket",
+          "sort_order": 20
+        },
+        {
+          "key": "accommodation",
+          "name": {
+            "fr": "Hébergement",
+            "en": "Accommodation"
+          },
+          "icon_id": "mdi:hotel",
+          "sort_order": 30
+        },
+        {
+          "key": "food_drink",
+          "name": {
+            "fr": "Restauration",
+            "en": "Food & Drink"
+          },
+          "icon_id": "mdi:silverware-fork-knife",
+          "sort_order": 40
+        },
+        {
+          "key": "nature",
+          "name": {
+            "fr": "Nature",
+            "en": "Nature"
+          },
+          "icon_id": "mdi:tree",
+          "sort_order": 50
+        },
+        {
+          "key": "culture",
+          "name": {
+            "fr": "Culture",
+            "en": "Culture"
+          },
+          "icon_id": "mdi:palette-outline",
+          "sort_order": 60
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 70
+        }
+      ],
+      "tags": [
+        {
+          "key": "favorite",
+          "name": {
+            "fr": "Favori",
+            "en": "Favorite"
+          },
+          "color": "#D8A23B",
+          "sort_order": 10
+        },
+        {
+          "key": "priority",
+          "name": {
+            "fr": "Prioritaire",
+            "en": "Priority"
+          },
+          "color": "#E88745",
+          "sort_order": 20
+        },
+        {
+          "key": "to_verify",
+          "name": {
+            "fr": "À vérifier",
+            "en": "To verify"
+          },
+          "color": "#64748B",
+          "sort_order": 30
+        }
+      ],
+      "statuses": [
+        {
+          "key": "to_do",
+          "name": {
+            "fr": "À faire",
+            "en": "To do"
+          },
+          "color": "#3B82F6",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "planned",
+          "name": {
+            "fr": "Planifié",
+            "en": "Planned"
+          },
+          "color": "#6366F1",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "done",
+          "name": {
+            "fr": "Fait",
+            "en": "Done"
+          },
+          "color": "#0FA68A",
+          "sort_order": 30,
+          "functional_state": "visited"
+        },
+        {
+          "key": "revisit",
+          "name": {
+            "fr": "À revoir",
+            "en": "Revisit"
+          },
+          "color": "#D8A23B",
+          "sort_order": 40,
+          "functional_state": "visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 50,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "urbex",
+      "name": {
+        "fr": "Urbex",
+        "en": "Urbex"
+      },
+      "description": {
+        "fr": "Exploration de lieux abandonnés.",
+        "en": "Exploration of abandoned places."
+      },
+      "ui_icon": "factory",
+      "default_status_key": "to_visit",
+      "categories": [
+        {
+          "key": "castle_manor",
+          "name": {
+            "fr": "Château / Manoir",
+            "en": "Castle / Manor"
+          },
+          "icon_id": "mdi:castle",
+          "sort_order": 10
+        },
+        {
+          "key": "house_villa",
+          "name": {
+            "fr": "Maison / Villa",
+            "en": "House / Villa"
+          },
+          "icon_id": "mdi:home-outline",
+          "sort_order": 20
+        },
+        {
+          "key": "hospital_sanatorium",
+          "name": {
+            "fr": "Hôpital / Sanatorium",
+            "en": "Hospital / Sanatorium"
+          },
+          "icon_id": "mdi:hospital-building",
+          "sort_order": 30
+        },
+        {
+          "key": "school_university",
+          "name": {
+            "fr": "École / Université",
+            "en": "School / University"
+          },
+          "icon_id": "mdi:school-outline",
+          "sort_order": 40
+        },
+        {
+          "key": "hotel",
+          "name": {
+            "fr": "Hôtel",
+            "en": "Hotel"
+          },
+          "icon_id": "mdi:hotel",
+          "sort_order": 50
+        },
+        {
+          "key": "factory_industrial",
+          "name": {
+            "fr": "Usine / Industrie",
+            "en": "Factory / Industrial"
+          },
+          "icon_id": "mdi:factory",
+          "sort_order": 60
+        },
+        {
+          "key": "power_energy",
+          "name": {
+            "fr": "Centrale / Énergie",
+            "en": "Power / Energy"
+          },
+          "icon_id": "mdi:lightning-bolt",
+          "sort_order": 70
+        },
+        {
+          "key": "mine_quarry",
+          "name": {
+            "fr": "Mine / Carrière",
+            "en": "Mine / Quarry"
+          },
+          "icon_id": "mdi:pickaxe",
+          "sort_order": 80
+        },
+        {
+          "key": "military",
+          "name": {
+            "fr": "Militaire",
+            "en": "Military"
+          },
+          "icon_id": "mdi:shield",
+          "sort_order": 90
+        },
+        {
+          "key": "bunker_fortification",
+          "name": {
+            "fr": "Bunker / Fortification",
+            "en": "Bunker / Fortification"
+          },
+          "icon_id": "mdi:wall",
+          "sort_order": 100
+        },
+        {
+          "key": "railway",
+          "name": {
+            "fr": "Gare / Ferroviaire",
+            "en": "Railway"
+          },
+          "icon_id": "mdi:train",
+          "sort_order": 110
+        },
+        {
+          "key": "transport",
+          "name": {
+            "fr": "Transport",
+            "en": "Transport"
+          },
+          "icon_id": "mdi:road",
+          "sort_order": 120
+        },
+        {
+          "key": "religious",
+          "name": {
+            "fr": "Religion",
+            "en": "Religious"
+          },
+          "icon_id": "mdi:church",
+          "sort_order": 130
+        },
+        {
+          "key": "administration",
+          "name": {
+            "fr": "Administration",
+            "en": "Administration"
+          },
+          "icon_id": "mdi:account-tie",
+          "sort_order": 140
+        },
+        {
+          "key": "culture_leisure",
+          "name": {
+            "fr": "Culture / Loisirs",
+            "en": "Culture / Leisure"
+          },
+          "icon_id": "mdi:theater",
+          "sort_order": 150
+        },
+        {
+          "key": "commercial",
+          "name": {
+            "fr": "Commerce",
+            "en": "Commercial"
+          },
+          "icon_id": "mdi:storefront",
+          "sort_order": 160
+        },
+        {
+          "key": "infrastructure",
+          "name": {
+            "fr": "Infrastructure",
+            "en": "Infrastructure"
+          },
+          "icon_id": "mdi:transmission-tower",
+          "sort_order": 170
+        },
+        {
+          "key": "underground",
+          "name": {
+            "fr": "Souterrain",
+            "en": "Underground"
+          },
+          "icon_id": "mdi:tunnel",
+          "sort_order": 180
+        },
+        {
+          "key": "ruins",
+          "name": {
+            "fr": "Ruine",
+            "en": "Ruins"
+          },
+          "icon_id": "mdi:home-city",
+          "sort_order": 190
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 200
+        }
+      ],
+      "tags": [
+        {
+          "key": "abandoned",
+          "name": {
+            "fr": "Abandonné",
+            "en": "Abandoned"
+          },
+          "color": "#64748B",
+          "sort_order": 10
+        },
+        {
+          "key": "partially_abandoned",
+          "name": {
+            "fr": "Partiellement abandonné",
+            "en": "Partially abandoned"
+          },
+          "color": "#8A6D5A",
+          "sort_order": 20
+        },
+        {
+          "key": "partially_demolished",
+          "name": {
+            "fr": "Démoli partiellement",
+            "en": "Partially demolished"
+          },
+          "color": "#D9534F",
+          "sort_order": 30
+        },
+        {
+          "key": "remarkable_architecture",
+          "name": {
+            "fr": "Architecture remarquable",
+            "en": "Remarkable architecture"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 40
+        },
+        {
+          "key": "furniture_present",
+          "name": {
+            "fr": "Mobilier présent",
+            "en": "Furniture present"
+          },
+          "color": "#B38B59",
+          "sort_order": 50
+        },
+        {
+          "key": "machinery_present",
+          "name": {
+            "fr": "Machines présentes",
+            "en": "Machinery present"
+          },
+          "color": "#526779",
+          "sort_order": 60
+        },
+        {
+          "key": "murals_graffiti",
+          "name": {
+            "fr": "Fresques / Graffiti",
+            "en": "Murals / Graffiti"
+          },
+          "color": "#C96A7B",
+          "sort_order": 70
+        },
+        {
+          "key": "glass_roof",
+          "name": {
+            "fr": "Verrière",
+            "en": "Glass roof"
+          },
+          "color": "#38A3C7",
+          "sort_order": 80
+        },
+        {
+          "key": "remarkable_staircase",
+          "name": {
+            "fr": "Escalier remarquable",
+            "en": "Remarkable staircase"
+          },
+          "color": "#6366F1",
+          "sort_order": 90
+        },
+        {
+          "key": "underground",
+          "name": {
+            "fr": "Souterrain",
+            "en": "Underground"
+          },
+          "color": "#64748B",
+          "sort_order": 100
+        },
+        {
+          "key": "roof_access",
+          "name": {
+            "fr": "Toit accessible",
+            "en": "Roof access"
+          },
+          "color": "#E88745",
+          "sort_order": 110
+        },
+        {
+          "key": "panoramic_view",
+          "name": {
+            "fr": "Vue panoramique",
+            "en": "Panoramic view"
+          },
+          "color": "#38A3C7",
+          "sort_order": 120
+        },
+        {
+          "key": "overgrown_vegetation",
+          "name": {
+            "fr": "Végétation envahissante",
+            "en": "Overgrown vegetation"
+          },
+          "color": "#4F8A64",
+          "sort_order": 130
+        },
+        {
+          "key": "flooded",
+          "name": {
+            "fr": "Inondé",
+            "en": "Flooded"
+          },
+          "color": "#3B82F6",
+          "sort_order": 140
+        },
+        {
+          "key": "possible_asbestos",
+          "name": {
+            "fr": "Amiante possible",
+            "en": "Possible asbestos"
+          },
+          "color": "#E88745",
+          "sort_order": 150
+        },
+        {
+          "key": "surveillance",
+          "name": {
+            "fr": "Surveillance",
+            "en": "Surveillance"
+          },
+          "color": "#D9534F",
+          "sort_order": 160
+        },
+        {
+          "key": "guarded",
+          "name": {
+            "fr": "Gardiennage",
+            "en": "Guarded"
+          },
+          "color": "#D9534F",
+          "sort_order": 170
+        },
+        {
+          "key": "cameras",
+          "name": {
+            "fr": "Caméras",
+            "en": "Cameras"
+          },
+          "color": "#C96A7B",
+          "sort_order": 180
+        },
+        {
+          "key": "fenced",
+          "name": {
+            "fr": "Clôturé",
+            "en": "Fenced"
+          },
+          "color": "#64748B",
+          "sort_order": 190
+        },
+        {
+          "key": "difficult_access",
+          "name": {
+            "fr": "Accès difficile",
+            "en": "Difficult access"
+          },
+          "color": "#E88745",
+          "sort_order": 200
+        },
+        {
+          "key": "discreet_access",
+          "name": {
+            "fr": "Accès discret",
+            "en": "Discreet access"
+          },
+          "color": "#0B7F6F",
+          "sort_order": 210
+        },
+        {
+          "key": "walking_access",
+          "name": {
+            "fr": "Accès à pied",
+            "en": "Walking access"
+          },
+          "color": "#4F8A64",
+          "sort_order": 220
+        },
+        {
+          "key": "parking_nearby",
+          "name": {
+            "fr": "Parking proche",
+            "en": "Parking nearby"
+          },
+          "color": "#3B82F6",
+          "sort_order": 230
+        },
+        {
+          "key": "highly_photogenic",
+          "name": {
+            "fr": "Très photogénique",
+            "en": "Highly photogenic"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 240
+        },
+        {
+          "key": "priority",
+          "name": {
+            "fr": "Prioritaire",
+            "en": "Priority"
+          },
+          "color": "#D8A23B",
+          "sort_order": 250
+        }
+      ],
+      "statuses": [
+        {
+          "key": "to_research",
+          "name": {
+            "fr": "À rechercher",
+            "en": "To research"
+          },
+          "color": "#64748B",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_verify",
+          "name": {
+            "fr": "À vérifier",
+            "en": "To verify"
+          },
+          "color": "#D8A23B",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_visit",
+          "name": {
+            "fr": "À visiter",
+            "en": "To visit"
+          },
+          "color": "#3B82F6",
+          "sort_order": 30,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "visit_planned",
+          "name": {
+            "fr": "Visite planifiée",
+            "en": "Visit planned"
+          },
+          "color": "#6366F1",
+          "sort_order": 40,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "visited",
+          "name": {
+            "fr": "Visité",
+            "en": "Visited"
+          },
+          "color": "#0FA68A",
+          "sort_order": 50,
+          "functional_state": "visited"
+        },
+        {
+          "key": "revisit",
+          "name": {
+            "fr": "À revisiter",
+            "en": "Revisit"
+          },
+          "color": "#38A3C7",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "inaccessible",
+          "name": {
+            "fr": "Inaccessible",
+            "en": "Inaccessible"
+          },
+          "color": "#D9534F",
+          "sort_order": 70,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "secured_closed",
+          "name": {
+            "fr": "Fermé / sécurisé",
+            "en": "Secured / Closed"
+          },
+          "color": "#E88745",
+          "sort_order": 80,
+          "functional_state": "visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 90,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "photography",
+      "name": {
+        "fr": "Photographie",
+        "en": "Photography"
+      },
+      "description": {
+        "fr": "Repérages et sessions photo.",
+        "en": "Photo scouting and sessions."
+      },
+      "ui_icon": "camera",
+      "default_status_key": "scouted",
+      "categories": [
+        {
+          "key": "architecture",
+          "name": {
+            "fr": "Architecture",
+            "en": "Architecture"
+          },
+          "icon_id": "mdi:office-building-outline",
+          "sort_order": 10
+        },
+        {
+          "key": "urban",
+          "name": {
+            "fr": "Urbain",
+            "en": "Urban"
+          },
+          "icon_id": "mdi:city",
+          "sort_order": 20
+        },
+        {
+          "key": "landscape",
+          "name": {
+            "fr": "Paysage",
+            "en": "Landscape"
+          },
+          "icon_id": "mdi:image-filter-hdr",
+          "sort_order": 30
+        },
+        {
+          "key": "nature",
+          "name": {
+            "fr": "Nature",
+            "en": "Nature"
+          },
+          "icon_id": "mdi:tree",
+          "sort_order": 40
+        },
+        {
+          "key": "panorama",
+          "name": {
+            "fr": "Panorama",
+            "en": "Panorama"
+          },
+          "icon_id": "mdi:binoculars",
+          "sort_order": 50
+        },
+        {
+          "key": "street_photography",
+          "name": {
+            "fr": "Street photography",
+            "en": "Street photography"
+          },
+          "icon_id": "mdi:camera-marker",
+          "sort_order": 60
+        },
+        {
+          "key": "industrial",
+          "name": {
+            "fr": "Industriel",
+            "en": "Industrial"
+          },
+          "icon_id": "mdi:factory",
+          "sort_order": 70
+        },
+        {
+          "key": "heritage",
+          "name": {
+            "fr": "Patrimoine",
+            "en": "Heritage"
+          },
+          "icon_id": "mdi:pillar",
+          "sort_order": 80
+        },
+        {
+          "key": "religious",
+          "name": {
+            "fr": "Religion",
+            "en": "Religious"
+          },
+          "icon_id": "mdi:church",
+          "sort_order": 90
+        },
+        {
+          "key": "ruins",
+          "name": {
+            "fr": "Ruines",
+            "en": "Ruins"
+          },
+          "icon_id": "mdi:building",
+          "sort_order": 100
+        },
+        {
+          "key": "astrophotography",
+          "name": {
+            "fr": "Astrophotographie",
+            "en": "Astrophotography"
+          },
+          "icon_id": "mdi:telescope",
+          "sort_order": 110
+        },
+        {
+          "key": "wildlife",
+          "name": {
+            "fr": "Faune",
+            "en": "Wildlife"
+          },
+          "icon_id": "mdi:paw",
+          "sort_order": 120
+        },
+        {
+          "key": "flora",
+          "name": {
+            "fr": "Flore",
+            "en": "Flora"
+          },
+          "icon_id": "mdi:flower",
+          "sort_order": 130
+        },
+        {
+          "key": "water_waterfall",
+          "name": {
+            "fr": "Eau / Cascade",
+            "en": "Water / Waterfall"
+          },
+          "icon_id": "mdi:waterfall",
+          "sort_order": 140
+        },
+        {
+          "key": "coast",
+          "name": {
+            "fr": "Littoral",
+            "en": "Coast"
+          },
+          "icon_id": "mdi:waves",
+          "sort_order": 150
+        },
+        {
+          "key": "mountain",
+          "name": {
+            "fr": "Montagne",
+            "en": "Mountain"
+          },
+          "icon_id": "mdi:image-filter-hdr",
+          "sort_order": 160
+        },
+        {
+          "key": "forest",
+          "name": {
+            "fr": "Forêt",
+            "en": "Forest"
+          },
+          "icon_id": "mdi:pine-tree",
+          "sort_order": 170
+        },
+        {
+          "key": "bridge_infrastructure",
+          "name": {
+            "fr": "Pont / Infrastructure",
+            "en": "Bridge / Infrastructure"
+          },
+          "icon_id": "mdi:bridge",
+          "sort_order": 180
+        },
+        {
+          "key": "interior",
+          "name": {
+            "fr": "Intérieur",
+            "en": "Interior"
+          },
+          "icon_id": "mdi:home-outline",
+          "sort_order": 190
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 200
+        }
+      ],
+      "tags": [
+        {
+          "key": "sunrise",
+          "name": {
+            "fr": "Lever de soleil",
+            "en": "Sunrise"
+          },
+          "color": "#D8A23B",
+          "sort_order": 10
+        },
+        {
+          "key": "sunset",
+          "name": {
+            "fr": "Coucher de soleil",
+            "en": "Sunset"
+          },
+          "color": "#E88745",
+          "sort_order": 20
+        },
+        {
+          "key": "blue_hour",
+          "name": {
+            "fr": "Heure bleue",
+            "en": "Blue hour"
+          },
+          "color": "#3B82F6",
+          "sort_order": 30
+        },
+        {
+          "key": "night",
+          "name": {
+            "fr": "Nuit",
+            "en": "Night"
+          },
+          "color": "#6366F1",
+          "sort_order": 40
+        },
+        {
+          "key": "milky_way",
+          "name": {
+            "fr": "Voie lactée",
+            "en": "Milky Way"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 50
+        },
+        {
+          "key": "long_exposure",
+          "name": {
+            "fr": "Pose longue",
+            "en": "Long exposure"
+          },
+          "color": "#38A3C7",
+          "sort_order": 60
+        },
+        {
+          "key": "drone",
+          "name": {
+            "fr": "Drone",
+            "en": "Drone"
+          },
+          "color": "#526779",
+          "sort_order": 70
+        },
+        {
+          "key": "telephoto",
+          "name": {
+            "fr": "Téléobjectif",
+            "en": "Telephoto"
+          },
+          "color": "#64748B",
+          "sort_order": 80
+        },
+        {
+          "key": "wide_angle",
+          "name": {
+            "fr": "Grand-angle",
+            "en": "Wide angle"
+          },
+          "color": "#38A3C7",
+          "sort_order": 90
+        },
+        {
+          "key": "macro",
+          "name": {
+            "fr": "Macro",
+            "en": "Macro"
+          },
+          "color": "#C96A7B",
+          "sort_order": 100
+        },
+        {
+          "key": "reflections",
+          "name": {
+            "fr": "Reflets",
+            "en": "Reflections"
+          },
+          "color": "#3B82F6",
+          "sort_order": 110
+        },
+        {
+          "key": "symmetry",
+          "name": {
+            "fr": "Symétrie",
+            "en": "Symmetry"
+          },
+          "color": "#6366F1",
+          "sort_order": 120
+        },
+        {
+          "key": "minimalist",
+          "name": {
+            "fr": "Minimaliste",
+            "en": "Minimalist"
+          },
+          "color": "#64748B",
+          "sort_order": 130
+        },
+        {
+          "key": "architecture",
+          "name": {
+            "fr": "Architecture",
+            "en": "Architecture"
+          },
+          "color": "#526779",
+          "sort_order": 140
+        },
+        {
+          "key": "brutalism",
+          "name": {
+            "fr": "Brutalisme",
+            "en": "Brutalism"
+          },
+          "color": "#64748B",
+          "sort_order": 150
+        },
+        {
+          "key": "art_deco",
+          "name": {
+            "fr": "Art déco",
+            "en": "Art Deco"
+          },
+          "color": "#C96A7B",
+          "sort_order": 160
+        },
+        {
+          "key": "industrial",
+          "name": {
+            "fr": "Industriel",
+            "en": "Industrial"
+          },
+          "color": "#526779",
+          "sort_order": 170
+        },
+        {
+          "key": "autumn",
+          "name": {
+            "fr": "Automne",
+            "en": "Autumn"
+          },
+          "color": "#E88745",
+          "sort_order": 180
+        },
+        {
+          "key": "winter",
+          "name": {
+            "fr": "Hiver",
+            "en": "Winter"
+          },
+          "color": "#38A3C7",
+          "sort_order": 190
+        },
+        {
+          "key": "spring",
+          "name": {
+            "fr": "Printemps",
+            "en": "Spring"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 200
+        },
+        {
+          "key": "summer",
+          "name": {
+            "fr": "Été",
+            "en": "Summer"
+          },
+          "color": "#D8A23B",
+          "sort_order": 210
+        },
+        {
+          "key": "fog",
+          "name": {
+            "fr": "Brouillard",
+            "en": "Fog"
+          },
+          "color": "#64748B",
+          "sort_order": 220
+        },
+        {
+          "key": "snow",
+          "name": {
+            "fr": "Neige",
+            "en": "Snow"
+          },
+          "color": "#38A3C7",
+          "sort_order": 230
+        },
+        {
+          "key": "water",
+          "name": {
+            "fr": "Eau",
+            "en": "Water"
+          },
+          "color": "#3B82F6",
+          "sort_order": 240
+        },
+        {
+          "key": "low_light_pollution",
+          "name": {
+            "fr": "Faible pollution lumineuse",
+            "en": "Low light pollution"
+          },
+          "color": "#6366F1",
+          "sort_order": 250
+        },
+        {
+          "key": "clear_viewpoint",
+          "name": {
+            "fr": "Point de vue dégagé",
+            "en": "Clear viewpoint"
+          },
+          "color": "#38A3C7",
+          "sort_order": 260
+        },
+        {
+          "key": "tripod_recommended",
+          "name": {
+            "fr": "Trépied recommandé",
+            "en": "Tripod recommended"
+          },
+          "color": "#526779",
+          "sort_order": 270
+        },
+        {
+          "key": "car_access",
+          "name": {
+            "fr": "Accès voiture",
+            "en": "Car access"
+          },
+          "color": "#3B82F6",
+          "sort_order": 280
+        },
+        {
+          "key": "walking_required",
+          "name": {
+            "fr": "Marche nécessaire",
+            "en": "Walking required"
+          },
+          "color": "#4F8A64",
+          "sort_order": 290
+        },
+        {
+          "key": "highly_photogenic",
+          "name": {
+            "fr": "Très photogénique",
+            "en": "Highly photogenic"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 300
+        }
+      ],
+      "statuses": [
+        {
+          "key": "scouted",
+          "name": {
+            "fr": "Repéré",
+            "en": "Scouted"
+          },
+          "color": "#64748B",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_photograph",
+          "name": {
+            "fr": "À photographier",
+            "en": "To photograph"
+          },
+          "color": "#3B82F6",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "session_planned",
+          "name": {
+            "fr": "Session planifiée",
+            "en": "Session planned"
+          },
+          "color": "#6366F1",
+          "sort_order": 30,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "photographed",
+          "name": {
+            "fr": "Photographié",
+            "en": "Photographed"
+          },
+          "color": "#0FA68A",
+          "sort_order": 40,
+          "functional_state": "visited"
+        },
+        {
+          "key": "redo",
+          "name": {
+            "fr": "À refaire",
+            "en": "Redo"
+          },
+          "color": "#D8A23B",
+          "sort_order": 50,
+          "functional_state": "visited"
+        },
+        {
+          "key": "redo_under_different_light",
+          "name": {
+            "fr": "À refaire sous autre lumière",
+            "en": "Redo under different light"
+          },
+          "color": "#38A3C7",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "redo_another_season",
+          "name": {
+            "fr": "À refaire autre saison",
+            "en": "Redo another season"
+          },
+          "color": "#7FA65A",
+          "sort_order": 70,
+          "functional_state": "visited"
+        },
+        {
+          "key": "inaccessible",
+          "name": {
+            "fr": "Inaccessible",
+            "en": "Inaccessible"
+          },
+          "color": "#D9534F",
+          "sort_order": 80,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 90,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "tourism",
+      "name": {
+        "fr": "Tourisme",
+        "en": "Tourism"
+      },
+      "description": {
+        "fr": "Visites et découvertes touristiques.",
+        "en": "Tourist visits and discoveries."
+      },
+      "ui_icon": "luggage",
+      "default_status_key": "to_discover",
+      "categories": [
+        {
+          "key": "monument",
+          "name": {
+            "fr": "Monument",
+            "en": "Monument"
+          },
+          "icon_id": "mdi:bank-outline",
+          "sort_order": 10
+        },
+        {
+          "key": "castle_palace",
+          "name": {
+            "fr": "Château / Palais",
+            "en": "Castle / Palace"
+          },
+          "icon_id": "mdi:castle",
+          "sort_order": 20
+        },
+        {
+          "key": "historical_heritage",
+          "name": {
+            "fr": "Patrimoine historique",
+            "en": "Historical heritage"
+          },
+          "icon_id": "mdi:history",
+          "sort_order": 30
+        },
+        {
+          "key": "museum",
+          "name": {
+            "fr": "Musée",
+            "en": "Museum"
+          },
+          "icon_id": "mdi:palette-outline",
+          "sort_order": 40
+        },
+        {
+          "key": "religious",
+          "name": {
+            "fr": "Religion",
+            "en": "Religious"
+          },
+          "icon_id": "mdi:church",
+          "sort_order": 50
+        },
+        {
+          "key": "architecture",
+          "name": {
+            "fr": "Architecture",
+            "en": "Architecture"
+          },
+          "icon_id": "mdi:office-building-outline",
+          "sort_order": 60
+        },
+        {
+          "key": "archaeological_site",
+          "name": {
+            "fr": "Site archéologique",
+            "en": "Archaeological site"
+          },
+          "icon_id": "mdi:arch",
+          "sort_order": 70
+        },
+        {
+          "key": "historic_center",
+          "name": {
+            "fr": "Centre historique",
+            "en": "Historic center"
+          },
+          "icon_id": "mdi:city",
+          "sort_order": 80
+        },
+        {
+          "key": "viewpoint",
+          "name": {
+            "fr": "Point de vue",
+            "en": "Viewpoint"
+          },
+          "icon_id": "mdi:binoculars",
+          "sort_order": 90
+        },
+        {
+          "key": "nature",
+          "name": {
+            "fr": "Nature",
+            "en": "Nature"
+          },
+          "icon_id": "mdi:tree",
+          "sort_order": 100
+        },
+        {
+          "key": "park_garden",
+          "name": {
+            "fr": "Parc / Jardin",
+            "en": "Park / Garden"
+          },
+          "icon_id": "mdi:flower",
+          "sort_order": 110
+        },
+        {
+          "key": "beach",
+          "name": {
+            "fr": "Plage",
+            "en": "Beach"
+          },
+          "icon_id": "mdi:beach",
+          "sort_order": 120
+        },
+        {
+          "key": "mountain",
+          "name": {
+            "fr": "Montagne",
+            "en": "Mountain"
+          },
+          "icon_id": "mdi:image-filter-hdr",
+          "sort_order": 130
+        },
+        {
+          "key": "lake_river",
+          "name": {
+            "fr": "Lac / Rivière",
+            "en": "Lake / River"
+          },
+          "icon_id": "mdi:lake",
+          "sort_order": 140
+        },
+        {
+          "key": "waterfall",
+          "name": {
+            "fr": "Cascade",
+            "en": "Waterfall"
+          },
+          "icon_id": "mdi:waterfall",
+          "sort_order": 150
+        },
+        {
+          "key": "cave",
+          "name": {
+            "fr": "Grotte",
+            "en": "Cave"
+          },
+          "icon_id": "mdi:terrain",
+          "sort_order": 160
+        },
+        {
+          "key": "attraction",
+          "name": {
+            "fr": "Attraction",
+            "en": "Attraction"
+          },
+          "icon_id": "mdi:ferris-wheel",
+          "sort_order": 170
+        },
+        {
+          "key": "activity",
+          "name": {
+            "fr": "Activité",
+            "en": "Activity"
+          },
+          "icon_id": "mdi:ticket",
+          "sort_order": 180
+        },
+        {
+          "key": "restaurant",
+          "name": {
+            "fr": "Restaurant",
+            "en": "Restaurant"
+          },
+          "icon_id": "mdi:silverware-fork-knife",
+          "sort_order": 190
+        },
+        {
+          "key": "cafe",
+          "name": {
+            "fr": "Café",
+            "en": "Café"
+          },
+          "icon_id": "mdi:coffee",
+          "sort_order": 200
+        },
+        {
+          "key": "market",
+          "name": {
+            "fr": "Marché",
+            "en": "Market"
+          },
+          "icon_id": "mdi:basket",
+          "sort_order": 210
+        },
+        {
+          "key": "accommodation",
+          "name": {
+            "fr": "Hébergement",
+            "en": "Accommodation"
+          },
+          "icon_id": "mdi:hotel",
+          "sort_order": 220
+        },
+        {
+          "key": "transport",
+          "name": {
+            "fr": "Transport",
+            "en": "Transport"
+          },
+          "icon_id": "mdi:car",
+          "sort_order": 230
+        },
+        {
+          "key": "shopping",
+          "name": {
+            "fr": "Shopping",
+            "en": "Shopping"
+          },
+          "icon_id": "mdi:cart",
+          "sort_order": 240
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 250
+        }
+      ],
+      "tags": [
+        {
+          "key": "must_see",
+          "name": {
+            "fr": "Incontournable",
+            "en": "Must-see"
+          },
+          "color": "#D8A23B",
+          "sort_order": 10
+        },
+        {
+          "key": "unusual",
+          "name": {
+            "fr": "Insolite",
+            "en": "Unusual"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 20
+        },
+        {
+          "key": "off_the_beaten_path",
+          "name": {
+            "fr": "Hors des sentiers battus",
+            "en": "Off the beaten path"
+          },
+          "color": "#4F8A64",
+          "sort_order": 30
+        },
+        {
+          "key": "unesco",
+          "name": {
+            "fr": "UNESCO",
+            "en": "UNESCO"
+          },
+          "color": "#6366F1",
+          "sort_order": 40
+        },
+        {
+          "key": "free",
+          "name": {
+            "fr": "Gratuit",
+            "en": "Free"
+          },
+          "color": "#0FA68A",
+          "sort_order": 50
+        },
+        {
+          "key": "paid",
+          "name": {
+            "fr": "Payant",
+            "en": "Paid"
+          },
+          "color": "#D8A23B",
+          "sort_order": 60
+        },
+        {
+          "key": "reservation_required",
+          "name": {
+            "fr": "Réservation nécessaire",
+            "en": "Reservation required"
+          },
+          "color": "#E88745",
+          "sort_order": 70
+        },
+        {
+          "key": "online_ticket",
+          "name": {
+            "fr": "Billet en ligne",
+            "en": "Online ticket"
+          },
+          "color": "#3B82F6",
+          "sort_order": 80
+        },
+        {
+          "key": "very_busy",
+          "name": {
+            "fr": "Très fréquenté",
+            "en": "Very busy"
+          },
+          "color": "#D9534F",
+          "sort_order": 90
+        },
+        {
+          "key": "quiet",
+          "name": {
+            "fr": "Peu fréquenté",
+            "en": "Quiet"
+          },
+          "color": "#4F8A64",
+          "sort_order": 100
+        },
+        {
+          "key": "sunrise",
+          "name": {
+            "fr": "Lever de soleil",
+            "en": "Sunrise"
+          },
+          "color": "#D8A23B",
+          "sort_order": 110
+        },
+        {
+          "key": "sunset",
+          "name": {
+            "fr": "Coucher de soleil",
+            "en": "Sunset"
+          },
+          "color": "#E88745",
+          "sort_order": 120
+        },
+        {
+          "key": "panoramic_view",
+          "name": {
+            "fr": "Vue panoramique",
+            "en": "Panoramic view"
+          },
+          "color": "#38A3C7",
+          "sort_order": 130
+        },
+        {
+          "key": "family_friendly",
+          "name": {
+            "fr": "Adapté aux enfants",
+            "en": "Family friendly"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 140
+        },
+        {
+          "key": "wheelchair_accessible",
+          "name": {
+            "fr": "Accessible PMR",
+            "en": "Wheelchair accessible"
+          },
+          "color": "#0FA68A",
+          "sort_order": 150
+        },
+        {
+          "key": "indoor",
+          "name": {
+            "fr": "Intérieur",
+            "en": "Indoor"
+          },
+          "color": "#64748B",
+          "sort_order": 160
+        },
+        {
+          "key": "outdoor",
+          "name": {
+            "fr": "Extérieur",
+            "en": "Outdoor"
+          },
+          "color": "#4F8A64",
+          "sort_order": 170
+        },
+        {
+          "key": "rain_friendly",
+          "name": {
+            "fr": "Pluie compatible",
+            "en": "Rain friendly"
+          },
+          "color": "#3B82F6",
+          "sort_order": 180
+        },
+        {
+          "key": "quick_visit",
+          "name": {
+            "fr": "Visite rapide",
+            "en": "Quick visit"
+          },
+          "color": "#38A3C7",
+          "sort_order": 190
+        },
+        {
+          "key": "allow_several_hours",
+          "name": {
+            "fr": "Prévoir plusieurs heures",
+            "en": "Allow several hours"
+          },
+          "color": "#6366F1",
+          "sort_order": 200
+        },
+        {
+          "key": "parking",
+          "name": {
+            "fr": "Parking",
+            "en": "Parking"
+          },
+          "color": "#3B82F6",
+          "sort_order": 210
+        },
+        {
+          "key": "public_transport",
+          "name": {
+            "fr": "Transport en commun",
+            "en": "Public transport"
+          },
+          "color": "#526779",
+          "sort_order": 220
+        },
+        {
+          "key": "walking",
+          "name": {
+            "fr": "À pied",
+            "en": "Walking"
+          },
+          "color": "#4F8A64",
+          "sort_order": 230
+        },
+        {
+          "key": "food_available",
+          "name": {
+            "fr": "Restauration sur place",
+            "en": "Food available"
+          },
+          "color": "#D8A23B",
+          "sort_order": 240
+        },
+        {
+          "key": "toilets",
+          "name": {
+            "fr": "Toilettes",
+            "en": "Toilets"
+          },
+          "color": "#64748B",
+          "sort_order": 250
+        },
+        {
+          "key": "photogenic",
+          "name": {
+            "fr": "Photogénique",
+            "en": "Photogenic"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 260
+        },
+        {
+          "key": "souvenir_shop",
+          "name": {
+            "fr": "Souvenir / Boutique",
+            "en": "Souvenir / Shop"
+          },
+          "color": "#C96A7B",
+          "sort_order": 270
+        }
+      ],
+      "statuses": [
+        {
+          "key": "to_discover",
+          "name": {
+            "fr": "À découvrir",
+            "en": "To discover"
+          },
+          "color": "#64748B",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "selected",
+          "name": {
+            "fr": "Sélectionné",
+            "en": "Selected"
+          },
+          "color": "#3B82F6",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_book",
+          "name": {
+            "fr": "À réserver",
+            "en": "To book"
+          },
+          "color": "#E88745",
+          "sort_order": 30,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "booked",
+          "name": {
+            "fr": "Réservé",
+            "en": "Booked"
+          },
+          "color": "#6366F1",
+          "sort_order": 40,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "planned",
+          "name": {
+            "fr": "Planifié",
+            "en": "Planned"
+          },
+          "color": "#38A3C7",
+          "sort_order": 50,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "visited",
+          "name": {
+            "fr": "Visité",
+            "en": "Visited"
+          },
+          "color": "#0FA68A",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "revisit",
+          "name": {
+            "fr": "À revisiter",
+            "en": "Revisit"
+          },
+          "color": "#D8A23B",
+          "sort_order": 70,
+          "functional_state": "visited"
+        },
+        {
+          "key": "rejected",
+          "name": {
+            "fr": "Non retenu",
+            "en": "Rejected"
+          },
+          "color": "#6B7280",
+          "sort_order": 80,
+          "functional_state": "visited"
+        },
+        {
+          "key": "closed",
+          "name": {
+            "fr": "Fermé",
+            "en": "Closed"
+          },
+          "color": "#D9534F",
+          "sort_order": 90,
+          "functional_state": "visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 100,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "hiking",
+      "name": {
+        "fr": "Randonnée / Nature",
+        "en": "Hiking / Nature"
+      },
+      "description": {
+        "fr": "Itinéraires et points d’intérêt nature.",
+        "en": "Trails and nature points of interest."
+      },
+      "ui_icon": "mountain",
+      "default_status_key": "to_explore",
+      "categories": [
+        {
+          "key": "summit",
+          "name": {
+            "fr": "Sommet",
+            "en": "Summit"
+          },
+          "icon_id": "mdi:summit",
+          "sort_order": 10
+        },
+        {
+          "key": "viewpoint",
+          "name": {
+            "fr": "Point de vue",
+            "en": "Viewpoint"
+          },
+          "icon_id": "mdi:binoculars",
+          "sort_order": 20
+        },
+        {
+          "key": "waterfall",
+          "name": {
+            "fr": "Cascade",
+            "en": "Waterfall"
+          },
+          "icon_id": "mdi:waterfall",
+          "sort_order": 30
+        },
+        {
+          "key": "lake",
+          "name": {
+            "fr": "Lac",
+            "en": "Lake"
+          },
+          "icon_id": "mdi:lake",
+          "sort_order": 40
+        },
+        {
+          "key": "river",
+          "name": {
+            "fr": "Rivière",
+            "en": "River"
+          },
+          "icon_id": "mdi:waves",
+          "sort_order": 50
+        },
+        {
+          "key": "cave",
+          "name": {
+            "fr": "Grotte",
+            "en": "Cave"
+          },
+          "icon_id": "mdi:terrain",
+          "sort_order": 60
+        },
+        {
+          "key": "forest",
+          "name": {
+            "fr": "Forêt",
+            "en": "Forest"
+          },
+          "icon_id": "mdi:pine-tree",
+          "sort_order": 70
+        },
+        {
+          "key": "geological_formation",
+          "name": {
+            "fr": "Formation géologique",
+            "en": "Geological formation"
+          },
+          "icon_id": "mdi:terrain",
+          "sort_order": 80
+        },
+        {
+          "key": "mountain_pass",
+          "name": {
+            "fr": "Col",
+            "en": "Mountain pass"
+          },
+          "icon_id": "mdi:sign-direction",
+          "sort_order": 90
+        },
+        {
+          "key": "refuge",
+          "name": {
+            "fr": "Refuge",
+            "en": "Refuge"
+          },
+          "icon_id": "mdi:tent",
+          "sort_order": 100
+        },
+        {
+          "key": "shelter",
+          "name": {
+            "fr": "Abri",
+            "en": "Shelter"
+          },
+          "icon_id": "mdi:home-outline",
+          "sort_order": 110
+        },
+        {
+          "key": "water_source",
+          "name": {
+            "fr": "Source / Eau",
+            "en": "Water source"
+          },
+          "icon_id": "mdi:water",
+          "sort_order": 120
+        },
+        {
+          "key": "picnic_area",
+          "name": {
+            "fr": "Aire de pique-nique",
+            "en": "Picnic area"
+          },
+          "icon_id": "mdi:table-picnic",
+          "sort_order": 130
+        },
+        {
+          "key": "parking",
+          "name": {
+            "fr": "Parking",
+            "en": "Parking"
+          },
+          "icon_id": "mdi:parking",
+          "sort_order": 140
+        },
+        {
+          "key": "trailhead",
+          "name": {
+            "fr": "Départ de randonnée",
+            "en": "Trailhead"
+          },
+          "icon_id": "mdi:hiking",
+          "sort_order": 150
+        },
+        {
+          "key": "remarkable_passage",
+          "name": {
+            "fr": "Passage remarquable",
+            "en": "Remarkable passage"
+          },
+          "icon_id": "mdi:map-marker-star",
+          "sort_order": 160
+        },
+        {
+          "key": "natural_heritage",
+          "name": {
+            "fr": "Patrimoine naturel",
+            "en": "Natural heritage"
+          },
+          "icon_id": "mdi:leaf",
+          "sort_order": 170
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 180
+        }
+      ],
+      "tags": [
+        {
+          "key": "easy",
+          "name": {
+            "fr": "Facile",
+            "en": "Easy"
+          },
+          "color": "#0FA68A",
+          "sort_order": 10
+        },
+        {
+          "key": "moderate",
+          "name": {
+            "fr": "Modéré",
+            "en": "Moderate"
+          },
+          "color": "#7FA65A",
+          "sort_order": 20
+        },
+        {
+          "key": "difficult",
+          "name": {
+            "fr": "Difficile",
+            "en": "Difficult"
+          },
+          "color": "#E88745",
+          "sort_order": 30
+        },
+        {
+          "key": "very_difficult",
+          "name": {
+            "fr": "Très difficile",
+            "en": "Very difficult"
+          },
+          "color": "#D9534F",
+          "sort_order": 40
+        },
+        {
+          "key": "steep",
+          "name": {
+            "fr": "Escarpé",
+            "en": "Steep"
+          },
+          "color": "#E88745",
+          "sort_order": 50
+        },
+        {
+          "key": "vertiginous",
+          "name": {
+            "fr": "Vertigineux",
+            "en": "Vertiginous"
+          },
+          "color": "#D9534F",
+          "sort_order": 60
+        },
+        {
+          "key": "exposed",
+          "name": {
+            "fr": "Exposé",
+            "en": "Exposed"
+          },
+          "color": "#D9534F",
+          "sort_order": 70
+        },
+        {
+          "key": "muddy",
+          "name": {
+            "fr": "Boueux",
+            "en": "Muddy"
+          },
+          "color": "#8A6D5A",
+          "sort_order": 80
+        },
+        {
+          "key": "river_crossing",
+          "name": {
+            "fr": "Traversée de rivière",
+            "en": "River crossing"
+          },
+          "color": "#3B82F6",
+          "sort_order": 90
+        },
+        {
+          "key": "possible_snow",
+          "name": {
+            "fr": "Neige possible",
+            "en": "Possible snow"
+          },
+          "color": "#38A3C7",
+          "sort_order": 100
+        },
+        {
+          "key": "appropriate_footwear",
+          "name": {
+            "fr": "Chaussures adaptées",
+            "en": "Appropriate footwear"
+          },
+          "color": "#64748B",
+          "sort_order": 110
+        },
+        {
+          "key": "equipment_required",
+          "name": {
+            "fr": "Équipement nécessaire",
+            "en": "Equipment required"
+          },
+          "color": "#E88745",
+          "sort_order": 120
+        },
+        {
+          "key": "accessible_year_round",
+          "name": {
+            "fr": "Accessible toute l’année",
+            "en": "Accessible year-round"
+          },
+          "color": "#0FA68A",
+          "sort_order": 130
+        },
+        {
+          "key": "seasonal_closure",
+          "name": {
+            "fr": "Fermeture saisonnière",
+            "en": "Seasonal closure"
+          },
+          "color": "#D8A23B",
+          "sort_order": 140
+        },
+        {
+          "key": "water_available",
+          "name": {
+            "fr": "Eau disponible",
+            "en": "Water available"
+          },
+          "color": "#3B82F6",
+          "sort_order": 150
+        },
+        {
+          "key": "toilets",
+          "name": {
+            "fr": "Toilettes",
+            "en": "Toilets"
+          },
+          "color": "#64748B",
+          "sort_order": 160
+        },
+        {
+          "key": "refuge",
+          "name": {
+            "fr": "Refuge",
+            "en": "Refuge"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 170
+        },
+        {
+          "key": "camping",
+          "name": {
+            "fr": "Camping",
+            "en": "Camping"
+          },
+          "color": "#4F8A64",
+          "sort_order": 180
+        },
+        {
+          "key": "panorama",
+          "name": {
+            "fr": "Panorama",
+            "en": "Panorama"
+          },
+          "color": "#38A3C7",
+          "sort_order": 190
+        },
+        {
+          "key": "sunrise",
+          "name": {
+            "fr": "Lever de soleil",
+            "en": "Sunrise"
+          },
+          "color": "#D8A23B",
+          "sort_order": 200
+        },
+        {
+          "key": "sunset",
+          "name": {
+            "fr": "Coucher de soleil",
+            "en": "Sunset"
+          },
+          "color": "#E88745",
+          "sort_order": 210
+        },
+        {
+          "key": "wildlife",
+          "name": {
+            "fr": "Faune",
+            "en": "Wildlife"
+          },
+          "color": "#7FA65A",
+          "sort_order": 220
+        },
+        {
+          "key": "flora",
+          "name": {
+            "fr": "Flore",
+            "en": "Flora"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 230
+        },
+        {
+          "key": "geology",
+          "name": {
+            "fr": "Géologie",
+            "en": "Geology"
+          },
+          "color": "#8A6D5A",
+          "sort_order": 240
+        },
+        {
+          "key": "quiet",
+          "name": {
+            "fr": "Peu fréquenté",
+            "en": "Quiet"
+          },
+          "color": "#4F8A64",
+          "sort_order": 250
+        },
+        {
+          "key": "very_busy",
+          "name": {
+            "fr": "Très fréquenté",
+            "en": "Very busy"
+          },
+          "color": "#D9534F",
+          "sort_order": 260
+        }
+      ],
+      "statuses": [
+        {
+          "key": "to_explore",
+          "name": {
+            "fr": "À explorer",
+            "en": "To explore"
+          },
+          "color": "#3B82F6",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_verify",
+          "name": {
+            "fr": "À vérifier",
+            "en": "To verify"
+          },
+          "color": "#D8A23B",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "planned",
+          "name": {
+            "fr": "Prévu",
+            "en": "Planned"
+          },
+          "color": "#6366F1",
+          "sort_order": 30,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "completed",
+          "name": {
+            "fr": "Effectué",
+            "en": "Completed"
+          },
+          "color": "#0FA68A",
+          "sort_order": 40,
+          "functional_state": "visited"
+        },
+        {
+          "key": "redo",
+          "name": {
+            "fr": "À refaire",
+            "en": "Redo"
+          },
+          "color": "#38A3C7",
+          "sort_order": 50,
+          "functional_state": "visited"
+        },
+        {
+          "key": "temporarily_closed",
+          "name": {
+            "fr": "Fermé temporairement",
+            "en": "Temporarily closed"
+          },
+          "color": "#E88745",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "inaccessible",
+          "name": {
+            "fr": "Inaccessible",
+            "en": "Inaccessible"
+          },
+          "color": "#D9534F",
+          "sort_order": 70,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 80,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "heritage",
+      "name": {
+        "fr": "Patrimoine / Histoire",
+        "en": "Heritage / History"
+      },
+      "description": {
+        "fr": "Patrimoine architectural et historique.",
+        "en": "Architectural and historical heritage."
+      },
+      "ui_icon": "landmark",
+      "default_status_key": "to_document",
+      "categories": [
+        {
+          "key": "castle",
+          "name": {
+            "fr": "Château",
+            "en": "Castle"
+          },
+          "icon_id": "mdi:castle",
+          "sort_order": 10
+        },
+        {
+          "key": "manor",
+          "name": {
+            "fr": "Manoir",
+            "en": "Manor"
+          },
+          "icon_id": "mdi:home-city",
+          "sort_order": 20
+        },
+        {
+          "key": "fortification",
+          "name": {
+            "fr": "Fortification",
+            "en": "Fortification"
+          },
+          "icon_id": "mdi:shield",
+          "sort_order": 30
+        },
+        {
+          "key": "church_chapel",
+          "name": {
+            "fr": "Église / Chapelle",
+            "en": "Church / Chapel"
+          },
+          "icon_id": "mdi:church",
+          "sort_order": 40
+        },
+        {
+          "key": "monastery",
+          "name": {
+            "fr": "Monastère",
+            "en": "Monastery"
+          },
+          "icon_id": "mdi:church-outline",
+          "sort_order": 50
+        },
+        {
+          "key": "cemetery",
+          "name": {
+            "fr": "Cimetière",
+            "en": "Cemetery"
+          },
+          "icon_id": "mdi:grave-stone",
+          "sort_order": 60
+        },
+        {
+          "key": "monument",
+          "name": {
+            "fr": "Monument",
+            "en": "Monument"
+          },
+          "icon_id": "mdi:pillar",
+          "sort_order": 70
+        },
+        {
+          "key": "memorial",
+          "name": {
+            "fr": "Mémorial",
+            "en": "Memorial"
+          },
+          "icon_id": "mdi:grave-stone",
+          "sort_order": 80
+        },
+        {
+          "key": "archaeological_site",
+          "name": {
+            "fr": "Site archéologique",
+            "en": "Archaeological site"
+          },
+          "icon_id": "mdi:arch",
+          "sort_order": 90
+        },
+        {
+          "key": "industrial",
+          "name": {
+            "fr": "Industriel",
+            "en": "Industrial"
+          },
+          "icon_id": "mdi:factory",
+          "sort_order": 100
+        },
+        {
+          "key": "railway",
+          "name": {
+            "fr": "Ferroviaire",
+            "en": "Railway"
+          },
+          "icon_id": "mdi:train",
+          "sort_order": 110
+        },
+        {
+          "key": "military",
+          "name": {
+            "fr": "Militaire",
+            "en": "Military"
+          },
+          "icon_id": "mdi:shield",
+          "sort_order": 120
+        },
+        {
+          "key": "civil_engineering",
+          "name": {
+            "fr": "Ouvrage civil",
+            "en": "Civil engineering"
+          },
+          "icon_id": "mdi:bridge",
+          "sort_order": 130
+        },
+        {
+          "key": "administration",
+          "name": {
+            "fr": "Administration",
+            "en": "Administration"
+          },
+          "icon_id": "mdi:office-building",
+          "sort_order": 140
+        },
+        {
+          "key": "residential",
+          "name": {
+            "fr": "Habitat",
+            "en": "Residential"
+          },
+          "icon_id": "mdi:home-outline",
+          "sort_order": 150
+        },
+        {
+          "key": "remarkable_architecture",
+          "name": {
+            "fr": "Architecture remarquable",
+            "en": "Remarkable architecture"
+          },
+          "icon_id": "mdi:bank-outline",
+          "sort_order": 160
+        },
+        {
+          "key": "ruins",
+          "name": {
+            "fr": "Ruines",
+            "en": "Ruins"
+          },
+          "icon_id": "mdi:home-city",
+          "sort_order": 170
+        },
+        {
+          "key": "museum",
+          "name": {
+            "fr": "Musée",
+            "en": "Museum"
+          },
+          "icon_id": "mdi:palette-outline",
+          "sort_order": 180
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 190
+        }
+      ],
+      "tags": [
+        {
+          "key": "antiquity",
+          "name": {
+            "fr": "Antiquité",
+            "en": "Antiquity"
+          },
+          "color": "#B38B59",
+          "sort_order": 10
+        },
+        {
+          "key": "middle_ages",
+          "name": {
+            "fr": "Moyen Âge",
+            "en": "Middle Ages"
+          },
+          "color": "#8A6D5A",
+          "sort_order": 20
+        },
+        {
+          "key": "renaissance",
+          "name": {
+            "fr": "Renaissance",
+            "en": "Renaissance"
+          },
+          "color": "#D8A23B",
+          "sort_order": 30
+        },
+        {
+          "key": "17th_century",
+          "name": {
+            "fr": "XVIIe siècle",
+            "en": "17th century"
+          },
+          "color": "#B38B59",
+          "sort_order": 40
+        },
+        {
+          "key": "18th_century",
+          "name": {
+            "fr": "XVIIIe siècle",
+            "en": "18th century"
+          },
+          "color": "#B38B59",
+          "sort_order": 50
+        },
+        {
+          "key": "19th_century",
+          "name": {
+            "fr": "XIXe siècle",
+            "en": "19th century"
+          },
+          "color": "#64748B",
+          "sort_order": 60
+        },
+        {
+          "key": "20th_century",
+          "name": {
+            "fr": "XXe siècle",
+            "en": "20th century"
+          },
+          "color": "#526779",
+          "sort_order": 70
+        },
+        {
+          "key": "contemporary",
+          "name": {
+            "fr": "Contemporain",
+            "en": "Contemporary"
+          },
+          "color": "#3B82F6",
+          "sort_order": 80
+        },
+        {
+          "key": "roman",
+          "name": {
+            "fr": "Romain",
+            "en": "Roman"
+          },
+          "color": "#B38B59",
+          "sort_order": 90
+        },
+        {
+          "key": "gothic",
+          "name": {
+            "fr": "Gothique",
+            "en": "Gothic"
+          },
+          "color": "#6366F1",
+          "sort_order": 100
+        },
+        {
+          "key": "baroque",
+          "name": {
+            "fr": "Baroque",
+            "en": "Baroque"
+          },
+          "color": "#C96A7B",
+          "sort_order": 110
+        },
+        {
+          "key": "neoclassical",
+          "name": {
+            "fr": "Néoclassique",
+            "en": "Neoclassical"
+          },
+          "color": "#64748B",
+          "sort_order": 120
+        },
+        {
+          "key": "art_nouveau",
+          "name": {
+            "fr": "Art nouveau",
+            "en": "Art nouveau"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 130
+        },
+        {
+          "key": "art_deco",
+          "name": {
+            "fr": "Art déco",
+            "en": "Art Deco"
+          },
+          "color": "#C96A7B",
+          "sort_order": 140
+        },
+        {
+          "key": "modernism",
+          "name": {
+            "fr": "Modernisme",
+            "en": "Modernism"
+          },
+          "color": "#38A3C7",
+          "sort_order": 150
+        },
+        {
+          "key": "brutalism",
+          "name": {
+            "fr": "Brutalisme",
+            "en": "Brutalism"
+          },
+          "color": "#526779",
+          "sort_order": 160
+        },
+        {
+          "key": "world_war_ii",
+          "name": {
+            "fr": "Seconde Guerre mondiale",
+            "en": "World War II"
+          },
+          "color": "#64748B",
+          "sort_order": 170
+        },
+        {
+          "key": "cold_war",
+          "name": {
+            "fr": "Guerre froide",
+            "en": "Cold War"
+          },
+          "color": "#526779",
+          "sort_order": 180
+        },
+        {
+          "key": "industrial",
+          "name": {
+            "fr": "Industriel",
+            "en": "Industrial"
+          },
+          "color": "#526779",
+          "sort_order": 190
+        },
+        {
+          "key": "restored",
+          "name": {
+            "fr": "Restauré",
+            "en": "Restored"
+          },
+          "color": "#0FA68A",
+          "sort_order": 200
+        },
+        {
+          "key": "under_restoration",
+          "name": {
+            "fr": "En restauration",
+            "en": "Under restoration"
+          },
+          "color": "#D8A23B",
+          "sort_order": 210
+        },
+        {
+          "key": "listed_heritage",
+          "name": {
+            "fr": "Classé",
+            "en": "Listed heritage"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 220
+        },
+        {
+          "key": "unesco",
+          "name": {
+            "fr": "UNESCO",
+            "en": "UNESCO"
+          },
+          "color": "#6366F1",
+          "sort_order": 230
+        },
+        {
+          "key": "historic_register",
+          "name": {
+            "fr": "Inscription historique",
+            "en": "Historic register"
+          },
+          "color": "#B38B59",
+          "sort_order": 240
+        },
+        {
+          "key": "remarkable_architecture",
+          "name": {
+            "fr": "Architecture remarquable",
+            "en": "Remarkable architecture"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 250
+        }
+      ],
+      "statuses": [
+        {
+          "key": "to_document",
+          "name": {
+            "fr": "À documenter",
+            "en": "To document"
+          },
+          "color": "#3B82F6",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "research_in_progress",
+          "name": {
+            "fr": "Recherche en cours",
+            "en": "Research in progress"
+          },
+          "color": "#D8A23B",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_visit",
+          "name": {
+            "fr": "À visiter",
+            "en": "To visit"
+          },
+          "color": "#38A3C7",
+          "sort_order": 30,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "documented",
+          "name": {
+            "fr": "Documenté",
+            "en": "Documented"
+          },
+          "color": "#0FA68A",
+          "sort_order": 40,
+          "functional_state": "visited"
+        },
+        {
+          "key": "visited",
+          "name": {
+            "fr": "Visité",
+            "en": "Visited"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 50,
+          "functional_state": "visited"
+        },
+        {
+          "key": "needs_completion",
+          "name": {
+            "fr": "À compléter",
+            "en": "Needs completion"
+          },
+          "color": "#E88745",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "lost_destroyed",
+          "name": {
+            "fr": "Disparu",
+            "en": "Lost / Destroyed"
+          },
+          "color": "#D9534F",
+          "sort_order": 70,
+          "functional_state": "visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 80,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "road_trip",
+      "name": {
+        "fr": "Road Trip",
+        "en": "Road Trip"
+      },
+      "description": {
+        "fr": "Étapes, routes et haltes de voyage.",
+        "en": "Stops, routes and travel breaks."
+      },
+      "ui_icon": "route",
+      "default_status_key": "candidate",
+      "categories": [
+        {
+          "key": "stop",
+          "name": {
+            "fr": "Étape",
+            "en": "Stop"
+          },
+          "icon_id": "mdi:map-marker-outline",
+          "sort_order": 10
+        },
+        {
+          "key": "viewpoint",
+          "name": {
+            "fr": "Point de vue",
+            "en": "Viewpoint"
+          },
+          "icon_id": "mdi:binoculars",
+          "sort_order": 20
+        },
+        {
+          "key": "attraction",
+          "name": {
+            "fr": "Attraction",
+            "en": "Attraction"
+          },
+          "icon_id": "mdi:ferris-wheel",
+          "sort_order": 30
+        },
+        {
+          "key": "heritage",
+          "name": {
+            "fr": "Patrimoine",
+            "en": "Heritage"
+          },
+          "icon_id": "mdi:pillar",
+          "sort_order": 40
+        },
+        {
+          "key": "nature",
+          "name": {
+            "fr": "Nature",
+            "en": "Nature"
+          },
+          "icon_id": "mdi:tree",
+          "sort_order": 50
+        },
+        {
+          "key": "restaurant",
+          "name": {
+            "fr": "Restaurant",
+            "en": "Restaurant"
+          },
+          "icon_id": "mdi:silverware-fork-knife",
+          "sort_order": 60
+        },
+        {
+          "key": "cafe",
+          "name": {
+            "fr": "Café",
+            "en": "Café"
+          },
+          "icon_id": "mdi:coffee",
+          "sort_order": 70
+        },
+        {
+          "key": "accommodation",
+          "name": {
+            "fr": "Hébergement",
+            "en": "Accommodation"
+          },
+          "icon_id": "mdi:hotel",
+          "sort_order": 80
+        },
+        {
+          "key": "gas_station",
+          "name": {
+            "fr": "Station-service",
+            "en": "Gas station"
+          },
+          "icon_id": "mdi:gas-station",
+          "sort_order": 90
+        },
+        {
+          "key": "parking",
+          "name": {
+            "fr": "Parking",
+            "en": "Parking"
+          },
+          "icon_id": "mdi:parking",
+          "sort_order": 100
+        },
+        {
+          "key": "rest_area",
+          "name": {
+            "fr": "Aire de repos",
+            "en": "Rest area"
+          },
+          "icon_id": "mdi:table-picnic",
+          "sort_order": 110
+        },
+        {
+          "key": "supermarket",
+          "name": {
+            "fr": "Supermarché",
+            "en": "Supermarket"
+          },
+          "icon_id": "mdi:cart",
+          "sort_order": 120
+        },
+        {
+          "key": "transport",
+          "name": {
+            "fr": "Transport",
+            "en": "Transport"
+          },
+          "icon_id": "mdi:car",
+          "sort_order": 130
+        },
+        {
+          "key": "border",
+          "name": {
+            "fr": "Frontière",
+            "en": "Border"
+          },
+          "icon_id": "mdi:door",
+          "sort_order": 140
+        },
+        {
+          "key": "ferry",
+          "name": {
+            "fr": "Ferry",
+            "en": "Ferry"
+          },
+          "icon_id": "mdi:ferry",
+          "sort_order": 150
+        },
+        {
+          "key": "trailhead",
+          "name": {
+            "fr": "Départ de randonnée",
+            "en": "Trailhead"
+          },
+          "icon_id": "mdi:hiking",
+          "sort_order": 160
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 170
+        }
+      ],
+      "tags": [
+        {
+          "key": "priority",
+          "name": {
+            "fr": "Prioritaire",
+            "en": "Priority"
+          },
+          "color": "#D8A23B",
+          "sort_order": 10
+        },
+        {
+          "key": "optional",
+          "name": {
+            "fr": "Optionnel",
+            "en": "Optional"
+          },
+          "color": "#64748B",
+          "sort_order": 20
+        },
+        {
+          "key": "short_detour",
+          "name": {
+            "fr": "Détour court",
+            "en": "Short detour"
+          },
+          "color": "#38A3C7",
+          "sort_order": 30
+        },
+        {
+          "key": "major_detour",
+          "name": {
+            "fr": "Détour important",
+            "en": "Major detour"
+          },
+          "color": "#E88745",
+          "sort_order": 40
+        },
+        {
+          "key": "on_route",
+          "name": {
+            "fr": "Sur le trajet",
+            "en": "On route"
+          },
+          "color": "#0FA68A",
+          "sort_order": 50
+        },
+        {
+          "key": "opens_early",
+          "name": {
+            "fr": "Ouvert tôt",
+            "en": "Opens early"
+          },
+          "color": "#D8A23B",
+          "sort_order": 60
+        },
+        {
+          "key": "opens_late",
+          "name": {
+            "fr": "Ouvert tard",
+            "en": "Opens late"
+          },
+          "color": "#6366F1",
+          "sort_order": 70
+        },
+        {
+          "key": "reservation",
+          "name": {
+            "fr": "Réservation",
+            "en": "Reservation"
+          },
+          "color": "#E88745",
+          "sort_order": 80
+        },
+        {
+          "key": "parking",
+          "name": {
+            "fr": "Parking",
+            "en": "Parking"
+          },
+          "color": "#526779",
+          "sort_order": 90
+        },
+        {
+          "key": "meal",
+          "name": {
+            "fr": "Repas",
+            "en": "Meal"
+          },
+          "color": "#D8A23B",
+          "sort_order": 100
+        },
+        {
+          "key": "overnight",
+          "name": {
+            "fr": "Nuit",
+            "en": "Overnight"
+          },
+          "color": "#6366F1",
+          "sort_order": 110
+        },
+        {
+          "key": "break",
+          "name": {
+            "fr": "Pause",
+            "en": "Break"
+          },
+          "color": "#7FA65A",
+          "sort_order": 120
+        },
+        {
+          "key": "fuel",
+          "name": {
+            "fr": "Carburant",
+            "en": "Fuel"
+          },
+          "color": "#E88745",
+          "sort_order": 130
+        },
+        {
+          "key": "toilets",
+          "name": {
+            "fr": "Toilettes",
+            "en": "Toilets"
+          },
+          "color": "#64748B",
+          "sort_order": 140
+        },
+        {
+          "key": "photography",
+          "name": {
+            "fr": "Photographie",
+            "en": "Photography"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 150
+        },
+        {
+          "key": "sunrise",
+          "name": {
+            "fr": "Lever de soleil",
+            "en": "Sunrise"
+          },
+          "color": "#D8A23B",
+          "sort_order": 160
+        },
+        {
+          "key": "sunset",
+          "name": {
+            "fr": "Coucher de soleil",
+            "en": "Sunset"
+          },
+          "color": "#E88745",
+          "sort_order": 170
+        },
+        {
+          "key": "bad_weather_friendly",
+          "name": {
+            "fr": "Mauvais temps compatible",
+            "en": "Bad-weather friendly"
+          },
+          "color": "#3B82F6",
+          "sort_order": 180
+        }
+      ],
+      "statuses": [
+        {
+          "key": "candidate",
+          "name": {
+            "fr": "Candidat",
+            "en": "Candidate"
+          },
+          "color": "#64748B",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "selected",
+          "name": {
+            "fr": "Retenu",
+            "en": "Selected"
+          },
+          "color": "#3B82F6",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "to_book",
+          "name": {
+            "fr": "À réserver",
+            "en": "To book"
+          },
+          "color": "#E88745",
+          "sort_order": 30,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "booked",
+          "name": {
+            "fr": "Réservé",
+            "en": "Booked"
+          },
+          "color": "#6366F1",
+          "sort_order": 40,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "planned",
+          "name": {
+            "fr": "Planifié",
+            "en": "Planned"
+          },
+          "color": "#38A3C7",
+          "sort_order": 50,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "completed",
+          "name": {
+            "fr": "Effectué",
+            "en": "Completed"
+          },
+          "color": "#0FA68A",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "skipped",
+          "name": {
+            "fr": "Ignoré",
+            "en": "Skipped"
+          },
+          "color": "#6B7280",
+          "sort_order": 70,
+          "functional_state": "visited"
+        },
+        {
+          "key": "reschedule",
+          "name": {
+            "fr": "À reprogrammer",
+            "en": "Reschedule"
+          },
+          "color": "#D8A23B",
+          "sort_order": 80,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "gastronomy",
+      "name": {
+        "fr": "Gastronomie",
+        "en": "Gastronomy"
+      },
+      "description": {
+        "fr": "Adresses et expériences culinaires.",
+        "en": "Food places and culinary experiences."
+      },
+      "ui_icon": "utensils",
+      "default_status_key": "to_try",
+      "categories": [
+        {
+          "key": "restaurant",
+          "name": {
+            "fr": "Restaurant",
+            "en": "Restaurant"
+          },
+          "icon_id": "mdi:silverware-fork-knife",
+          "sort_order": 10
+        },
+        {
+          "key": "street_food",
+          "name": {
+            "fr": "Street food",
+            "en": "Street food"
+          },
+          "icon_id": "mdi:food",
+          "sort_order": 20
+        },
+        {
+          "key": "cafe",
+          "name": {
+            "fr": "Café",
+            "en": "Café"
+          },
+          "icon_id": "mdi:coffee",
+          "sort_order": 30
+        },
+        {
+          "key": "bakery",
+          "name": {
+            "fr": "Boulangerie",
+            "en": "Bakery"
+          },
+          "icon_id": "mdi:bread-slice",
+          "sort_order": 40
+        },
+        {
+          "key": "pastry_shop",
+          "name": {
+            "fr": "Pâtisserie",
+            "en": "Pastry shop"
+          },
+          "icon_id": "mdi:cupcake",
+          "sort_order": 50
+        },
+        {
+          "key": "market",
+          "name": {
+            "fr": "Marché",
+            "en": "Market"
+          },
+          "icon_id": "mdi:basket",
+          "sort_order": 60
+        },
+        {
+          "key": "producer",
+          "name": {
+            "fr": "Producteur",
+            "en": "Producer"
+          },
+          "icon_id": "mdi:tractor",
+          "sort_order": 70
+        },
+        {
+          "key": "grocery",
+          "name": {
+            "fr": "Épicerie",
+            "en": "Grocery"
+          },
+          "icon_id": "mdi:store",
+          "sort_order": 80
+        },
+        {
+          "key": "local_specialty",
+          "name": {
+            "fr": "Spécialité locale",
+            "en": "Local specialty"
+          },
+          "icon_id": "mdi:food-variant",
+          "sort_order": 90
+        },
+        {
+          "key": "bar_lounge",
+          "name": {
+            "fr": "Bar / Salon",
+            "en": "Bar / Lounge"
+          },
+          "icon_id": "mdi:glass-cocktail",
+          "sort_order": 100
+        },
+        {
+          "key": "other",
+          "name": {
+            "fr": "Autre",
+            "en": "Other"
+          },
+          "icon_id": "material-symbols:help-outline",
+          "sort_order": 110
+        }
+      ],
+      "tags": [
+        {
+          "key": "local_cuisine",
+          "name": {
+            "fr": "Cuisine locale",
+            "en": "Local cuisine"
+          },
+          "color": "#D8A23B",
+          "sort_order": 10
+        },
+        {
+          "key": "fine_dining",
+          "name": {
+            "fr": "Gastronomique",
+            "en": "Fine dining"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 20
+        },
+        {
+          "key": "traditional",
+          "name": {
+            "fr": "Traditionnel",
+            "en": "Traditional"
+          },
+          "color": "#B38B59",
+          "sort_order": 30
+        },
+        {
+          "key": "vegetarian",
+          "name": {
+            "fr": "Végétarien",
+            "en": "Vegetarian"
+          },
+          "color": "#4F8A64",
+          "sort_order": 40
+        },
+        {
+          "key": "vegan",
+          "name": {
+            "fr": "Vegan",
+            "en": "Vegan"
+          },
+          "color": "#0FA68A",
+          "sort_order": 50
+        },
+        {
+          "key": "budget",
+          "name": {
+            "fr": "Petit budget",
+            "en": "Budget"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 60
+        },
+        {
+          "key": "mid_range",
+          "name": {
+            "fr": "Moyen budget",
+            "en": "Mid-range"
+          },
+          "color": "#D8A23B",
+          "sort_order": 70
+        },
+        {
+          "key": "high_end",
+          "name": {
+            "fr": "Haut de gamme",
+            "en": "High-end"
+          },
+          "color": "#8B5CF6",
+          "sort_order": 80
+        },
+        {
+          "key": "terrace",
+          "name": {
+            "fr": "Terrasse",
+            "en": "Terrace"
+          },
+          "color": "#4F8A64",
+          "sort_order": 90
+        },
+        {
+          "key": "view",
+          "name": {
+            "fr": "Vue",
+            "en": "View"
+          },
+          "color": "#38A3C7",
+          "sort_order": 100
+        },
+        {
+          "key": "reservation",
+          "name": {
+            "fr": "Réservation",
+            "en": "Reservation"
+          },
+          "color": "#E88745",
+          "sort_order": 110
+        },
+        {
+          "key": "breakfast",
+          "name": {
+            "fr": "Petit-déjeuner",
+            "en": "Breakfast"
+          },
+          "color": "#D8A23B",
+          "sort_order": 120
+        },
+        {
+          "key": "lunch",
+          "name": {
+            "fr": "Déjeuner",
+            "en": "Lunch"
+          },
+          "color": "#E88745",
+          "sort_order": 130
+        },
+        {
+          "key": "dinner",
+          "name": {
+            "fr": "Dîner",
+            "en": "Dinner"
+          },
+          "color": "#6366F1",
+          "sort_order": 140
+        },
+        {
+          "key": "takeaway",
+          "name": {
+            "fr": "À emporter",
+            "en": "Takeaway"
+          },
+          "color": "#3BBFA5",
+          "sort_order": 150
+        },
+        {
+          "key": "regional_specialty",
+          "name": {
+            "fr": "Spécialité régionale",
+            "en": "Regional specialty"
+          },
+          "color": "#C96A7B",
+          "sort_order": 160
+        },
+        {
+          "key": "must_try",
+          "name": {
+            "fr": "Incontournable",
+            "en": "Must-try"
+          },
+          "color": "#D8A23B",
+          "sort_order": 170
+        }
+      ],
+      "statuses": [
+        {
+          "key": "to_try",
+          "name": {
+            "fr": "À tester",
+            "en": "To try"
+          },
+          "color": "#3B82F6",
+          "sort_order": 10,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "booked",
+          "name": {
+            "fr": "Réservé",
+            "en": "Booked"
+          },
+          "color": "#6366F1",
+          "sort_order": 20,
+          "functional_state": "non_visited"
+        },
+        {
+          "key": "tried",
+          "name": {
+            "fr": "Testé",
+            "en": "Tried"
+          },
+          "color": "#0FA68A",
+          "sort_order": 30,
+          "functional_state": "visited"
+        },
+        {
+          "key": "favorite",
+          "name": {
+            "fr": "Favori",
+            "en": "Favorite"
+          },
+          "color": "#D8A23B",
+          "sort_order": 40,
+          "functional_state": "visited"
+        },
+        {
+          "key": "try_again",
+          "name": {
+            "fr": "À retester",
+            "en": "Try again"
+          },
+          "color": "#38A3C7",
+          "sort_order": 50,
+          "functional_state": "visited"
+        },
+        {
+          "key": "disappointing",
+          "name": {
+            "fr": "Décevant",
+            "en": "Disappointing"
+          },
+          "color": "#E88745",
+          "sort_order": 60,
+          "functional_state": "visited"
+        },
+        {
+          "key": "closed",
+          "name": {
+            "fr": "Fermé",
+            "en": "Closed"
+          },
+          "color": "#D9534F",
+          "sort_order": 70,
+          "functional_state": "visited"
+        },
+        {
+          "key": "archived",
+          "name": {
+            "fr": "Archivé",
+            "en": "Archived"
+          },
+          "color": "#6B7280",
+          "sort_order": 80,
+          "functional_state": "visited"
+        }
+      ]
+    },
+    {
+      "id": "custom",
+      "name": {
+        "fr": "Personnalisée / vide",
+        "en": "Custom / Empty"
+      },
+      "description": {
+        "fr": "Commencer sans catégories, tags ni statuts prédéfinis.",
+        "en": "Start without predefined categories, tags or statuses."
+      },
+      "ui_icon": "sliders-horizontal",
+      "default_status_key": null,
+      "categories": [],
+      "tags": [],
+      "statuses": []
+    }
+  ]
+}

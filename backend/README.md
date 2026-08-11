@@ -121,7 +121,7 @@ and export jobs are documented in [`docs/async-task-architecture.md`](../docs/as
 
 Statuses are scoped to a map and include a functional visit state (`unvisited` or `visited`), an active flag, a default flag, display order, and color. A map receives editable defaults when created. Inactive statuses stay attached to existing places but cannot be selected for new writes.
 
-Categories and tags are map-scoped. Categories use the shared closed icon catalog in `shared/category-icons.json`; arbitrary SVG, URLs, and network icon lookup are not accepted. The primary category determines the marker icon and the status determines its color. Tags may have a configured display color.
+Categories and tags are map-scoped. Categories use the shared closed catalog of roughly 1,500 curated icons in `shared/category-icons.json`; this same file is the backend allowlist and the frontend generation source. All 300 historical IDs are retained in `shared/category-icons.legacy.json`. Arbitrary Iconify IDs, SVG/HTML, URLs, data content, and network icon lookup are rejected. Additions must use a locally installed MDI or supported historical Material Symbols module, include group/search metadata, and be regenerated and checked with `npm run generate:category-icons` and `npm run validate:category-icons` from `frontend`. The primary category determines the marker icon and the status determines its color. Tags may have a configured display color.
 
 ## Country → maps → places model
 

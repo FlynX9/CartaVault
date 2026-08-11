@@ -1,20 +1,16 @@
-import re
 from datetime import datetime
 from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
-COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
+from app.colors import normalize_hex_color
 
 
 def normalize_color(value: str) -> str:
     """Validate and normalize a hexadecimal color."""
-
-    normalized = value.strip().upper()
-    if COLOR_PATTERN.fullmatch(normalized) is None:
-        raise ValueError("The color must use the #RRGGBB format")
+    normalized = normalize_hex_color(value)
+    assert isinstance(normalized, str)
     return normalized
 
 

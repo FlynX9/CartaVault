@@ -1,5 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const frontendRoot = fileURLToPath(new URL('.', import.meta.url))
+const legacyCategoryIconIds = JSON.parse(readFileSync(new URL('../shared/category-icons.legacy.json', import.meta.url), 'utf8')) as string[]
+const legacyCategoryIconModules = new Set(legacyCategoryIconIds.map((id) => {
+  const [prefix, name] = id.split(':')
+  return resolve(frontendRoot, 'node_modules', '@iconify-icons', prefix, `${name}.js`).replaceAll('\\', '/')
+}))
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,7 +22,9 @@ export default defineConfig({
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor-react'
           if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) return 'vendor-leaflet'
           if (id.includes('node_modules/maplibre-gl') || id.includes('node_modules/@maplibre')) return 'vendor-maplibre'
-          if (id.includes('node_modules/@iconify')) return 'vendor-icons'
+          const normalizedId = id.replaceAll('\\', '/').split('?')[0]!
+          if (legacyCategoryIconModules.has(normalizedId)) return 'category-icons-legacy'
+          if (id.includes('node_modules/@iconify/react')) return 'vendor-icons'
           return undefined
         },
       },

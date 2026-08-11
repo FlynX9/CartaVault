@@ -40,11 +40,13 @@ def _write_catalog(tmp_path: Path, payload: object) -> Path:
 
 
 def test_shared_category_icon_catalog_is_valid_and_immutable() -> None:
-    assert len(CATEGORY_ICON_CATALOG) == len(CATEGORY_ICON_IDS) == 300
+    assert len(CATEGORY_ICON_CATALOG) == len(CATEGORY_ICON_IDS) == 1500
     assert CATEGORY_ICON_GROUPS.issuperset({
         "buildings", "religion", "industry", "military", "health", "education",
         "culture", "transport", "tourism", "infrastructure", "nature", "access",
         "urban", "commerce", "accommodation", "administration", "heritage", "other",
+        "gastronomy", "photography", "hiking", "water", "mountain", "agriculture",
+        "energy", "maritime", "sport", "archaeology",
     })
     assert DEFAULT_CATEGORY_ICON_ID in CATEGORY_ICON_IDS
     assert FALLBACK_CATEGORY_ICON_ID in CATEGORY_ICON_IDS
@@ -56,6 +58,12 @@ def test_shared_category_icon_catalog_is_valid_and_immutable() -> None:
         CATEGORY_ICON_CATALOG.append(CATEGORY_ICON_CATALOG[0])  # type: ignore[attr-defined]
     with pytest.raises(FrozenInstanceError):
         CATEGORY_ICON_CATALOG[0].label = "Modified"  # type: ignore[misc]
+
+
+def test_all_legacy_category_icon_ids_are_retained() -> None:
+    legacy_ids = set(json.loads(CATALOG_PATH.with_name("category-icons.legacy.json").read_text(encoding="utf-8")))
+    assert len(legacy_ids) == 300
+    assert legacy_ids <= CATEGORY_ICON_IDS
 
 
 def test_shared_category_icon_catalog_resolves_known_and_unknown_ids() -> None:
@@ -110,9 +118,18 @@ def test_category_icon_schema_uses_qualified_catalog_ids() -> None:
     assert CategoryCreate(map_id=map_id, name="Category", icon=" mdi:church ").icon == "mdi:church"
     assert CategoryCreate(map_id=map_id, name="Category", icon="material-symbols:help-outline").icon == FALLBACK_CATEGORY_ICON_ID
 
-    for icon_id in ("church", "map-pin", "mdi:not-installed", ""):
+    for icon_id in (
+        "church", "map-pin", "mdi:not-installed", "",
+        "https://example.test/icon.svg", "data:image/svg+xml,<svg/>",
+        "<svg onload=alert(1) />", "javascript:alert(1)",
+    ):
         with pytest.raises(ValueError, match="category icon is not allowed"):
             CategoryCreate(map_id=map_id, name="Category", icon=icon_id)
+
+    assert all(
+        CategoryCreate(map_id=map_id, name="Category", icon=icon_id).icon == icon_id
+        for icon_id in CATEGORY_ICON_IDS
+    )
 
     with pytest.raises(ValueError, match="category icon cannot be null"):
         CategoryUpdate(icon=None)

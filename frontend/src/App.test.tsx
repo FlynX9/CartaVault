@@ -8,7 +8,7 @@ import { deleteMap, getMaps } from './api/maps'
 import { getMapPlaces, getPlaceDetails } from './api/places'
 import App from './App'
 
-vi.mock('./api/maps', () => ({ getMaps: vi.fn(), deleteMap: vi.fn(), getPendingMapInvitations: vi.fn(() => Promise.resolve([])), acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn() }))
+vi.mock('./api/maps', () => ({ getMaps: vi.fn(), deleteMap: vi.fn(), getMapProfiles: vi.fn(() => Promise.resolve([])), getPendingMapInvitations: vi.fn(() => Promise.resolve([])), acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn() }))
 vi.mock('./api/setup', () => ({ getSetupStatus: vi.fn(() => Promise.resolve({ required: false, locked: true, checks: [] })) }))
 vi.mock('./api/users', () => ({ getUsers: vi.fn(() => Promise.resolve([])), createUser: vi.fn(), updateUser: vi.fn(), resetUserPassword: vi.fn() }))
 vi.mock('./auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-id', email: 'admin@example.test', display_name: 'Admin', is_admin: true, is_active: true }, loading: false, logout: vi.fn(), refresh: vi.fn(), login: vi.fn() }) }))

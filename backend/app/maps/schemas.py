@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.countries.schemas import CountrySummary
 from app.auth.schemas import UserRead
 from app.places.fields import CONFIGURABLE_PLACE_FIELDS, normalize_place_field_config
+from app.map_profiles.schemas import StarterProfileId, StarterProfileOptions
 
 
 class MapCreate(BaseModel):
@@ -15,6 +16,8 @@ class MapCreate(BaseModel):
     center_latitude: float | None = Field(default=None, ge=-90, le=90)
     center_longitude: float | None = Field(default=None, ge=-180, le=180)
     default_zoom: int | None = Field(default=None, ge=1, le=18)
+    starter_profile: StarterProfileId = "custom"
+    profile_options: StarterProfileOptions = Field(default_factory=StarterProfileOptions)
 
     @model_validator(mode="after")
     def validate_center(self) -> Self:

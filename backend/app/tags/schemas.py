@@ -1,20 +1,15 @@
-import re
 from typing import Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.colors import normalize_hex_color
+
 DEFAULT_TAG_COLOR = "#0FA68A"
-TAG_COLOR_PATTERN = re.compile(r"^#[0-9A-F]{6}$")
 
 
 def normalize_tag_color(value: object) -> object:
-    if not isinstance(value, str):
-        return value
-    color = value.strip().upper()
-    if not TAG_COLOR_PATTERN.fullmatch(color):
-        raise ValueError("The tag color must use the #RRGGBB format")
-    return color
+    return normalize_hex_color(value, label="tag color")
 
 
 class TagCreate(BaseModel):

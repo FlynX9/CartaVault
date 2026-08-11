@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { getCategoryIconData } from '../../icons/categoryIconData'
-import { FALLBACK_CATEGORY_ICON_ID } from '../../icons/categoryIconCatalog'
+import { FALLBACK_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import { getStatusMarkerIcon } from './markerIcons'
 
 describe('status marker icons', () => {

@@ -6,11 +6,13 @@ import {
   CATEGORY_ICON_GROUPS,
   getCategoryIcon,
   DEFAULT_CATEGORY_ICON_ID,
-  GROUP_LABELS,
+  GROUP_LABELS_EN,
+  GROUP_LABELS_FR,
   searchCategoryIcons,
   type CategoryIconGroup,
 } from '../../icons/categoryIconCatalog'
 import { getResolvedCategoryIconId } from '../../icons/categoryIconData'
+import { useI18n } from '../../i18n/useI18n'
 import { CategoryIconGrid } from './CategoryIconGrid'
 import { CategoryIconPreview } from './CategoryIconPreview'
 
@@ -25,6 +27,8 @@ function focusableElements(container: HTMLElement): HTMLElement[] {
 }
 
 export function CategoryIconPicker({ initialIconId, onCancel, onChoose }: CategoryIconPickerProps) {
+  const { locale } = useI18n()
+  const groupLabels = locale === 'en' ? GROUP_LABELS_EN : GROUP_LABELS_FR
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState<CategoryIconGroup | undefined>()
   const [selectedIconId, setSelectedIconId] = useState(getResolvedCategoryIconId(initialIconId ?? DEFAULT_CATEGORY_ICON_ID))
@@ -32,7 +36,7 @@ export function CategoryIconPicker({ initialIconId, onCancel, onChoose }: Catego
   const dialog = useRef<HTMLDivElement>(null)
   const visibleIcons = useMemo(() => searchCategoryIcons(query, group), [query, group])
   const selectedIcon = getCategoryIcon(selectedIconId)
-  const activeGroupLabel = group ? GROUP_LABELS[group] : 'Toutes les icônes'
+  const activeGroupLabel = group ? groupLabels[group] : 'Toutes les icônes'
 
   useEffect(() => {
     searchInput.current?.focus()
@@ -80,7 +84,7 @@ export function CategoryIconPicker({ initialIconId, onCancel, onChoose }: Catego
 
         <div className="category-icon-groups" role="group" aria-label="Groupes d’icônes">
           <button className={!group ? 'selected' : ''} type="button" aria-pressed={!group} onClick={() => setGroup(undefined)}>Toutes</button>
-          {CATEGORY_ICON_GROUPS.map((iconGroup) => <button className={group === iconGroup ? 'selected' : ''} type="button" aria-pressed={group === iconGroup} key={iconGroup} onClick={() => setGroup(iconGroup)}>{GROUP_LABELS[iconGroup]}</button>)}
+          {CATEGORY_ICON_GROUPS.map((iconGroup) => <button className={group === iconGroup ? 'selected' : ''} type="button" aria-pressed={group === iconGroup} key={iconGroup} onClick={() => setGroup(iconGroup)}>{groupLabels[iconGroup]}</button>)}
         </div>
 
         <section className="category-icon-results" aria-labelledby="category-icon-results-title">

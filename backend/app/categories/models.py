@@ -20,9 +20,7 @@ class Category(Base):
     """Database representation of a place category."""
 
     __tablename__ = "categories"
-    __table_args__ = (
-        Index("categories_map_name_key", "map_id", text("lower(btrim(name))"), unique=True),
-    )
+    __table_args__ = (Index("categories_map_name_key", "map_id", text("lower(btrim(name))"), unique=True),)
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),

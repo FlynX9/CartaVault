@@ -39,7 +39,7 @@ describe('CategoriesPage', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Nom *' }), { target: { value: '  Château  ' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: '  Fortifié  ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
-    await waitFor(() => expect(createCategory).toHaveBeenCalledWith({ name: 'Château', description: 'Fortifié' }))
+    await waitFor(() => expect(createCategory).toHaveBeenCalledWith({ name: 'Château', description: 'Fortifié', icon: 'material-symbols:location-on-outline' }))
   })
 
   it('updates only changed category fields', async () => {
@@ -57,7 +57,7 @@ describe('CategoriesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Créer une catégorie' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Nom *' }), { target: { value: 'Église' } })
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
-    fireEvent.click(screen.getByRole('gridcell', { name: 'Église' }))
+    fireEvent.click(await screen.findByRole('gridcell', { name: 'Église' }))
     fireEvent.click(screen.getByRole('button', { name: 'Choisir' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
@@ -76,7 +76,7 @@ describe('CategoriesPage', () => {
     render(<CategoriesPage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Modifier Industrie' }))
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
-    fireEvent.click(screen.getByRole('gridcell', { name: 'Château' }))
+    fireEvent.click(await screen.findByRole('gridcell', { name: 'Château' }))
     fireEvent.click(screen.getByRole('button', { name: 'Choisir' }))
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
 

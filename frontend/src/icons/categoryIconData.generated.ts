@@ -1,4 +1,4 @@
-// Generated file. Do not edit manually.
+// AUTO-GENERATED. DO NOT EDIT MANUALLY.
 import type { IconifyIcon } from '@iconify/types'
 import icon0 from '@iconify-icons/material-symbols/location-on-outline'
 import icon1 from '@iconify-icons/material-symbols/help-outline'

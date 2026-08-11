@@ -27,6 +27,7 @@ import { useConfirmDialog } from "../common/useConfirmDialog";
 import { SkeletonList } from "../common/Skeleton";
 import { getTagColorStyle } from "../../tags/tagColors";
 import { formatMinutes } from "../trips/tripMetrics";
+import { ExternalLinkFavicon } from "../places/ExternalLinkFavicon";
 
 interface Props {
   placeId: string;
@@ -547,8 +548,10 @@ export function PlaceMapPopup({
           </summary>
           <ul>
             {[...(place.links ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((link) => <li key={link.id}>
-              <a href={link.url} target="_blank" rel="noopener noreferrer" title={link.url}>
-                <span>{link.label || link.url}</span><ExternalLink size={14} aria-hidden="true" />
+              <a className="popup-links__item" href={link.url} target="_blank" rel="noopener noreferrer" title={link.url} aria-label={link.label || link.url}>
+                <ExternalLinkFavicon url={link.url} />
+                <span className="popup-links__item-copy"><strong>{link.label || link.url}</strong><small>{link.url}</small></span>
+                <ExternalLink className="popup-links__item-open-icon" size={14} aria-hidden="true" />
               </a>
             </li>)}
           </ul>

@@ -67,6 +67,29 @@ export interface MapCreatePayload {
   center_latitude?: number
   center_longitude?: number
   default_zoom?: number
+  starter_profile?: StarterProfileId
+  profile_options?: StarterProfileOptions
+}
+
+export type StarterProfileId = 'general' | 'urbex' | 'tourism' | 'photography' | 'hiking' | 'heritage' | 'road_trip' | 'gastronomy' | 'custom'
+
+export interface StarterProfileOptions {
+  categories: boolean
+  tags: boolean
+  statuses: boolean
+}
+
+export interface StarterProfileCategory { key: string; name: string; icon_id: string; sort_order: number }
+export interface StarterProfileTag { key: string; name: string; color: string; sort_order: number }
+export interface StarterProfileStatus { key: string; name: string; color: string; sort_order: number; functional_state: 'non_visited' | 'visited'; is_default: boolean }
+export interface StarterProfile {
+  id: StarterProfileId
+  name: string
+  description: string
+  ui_icon: string
+  categories: StarterProfileCategory[]
+  tags: StarterProfileTag[]
+  statuses: StarterProfileStatus[]
 }
 
 export type MapRole = 'owner' | 'editor' | 'viewer'

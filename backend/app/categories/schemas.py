@@ -30,7 +30,6 @@ class CategoryCreate(BaseModel):
             raise ValueError("The category icon is not allowed")
         return normalized
 
-
 class CategoryUpdate(BaseModel):
     """Data accepted when partially updating a category."""
 
@@ -66,7 +65,6 @@ class CategoryUpdate(BaseModel):
         if not is_allowed_category_icon(normalized):
             raise ValueError("The category icon is not allowed")
         return normalized
-
 
 class CategoryRead(BaseModel):
     """Public representation of a category."""

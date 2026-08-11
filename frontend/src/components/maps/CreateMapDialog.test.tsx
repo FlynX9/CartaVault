@@ -2,19 +2,20 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getCountries } from '../../api/countries'
 import { ApiError } from '../../api/client'
-import { createMap } from '../../api/maps'
+import { createMap, getMapProfiles } from '../../api/maps'
 import { CreateMapDialog } from './CreateMapDialog'
 
 vi.mock('../../api/countries', () => ({ getCountries: vi.fn() }))
-vi.mock('../../api/maps', () => ({ createMap: vi.fn() }))
+vi.mock('../../api/maps', () => ({ createMap: vi.fn(), getMapProfiles: vi.fn() }))
 const COUNTRY = { id: 'country-id', name: 'Géorgie', iso_alpha2: 'GE', iso_alpha3: 'GEO' } as never
 const MAP = { id: 'map-id', name: 'Géorgie', country: COUNTRY } as never
+const PROFILE = { id: 'general', name: 'Général', description: 'Base polyvalente', ui_icon: 'map', categories: [{ key: 'place', name: 'Lieu', icon_id: 'material-symbols:location-on-outline', sort_order: 10 }], tags: [], statuses: [{ key: 'to_do', name: 'À faire', color: '#3B82F6', sort_order: 10, functional_state: 'non_visited', is_default: true }] } as never
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('CreateMapDialog', () => {
   it('searches the world catalogue and creates the selected country map', async () => {
-    vi.mocked(getCountries).mockResolvedValue([COUNTRY]); vi.mocked(createMap).mockResolvedValue(MAP); const created = vi.fn()
+    vi.mocked(getCountries).mockResolvedValue([COUNTRY]); vi.mocked(getMapProfiles).mockResolvedValue([PROFILE]); vi.mocked(createMap).mockResolvedValue(MAP); const created = vi.fn()
     render(<CreateMapDialog onClose={vi.fn()} onCreated={created} />)
     expect(screen.getByRole('dialog')).toHaveClass('cv-modal')
     expect(screen.getByRole('dialog').parentElement).toHaveClass('cv-overlay')
@@ -24,14 +25,16 @@ describe('CreateMapDialog', () => {
     expect(countryOption.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/ge.svg')
     fireEvent.click(countryOption)
     expect(countryOption).toHaveAttribute('aria-selected', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Continuer' }))
+    expect(await screen.findByRole('radio', { name: /Général/ })).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Créer la carte' }))
-    await waitFor(() => expect(createMap).toHaveBeenCalledWith({ country_id: 'country-id', name: 'Géorgie' })); expect(created).toHaveBeenCalledWith(MAP)
+    await waitFor(() => expect(createMap).toHaveBeenCalledWith({ country_id: 'country-id', name: 'Géorgie', starter_profile: 'general', profile_options: { categories: true, tags: true, statuses: true } })); expect(created).toHaveBeenCalledWith(MAP)
   })
 
   it('shows the one-map-per-country conflict', async () => {
-    vi.mocked(getCountries).mockResolvedValue([COUNTRY]); vi.mocked(createMap).mockRejectedValue(new ApiError(409, 'Conflict'))
+    vi.mocked(getCountries).mockResolvedValue([COUNTRY]); vi.mocked(getMapProfiles).mockResolvedValue([PROFILE]); vi.mocked(createMap).mockRejectedValue(new ApiError(409, 'Conflict'))
     render(<CreateMapDialog onClose={vi.fn()} onCreated={vi.fn()} />)
-    fireEvent.click(await screen.findByRole('option', { name: /Géorgie/ })); fireEvent.click(screen.getByRole('button', { name: 'Créer la carte' }))
+    fireEvent.click(await screen.findByRole('option', { name: /Géorgie/ })); fireEvent.click(screen.getByRole('button', { name: 'Continuer' })); fireEvent.click(await screen.findByRole('button', { name: 'Créer la carte' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Une carte existe déjà pour ce pays.')
   })
 })
