@@ -520,7 +520,7 @@ export function PlaceMapPopup({
           )}
         </div>
       </section>
-      {canPastePhotos && !pasteNotice && <p className="popup-paste-hint">Collez une capture avec <kbd>Ctrl</kbd> + <kbd>V</kbd></p>}
+      {canPastePhotos && !pasteNotice && <p className="popup-paste-hint">Collez une image avec <kbd>Ctrl</kbd> + <kbd>V</kbd></p>}
       {pasteNotice && <p className={`popup-paste-notice${pasteUploading ? " is-loading" : ""}`} role="status" aria-live="polite">{pasteNotice}</p>}
       {detailsError && (
         <p className="inline-error" role="alert">
@@ -534,7 +534,7 @@ export function PlaceMapPopup({
             <FileText size={17} aria-hidden="true" />
             Description
           </h3>
-          <p>{place.description || "\u00A0"}</p>
+          <p className={place.description ? undefined : "is-empty"}>{place.description || "Aucune description"}</p>
         </section>
       )}
       <PlaceAnnotations placeId={place.id} mapId={place.map_id} canEdit={canEdit} />

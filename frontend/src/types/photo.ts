@@ -9,4 +9,6 @@ export interface Photo {
   created_at: string | null
   sort_order: number
   is_primary: boolean
+  focal_x?: number
+  focal_y?: number
 }

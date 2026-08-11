@@ -10,8 +10,16 @@ function pointFromEvent(event: { latlng: { lat: number; lng: number } }): Measur
   return { latitude: event.latlng.lat, longitude: event.latlng.lng }
 }
 
-function triangleFromBounds(start: MeasurementPoint, end: MeasurementPoint): MeasurementPoint[] {
-  return [start, { latitude: start.latitude, longitude: end.longitude }, { latitude: end.latitude, longitude: (start.longitude + end.longitude) / 2 }]
+export function triangleFromBounds(start: MeasurementPoint, end: MeasurementPoint): MeasurementPoint[] {
+  const north = Math.max(start.latitude, end.latitude)
+  const south = Math.min(start.latitude, end.latitude)
+  const west = Math.min(start.longitude, end.longitude)
+  const east = Math.max(start.longitude, end.longitude)
+  return [
+    { latitude: south, longitude: west },
+    { latitude: south, longitude: east },
+    { latitude: north, longitude: (west + east) / 2 },
+  ]
 }
 
 export function AnnotationDrawingLayer({ drawing, onPointsChange, onComplete }: { drawing: AnnotationDrawingState | null; onPointsChange: (points: MeasurementPoint[]) => void; onComplete: (points: MeasurementPoint[]) => void }) {

@@ -33,6 +33,7 @@ from app.photos.storage import (
     UnsupportedPhotoTypeError,
     delete_photo_file,
     get_photo_media_type,
+    get_photo_thumbnail,
     normalize_original_name,
     resolve_photo_file,
     store_photo_file,
@@ -75,6 +76,8 @@ def build_photo_read_statement():
         Photo.taken_at,
         Photo.sort_order,
         Photo.is_primary,
+        Photo.focal_x,
+        Photo.focal_y,
         Photo.created_at,
     )
 
@@ -160,6 +163,8 @@ def create_place_photo(
             taken_at=photo.taken_at,
             sort_order=photo.sort_order,
             is_primary=photo.is_primary,
+            focal_x=photo.focal_x,
+            focal_y=photo.focal_y,
             created_at=photo.created_at,
         )
 
@@ -312,6 +317,8 @@ def upload_place_photo(
         taken_at=photo.taken_at,
         sort_order=photo.sort_order,
         is_primary=photo.is_primary,
+        focal_x=photo.focal_x,
+        focal_y=photo.focal_y,
         created_at=photo.created_at,
     )
 
@@ -340,6 +347,29 @@ def get_photo(
         )
 
     return PhotoRead(**row)
+
+
+@router.get(
+    "/photos/{photo_id}/thumbnail",
+    response_class=FileResponse,
+)
+def get_photo_thumbnail_file(
+    photo_id: UUID,
+    database_session: Session = Depends(get_db),
+    _: Photo = Depends(require_photo_viewer),
+) -> FileResponse:
+    """Serve a generated thumbnail without exposing the storage path."""
+
+    photo = database_session.get(Photo, photo_id)
+    if photo is None or photo.path is None or photo.storage_scope_id is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The physical photo file was not found")
+    try:
+        thumbnail_path = get_photo_thumbnail(photo.path, photo.storage_scope_id, photo.id)
+    except PhotoFileNotFoundError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The physical photo file was not found") from error
+    except (InvalidPhotoPathError, PhotoStorageError) as error:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unable to generate the photo thumbnail") from error
+    return FileResponse(path=thumbnail_path, media_type="image/webp", filename=f"{photo.id}.webp", content_disposition_type="inline")
 
 
 @router.get(
@@ -450,6 +480,8 @@ def update_photo(
             taken_at=photo.taken_at,
             sort_order=photo.sort_order,
             is_primary=photo.is_primary,
+            focal_x=photo.focal_x,
+            focal_y=photo.focal_y,
             created_at=photo.created_at,
         )
 

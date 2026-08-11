@@ -32,6 +32,8 @@ function parsePhoto(value: unknown): Photo {
     created_at: readNullableDateTime(value, 'created_at', context),
     sort_order: readNumber(value, 'sort_order', context),
     is_primary: readBoolean(value, 'is_primary', context),
+    focal_x: typeof value.focal_x === 'number' ? readNumber(value, 'focal_x', context) : .5,
+    focal_y: typeof value.focal_y === 'number' ? readNumber(value, 'focal_y', context) : .5,
   }
 }
 
@@ -60,13 +62,17 @@ export function getPhotoFileUrl(photoId: string): string {
   return `${API_BASE_URL}/photos/${encodeURIComponent(photoId)}/file`
 }
 
+export function getPhotoThumbnailUrl(photoId: string): string {
+  return `${API_BASE_URL}/photos/${encodeURIComponent(photoId)}/thumbnail`
+}
+
 export async function uploadPlacePhoto(placeId: string, file: File): Promise<Photo> {
   const formData = new FormData()
   formData.append('file', file)
   return parsePhoto(await sendFormData(`/places/${encodeURIComponent(placeId)}/photos/upload`, 'POST', formData))
 }
 
-export async function updatePhoto(photoId: string, payload: { is_primary?: boolean }): Promise<Photo> {
+export async function updatePhoto(photoId: string, payload: { is_primary?: boolean; focal_x?: number; focal_y?: number }): Promise<Photo> {
   return parsePhoto(await sendJson(`/photos/${encodeURIComponent(photoId)}`, 'PATCH', payload))
 }
 

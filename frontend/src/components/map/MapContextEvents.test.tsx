@@ -25,4 +25,16 @@ describe('MapContextEvents', () => {
     handlers.movestart()
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  it('does not close the POI popup when an annotation shape is clicked', () => {
+    const onOpen = vi.fn()
+    const onClose = vi.fn()
+    const onMapClick = vi.fn()
+    MapContextEvents({ onOpen, onClose, onMapClick })
+    const target = document.createElement('path')
+    target.setAttribute('class', 'place-annotation-shape')
+    useMapEvents.mock.calls[0][0].click({ originalEvent: { target } })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(onMapClick).not.toHaveBeenCalled()
+  })
 })

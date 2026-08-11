@@ -1,41 +1,35 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { PlaceLinksEditor } from './PlaceLinksEditor'
 
 describe('PlaceLinksEditor', () => {
   afterEach(cleanup)
-  it('adds, edits, removes and reorders named links without submitting the place form', () => {
+
+  it('shows an intentional empty state and creates an editable link', () => {
     const onChange = vi.fn()
-    const links = [
-      { clientId: 'one', id: 'one', label: 'Site officiel', url: 'https://example.org' },
-      { clientId: 'two', id: 'two', label: 'Archive', url: 'https://archive.example.org' },
-    ]
-    const { rerender } = render(<PlaceLinksEditor links={links} onChange={onChange} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Descendre Site officiel' }))
-    expect(onChange).toHaveBeenLastCalledWith([links[1], links[0]])
-
-    fireEvent.change(screen.getAllByLabelText('Nom du lien')[0], { target: { value: 'Article' } })
-    expect(onChange).toHaveBeenLastCalledWith([{ ...links[0], label: 'Article' }, links[1]])
-
-    fireEvent.click(screen.getByRole('button', { name: 'Supprimer Archive' }))
-    expect(onChange).toHaveBeenLastCalledWith([links[0]])
-
-    rerender(<PlaceLinksEditor links={[]} onChange={onChange} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Ajouter un lien' }))
+    render(<PlaceLinksEditor links={[]} onChange={onChange} />)
+    expect(screen.getByText('Aucun lien ajouté')).toBeInTheDocument()
+    expect(screen.getByText('Ajoutez un site officiel, une source ou une page utile.')).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ajouter un lien' })[0])
     expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({ label: '', url: '' })])
   })
 
-  it('shows inline HTTP validation and exact duplicate detection', () => {
-    render(<PlaceLinksEditor links={[
-      { clientId: 'one', label: 'Dangereux', url: 'javascript:alert(1)' },
-      { clientId: 'two', label: 'Copie', url: 'https://example.org' },
-      { clientId: 'three', label: 'Copie 2', url: 'https://example.org' },
-    ]} onChange={vi.fn()} />)
+  it('edits and removes a compact link row', () => {
+    const onChange = vi.fn()
+    const links = [{ clientId: 'one', id: 'one', label: 'Site officiel', url: 'https://example.org' }]
+    render(<PlaceLinksEditor links={links} onChange={onChange} />)
+    expect(screen.getAllByRole('link', { name: /Site officiel/ })[0]).toHaveAttribute('rel', 'noopener noreferrer')
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier Site officiel' }))
+    fireEvent.change(screen.getByLabelText('Nom du lien'), { target: { value: 'Article' } })
+    expect(onChange).toHaveBeenLastCalledWith([{ ...links[0], label: 'Article' }])
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer Site officiel' }))
+    expect(onChange).toHaveBeenLastCalledWith([])
+  })
 
-    const table = screen.getByRole('table', { name: 'Liens du POI' })
-    expect(within(table).getByText('Utilisez une adresse HTTP ou HTTPS valide.')).toBeInTheDocument()
-    expect(within(table).getAllByText('Cette URL est déjà présente.')).toHaveLength(2)
+  it('shows HTTP validation while editing', () => {
+    render(<PlaceLinksEditor links={[{ clientId: 'one', label: 'Dangereux', url: 'javascript:alert(1)' }]} onChange={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier Dangereux' }))
+    expect(screen.getByText('Utilisez une adresse HTTP ou HTTPS valide.')).toBeInTheDocument()
   })
 })

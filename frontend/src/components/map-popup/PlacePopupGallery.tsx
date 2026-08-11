@@ -92,7 +92,7 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error, statusC
         <div className="popup-photo-placeholder" role="img" aria-label={alternativeText}>Image indisponible</div>
       ) : (
         <button className="popup-gallery__open" type="button" aria-label={`${t.view} — ${alternativeText}`} onClick={() => setViewerOpen(true)}>
-          <img src={offlineSource ?? getPhotoFileUrl(photo.id)} alt={alternativeText} onError={() => offlineSource ? setFailed(true) : loadOfflineThumbnail()} />
+          <img src={offlineSource ?? getPhotoFileUrl(photo.id)} alt={alternativeText} style={{ objectPosition: `${(photo.focal_x ?? .5) * 100}% ${(photo.focal_y ?? .5) * 100}%` }} onError={() => offlineSource ? setFailed(true) : loadOfflineThumbnail()} />
           <span><Maximize2 aria-hidden="true" size={15} /></span>
         </button>
       )}

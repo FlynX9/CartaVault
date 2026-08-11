@@ -41,6 +41,8 @@ class PhotoUpdate(BaseModel):
     description: str | None = None
     taken_at: date | None = None
     is_primary: bool | None = None
+    focal_x: float | None = Field(default=None, ge=0, le=1)
+    focal_y: float | None = Field(default=None, ge=0, le=1)
 
 class PhotoReorder(BaseModel):
     photo_ids: list[UUID] = Field(min_length=1)
@@ -58,4 +60,6 @@ class PhotoRead(BaseModel):
     taken_at: date | None
     sort_order: int
     is_primary: bool
+    focal_x: float
+    focal_y: float
     created_at: datetime | None

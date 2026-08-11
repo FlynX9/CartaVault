@@ -294,6 +294,7 @@ describe('PlaceMapPopup', () => {
 
     expect(await screen.findByText('Description')).toBeVisible()
     expect(screen.getByText('Description').closest('.popup-description')).toBeVisible()
+    expect(screen.getByText('Aucune description')).toBeVisible()
   })
 
   it('reports detail failures without hiding the close action', async () => {

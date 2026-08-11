@@ -265,7 +265,7 @@ export function MapPage({
   const [fullscreenLayoutVersion, setFullscreenLayoutVersion] = useState(0)
   const [annotations, setAnnotations] = useState<PlaceAnnotation[]>([])
   const [hiddenAnnotationIds, setHiddenAnnotationIds] = useState<Set<string>>(() => new Set())
-  const [annotationDrawing, setAnnotationDrawing] = useState<(AnnotationDrawingState & { placeId: string; template: AnnotationTemplate; title: string | null }) | null>(null)
+  const [annotationDrawing, setAnnotationDrawing] = useState<(AnnotationDrawingState & { placeId: string; template: AnnotationTemplate; title: string | null; description: string | null }) | null>(null)
   const mapLayoutRef = useRef<HTMLDivElement>(null)
   const selectionFitControllerRef = useRef<AbortController | null>(null)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
@@ -454,10 +454,20 @@ export function MapPage({
   }, [])
 
   useEffect(() => {
+    const changeAllVisibility = (event: Event) => {
+      const detail = (event as CustomEvent<{ placeId?: string; annotationIds?: string[]; visible?: boolean }>).detail
+      if (detail?.placeId !== selectedPlaceId || !Array.isArray(detail.annotationIds) || typeof detail.visible !== 'boolean') return
+      setHiddenAnnotationIds(detail.visible ? new Set() : new Set(detail.annotationIds))
+    }
+    window.addEventListener('cartavault:place-annotations-visibility-changed', changeAllVisibility)
+    return () => window.removeEventListener('cartavault:place-annotations-visibility-changed', changeAllVisibility)
+  }, [selectedPlaceId])
+
+  useEffect(() => {
     const start = (event: Event) => {
-      const detail = (event as CustomEvent<{ placeId: string; template: AnnotationTemplate; title?: string | null }>).detail
+      const detail = (event as CustomEvent<{ placeId: string; template: AnnotationTemplate; title?: string | null; description?: string | null }>).detail
       if (!detail?.placeId || !detail.template) return
-      resetTemporaryTools(); setAnnotationDrawing({ placeId: detail.placeId, template: detail.template, title: detail.title ?? null, shapeType: detail.template.shape_type, color: detail.template.color, points: [] })
+      resetTemporaryTools(); setAnnotationDrawing({ placeId: detail.placeId, template: detail.template, title: detail.title ?? null, description: detail.description ?? null, shapeType: detail.template.shape_type, color: detail.template.color, points: [] })
     }
     window.addEventListener('cartavault:annotation-draw-requested', start)
     return () => window.removeEventListener('cartavault:annotation-draw-requested', start)
@@ -470,13 +480,13 @@ export function MapPage({
 
   const finishAnnotationDrawing = async () => {
     if (!annotationDrawing) return
-    const { template, placeId, title } = annotationDrawing
+    const { template, placeId, title, description } = annotationDrawing
     const points = annotationDrawing.points
     const complete = (template.shape_type === 'circle' || template.shape_type === 'rectangle' || template.shape_type === 'line') ? points.length === 2 : template.shape_type === 'triangle' ? points.length === 3 : points.length >= 2
     if (!complete) { setMapToolsNotice('Ajoutez davantage de points pour terminer cette annotation.'); return }
     const coordinates = points.map((point) => [point.longitude, point.latitude])
     const geometry: GeoJSON.Geometry = template.shape_type === 'circle' ? { type: 'Point', coordinates: coordinates[0] } : template.shape_type === 'rectangle' ? { type: 'Polygon', coordinates: [[[coordinates[0][0], coordinates[0][1]], [coordinates[1][0], coordinates[0][1]], [coordinates[1][0], coordinates[1][1]], [coordinates[0][0], coordinates[1][1]], coordinates[0]]] } : template.shape_type === 'triangle' ? { type: 'Polygon', coordinates: [[...coordinates, coordinates[0]]] } : { type: 'LineString', coordinates }
-    try { await createPlaceAnnotation(placeId, { template_id: template.id, geometry, ...(template.shape_type === 'circle' ? { radius_meters: distanceBetweenPoints(points[0], points[1]) } : {}), title }); setAnnotationDrawing(null); window.dispatchEvent(new CustomEvent('cartavault:annotations-updated', { detail: { placeId } })) } catch (caught) { setMapToolsNotice(caught instanceof Error ? caught.message : 'Création de l’annotation impossible.') }
+    try { await createPlaceAnnotation(placeId, { template_id: template.id, geometry, ...(template.shape_type === 'circle' ? { radius_meters: distanceBetweenPoints(points[0], points[1]) } : {}), title, description }); setAnnotationDrawing(null); window.dispatchEvent(new CustomEvent('cartavault:annotations-updated', { detail: { placeId } })) } catch (caught) { setMapToolsNotice(caught instanceof Error ? caught.message : 'Création de l’annotation impossible.') }
   }
 
   useEffect(() => () => selectionFitControllerRef.current?.abort(), [])

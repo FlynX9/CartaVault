@@ -46,6 +46,10 @@ export async function createPlaceAnnotation(placeId: string, payload: PlaceAnnot
   return parseAnnotation(await sendJson(`/annotations/places/${encodeURIComponent(placeId)}`, 'POST', payload))
 }
 
+export async function updatePlaceAnnotation(placeId: string, annotationId: string, payload: Partial<PlaceAnnotationPayload>): Promise<PlaceAnnotation> {
+  return parseAnnotation(await sendJson(`/annotations/places/${encodeURIComponent(placeId)}/${encodeURIComponent(annotationId)}`, 'PATCH', payload))
+}
+
 export async function deletePlaceAnnotation(placeId: string, annotationId: string): Promise<void> {
   await sendWithoutResponse(`/annotations/places/${encodeURIComponent(placeId)}/${encodeURIComponent(annotationId)}`, 'DELETE')
 }

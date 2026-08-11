@@ -65,6 +65,7 @@ export function PhotoGallery({
                   src={getPhotoFileUrl(photo.id)}
                   alt={alternativeText}
                   loading="lazy"
+                  style={{ objectPosition: `${(photo.focal_x ?? .5) * 100}% ${(photo.focal_y ?? .5) * 100}%` }}
                   onError={() => {
                     setFailedPhotoIds((currentIds) => {
                       const nextIds = new Set(currentIds)

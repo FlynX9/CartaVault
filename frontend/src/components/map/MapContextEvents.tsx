@@ -8,7 +8,9 @@ export function MapContextEvents({ onOpen, onClose, onMapClick = () => undefined
       event.originalEvent.preventDefault()
       onOpen({ latitude: event.latlng.lat, longitude: event.latlng.lng, containerX: event.containerPoint.x, containerY: event.containerPoint.y })
     },
-    click: () => {
+    click: (event) => {
+      const target = event.originalEvent.target
+      if (target instanceof Element && target.closest('.place-annotation-shape, .place-annotation-halo')) return
       onClose()
       onMapClick()
     },

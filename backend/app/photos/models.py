@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,6 +23,8 @@ class Photo(Base):
         CheckConstraint("file_size_bytes IS NULL OR file_size_bytes >= 0", name="photos_file_size_nonnegative"),
         CheckConstraint("width IS NULL OR width > 0", name="photos_width_positive"),
         CheckConstraint("height IS NULL OR height > 0", name="photos_height_positive"),
+        CheckConstraint("focal_x >= 0 AND focal_x <= 1", name="photos_focal_x_range"),
+        CheckConstraint("focal_y >= 0 AND focal_y <= 1", name="photos_focal_y_range"),
         Index("photos_place_sort_order_key", "place_id", "sort_order", unique=True),
         Index("photos_one_primary_per_place_idx", "place_id", unique=True, postgresql_where=text("is_primary")),
         Index("photos_created_at_idx", "created_at"),
@@ -88,6 +90,9 @@ class Photo(Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+    focal_x: Mapped[float] = mapped_column(Float, nullable=False, server_default=text("0.5"))
+    focal_y: Mapped[float] = mapped_column(Float, nullable=False, server_default=text("0.5"))
 
     mime_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
