@@ -183,7 +183,7 @@ describe('AdminConsole', () => {
       { key: 'maps_max', scope: 'user', unit: 'count', label: 'Cartes', description: 'Nombre de cartes possédées', minimum: 0, maximum: 2147483647, enforced: true },
     ])
 
-    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+    render(<StrictMode><MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter></StrictMode>)
 
     expect(await screen.findByRole('heading', { name: 'Quotas' })).toBeVisible()
     expect(screen.getByText('Unlimited')).toBeVisible()

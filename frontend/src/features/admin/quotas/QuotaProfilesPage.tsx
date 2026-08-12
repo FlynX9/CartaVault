@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Copy, Pencil, Plus, Save, Star, Trash2, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
+import { ChevronLeft, ChevronRight, Copy, GalleryHorizontal, List, Pencil, Plus, Save, Star, Trash2, X } from 'lucide-react'
 
-import {
-  createQuotaProfile, deleteQuotaProfile, duplicateQuotaProfile,
-  getQuotaProfiles, getQuotaRegistry, setDefaultQuotaProfile, updateQuotaProfile,
-} from '../../../api/adminConsole'
-import { useConfirmDialog } from '../../../components/common/useConfirmDialog'
+import { createQuotaProfile, deleteQuotaProfile, duplicateQuotaProfile, getQuotaProfiles, getQuotaRegistry, setDefaultQuotaProfile, updateQuotaProfile } from '../../../api/adminConsole'
 import { FieldHelp } from '../../../components/common/FieldHelp'
+import { useConfirmDialog } from '../../../components/common/useConfirmDialog'
 import type { QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../../../types/adminConsole'
 
+const VIEW_STORAGE_KEY = 'cartavault:quota-profiles-view'
 const EMPTY_LIMITS: QuotaLimits = {
   maps_max: null, trips_total_max: null, storage_bytes_max: null, photos_total_max: null,
   memberships_total_max: null, pending_invitations_max: null, places_per_map_max: null,
@@ -17,83 +15,49 @@ const EMPTY_LIMITS: QuotaLimits = {
   photos_per_place_max: null, links_per_place_max: null, days_per_trip_max: null, steps_per_day_max: null,
   image_upload_megabytes_max: null, image_dimension_max: null,
 }
-
+type ViewMode = 'carousel' | 'list'
 type Draft = { name: string; description: string; limits: QuotaLimits }
 const scopes: Array<{ key: QuotaRegistryItem['scope']; label: string }> = [
-  { key: 'user', label: 'Compte' }, { key: 'map', label: 'Carte' }, { key: 'place', label: 'Lieu' },
-  { key: 'trip', label: 'Sortie' }, { key: 'day', label: 'Journée' },
+  { key: 'user', label: 'Compte' }, { key: 'map', label: 'Carte' }, { key: 'place', label: 'Lieu' }, { key: 'trip', label: 'Sortie' }, { key: 'day', label: 'Journée' },
 ]
 
-function toDraft(profile?: QuotaProfile): Draft {
-  return profile
-    ? { name: profile.name, description: profile.description ?? '', limits: { ...profile.limits } }
-    : { name: '', description: '', limits: { ...EMPTY_LIMITS } }
-}
-
+function toDraft(profile?: QuotaProfile): Draft { return profile ? { name: profile.name, description: profile.description ?? '', limits: { ...profile.limits } } : { name: '', description: '', limits: { ...EMPTY_LIMITS } } }
+function getInitialViewMode(): ViewMode { try { return localStorage.getItem(VIEW_STORAGE_KEY) === 'list' ? 'list' : 'carousel' } catch { return 'carousel' } }
+function persistViewMode(mode: ViewMode) { try { localStorage.setItem(VIEW_STORAGE_KEY, mode) } catch { /* The view remains usable when storage is unavailable. */ } }
 function formatLimit(value: number | null, unit: string) {
   if (value === null) return unit === 'megabytes' || unit === 'pixels' ? 'Réglage général' : 'Illimité'
   if (unit !== 'bytes') return new Intl.NumberFormat('fr-FR').format(value)
-  const gib = value / 1024 ** 3
-  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(gib)} Gio`
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(value / 1024 ** 3)} Gio`
+}
+
+function QuotaProfileCard({ profile, registry, selected, variant, onSelect, onAction }: { profile: QuotaProfile; registry: QuotaRegistryItem[]; selected: boolean; variant: ViewMode; onSelect: () => void; onAction: (kind: 'edit' | 'duplicate' | 'default' | 'delete') => void }) {
+  const stop = (callback: () => void) => (event: MouseEvent) => { event.stopPropagation(); callback() }
+  return <article className={`admin-console__card quota-profile quota-profile--${variant} ${selected ? 'is-selected' : ''}`} aria-current={selected ? 'true' : undefined} tabIndex={0} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }}>
+    <header><div><h3>{profile.name}</h3><div className="quota-profile__badges">{profile.is_default && <span>Par défaut</span>}{profile.is_system && <span>Système</span>}</div></div><strong>{profile.assigned_users_count} utilisateur(s)</strong></header>
+    <p>{profile.description || 'Aucune description.'}</p>
+    <dl>{registry.slice(0, 4).map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{formatLimit(profile.limits[item.key], item.unit)}</dd></div>)}</dl>
+    <small>Mis à jour le {new Date(profile.updated_at).toLocaleDateString('fr-FR')}</small>
+    <footer className="admin-console__actions quota-profile__actions"><button type="button" onClick={stop(() => onAction('edit'))}><Pencil size={15} />Modifier</button><button type="button" onClick={stop(() => onAction('duplicate'))}><Copy size={15} />Dupliquer</button><button type="button" disabled={profile.is_default || !profile.is_active} title={profile.is_default ? 'Ce profil est déjà le profil par défaut.' : 'Profil indisponible.'} onClick={stop(() => onAction('default'))}><Star size={15} />Par défaut</button><button className="danger" type="button" disabled={profile.is_system || profile.is_default || profile.assigned_users_count > 0} title={profile.assigned_users_count > 0 ? 'Réaffectez les utilisateurs avant suppression.' : ''} onClick={stop(() => onAction('delete'))}><Trash2 size={15} />Supprimer</button></footer>
+  </article>
+}
+
+function QuotaProfilesCarousel({ profiles, registry, selectedProfileId, onSelect, onAction }: { profiles: QuotaProfile[]; registry: QuotaRegistryItem[]; selectedProfileId: string | null; onSelect: (id: string) => void; onAction: (profile: QuotaProfile, kind: 'edit' | 'duplicate' | 'default' | 'delete') => void }) {
+  const selectedIndex = Math.max(0, profiles.findIndex((profile) => profile.id === selectedProfileId))
+  const selectIndex = useCallback((index: number) => { const profile = profiles[index]; if (profile) onSelect(profile.id) }, [onSelect, profiles])
+  if (profiles.length === 0) return <p className="quota-profiles__empty">Aucun profil de quotas.</p>
+  return <section className="quota-carousel" aria-label="Profils de quotas"><button className="quota-carousel__arrow" type="button" aria-label="Profil précédent" title="Profil précédent" disabled={selectedIndex === 0} onClick={() => selectIndex(selectedIndex - 1)}><ChevronLeft size={18} /></button><div className="quota-carousel__viewport"><div className="quota-carousel__container" style={{ transform: `translateX(-${selectedIndex * 100}%)` }}>{profiles.map((profile) => <div className="quota-carousel__slide" key={profile.id}><QuotaProfileCard profile={profile} registry={registry} selected={profile.id === selectedProfileId} variant="carousel" onSelect={() => onSelect(profile.id)} onAction={(kind) => onAction(profile, kind)} /></div>)}</div></div><button className="quota-carousel__arrow" type="button" aria-label="Profil suivant" title="Profil suivant" disabled={selectedIndex >= profiles.length - 1} onClick={() => selectIndex(selectedIndex + 1)}><ChevronRight size={18} /></button>{profiles.length > 1 && <div className="quota-carousel__pagination" aria-label={`Profil ${selectedIndex + 1} sur ${profiles.length}`}>{profiles.map((profile, index) => <button key={profile.id} type="button" className={index === selectedIndex ? 'is-active' : ''} aria-label={`Afficher ${profile.name}`} aria-current={index === selectedIndex ? 'true' : undefined} onClick={() => selectIndex(index)} />)}</div>}</section>
 }
 
 export function QuotaProfilesPage() {
-  const [profiles, setProfiles] = useState<QuotaProfile[]>([])
-  const [registry, setRegistry] = useState<QuotaRegistryItem[]>([])
-  const [editing, setEditing] = useState<QuotaProfile | null | undefined>(undefined)
-  const [draft, setDraft] = useState<Draft>(toDraft())
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { confirm, confirmationDialog } = useConfirmDialog()
-
-  const load = useCallback((signal?: AbortSignal) => {
-    setLoading(true); setError(null)
-    void Promise.all([getQuotaProfiles(signal), getQuotaRegistry(signal)])
-      .then(([nextProfiles, nextRegistry]) => { if (!signal?.aborted) { setProfiles(nextProfiles); setRegistry(nextRegistry) } })
-      .catch((reason: unknown) => { if (!signal?.aborted) setError(reason instanceof Error ? reason.message : 'Chargement impossible.') })
-      .finally(() => { if (!signal?.aborted) setLoading(false) })
-  }, [])
+  const [profiles, setProfiles] = useState<QuotaProfile[]>([]); const [registry, setRegistry] = useState<QuotaRegistryItem[]>([]); const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null); const [editing, setEditing] = useState<QuotaProfile | null | undefined>(undefined); const [draft, setDraft] = useState<Draft>(toDraft()); const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const { confirm, confirmationDialog } = useConfirmDialog()
+  const load = useCallback((signal?: AbortSignal) => { setLoading(true); setError(null); void Promise.all([getQuotaProfiles(signal), getQuotaRegistry(signal)]).then(([items, definitions]) => { if (!signal?.aborted) { setProfiles(items); setRegistry(definitions); setSelectedProfileId((current) => items.some((profile) => profile.id === current) ? current : items[0]?.id ?? null) } }).catch((reason: unknown) => { if (!signal?.aborted) setError(reason instanceof Error ? reason.message : 'Chargement impossible.') }).finally(() => { if (!signal?.aborted) setLoading(false) }) }, [])
   useEffect(() => { const controller = new AbortController(); load(controller.signal); return () => controller.abort() }, [load])
-
-  const begin = (profile: QuotaProfile | null) => { setEditing(profile); setDraft(toDraft(profile ?? undefined)); setError(null) }
-  const save = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setError(null)
-    try {
-      const payload = { name: draft.name.trim(), description: draft.description.trim() || null, limits: draft.limits }
-      if (editing) await updateQuotaProfile(editing.id, payload)
-      else await createQuotaProfile({ ...payload, is_active: true })
-      setEditing(undefined); load()
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.') }
-    finally { setBusy(false) }
-  }
-  const action = async (profile: QuotaProfile, kind: 'duplicate' | 'default' | 'delete') => {
-    if (kind === 'delete' && !await confirm({ title: `Supprimer ${profile.name}`, message: 'Cette action est définitive. Les profils affectés ou par défaut ne peuvent pas être supprimés.', confirmLabel: 'Supprimer' })) return
-    try {
-      if (kind === 'duplicate') { const copy = await duplicateQuotaProfile(profile.id); setProfiles((items) => [...items, copy]); begin(copy); return }
-      if (kind === 'default') await setDefaultQuotaProfile(profile.id)
-      if (kind === 'delete') await deleteQuotaProfile(profile.id)
-      load()
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Opération impossible.') }
-  }
+  const selectProfile = useCallback((id: string) => { setSelectedProfileId((current) => current === id ? current : id) }, [])
+  useEffect(() => { if (!selectedProfileId) return; const profile = profiles.find((item) => item.id === selectedProfileId); if (profile) { setEditing(profile); setDraft(toDraft(profile)) } }, [profiles, selectedProfileId])
+  const changeView = (mode: ViewMode) => { setViewMode(mode); persistViewMode(mode) }
+  const begin = (profile: QuotaProfile | null) => { setEditing(profile); setDraft(toDraft(profile ?? undefined)); if (profile) setSelectedProfileId(profile.id); setError(null) }
+  const save = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(null); try { const payload = { name: draft.name.trim(), description: draft.description.trim() || null, limits: draft.limits }; if (editing) await updateQuotaProfile(editing.id, payload); else await createQuotaProfile({ ...payload, is_active: true }); setEditing(undefined); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.') } finally { setBusy(false) } }
+  const action = async (profile: QuotaProfile, kind: 'edit' | 'duplicate' | 'default' | 'delete') => { if (kind === 'edit') { begin(profile); return }; if (kind === 'delete' && !await confirm({ title: `Supprimer ${profile.name}`, message: 'Cette action est définitive. Les profils affectés ou par défaut ne peuvent pas être supprimés.', confirmLabel: 'Supprimer' })) return; try { if (kind === 'duplicate') { const copy = await duplicateQuotaProfile(profile.id); setProfiles((items) => [...items, copy]); begin(copy); return }; if (kind === 'default') await setDefaultQuotaProfile(profile.id); if (kind === 'delete') await deleteQuotaProfile(profile.id); if (editing?.id === profile.id) setEditing(undefined); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Opération impossible.') } }
   const registryByScope = useMemo(() => new Map(scopes.map(({ key }) => [key, registry.filter((item) => item.scope === key)])), [registry])
-
-  return <section className="quota-profiles">
-    <header className="admin-console__heading"><div><span>Capacité</span><h2>Quotas</h2><p>Profils réutilisables et limites de création appliquées aux utilisateurs.</p></div><button className="primary-button" type="button" onClick={() => begin(null)}><Plus size={16} />Nouveau profil</button></header>
-    {error && <div className="form-alert" role="alert">{error}</div>}
-    {loading ? <p role="status">Chargement…</p> : <div className="quota-profiles__grid">{profiles.map((profile) => <article className={`admin-console__card quota-profile ${!profile.is_active ? 'is-archived' : ''}`} key={profile.id}>
-      <header><div><h3>{profile.name}</h3><div className="quota-profile__badges">{profile.is_default && <span>Par défaut</span>}{profile.is_system && <span>Système</span>}</div></div><strong>{profile.assigned_users_count} utilisateur(s)</strong></header>
-      <p>{profile.description || 'Aucune description.'}</p>
-      <dl>{registry.slice(0, 4).map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{formatLimit(profile.limits[item.key], item.unit)}</dd></div>)}</dl>
-      <small>Mis à jour le {new Date(profile.updated_at).toLocaleDateString('fr-FR')}</small>
-      <footer className="admin-console__actions quota-profile__actions"><button type="button" onClick={() => begin(profile)}><Pencil size={15} />Modifier</button><button type="button" onClick={() => void action(profile, 'duplicate')}><Copy size={15} />Dupliquer</button><button type="button" disabled={profile.is_default || !profile.is_active} title={profile.is_default ? 'Ce profil est déjà le profil par défaut.' : !profile.is_active ? 'Réactivez ce profil avant de le définir par défaut.' : ''} onClick={() => void action(profile, 'default')}><Star size={15} />Par défaut</button><button className="danger" type="button" disabled={profile.is_system || profile.is_default || profile.assigned_users_count > 0} title={profile.assigned_users_count > 0 ? 'Réaffectez les utilisateurs avant suppression.' : ''} onClick={() => void action(profile, 'delete')}><Trash2 size={15} />Supprimer</button></footer>
-    </article>)}</div>}
-    {editing !== undefined && <form className="admin-console__card quota-editor" onSubmit={save}>
-      <header><div><h3>{editing ? `Modifier ${editing.name}` : 'Créer un profil'}</h3><p>Une limite vide est illimitée. Pour les images, elle conserve le réglage général de l’instance.</p></div><button type="button" aria-label="Fermer l’éditeur" onClick={() => setEditing(undefined)}><X size={16} /></button></header>
-      <div className="quota-editor__identity"><label>Nom<input required maxLength={100} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label>Description<textarea maxLength={2000} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label></div>
-      {scopes.map((scope) => <fieldset key={scope.key}><legend>{scope.label}</legend><div className="quota-editor__limits">{registryByScope.get(scope.key)?.map((item) => { const value = draft.limits[item.key]; const storage = item.unit === 'bytes'; const mediaPolicy = item.unit === 'megabytes' || item.unit === 'pixels'; return <label key={item.key}><span><strong>{item.label}<FieldHelp>{item.description}{!item.enforced ? ' · Non appliqué actuellement' : ''}</FieldHelp></strong></span><span className="quota-editor__control"><span><input type="checkbox" checked={value === null} disabled={Boolean(editing?.is_system)} onChange={(event) => setDraft({ ...draft, limits: { ...draft.limits, [item.key]: event.target.checked ? null : mediaPolicy ? item.unit === 'pixels' ? 2560 : 5 : 0 } })} />{mediaPolicy ? 'Réglage général' : 'Illimité'}</span><input type="number" min={mediaPolicy ? item.unit === 'pixels' ? 1024 : 1 : 0} max={storage ? undefined : item.maximum} disabled={value === null || Boolean(editing?.is_system)} value={value === null ? '' : storage ? value / 1024 ** 3 : value} onChange={(event) => { const entered = Number(event.target.value); setDraft({ ...draft, limits: { ...draft.limits, [item.key]: storage ? Math.round(entered * 1024 ** 3) : entered } }) }} /><em>{storage ? 'Gio' : item.unit === 'count' ? 'éléments' : item.unit === 'megabytes' ? 'Mo' : item.unit === 'pixels' ? 'px' : item.unit}</em></span></label> })}</div></fieldset>)}
-      <footer className="admin-console__actions"><button className="primary-button" data-cv-save="true" disabled={busy || !draft.name.trim()}><Save size={16} />Enregistrer</button><button type="button" onClick={() => setEditing(undefined)}>Annuler</button></footer>
-    </form>}
-    {confirmationDialog}
-  </section>
+  return <section className="quota-profiles"><header className="admin-console__heading"><div><span>Capacité</span><h2>Quotas</h2><p>Profils réutilisables et limites de création appliquées aux utilisateurs.</p></div><button className="primary-button" type="button" onClick={() => begin(null)}><Plus size={16} />Nouveau profil</button></header>{error && <div className="form-alert" role="alert">{error}</div>}{!loading && <div className="quota-profiles__toolbar" role="group" aria-label="Mode d’affichage"><button type="button" className={viewMode === 'carousel' ? 'is-active' : ''} aria-label="Vue carrousel" title="Vue carrousel" aria-pressed={viewMode === 'carousel'} onClick={() => changeView('carousel')}><GalleryHorizontal size={16} />Carrousel</button><button type="button" className={viewMode === 'list' ? 'is-active' : ''} aria-label="Vue liste" title="Vue liste" aria-pressed={viewMode === 'list'} onClick={() => changeView('list')}><List size={16} />Liste</button></div>}{loading ? <p role="status">Chargement…</p> : profiles.length === 0 ? <p className="quota-profiles__empty">Aucun profil de quotas.</p> : viewMode === 'carousel' ? <QuotaProfilesCarousel profiles={profiles} registry={registry} selectedProfileId={selectedProfileId} onSelect={selectProfile} onAction={action} /> : <div className="quota-profiles__grid">{profiles.map((profile) => <QuotaProfileCard key={profile.id} profile={profile} registry={registry} selected={profile.id === selectedProfileId} variant="list" onSelect={() => selectProfile(profile.id)} onAction={(kind) => action(profile, kind)} />)}</div>}{editing !== undefined && <form className="admin-console__card quota-editor" onSubmit={save}><header><div><h3>{editing ? `Modifier ${editing.name}` : 'Créer un profil'}</h3><p>Une limite vide est illimitée. Pour les images, elle conserve le réglage général de l’instance.</p></div><button type="button" aria-label="Fermer l’éditeur" onClick={() => setEditing(undefined)}><X size={16} /></button></header><div className="quota-editor__identity"><label>Nom<input required maxLength={100} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label>Description<textarea maxLength={2000} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label></div>{scopes.map((scope) => <fieldset key={scope.key}><legend>{scope.label}</legend><div className="quota-editor__limits">{registryByScope.get(scope.key)?.map((item) => { const value = draft.limits[item.key]; const storage = item.unit === 'bytes'; const mediaPolicy = item.unit === 'megabytes' || item.unit === 'pixels'; return <label key={item.key}><span><strong>{item.label}<FieldHelp>{item.description}{!item.enforced ? ' · Non appliqué actuellement' : ''}</FieldHelp></strong></span><span className="quota-editor__control"><span><input type="checkbox" checked={value === null} disabled={Boolean(editing?.is_system)} onChange={(event) => setDraft({ ...draft, limits: { ...draft.limits, [item.key]: event.target.checked ? null : mediaPolicy ? item.unit === 'pixels' ? 2560 : 5 : 0 } })} />{mediaPolicy ? 'Réglage général' : 'Illimité'}</span><input type="number" min={mediaPolicy ? item.unit === 'pixels' ? 1024 : 1 : 0} max={storage ? undefined : item.maximum} disabled={value === null || Boolean(editing?.is_system)} value={value === null ? '' : storage ? value / 1024 ** 3 : value} onChange={(event) => { const entered = Number(event.target.value); setDraft({ ...draft, limits: { ...draft.limits, [item.key]: storage ? Math.round(entered * 1024 ** 3) : entered } }) }} /><em>{storage ? 'Gio' : item.unit === 'count' ? 'éléments' : item.unit === 'megabytes' ? 'Mo' : item.unit === 'pixels' ? 'px' : item.unit}</em></span></label> })}</div></fieldset>)}<footer className="admin-console__actions"><button className="primary-button" data-cv-save="true" disabled={busy || !draft.name.trim()}><Save size={16} />Enregistrer</button><button type="button" onClick={() => setEditing(undefined)}>Annuler</button></footer></form>}{confirmationDialog}</section>
 }
