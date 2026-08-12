@@ -24,9 +24,27 @@ export interface AccountPreferences {
   }
   routing: {
     provider: 'osrm' | 'google' | 'openrouteservice'
+    api_key_id?: string | null
   }
-  places: { provider: 'stadia' | 'google' }
-  basemaps?: { satellite_provider: 'stadia' | 'google' }
+  places: { provider: 'stadia' | 'google'; api_key_id?: string | null }
+  basemaps?: { satellite_provider: 'stadia' | 'google'; api_key_id?: string | null }
+}
+
+export interface PersonalApiKey {
+  id: string
+  name: string
+  provider: 'google' | 'stadia' | 'openrouteservice'
+  last4: string
+  verified: boolean
+  verified_at: string | null
+  last_used_at: string | null
+  last_error_code: string | null
+  last_error_status: number | null
+  last_error_message: string | null
+  last_error_at: string | null
+  created_at: string
+  updated_at: string
+  editable: boolean
 }
 
 export interface RoutingProviderCapability {

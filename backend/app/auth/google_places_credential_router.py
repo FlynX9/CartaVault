@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
+from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_session
 from app.auth.models import UserApiCredential, UserSession
 from app.auth.schemas import AccountPreferences
@@ -86,8 +87,8 @@ def verify(session: Session = Depends(get_db), current: UserSession = Depends(ge
 @router.get("/search")
 def search(q: str = Query(min_length=2, max_length=500), country_code: str | None = Query(default=None, min_length=2, max_length=2), limit: int = Query(default=8, ge=1, le=20), session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
     preferences = AccountPreferences.model_validate(current.user.preferences or {})
-    credential = _credential(session, current.user_id)
-    if preferences.places.provider != "google" or credential is None or credential.verified_at is None:
+    credential = selected_api_key(session, current.user, "places", "google")
+    if preferences.places.provider != "google" or credential is None:
         return {"items": [], "available": False, "warning_code": "GOOGLE_PLACES_NOT_SELECTED" if preferences.places.provider != "google" else "GOOGLE_PLACES_CREDENTIAL_UNAVAILABLE"}
     try:
         api_key = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)

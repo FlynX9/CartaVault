@@ -114,14 +114,17 @@ class AccountDelete(BaseModel):
 
 class RoutingPreferences(BaseModel):
     provider: Literal["osrm", "google", "openrouteservice"] = "osrm"
+    api_key_id: UUID | None = None
 
 
 class PlacesPreferences(BaseModel):
     provider: Literal["stadia", "google"] = "stadia"
+    api_key_id: UUID | None = None
 
 
 class BasemapPreferences(BaseModel):
     satellite_provider: Literal["stadia", "google"] = "stadia"
+    api_key_id: UUID | None = None
 
 
 class OnboardingPreferences(BaseModel):

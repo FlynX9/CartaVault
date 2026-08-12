@@ -24,6 +24,13 @@ export interface CredentialStatus {
   last_error_code: string | null; configured_user_count: number | null
 }
 
+export interface AdminApiKey {
+  id: string; name: string; provider: 'google' | 'stadia' | 'openrouteservice' | 'resend' | 'master'; last4: string
+  verified: boolean; verified_at: string | null; last_used_at: string | null
+  last_error_code: string | null; last_error_status: number | null; last_error_message: string | null; last_error_at: string | null
+  created_at: string | null; updated_at: string | null; editable: boolean
+}
+
 export interface QuotaLimits {
   maps_max: number | null; trips_total_max: number | null; storage_bytes_max: number | null
   photos_total_max: number | null; memberships_total_max: number | null; pending_invitations_max: number | null

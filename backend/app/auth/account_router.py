@@ -9,6 +9,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.auth.api_keys import selected_api_key
 from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
@@ -82,22 +83,23 @@ def preferences(current: UserSession = Depends(get_current_session)) -> dict[str
 
 @router.put("/preferences")
 def update_preferences(data: AccountPreferences, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
-    if data.routing.provider == "google":
-        credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_routes"))
-        if credential is None or credential.verified_at is None:
-            raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé Google Routes avant de sélectionner ce moteur."})
-    if data.routing.provider == "openrouteservice" and not openroute_service_settings.allow_unauthenticated:
-        credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "openrouteservice"))
-        if credential is None or credential.verified_at is None:
-            raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé OpenRouteService avant de sélectionner ce moteur."})
-    if data.places.provider == "google":
-        credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id, UserApiCredential.provider == "google_places"))
-        if credential is None or credential.verified_at is None:
-            raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_NOT_VERIFIED", "message": "Ajoutez et vérifiez votre clé Google Places avant de sélectionner ce moteur."})
-    current.user.preferences = data.model_dump()
+    next_preferences = data.model_dump(mode="json")
+    previous_preferences = current.user.preferences
+    current.user.preferences = next_preferences
+    if data.routing.provider == "google" and selected_api_key(database_session, current.user, "routing", "google") is None:
+        current.user.preferences = previous_preferences
+        raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé Google pour le routage."})
+    if data.routing.provider == "openrouteservice" and not openroute_service_settings.allow_unauthenticated and selected_api_key(database_session, current.user, "routing", "openrouteservice") is None:
+        current.user.preferences = previous_preferences
+        raise HTTPException(409, {"code": "ROUTING_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé OpenRouteService pour le routage."})
+    if data.places.provider == "google" and selected_api_key(database_session, current.user, "places", "google") is None:
+        current.user.preferences = previous_preferences
+        raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé Google pour la recherche de lieux."})
+    if data.preferred_basemap in {"satellite", "google-satellite"} and selected_api_key(database_session, current.user, "basemaps", data.basemaps.satellite_provider) is None:
+        current.user.preferences = previous_preferences
+        raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé pour le fond satellite choisi."})
     database_session.commit()
     return _preferences(current.user)
-
 
 @router.post("/preferences/reset")
 def reset_preferences(database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:

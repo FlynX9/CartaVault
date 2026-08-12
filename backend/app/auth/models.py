@@ -106,8 +106,7 @@ class UserActivityEvent(Base):
 class UserApiCredential(Base):
     __tablename__ = "user_api_credentials"
     __table_args__ = (
-        UniqueConstraint("user_id", "provider", name="user_api_credentials_user_provider_key"),
-        CheckConstraint("provider IN ('google_routes', 'google_places', 'openrouteservice', 'google_map_tiles', 'stadia_maps', 'stadia_places')", name="user_api_credentials_provider_check"),
+        CheckConstraint("provider IN ('google', 'stadia', 'openrouteservice')", name="user_api_credentials_provider_check"),
         CheckConstraint("encryption_version > 0", name="user_api_credentials_encryption_version_check"),
         Index("user_api_credentials_user_id_idx", "user_id"),
     )
@@ -115,6 +114,7 @@ class UserApiCredential(Base):
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
     user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, default="Clé API")
     encrypted_secret: Mapped[str] = mapped_column(Text, nullable=False)
     encryption_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     secret_last4: Mapped[str] = mapped_column(String(4), nullable=False)
@@ -123,6 +123,9 @@ class UserApiCredential(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_error_status: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped[User] = relationship(back_populates="api_credentials")
 
@@ -241,3 +244,27 @@ class SystemCredential(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class AdminApiCredential(Base):
+    __tablename__ = "admin_api_credentials"
+    __table_args__ = (
+        CheckConstraint("provider IN ('google', 'stadia', 'openrouteservice', 'resend')", name="admin_api_credentials_provider_check"),
+        CheckConstraint("encryption_version > 0", name="admin_api_credentials_encryption_version_check"),
+        Index("admin_api_credentials_provider_idx", "provider"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    encrypted_secret: Mapped[str] = mapped_column(Text, nullable=False)
+    encryption_version: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    secret_last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_error_status: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

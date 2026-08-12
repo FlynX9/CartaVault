@@ -82,6 +82,17 @@ class CredentialValue(BaseModel):
     value: str = Field(min_length=3, max_length=512)
 
 
+class AdminApiKeyCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    provider: Literal["google", "stadia", "openrouteservice", "resend"]
+    api_key: str = Field(min_length=1, max_length=512)
+
+
+class AdminApiKeyUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    api_key: str | None = Field(default=None, min_length=1, max_length=512)
+
+
 class MediaUploadSettings(BaseModel):
     max_upload_megabytes: int = Field(default=5, ge=1, le=100)
     max_image_dimension: int = Field(default=2560, ge=1024, le=7680)

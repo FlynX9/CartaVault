@@ -180,10 +180,10 @@ class GoogleRoutesProvider(RoutingProvider):
             body = error.read(64 * 1024).decode("utf-8", errors="replace") if error.fp else ""
             if error.code in {401, 403}:
                 code, message = self._access_error(body)
-                raise RoutingError(message, code) from error
+                raise RoutingError(message, code, http_status=error.code) from error
             if error.code == 429:
-                raise RoutingError("Le quota Google Routes est temporairement dépassé.", "GOOGLE_ROUTES_QUOTA_EXCEEDED") from error
-            raise RoutingError("Google Routes est temporairement indisponible.", "GOOGLE_ROUTES_PROVIDER_ERROR") from error
+                raise RoutingError("Le quota Google Routes est temporairement dépassé.", "GOOGLE_ROUTES_QUOTA_EXCEEDED", http_status=error.code) from error
+            raise RoutingError("Google Routes est temporairement indisponible.", "GOOGLE_ROUTES_PROVIDER_ERROR", http_status=error.code) from error
         except (TimeoutError, OSError) as error:
             raise RoutingError("Google Routes n’a pas répondu dans le délai imparti.", "GOOGLE_ROUTES_TIMEOUT") from error
         except (URLError, json.JSONDecodeError) as error:

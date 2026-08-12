@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
+from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserApiCredential
 from app.auth.security import verify_password
@@ -132,8 +133,8 @@ async def delete_credential(request: Request, session: Session = Depends(get_db)
 
 @router.get("/account/integrations/stadia-places/config")
 def search_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> JSONResponse:
-    credential = _credential(session, user.id)
-    api_key = _decrypt(credential) if credential is not None and credential.verified_at is not None else None
+    credential = selected_api_key(session, user, "places", "stadia")
+    api_key = _decrypt(credential) if credential is not None else None
     if credential is not None and api_key is not None:
         credential.last_used_at = datetime.now(UTC).replace(tzinfo=None)
         session.commit()

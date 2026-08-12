@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
+from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserApiCredential
 from app.auth.security import verify_password
@@ -63,7 +64,7 @@ def _validate_key(api_key: str) -> None:
                 raise HTTPException(422, {"code": "STADIA_MAPS_KEY_INVALID", "message": "La clé Stadia Maps a été refusée."})
     except HTTPError as error:
         status = 422 if error.code in {400, 401, 403} else 503
-        raise HTTPException(status, {"code": "STADIA_MAPS_KEY_INVALID" if status == 422 else "STADIA_MAPS_UNAVAILABLE", "message": "La clé Stadia Maps a été refusée." if status == 422 else "Stadia Maps est momentanément indisponible."}) from error
+        raise HTTPException(status, {"code": "STADIA_MAPS_KEY_INVALID" if status == 422 else "STADIA_MAPS_UNAVAILABLE", "message": "La clé Stadia Maps a été refusée." if status == 422 else "Stadia Maps est momentanément indisponible.", "provider_status": error.code}) from error
     except (TimeoutError, URLError) as error:
         raise HTTPException(503, {"code": "STADIA_MAPS_UNAVAILABLE", "message": "Stadia Maps est momentanément indisponible."}) from error
 
@@ -130,8 +131,8 @@ async def delete_credential(request: Request, session: Session = Depends(get_db)
 
 @router.get("/basemaps/stadia/config")
 def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> JSONResponse:
-    credential = _credential(session, user.id)
+    credential = selected_api_key(session, user, "basemaps", "stadia")
     tile_url = None
-    if credential is not None and credential.verified_at is not None:
+    if credential is not None:
         tile_url = f"{STADIA_SATELLITE_URL}?api_key={quote(_decrypt(credential))}"
     return JSONResponse({"personal_key_active": tile_url is not None, "tile_url": tile_url}, headers={"Cache-Control": "no-store"})

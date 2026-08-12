@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Activity, Check, ChevronLeft, ChevronRight, Gauge, ImageDown, KeyRound, RefreshCw, Save, Settings2, ShieldCheck, Trash2, Users, X } from 'lucide-react'
+import { Activity, Check, ChevronLeft, ChevronRight, Gauge, ImageDown, KeyRound, RefreshCw, Save, Settings2, ShieldCheck, Users, X } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import {
-  assignUserQuotaProfile, cancelBackgroundTask, deleteResendCredential, getAdminCredentials, getAdminUserActivity, getAdminUserDetails, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
+  assignUserQuotaProfile, cancelBackgroundTask, getAdminUserActivity, getAdminUserDetails, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
   getInstanceLogRetention, getSaasSettings, optimizeStoredMedia, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings,
-  saveResendCredential, updateAdminUser, verifyResendCredential,
+  updateAdminUser,
 } from '../../api/adminConsole'
 import { accountAvatarUrl } from '../../api/account'
 import { getGoogleSatelliteAdminStatus, resetGoogleSatelliteErrors, saveGoogleSatelliteSettings, type GoogleSatelliteAdminStatus } from '../../api/googleSatellite'
@@ -16,7 +16,8 @@ import { InstanceStatusPage } from '../../features/admin/instance-status/Instanc
 import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage'
 import { AdminUsersSection } from './AdminUsersSection'
 import { AdminUserModal } from './AdminUserModal'
-import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, CredentialStatus, QuotaProfile } from '../../types/adminConsole'
+import { AdminApiKeysSection } from './AdminApiKeysSection'
+import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, QuotaProfile } from '../../types/adminConsole'
 
 const sections = [
   ['users', Users, 'Utilisateurs'], ['general', Settings2, 'Général'], ['credentials', KeyRound, 'Clés API'],
@@ -95,7 +96,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
       <AdminSaveContext.Provider value={saveContext}><div className="admin-console__content">
         {visitedSections.has('users') && <div hidden={activeSection !== 'users'}><AdminUsersSection /></div>}
         {visitedSections.has('general') && <div hidden={activeSection !== 'general'}><AdminGeneralSection /></div>}
-        {visitedSections.has('credentials') && <div hidden={activeSection !== 'credentials'}><AdminCredentialsSection /></div>}
+        {visitedSections.has('credentials') && <div hidden={activeSection !== 'credentials'}><AdminApiKeysSection /></div>}
         {visitedSections.has('quotas') && <div hidden={activeSection !== 'quotas'}><QuotaProfilesPage /></div>}
         {visitedSections.has('instance') && <div hidden={activeSection !== 'instance'}><InstanceStatusPage /></div>}
       </div></AdminSaveContext.Provider>
@@ -213,28 +214,6 @@ export function LegacyAdminUsersSection() {
     </li>)}</ul>}
     {result && <footer className="admin-console__pagination"><button disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={16} />Précédent</button><span>Page {result.page} sur {result.pages}</span><button disabled={page >= result.pages} onClick={() => setPage((value) => value + 1)}>Suivant<ChevronRight size={16} /></button></footer>}</section>{confirmationDialog}
     {(detailUser || activityUser || modalLoading) && <AdminUserModal detail={detailUser} activityUser={activityUser} activity={activity} loading={modalLoading} onClose={() => { setDetailUser(null); setActivityUser(null); setActivity([]) }} />}
-  </section>
-}
-
-function AdminCredentialsSection() {
-  const [items, setItems] = useState<CredentialStatus[]>([]); const [value, setValue] = useState(''); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null); const [busy, setBusy] = useState(false)
-  const { confirm, confirmationDialog } = useConfirmDialog()
-  const load = useCallback((signal?: AbortSignal) => {
-    setError(null)
-    void getAdminCredentials(signal)
-      .then((result) => { if (!signal?.aborted) setItems(result) })
-      .catch((reason: unknown) => { if (!signal?.aborted) setError(reason instanceof Error ? reason.message : 'Chargement impossible.') })
-  }, [])
-  useEffect(() => { const controller = new AbortController(); load(controller.signal); return () => controller.abort() }, [load])
-  const resend = items.find((item) => item.provider === 'resend')
-  const submit = useCallback(async () => { setBusy(true); setError(null); setNotice(null); try { await saveResendCredential(value); setValue(''); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason } finally { setBusy(false) } }, [load, value])
-  const resendSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: value.trim().length > 0, busy, save: submit, discard: () => setValue('') }), [busy, submit, value])
-  useAdminSaveEntry('credentials-resend', resendSaveEntry)
-  const verify = async () => { setBusy(true); setError(null); setNotice(null); try { await verifyResendCredential(); setNotice('Email de test envoyé à votre adresse administrateur.'); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Envoi de l’email de test impossible.') } finally { setBusy(false) } }
-  const remove = async () => { if (!await confirm({ title: 'Supprimer la clé Resend', message: 'Les emails CartaVault ne pourront plus être envoyés.', confirmLabel: 'Supprimer' })) return; await deleteResendCredential(); load() }
-  return <section><SectionHeading eyebrow="Intégrations" title="Clés API" description="Credentials globaux et état sécurisé des intégrations." />{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}
-    <div className="admin-console__credential-grid">{items.map((item) => <article className="admin-console__card" key={item.provider}><header><KeyRound size={19} /><div><h3>{item.label}</h3><p>{item.scope === 'personal' ? 'Clé personnelle, gérée dans le compte utilisateur.' : item.scope === 'infrastructure' ? 'Secret d’infrastructure en lecture seule.' : 'Clé globale de l’instance.'}</p></div><span className={item.configured ? 'ok' : 'warning'}>{item.configured ? 'Configuré' : 'Non configuré'}</span></header><dl><dt>Source</dt><dd>{sourceLabel(item.source)}</dd><dt>Valeur</dt><dd>{item.masked_value ?? 'Jamais exposée'}</dd>{item.configured_user_count !== null && <><dt>Utilisateurs configurés</dt><dd>{item.configured_user_count}</dd></>}<dt>Dernière vérification</dt><dd>{formatDate(item.verified_at)}</dd><dt>Dernière utilisation</dt><dd>{formatDate(item.last_used_at)}</dd><dt>Dernière erreur</dt><dd>{item.last_error_code ?? 'Aucune'}</dd></dl></article>)}</div>
-    <section className="admin-console__card admin-console__setting-card"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><KeyRound size={17} /></span><div><h3>Configuration Resend</h3><p>Clé d’envoi globale utilisée pour les e-mails transactionnels.</p></div><span className={`admin-console__setting-status ${resend?.configured ? 'ok' : 'warning'}`}>{resend?.configured ? 'Configuré' : 'Non configuré'}</span></header><form className="admin-console__setting-form" onSubmit={(event) => event.preventDefault()}><label>Nouvelle clé API<input type="password" value={value} required autoComplete="off" placeholder="re_••••••••" onChange={(event) => setValue(event.target.value)} /></label>{resend?.configured && <><button type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={16} />{busy ? 'Envoi…' : 'Envoyer un e-mail de test'}</button><button className="danger" type="button" disabled={busy} onClick={() => void remove()}><Trash2 size={16} />Supprimer</button></>}</form></section>{confirmationDialog}
   </section>
 }
 
@@ -358,5 +337,3 @@ export function GoogleSatelliteAdminPanel() {
 }
 
 */
-function sourceLabel(value: CredentialStatus['source']) { return ({ database: 'Base chiffrée', environment: 'Variable d’environnement', deployment: 'Secret de déploiement', none: 'Non configuré' })[value] }
-function formatDate(value: string | null) { return value ? new Date(value).toLocaleString('fr-FR') : 'Jamais' }

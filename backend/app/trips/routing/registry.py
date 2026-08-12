@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
+from app.auth.api_keys import selected_api_key
 from app.auth.models import User, UserApiCredential
 from app.config import google_routes_settings, google_routing_limit_settings, openroute_service_settings, task_settings
 from app.trips.routing.base import RoutingError, RoutingProvider
@@ -107,11 +108,13 @@ ors_routing_rate_limiter = GoogleRoutingRateLimiter(
 
 
 def google_credential(session: Session, user_id: object) -> UserApiCredential | None:
-    return session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == user_id, UserApiCredential.provider == "google_routes"))
+    user = session.get(User, user_id)
+    return selected_api_key(session, user, "routing", "google") if user is not None else None
 
 
 def ors_credential(session: Session, user_id: object) -> UserApiCredential | None:
-    return session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == user_id, UserApiCredential.provider == "openrouteservice"))
+    user = session.get(User, user_id)
+    return selected_api_key(session, user, "routing", "openrouteservice") if user is not None else None
 
 
 class RoutingProviderRegistry:
@@ -126,7 +129,7 @@ class RoutingProviderRegistry:
         ors_self_hosted = openroute_service_settings.allow_unauthenticated
         return [
             {"id": "osrm", "label": "OSRM", "available": True, "supports_route": True, "supports_matrix": True, "supports_waypoint_optimization": False},
-            {"id": "google", "label": "Google Routes", "available": storage_available and verified, "credential_configured": configured, "credential_verified": verified, "supports_route": True, "supports_matrix": False, "supports_waypoint_optimization": True},
+            {"id": "google", "label": "Google Routes", "available": storage_available and configured, "credential_configured": configured, "credential_verified": verified, "supports_route": True, "supports_matrix": False, "supports_waypoint_optimization": True},
             {"id": "openrouteservice", "label": "OpenRouteService", "available": openroute_service_settings.enabled and (ors_self_hosted or storage_available and ors_verified), "credential_configured": ors_configured, "credential_verified": ors_verified, "self_hosted": ors_self_hosted, "supports_route": True, "supports_matrix": True, "supports_waypoint_optimization": False, "supported_profiles": ["driving", "cycling", "walking"]},
         ]
 
@@ -140,8 +143,6 @@ class RoutingProviderRegistry:
         credential = google_credential(session, user.id)
         if credential is None:
             raise RoutingError("Aucune clé Google Routes personnelle n’est configurée.", "ROUTING_PROVIDER_UNAVAILABLE")
-        if credential.verified_at is None:
-            raise RoutingError("La clé Google Routes personnelle doit être vérifiée avant utilisation.", "ROUTING_CREDENTIAL_NOT_VERIFIED")
         try:
             api_key = CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
         except CredentialEncryptionError as error:

@@ -26,6 +26,8 @@ import { getGoogleSatelliteCredential, type GoogleSatelliteCredentialStatus } fr
 import { OfflineDataSection } from './OfflineDataSection'
 import { formatCredentialDate } from './credentialDate'
 import { useCredentialVerificationState } from './CredentialVerificationBadge'
+import { PersonalApiKeysSection } from './PersonalApiKeysSection'
+import { IntegrationPreferences } from './IntegrationPreferences'
 
 type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'offline'
 
@@ -140,7 +142,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} dirty={profileDirty} setDraftName={setDraftName} saveProfile={saveProfile} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} sessions={sessions} run={run} refreshProfile={async () => { await refresh(); await load() }} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
-          {section === 'api_keys' && <ApiKeysSection preferences={preferences} setPreferences={setPreferences} onDirtyChange={setApiKeysDirty} onSatelliteAvailabilityChanged={setGoogleSatelliteAvailable} isAdmin={Boolean(user?.is_admin)} />}
+          {section === 'api_keys' && <PersonalApiKeysSection />}
           {section === 'offline' && <OfflineDataSection />}
         </main>
       </section>
@@ -381,12 +383,13 @@ function PreferencesSection({ preferences, setPreferences, run }: { preferences:
         </PreferenceField>
       </div>
     </section>
+    <IntegrationPreferences preferences={preferences} setPreferences={setPreferences} />
     <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={savePreferences}>{t('common.save')}</button>
     <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
   </div></div></>
 }
 
-function ApiKeysSection({ preferences, setPreferences, onDirtyChange, onSatelliteAvailabilityChanged, isAdmin }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; onDirtyChange: (dirty: boolean) => void; onSatelliteAvailabilityChanged: (available: boolean) => void; isAdmin: boolean }) {
+export function ApiKeysSection({ preferences, setPreferences, onDirtyChange, onSatelliteAvailabilityChanged, isAdmin }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; onDirtyChange: (dirty: boolean) => void; onSatelliteAvailabilityChanged: (available: boolean) => void; isAdmin: boolean }) {
   const { t } = useI18n()
   const emptyCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
   const [routes, setRoutes] = useState<GoogleRoutesCredentialStatus>(emptyCredential)

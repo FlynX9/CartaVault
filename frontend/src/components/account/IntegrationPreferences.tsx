@@ -1,0 +1,23 @@
+import { useEffect, useState } from 'react'
+import { Image as ImageIcon, Map, Route } from 'lucide-react'
+
+import { getPersonalApiKeys } from '../../api/account'
+import type { AccountPreferences, PersonalApiKey } from '../../types/account'
+
+function KeySelect({ keys, value, onChange, label }: { keys: PersonalApiKey[]; value: string | null | undefined; onChange: (id: string) => void; label: string }) {
+  return <label className="account-preference-field"><span className="account-preference-field__label">{label}</span><select value={value ?? ''} onChange={(event) => onChange(event.target.value)}><option value="">Sélectionner une clé</option>{keys.map((key) => <option key={key.id} value={key.id}>{key.name} · ••••{key.last4}</option>)}</select></label>
+}
+
+export function IntegrationPreferences({ preferences, setPreferences }: { preferences: AccountPreferences; setPreferences: (value: AccountPreferences) => void }) {
+  const [keys, setKeys] = useState<PersonalApiKey[]>([])
+  useEffect(() => { void getPersonalApiKeys().then(setKeys).catch(() => setKeys([])) }, [])
+  const google = keys.filter((key) => key.provider === 'google')
+  const stadia = keys.filter((key) => key.provider === 'stadia')
+  const openRouteService = keys.filter((key) => key.provider === 'openrouteservice')
+  const basemaps = preferences.basemaps ?? { satellite_provider: preferences.preferred_basemap === 'google-satellite' ? 'google' as const : 'stadia' as const, api_key_id: null }
+  return <section className="account-preference-card account-integration-preferences"><header><h3>Services et clés API</h3><p>Choisissez les moteurs puis associez une clé personnelle compatible.</p></header><div className="account-integration-preferences__grid">
+    <article><Route size={18} /><div><h4>Routage</h4><p>OSRM est disponible sans clé et reste le choix par défaut.</p></div><label className="account-preference-field"><span className="account-preference-field__label">Moteur</span><select value={preferences.routing.provider} onChange={(event) => { const selected = event.target.value as 'osrm' | 'google' | 'openrouteservice'; setPreferences({ ...preferences, routing: { provider: selected, api_key_id: preferences.routing.provider === selected ? preferences.routing.api_key_id ?? null : null } }) }}><option value="osrm">OSRM</option><option value="google">Google Routes</option><option value="openrouteservice">OpenRouteService</option></select></label>{preferences.routing.provider !== 'osrm' && <KeySelect label={preferences.routing.provider === 'google' ? 'Clé Google' : 'Clé OpenRouteService'} keys={preferences.routing.provider === 'google' ? google : openRouteService} value={preferences.routing.api_key_id} onChange={(api_key_id) => setPreferences({ ...preferences, routing: { ...preferences.routing, api_key_id } })} />}</article>
+    <article><Map size={18} /><div><h4>Recherche de lieux</h4><p>Choisissez Stadia ou Google Places.</p></div><label className="account-preference-field"><span className="account-preference-field__label">Moteur</span><select value={preferences.places.provider} onChange={(event) => { const provider = event.target.value as 'stadia' | 'google'; setPreferences({ ...preferences, places: { provider, api_key_id: preferences.places.provider === provider ? preferences.places.api_key_id ?? null : null } }) }}><option value="stadia">Stadia</option><option value="google">Google Places</option></select></label><KeySelect label={`Clé ${preferences.places.provider === 'google' ? 'Google' : 'Stadia'}`} keys={preferences.places.provider === 'google' ? google : stadia} value={preferences.places.api_key_id} onChange={(api_key_id) => setPreferences({ ...preferences, places: { ...preferences.places, api_key_id } })} /></article>
+    <article><ImageIcon size={18} /><div><h4>Fond de carte satellite</h4><p>Associez le fournisseur et la clé utilisée par le fond satellite.</p></div><label className="account-preference-field"><span className="account-preference-field__label">Fournisseur</span><select value={basemaps.satellite_provider} onChange={(event) => { const satellite_provider = event.target.value as 'stadia' | 'google'; setPreferences({ ...preferences, basemaps: { satellite_provider, api_key_id: null } }) }}><option value="stadia">Stadia Maps</option><option value="google">Google Map Tiles</option></select></label><KeySelect label={`Clé ${basemaps.satellite_provider === 'google' ? 'Google' : 'Stadia'}`} keys={basemaps.satellite_provider === 'google' ? google : stadia} value={basemaps.api_key_id} onChange={(api_key_id) => setPreferences({ ...preferences, basemaps: { ...basemaps, api_key_id } })} /></article>
+  </div></section>
+}

@@ -7,10 +7,11 @@ Coordinate = tuple[float, float]  # longitude, latitude
 
 
 class RoutingError(RuntimeError):
-    def __init__(self, message: str, code: str = "ROUTING_PROVIDER_ERROR", *, retry_after: int | None = None):
+    def __init__(self, message: str, code: str = "ROUTING_PROVIDER_ERROR", *, retry_after: int | None = None, http_status: int | None = None):
         super().__init__(message)
         self.code = code
         self.retry_after = retry_after
+        self.http_status = http_status
 
 
 @dataclass(frozen=True)

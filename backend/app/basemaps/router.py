@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.admin.models import SystemSetting
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
+from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import User, UserApiCredential
 from app.auth.security import verify_password
@@ -157,17 +158,17 @@ def _record(session: Session, user_id: object, values: dict[str, int]) -> None:
 
 @router.get("/status")
 def public_status(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = _credential(session, user.id)
+    credential = selected_api_key(session, user, "basemaps", "google")
     status = _admin_status(session)
-    return {"available": bool(status["available"] and credential and credential.verified_at), "warning_level": status["warning_level"]}
+    return {"available": bool(status["available"] and credential), "warning_level": status["warning_level"]}
 
 
 @router.post("/session")
 def create_session(response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = _credential(session, user.id)
+    credential = selected_api_key(session, user, "basemaps", "google")
     _, values = _setting(session)
     usage = _usage(session)
-    if not google_map_tiles_settings.enabled or not values["enabled"] or credential is None or credential.verified_at is None:
+    if not google_map_tiles_settings.enabled or not values["enabled"] or credential is None:
         raise HTTPException(503, {"code": "GOOGLE_SATELLITE_UNAVAILABLE", "message": "Le fond Google Satellite n’est pas configuré."})
     if _usage_percent(values, usage) >= int(values["auto_disable_percent"]):
         values["enabled"] = False; values["disabled_reason"] = "USAGE_THRESHOLD_REACHED"; _save_setting(session, values); session.commit()

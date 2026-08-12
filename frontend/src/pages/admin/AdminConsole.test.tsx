@@ -4,15 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { assignUserQuotaProfile, createQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, updateAdminUser, updateQuotaProfile, verifyResendCredential } from '../../api/adminConsole'
+import { assignUserQuotaProfile, createQuotaProfile, getAdminApiKeys, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, updateAdminUser, updateQuotaProfile, verifyAdminApiKey } from '../../api/adminConsole'
 import { getPublicRegistrationSettings } from '../../api/registration'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 import type { QuotaRegistryItem } from '../../types/adminConsole'
 
 vi.mock('../../api/adminConsole', () => ({
-  archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
-  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getMediaUploadSettings: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), getSaasSettings: vi.fn(), refreshInstanceHealth: vi.fn(),
-  saveInstanceLogRetention: vi.fn(), saveMediaUploadSettings: vi.fn(), saveResendCredential: vi.fn(), saveSaasSettings: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
+  archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteAdminApiKey: vi.fn(), duplicateQuotaProfile: vi.fn(),
+  createAdminApiKey: vi.fn(), getAdminApiKeys: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getMediaUploadSettings: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), getSaasSettings: vi.fn(), refreshInstanceHealth: vi.fn(),
+  saveInstanceLogRetention: vi.fn(), saveMediaUploadSettings: vi.fn(), saveSaasSettings: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminApiKey: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyAdminApiKey: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
@@ -20,7 +20,7 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: '
 
 beforeEach(() => {
   vi.mocked(getAdminUsers).mockResolvedValue({ items: [], total: 0, page: 1, page_size: 25, pages: 1 })
-  vi.mocked(getAdminCredentials).mockResolvedValue([])
+  vi.mocked(getAdminApiKeys).mockResolvedValue([])
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
@@ -49,7 +49,7 @@ describe('AdminConsole', () => {
     render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
     fireEvent.click(screen.getByRole('link', { name: 'Clés API' }))
     expect(await screen.findByRole('heading', { name: 'Clés API' })).toBeVisible()
-    await waitFor(() => expect(getAdminCredentials).toHaveBeenCalled())
+    await waitFor(() => expect(getAdminApiKeys).toHaveBeenCalled())
   })
 
   it('keeps drafts between tabs and saves all modified settings from the header', async () => {
@@ -96,7 +96,7 @@ describe('AdminConsole', () => {
   })
 
   it('does not expose an expected request cancellation as a panel error', async () => {
-    vi.mocked(getAdminCredentials)
+    vi.mocked(getAdminApiKeys)
       .mockImplementationOnce((signal) => new Promise((_resolve, reject) => {
         signal?.addEventListener('abort', () => reject(new Error('signal is aborted without reason')))
       }))
@@ -104,36 +104,34 @@ describe('AdminConsole', () => {
 
     render(<StrictMode><MemoryRouter initialEntries={['/admin/credentials']}><AdminConsole /></MemoryRouter></StrictMode>)
 
-    await waitFor(() => expect(getAdminCredentials).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(getAdminApiKeys).toHaveBeenCalledTimes(2))
     expect(screen.queryByText('signal is aborted without reason')).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('sends a Resend test email explicitly', async () => {
     const resend = {
+      id: '11111111-1111-4111-8111-111111111111', name: 'Resend',
       provider: 'resend',
-      label: 'Resend',
-      scope: 'instance',
-      configured: true,
-      editable: true,
-      source: 'database',
-      masked_value: '••••test',
+      last4: 'test', verified: false, editable: true,
       verified_at: null,
       last_used_at: null,
       last_error_code: null,
-      configured_user_count: null,
+      last_error_status: null, last_error_message: null, last_error_at: null,
+      created_at: '2026-07-24T12:00:00Z', updated_at: '2026-07-24T12:00:00Z',
     } as const
-    vi.mocked(getAdminCredentials).mockResolvedValue([resend])
-    vi.mocked(verifyResendCredential).mockResolvedValue({
+    vi.mocked(getAdminApiKeys).mockResolvedValue([resend])
+    vi.mocked(verifyAdminApiKey).mockResolvedValue({
       ...resend,
+      verified: true,
       verified_at: '2026-07-24T12:00:00Z',
       last_used_at: '2026-07-24T12:00:00Z',
     })
 
     render(<MemoryRouter initialEntries={['/admin/credentials']}><AdminConsole /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un e-mail de test' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un test' }))
 
-    await waitFor(() => expect(verifyResendCredential).toHaveBeenCalledOnce())
+    await waitFor(() => expect(verifyAdminApiKey).toHaveBeenCalledWith(resend.id))
     expect(await screen.findByText('Email de test envoyé à votre adresse administrateur.')).toBeVisible()
   })
 

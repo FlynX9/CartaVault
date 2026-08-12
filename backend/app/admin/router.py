@@ -11,17 +11,22 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.admin.schemas import (
-    AdminUserActivityRead, AdminUserDetails, AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
+    AdminApiKeyCreate, AdminApiKeyUpdate, AdminUserActivityRead, AdminUserDetails, AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
 )
 from app.auth.activity import record_user_activity
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.avatar_storage import resolve_avatar
-from app.auth.models import SystemCredential, User, UserActivityEvent, UserSession
-from app.config import credential_settings
+from app.auth.models import AdminApiCredential, SystemCredential, User, UserActivityEvent, UserSession
+from app.basemaps.stadia_router import _validate_key as validate_stadia_key
+from app.config import GoogleRoutesSettings, credential_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
+from app.trips.routing.base import RoutingError
+from app.trips.routing.google import GoogleRoutesProvider
+from app.trips.routing.openrouteservice import OpenRouteServiceProvider
+from app.trips.routing.registry import google_routing_rate_limiter
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
 from app.trips.models import Trip
@@ -262,6 +267,138 @@ def _credential_statuses(session: Session) -> list[CredentialStatus]:
             source="environment" if credential_settings.encryption_key else "none",
         ),
     ]
+
+
+def _admin_api_key_read(key: AdminApiCredential) -> dict[str, object]:
+    return {
+        "id": key.id, "name": key.name, "provider": key.provider, "last4": key.secret_last4,
+        "verified": key.verified_at is not None, "verified_at": key.verified_at, "last_used_at": key.last_used_at,
+        "last_error_code": key.last_error_code, "last_error_status": key.last_error_status,
+        "last_error_message": key.last_error_message, "last_error_at": key.last_error_at,
+        "created_at": key.created_at, "updated_at": key.updated_at, "editable": True,
+    }
+
+
+def _master_key_read() -> dict[str, object]:
+    configured = bool(credential_settings.encryption_key)
+    return {
+        "id": "credential-encryption", "name": "ClÃ© maÃ®tresse de chiffrement", "provider": "master",
+        "last4": "", "verified": configured, "verified_at": None, "last_used_at": None,
+        "last_error_code": None if configured else "CREDENTIAL_STORAGE_UNAVAILABLE", "last_error_status": None,
+        "last_error_message": None if configured else "La clÃ© maÃ®tresse de chiffrement nâ€™est pas configurÃ©e.",
+        "last_error_at": None, "created_at": None, "updated_at": None, "editable": False,
+    }
+
+
+def _clean_admin_key(value: str) -> str:
+    cleaned = value.strip()
+    if not cleaned or any(ord(character) < 33 or ord(character) > 126 for character in cleaned):
+        raise HTTPException(422, {"code": "API_KEY_INVALID", "message": "La clÃ© API est invalide."})
+    return cleaned
+
+
+def _sync_resend_credential(session: Session, key: AdminApiCredential) -> None:
+    legacy = session.get(SystemCredential, "resend")
+    if legacy is None:
+        legacy = SystemCredential(provider="resend", encrypted_secret=key.encrypted_secret, encryption_version=key.encryption_version, secret_last4=key.secret_last4)
+        session.add(legacy)
+    else:
+        legacy.encrypted_secret = key.encrypted_secret; legacy.encryption_version = key.encryption_version; legacy.secret_last4 = key.secret_last4
+    legacy.verified_at = key.verified_at; legacy.last_used_at = key.last_used_at; legacy.last_error_code = key.last_error_code
+
+
+@router.get("/credentials/keys")
+def list_admin_api_keys(session: Session = Depends(get_db)) -> list[dict[str, object]]:
+    if session.scalar(select(AdminApiCredential).where(AdminApiCredential.provider == "resend")) is None:
+        legacy = session.get(SystemCredential, "resend")
+        if legacy is not None:
+            session.add(AdminApiCredential(
+                provider="resend", name="Resend", encrypted_secret=legacy.encrypted_secret,
+                encryption_version=legacy.encryption_version, secret_last4=legacy.secret_last4,
+                verified_at=legacy.verified_at, last_used_at=legacy.last_used_at, last_error_code=legacy.last_error_code,
+            ))
+            session.commit()
+    rows = session.scalars(select(AdminApiCredential).order_by(AdminApiCredential.provider, AdminApiCredential.name)).all()
+    return [_admin_api_key_read(row) for row in rows] + [_master_key_read()]
+
+
+@router.post("/credentials/keys")
+def create_admin_api_key(data: AdminApiKeyCreate, session: Session = Depends(get_db)) -> dict[str, object]:
+    if data.provider == "resend" and session.scalar(select(AdminApiCredential).where(AdminApiCredential.provider == "resend")) is not None:
+        raise HTTPException(409, {"code": "RESEND_KEY_ALREADY_EXISTS", "message": "Une clÃ© Resend est dÃ©jÃ  configurÃ©e."})
+    secret = _clean_admin_key(data.api_key)
+    if data.provider == "resend" and not secret.startswith("re_"):
+        raise HTTPException(422, {"code": "RESEND_KEY_INVALID", "message": "Une clÃ© API Resend valide est requise."})
+    try:
+        encrypted = CredentialEncryptionService.from_settings().encrypt(secret)
+    except CredentialEncryptionError as error:
+        raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
+    key = AdminApiCredential(provider=data.provider, name=data.name.strip(), encrypted_secret=encrypted.ciphertext, encryption_version=encrypted.version, secret_last4=secret[-4:])
+    session.add(key); session.flush()
+    if key.provider == "resend": _sync_resend_credential(session, key)
+    session.commit(); session.refresh(key)
+    return _admin_api_key_read(key)
+
+
+@router.patch("/credentials/keys/{key_id}")
+def update_admin_api_key(key_id: UUID, data: AdminApiKeyUpdate, session: Session = Depends(get_db)) -> dict[str, object]:
+    key = session.get(AdminApiCredential, key_id)
+    if key is None: raise HTTPException(404, {"code": "API_KEY_NOT_FOUND", "message": "ClÃ© API introuvable."})
+    if data.name is not None: key.name = data.name.strip()
+    if data.api_key is not None:
+        secret = _clean_admin_key(data.api_key)
+        if key.provider == "resend" and not secret.startswith("re_"): raise HTTPException(422, {"code": "RESEND_KEY_INVALID", "message": "Une clÃ© API Resend valide est requise."})
+        try: encrypted = CredentialEncryptionService.from_settings().encrypt(secret)
+        except CredentialEncryptionError as error: raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
+        key.encrypted_secret = encrypted.ciphertext; key.encryption_version = encrypted.version; key.secret_last4 = secret[-4:]
+        key.verified_at = None; key.last_used_at = None; key.last_error_code = None; key.last_error_status = None; key.last_error_message = None; key.last_error_at = None
+    if key.provider == "resend": _sync_resend_credential(session, key)
+    session.commit(); session.refresh(key)
+    return _admin_api_key_read(key)
+
+
+@router.post("/credentials/keys/{key_id}/verify")
+def verify_admin_api_key(key_id: UUID, session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> dict[str, object]:
+    key = session.get(AdminApiCredential, key_id)
+    if key is None: raise HTTPException(404, {"code": "API_KEY_NOT_FOUND", "message": "ClÃ© API introuvable."})
+    try:
+        secret = CredentialEncryptionService.from_settings().decrypt(key.encrypted_secret, key.encryption_version)
+        if key.provider == "google":
+            google_routing_rate_limiter.check(f"admin-api-key-verify:{admin.id}")
+            GoogleRoutesProvider(secret, GoogleRoutesSettings(routing_preference="TRAFFIC_UNAWARE")).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
+        elif key.provider == "stadia":
+            validate_stadia_key(secret)
+        elif key.provider == "openrouteservice":
+            OpenRouteServiceProvider(secret).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
+        else:
+            _sync_resend_credential(session, key); session.commit()
+            locale = str((admin.preferences or {}).get("language") or "fr")
+            EmailService(provider_from_database(session, allow_disabled=True, provider="resend")).send_resend_verification(admin.email, admin.display_name, locale)
+    except (CredentialEncryptionError, EmailDeliveryError, HTTPException, RoutingError) as error:
+        detail = error.detail if isinstance(error, HTTPException) else None
+        key.verified_at = None
+        key.last_error_code = str(detail.get("code")) if isinstance(detail, dict) else getattr(error, "code", "API_KEY_TEST_FAILED")
+        key.last_error_status = (detail.get("provider_status") if isinstance(detail, dict) else None) or (error.status_code if isinstance(error, HTTPException) else getattr(error, "http_status", None))
+        key.last_error_message = str(detail.get("message")) if isinstance(detail, dict) and detail.get("message") else str(error)
+        key.last_error_at = datetime.now(UTC).replace(tzinfo=None)
+        if key.provider == "resend": _sync_resend_credential(session, key)
+        session.commit()
+        raise HTTPException(422, {"code": key.last_error_code, "message": key.last_error_message, "provider_status": key.last_error_status}) from error
+    now = datetime.now(UTC).replace(tzinfo=None)
+    key.verified_at = now; key.last_used_at = now; key.last_error_code = None; key.last_error_status = None; key.last_error_message = None; key.last_error_at = None
+    if key.provider == "resend": _sync_resend_credential(session, key)
+    session.commit(); session.refresh(key)
+    return _admin_api_key_read(key)
+
+
+@router.delete("/credentials/keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_api_key(key_id: UUID, session: Session = Depends(get_db)) -> None:
+    key = session.get(AdminApiCredential, key_id)
+    if key is None: return
+    if key.provider == "resend":
+        legacy = session.get(SystemCredential, "resend")
+        if legacy is not None: session.delete(legacy)
+    session.delete(key); session.commit()
 
 
 @router.get("/credentials", response_model=list[CredentialStatus])

@@ -1,5 +1,5 @@
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import type { AdminRole, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, InstanceLogLevel, InstanceLogPage, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
+import type { AdminApiKey, AdminRole, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, InstanceLogLevel, InstanceLogPage, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
 
 export interface MediaUploadSettings { max_upload_megabytes: number; max_image_dimension: number }
 export interface BackgroundTaskResult { task_id: string; status: string }
@@ -25,6 +25,11 @@ export function getAdminCredentials(signal?: AbortSignal) { return getJson('/adm
 export function saveResendCredential(value: string) { return sendJson('/admin/console/credentials/resend', 'PUT', { value }) as Promise<CredentialStatus> }
 export function verifyResendCredential() { return sendJson('/admin/console/credentials/resend/verify', 'POST', {}) as Promise<CredentialStatus> }
 export function deleteResendCredential() { return sendWithoutResponse('/admin/console/credentials/resend', 'DELETE') }
+export function getAdminApiKeys(signal?: AbortSignal) { return getJson('/admin/console/credentials/keys', empty(), signal) as Promise<AdminApiKey[]> }
+export function createAdminApiKey(payload: { name: string; provider: 'google' | 'stadia' | 'openrouteservice' | 'resend'; api_key: string }) { return sendJson('/admin/console/credentials/keys', 'POST', payload) as Promise<AdminApiKey> }
+export function updateAdminApiKey(id: string, payload: { name?: string; api_key?: string }) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<AdminApiKey> }
+export function verifyAdminApiKey(id: string) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}/verify`, 'POST', {}) as Promise<AdminApiKey> }
+export function deleteAdminApiKey(id: string) { return sendWithoutResponse(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'DELETE') }
 export function getMediaUploadSettings(signal?: AbortSignal) { return getJson('/admin/console/media/settings', empty(), signal) as Promise<MediaUploadSettings> }
 export function saveMediaUploadSettings(maxUploadMegabytes: number, maxImageDimension: number) { return sendJson('/admin/console/media/settings', 'PUT', { max_upload_megabytes: maxUploadMegabytes, max_image_dimension: maxImageDimension }) as Promise<MediaUploadSettings> }
 export function optimizeStoredMedia() { return sendJson('/admin/console/media/optimize', 'POST', {}) as Promise<BackgroundTaskResult> }
