@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from app.auth.activity import record_user_activity
 from app.auth.models import AuthSecurityEvent, RegistrationRequest
 from app.config import security_settings
 
@@ -56,6 +57,15 @@ def record_auth_event(
         client_ip_hash=opaque_hash(client_ip),
         details=details or {},
     ))
+    # The administrative timeline is intentionally concise: only successful
+    # actions belonging to an identified account are mirrored there.
+    if outcome in {"accepted", "verified", "approved", "auto_approved"} and actor_user_id is not None:
+        record_user_activity(
+            session,
+            user_id=actor_user_id,
+            actor_user_id=actor_user_id,
+            event_type=event_type.replace(".", "_"),
+        )
 
 
 def expire_stale_registration_requests(session: Session) -> int:

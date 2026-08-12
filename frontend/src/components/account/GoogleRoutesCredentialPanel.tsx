@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { Eye, EyeOff, KeyRound, RefreshCw, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, Trash2 } from 'lucide-react'
 
 import { deleteGoogleRoutesCredential, storeGoogleRoutesCredential, verifyGoogleRoutesCredential } from '../../api/account'
 import type { GoogleRoutesCredentialStatus } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
-import { CredentialVerificationBadge, useCredentialVerificationState } from './CredentialVerificationBadge'
+import { useCredentialVerificationState } from './CredentialVerificationBadge'
 
 interface GoogleRoutesCredentialPanelProps {
   status: GoogleRoutesCredentialStatus
@@ -66,9 +66,7 @@ export function GoogleRoutesCredentialPanel({ status, storageAvailable, onChange
 
   return <section className="account-credential" aria-labelledby="google-routes-credential-title">
     <div className="account-credential__heading">
-      <span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span>
       <div><h3 id="google-routes-credential-title">Clé Google Routes<FieldHelp>La clé est chiffrée sur le serveur et n’est jamais renvoyée à votre navigateur après son enregistrement.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div>
-      <CredentialVerificationBadge status={status} failedAt={verification.failedAt} />
     </div>
     {!storageAvailable && <p className="account-credential__warning" role="status">Le stockage sécurisé des clés utilisateur n’est pas configuré sur ce serveur.</p>}
     {status.last_error_code && <p className="account-credential__warning">La clé doit être vérifiée ou remplacée avant utilisation.</p>}

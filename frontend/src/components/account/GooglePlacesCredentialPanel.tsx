@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { Eye, EyeOff, KeyRound, RefreshCw, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, Trash2 } from 'lucide-react'
 
 import { deleteGooglePlacesCredential, storeGooglePlacesCredential, verifyGooglePlacesCredential } from '../../api/account'
 import type { GooglePlacesCredentialStatus } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
-import { CredentialVerificationBadge, useCredentialVerificationState } from './CredentialVerificationBadge'
+import { useCredentialVerificationState } from './CredentialVerificationBadge'
 
 export function GooglePlacesCredentialPanel({ status, storageAvailable, onChanged }: { status: GooglePlacesCredentialStatus; storageAvailable: boolean; onChanged: (status: GooglePlacesCredentialStatus, providerReset?: boolean) => Promise<void> | void }) {
   const { confirm, confirmationDialog } = useConfirmDialog()
@@ -15,7 +15,7 @@ export function GooglePlacesCredentialPanel({ status, storageAvailable, onChange
   const verify = async () => { setBusy(true); setError(null); setMessage(null); try { const next = await verifyGooglePlacesCredential(); await onChanged(next); verification.clearVerificationFailure(); setMessage('La clé Google Places est valide.') } catch (reason) { verification.markVerificationFailed(); setError(reason instanceof Error ? reason.message : 'La vérification a échoué.') } finally { setBusy(false) } }
   const remove = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!await confirm({ title: 'Supprimer la clé Google Places ?', message: 'Les lieux existants seront conservés. Les prochaines recherches utiliseront Stadia.' })) return; setBusy(true); setError(null); try { const result = await deleteGooglePlacesCredential(deletePassword); setDeletePassword(''); setConfirmingDelete(false); await onChanged({ configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }, result.provider_reset); setMessage('Clé supprimée. La recherche utilise Stadia.') } catch (reason) { setError(reason instanceof Error ? reason.message : 'Impossible de supprimer la clé.') } finally { setBusy(false) } }
   return <section className="account-credential" aria-labelledby="google-places-credential-title">
-    <div className="account-credential__heading"><span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span><div><h3 id="google-places-credential-title">Clé Google Places<FieldHelp>La clé est chiffrée sur le serveur et doit autoriser Places API (New).</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div><CredentialVerificationBadge status={status} failedAt={verification.failedAt} /></div>
+    <div className="account-credential__heading"><div><h3 id="google-places-credential-title">Clé Google Places<FieldHelp>La clé est chiffrée sur le serveur et doit autoriser Places API (New).</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Aucune clé configurée'}</p></div></div>
     {!storageAvailable && <p className="account-credential__warning">Le stockage sécurisé des clés utilisateur n’est pas configuré.</p>}
     {status.last_error_code && <p className="account-credential__warning">La clé doit autoriser Google Places API (New).</p>}
     {(editing || !status.configured) && storageAvailable && <form className="account-credential__form" onSubmit={submit}><label>Nouvelle clé<span className="account-secret-input"><input aria-label="Clé Google Places" type={revealed ? 'text' : 'password'} value={apiKey} required maxLength={512} autoComplete="off" onChange={(event) => setApiKey(event.target.value)} /><button type="button" aria-label={revealed ? 'Masquer la clé' : 'Afficher la clé'} onClick={() => setRevealed((value) => !value)}>{revealed ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label><div className="account-credential__actions"><button className="account-button account-button--primary" type="submit" disabled={busy}>Enregistrer cette clé</button>{status.configured && <button className="account-button account-button--secondary" type="button" onClick={() => setEditing(false)}>Annuler</button>}</div></form>}

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Eye, EyeOff, KeyRound, RefreshCw, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, Trash2 } from 'lucide-react'
 
 import { deleteStadiaMapsCredential, storeStadiaMapsCredential, verifyStadiaMapsCredential, type StadiaMapsCredentialStatus } from '../../api/stadiaMaps'
 import { FieldHelp } from '../common/FieldHelp'
 import { useConfirmDialog } from '../common/useConfirmDialog'
-import { CredentialVerificationBadge, useCredentialVerificationState } from './CredentialVerificationBadge'
+import { useCredentialVerificationState } from './CredentialVerificationBadge'
 
 export function StadiaMapsCredentialPanel({ status, storageAvailable, onChanged }: { status: StadiaMapsCredentialStatus; storageAvailable: boolean; onChanged: (status: StadiaMapsCredentialStatus) => Promise<void> | void }) {
   const { confirm, confirmationDialog } = useConfirmDialog()
@@ -46,7 +46,7 @@ export function StadiaMapsCredentialPanel({ status, storageAvailable, onChanged 
   }
 
   return <section className="account-credential" aria-labelledby="stadia-maps-credential-title">
-    <div className="account-credential__heading"><span className="account-credential__icon"><KeyRound size={18} aria-hidden="true" /></span><div><h3 id="stadia-maps-credential-title">Clé Stadia Maps <span className="account-credential__optional">(facultative)</span><FieldHelp>Sans clé, CartaVault utilise l’accès public. Avec une clé vérifiée, les tuiles Satellite consomment le forfait Stadia associé à votre compte.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Accès public sans clé personnelle'}</p></div><CredentialVerificationBadge status={status} failedAt={verification.failedAt} /></div>
+    <div className="account-credential__heading"><div><h3 id="stadia-maps-credential-title">Clé Stadia Maps <span className="account-credential__optional">(facultative)</span><FieldHelp>Sans clé, CartaVault utilise l’accès public. Avec une clé vérifiée, les tuiles Satellite consomment le forfait Stadia associé à votre compte.</FieldHelp></h3><p>{status.configured ? <>Clé configurée <strong>••••••••{status.last4}</strong></> : 'Accès public sans clé personnelle'}</p></div></div>
     {!storageAvailable && <p className="account-credential__warning">Le stockage sécurisé des clés utilisateur n’est pas configuré.</p>}
     {status.last_error_code && <p className="account-credential__warning">La clé Stadia Maps doit autoriser l’accès aux tuiles Satellite.</p>}
     {(editing || !status.configured) && storageAvailable && <form className="account-credential__form" onSubmit={submit}><label>Nouvelle clé<span className="account-secret-input"><input aria-label="Clé Stadia Maps" type={revealed ? 'text' : 'password'} value={apiKey} required maxLength={512} autoComplete="off" onChange={(event) => setApiKey(event.target.value)} /><button type="button" aria-label={revealed ? 'Masquer la clé' : 'Afficher la clé'} onClick={() => setRevealed((value) => !value)}>{revealed ? <EyeOff size={16} /> : <Eye size={16} />}</button></span></label><div className="account-credential__actions"><button className="account-button account-button--primary" type="submit" disabled={busy}>Enregistrer cette clé</button>{status.configured && <button className="account-button account-button--secondary" type="button" onClick={() => setEditing(false)}>Annuler</button>}</div></form>}

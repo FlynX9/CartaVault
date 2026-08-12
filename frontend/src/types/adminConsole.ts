@@ -9,6 +9,13 @@ export interface AdminUser {
   quota_profile_id: string; quota_profile_name: string
 }
 export interface AdminUserPage { items: AdminUser[]; total: number; page: number; page_size: number; pages: number }
+export interface AdminUserDetails extends AdminUser {
+  trip_count: number; active_session_count: number; email_verified: boolean; mfa_enabled: boolean
+}
+export interface AdminUserActivity {
+  id: string; event_type: string; previous_value: string | null; next_value: string | null
+  occurred_at: string; actor_display_name: string | null
+}
 
 export interface CredentialStatus {
   provider: string; label: string; scope: 'instance' | 'personal' | 'infrastructure'

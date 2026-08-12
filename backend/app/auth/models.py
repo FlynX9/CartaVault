@@ -60,6 +60,9 @@ class User(Base):
     created_trips: Mapped[list["Trip"]] = relationship(back_populates="created_by", foreign_keys="Trip.created_by_user_id")
     quota_profile: Mapped["QuotaProfile"] = relationship(back_populates="users")
     recovery_codes: Mapped[list["TotpRecoveryCode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    activity_events: Mapped[list["UserActivityEvent"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", foreign_keys="UserActivityEvent.user_id"
+    )
 
 
 class UserSession(Base):
@@ -81,6 +84,23 @@ class UserSession(Base):
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class UserActivityEvent(Base):
+    """Compact, user-facing audit trail for the administration console."""
+
+    __tablename__ = "user_activity_events"
+    __table_args__ = (Index("user_activity_events_user_occurred_idx", "user_id", "occurred_at"),)
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    actor_user_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    previous_value: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    next_value: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="activity_events", foreign_keys=[user_id])
 
 
 class UserApiCredential(Base):

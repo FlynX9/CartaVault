@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_admin
+from app.auth.activity import record_user_activity
 from app.auth.models import User, UserSession
 from app.auth.schemas import PasswordReset, UserAdminCreate, UserAdminUpdate, UserRead
 from app.auth.security import hash_password, normalize_email
@@ -40,7 +41,7 @@ def list_users(q: str | None = Query(default=None, max_length=320), database_ses
 
 
 @router.post("", response_model=UserRead, status_code=201)
-def create_user(data: UserAdminCreate, database_session: Session = Depends(get_db)) -> UserRead:
+def create_user(data: UserAdminCreate, database_session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> UserRead:
     profile = QuotaService(database_session).resolve_profile(data.quota_profile_id)
     user = User(
         email=normalize_email(str(data.email)), display_name=data.display_name.strip(),
@@ -49,6 +50,8 @@ def create_user(data: UserAdminCreate, database_session: Session = Depends(get_d
     )
     try:
         database_session.add(user)
+        database_session.flush()
+        record_user_activity(database_session, user_id=user.id, actor_user_id=admin.id, event_type="account_created")
         database_session.commit()
         database_session.refresh(user)
         return _read(user)

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, Check, ChevronLeft, ChevronRight, Gauge, ImageDown, KeyRound, RefreshCw, Save, Settings2, ShieldCheck, Trash2, Users, X } from 'lucide-react'
-import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import {
-  assignUserQuotaProfile, cancelBackgroundTask, deleteResendCredential, getAdminCredentials, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
+  assignUserQuotaProfile, cancelBackgroundTask, deleteResendCredential, getAdminCredentials, getAdminUserActivity, getAdminUserDetails, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
   getInstanceLogRetention, getSaasSettings, optimizeStoredMedia, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings,
   saveResendCredential, updateAdminUser, verifyResendCredential,
 } from '../../api/adminConsole'
@@ -14,19 +14,56 @@ import { getPublicRegistrationSettings, getRegistrationRequests, reviewRegistrat
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { InstanceStatusPage } from '../../features/admin/instance-status/InstanceStatusPage'
 import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage'
-import type { AdminRole, AdminUser, AdminUserPage, AdminUserState, CredentialStatus, QuotaProfile } from '../../types/adminConsole'
+import { AdminUsersSection } from './AdminUsersSection'
+import { AdminUserModal } from './AdminUserModal'
+import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, CredentialStatus, QuotaProfile } from '../../types/adminConsole'
 
 const sections = [
   ['users', Users, 'Utilisateurs'], ['general', Settings2, 'Général'], ['credentials', KeyRound, 'Clés API'],
   ['quotas', Gauge, 'Quotas'], ['instance', Activity, 'État de l’instance'],
 ] as const
 
+type AdminSectionKey = typeof sections[number][0]
+type AdminSaveEntry = { dirty: boolean; busy: boolean; save: () => Promise<void>; discard: () => void }
+type AdminSaveContextValue = { register: (id: string, entry: AdminSaveEntry) => void; unregister: (id: string) => void }
+const AdminSaveContext = createContext<AdminSaveContextValue | null>(null)
+
+function useAdminSaveEntry(id: string, entry: AdminSaveEntry) {
+  const context = useContext(AdminSaveContext)
+  useEffect(() => {
+    context?.register(id, entry)
+    return () => context?.unregister(id)
+  }, [context, entry, id])
+}
+
 export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
   const location = useLocation()
   const navigate = useNavigate()
   const modal = useRef<HTMLElement>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
-  const requestClose = useCallback(() => { if (onClose) onClose(); else navigate('/') }, [navigate, onClose])
+  const [saveEntries, setSaveEntries] = useState<Record<string, AdminSaveEntry>>({})
+  const [savingAll, setSavingAll] = useState(false)
+  const [closePromptOpen, setClosePromptOpen] = useState(false)
+  const activeSection = sections.find(([path]) => location.pathname === `/admin/${path}`)?.[0] ?? 'users'
+  const [visitedSections, setVisitedSections] = useState<Set<AdminSectionKey>>(() => new Set([activeSection]))
+  const saveContext = useMemo<AdminSaveContextValue>(() => ({
+    register: (id, entry) => setSaveEntries((current) => current[id] === entry ? current : { ...current, [id]: entry }),
+    unregister: (id) => setSaveEntries((current) => { if (!(id in current)) return current; const next = { ...current }; delete next[id]; return next }),
+  }), [])
+  const dirtyEntries = Object.values(saveEntries).filter((entry) => entry.dirty)
+  const hasDirtyChanges = dirtyEntries.length > 0
+  const performClose = useCallback(() => { if (onClose) onClose(); else navigate('/') }, [navigate, onClose])
+  const requestClose = useCallback(() => { if (hasDirtyChanges) setClosePromptOpen(true); else performClose() }, [hasDirtyChanges, performClose])
+  const saveAll = useCallback(async () => {
+    const entries = Object.values(saveEntries).filter((entry) => entry.dirty)
+    if (entries.length === 0) return true
+    setSavingAll(true)
+    try { for (const entry of entries) await entry.save(); return true }
+    catch { return false }
+    finally { setSavingAll(false) }
+  }, [saveEntries])
+  useEffect(() => { setVisitedSections((current) => current.has(activeSection) ? current : new Set([...current, activeSection])) }, [activeSection])
+  useEffect(() => { if (location.pathname === '/admin') navigate('/admin/users', { replace: true }) }, [location.pathname, navigate])
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -34,7 +71,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     const onKeyDown = (event: KeyboardEvent) => {
       const nestedModal = document.querySelector('[role="alertdialog"][aria-modal="true"]')
       if (nestedModal !== null && !modal.current?.contains(nestedModal)) return
-      if (event.key === 'Escape') { event.preventDefault(); requestClose(); return }
+      if (event.key === 'Escape') { event.preventDefault(); if (closePromptOpen) setClosePromptOpen(false); else requestClose(); return }
       if (event.key !== 'Tab' || !modal.current) return
       const focusable = [...modal.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
       if (focusable.length === 0) return
@@ -44,35 +81,34 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown) }
-  }, [requestClose])
+  }, [closePromptOpen, requestClose])
   useEffect(() => {
     window.addEventListener('cartavault:close-mobile-modal-layers', requestClose)
     return () => window.removeEventListener('cartavault:close-mobile-modal-layers', requestClose)
   }, [requestClose])
   return createPortal(<div className="account-overlay admin-console-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
     <section ref={modal} className="admin-console" role="dialog" aria-modal="true" aria-labelledby="admin-console-title">
-      <header className="admin-console__header"><div className="admin-console__header-icon"><ShieldCheck size={20} /></div><div><h2 id="admin-console-title">Administration</h2><p>Configuration et supervision de l’instance CartaVault.</p></div><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label="Fermer l’administration" onClick={requestClose}><X size={14} /></button></header>
+      <header className="admin-console__header"><div className="admin-console__header-icon"><ShieldCheck size={20} /></div><div><h2 id="admin-console-title">Administration</h2><p>Configuration et supervision de l’instance CartaVault.</p></div><div className="admin-console__header-actions"><button className="primary-button admin-console__save-all" type="button" disabled={!hasDirtyChanges || savingAll || dirtyEntries.some((entry) => entry.busy)} onClick={() => void saveAll()}><Save size={15} />{savingAll ? 'Enregistrement…' : 'Enregistrer'}</button><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label="Fermer l’administration" onClick={requestClose}><X size={14} /></button></div></header>
       <nav className="admin-console__nav" aria-label="Sections d’administration">
         {sections.map(([path, Icon, label]) => <NavLink key={path} to={{ pathname: `/admin/${path}`, search: location.search }}><Icon size={18} /><span>{label}</span></NavLink>)}
       </nav>
-      <div className="admin-console__content"><Routes>
-        <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
-        <Route path="/admin/users" element={<AdminUsersSection />} />
-        <Route path="/admin/general" element={<AdminGeneralSection />} />
-        <Route path="/admin/credentials" element={<AdminCredentialsSection />} />
-        <Route path="/admin/quotas" element={<QuotaProfilesPage />} />
-        <Route path="/admin/instance" element={<InstanceStatusPage />} />
-        <Route path="*" element={<Navigate to="/admin/users" replace />} />
-      </Routes></div>
+      <AdminSaveContext.Provider value={saveContext}><div className="admin-console__content">
+        {visitedSections.has('users') && <div hidden={activeSection !== 'users'}><AdminUsersSection /></div>}
+        {visitedSections.has('general') && <div hidden={activeSection !== 'general'}><AdminGeneralSection /></div>}
+        {visitedSections.has('credentials') && <div hidden={activeSection !== 'credentials'}><AdminCredentialsSection /></div>}
+        {visitedSections.has('quotas') && <div hidden={activeSection !== 'quotas'}><QuotaProfilesPage /></div>}
+        {visitedSections.has('instance') && <div hidden={activeSection !== 'instance'}><InstanceStatusPage /></div>}
+      </div></AdminSaveContext.Provider>
+      {closePromptOpen && <div className="cv-overlay admin-unsaved-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setClosePromptOpen(false) }}><section className="cv-modal admin-unsaved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-unsaved-title"><header><div><p className="cv-workspace-panel__eyebrow">MODIFICATIONS</p><h2 id="admin-unsaved-title">Enregistrer ou Annuler les modifications</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer la confirmation" onClick={() => setClosePromptOpen(false)}><X size={16} /></button></header><p>Des modifications n’ont pas encore été enregistrées dans le panneau Administration.</p><footer><button className="secondary-button" type="button" onClick={() => setClosePromptOpen(false)}>Continuer l’édition</button><button className="danger-button" type="button" onClick={() => { dirtyEntries.forEach((entry) => entry.discard()); setClosePromptOpen(false); performClose() }}>Annuler les modifications</button><button className="primary-button" type="button" disabled={savingAll} onClick={() => void saveAll().then((saved) => { if (saved) { setClosePromptOpen(false); performClose() } })}><Save size={15} />Enregistrer</button></footer></section></div>}
     </section>
   </div>, document.body)
 }
 
 function SectionHeading({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
-  return <header className="admin-console__heading"><div><span>{eyebrow}</span><h2>{title}</h2><p>{description}</p></div>{action}</header>
+  return <header className="admin-console__heading"><div><p className="cv-workspace-panel__eyebrow">{eyebrow}</p><h2>{title}</h2><p>{description}</p></div>{action}</header>
 }
 
-function AdminUsersSection() {
+export function LegacyAdminUsersSection() {
   const location = useLocation()
   const registrationHeading = useRef<HTMLHeadingElement>(null)
   const [result, setResult] = useState<AdminUserPage | null>(null)
@@ -83,6 +119,10 @@ function AdminUsersSection() {
   const [registrationApprovalRequired, setRegistrationApprovalRequired] = useState(true)
   const [savingPublicRegistration, setSavingPublicRegistration] = useState(false)
   const [profiles, setProfiles] = useState<QuotaProfile[]>([])
+  const [detailUser, setDetailUser] = useState<AdminUserDetails | null>(null)
+  const [activityUser, setActivityUser] = useState<AdminUser | null>(null)
+  const [activity, setActivity] = useState<AdminUserActivity[]>([])
+  const [modalLoading, setModalLoading] = useState(false)
   const [approvalProfiles, setApprovalProfiles] = useState<Record<string, string>>({})
   const { confirm, confirmationDialog } = useConfirmDialog()
   const load = useCallback((signal?: AbortSignal) => {
@@ -139,6 +179,16 @@ function AdminUsersSection() {
       setResult((current) => current ? { ...current, items: current.items.map((user) => user.id === item.id ? { ...user, quota_profile_id: profileId, quota_profile_name: profile.name } : user) } : current)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Affectation impossible.') }
   }
+  const openDetails = async (item: AdminUser) => {
+    setModalLoading(true)
+    try { setDetailUser(await getAdminUserDetails(item.id)) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Impossible de charger la fiche utilisateur.') }
+    finally { setModalLoading(false) }
+  }
+  const openActivity = async (item: AdminUser) => {
+    setActivityUser(item); setModalLoading(true)
+    try { setActivity(await getAdminUserActivity(item.id)) } catch (reason) { setActivityUser(null); setError(reason instanceof Error ? reason.message : 'Impossible de charger l’historique.') }
+    finally { setModalLoading(false) }
+  }
   const pending = requests.filter((item) => item.status === 'pending')
   const awaitingEmail = requests.filter((item) => item.status === 'awaiting_email')
   useEffect(() => {
@@ -159,8 +209,10 @@ function AdminUsersSection() {
       <div className="admin-console__avatar" aria-hidden="true">{item.avatar_url ? <img src={accountAvatarUrl(item.avatar_url) ?? undefined} alt="" /> : item.display_name.charAt(0).toUpperCase()}</div><div className="admin-console__user-identity"><div className="admin-console__user-name-row"><strong>{item.display_name}</strong><div className="admin-console__badges"><span className={item.role}>{item.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span><span className={item.state}>{item.state === 'active' ? 'Actif' : item.state === 'inactive' ? 'Inactif' : 'Supprimé'}</span></div></div><small>{item.email}</small><div className="admin-console__user-metrics" aria-label={`Activité de ${item.display_name}`}><span><b>{item.owned_map_count}</b> carte{item.owned_map_count === 1 ? '' : 's'}</span><span><b>{item.shared_map_count}</b> partage{item.shared_map_count === 1 ? '' : 's'}</span><span><b>{item.place_count}</b> POI</span></div><p>Dernière connexion {item.last_login_at ? new Date(item.last_login_at).toLocaleDateString('fr-FR') : 'jamais'}</p></div>
       <label className="admin-console__profile-select admin-console__user-quota">Quotas<select aria-label={`Profil de quotas de ${item.email}`} value={item.quota_profile_id} onChange={(event) => void assignProfile(item, event.target.value)}>{profiles.filter((profile) => profile.is_active || profile.id === item.quota_profile_id).map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>
       {item.state !== 'deleted' && <div className="admin-console__user-actions"><button onClick={() => void change(item, { role: item.role === 'admin' ? 'user' : 'admin' }, 'Modifier le rôle')}>{item.role === 'admin' ? 'Rétrograder' : 'Promouvoir'}</button><button className={item.state === 'active' ? 'danger' : ''} onClick={() => void change(item, { is_active: item.state !== 'active' }, item.state === 'active' ? 'Désactiver le compte' : 'Activer le compte')}>{item.state === 'active' ? 'Désactiver' : 'Activer'}</button></div>}
+      <div className="admin-console__user-inspect-actions"><button type="button" onClick={() => void openDetails(item)}>Voir les détails</button><button type="button" onClick={() => void openActivity(item)}>Historique d’activité</button></div>
     </li>)}</ul>}
     {result && <footer className="admin-console__pagination"><button disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={16} />Précédent</button><span>Page {result.page} sur {result.pages}</span><button disabled={page >= result.pages} onClick={() => setPage((value) => value + 1)}>Suivant<ChevronRight size={16} /></button></footer>}</section>{confirmationDialog}
+    {(detailUser || activityUser || modalLoading) && <AdminUserModal detail={detailUser} activityUser={activityUser} activity={activity} loading={modalLoading} onClose={() => { setDetailUser(null); setActivityUser(null); setActivity([]) }} />}
   </section>
 }
 
@@ -175,12 +227,14 @@ function AdminCredentialsSection() {
   }, [])
   useEffect(() => { const controller = new AbortController(); load(controller.signal); return () => controller.abort() }, [load])
   const resend = items.find((item) => item.provider === 'resend')
-  const submit = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(null); setNotice(null); try { await saveResendCredential(value); setValue(''); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.') } finally { setBusy(false) } }
+  const submit = useCallback(async () => { setBusy(true); setError(null); setNotice(null); try { await saveResendCredential(value); setValue(''); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason } finally { setBusy(false) } }, [load, value])
+  const resendSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: value.trim().length > 0, busy, save: submit, discard: () => setValue('') }), [busy, submit, value])
+  useAdminSaveEntry('credentials-resend', resendSaveEntry)
   const verify = async () => { setBusy(true); setError(null); setNotice(null); try { await verifyResendCredential(); setNotice('Email de test envoyé à votre adresse administrateur.'); load() } catch (reason) { setError(reason instanceof Error ? reason.message : 'Envoi de l’email de test impossible.') } finally { setBusy(false) } }
   const remove = async () => { if (!await confirm({ title: 'Supprimer la clé Resend', message: 'Les emails CartaVault ne pourront plus être envoyés.', confirmLabel: 'Supprimer' })) return; await deleteResendCredential(); load() }
   return <section><SectionHeading eyebrow="Intégrations" title="Clés API" description="Credentials globaux et état sécurisé des intégrations." />{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}
     <div className="admin-console__credential-grid">{items.map((item) => <article className="admin-console__card" key={item.provider}><header><KeyRound size={19} /><div><h3>{item.label}</h3><p>{item.scope === 'personal' ? 'Clé personnelle, gérée dans le compte utilisateur.' : item.scope === 'infrastructure' ? 'Secret d’infrastructure en lecture seule.' : 'Clé globale de l’instance.'}</p></div><span className={item.configured ? 'ok' : 'warning'}>{item.configured ? 'Configuré' : 'Non configuré'}</span></header><dl><dt>Source</dt><dd>{sourceLabel(item.source)}</dd><dt>Valeur</dt><dd>{item.masked_value ?? 'Jamais exposée'}</dd>{item.configured_user_count !== null && <><dt>Utilisateurs configurés</dt><dd>{item.configured_user_count}</dd></>}<dt>Dernière vérification</dt><dd>{formatDate(item.verified_at)}</dd><dt>Dernière utilisation</dt><dd>{formatDate(item.last_used_at)}</dd><dt>Dernière erreur</dt><dd>{item.last_error_code ?? 'Aucune'}</dd></dl></article>)}</div>
-    <section className="admin-console__card admin-console__setting-card"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><KeyRound size={17} /></span><div><h3>Configuration Resend</h3><p>Clé d’envoi globale utilisée pour les e-mails transactionnels.</p></div><span className={`admin-console__setting-status ${resend?.configured ? 'ok' : 'warning'}`}>{resend?.configured ? 'Configuré' : 'Non configuré'}</span></header><form className="admin-console__setting-form" onSubmit={submit}><label>Nouvelle clé API<input type="password" value={value} required autoComplete="off" placeholder="re_••••••••" onChange={(event) => setValue(event.target.value)} /></label><button className="primary-button" data-cv-save={!resend?.configured ? 'true' : undefined} disabled={busy}><Save size={16} />{resend?.configured ? 'Remplacer' : 'Enregistrer'}</button>{resend?.configured && <><button type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={16} />{busy ? 'Envoi…' : 'Envoyer un e-mail de test'}</button><button className="danger" type="button" disabled={busy} onClick={() => void remove()}><Trash2 size={16} />Supprimer</button></>}</form></section>{confirmationDialog}
+    <section className="admin-console__card admin-console__setting-card"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><KeyRound size={17} /></span><div><h3>Configuration Resend</h3><p>Clé d’envoi globale utilisée pour les e-mails transactionnels.</p></div><span className={`admin-console__setting-status ${resend?.configured ? 'ok' : 'warning'}`}>{resend?.configured ? 'Configuré' : 'Non configuré'}</span></header><form className="admin-console__setting-form" onSubmit={(event) => event.preventDefault()}><label>Nouvelle clé API<input type="password" value={value} required autoComplete="off" placeholder="re_••••••••" onChange={(event) => setValue(event.target.value)} /></label>{resend?.configured && <><button type="button" disabled={busy} onClick={() => void verify()}><RefreshCw size={16} />{busy ? 'Envoi…' : 'Envoyer un e-mail de test'}</button><button className="danger" type="button" disabled={busy} onClick={() => void remove()}><Trash2 size={16} />Supprimer</button></>}</form></section>{confirmationDialog}
   </section>
 }
 
@@ -190,50 +244,83 @@ function AdminGeneralSection() {
 
 function SaasSettingsPanel() {
   const [enabled, setEnabled] = useState(false)
+  const [savedEnabled, setSavedEnabled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
     void getSaasSettings(controller.signal)
-      .then((settings) => { if (!controller.signal.aborted) setEnabled(settings.enabled) })
+      .then((settings) => { if (!controller.signal.aborted) { setEnabled(settings.enabled); setSavedEnabled(settings.enabled) } })
       .catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Réglage SaaS indisponible.') })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [])
-  const save = async () => {
+  const save = useCallback(async () => {
     setBusy(true); setError(null)
-    try { setEnabled((await saveSaasSettings(!enabled)).enabled) }
-    catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.') }
+    try { const updated = await saveSaasSettings(enabled); setEnabled(updated.enabled); setSavedEnabled(updated.enabled) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
     finally { setBusy(false) }
-  }
+  }, [enabled])
+  const saasSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: enabled !== savedEnabled, busy, save, discard: () => setEnabled(savedEnabled) }), [busy, enabled, save, savedEnabled])
+  useAdminSaveEntry('general-saas', saasSaveEntry)
   return <section className="admin-console__card admin-console__setting-card" aria-labelledby="saas-settings-title">
-    <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ShieldCheck size={17} /></span><div><h3 id="saas-settings-title">Mode SaaS</h3><p>Active les fonctions destinées à une instance ouverte au public. Pour le moment, cela affiche le menu Contact aux utilisateurs.</p></div><span className={`admin-console__setting-status ${enabled ? 'ok' : 'warning'}`}>{enabled ? 'Actif' : 'Inactif'}</span></header>
+    <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ShieldCheck size={17} /></span><div><h3 id="saas-settings-title">Mode SaaS</h3><p>Active les fonctions destinées à une instance ouverte au public. Pour le moment, cela affiche le menu Contact aux utilisateurs.</p></div><label className="cv-toggle admin-console__setting-toggle"><input type="checkbox" role="switch" aria-label="Mode SaaS" checked={enabled} disabled={loading || busy} onChange={(event) => setEnabled(event.target.checked)} /><i aria-hidden="true" /><span>{enabled ? 'Actif' : 'Inactif'}</span></label></header>
     {error && <div className="form-alert" role="alert">{error}</div>}
-    <div className="admin-console__setting-actions"><button className="primary-button" type="button" disabled={loading || busy} onClick={() => void save()}>{enabled ? 'Désactiver le mode SaaS' : 'Activer le mode SaaS'}</button></div>
   </section>
 }
 
 function MediaMaintenancePanel() {
   const [limit, setLimit] = useState(5); const [maxDimension, setMaxDimension] = useState(2560); const [task, setTask] = useState<{ id: string; status: string; percent: number; message: string | null; result: Record<string, unknown> | null; error: string | null } | null>(null); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false)
-  useEffect(() => { const controller = new AbortController(); void getMediaUploadSettings(controller.signal).then((value) => { setLimit(value.max_upload_megabytes); setMaxDimension(value.max_image_dimension) }).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Réglage média indisponible.') }); return () => controller.abort() }, [])
+  const [savedSettings, setSavedSettings] = useState({ limit: 5, maxDimension: 2560 })
+  const { confirm, confirmationDialog } = useConfirmDialog()
+  useEffect(() => { const controller = new AbortController(); void getMediaUploadSettings(controller.signal).then((value) => { setLimit(value.max_upload_megabytes); setMaxDimension(value.max_image_dimension); setSavedSettings({ limit: value.max_upload_megabytes, maxDimension: value.max_image_dimension }) }).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Réglage média indisponible.') }); return () => controller.abort() }, [])
   useEffect(() => {
     if (!task || !['pending', 'running'].includes(task.status)) return
     const timer = window.setInterval(() => { void getBackgroundTask(task.id).then((value) => setTask((current) => current ? { ...current, status: value.status, percent: value.percent, message: value.progress_message, result: value.result, error: value.error_message } : current)).catch((reason) => setError(reason instanceof Error ? reason.message : 'Suivi impossible.')) }, 1200)
     return () => window.clearInterval(timer)
   }, [task])
-  const save = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(null); try { const updated = await saveMediaUploadSettings(limit, maxDimension); setLimit(updated.max_upload_megabytes); setMaxDimension(updated.max_image_dimension) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.') } finally { setBusy(false) } }
+  const save = useCallback(async () => {
+    setError(null)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) { const reason = new Error('La taille maximale doit être comprise entre 1 et 100 Mo.'); setError(reason.message); throw reason }
+    if (![1280, 1920, 2560, 3840].includes(maxDimension)) { const reason = new Error('La résolution maximale sélectionnée est invalide.'); setError(reason.message); throw reason }
+    setBusy(true)
+    try { const updated = await saveMediaUploadSettings(limit, maxDimension); setLimit(updated.max_upload_megabytes); setMaxDimension(updated.max_image_dimension); setSavedSettings({ limit: updated.max_upload_megabytes, maxDimension: updated.max_image_dimension }) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
+    finally { setBusy(false) }
+  }, [limit, maxDimension])
+  const mediaSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: limit !== savedSettings.limit || maxDimension !== savedSettings.maxDimension, busy, save, discard: () => { setLimit(savedSettings.limit); setMaxDimension(savedSettings.maxDimension) } }), [busy, limit, maxDimension, save, savedSettings])
+  useAdminSaveEntry('general-media', mediaSaveEntry)
   const optimize = async () => { setBusy(true); setError(null); try { const started = await optimizeStoredMedia(); setTask({ id: started.task_id, status: started.status, percent: 0, message: 'Préparation…', result: null, error: null }) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Optimisation impossible.') } finally { setBusy(false) } }
+  const requestOptimize = async () => {
+    const accepted = await confirm({
+      title: 'Optimiser les médias existants',
+      message: 'Cette opération peut prendre du temps et mobiliser des ressources serveur selon le nombre et la taille des images. Vous pouvez suivre sa progression après le lancement.',
+      confirmLabel: 'Lancer l’optimisation',
+      variant: 'positive',
+    })
+    if (accepted) await optimize()
+  }
   const cancel = async () => { if (!task) return; try { await cancelBackgroundTask(task.id); setTask({ ...task, status: 'cancelled', message: 'Annulation demandée.' }) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Annulation impossible.') } }
   const active = task && ['pending', 'running'].includes(task.status)
-  return <section className="admin-console__card admin-console__setting-card" aria-labelledby="media-maintenance-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ImageDown size={17} /></span><div><h3 id="media-maintenance-title">Médiathèque</h3><p>Limite d’import, résolution et optimisation contrôlée des images déjà stockées.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}<form className="admin-console__setting-form" onSubmit={save}><label>Taille maximale par image (Mo)<input type="number" min="1" max="100" value={limit} onChange={(event) => setLimit(Number(event.target.value))} /></label><label>Résolution maximale (plus grand côté)<select value={maxDimension} onChange={(event) => setMaxDimension(Number(event.target.value))}><option value={1280}>1 280 px — Compact</option><option value={1920}>1 920 px — HD</option><option value={2560}>2 560 px — Standard</option><option value={3840}>3 840 px — Haute qualité</option></select></label><p className="admin-console__hint">Les images ne sont jamais agrandies. Ce réglage est appliqué aux nouveaux imports et lors de l’optimisation des médias existants.</p><button className="primary-button" disabled={busy}><Save size={16} />Enregistrer</button></form><div className="admin-console__setting-actions"><button type="button" className="primary-button" disabled={busy || !!active} onClick={() => void optimize()}><ImageDown size={16} />Optimiser les médias existants</button>{active && <button type="button" className="danger" onClick={() => void cancel()}>Annuler</button>}</div>{task && <div className="admin-console__hint" role="status"><strong>{task.status === 'succeeded' ? 'Optimisation terminée' : task.status === 'failed' ? 'Optimisation en erreur' : task.status === 'cancelled' ? 'Optimisation annulée' : `${task.percent} %`}</strong><span>{task.message}</span>{task.result && <span> · {String(task.result.optimized ?? 0)} optimisé(s), {String(task.result.skipped ?? 0)} ignoré(s), {String(task.result.failed ?? 0)} erreur(s), {Math.round(Number(task.result.saved_bytes ?? 0) / 1024 / 1024 * 10) / 10} Mo libérés.</span>}{task.error && <span> · {task.error}</span>}</div>}</section>
+  return <><section className="admin-console__card admin-console__setting-card" aria-labelledby="media-maintenance-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ImageDown size={17} /></span><div><h3 id="media-maintenance-title">Médiathèque</h3><p>Limite d’import, résolution et optimisation contrôlée des images déjà stockées.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}<form className="admin-console__setting-form" onSubmit={(event) => event.preventDefault()}><label>Taille maximale par image (Mo)<input type="number" min="1" max="100" value={limit} onChange={(event) => setLimit(Number(event.target.value))} /></label><label>Résolution maximale (plus grand côté)<select value={maxDimension} onChange={(event) => setMaxDimension(Number(event.target.value))}><option value={1280}>1 280 px — Compact</option><option value={1920}>1 920 px — HD</option><option value={2560}>2 560 px — Standard</option><option value={3840}>3 840 px — Haute qualité</option></select></label><p className="admin-console__hint">Les images ne sont jamais agrandies. Ce réglage est appliqué aux nouveaux imports et lors de l’optimisation des médias existants.</p></form><div className="admin-console__setting-actions"><button type="button" className="primary-button" disabled={busy || !!active} onClick={() => void requestOptimize()}><ImageDown size={16} />Optimiser les médias existants</button>{active && <button type="button" className="danger" onClick={() => void cancel()}>Annuler</button>}</div>{task && <div className="admin-console__hint" role="status"><strong>{task.status === 'succeeded' ? 'Optimisation terminée' : task.status === 'failed' ? 'Optimisation en erreur' : task.status === 'cancelled' ? 'Optimisation annulée' : `${task.percent} %`}</strong><span>{task.message}</span>{task.result && <span> · {String(task.result.optimized ?? 0)} optimisé(s), {String(task.result.skipped ?? 0)} ignoré(s), {String(task.result.failed ?? 0)} erreur(s), {Math.round(Number(task.result.saved_bytes ?? 0) / 1024 / 1024 * 10) / 10} Mo libérés.</span>}{task.error && <span> · {task.error}</span>}</div>}</section>{confirmationDialog}</>
 }
 
 function LogRetentionPanel() {
   const [days, setDays] = useState(7); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState<string | null>(null); const [error, setError] = useState<string | null>(null)
-  useEffect(() => { const controller = new AbortController(); void getInstanceLogRetention(controller.signal).then((value) => setDays(value.retention_days)).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Log settings unavailable.') }); return () => controller.abort() }, [])
-  const save = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(null); setNotice(null); try { const updated = await saveInstanceLogRetention(days); setDays(updated.retention_days); setNotice('Log retention saved.') } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save settings.') } finally { setBusy(false) } }
-  return <section className="admin-console__card admin-console__setting-card" aria-labelledby="log-retention-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><Activity size={17} /></span><div><h3 id="log-retention-title">Journaux d’instance</h3><p>Les journaux applicatifs sont conservés en base puis nettoyés automatiquement après la durée choisie.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}<form className="admin-console__setting-form" onSubmit={save}><label>Durée de conservation (jours)<input type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /></label><button className="primary-button" disabled={busy}><Save size={16} />Enregistrer</button></form><p className="admin-console__hint">Valeur par défaut : 7 jours. Les messages sont filtrés pour retirer les secrets et limiter les données personnelles.</p></section>
+  const [savedDays, setSavedDays] = useState(7)
+  useEffect(() => { const controller = new AbortController(); void getInstanceLogRetention(controller.signal).then((value) => { setDays(value.retention_days); setSavedDays(value.retention_days) }).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Log settings unavailable.') }); return () => controller.abort() }, [])
+  const save = useCallback(async () => {
+    setError(null); setNotice(null)
+    if (!Number.isInteger(days) || days < 1 || days > 365) { const reason = new Error('La durée de conservation doit être comprise entre 1 et 365 jours.'); setError(reason.message); throw reason }
+    setBusy(true)
+    try { const updated = await saveInstanceLogRetention(days); setDays(updated.retention_days); setSavedDays(updated.retention_days); setNotice('Durée de conservation enregistrée.') }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
+    finally { setBusy(false) }
+  }, [days])
+  const logsSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: days !== savedDays, busy, save, discard: () => setDays(savedDays) }), [busy, days, save, savedDays])
+  useAdminSaveEntry('general-logs', logsSaveEntry)
+  return <section className="admin-console__card admin-console__setting-card" aria-labelledby="log-retention-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><Activity size={17} /></span><div><h3 id="log-retention-title">Journaux d’instance</h3><p>Les journaux applicatifs sont conservés en base puis nettoyés automatiquement après la durée choisie.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}<form className="admin-console__setting-form" onSubmit={(event) => event.preventDefault()}><label>Durée de conservation (jours)<input type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /></label></form><p className="admin-console__hint">Valeur par défaut : 7 jours. Les messages sont filtrés pour retirer les secrets et limiter les données personnelles.</p></section>
 }
 
 export function GoogleSatelliteAdminPanel() {

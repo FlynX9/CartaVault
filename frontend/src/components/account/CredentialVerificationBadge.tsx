@@ -11,6 +11,7 @@ interface CredentialVerificationStatus {
 }
 
 const storageKey = (provider: string, last4: string | null) => `cartavault:credential-error-at:${provider}:${last4 ?? 'unknown'}`
+const verificationChangedEvent = 'cartavault:credential-verification-changed'
 
 export function useCredentialVerificationState(provider: string, last4: string | null, lastErrorCode: string | null) {
   const key = storageKey(provider, last4)
@@ -27,16 +28,27 @@ export function useCredentialVerificationState(provider: string, last4: string |
     setFailedAt(recorded)
   }, [key, lastErrorCode])
 
+  useEffect(() => {
+    const synchronize = (event: Event) => {
+      const detail = (event as CustomEvent<{ key: string; failedAt: string | null }>).detail
+      if (detail?.key === key) setFailedAt(detail.failedAt)
+    }
+    window.addEventListener(verificationChangedEvent, synchronize)
+    return () => window.removeEventListener(verificationChangedEvent, synchronize)
+  }, [key])
+
   return {
     failedAt,
     markVerificationFailed: () => {
       const recorded = new Date().toISOString()
       window.localStorage.setItem(key, recorded)
       setFailedAt(recorded)
+      window.dispatchEvent(new CustomEvent(verificationChangedEvent, { detail: { key, failedAt: recorded } }))
     },
     clearVerificationFailure: () => {
       window.localStorage.removeItem(key)
       setFailedAt(null)
+      window.dispatchEvent(new CustomEvent(verificationChangedEvent, { detail: { key, failedAt: null } }))
       clearCredentialIssue(provider)
     },
   }

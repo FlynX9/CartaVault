@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_admin
+from app.auth.activity import record_user_activity
 from app.auth.models import User
 from app.database import get_db
 from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
@@ -145,12 +146,16 @@ def delete_profile(profile_id: UUID, session: Session = Depends(get_db)) -> Resp
 
 
 @router.put("/users/{user_id}/quota-profile", response_model=EffectiveQuotaRead)
-def assign_profile(user_id: UUID, payload: QuotaProfileAssignment, session: Session = Depends(get_db)) -> EffectiveQuotaRead:
+def assign_profile(user_id: UUID, payload: QuotaProfileAssignment, session: Session = Depends(get_db), admin: User = Depends(require_admin)) -> EffectiveQuotaRead:
     user = session.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)).with_for_update())
     if user is None:
         raise HTTPException(404, detail="User not found")
     profile = QuotaService(session).resolve_profile(payload.quota_profile_id, lock=True)
-    user.quota_profile_id = profile.id; session.commit()
+    previous_name = user.quota_profile.name if user.quota_profile else None
+    user.quota_profile_id = profile.id
+    if previous_name != profile.name:
+        record_user_activity(session, user_id=user.id, actor_user_id=admin.id, event_type="quota_profile_changed", previous_value=previous_name, next_value=profile.name)
+    session.commit()
     return effective_quotas(user_id, session)
 
 

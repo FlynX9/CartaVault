@@ -20,6 +20,7 @@ def test_account_profile_email_password_and_sessions(integration_client, databas
     headers = {"X-CSRF-Token": csrf}
     profile = integration_client.get("/account/profile")
     assert profile.status_code == 200 and profile.json()["display_name"] == auth_user.display_name
+    assert profile.json()["email_verified"] is True
     assert integration_client.patch("/account/profile", json={"display_name": "  Greg  "}, headers=headers).json()["display_name"] == "Greg"
     assert integration_client.patch("/account/profile", json={"display_name": "<b>x</b>"}, headers=headers).status_code == 422
 

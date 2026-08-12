@@ -1,17 +1,18 @@
 import { StrictMode } from 'react'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { assignUserQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getQuotaProfiles, getQuotaRegistry, refreshInstanceHealth, updateAdminUser, verifyResendCredential } from '../../api/adminConsole'
+import { assignUserQuotaProfile, createQuotaProfile, getAdminCredentials, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, updateAdminUser, updateQuotaProfile, verifyResendCredential } from '../../api/adminConsole'
 import { getPublicRegistrationSettings } from '../../api/registration'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
+import type { QuotaRegistryItem } from '../../types/adminConsole'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteResendCredential: vi.fn(), duplicateQuotaProfile: vi.fn(),
-  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), refreshInstanceHealth: vi.fn(),
-  saveInstanceLogRetention: vi.fn(), saveResendCredential: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
+  getAdminCredentials: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getMediaUploadSettings: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), getSaasSettings: vi.fn(), refreshInstanceHealth: vi.fn(),
+  saveInstanceLogRetention: vi.fn(), saveMediaUploadSettings: vi.fn(), saveResendCredential: vi.fn(), saveSaasSettings: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyResendCredential: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
@@ -25,6 +26,11 @@ beforeEach(() => {
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getInstanceLogRetention).mockResolvedValue({ retention_days: 7 })
+  vi.mocked(getMediaUploadSettings).mockResolvedValue({ max_upload_megabytes: 5, max_image_dimension: 2560 })
+  vi.mocked(getSaasSettings).mockResolvedValue({ enabled: false })
+  vi.mocked(saveInstanceLogRetention).mockImplementation(async (retentionDays) => ({ retention_days: retentionDays }))
+  vi.mocked(saveMediaUploadSettings).mockImplementation(async (maxUploadMegabytes, maxImageDimension) => ({ max_upload_megabytes: maxUploadMegabytes, max_image_dimension: maxImageDimension }))
+  vi.mocked(saveSaasSettings).mockImplementation(async (enabled) => ({ enabled }))
   vi.mocked(getInstanceLogs).mockResolvedValue({ items: [], truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, retention_days: 7, source: 'database' })
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ available: false, warning_level: 0, settings: { enabled: false, daily_soft_limit: 10000, monthly_soft_limit: 100000, auto_disable_percent: 100, repeated_error_limit: 5, consecutive_errors: 0, disabled_reason: null }, usage: { sessions_today: 0, tiles_started_today: 0, tiles_completed_today: 0, tiles_failed_today: 0, tiles_cancelled_today: 0, tiles_started_month: 0 }, authoritative_monitoring: { connected: false, console_url: 'https://console.cloud.google.com/google/maps-apis/metrics', notice: 'Authoritative' } })
@@ -44,6 +50,49 @@ describe('AdminConsole', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Clés API' }))
     expect(await screen.findByRole('heading', { name: 'Clés API' })).toBeVisible()
     await waitFor(() => expect(getAdminCredentials).toHaveBeenCalled())
+  })
+
+  it('keeps drafts between tabs and saves all modified settings from the header', async () => {
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+
+    const saveButton = screen.getByRole('button', { name: 'Enregistrer' })
+    expect(saveButton).toBeDisabled()
+    const mediaLimit = await screen.findByLabelText(/Taille maximale par image/)
+    const retention = await screen.findByLabelText(/Durée de conservation/)
+    fireEvent.change(mediaLimit, { target: { value: '8' } })
+    fireEvent.change(retention, { target: { value: '14' } })
+    expect(saveButton).toBeEnabled()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Clés API' }))
+    expect(await screen.findByRole('heading', { name: 'Clés API' })).toBeVisible()
+    fireEvent.click(screen.getByRole('link', { name: 'Général' }))
+    expect(mediaLimit).toHaveValue(8)
+    expect(retention).toHaveValue(14)
+
+    fireEvent.click(saveButton)
+    await waitFor(() => {
+      expect(saveMediaUploadSettings).toHaveBeenCalledWith(8, 2560)
+      expect(saveInstanceLogRetention).toHaveBeenCalledWith(14)
+      expect(saveButton).toBeDisabled()
+    })
+    expect(saveSaasSettings).not.toHaveBeenCalled()
+  })
+
+  it('asks what to do with unsaved changes before closing', async () => {
+    const onClose = vi.fn()
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole onClose={onClose} /></MemoryRouter>)
+    fireEvent.change(await screen.findByLabelText(/Taille maximale par image/), { target: { value: '9' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /Fermer l’administration/ }))
+    const warning = await screen.findByRole('alertdialog', { name: /Enregistrer ou Annuler les modifications/ })
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(within(warning).getByRole('button', { name: 'Continuer l’édition' }))
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: /Fermer l’administration/ }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Annuler les modifications' }))
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(saveMediaUploadSettings).not.toHaveBeenCalled()
   })
 
   it('does not expose an expected request cancellation as a panel error', async () => {
@@ -192,7 +241,77 @@ describe('AdminConsole', () => {
     expect(screen.getByRole('button', { name: 'Nouveau profil' })).toBeVisible()
     expect(screen.queryByText('Usages par utilisateur')).not.toBeInTheDocument()
   })
+
+  it('creates a quota profile from the tabbed modal and keeps the page compact', async () => {
+    vi.mocked(getQuotaRegistry).mockResolvedValue(quotaRegistry)
+    vi.mocked(createQuotaProfile).mockResolvedValue({ ...unlimitedProfile, id: 'new-profile', name: 'X-Large', is_default: false, is_system: false })
+    render(<StrictMode><MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter></StrictMode>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Nouveau profil' }))
+    const dialog = screen.getByRole('dialog', { name: 'Nouveau profil de quotas' })
+    expect(dialog).toBeVisible()
+    expect(screen.queryByText('Créer un profil')).not.toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Médias' }))
+    expect(within(dialog).getByText('Stockage')).toBeVisible()
+    const storageUnlimited = within(dialog).getAllByRole('checkbox').find((checkbox) => checkbox.parentElement?.textContent?.includes('Illimité'))!
+    fireEvent.click(storageUnlimited)
+    expect(within(dialog).getByRole('spinbutton', { name: 'Valeur pour Stockage Gio' })).toBeEnabled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Créer le profil' }))
+    expect(await within(dialog).findByText('Le nom du profil est obligatoire.')).toBeVisible()
+    expect(within(dialog).getByRole('tab', { name: /Général/ })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.change(within(dialog).getByLabelText('Nom'), { target: { value: 'X-Large' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Créer le profil' }))
+    await waitFor(() => expect(createQuotaProfile).toHaveBeenCalledWith(expect.objectContaining({ name: 'X-Large', is_active: true })))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nouveau profil de quotas' })).not.toBeInTheDocument())
+    expect(screen.getByText('X-Large')).toBeVisible()
+  })
+
+  it('edits a profile in the modal and warns before discarding changes', async () => {
+    const editable = { ...unlimitedProfile, id: 'editable-profile', name: 'X-Large', is_default: false, is_system: false }
+    vi.mocked(getQuotaProfiles).mockResolvedValue([editable])
+    vi.mocked(getQuotaRegistry).mockResolvedValue(quotaRegistry)
+    vi.mocked(updateQuotaProfile).mockResolvedValue({ ...editable, description: 'Mis à jour' })
+    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Modifier/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Modifier X-Large' })
+    fireEvent.change(within(dialog).getByLabelText('Description'), { target: { value: 'Texte modifié' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Fermer' }))
+    const warning = await screen.findByRole('alertdialog', { name: 'Modifications non enregistrées' })
+    fireEvent.click(within(warning).getByRole('button', { name: 'Continuer l’édition' }))
+    expect(dialog).toBeVisible()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(updateQuotaProfile).toHaveBeenCalledWith(editable.id, expect.objectContaining({ description: 'Texte modifié' })))
+  })
+
+  it('protects system quota fields in the edit modal', async () => {
+    vi.mocked(getQuotaRegistry).mockResolvedValue(quotaRegistry)
+    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: /Modifier/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Modifier Unlimited' })
+    expect(within(dialog).getByLabelText('Nom')).toBeDisabled()
+    expect(within(dialog).getByRole('checkbox', { name: /Profil actif/ })).toBeDisabled()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Compte' }))
+    expect(within(dialog).getAllByRole('checkbox').every((input) => input.hasAttribute('disabled'))).toBe(true)
+  })
+
+  it('keeps a non-system default quota profile active', async () => {
+    const defaultProfile = { ...unlimitedProfile, id: 'default-profile', name: 'Standard', is_system: false }
+    vi.mocked(getQuotaProfiles).mockResolvedValue([defaultProfile])
+    vi.mocked(getQuotaRegistry).mockResolvedValue(quotaRegistry)
+    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: /Modifier/ }))
+    const dialog = screen.getByRole('dialog', { name: 'Modifier Standard' })
+    expect(within(dialog).getByRole('checkbox', { name: /Profil actif/ })).toBeDisabled()
+    expect(within(dialog).getByText('Le profil par défaut doit rester actif.')).toBeVisible()
+  })
 })
+
+const quotaRegistry: QuotaRegistryItem[] = [
+  { key: 'maps_max', scope: 'user', unit: 'count', label: 'Cartes', description: 'Nombre de cartes possédées', minimum: 0, maximum: 2147483647, enforced: true },
+  { key: 'storage_bytes_max', scope: 'user', unit: 'bytes', label: 'Stockage', description: 'Volume total des médias', minimum: 0, maximum: Number.MAX_SAFE_INTEGER, enforced: true },
+]
 
 const unlimitedProfile = {
   id: '00000000-0000-0000-0000-000000000001', name: 'Unlimited', description: null,

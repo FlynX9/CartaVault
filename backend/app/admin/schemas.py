@@ -48,6 +48,22 @@ class AdminUserUpdate(BaseModel):
         return self
 
 
+class AdminUserDetails(AdminUserRead):
+    trip_count: int
+    active_session_count: int
+    email_verified: bool
+    mfa_enabled: bool
+
+
+class AdminUserActivityRead(BaseModel):
+    id: UUID
+    event_type: str
+    previous_value: str | None = None
+    next_value: str | None = None
+    occurred_at: datetime
+    actor_display_name: str | None = None
+
+
 class CredentialStatus(BaseModel):
     provider: str
     label: str

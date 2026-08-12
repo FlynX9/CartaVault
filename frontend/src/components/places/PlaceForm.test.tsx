@@ -73,11 +73,11 @@ describe('PlaceForm', () => {
     const refresh = vi.fn().mockResolvedValue('Grand Est')
     render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id', region: 'Correction locale' }} maps={[MAP]} allowMapChange categories={[]} tags={[]} submitLabel="Créer" isSubmitting={false} regionMetadata={{ manuallyOverridden: true, resolvedAt: null }} onRefreshRegion={refresh} onSubmit={vi.fn()} />)
 
+    fireEvent.focus(screen.getByRole('button', { name: 'Aide sur la région' }))
     expect(screen.getByText('Valeur corrigée manuellement')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Recalculer depuis les coordonnées' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Recalculer la région depuis les coordonnées' }))
 
-    expect(await screen.findByRole('button', { name: 'Région recalculée' })).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'Région' })).toHaveValue('Grand Est')
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Région' })).toHaveValue('Grand Est'))
     expect(refresh).toHaveBeenCalledTimes(1)
   })
 
@@ -86,8 +86,8 @@ describe('PlaceForm', () => {
     const refresh = vi.fn(() => new Promise<string | null>((_, reject) => { rejectRefresh = reject }))
     render(<PlaceForm initialValues={{ ...EMPTY_PLACE_FORM_VALUES, mapId: 'map-id' }} maps={[MAP]} allowMapChange categories={[]} tags={[]} submitLabel="Créer" isSubmitting={false} onRefreshRegion={refresh} onSubmit={vi.fn()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Recalculer depuis les coordonnées' }))
-    expect(screen.getByRole('button', { name: 'Recalcul en cours…' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Recalculer la région depuis les coordonnées' }))
+    expect(screen.getByRole('button', { name: 'Recalculer la région depuis les coordonnées' })).toBeDisabled()
     rejectRefresh(new Error('Service temporairement indisponible'))
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Service temporairement indisponible'))

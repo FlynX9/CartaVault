@@ -1,5 +1,5 @@
 import { getJson, sendJson, sendWithoutResponse } from './client'
-import type { AdminRole, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, InstanceLogLevel, InstanceLogPage, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
+import type { AdminRole, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, CredentialStatus, EffectiveQuota, InstanceHealth, InstanceLogLevel, InstanceLogPage, QuotaLimits, QuotaProfile, QuotaRegistryItem } from '../types/adminConsole'
 
 export interface MediaUploadSettings { max_upload_megabytes: number; max_image_dimension: number }
 export interface BackgroundTaskResult { task_id: string; status: string }
@@ -19,6 +19,8 @@ export function getAdminUsers(filters: { q?: string; role?: AdminRole | ''; stat
 export function updateAdminUser(id: string, payload: { role?: AdminRole; is_active?: boolean }) {
   return sendJson(`/admin/console/users/${encodeURIComponent(id)}`, 'PATCH', payload)
 }
+export function getAdminUserDetails(id: string, signal?: AbortSignal) { return getJson(`/admin/console/users/${encodeURIComponent(id)}/details`, empty(), signal) as Promise<AdminUserDetails> }
+export function getAdminUserActivity(id: string, signal?: AbortSignal) { return getJson(`/admin/console/users/${encodeURIComponent(id)}/activity`, empty(), signal) as Promise<AdminUserActivity[]> }
 export function getAdminCredentials(signal?: AbortSignal) { return getJson('/admin/console/credentials', empty(), signal) as Promise<CredentialStatus[]> }
 export function saveResendCredential(value: string) { return sendJson('/admin/console/credentials/resend', 'PUT', { value }) as Promise<CredentialStatus> }
 export function verifyResendCredential() { return sendJson('/admin/console/credentials/resend/verify', 'POST', {}) as Promise<CredentialStatus> }

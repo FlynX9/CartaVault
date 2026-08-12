@@ -10,9 +10,9 @@ import { getStadiaPlacesCredential } from '../../api/stadiaPlaces'
 
 vi.mock('../../api/account', () => ({
   accountAvatarUrl: (value: string | null) => value,
-  changeAccountEmail: vi.fn(), changeAccountPassword: vi.fn(), deleteAccountAvatar: vi.fn(), deleteOwnAccount: vi.fn(),
+  changeAccountEmail: vi.fn(), changeAccountPassword: vi.fn(), confirmEmailMfaSetup: vi.fn(), confirmTotpSetup: vi.fn(), deleteAccountAvatar: vi.fn(), deleteOwnAccount: vi.fn(), disableEmailMfa: vi.fn(), disableTotp: vi.fn(),
   getAccountPreferences: vi.fn(), getAccountProfile: vi.fn(), getAccountSessions: vi.fn(), resetAccountPreferences: vi.fn(),
-  getTotpStatus: vi.fn(),
+  getEmailMfaStatus: vi.fn().mockResolvedValue({ enabled: false, verified_at: null, available: true }), getTotpStatus: vi.fn(), regenerateTotpRecoveryCodes: vi.fn(), startEmailMfaSetup: vi.fn(), startTotpSetup: vi.fn(),
   getGoogleRoutesCredential: vi.fn(), storeGoogleRoutesCredential: vi.fn(), verifyGoogleRoutesCredential: vi.fn(), deleteGoogleRoutesCredential: vi.fn(),
   getGooglePlacesCredential: vi.fn(), storeGooglePlacesCredential: vi.fn(), verifyGooglePlacesCredential: vi.fn(), deleteGooglePlacesCredential: vi.fn(),
   getOpenRouteServiceCredential: vi.fn(), storeOpenRouteServiceCredential: vi.fn(), verifyOpenRouteServiceCredential: vi.fn(), deleteOpenRouteServiceCredential: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock('../../api/stadiaPlaces', () => ({
 const refresh = vi.fn()
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, avatar_url: null }, refresh }) }))
 
-const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', is_admin: true, is_active: true, avatar_url: null, created_at: '2026-01-01', updated_at: '2026-01-01', last_login_at: null, owned_maps: [], shared_map_count: 1, active_session_count: 1, can_delete: true }
+const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', email_verified: true, is_admin: true, is_active: true, avatar_url: null, created_at: '2026-01-01', updated_at: '2026-01-01', last_login_at: null, owned_maps: [], shared_map_count: 1, active_session_count: 1, can_delete: true }
 const preferences = { language: 'fr' as const, preferred_basemap: 'cartavault-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const }, places: { provider: 'stadia' as const } }
 const noCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
 
@@ -46,7 +46,9 @@ describe('AccountModal', () => {
   it('renders account sections separately from administration', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
     expect(await screen.findByRole('heading', { name: 'Profil' })).toBeVisible()
-    for (const label of ['Profil', 'Sécurité', 'Sessions', 'Préférences', 'Clés API', 'Zone sensible']) expect(screen.getByRole('button', { name: label })).toBeVisible()
+    for (const label of ['Profil', 'Sécurité', 'Préférences', 'Clés API']) expect(screen.getByRole('button', { name: label })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Sessions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Zone sensible' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Administration' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Avatar' })).not.toBeInTheDocument()
     expect(screen.getByText('Importer une image')).toBeVisible()
@@ -54,9 +56,10 @@ describe('AccountModal', () => {
 
   it('marks the global session revocation action as dangerous on interaction', async () => {
     render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Sessions' }))
-
-    expect(screen.getByRole('button', { name: 'Révoquer les autres sessions' })).toHaveClass('account-button--danger-hover')
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Gérer les sessions' }))
+    const dialog = screen.getByRole('dialog', { name: 'Sessions et appareils' })
+    expect(within(dialog).getByRole('button', { name: 'Révoquer les autres sessions' })).toHaveClass('account-button--danger-hover')
   })
 
   it('updates the display name and refreshes AuthProvider', async () => {
@@ -75,10 +78,29 @@ describe('AccountModal', () => {
     expect(screen.getByRole('heading', { name: 'Informations du compte' }).closest('section')).toHaveClass('account-preference-card')
 
     fireEvent.click(screen.getByRole('button', { name: 'Sécurité' }))
-    expect(screen.getByRole('heading', { name: 'Changer l’adresse e-mail' }).closest('section')).toHaveClass('account-security-group')
-    expect(screen.getByRole('heading', { name: 'Changer le mot de passe' }).closest('section')).toHaveClass('account-security-group')
-    expect(screen.getByRole('heading', { name: 'État de sécurité du compte' }).closest('section')).toHaveClass('account-security-overview')
+    expect(screen.getByRole('heading', { name: 'Sécurité' })).toBeVisible()
+    expect(screen.getByText('Gérez la sécurité, les accès et les appareils associés à votre compte.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Résumé de sécurité' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Identité et accès' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Authentification renforcée' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Sessions et appareils' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Zone sensible' })).toBeVisible()
     expect(screen.queryByPlaceholderText('Saisissez votre mot de passe actuel')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Changer l’adresse e-mail' }))
+    expect(screen.getByRole('dialog', { name: 'Changer l’adresse e-mail' })).toBeVisible()
+    expect(screen.getByPlaceholderText('Saisissez votre mot de passe actuel')).toBeVisible()
+  })
+
+  it('keeps recovery codes unavailable until TOTP is configured and opens deletion in a dialog', async () => {
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+
+    expect(screen.getByRole('button', { name: 'Régénérer' })).toBeDisabled()
+    expect(screen.getByTitle('Configurez d’abord l’authentification TOTP.')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer le compte' }))
+    const dialog = screen.getByRole('dialog', { name: 'Supprimer le compte' })
+    expect(within(dialog).getByLabelText('Mot de passe actuel')).toBeVisible()
+    expect(within(dialog).getByPlaceholderText('SUPPRIMER MON COMPTE')).toBeVisible()
   })
 
   it('keeps the country-routing preference scoped to individual trips', async () => {
@@ -161,7 +183,7 @@ describe('AccountModal', () => {
     fireEvent.click(within(routesPanel).getByRole('button', { name: 'Vérifier' }))
     await waitFor(() => expect(verifyGoogleRoutesCredential).toHaveBeenCalled())
     expect(await screen.findByText('La clé Google Routes est valide.')).toBeVisible()
-    expect(screen.getAllByText('19/07/2026')).toHaveLength(2)
+    expect(screen.getAllByText('19/07/2026')).toHaveLength(1)
   })
 
   it('keeps Stadia as the default Places engine and requires a separate verified Google Places key', async () => {
@@ -232,5 +254,47 @@ describe('AccountModal', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Vérifier' }))
     await waitFor(() => expect(verifyStadiaMapsCredential).toHaveBeenCalled())
     expect(await screen.findByText('La clé Stadia Maps est valide.')).toBeVisible()
+  })
+
+  it('summarizes configured credentials and opens the service in error by default', async () => {
+    vi.mocked(getGoogleRoutesCredential).mockResolvedValue({ configured: true, last4: 'UTES', verified: true, verified_at: '2026-08-03T09:00:00Z', last_used_at: null, last_error_code: null })
+    vi.mocked(getStadiaMapsCredential).mockResolvedValue({ configured: true, last4: 'ZERT', verified: false, verified_at: '2026-08-11T09:00:00Z', last_used_at: null, last_error_code: 'satellite_forbidden' })
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Clés API' }))
+
+    const summary = await screen.findByRole('region', { name: 'Résumé des services API' })
+    expect(within(summary).getByText('2 clés configurées')).toBeVisible()
+    expect(within(summary).getByText('1 vérifiée · 1 erreur')).toBeVisible()
+    const mapsHeader = screen.getByRole('button', { name: 'Fonds de carte' })
+    await waitFor(() => expect(mapsHeader).toHaveAttribute('aria-expanded', 'true'))
+    expect(within(mapsHeader).getByText(/\d{2}\/\d{2}\/2026/)).toBeVisible()
+    expect(screen.getByLabelText('Fournisseur satellite')).toBeVisible()
+    const credential = screen.getByRole('region', { name: /Clé Stadia Maps/ })
+    expect(within(credential).queryByText('Erreur')).not.toBeInTheDocument()
+    expect(credential.querySelector('.account-credential__icon')).not.toBeInTheDocument()
+  })
+
+  it('keeps a single API service accordion open', async () => {
+    render(<AccountModal onClose={vi.fn()} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Clés API' }))
+    openApiGroup('Routage')
+    expect(screen.getByLabelText('Moteur de calcul')).toBeVisible()
+    openApiGroup('Recherche de lieux')
+    expect(screen.getByRole('button', { name: 'Routage' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByLabelText('Moteur de calcul')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Moteur de recherche de lieux')).toBeVisible()
+  })
+
+  it('warns before closing when a provider change has not been saved', async () => {
+    const onClose = vi.fn()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<AccountModal onClose={onClose} onOpenAdmin={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Clés API' }))
+    openApiGroup('Recherche de lieux')
+    fireEvent.change(screen.getByLabelText('Moteur de recherche de lieux'), { target: { value: 'google' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer l’espace compte' }))
+    expect(confirm).toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    confirm.mockRestore()
   })
 })

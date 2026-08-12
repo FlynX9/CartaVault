@@ -11,18 +11,20 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.admin.schemas import (
-    AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
+    AdminUserActivityRead, AdminUserDetails, AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
 )
+from app.auth.activity import record_user_activity
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.avatar_storage import resolve_avatar
-from app.auth.models import SystemCredential, User, UserSession
+from app.auth.models import SystemCredential, User, UserActivityEvent, UserSession
 from app.config import credential_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
+from app.trips.models import Trip
 from app.media.settings import (
     get_max_image_dimension,
     get_max_upload_megabytes,
@@ -124,6 +126,18 @@ def _user_read(session: Session, user: User, counts: UserCounts | None = None) -
     )
 
 
+def _user_details(session: Session, user: User) -> AdminUserDetails:
+    base = _user_read(session, user)
+    trip_count = session.scalar(select(func.count()).select_from(Trip).where(Trip.created_by_user_id == user.id, Trip.deleted_at.is_(None))) or 0
+    active_sessions = session.scalar(select(func.count()).select_from(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None), UserSession.expires_at > func.now())) or 0
+    return AdminUserDetails(
+        **base.model_dump(), trip_count=int(trip_count), active_session_count=int(active_sessions),
+        # Account creation currently occurs only after the address has been verified; legacy
+        # accounts predate that field and are treated identically by the account API.
+        email_verified=True, mfa_enabled=user.totp_enabled or user.email_mfa_enabled,
+    )
+
+
 @router.get("/users/{user_id}/avatar")
 def user_avatar(user_id: UUID, session: Session = Depends(get_db)) -> FileResponse:
     user = session.get(User, user_id)
@@ -133,6 +147,32 @@ def user_avatar(user_id: UUID, session: Session = Depends(get_db)) -> FileRespon
     if not path.is_file():
         raise HTTPException(404, "Avatar not found")
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.get("/users/{user_id}/details", response_model=AdminUserDetails)
+def get_user_details(user_id: UUID, session: Session = Depends(get_db)) -> AdminUserDetails:
+    user = session.scalar(select(User).options(joinedload(User.quota_profile)).where(User.id == user_id))
+    if user is None:
+        raise HTTPException(404, "Utilisateur introuvable.")
+    return _user_details(session, user)
+
+
+@router.get("/users/{user_id}/activity", response_model=list[AdminUserActivityRead])
+def get_user_activity(user_id: UUID, session: Session = Depends(get_db)) -> list[AdminUserActivityRead]:
+    if session.get(User, user_id) is None:
+        raise HTTPException(404, "Utilisateur introuvable.")
+    actor = User.__table__.alias("activity_actor")
+    rows = session.execute(
+        select(UserActivityEvent, actor.c.display_name)
+        .outerjoin(actor, actor.c.id == UserActivityEvent.actor_user_id)
+        .where(UserActivityEvent.user_id == user_id)
+        .order_by(UserActivityEvent.occurred_at.desc(), UserActivityEvent.id.desc())
+        .limit(100)
+    ).all()
+    return [AdminUserActivityRead(
+        id=event.id, event_type=event.event_type, previous_value=event.previous_value,
+        next_value=event.next_value, occurred_at=event.occurred_at, actor_display_name=actor_name,
+    ) for event, actor_name in rows]
 
 
 @router.get("/users", response_model=AdminUserPage)
@@ -188,11 +228,17 @@ def update_user(
         active_admins = session.scalar(select(func.count()).select_from(User).where(User.is_admin.is_(True), User.is_active.is_(True), User.deleted_at.is_(None))) or 0
         if active_admins <= 1:
             raise HTTPException(409, detail={"code": "LAST_ADMIN_PROTECTED", "message": "Le dernier administrateur actif ne peut pas être désactivé ou rétrogradé."})
+    previous_role = "admin" if user.is_admin else "user"
+    previous_state = "active" if user.is_active else "inactive"
     user.is_admin = next_admin
     user.is_active = next_active
     if not next_active:
         session.execute(update(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None)).values(revoked_at=func.now()))
     try:
+        if previous_role != ("admin" if next_admin else "user"):
+            record_user_activity(session, user_id=user.id, actor_user_id=admin.id, event_type="role_changed", previous_value=previous_role, next_value="admin" if next_admin else "user")
+        if previous_state != ("active" if next_active else "inactive"):
+            record_user_activity(session, user_id=user.id, actor_user_id=admin.id, event_type="account_state_changed", previous_value=previous_state, next_value="active" if next_active else "inactive")
         session.commit(); session.refresh(user)
     except SQLAlchemyError as error:
         session.rollback()
