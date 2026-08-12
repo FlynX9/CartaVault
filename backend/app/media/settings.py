@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.admin.models import SystemSetting
+from app.quotas.service import QuotaService
 
 DEFAULT_MAX_UPLOAD_MEGABYTES = 5
 MIN_MAX_UPLOAD_MEGABYTES = 1
@@ -28,6 +29,15 @@ def get_max_image_dimension(session: Session) -> int:
     except (TypeError, ValueError):
         return DEFAULT_MAX_IMAGE_DIMENSION
     return min(MAX_MAX_IMAGE_DIMENSION, max(MIN_MAX_IMAGE_DIMENSION, parsed))
+
+
+def get_media_upload_policy(session: Session, user_id) -> tuple[int, int]:
+    """Return a profile override or, when absent, the instance defaults."""
+    profile = QuotaService(session).effective_profile(user_id)
+    return (
+        get_max_upload_megabytes(session) if profile.image_upload_megabytes_max is None else profile.image_upload_megabytes_max,
+        get_max_image_dimension(session) if profile.image_dimension_max is None else profile.image_dimension_max,
+    )
 
 
 def set_media_upload_settings(

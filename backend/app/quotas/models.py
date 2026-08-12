@@ -52,6 +52,8 @@ class QuotaProfile(Base):
     links_per_place_max: Mapped[int | None] = mapped_column(Integer)
     days_per_trip_max: Mapped[int | None] = mapped_column(Integer)
     steps_per_day_max: Mapped[int | None] = mapped_column(Integer)
+    image_upload_megabytes_max: Mapped[int | None] = mapped_column(Integer)
+    image_dimension_max: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 

@@ -38,7 +38,7 @@ from app.media.service import (
     infer_format,
     sort_expression,
 )
-from app.media.settings import get_max_image_dimension, get_max_upload_megabytes
+from app.media.settings import get_media_upload_policy as get_effective_media_upload_policy
 from app.photos.models import Photo
 from app.photos.storage import (
     InvalidPhotoPathError,
@@ -73,13 +73,13 @@ upload_router = APIRouter(prefix="/media-actions", tags=["media"])
 @router.get("/upload-policy", response_model=MediaUploadPolicy)
 def get_media_upload_policy(
     database_session: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> MediaUploadPolicy:
-    maximum = get_max_upload_megabytes(database_session)
+    maximum, dimension = get_effective_media_upload_policy(database_session, current_user.id)
     return MediaUploadPolicy(
         max_upload_megabytes=maximum,
         max_upload_bytes=maximum * 1024 * 1024,
-        max_image_dimension=get_max_image_dimension(database_session),
+        max_image_dimension=dimension,
     )
 
 
@@ -365,14 +365,15 @@ def upload_unassigned_media(
     quotas.ensure_can_create(current_user.id, QuotaKey.PHOTOS_TOTAL_MAX)
     from uuid import uuid4
     photo_id = uuid4()
+    maximum, dimension = get_effective_media_upload_policy(database_session, current_user.id)
     try:
         stored = store_photo_file(
             file.file,
             file.content_type,
             photo_id,
             photo_id,
-            max_size_bytes=get_max_upload_megabytes(database_session) * 1024 * 1024,
-            max_dimension=get_max_image_dimension(database_session),
+            max_size_bytes=maximum * 1024 * 1024,
+            max_dimension=dimension,
         )
         quotas.ensure_can_create(current_user.id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
         photo = Photo(

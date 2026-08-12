@@ -204,6 +204,7 @@ const unlimitedProfile = {
     tags_per_map_max: null, categories_per_map_max: null, statuses_per_map_max: null,
     trips_per_map_max: null, members_per_map_max: null, pending_invitations_per_map_max: null,
     photos_per_place_max: null, links_per_place_max: null, days_per_trip_max: null, steps_per_day_max: null,
+    image_upload_megabytes_max: null, image_dimension_max: null,
   },
 }
 

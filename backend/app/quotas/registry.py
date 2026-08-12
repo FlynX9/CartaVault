@@ -30,6 +30,8 @@ class QuotaKey(StrEnum):
     LINKS_PER_PLACE_MAX = "links_per_place_max"
     DAYS_PER_TRIP_MAX = "days_per_trip_max"
     STEPS_PER_DAY_MAX = "steps_per_day_max"
+    IMAGE_UPLOAD_MEGABYTES_MAX = "image_upload_megabytes_max"
+    IMAGE_DIMENSION_MAX = "image_dimension_max"
 
 
 @dataclass(frozen=True)
@@ -65,7 +67,8 @@ QUOTA_REGISTRY: dict[QuotaKey, QuotaDefinition] = {
     QuotaKey.LINKS_PER_PLACE_MAX: _definition(QuotaKey.LINKS_PER_PLACE_MAX, QuotaScope.PLACE, "Liens par lieu", "Liens associés à un lieu"),
     QuotaKey.DAYS_PER_TRIP_MAX: _definition(QuotaKey.DAYS_PER_TRIP_MAX, QuotaScope.TRIP, "Journées par sortie", "Journées planifiées dans une sortie"),
     QuotaKey.STEPS_PER_DAY_MAX: _definition(QuotaKey.STEPS_PER_DAY_MAX, QuotaScope.DAY, "Étapes par journée", "Étapes planifiées dans une journée"),
+    QuotaKey.IMAGE_UPLOAD_MEGABYTES_MAX: _definition(QuotaKey.IMAGE_UPLOAD_MEGABYTES_MAX, QuotaScope.USER, "Taille maximale par image", "Remplace le réglage général de l'instance pour les utilisateurs de ce profil", unit="megabytes", maximum=100),
+    QuotaKey.IMAGE_DIMENSION_MAX: _definition(QuotaKey.IMAGE_DIMENSION_MAX, QuotaScope.USER, "Résolution maximale", "Plus grand côté de l'image ; remplace le réglage général de l'instance", unit="pixels", maximum=7680),
 }
 
 QUOTA_KEYS = tuple(definition.key.value for definition in QUOTA_REGISTRY.values())
-

@@ -24,6 +24,7 @@ export interface QuotaLimits {
   statuses_per_map_max: number | null; trips_per_map_max: number | null; members_per_map_max: number | null
   pending_invitations_per_map_max: number | null; photos_per_place_max: number | null
   links_per_place_max: number | null; days_per_trip_max: number | null; steps_per_day_max: number | null
+  image_upload_megabytes_max: number | null; image_dimension_max: number | null
 }
 export type QuotaKey = keyof QuotaLimits
 export interface QuotaProfile {
@@ -35,7 +36,7 @@ export interface EffectiveQuota {
   quotas: Array<{ key: QuotaKey; scope: 'user' | 'map' | 'place' | 'trip' | 'day'; limit: number | null; usage: number | null; remaining: number | null; unlimited: boolean; over_limit: boolean; enforced: boolean }>
 }
 export interface QuotaRegistryItem {
-  key: QuotaKey; scope: 'user' | 'map' | 'place' | 'trip' | 'day'; unit: 'count' | 'bytes'
+  key: QuotaKey; scope: 'user' | 'map' | 'place' | 'trip' | 'day'; unit: 'count' | 'bytes' | 'megabytes' | 'pixels'
   label: string; description: string; minimum: number; maximum: number; enforced: boolean
 }
 

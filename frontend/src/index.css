@@ -6737,6 +6737,7 @@ body.cv-panel-resizing {
 .quota-profile .admin-console__actions button svg,
 .quota-editor .admin-console__actions button svg,
 .admin-console__refresh svg { width: .86rem; height: .86rem; }
+.quota-profile__actions { flex-wrap: nowrap; justify-content: flex-start; }
 
 /* The instance action lives alone in a roomy page header: keep it deliberately tighter. */
 button.admin-console__refresh {

@@ -38,7 +38,6 @@ export function createQuotaProfile(payload: { name: string; description: string 
 export function updateQuotaProfile(id: string, payload: Partial<{ name: string; description: string | null; is_active: boolean; limits: QuotaLimits }>) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<QuotaProfile> }
 export function duplicateQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/duplicate`, 'POST', {}) as Promise<QuotaProfile> }
 export function setDefaultQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/set-default`, 'POST', {}) as Promise<QuotaProfile> }
-export function archiveQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/archive`, 'POST', {}) as Promise<QuotaProfile> }
 export function deleteQuotaProfile(id: string) { return sendWithoutResponse(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'DELETE') }
 export function assignUserQuotaProfile(userId: string, profileId: string) { return sendJson(`/admin/users/${encodeURIComponent(userId)}/quota-profile`, 'PUT', { quota_profile_id: profileId }) as Promise<EffectiveQuota> }
 export function getUserQuotas(userId: string, signal?: AbortSignal) { return getJson(`/admin/users/${encodeURIComponent(userId)}/quotas`, empty(), signal) as Promise<EffectiveQuota> }

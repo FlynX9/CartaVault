@@ -50,10 +50,7 @@ def test_profile_lifecycle_preserves_unlimited_semantics(integration_client) -> 
     assert copy["is_system"] is False
     assert copy["limits"] == profile["limits"]
 
-    archived = integration_client.post(f"/admin/quota-profiles/{copy['id']}/archive")
     deleted = integration_client.delete(f"/admin/quota-profiles/{copy['id']}")
-    assert archived.status_code == 200
-    assert archived.json()["is_active"] is False
     assert deleted.status_code == 204
 
 
@@ -70,7 +67,7 @@ def test_profile_validation_rejects_negative_and_case_insensitive_duplicate_name
     assert duplicate.json()["detail"]["code"] == "quota.profile.name_conflict"
 
 
-def test_system_unlimited_profile_cannot_be_restricted_archived_or_deleted(
+def test_system_unlimited_profile_cannot_be_restricted_or_deleted(
     integration_client,
 ) -> None:
     restricted = integration_client.patch(
@@ -81,16 +78,12 @@ def test_system_unlimited_profile_cannot_be_restricted_archived_or_deleted(
         f"/admin/quota-profiles/{UNLIMITED_PROFILE_ID}",
         json={"is_active": False},
     )
-    archived = integration_client.post(
-        f"/admin/quota-profiles/{UNLIMITED_PROFILE_ID}/archive"
-    )
     deleted = integration_client.delete(f"/admin/quota-profiles/{UNLIMITED_PROFILE_ID}")
 
     assert restricted.status_code == 409
     assert restricted.json()["detail"]["code"] == "quota.profile.system_unlimited"
     assert deactivated.status_code == 409
     assert deactivated.json()["detail"]["code"] == "quota.profile.system_protected"
-    assert archived.status_code == 409
     assert deleted.status_code == 409
 
 
@@ -112,7 +105,7 @@ def test_default_change_is_atomic_and_inactive_profile_is_rejected(integration_c
     assert rejected.json()["detail"]["code"] == "quota.profile.inactive"
 
 
-def test_assigned_profile_cannot_be_archived_or_deleted(
+def test_assigned_profile_cannot_be_deleted(
     integration_client, auth_user
 ) -> None:
     created = _create_profile(integration_client)
@@ -122,13 +115,10 @@ def test_assigned_profile_cannot_be_archived_or_deleted(
         json={"quota_profile_id": profile_id},
     )
 
-    archived = integration_client.post(f"/admin/quota-profiles/{profile_id}/archive")
     deleted = integration_client.delete(f"/admin/quota-profiles/{profile_id}")
 
     assert assigned.status_code == 200
     assert assigned.json()["profile"]["id"] == profile_id
-    assert archived.status_code == 409
-    assert archived.json()["detail"]["code"] == "quota.profile.assigned"
     assert deleted.status_code == 409
     assert deleted.json()["detail"]["code"] == "quota.profile.assigned"
 

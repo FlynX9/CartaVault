@@ -26,6 +26,8 @@ class QuotaLimits(BaseModel):
     links_per_place_max: int | None = Field(default=None, ge=0)
     days_per_trip_max: int | None = Field(default=None, ge=0)
     steps_per_day_max: int | None = Field(default=None, ge=0)
+    image_upload_megabytes_max: int | None = Field(default=None, ge=1, le=100)
+    image_dimension_max: int | None = Field(default=None, ge=1024, le=7680)
 
     @field_validator("storage_bytes_max")
     @classmethod
@@ -127,4 +129,3 @@ class EffectiveQuotaRead(BaseModel):
 
 def registry_response() -> list[QuotaRegistryRead]:
     return [QuotaRegistryRead(**definition.__dict__, minimum=0) for definition in QUOTA_REGISTRY.values()]
-

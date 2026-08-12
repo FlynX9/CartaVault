@@ -38,7 +38,7 @@ from app.photos.storage import (
     resolve_photo_file,
     store_photo_file,
 )
-from app.media.settings import get_max_image_dimension, get_max_upload_megabytes
+from app.media.settings import get_media_upload_policy
 from app.places.models import Place
 
 
@@ -223,6 +223,7 @@ def upload_place_photo(
     if upload_size is not None:
         quotas.ensure_can_create(place.map.owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=upload_size)
     photo_id = uuid4()
+    maximum, dimension = get_media_upload_policy(database_session, place.map.owner_id)
 
     try:
         stored_photo = store_photo_file(
@@ -230,8 +231,8 @@ def upload_place_photo(
             content_type=file.content_type,
             place_id=place_id,
             photo_id=photo_id,
-            max_size_bytes=get_max_upload_megabytes(database_session) * 1024 * 1024,
-            max_dimension=get_max_image_dimension(database_session),
+            max_size_bytes=maximum * 1024 * 1024,
+            max_dimension=dimension,
         )
     except UnsupportedPhotoTypeError as error:
         raise HTTPException(

@@ -17,7 +17,7 @@ from app.auth.permissions import require_map_role
 from app.database import get_db
 from app.exports.temporary_exports import get as get_export
 from app.places.models import Place
-from app.media.settings import get_max_image_dimension, get_max_upload_megabytes
+from app.media.settings import get_media_upload_policy
 from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, PhotoTooLargeError, UnsupportedPhotoTypeError, delete_photo_file, resolve_photo_file, store_photo_file
 from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
@@ -530,14 +530,15 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
     if file.size is not None:
         quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=file.size)
     photo_id = uuid4()
+    maximum, dimension = get_media_upload_policy(session, owner_id)
     try:
         stored = store_photo_file(
             file.file,
             file.content_type,
             night.id,
             photo_id,
-            max_size_bytes=get_max_upload_megabytes(database_session) * 1024 * 1024,
-            max_dimension=get_max_image_dimension(database_session),
+            max_size_bytes=maximum * 1024 * 1024,
+            max_dimension=dimension,
         )
     except PhotoTooLargeError as error:
         raise HTTPException(413, str(error)) from error

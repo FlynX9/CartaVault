@@ -133,18 +133,6 @@ def set_default_profile(profile_id: UUID, session: Session = Depends(get_db)) ->
     return _read(session, target)
 
 
-@router.post("/quota-profiles/{profile_id}/archive", response_model=QuotaProfileRead)
-def archive_profile(profile_id: UUID, session: Session = Depends(get_db)) -> QuotaProfileRead:
-    profile = QuotaService(session).resolve_profile(profile_id, active_only=False, lock=True)
-    assigned = session.scalar(select(func.count()).select_from(User).where(User.quota_profile_id == profile.id)) or 0
-    if profile.is_system or profile.is_default:
-        raise HTTPException(409, detail={"code": "quota.profile.default_required", "params": {}})
-    if assigned:
-        raise HTTPException(409, detail={"code": "quota.profile.assigned", "params": {"assigned_users_count": assigned}})
-    profile.is_active = False; session.commit(); session.refresh(profile)
-    return _read(session, profile)
-
-
 @router.delete("/quota-profiles/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_profile(profile_id: UUID, session: Session = Depends(get_db)) -> Response:
     profile = QuotaService(session).resolve_profile(profile_id, active_only=False, lock=True)
