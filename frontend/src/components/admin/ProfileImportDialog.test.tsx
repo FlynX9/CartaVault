@@ -30,6 +30,20 @@ const PROFILE: StarterProfile = {
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 describe('ProfileImportDialog', () => {
+  it('selects the first template and always displays its content', async () => {
+    vi.mocked(getMapProfiles).mockResolvedValue([PROFILE])
+    vi.mocked(getCategories).mockResolvedValue([])
+    vi.mocked(getTags).mockResolvedValue([])
+    vi.mocked(getStatuses).mockResolvedValue([])
+
+    render(<ProfileImportDialog mapId="map-1" resourceType="categories" onClose={vi.fn()} onImported={vi.fn()} />)
+
+    expect(await screen.findByRole('radio', { name: /Tourisme/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('Éléments à créer')).toBeVisible()
+    expect(screen.getByText('Musée')).toBeVisible()
+    expect(screen.getByText('Monument')).toBeVisible()
+  })
+
   it('previews only categories that will actually be created', async () => {
     vi.mocked(getMapProfiles).mockResolvedValue([PROFILE])
     vi.mocked(getCategories).mockResolvedValue([{ id: 'category-1', map_id: 'map-1', name: 'Musée', description: null, icon: 'museum', marks_as_visited: false, places_count: 0 }])

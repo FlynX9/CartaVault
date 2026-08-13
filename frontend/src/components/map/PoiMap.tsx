@@ -12,7 +12,7 @@ import { MapFocusController } from './MapFocusController'
 import { MapResizeWatcher } from './MapResizeWatcher'
 import { MapContextEvents } from './MapContextEvents'
 import type { MapContextMenuState } from './mapContextMenuUtils'
-import { getStatusMarkerIcon, invalidateStatusMarkerIcons } from './markerIcons'
+import { getCircularPoiMarkerIcon, getStatusMarkerIcon, invalidateStatusMarkerIcons } from './markerIcons'
 import { loadCategoryIconData } from '../../icons/categoryIconData'
 import { DraftPositionMarker } from './DraftPositionMarker'
 import { MapDoubleClickZoomController } from './MapDoubleClickZoomController'
@@ -78,9 +78,10 @@ interface PoiMapProps {
   annotationDrawing?: AnnotationDrawingState | null
   onAnnotationDrawingPointsChange?: (points: MeasurementPoint[]) => void
   onAnnotationDrawingComplete?: (points: MeasurementPoint[]) => void
+  photoMarkersEnabled?: boolean
 }
 
-const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
+const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectionMode, bulkSelected, photoMarkersEnabled, onSelect, onSelectionToggle }: { place: MapPlace; selected: boolean; muted: boolean; selectionMode: boolean; bulkSelected: boolean; photoMarkersEnabled: boolean; onSelect: (place: MapPlace) => void; onSelectionToggle: (placeId: string) => void }) {
   const markerRef = useRef<LeafletMarker | null>(null)
   const [, iconRevision] = useReducer((value: number) => value + 1, 0)
   const selectPlace = useCallback(() => onSelect(place), [onSelect, place])
@@ -113,7 +114,9 @@ const PlaceMarker = memo(function PlaceMarker({ place, selected, muted, selectio
     <Marker
       ref={markerRef}
       position={[place.latitude, place.longitude]}
-      icon={getStatusMarkerIcon(place.status.color, place.primary_category_icon, selected || bulkSelected, muted, place.is_favorite)}
+      icon={photoMarkersEnabled
+        ? getCircularPoiMarkerIcon(place.status.color, place.primary_category_icon, place.primary_photo_id, selected || bulkSelected, muted, place.is_favorite)
+        : getStatusMarkerIcon(place.status.color, place.primary_category_icon, selected || bulkSelected, muted, place.is_favorite)}
       eventHandlers={{
         click: selectionMode ? toggleSelection : selectPlace,
       }}
@@ -168,6 +171,7 @@ export function PoiMap({
   annotationDrawing = null,
   onAnnotationDrawingPointsChange = () => undefined,
   onAnnotationDrawingComplete = () => undefined,
+  photoMarkersEnabled = false,
 }: PoiMapProps) {
   const hasMarkerFilter = markerFilter.query !== '' || markerFilter.categoryId !== '' || markerFilter.statusId !== null || markerFilter.tagId !== ''
   const onPlaceSelectRef = useRef(onPlaceSelect)
@@ -180,7 +184,7 @@ export function PoiMap({
   const selectedTripPlaceId = useMemo(() => trip?.days.flatMap((day) => day.stops).find((stop) => stop.id === selectedTripStopId)?.place_id ?? null, [selectedTripStopId, trip])
   const matchesMarkerFilter = useCallback((place: MapPlace) => mapPlaceMatchesMarkerFilter(place, markerFilter), [markerFilter])
   const standardPlaces = useMemo(() => places.filter((place) => place.id !== draftPlaceId && (!tripViewOnly || tripPlaceIds.has(place.id)) && (trip === null || !tripPlaceIds.has(place.id) || (place.id === selectedPlaceId && place.id !== selectedTripPlaceId))), [draftPlaceId, places, selectedPlaceId, selectedTripPlaceId, trip, tripPlaceIds, tripViewOnly])
-  const renderPlace = useCallback((place: MapPlace) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} selectionMode={selectionMode} bulkSelected={selectedPlaceIds.has(place.id)} onSelect={selectPlace} onSelectionToggle={togglePlaceSelection} />, [hasMarkerFilter, matchesMarkerFilter, selectPlace, selectedPlaceId, selectedPlaceIds, selectionMode, togglePlaceSelection])
+  const renderPlace = useCallback((place: MapPlace) => <PlaceMarker key={place.id} place={place} selected={place.id === selectedPlaceId} muted={hasMarkerFilter && !matchesMarkerFilter(place) && place.id !== selectedPlaceId} selectionMode={selectionMode} bulkSelected={selectedPlaceIds.has(place.id)} photoMarkersEnabled={photoMarkersEnabled} onSelect={selectPlace} onSelectionToggle={togglePlaceSelection} />, [hasMarkerFilter, matchesMarkerFilter, photoMarkersEnabled, selectPlace, selectedPlaceId, selectedPlaceIds, selectionMode, togglePlaceSelection])
   return (
     <MapContainer
       center={initialView.center}

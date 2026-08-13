@@ -13,11 +13,13 @@ export interface TotpRecoveryCodes { recovery_codes: string[] }
 
 export interface AccountPreferences {
   language: 'fr' | 'en'
+  default_theme: 'light' | 'dark' | 'system'
   preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'google-satellite' | 'osm'
   density: 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string
   trash_retention_days: number
+  photo_markers_enabled: boolean
   onboarding: {
     dismissed: boolean
     completed_steps: Array<'map' | 'place' | 'import' | 'trip' | 'organization'>
@@ -54,22 +56,3 @@ export interface RoutingProviderCapability {
   supports_route: boolean; supports_matrix: boolean; supports_waypoint_optimization: boolean
 }
 export interface RoutingProvidersResponse { providers: RoutingProviderCapability[]; default_provider: 'osrm'; credential_storage_available: boolean }
-
-export interface GoogleRoutesCredentialStatus {
-  configured: boolean
-  last4: string | null
-  verified: boolean
-  verified_at: string | null
-  last_used_at: string | null
-  last_error_code: string | null
-}
-
-export interface GoogleRoutesCredentialDeletion {
-  deleted: boolean
-  provider_reset: boolean
-  provider: 'osrm' | 'google'
-}
-export type GooglePlacesCredentialStatus = GoogleRoutesCredentialStatus
-export interface OpenRouteServiceCredentialStatus extends GoogleRoutesCredentialStatus { self_hosted: boolean }
-export type OpenRouteServiceCredentialDeletion = GoogleRoutesCredentialDeletion
-export interface GooglePlacesCredentialDeletion { deleted: boolean; provider_reset: boolean; provider: 'stadia' }

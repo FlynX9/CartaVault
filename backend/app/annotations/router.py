@@ -21,8 +21,18 @@ def _template_read(template: AnnotationTemplate, usage_count: int = 0) -> Annota
     return AnnotationTemplateRead.model_validate(template, from_attributes=True).model_copy(update={"usage_count": usage_count})
 
 
-def _annotation_read(annotation: PlaceAnnotation) -> PlaceAnnotationRead:
-    return PlaceAnnotationRead.model_validate(annotation, from_attributes=True).model_copy(update={"template": _template_read(annotation.template, len(annotation.template.annotations))})
+def _annotation_read(annotation: PlaceAnnotation, usage_count: int) -> PlaceAnnotationRead:
+    return PlaceAnnotationRead.model_validate(annotation, from_attributes=True).model_copy(update={"template": _template_read(annotation.template, usage_count)})
+
+
+def _annotation_query():
+    usage_count = (
+        select(func.count(PlaceAnnotation.id))
+        .where(PlaceAnnotation.template_id == AnnotationTemplate.id)
+        .correlate(AnnotationTemplate)
+        .scalar_subquery()
+    )
+    return select(PlaceAnnotation, usage_count.label("usage_count")).join(PlaceAnnotation.template).options(joinedload(PlaceAnnotation.template))
 
 
 def _template_with_usage(session: Session, template_id: UUID) -> tuple[AnnotationTemplate, int]:
@@ -78,8 +88,8 @@ def delete_template(template_id: UUID, database_session: Session = Depends(get_d
 @router.get("/places/{place_id}", response_model=list[PlaceAnnotationRead])
 def get_place_annotations(place_id: UUID, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[PlaceAnnotationRead]:
     require_place_role(database_session, place_id, current_user, "viewer")
-    annotations = database_session.scalars(select(PlaceAnnotation).options(joinedload(PlaceAnnotation.template).joinedload(AnnotationTemplate.annotations)).where(PlaceAnnotation.place_id == place_id).order_by(PlaceAnnotation.created_at, PlaceAnnotation.id)).unique().all()
-    return [_annotation_read(annotation) for annotation in annotations]
+    rows = database_session.execute(_annotation_query().where(PlaceAnnotation.place_id == place_id).order_by(PlaceAnnotation.created_at, PlaceAnnotation.id)).all()
+    return [_annotation_read(annotation, usage_count) for annotation, usage_count in rows]
 
 
 @router.post("/places/{place_id}", response_model=PlaceAnnotationRead, status_code=201)
@@ -93,22 +103,23 @@ def create_place_annotation(place_id: UUID, data: PlaceAnnotationCreate, databas
     validate_geometry(template.shape_type, data.geometry, data.radius_meters)
     annotation = PlaceAnnotation(place_id=place.id, **data.model_dump())
     database_session.add(annotation); database_session.commit()
-    annotation = database_session.scalar(select(PlaceAnnotation).options(joinedload(PlaceAnnotation.template).joinedload(AnnotationTemplate.annotations)).where(PlaceAnnotation.id == annotation.id))
-    return _annotation_read(annotation)
+    row = database_session.execute(_annotation_query().where(PlaceAnnotation.id == annotation.id)).one()
+    return _annotation_read(*row)
 
 
 @router.patch("/places/{place_id}/{annotation_id}", response_model=PlaceAnnotationRead)
 def update_place_annotation(place_id: UUID, annotation_id: UUID, data: PlaceAnnotationUpdate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> PlaceAnnotationRead:
     place = require_place_role(database_session, place_id, current_user, "editor")
-    annotation = database_session.scalar(select(PlaceAnnotation).options(joinedload(PlaceAnnotation.template).joinedload(AnnotationTemplate.annotations)).where(PlaceAnnotation.id == annotation_id, PlaceAnnotation.place_id == place.id))
-    if annotation is None: raise HTTPException(status_code=404, detail="Annotation not found")
+    row = database_session.execute(_annotation_query().where(PlaceAnnotation.id == annotation_id, PlaceAnnotation.place_id == place.id)).one_or_none()
+    if row is None: raise HTTPException(status_code=404, detail="Annotation not found")
+    annotation, usage_count = row
     supplied = data.model_dump(exclude_unset=True)
     geometry = supplied.get("geometry", annotation.geometry)
     radius = supplied.get("radius_meters", annotation.radius_meters)
     validate_geometry(annotation.template.shape_type, geometry, radius)
     for key, value in supplied.items(): setattr(annotation, key, value)
     database_session.commit(); database_session.refresh(annotation)
-    return _annotation_read(annotation)
+    return _annotation_read(annotation, usage_count)
 
 
 @router.delete("/places/{place_id}/{annotation_id}", status_code=204)

@@ -134,11 +134,13 @@ class OnboardingPreferences(BaseModel):
 
 class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
+    default_theme: Literal["light", "dark", "system"] = "system"
     preferred_basemap: Literal["cartavault-light", "cartavault-dark", "satellite", "google-satellite", "osm"] = "cartavault-light"
     density: Literal["compact", "comfortable", "spacious"] = "compact"
     startup_panel: Literal["dashboard", "maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
     trash_retention_days: int = Field(default=30, ge=1, le=365)
+    photo_markers_enabled: bool = False
     routing: RoutingPreferences = Field(default_factory=RoutingPreferences)
     places: PlacesPreferences = Field(default_factory=PlacesPreferences)
     basemaps: BasemapPreferences = Field(default_factory=BasemapPreferences)

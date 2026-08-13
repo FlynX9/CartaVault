@@ -18,7 +18,7 @@ from app.database import get_db
 from app.trips.routing.base import RoutingError
 from app.trips.routing.google import GoogleRoutesProvider
 from app.trips.routing.openrouteservice import OpenRouteServiceProvider
-from app.trips.routing.registry import google_routing_rate_limiter
+from app.trips.routing.registry import google_routing_rate_limiter, ors_routing_rate_limiter
 
 
 router = APIRouter(prefix="/account/api-keys", tags=["account"])
@@ -111,8 +111,10 @@ def verify_api_key(key_id: UUID, session: Session = Depends(get_db), current: Us
             google_routing_rate_limiter.check(f"api-key-verify:{current.user_id}")
             GoogleRoutesProvider(secret, GoogleRoutesSettings(routing_preference="TRAFFIC_UNAWARE")).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
         elif key.provider == "stadia":
+            google_routing_rate_limiter.check(f"stadia-api-key-verify:{current.user_id}")
             validate_stadia_key(secret)
         else:
+            ors_routing_rate_limiter.check(f"ors-api-key-verify:{current.user_id}")
             OpenRouteServiceProvider(secret).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
     except (HTTPException, RoutingError) as error:
         detail = error.detail if isinstance(error, HTTPException) else None

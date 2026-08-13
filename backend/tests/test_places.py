@@ -50,6 +50,7 @@ def test_place_crud_uses_map_and_map_filters(integration_client: TestClient, poi
         "latitude",
         "status",
         "primary_category_icon",
+        "primary_photo_id",
         "category_ids",
         "tag_ids",
         "is_favorite",

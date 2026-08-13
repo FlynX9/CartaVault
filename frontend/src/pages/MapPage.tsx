@@ -232,6 +232,7 @@ export function MapPage({
   ))
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
   const [satelliteProvider, setSatelliteProvider] = useState<'stadia' | 'google'>(initialBasemapRef.current === 'google-satellite' ? 'google' : 'stadia')
+  const [photoMarkersEnabled, setPhotoMarkersEnabled] = useState(false)
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const [googleSatelliteAvailable, setGoogleSatelliteAvailable] = useState(false)
   const googleSatelliteAvailableRef = useRef(false)
@@ -301,6 +302,10 @@ export function MapPage({
     ? tripPlanningActive ? TRIPS_PLACES_WINDOW_KEY : PLACES_WINDOW_KEY
     : `cartavault:desktop-workspace-window:${workspacePanelId}`
   const customWorkspaceWindowKey = `${workspaceWindowKey}-custom`
+
+  useEffect(() => {
+    if (sidebarOpen && !tripPlanningActive) setActiveFloatingPanel('editor')
+  }, [sidebarOpen, tripPlanningActive])
 
   useEffect(() => {
     const mode = readPanelLayoutMode(panelLayoutScope)
@@ -377,6 +382,7 @@ export function MapPage({
     void getAccountPreferences().then((preferences) => {
       if (!current) return
       accountPreferencesRef.current = preferences
+      setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
       setSatelliteProvider(preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia'))
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
@@ -397,6 +403,7 @@ export function MapPage({
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
       accountPreferencesRef.current = preferences
+      setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
       setSatelliteProvider(preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia'))
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
@@ -713,6 +720,7 @@ export function MapPage({
           annotationDrawing={annotationDrawing}
           onAnnotationDrawingPointsChange={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
           onAnnotationDrawingComplete={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
+          photoMarkersEnabled={photoMarkersEnabled}
         />
         {popupContent && !mobilePlaceDetailOpen && (
           workspaceLayoutLocked ? <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">

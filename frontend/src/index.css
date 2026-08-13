@@ -32,6 +32,14 @@
   --cv-button-font-weight: 700;
   --cv-button-gap: var(--cv-button-reference-gap);
   --cv-button-icon-size: var(--cv-button-reference-icon-size);
+  /* Canonical status-label geometry. Colours remain owned by each semantic tone. */
+  --cv-label-height: 1.35rem;
+  --cv-label-padding-block: .15rem;
+  --cv-label-padding-inline: .42rem;
+  --cv-label-radius: .35rem;
+  --cv-label-font-size: .58rem;
+  --cv-label-font-weight: 750;
+  --cv-label-gap: .25rem;
   --cv-z-map: 0;
   --cv-z-map-markers: 400;
   --cv-z-map-controls: 700;
@@ -3001,6 +3009,17 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .map-sidebar .place-form { gap: 0.7rem; padding-bottom: 0.1rem; }.map-sidebar .form-section { gap: 0.65rem; padding: 0.8rem; border-radius: 0.7rem; }.map-sidebar .form-section h3 { font-size: 0.92rem; }.map-sidebar .form-grid, .map-sidebar .coordinate-grid, .map-sidebar .association-grid { gap: 0.6rem; }.map-sidebar .form-field { gap: 0.25rem; font-size: 0.76rem; }.map-sidebar .form-field input, .map-sidebar .form-field textarea, .map-sidebar .form-field select { min-height: 2.3rem; padding: 0.45rem 0.55rem; border-radius: 0.5rem; font-size: 0.82rem; }.map-sidebar .form-field textarea { min-height: 5.25rem; }.map-sidebar .form-section-collapsible summary { min-height: 2.7rem; padding: 0.7rem 0.8rem; font-size: 0.9rem; }
 .map-sidebar .sidebar-content { padding-bottom: 5.25rem; }.map-sidebar .place-form-submit { position: fixed; z-index: 1020; right: calc(0.8rem + 230px); bottom: 1.6rem; display: flex; justify-content: center; padding: 0.45rem; background: rgb(250 250 248 / 96%); border: 1px solid rgb(43 62 89 / 14%); border-radius: 0.7rem; box-shadow: var(--cv-shadow-md); backdrop-filter: blur(6px); transform: translateX(50%); }.map-sidebar .place-form-submit .primary-button { min-height: 2.25rem; padding: 0.42rem 0.8rem; color: white; background: var(--cv-color-teal); border-color: var(--cv-color-teal); border-radius: 0.55rem; box-shadow: 0 3px 8px rgb(13 27 42 / 14%); font-size: 0.78rem; }.map-sidebar .place-form-submit .primary-button:hover, .map-sidebar .place-form-submit .primary-button:focus-visible { background: #0b8f77; border-color: #0b8f77; }
 .status-marker.muted { opacity: 0.32; filter: grayscale(0.72); }
+.photo-poi-marker-container { background: transparent; border: 0; overflow: visible; }
+.photo-poi-marker { position: relative; display: grid; width: 40px; height: 40px; overflow: hidden; color: #fff; background: var(--marker-color); border: 3px solid #fff; border-radius: 50%; box-shadow: 0 3px 10px rgb(15 35 25 / 35%); box-sizing: border-box; place-items: center; }
+.photo-poi-marker__photo { position: absolute; inset: 0; display: grid; overflow: hidden; background: #d8dfdd; border-radius: inherit; place-items: center; }
+.photo-poi-marker__backdrop { position: absolute; inset: -18%; width: 136%; height: 136%; object-fit: cover; filter: blur(3px) brightness(.72) saturate(.8); transform: scale(1.04); }
+.photo-poi-marker__image { position: relative; z-index: 1; display: block; width: 88%; height: 88%; object-fit: contain; filter: drop-shadow(0 1px 2px rgb(15 23 42 / 28%)); }
+.photo-poi-marker__glyph { display: grid; width: 19px; height: 19px; color: #fff; place-items: center; }
+.photo-poi-marker__glyph .status-marker-glyph { width: 18px; height: 18px; }
+.photo-poi-marker.selected { width: 48px; height: 48px; outline: 4px solid rgb(23 61 45 / 35%); }
+.photo-poi-marker.muted { opacity: .32; filter: grayscale(.72); }
+.photo-poi-marker.favorite::after { position: absolute; top: -1px; right: -1px; display: grid; width: 13px; height: 13px; color: #1f2937; background: #f6c445; border: 1px solid #fff; border-radius: 50%; content: '★'; font-size: 9px; font-weight: 900; line-height: 1; place-items: center; }
+.account-preference-toggle { justify-self: end; }
 @media (max-width: 760px) { .map-sidebar .sidebar-content { padding-bottom: 5.5rem; }.map-sidebar .place-form-submit { right: 50%; bottom: calc(58px + 0.75rem); transform: translateX(50%); } }
 
 /* POI editor: shared CartaVault form language. */
@@ -3478,6 +3497,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
   .starter-profile-grid > button { min-height: 4.3rem; }
   .starter-profile-config fieldset, .starter-profile-preview { grid-template-columns: 1fr; }
 }
+
 /* Multi-user access surfaces */
 .user-account-menu { position: relative; }
 .user-account-menu__trigger { display: flex; align-items: center; min-height: 2.75rem; gap: 0.55rem; padding: 0.2rem 0.4rem 0.2rem 0.2rem; color: var(--cv-color-navy); background: transparent; border: 0; border-radius: 0.65rem; cursor: pointer; font: inherit; }
@@ -3519,6 +3539,8 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-modal__header { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .75rem; padding: .9rem 1rem; border-bottom: 1px solid rgb(43 62 89 / 12%); }
 .account-modal__header .modal-header-close,
 .admin-console__header .modal-header-close { width: 1.8rem; height: 1.8rem; min-height: 1.8rem; flex-basis: 1.8rem; border-radius: .45rem; }
+.account-modal__header-actions { display: flex; align-items: center; gap: .45rem; }
+.account-modal__header-actions .account-modal__save { min-width: 6.7rem; justify-content: center; }
 .account-modal__header h2, .account-modal__header p { margin: 0; }.account-modal__header h2 { font-size: 1rem; }.account-modal__header p { color: var(--cv-color-gray); font-size: .72rem; }.account-modal__header span { display: inline-flex; align-items: center; gap: .25rem; margin-top: .25rem; color: var(--cv-color-teal); font-size: .68rem; font-weight: 700; }
 .account-avatar { display: grid; width: 2.6rem; height: 2.6rem; place-items: center; overflow: hidden; color: white; background: var(--cv-color-navy); border-radius: 50%; font-weight: 800; }.account-avatar.large { width: 5rem; height: 5rem; font-size: 1.35rem; }
 .account-modal__nav { display: flex; min-height: 0; flex-direction: column; gap: .25rem; padding: .75rem; background: var(--cv-color-mist); border-right: 1px solid rgb(43 62 89 / 10%); }.account-modal__nav button { display: flex; align-items: center; min-height: 2.55rem; gap: .6rem; padding: .5rem .65rem; color: var(--cv-color-slate); background: transparent; border: 0; border-radius: .5rem; cursor: pointer; font: inherit; font-size: .78rem; text-align: left; }.account-modal__nav button:hover, .account-modal__nav button[aria-current='page'] { color: var(--cv-color-navy); background: white; }.account-modal__nav button.danger { margin-top: auto; color: #a52a2a; }
@@ -3651,6 +3673,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-api-service-badge.is-success { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 11%, var(--cv-surface)); }
 .account-api-service-badge.is-error { color: var(--cv-color-danger); background: color-mix(in srgb, var(--cv-color-danger) 10%, var(--cv-surface)); }
 .account-api-service-badge.is-warning { color: #b54708; background: #fff0e5; }
+.account-api-service-badge.is-info { color: #2563eb; background: #eaf2ff; }
 .account-api-service-badge.is-loading { color: var(--cv-color-gray); }
 .account-api-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: .82rem; box-shadow: 0 1px 3px rgb(13 27 42 / 5%); }
 .account-api-summary__item { position: relative; display: grid; min-width: 0; min-height: 5.25rem; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .7rem; padding: 1rem .9rem; }
@@ -3667,16 +3690,18 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-api-no-credential { grid-template-columns: auto minmax(0, 1fr); }
 .account-api-no-credential > svg { color: var(--cv-color-teal); }
 .account-preference-card__icon, .account-credential__icon { display: grid; flex: 0 0 auto; width: 2.45rem; height: 2.45rem; color: var(--cv-color-teal); background: transparent; border-radius: .72rem; place-items: center; }
-.account-preference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.account-preference-field { display: grid; min-width: 0; align-content: start; gap: .38rem; padding: .2rem .65rem .7rem; }
-.account-preference-grid > .account-preference-field:nth-child(3n + 1) { padding-left: 0; }
-.account-preference-grid > .account-preference-field:nth-child(3n) { padding-right: 0; }
-.account-preference-grid > .account-preference-field:nth-child(n + 4) { padding-top: .75rem; padding-bottom: .05rem; border-top: 1px solid rgb(43 62 89 / 11%); }
+.account-preference-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:.55rem; }
+.account-preference-field { display: grid; min-width: 0; grid-template-columns:minmax(0,1fr) minmax(10rem, .75fr); align-items:center; gap:.75rem; padding:.72rem; background:var(--cv-surface); border:1px solid var(--cv-border-subtle); border-radius:.58rem; }
+.account-preference-grid > .account-preference-field { padding:.72rem; border:1px solid var(--cv-border-subtle); }
+.account-preference-grid > .account-preference-field:nth-child(n) { padding:.72rem; border:1px solid var(--cv-border-subtle); }
+.account-preference-field__identity { display:grid; min-width:0; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:.6rem; color:var(--cv-color-slate); }
+.account-preference-field__identity > svg { margin-top:.05rem; color:var(--cv-color-slate); }
+.account-preference-field__identity p { margin:.18rem 0 0; color:var(--cv-color-gray); font-size:.61rem; line-height:1.35; }
 .account-preference-field__label { display: flex; min-width: 0; align-items: center; gap: .38rem; color: var(--cv-color-slate); }
 .account-preference-field__label > svg { flex: 0 0 auto; }
 .account-preference-field__label > label { min-width: 0; color: inherit; font-size: .66rem; font-weight: 700; line-height: 1.25; }
 .account-preference-field > select, .account-preference-field > input { width: 100%; min-height: 2.45rem; font-weight: 400; }
-.account-timezone-combobox input { width: 100%; font-weight: 400; }
+.account-timezone-combobox :is(input, select) { width: 100%; font-weight: 400; }
 .account-field-with-help { display: grid; min-width: 0; gap: .2rem; }
 .account-field-with-help > div { display: inline-flex; align-items: center; width: fit-content; }
 .account-field-with-help > div > label { color: var(--cv-color-slate); font-size: .64rem; font-weight: 700; }
@@ -3686,6 +3711,10 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .account-modal .checkbox-field { font-weight: 500; }
 .account-checkbox-with-help, .status-checkbox-help__label { display: inline-flex; align-items: center; width: fit-content; }
 .account-integration-engine { padding: 0 0 .2rem; }
+.account-theme-choice { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); overflow:hidden; border:1px solid var(--cv-border-subtle); border-radius:.5rem; }
+.account-theme-choice button { display:inline-flex; min-width:0; min-height:2.35rem; align-items:center; justify-content:center; gap:.35rem; padding:.4rem; color:var(--cv-color-slate); background:var(--cv-surface); border:0; border-right:1px solid var(--cv-border-subtle); cursor:pointer; font:inherit; font-size:.65rem; }
+.account-theme-choice button:last-child { border-right:0; }
+.account-theme-choice button.is-selected { color:var(--cv-color-teal); background:color-mix(in srgb,var(--cv-color-teal) 8%,var(--cv-surface)); box-shadow:inset 0 0 0 1px var(--cv-color-teal); }
 .account-route-options { display: grid; margin-top: .05rem; }
 .account-route-options__heading { display: flex; align-items: center; gap: .38rem; padding: .1rem 0 .4rem; color: var(--cv-color-slate); }
 .account-route-options__heading h4 { margin: 0; color: var(--cv-color-navy); font-size: .7rem; }
@@ -6834,19 +6863,26 @@ body.cv-panel-resizing {
 .quota-profiles__toolbar button.is-active { color: #fff; background: var(--cv-color-teal); }
 .quota-profiles__toolbar button:focus-visible, .quota-carousel__arrow:focus-visible, .quota-carousel__pagination button:focus-visible, .quota-profile:focus-visible { outline: 2px solid var(--cv-color-teal); outline-offset: 2px; }
 .quota-profiles__empty { padding: 1.25rem; color: var(--cv-color-gray); text-align: center; }
-.quota-carousel { display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem; align-items: center; gap: .5rem; margin-bottom: 1rem; }
-.quota-carousel__viewport { overflow: hidden; padding: .55rem 0; }
-.quota-carousel__container { display: flex; transition: transform .22s ease; }
-.quota-carousel__slide { flex: 0 0 100%; min-width: 0; padding: 0 .45rem; }
+.quota-carousel { --quota-carousel-card-width: 76%; --quota-carousel-gap: 1rem; position: relative; margin-bottom: 1rem; }
+.quota-carousel__viewport { overflow: hidden; padding: .75rem 0; touch-action: pan-y; }
+.quota-carousel__container { display: grid; width: var(--quota-carousel-card-width); margin-inline: auto; grid-template: 1fr / minmax(0, 1fr); }
+.quota-carousel__slide { grid-area: 1 / 1; min-width: 0; opacity: 0; transform: scale(.78); transform-origin: center; transition: opacity .3s ease, transform .3s ease; pointer-events: none; }
+.quota-carousel__slide.is-current { z-index: 2; opacity: 1; transform: translateX(0) scale(1); pointer-events: auto; }
+.quota-carousel__slide.is-previous { z-index: 1; opacity: .72; transform: translateX(calc(-100% - var(--quota-carousel-gap))) scale(.84); cursor: pointer; pointer-events: auto; }
+.quota-carousel__slide.is-next { z-index: 1; opacity: .72; transform: translateX(calc(100% + var(--quota-carousel-gap))) scale(.84); cursor: pointer; pointer-events: auto; }
+.quota-carousel__slide.is-distant { pointer-events: none; }
+.quota-carousel__slide:not(.is-current) .quota-profile { pointer-events: none; }
 .quota-carousel .quota-profile { min-height: 13.25rem; cursor: pointer; }
 .quota-profile.is-selected { border-color: color-mix(in srgb, var(--cv-color-teal) 60%, var(--admin-border)); box-shadow: 0 .55rem 1.25rem rgb(15 166 138 / 12%); }
-.quota-carousel__arrow { display: inline-grid; width: 2.15rem; height: 2.15rem; place-items: center; border: 1px solid var(--admin-border); border-radius: .55rem; color: var(--cv-color-slate); background: var(--cv-color-surface, #fff); cursor: pointer; }
+.quota-carousel__arrow { position: absolute; z-index: 4; top: 50%; display: inline-grid; width: 2.15rem; height: 2.15rem; transform: translateY(-50%); place-items: center; border: 1px solid var(--admin-border); border-radius: .55rem; color: var(--cv-color-slate); background: var(--cv-color-surface, #fff); box-shadow: var(--cv-shadow-sm); cursor: pointer; }
+.quota-carousel__arrow--previous { left: .35rem; }
+.quota-carousel__arrow--next { right: .35rem; }
 .quota-carousel__arrow:disabled { opacity: .38; cursor: default; }
-.quota-carousel__pagination { grid-column: 2; display: flex; justify-content: center; gap: .35rem; margin-top: -.15rem; }
+.quota-carousel__pagination { display: flex; justify-content: center; gap: .35rem; margin-top: -.15rem; }
 .quota-carousel__pagination button { width: .42rem; height: .42rem; padding: 0; border: 0; border-radius: 99px; background: var(--admin-border); cursor: pointer; }
 .quota-carousel__pagination button.is-active { width: 1rem; background: var(--cv-color-teal); }
 @media (prefers-reduced-motion: reduce) { .quota-carousel__container { transition: none; } }
-@media (max-width: 700px) { .quota-carousel { grid-template-columns: 1.9rem minmax(0, 1fr) 1.9rem; gap: .2rem; }.quota-carousel__slide { padding: 0 .25rem; }.quota-profile__actions { flex-wrap: wrap; }.quota-profiles__toolbar button { font-size: 0; }.quota-profiles__toolbar button svg { width: 1rem; height: 1rem; } }
+@media (max-width: 700px) { .quota-carousel { --quota-carousel-card-width: 82%; --quota-carousel-gap: .65rem; }.quota-carousel__viewport { margin-inline: -.8rem; }.quota-carousel__arrow { width: 1.9rem; height: 1.9rem; }.quota-carousel__arrow--previous { left: -.15rem; }.quota-carousel__arrow--next { right: -.15rem; }.quota-profile__actions { flex-wrap: wrap; }.quota-profiles__toolbar button { font-size: 0; }.quota-profiles__toolbar button svg { width: 1rem; height: 1rem; } }
 
 .quota-profile-modal-overlay { z-index: calc(var(--cv-z-modal) + 40); }
 .quota-profile-modal.cv-modal { width: min(62rem, calc(100vw - 2rem)); max-height: min(88dvh, 52rem); padding: 0; overflow: hidden; color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: .9rem; box-shadow: var(--cv-shadow-float); }
@@ -14319,6 +14355,443 @@ html[data-theme='dark'] .danger-level-control {
   }
 }
 
+/* Interface preferences: full-width segmented theme and basemap selectors. */
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-grid {
+  grid-auto-flow: row;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(12rem, 1fr) minmax(24rem, 1.5fr);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide,
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide:nth-child(even) {
+  border-left: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(2n + 3):not(.account-preference-field--wide) {
+  border-left: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-segmented-choice {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: .5rem;
+}
+
+.account-modal .account-theme-choice {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.account-modal .account-basemap-choice {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.account-modal .account-segmented-choice button {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  padding: .38rem .3rem;
+  overflow: hidden;
+  color: var(--cv-color-slate);
+  background: var(--cv-surface);
+  border: 0;
+  border-right: 1px solid var(--cv-border-subtle);
+  font: inherit;
+  font-size: .61rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.account-modal .account-segmented-choice button:last-child {
+  border-right: 0;
+}
+
+.account-modal .account-segmented-choice button.is-selected {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface));
+  box-shadow: inset 0 0 0 1px var(--cv-color-teal);
+}
+
+.account-modal .account-segmented-choice button > svg {
+  width: .82rem;
+  height: .82rem;
+  flex: 0 0 .82rem;
+}
+
+@media (max-width: 900px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 1.35fr);
+  }
+
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(2n + 3):not(.account-preference-field--wide) {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+    grid-template-columns: 1fr;
+  }
+
+  .account-modal .account-basemap-choice {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-modal .account-basemap-choice button:nth-child(2) {
+    border-right: 0;
+  }
+
+  .account-modal .account-basemap-choice button:nth-child(n + 3) {
+    border-top: 1px solid var(--cv-border-subtle);
+  }
+}
+
+/* Preferences reference layout: one continuous settings grid and compact
+   service summary rows. */
+.account-modal .account-preferences-form > .account-preference-card:first-child {
+  gap: .65rem;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-grid {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: .62rem;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field {
+  min-height: 5.1rem;
+  padding: .8rem .9rem;
+  border: 0;
+  border-radius: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-grid,
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(odd),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+  border-left: 0 !important;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(even) {
+  border-left: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(n + 3) {
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(12rem, 1fr) minmax(24rem, 1.5fr);
+  border-left: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide:nth-child(2) {
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(3),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(5),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(7) {
+  border-left: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(4),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(6) {
+  border-left: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(7) {
+  position: relative;
+  overflow: visible;
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(7)::before {
+  position: absolute;
+  top: -1px;
+  left: 100%;
+  width: 100%;
+  border-top: 1px solid var(--cv-border-subtle);
+  content: '';
+  pointer-events: none;
+}
+
+.account-modal .account-integration-preferences {
+  gap: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.account-modal .account-integration-preferences__heading {
+  display: block;
+  padding: .85rem .95rem;
+  border-bottom: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-integration-preferences__heading h3 {
+  font-size: .92rem;
+}
+
+.account-modal .account-integration-preferences__heading p {
+  margin-top: .18rem;
+}
+
+.account-modal .account-integration-preferences__list {
+  display: grid;
+}
+
+.account-modal .account-integration-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(13rem, 1.35fr) minmax(14rem, 1.45fr) minmax(6rem, .6fr) 7.35rem;
+  align-items: center;
+  gap: .8rem;
+  padding: .72rem .95rem;
+  background: var(--cv-surface);
+}
+
+.account-modal .account-integration-row + .account-integration-row {
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-integration-row > header {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: .55rem;
+}
+
+.account-modal .account-integration-row > header > span {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
+  border-radius: .55rem;
+  place-items: center;
+}
+
+.account-modal .account-integration-row :is(h4, p, dl, dt, dd) {
+  margin: 0;
+}
+
+.account-modal .account-integration-row h4 {
+  color: var(--cv-color-navy);
+  font-size: .7rem;
+  line-height: 1.25;
+}
+
+.account-modal .account-integration-row p {
+  margin-top: .12rem;
+  color: var(--cv-color-gray);
+  font-size: .58rem;
+  line-height: 1.35;
+}
+
+.account-modal .account-integration-row dl {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.account-modal .account-integration-row dl > div {
+  display: grid;
+  min-width: 0;
+  gap: .18rem;
+}
+
+.account-modal .account-integration-row dt {
+  color: var(--cv-color-gray);
+  font-size: .57rem;
+  font-weight: 700;
+}
+
+.account-modal .account-integration-row dd {
+  overflow: hidden;
+  color: var(--cv-color-slate);
+  font-size: .64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-modal .account-integration-row__state {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.account-modal .account-integration-row__edit {
+  width: 7.35rem;
+  justify-content: space-between;
+}
+
+.account-integration-dialog-overlay {
+  position: fixed;
+  z-index: calc(var(--cv-z-modal) + 100);
+  inset: 0;
+  display: grid;
+  padding: 1rem;
+  background: rgb(13 27 42 / 52%);
+  place-items: center;
+}
+
+.account-integration-dialog {
+  width: min(31rem, calc(100vw - 2rem));
+  overflow: hidden;
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: .85rem;
+  box-shadow: var(--cv-shadow-md);
+}
+
+.account-integration-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .8rem .9rem;
+  border-bottom: 1px solid var(--cv-border-subtle);
+}
+
+.account-integration-dialog > header :is(p, h3) {
+  margin: 0;
+}
+
+.account-integration-dialog > header p {
+  color: var(--cv-color-teal);
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.account-integration-dialog > header h3 {
+  margin-top: .08rem;
+  font-size: .92rem;
+}
+
+.account-integration-dialog__content {
+  display: grid;
+  gap: .7rem;
+  padding: .9rem;
+}
+
+.account-integration-dialog__content > p {
+  margin: 0;
+  color: var(--cv-color-gray);
+  font-size: .66rem;
+  line-height: 1.45;
+}
+
+.account-integration-dialog__content > label {
+  display: grid;
+  gap: .3rem;
+  color: var(--cv-color-slate);
+  font-size: .64rem;
+  font-weight: 700;
+}
+
+.account-integration-dialog__content label small {
+  color: var(--cv-color-gray);
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.account-integration-dialog__content select {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: .4rem .55rem;
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border: 1px solid rgb(43 62 89 / 24%);
+  border-radius: .5rem;
+  font: inherit;
+  font-size: .68rem;
+  font-weight: 400;
+}
+
+.account-integration-dialog__warning {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .55rem .65rem;
+  color: #b54708 !important;
+  background: #fff5e8;
+  border: 1px solid #f5d29b;
+  border-radius: .5rem;
+}
+
+.account-integration-dialog > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: .45rem;
+  padding: .72rem .9rem;
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+@media (max-width: 900px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(even) {
+    border-left: 0;
+  }
+
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 1.35fr);
+  }
+
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(n + 2) {
+    border-top: 1px solid var(--cv-border-subtle);
+  }
+
+  .account-modal .account-integration-row {
+    grid-template-columns: minmax(0, 1fr) 7.35rem;
+  }
+
+  .account-modal .account-integration-row dl,
+  .account-modal .account-integration-row__state {
+    grid-column: 1;
+  }
+
+  .account-modal .account-integration-row__edit {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .account-modal .account-integration-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-modal .account-integration-row__edit {
+    width: 100%;
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .account-integration-dialog-overlay {
+    padding: 0;
+  }
+
+  .account-integration-dialog {
+    width: 100vw;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+}
+
 /* Mobile dialogs live inside the application frame. The white application bar
    and the bottom navigation remain reachable, rather than being covered by a
    browser-like full-screen overlay. */
@@ -14352,17 +14825,18 @@ html[data-theme='dark'] .danger-level-control {
 
   .admin-console-overlay .admin-console { height: 100%; }
 
-  /* The POI editor is a workspace view on touch devices, not a cropped sheet.
-     It occupies precisely the available canvas area and keeps its form scrollable. */
+  /* POI creation and editing are full-screen tasks on touch devices. Keep the
+     editor above both application bars and let only its content scroll. */
   .map-workspace .map-sidebar.map-editor-panel {
-    position: absolute;
-    z-index: calc(var(--cv-z-panel) + 8);
+    position: fixed;
+    z-index: calc(var(--cv-z-toast) + 30);
     inset: 0 !important;
     display: grid;
     width: 100% !important;
-    height: 100% !important;
+    height: 100dvh !important;
     max-width: none !important;
     max-height: none !important;
+    margin: 0 !important;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -14376,7 +14850,7 @@ html[data-theme='dark'] .danger-level-control {
 
   .map-workspace .map-editor-panel .sidebar-content {
     min-height: 0;
-    padding-bottom: 4.75rem;
+    padding-bottom: calc(.85rem + env(safe-area-inset-bottom));
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
@@ -14432,10 +14906,10 @@ html[data-theme='dark'] .danger-level-control {
 .place-links-editor > header h3 { font-size: .9rem; font-weight: 700; }
 .place-links-editor > header p { font-size: .72rem; line-height: 1.35; }
 .google-maps-icon { display: block; flex: 0 0 auto; object-fit: cover; }
-.totp-setup { display:grid; grid-template-columns:7.5rem minmax(0, 1fr); align-items:center; gap:.85rem; margin:.7rem 0; }.totp-qr-code { display:block; width:7.5rem; margin:0; padding:.35rem; background:#fff; border:1px solid var(--cv-border-subtle); border-radius:.45rem; image-rendering:auto; }.totp-setup__key { display:grid; gap:.35rem; min-width:0; }.totp-setup__key > span, .totp-setup__code { color:var(--cv-color-slate); font-size:.72rem; font-weight:700; }.totp-setup__key code { overflow:hidden; color:var(--cv-color-navy); font:600 .78rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow:ellipsis; white-space:nowrap; user-select:all; }.totp-setup__key > div { display:flex; gap:.35rem; }.totp-setup__key .panel-icon-button { width:2rem; height:2rem; padding:0; }.totp-setup__code { display:grid; width:min(13rem, 100%); gap:.3rem; }.totp-setup__code input { min-height:var(--account-control-height); padding:.36rem .52rem; font-size:var(--account-text-size); font-weight:400; }.account-security-card > .account-button { min-height:var(--account-control-height); padding:.32rem .58rem; border-radius:var(--account-control-radius); font-size:var(--account-text-size); }
+.totp-setup { display:grid; grid-template-columns:7.5rem minmax(0, 1fr); align-items:center; gap:.85rem; margin:.7rem 0; }.totp-qr-code { display:block; width:7.5rem; margin:0; padding:.35rem; background:#fff; border:1px solid var(--cv-border-subtle); border-radius:.45rem; image-rendering:auto; }.totp-setup__key { display:grid; gap:.35rem; min-width:0; }.totp-setup__key > span { color:var(--cv-color-slate); font-size:.72rem; font-weight:700; }.totp-setup__key code { overflow:hidden; color:var(--cv-color-navy); font:600 .78rem/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow:ellipsis; white-space:nowrap; user-select:all; }.totp-setup__key > div { display:flex; gap:.35rem; }.totp-setup__key .panel-icon-button { width:2rem; height:2rem; padding:0; }.totp-setup__code { display:grid; width:min(13rem, 100%); gap:.3rem; color:var(--cv-color-slate); font-size:.68rem; font-weight:700; }.totp-setup__code input { min-height:var(--account-control-height); padding:.36rem .52rem; font-size:var(--account-text-size); font-weight:400; }.account-security-card > .account-button { min-height:var(--account-control-height); padding:.32rem .58rem; border-radius:var(--account-control-radius); font-size:var(--account-text-size); }
 .account-security-mfa { max-width:none; }.account-security-mfa__methods { display:grid; gap:.85rem; }.account-security-mfa__method { display:grid; gap:.55rem; min-width:0; padding:.8rem 0 0; border-top:1px solid var(--cv-border-subtle); }.account-security-mfa__method:first-child { padding-top:.1rem; border-top:0; }.account-security-mfa__method .preference-card-heading { margin:0; }.account-security-mfa__method > label { display:grid; gap:.25rem; color:var(--cv-color-slate); font-size:var(--account-text-size); font-weight:700; }.account-security-mfa__method > label input { width:100%; min-height:var(--account-control-height); padding:.36rem .52rem; color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid rgb(43 62 89 / 18%); border-radius:var(--account-control-radius); font:inherit; font-size:var(--account-text-size); font-weight:400; }.account-security-mfa__method > label input::placeholder { font-weight:400; }.account-security-mfa__method .dialog-actions { margin-top:.05rem; }.account-security-mfa__method > .account-button { justify-self:start; }
 .account-modal .form-alert { margin:0; padding:.48rem .6rem; border-radius:var(--account-control-radius); font-size:var(--account-text-size); font-weight:500; line-height:1.35; }
-.account-security-dashboard { display:grid; gap:0; padding-bottom:.2rem; }
+.account-security-dashboard { --account-security-action-width:7.65rem; display:grid; gap:0; padding-bottom:.2rem; }
 .account-security-summary, .account-security-block { display:grid; gap:.7rem; padding-bottom:1rem; border-bottom:1px solid var(--cv-border-subtle); }
 .account-security-block, .account-security-sessions, .account-security-danger { margin-top:1rem; }
 .account-security-section-title { display:flex; align-items:center; gap:.65rem; }
@@ -14457,16 +14931,16 @@ html[data-theme='dark'] .danger-level-control {
 .account-security-action-card__button { display:flex; width:100%; height:var(--cv-button-height); min-height:var(--cv-button-height); max-height:var(--cv-button-height); align-items:center; align-self:end; justify-content:space-between; padding:var(--cv-button-padding-block) var(--cv-button-padding-inline); color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid var(--cv-border-strong); border-radius:var(--cv-button-radius); cursor:pointer; font:inherit; font-size:var(--cv-button-font-size); font-weight:var(--cv-button-font-weight); line-height:1; }
 .account-security-action-card__button:hover { color:var(--cv-color-teal); border-color:rgb(16 169 143 / 45%); }
 .account-security-action-list { overflow:hidden; background:var(--cv-surface); border:1px solid var(--cv-border-subtle); border-radius:.65rem; }
-.account-security-action-list > article { --account-security-status-width:7.35rem; --account-security-action-width:6.35rem; display:grid; min-width:0; grid-template-columns:1.9rem minmax(0,1fr) var(--account-security-status-width) var(--account-security-action-width) auto; align-items:center; gap:.65rem; padding:.62rem .7rem; border-bottom:1px solid var(--cv-border-subtle); }
+.account-security-action-list > article { --account-security-status-width:7.35rem; display:grid; min-width:0; grid-template-columns:1.9rem minmax(0,1fr) var(--account-security-status-width) var(--account-security-action-width); align-items:center; gap:.65rem; padding:.62rem .7rem; border-bottom:1px solid var(--cv-border-subtle); }
 .account-security-action-list > article:last-child { border-bottom:0; }
 .account-security-action-row__icon { display:grid; width:1.9rem; height:1.9rem; color:var(--cv-color-teal); background:transparent; border-radius:.5rem; place-items:center; }
 .account-security-action-list h3, .account-security-action-list p { margin:0; }
 .account-security-action-list h3 { font-size:.7rem; }
 .account-security-action-list p { margin-top:.16rem; color:var(--cv-color-gray); font-size:.6rem; }
 .account-security-action-list .account-api-service-badge { justify-self:start; }
-.account-security-action-list .account-button { width:var(--account-security-action-width); justify-content:center; }
-.account-security-action-list > article > svg { color:var(--cv-color-gray); }
+.account-security-action-list .account-button { width:var(--account-security-action-width); justify-content:space-between; }
 .account-security-sessions, .account-security-danger { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:.65rem; padding:.72rem; background:var(--cv-surface); border:1px solid var(--cv-border-subtle); border-radius:.65rem; }
+.account-security-sessions > .account-button, .account-security-danger > .account-button { width:var(--account-security-action-width); justify-content:space-between; }
 .account-security-sessions h3, .account-security-sessions p, .account-security-danger h3, .account-security-danger p { margin:0; }
 .account-security-sessions h3, .account-security-danger h3 { font-size:.76rem; }
 .account-security-sessions p, .account-security-danger p { margin-top:.2rem; color:var(--cv-color-gray); font-size:.62rem; }
@@ -14474,7 +14948,7 @@ html[data-theme='dark'] .danger-level-control {
 .account-security-danger .account-security-section-title__icon { color:#b42318; background:#fee9e7; }
 .account-security-danger h3 { color:#b42318; }
 .account-security-dialog-overlay { position:fixed; inset:0; z-index:calc(var(--cv-z-modal) + 45); display:grid; padding:1rem; place-items:center; background:rgb(13 27 42 / 52%); }
-.account-security-dialog { width:min(31rem,calc(100vw - 2rem)); max-height:min(44rem,calc(100dvh - 2rem)); overflow:hidden; color:var(--cv-color-navy); background:var(--cv-color-off-white); border:1px solid var(--cv-border-subtle); border-radius:.85rem; box-shadow:var(--cv-shadow-md); }
+.account-security-dialog { --account-control-height:1.9rem; --account-control-radius:.5rem; --account-text-size:.64rem; width:min(31rem,calc(100vw - 2rem)); max-height:min(44rem,calc(100dvh - 2rem)); overflow:hidden; color:var(--cv-color-navy); background:var(--cv-color-off-white); border:1px solid var(--cv-border-subtle); border-radius:.85rem; box-shadow:var(--cv-shadow-md); }
 .account-security-dialog--wide { width:min(42rem,calc(100vw - 2rem)); }
 .account-security-dialog > header { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:.65rem; padding:.8rem .9rem; background:var(--cv-surface); border-bottom:1px solid var(--cv-border-subtle); }
 .account-security-dialog > header > span { display:grid; width:2rem; height:2rem; color:var(--cv-color-teal); background:transparent; border-radius:.5rem; place-items:center; }
@@ -14485,13 +14959,15 @@ html[data-theme='dark'] .danger-level-control {
 .account-security-dialog__form, .account-security-dialog .account-security-dialog__form { display:grid; max-width:none; gap:.65rem; margin:0; padding:0; background:transparent; border:0; border-radius:0; }
 .account-security-dialog__form > label { display:grid; gap:.25rem; color:var(--cv-color-slate); font-size:var(--account-text-size); font-weight:700; }
 .account-security-dialog__form input { width:100%; min-height:var(--account-control-height); padding:.36rem .52rem; color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid rgb(43 62 89 / 18%); border-radius:var(--account-control-radius); font:inherit; font-size:var(--account-text-size); font-weight:400; }
+.account-security-dialog .account-card-description { font-size:.66rem; line-height:1.45; }
+.account-security-dialog .account-security-dialog__form > label { font-size:var(--account-text-size) !important; line-height:1.3; }
+.account-security-dialog .account-security-dialog__form input { font-size:var(--account-text-size) !important; line-height:1.3; }
 .account-security-dialog__sessions-actions { display:flex; align-items:center; justify-content:space-between; gap:.7rem; }
 .account-security-dialog .account-sessions { margin:.7rem 0 0; }
 @media (max-width:800px) {
   .account-security-action-list > article { grid-template-columns:auto minmax(0,1fr) auto; }
   .account-security-action-list .account-api-service-badge { grid-column:2; }
   .account-security-action-list .account-button { grid-column:2; justify-self:start; }
-  .account-security-action-list > article > svg { grid-column:3; grid-row:1 / span 3; }
 }
 @media (max-width:560px) {
   .account-security-summary__grid, .account-security-access-grid { grid-template-columns:1fr; }
@@ -14504,6 +14980,13 @@ html[data-theme='dark'] .danger-level-control {
 }
 .account-security-group { max-width:none; margin:0; padding:0; overflow:hidden; }.account-security-group__toggle, .account-security-group__toggle:hover, .account-security-group__toggle:active, .account-security-group__toggle:focus-visible { display:grid; grid-template-columns:auto minmax(0, 1fr) auto; align-items:center; width:100%; gap:.55rem; padding:.78rem .85rem; color:var(--cv-color-navy); background:transparent !important; border:0; box-shadow:none; cursor:pointer; font:inherit; outline:0; text-align:left; transform:none; transition:none; }.account-security-group__toggle h3 { margin:0; font-size:.82rem; }.account-security-group__toggle > svg { transition:none; }.account-security-group--expanded .account-security-group__toggle > svg { transform:rotate(180deg); }.account-security-group__content { display:grid; gap:.65rem; padding:.7rem .85rem .85rem; border-top:0; }.account-security-group__content > .account-form { max-width:none; margin:0; padding:.7rem 0 0; border:0; border-radius:0; }.account-security-group__content .account-security-mfa { padding:0; }.account-security-mfa > .account-preference-card__heading { display:none; }.account-security-mfa .account-security-card { max-width:none; margin:0; padding:.7rem 0 0; background:transparent; border:0; border-top:1px solid var(--cv-border-subtle); border-radius:0; }.account-security-mfa .account-security-card:first-child { padding-top:.1rem; border-top:0; }.account-security-mfa .account-security-card label { display:grid; gap:.25rem; color:var(--cv-color-slate); font-size:var(--account-text-size); font-weight:700; }.account-security-mfa .account-security-card label input { width:100%; min-height:var(--account-control-height); padding:.36rem .52rem; color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid rgb(43 62 89 / 18%); border-radius:var(--account-control-radius); font:inherit; font-size:var(--account-text-size); font-weight:400; }.account-security-mfa .account-security-card label input::placeholder { font-weight:400; }.account-security-mfa .account-preference-card__heading { gap:.42rem; }.account-security-mfa .account-preference-card__heading .account-preference-card__icon { width:1.8rem; height:1.8rem; }.account-security-mfa .account-preference-card__heading .account-preference-card__icon svg { width:.9rem; height:.9rem; }.account-security-mfa .account-preference-card__heading h3 { font-size:.74rem; }
 .totp-recovery-codes { margin:.5rem 0; padding:.7rem; overflow:auto; color:var(--cv-color-navy); background:var(--cv-surface-muted); border:1px solid var(--cv-border-subtle); border-radius:.5rem; font:600 .8rem/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; user-select:all; }
+
+/* The security dialog is portalled outside .account-modal: keep this label
+   explicit so generic dialog label rules cannot restore the oversized text. */
+.account-security-dialog .account-security-dialog__form > label.totp-setup__code {
+  font-size: .64rem !important;
+  line-height: 1.25;
+}
 
 .contact-modal-overlay { position:fixed; z-index:1200; inset:0; display:grid; padding:1.5rem; background:rgb(8 20 35 / 48%); place-items:center; }
 .contact-modal { display:grid; width:min(35rem, 100%); max-height:min(42rem, calc(100dvh - 3rem)); overflow:hidden auto; color:var(--cv-color-navy); background:var(--cv-surface); border:1px solid var(--cv-border-subtle); border-radius:.8rem; box-shadow:0 1.2rem 3rem rgb(8 20 35 / 24%); }
@@ -14561,6 +15044,8 @@ html[data-theme='dark'] .danger-level-control {
 
   .account-overlay,
   .admin-console-overlay {
+    inset: 0 !important;
+    z-index: calc(var(--cv-z-toast) + 20);
     padding: 0 !important;
     place-items: stretch;
   }
@@ -15039,6 +15524,197 @@ html[data-theme='dark'] .create-map-dialog .dialog-actions > .cv-action-button.i
   }
 }
 
+/* Account preferences: keep this final, scoped layer isolated from the legacy
+   API catalogue selectors above. */
+.account-modal .account-preferences-form {
+  gap: 1rem;
+}
+
+.account-modal .account-preferences-form > .account-preference-card {
+  gap: .75rem;
+  padding: .9rem;
+}
+
+.account-modal .account-preference-grid {
+  gap: .55rem;
+}
+
+.account-modal .account-preference-grid > .account-preference-field {
+  min-height: 4.25rem;
+  grid-template-columns: minmax(10.75rem, .85fr) minmax(12.5rem, 1.15fr);
+  gap: .7rem;
+  padding: .65rem .72rem;
+}
+
+.account-modal .account-preference-field__identity {
+  align-items: center;
+}
+
+.account-modal .account-preference-field__identity > svg {
+  margin-top: 0;
+}
+
+.account-modal .account-preference-field__label :is(label, span) {
+  color: var(--cv-color-slate);
+  font-size: .66rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.account-modal .account-preference-field__identity p {
+  margin-top: .14rem;
+}
+
+.account-modal .account-theme-choice {
+  width: 100%;
+  min-width: 0;
+}
+
+.account-modal .account-theme-choice button {
+  min-height: 2.25rem;
+  gap: .25rem;
+  padding-inline: .28rem;
+  overflow: visible;
+  font-size: .61rem;
+  white-space: nowrap;
+}
+
+.account-modal .account-theme-choice button > svg {
+  width: .8rem;
+  height: .8rem;
+  flex: 0 0 .8rem;
+}
+
+.account-modal .account-integration-preferences__heading {
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  align-items: center;
+  gap: .65rem;
+}
+
+.account-modal .account-integration-preferences__heading > span,
+.account-modal .account-integration-service > header > span {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 9%, var(--cv-surface));
+  border-radius: .58rem;
+  place-items: center;
+}
+
+.account-modal .account-integration-preferences__grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: .65rem;
+}
+
+.account-modal .account-integration-preferences__grid > .account-integration-service {
+  display: grid !important;
+  min-width: 0;
+  min-height: 12rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  align-content: start;
+  gap: .55rem;
+  padding: .72rem;
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-subtle);
+  border-radius: .62rem;
+}
+
+.account-modal .account-integration-service > header {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  align-items: start;
+  gap: .55rem;
+}
+
+.account-modal .account-integration-service > header > span {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.account-modal .account-integration-service > header h4 {
+  color: var(--cv-color-navy);
+  font-size: .72rem;
+  line-height: 1.25;
+}
+
+.account-modal .account-integration-service > header p {
+  min-height: 2.15rem;
+  margin-top: .12rem;
+  font-size: .59rem;
+  line-height: 1.35;
+}
+
+.account-modal .account-integration-control {
+  display: grid !important;
+  width: 100%;
+  grid-template-columns: 5.1rem minmax(0, 1fr);
+  align-items: center;
+  gap: .45rem;
+  margin: 0;
+  color: var(--cv-color-slate);
+  font-size: .61rem;
+  font-weight: 700;
+}
+
+.account-modal .account-integration-control select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.15rem;
+  padding: .38rem .5rem;
+  font-size: .62rem;
+  font-weight: 400;
+}
+
+.account-modal .account-integration-state {
+  display: inline-flex !important;
+  width: fit-content;
+  min-height: 1.35rem;
+  align-items: center;
+  align-self: end;
+  gap: .25rem;
+  margin-top: auto;
+  padding: .15rem .42rem;
+  border-radius: .35rem;
+  font-size: .58rem !important;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.account-modal .account-integration-state.is-neutral {
+  color: var(--cv-color-gray);
+  background: var(--cv-color-mist);
+  border: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-integration-preferences__note {
+  padding-top: .05rem;
+}
+
+@media (max-width: 900px) {
+  .account-modal .account-preference-grid,
+  .account-modal .account-integration-preferences__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-modal .account-integration-preferences__grid > .account-integration-service {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .account-modal .account-preference-grid > .account-preference-field {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Consultation d'un POI : les liens reprennent la hiérarchie visuelle de l'éditeur, sans actions de gestion. */
 .place-map-popup .popup-links a.popup-links__item {
   display: grid;
@@ -15107,6 +15783,122 @@ html[data-theme='dark'] .profile-import-dialog > footer > .cv-home-action-button
 .profile-import-dialog > footer > .cv-home-action-button svg {
   width: .88rem;
   height: .88rem;
+}
+
+/* Profile imports keep the desktop grid and become a tactile, full-screen
+   carousel on mobile. The selected card always drives the preview below it. */
+.profile-import-carousel { display: contents; }
+.profile-import-carousel__arrow { display: none; }
+@media (max-width: 760px) {
+  .profile-import-overlay.cv-overlay {
+    position: fixed;
+    inset: 0 !important;
+    z-index: calc(var(--cv-z-toast) + 30);
+    display: grid;
+    padding: 0 !important;
+    place-items: stretch;
+  }
+  .profile-import-overlay > .profile-import-dialog.cv-modal {
+    display: grid;
+    width: 100%;
+    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .profile-import-dialog__body {
+    display: grid;
+    min-height: 0;
+    grid-template-rows: auto 20rem;
+    align-content: start;
+    padding: .8rem .65rem;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+  .profile-import-carousel {
+    position: relative;
+    display: block;
+    min-width: 0;
+    padding-inline: 1.25rem;
+  }
+  .profile-import-grid {
+    display: flex;
+    width: 100%;
+    gap: .65rem;
+    padding: .15rem max(9%, .45rem) .45rem;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-padding-inline: 9%;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+  .profile-import-grid::-webkit-scrollbar { display: none; }
+  .profile-import-grid > button {
+    width: 82%;
+    min-width: 82%;
+    min-height: 6rem;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    transition: opacity 150ms ease, transform 150ms ease;
+  }
+  .profile-import-grid > button:not(.selected) {
+    opacity: .62;
+    transform: scale(.94);
+  }
+  .profile-import-carousel__arrow {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    place-items: center;
+    color: var(--cv-color-navy);
+    background: var(--cv-surface);
+    border: 1px solid var(--cv-border-strong);
+    border-radius: .55rem;
+    box-shadow: var(--cv-shadow-sm);
+    transform: translateY(-50%);
+  }
+  .profile-import-carousel__arrow svg { width: 1rem; height: 1rem; }
+  .profile-import-carousel__arrow--previous { left: 0; }
+  .profile-import-carousel__arrow--next { right: 0; }
+  .profile-import-carousel__arrow:disabled { opacity: .35; }
+  .profile-import-preview {
+    display: grid;
+    min-height: 0;
+    height: 20rem;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+  .profile-import-preview ul {
+    min-height: 0;
+    max-height: none;
+    grid-template-columns: 1fr;
+    grid-auto-rows: 2.35rem;
+    align-content: start;
+    padding-right: .15rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+  }
+  .profile-import-preview li {
+    height: 2.35rem;
+    min-height: 2.35rem;
+    max-height: 2.35rem;
+    box-sizing: border-box;
+  }
+  .profile-import-dialog > footer {
+    padding: .7rem max(.85rem, env(safe-area-inset-right)) calc(.7rem + env(safe-area-inset-bottom)) max(.85rem, env(safe-area-inset-left));
+    background: var(--cv-surface);
+  }
 }
 
 /*
@@ -15194,7 +15986,7 @@ html[data-theme='dark'] .profile-import-dialog > footer > .cv-home-action-button
 .admin-user-quota-overlay { z-index: 90; padding: 2rem; }.admin-user-quota-dialog { display: grid; gap: .8rem; width: min(25rem, 100%); }.admin-user-quota-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: .7rem; border-bottom: 1px solid var(--admin-border); }.admin-user-quota-dialog h2 { margin: .15rem 0 0; font-size: 1rem; }.admin-user-quota-dialog > p { margin: 0; color: var(--cv-color-gray); font-size: .7rem; line-height: 1.45; }.admin-user-quota-dialog > label { display: grid; gap: .3rem; color: var(--cv-color-slate); font-size: .66rem; font-weight: 700; }.admin-user-quota-dialog select { min-height: 2.1rem; padding: .35rem .5rem; color: var(--cv-color-slate); background: var(--admin-card); border: 1px solid var(--admin-border); border-radius: .5rem; font: inherit; font-size: .67rem; }.admin-user-quota-dialog footer { display: flex; justify-content: flex-end; gap: .45rem; padding-top: .1rem; }
 /* Personal API key catalogue and per-service assignments. */
 .account-api-catalog__header, .account-api-catalog__item, .account-integration-preferences__grid article { display: flex; align-items: center; gap: .75rem; }
-.account-api-catalog__header { justify-content: space-between; margin-bottom: 1rem; }.account-api-catalog__header h3, .account-integration-preferences h3 { margin: 0; font-size: 1rem; }.account-api-catalog__header p, .account-integration-preferences p, .account-api-catalog__item p { margin: .2rem 0 0; color: var(--muted-foreground); font-size: .8rem; }.account-api-catalog__list { display: grid; gap: .55rem; }.account-api-catalog__item { padding: .7rem .8rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--card); }.account-api-catalog__item > div:nth-child(2) { min-width: 0; flex: 1; }.account-api-catalog__item h4 { margin: 0; font-size: .9rem; }.account-api-catalog__provider { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: .55rem; background: var(--primary-soft); color: var(--primary); font-weight: 800; }.account-api-catalog__actions { display: flex; align-items: center; gap: .35rem; }.account-api-catalog__actions button { min-height: var(--cv-button-height, 2rem); padding: .32rem .55rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--card); color: var(--foreground); font: inherit; font-size: .78rem; font-weight: 650; }.account-api-catalog__actions button.danger { color: var(--danger); }.account-api-catalog__empty { margin: 0; padding: 1.2rem; text-align: center; border: 1px dashed var(--border); border-radius: .65rem; color: var(--muted-foreground); }.account-integration-preferences { margin-top: 1rem; }.account-integration-preferences > header { margin-bottom: .9rem; }.account-integration-preferences__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }.account-integration-preferences__grid article { align-items: flex-start; flex-wrap: wrap; padding: .8rem; border: 1px solid var(--border); border-radius: .65rem; }.account-integration-preferences__grid article > svg { color: var(--primary); flex: 0 0 auto; }.account-integration-preferences__grid article > div { min-width: 0; flex: 1; }.account-integration-preferences__grid h4 { margin: 0; font-size: .9rem; }.account-integration-preferences__grid .account-preference-field { width: 100%; margin: 0; }
+.account-api-catalog__header { justify-content: space-between; margin-bottom: 1rem; }.account-api-catalog__header h3 { margin: 0; font-size: 1rem; }.account-api-catalog__header p, .account-api-catalog__item p { margin: .2rem 0 0; color: var(--muted-foreground); font-size: .8rem; }.account-api-catalog__list { display: grid; gap: .55rem; }.account-api-catalog__item { padding: .7rem .8rem; border: 1px solid var(--border); border-radius: .7rem; background: var(--card); }.account-api-catalog__item > div:nth-child(2) { min-width: 0; flex: 1; }.account-api-catalog__item h4 { margin: 0; font-size: .9rem; }.account-api-catalog__provider { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: .55rem; background: var(--primary-soft); color: var(--primary); font-weight: 800; }.account-api-catalog__actions { display: flex; align-items: center; gap: .35rem; }.account-api-catalog__actions button { min-height: var(--cv-button-height, 2rem); padding: .32rem .55rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--card); color: var(--foreground); font: inherit; font-size: .78rem; font-weight: 650; }.account-api-catalog__actions button.danger { color: var(--danger); }.account-api-catalog__empty { margin: 0; padding: 1.2rem; text-align: center; border: 1px dashed var(--border); border-radius: .65rem; color: var(--muted-foreground); }.account-integration-preferences { margin-top: 0; }.account-integration-preferences__heading { display:flex; align-items:center; gap:.65rem; }.account-integration-preferences__heading > span, .account-integration-service > header > span { display:grid; flex:0 0 auto; width:2.35rem; height:2.35rem; color:var(--cv-color-teal); background:color-mix(in srgb,var(--cv-color-teal) 9%,var(--cv-surface)); border-radius:.58rem; place-items:center; }.account-integration-preferences__heading h3, .account-integration-preferences__heading p { margin:0; }.account-integration-preferences__heading h3 { font-size:.92rem; }.account-integration-preferences__heading p { margin-top:.18rem; color:var(--cv-color-gray); font-size:.64rem; }.account-integration-preferences__grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }.account-integration-service { display:grid; min-width:0; align-content:start; gap:.65rem; padding:.75rem; border:1px solid var(--cv-border-subtle); border-radius:.65rem; }.account-integration-service > header { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.6rem; }.account-integration-service h4, .account-integration-service p { margin:0; }.account-integration-service h4 { font-size:.74rem; }.account-integration-service p { margin-top:.15rem; color:var(--cv-color-gray); font-size:.61rem; line-height:1.4; }.account-integration-control { display:grid; grid-template-columns:6rem minmax(0,1fr); align-items:center; gap:.5rem; color:var(--cv-color-slate); font-size:.62rem; font-weight:700; }.account-integration-control select { min-width:0; min-height:2.1rem; font-size:.65rem; font-weight:400; }.account-integration-state { display:inline-flex; width:fit-content; min-height:1.35rem; align-items:center; gap:.25rem; padding:.15rem .42rem; border-radius:.35rem; font-size:.59rem; font-weight:750; }.account-integration-state.is-success { color:#087b65; background:#e4f6f1; border:1px solid #b7e8dc; }.account-integration-state.is-warning { color:#b54708; background:#fff5e8; border:1px solid #f5d29b; }.account-integration-preferences__note { display:flex; align-items:center; gap:.5rem; color:var(--cv-color-gray); }.account-integration-preferences__note p { margin:0; font-size:.61rem; }.account-integration-preferences__note svg { color:var(--cv-color-gray); }
 @media (max-width: 800px) { .account-integration-preferences__grid { grid-template-columns: 1fr; }.account-api-catalog__item { flex-wrap: wrap; }.account-api-catalog__actions { width: 100%; justify-content: flex-end; } }
 /* User account > API keys: detailed CartaVault key catalogue. */
 .account-api-key-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 1.35rem 0; padding: 1.15rem; background: var(--card); border: 1px solid var(--border); border-radius: .9rem; box-shadow: var(--cv-shadow-sm); }.account-api-key-summary__item { display: flex; align-items: center; justify-content: center; gap: .7rem; min-width: 0; padding: .15rem 1rem; }.account-api-key-summary__item + .account-api-key-summary__item { border-left: 1px solid var(--border); }.account-api-key-summary__item > span { display: grid; width: 2.55rem; height: 2.55rem; color: var(--primary); background: var(--primary-soft); border-radius: 50%; place-items: center; }.account-api-key-summary__item.is-warning > span { color: #d97706; background: #fff4df; }.account-api-key-summary__item > div { display: grid; gap: .1rem; }.account-api-key-summary__item strong { color: var(--foreground); font-size: 1.35rem; line-height: 1.1; }.account-api-key-summary__item small { color: var(--muted-foreground); font-size: .75rem; white-space: nowrap; }
@@ -15255,3 +16047,448 @@ html[data-theme='dark'] .profile-import-dialog > footer > .cv-home-action-button
 .admin-api-catalog .account-api-key-card.is-readonly dl { margin-top: auto !important; }
 .account-api-key-card__logo.is-resend img { width: 1.7rem; height: 1.7rem; }
 @media (max-width: 720px) { .admin-api-key-provider-choice { grid-template-columns: 1fr; } }
+
+/* API key catalog on phones: show one complete card per viewport. The desktop
+   catalog intentionally keeps three fixed columns, so it must be overridden
+   after those rules rather than relying on the earlier generic mobile grid. */
+@media (max-width: 720px) {
+  .account-api-catalog {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .account-api-catalog__header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .account-api-catalog__header > div {
+    min-width: 0;
+    flex: 1 1 12rem;
+  }
+
+  .account-api-catalog__header > button {
+    flex: 0 0 auto;
+  }
+
+  .account-api-catalog__cards {
+    width: calc(100% + .5rem);
+    max-width: calc(100% + .5rem);
+    grid-template-columns: none !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: calc(100% - .5rem) !important;
+    gap: .65rem !important;
+    margin: -.25rem -.25rem -.2rem !important;
+    padding: .45rem .25rem .7rem !important;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-padding-inline: .25rem;
+    scroll-snap-type: x mandatory;
+  }
+
+  .account-api-catalog__cards .account-api-key-card {
+    min-width: 0;
+    width: 100% !important;
+    max-width: 100%;
+    scroll-snap-align: start;
+  }
+
+  .account-api-catalog__cards .account-api-key-card > header {
+    min-height: 4.25rem;
+  }
+
+  .account-api-catalog__cards .account-api-key-card > header > div {
+    min-width: 0;
+  }
+
+  .account-api-catalog__cards .account-api-key-card > header h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-api-catalog__cards .account-api-key-card > header > b {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .account-api-catalog__cards .account-api-key-card__secret {
+    margin-left: 2.65rem !important;
+  }
+
+  .account-api-catalog__cards .account-api-key-card dl {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: .5rem;
+  }
+
+  .account-api-catalog__cards .account-api-key-card dl :is(dt, dd) {
+    min-width: 0;
+  }
+
+  .account-api-catalog__cards .account-api-key-card footer {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Final account preferences layout. Keep after the legacy account catalogue
+   layer so older integration selectors cannot override this screen. */
+.account-modal .account-preferences-form,
+.account-modal .account-preferences-form > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(10.5rem, .95fr);
+  gap: .7rem;
+  padding: .78rem .85rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(even) {
+  border-left: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(n + 3) {
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preference-field__identity,
+.account-modal .account-preference-field__identity > div,
+.account-modal .account-preference-field > :is(select, input),
+.account-modal .account-timezone-combobox,
+.account-modal .account-timezone-combobox :is(input, select),
+.account-modal .account-theme-choice {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.account-modal .account-theme-choice {
+  width: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.account-modal .account-theme-choice button {
+  min-width: 0;
+  padding-inline: .22rem;
+  overflow: hidden;
+  font-size: .59rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-modal .account-integration-preferences {
+  display: block !important;
+  min-width: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.account-modal .account-integration-preferences__heading {
+  display: block !important;
+  width: auto !important;
+  min-width: 0;
+  grid-template-columns: none !important;
+  padding: .8rem .95rem;
+  border-bottom: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-integration-preferences__heading > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.account-modal .account-integration-preferences__heading h3,
+.account-modal .account-integration-preferences__heading p {
+  max-width: none;
+  margin: 0;
+  white-space: normal;
+}
+
+.account-modal .account-integration-preferences__heading h3 {
+  font-size: .86rem;
+  line-height: 1.25;
+}
+
+.account-modal .account-integration-preferences__heading p {
+  margin-top: .16rem;
+  font-size: .61rem;
+  line-height: 1.4;
+}
+
+.account-modal .account-integration-preferences__list {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
+.account-modal .account-integration-row {
+  box-sizing: border-box;
+  display: grid !important;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(12rem, 1.4fr) minmax(13rem, 1.35fr) minmax(6rem, .58fr) 6.35rem;
+  align-items: center;
+  gap: .7rem;
+  padding: .68rem .95rem;
+  overflow: hidden;
+}
+
+.account-modal .account-integration-row > header,
+.account-modal .account-integration-row dl,
+.account-modal .account-integration-row dl > div,
+.account-modal .account-integration-row__state {
+  min-width: 0;
+}
+
+.account-modal .account-integration-row dd {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-modal .account-integration-row__edit {
+  box-sizing: border-box;
+  width: 6.35rem !important;
+  min-width: 0 !important;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(even) {
+    border-left: 0;
+  }
+
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(n + 2) {
+    border-top: 1px solid var(--cv-border-subtle);
+  }
+
+  .account-modal .account-integration-row {
+    grid-template-columns: minmax(0, 1fr) 6.35rem;
+  }
+
+  .account-modal .account-integration-row dl,
+  .account-modal .account-integration-row__state {
+    grid-column: 1;
+  }
+
+  .account-modal .account-integration-row__edit {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field {
+    grid-template-columns: 1fr;
+  }
+
+  .account-modal .account-basemap-choice {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-modal .account-basemap-choice button:nth-child(2) {
+    border-right: 0;
+  }
+
+  .account-modal .account-basemap-choice button:nth-child(n + 3) {
+    border-top: 1px solid var(--cv-border-subtle);
+  }
+
+  .account-modal .account-integration-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-modal .account-integration-row__edit {
+    width: 100% !important;
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+/* Definitive interface grid ordering: theme and basemap are the first two
+   full-width rows, followed by the paired account preferences. */
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(12rem, 1fr) minmax(24rem, 1.5fr);
+  border-left: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide:nth-child(2) {
+  border-top: 1px solid var(--cv-border-subtle);
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(3),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(5),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(7) {
+  border-left: 0;
+}
+
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(4),
+.account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field:nth-child(6) {
+  border-left: 1px solid var(--cv-border-subtle);
+}
+
+@media (max-width: 900px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 1.35fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .account-modal .account-preferences-form > .account-preference-card:first-child .account-preference-field--wide {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep every option aligned on an equal-width column. Global button rules
+   must not resize the selected segment according to its label. */
+.account-modal .account-theme-choice,
+.account-modal .account-basemap-choice {
+  display: grid !important;
+  align-items: stretch;
+}
+
+.account-modal .account-theme-choice {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.account-modal .account-basemap-choice {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.account-modal .account-theme-choice > button,
+.account-modal .account-basemap-choice > button {
+  position: relative;
+  box-sizing: border-box;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  justify-self: stretch;
+  border-radius: 0 !important;
+}
+
+.account-modal .account-theme-choice > button:first-child,
+.account-modal .account-basemap-choice > button:first-child {
+  border-radius: calc(.5rem - 1px) 0 0 calc(.5rem - 1px) !important;
+}
+
+.account-modal .account-theme-choice > button:last-child,
+.account-modal .account-basemap-choice > button:last-child {
+  border-radius: 0 calc(.5rem - 1px) calc(.5rem - 1px) 0 !important;
+}
+
+.account-modal .account-theme-choice > button.is-selected,
+.account-modal .account-basemap-choice > button.is-selected {
+  z-index: 1;
+  box-shadow: inset 0 0 0 1px var(--cv-color-teal) !important;
+}
+
+@media (max-width: 560px) {
+  .account-modal .account-basemap-choice {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .account-modal .account-basemap-choice > button:nth-child(2) {
+    border-radius: 0 calc(.5rem - 1px) 0 0 !important;
+  }
+
+  .account-modal .account-basemap-choice > button:nth-child(3) {
+    border-radius: 0 0 0 calc(.5rem - 1px) !important;
+  }
+
+  .account-modal .account-basemap-choice > button:last-child {
+    border-radius: 0 0 calc(.5rem - 1px) 0 !important;
+  }
+}
+
+/* Final shared geometry for status labels in User and Administration panels.
+   Colour remains controlled by each label's semantic class. */
+:is(
+  .account-api-service-badge,
+  .account-integration-state,
+  .account-security-status,
+  .account-credential__status,
+  .account-api-key-card > header > b,
+  .account-api-key-summary__item > div > b,
+  .account-personal-api-summary__item > div > b,
+  .cv-user-card__badges span,
+  .cv-admin-section__status,
+  .admin-console__badges span,
+  .admin-console__credential-grid header > span,
+  .admin-console__health > span,
+  .admin-console__setting-status,
+  .admin-console__pending-state,
+  .admin-users__summary b,
+  .admin-users__identity b,
+  .admin-users__quota b,
+  .instance-status__badge,
+  .quota-profile__badges span,
+  .quota-profile-modal__badges b
+) {
+  display: inline-flex;
+  width: fit-content;
+  min-height: var(--cv-label-height);
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cv-label-gap);
+  padding: var(--cv-label-padding-block) var(--cv-label-padding-inline);
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: var(--cv-label-radius);
+  font-size: var(--cv-label-font-size);
+  font-weight: var(--cv-label-font-weight);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+:is(
+  .account-api-service-badge,
+  .account-integration-state,
+  .account-security-status,
+  .account-credential__status,
+  .account-api-key-card > header > b,
+  .account-api-key-summary__item > div > b,
+  .account-personal-api-summary__item > div > b,
+  .cv-user-card__badges span,
+  .cv-admin-section__status,
+  .admin-console__badges span,
+  .admin-console__credential-grid header > span,
+  .admin-console__health > span,
+  .admin-console__setting-status,
+  .admin-console__pending-state,
+  .admin-users__summary b,
+  .admin-users__identity b,
+  .admin-users__quota b,
+  .instance-status__badge,
+  .quota-profile__badges span,
+  .quota-profile-modal__badges b
+) > svg {
+  width: .72rem;
+  height: .72rem;
+  flex: 0 0 auto;
+}

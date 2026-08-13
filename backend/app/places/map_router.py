@@ -15,6 +15,7 @@ from app.places.filtering import PlaceFilters, apply_place_filters, get_place_fi
 from app.places.filters import MapBounds, get_required_map_bounds
 from app.places.map_schemas import MapStatusRead, PlaceMapPageRead, PlaceMapRead
 from app.places.models import Place
+from app.photos.models import Photo
 from app.statuses.models import PlaceStatus
 from app.tags.associations import place_tags_table
 from app.tags.models import Tag
@@ -157,6 +158,13 @@ def get_map_places(
     for place_id, tag_id in tag_rows:
         tag_ids.setdefault(place_id, []).append(tag_id)
 
+    primary_photo_ids = dict(database_session.execute(
+        select(Photo.place_id, Photo.id)
+        .where(Photo.place_id.in_(place_ids))
+        .distinct(Photo.place_id)
+        .order_by(Photo.place_id, Photo.is_primary.desc(), Photo.sort_order, Photo.id)
+    ).all()) if place_ids else {}
+
     items = [
         PlaceMapRead(
             id=place.id,
@@ -169,6 +177,7 @@ def get_map_places(
                 color=place.status.color,
             ),
             primary_category_icon=primary_category_icons.get(place.id),
+            primary_photo_id=primary_photo_ids.get(place.id),
             category_ids=category_ids.get(place.id, []),
             tag_ids=tag_ids.get(place.id, []),
             is_favorite=place.is_favorite,

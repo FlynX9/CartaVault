@@ -10,7 +10,10 @@ function Location() {
 }
 
 describe('MainNavigation', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
   it('opens the dashboard and keeps it as the only active navigation entry', () => {
     const onOpenDashboard = vi.fn()
@@ -92,6 +95,25 @@ describe('MainNavigation', () => {
 
     expect(onWorkspacePanelToggle).toHaveBeenCalledWith('categories')
     expect(onPanelChange).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['categories', 0],
+    ['tags', 1],
+    ['statuses', 2],
+    ['annotation-templates', 3],
+  ] as const)('keeps the active %s panel open after a repeated mobile selection', (panel, menuIndex) => {
+    const onPanelChange = vi.fn()
+    const onWorkspacePanelToggle = vi.fn()
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    render(<MemoryRouter><MainNavigation activePanel={panel} onPanelChange={onPanelChange} onWorkspacePanelToggle={onWorkspacePanelToggle} isAdmin /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
+    fireEvent.click(screen.getAllByRole('menuitem')[menuIndex])
+
+    expect(onWorkspacePanelToggle).not.toHaveBeenCalled()
+    expect(onPanelChange).not.toHaveBeenCalled()
+    expect(screen.queryByRole('menu', { name: 'Organisation' })).not.toBeInTheDocument()
   })
 
   it('exposes annotations and trash from the mobile Organisation menu', () => {

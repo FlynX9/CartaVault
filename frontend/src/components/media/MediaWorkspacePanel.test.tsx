@@ -89,6 +89,7 @@ describe('MediaWorkspacePanel', () => {
       const dialog = await screen.findByRole('dialog', { name: 'chapelle.webp' })
       fireEvent.click(within(dialog).getByRole('button', { name: 'Créer un POI' }))
       expect(onCreate).toHaveBeenCalledTimes(2)
+      expect(screen.queryByRole('dialog', { name: 'chapelle.webp' })).not.toBeInTheDocument()
     } finally {
       window.removeEventListener('cartavault:create-place-from-media', onCreate)
     }

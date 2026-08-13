@@ -63,9 +63,11 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     defaults = integration_client.get("/account/preferences")
     assert defaults.status_code == 200
     assert defaults.json()["language"] == "fr"
+    assert defaults.json()["default_theme"] == "system"
     assert defaults.json()["preferred_basemap"] == "cartavault-light"
+    assert defaults.json()["photo_markers_enabled"] is False
     assert defaults.json()["routing"]["provider"] == "osrm"
-    assert set(defaults.json()["routing"]) == {"provider"}
+    assert set(defaults.json()["routing"]) == {"provider", "api_key_id"}
     providers = integration_client.get("/routing/providers")
     assert providers.status_code == 200
     assert providers.json()["default_provider"] == "osrm"
@@ -73,23 +75,25 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
 
     updated = integration_client.put(
         "/account/preferences",
-        json={"language": "en", "preferred_basemap": "satellite", "density": "spacious", "startup_panel": "dashboard", "timezone": "Europe/Paris", "routing": {"provider": "osrm"}},
+        json={"language": "en", "default_theme": "dark", "preferred_basemap": "cartavault-light", "density": "spacious", "startup_panel": "dashboard", "timezone": "Europe/Paris", "photo_markers_enabled": True, "routing": {"provider": "osrm"}},
         headers=headers,
     )
     assert updated.status_code == 200 and updated.json()["density"] == "spacious"
     assert updated.json()["language"] == "en"
+    assert updated.json()["default_theme"] == "dark"
     assert updated.json()["startup_panel"] == "dashboard"
     assert updated.json()["routing"]["provider"] == "osrm"
+    assert updated.json()["photo_markers_enabled"] is True
     unavailable = integration_client.put(
         "/account/preferences",
-        json={**updated.json(), "routing": {**updated.json()["routing"], "provider": "google"}},
+        json={**updated.json(), "routing": {"provider": "google"}},
         headers=headers,
     )
     assert unavailable.status_code == 409
-    assert unavailable.json()["detail"]["code"] == "ROUTING_CREDENTIAL_NOT_VERIFIED"
+    assert unavailable.json()["detail"]["code"] == "ROUTING_CREDENTIAL_REQUIRED"
     credential = UserApiCredential(
         user_id=auth_user.id,
-        provider="google_routes",
+        provider="google",
         encrypted_secret="test-ciphertext",
         encryption_version=1,
         secret_last4="fake",
@@ -99,13 +103,15 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     database_session.flush()
     google = integration_client.put(
         "/account/preferences",
-        json={**updated.json(), "routing": {"provider": "google"}},
+        json={**updated.json(), "routing": {"provider": "google", "api_key_id": str(credential.id)}},
         headers=headers,
     )
     assert google.status_code == 200
     assert google.json()["routing"]["provider"] == "google"
-    assert set(google.json()["routing"]) == {"provider"}
+    assert set(google.json()["routing"]) == {"provider", "api_key_id"}
     assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
     reset = integration_client.post("/account/preferences/reset", headers=headers)
     assert reset.status_code == 200 and reset.json()["density"] == "compact"
     assert reset.json()["language"] == "fr"
+    assert reset.json()["photo_markers_enabled"] is False
+    assert reset.json()["default_theme"] == "system"

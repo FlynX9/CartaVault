@@ -178,3 +178,6 @@ def test_unassigned_media_without_gps_can_still_start_manual_place_creation(
     assert uploaded.json()["latitude"] is None
     assert uploaded.json()["longitude"] is None
     assert uploaded.json()["can_create_place"] is True
+
+    deleted = integration_client.delete(f"/media/{uploaded.json()['id']}")
+    assert deleted.status_code == 204

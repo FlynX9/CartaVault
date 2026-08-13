@@ -13,14 +13,6 @@ const empty = () => new URLSearchParams()
 export const getGoogleSatelliteStatus = (signal?: AbortSignal) => getJson('/basemaps/google-satellite/status', empty(), signal) as Promise<GoogleSatelliteStatus>
 export const createGoogleSatelliteSession = (signal?: AbortSignal) => sendJson('/basemaps/google-satellite/session', 'POST', {}, signal) as Promise<GoogleSatelliteSession>
 export const reportGoogleSatelliteUsage = (event: Record<string, number>) => sendBodyWithoutResponse('/basemaps/google-satellite/usage', 'POST', event)
-export const getGoogleSatelliteCredential = (signal?: AbortSignal) => getJson('/account/integrations/google-map-tiles', empty(), signal) as Promise<GoogleSatelliteCredentialStatus>
-export const storeGoogleSatelliteCredential = (apiKey: string) => sendJson('/account/integrations/google-map-tiles', 'PUT', { api_key: apiKey }) as Promise<GoogleSatelliteCredentialStatus>
-export const verifyGoogleSatelliteCredential = () => sendJson('/account/integrations/google-map-tiles/verify', 'POST', {}) as Promise<GoogleSatelliteCredentialStatus>
-export const deleteGoogleSatelliteCredential = (currentPassword: string) => sendJson('/account/integrations/google-map-tiles', 'DELETE', { current_password: currentPassword }) as Promise<{ deleted: boolean; provider_reset: boolean; basemap: 'cartavault-light' }>
 export const getGoogleSatelliteAdminStatus = (signal?: AbortSignal) => getJson('/admin/console/google-satellite', empty(), signal) as Promise<GoogleSatelliteAdminStatus>
 export const saveGoogleSatelliteSettings = (settings: GoogleSatelliteAdminStatus['settings']) => sendJson('/admin/console/google-satellite/settings', 'PUT', settings) as Promise<GoogleSatelliteAdminStatus>
 export const resetGoogleSatelliteErrors = () => sendJson('/admin/console/google-satellite/reset-errors', 'POST', {}) as Promise<GoogleSatelliteAdminStatus>
-
-export interface GoogleSatelliteCredentialStatus {
-  configured: boolean; last4: string | null; verified: boolean; verified_at: string | null; last_used_at: string | null; last_error_code: string | null
-}

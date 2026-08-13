@@ -159,7 +159,7 @@ function MediaDetails({ media, onClose, onChanged, onOpenPlace, onCreatePlace }:
       </div>}
       {error && <p className="form-alert" role="alert">{error}</p>}
       <footer>
-        {media.can_create_place && <button type="button" className="secondary-button" onClick={() => onCreatePlace(media)}><MapPin size={16} />Créer un POI</button>}
+        {media.can_create_place && <button type="button" className="secondary-button" onClick={() => { onClose(); onCreatePlace(media) }}><MapPin size={16} />Créer un POI</button>}
         {media.place && <button type="button" className="secondary-button" onClick={() => onOpenPlace(media)}><MapPin size={16} />Ouvrir le lieu</button>}
         <a className="secondary-button" href={getMediaDownloadUrl(media.id)}><Download size={16} />Télécharger</a>
         {media.can_edit && <button type="button" className="primary-button" data-cv-save="true" disabled={busy} onClick={() => void save()}>Enregistrer</button>}

@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialDeletion, GooglePlacesCredentialStatus, GoogleRoutesCredentialDeletion, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialDeletion, OpenRouteServiceCredentialStatus, PersonalApiKey, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../types/account'
+import type { AccountPreferences, AccountProfile, AccountSession, PersonalApiKey, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../types/account'
 
 export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
 
@@ -17,7 +17,15 @@ export async function getEmailMfaStatus(): Promise<{ enabled: boolean; verified_
 export async function startEmailMfaSetup(current_password: string): Promise<{ challenge_token: string }> { return sendJson('/account/security/email-mfa/setup', 'POST', { current_password }) as Promise<{ challenge_token: string }> }
 export async function confirmEmailMfaSetup(challenge_token: string, code: string): Promise<void> { await sendJson('/account/security/email-mfa/confirm', 'POST', { challenge_token, code }) }
 export async function disableEmailMfa(current_password: string): Promise<void> { await sendBodyWithoutResponse('/account/security/email-mfa/disable', 'POST', { current_password }) }
-export async function startTotpSetup(): Promise<TotpSetup> { return sendJson('/account/security/totp/setup', 'POST', {}) as Promise<TotpSetup> }
+let pendingTotpSetup: Promise<TotpSetup> | null = null
+
+export function startTotpSetup(): Promise<TotpSetup> {
+  if (pendingTotpSetup) return pendingTotpSetup
+
+  pendingTotpSetup = (sendJson('/account/security/totp/setup', 'POST', {}) as Promise<TotpSetup>)
+    .finally(() => { pendingTotpSetup = null })
+  return pendingTotpSetup
+}
 export async function confirmTotpSetup(code: string): Promise<TotpRecoveryCodes> { return sendJson('/account/security/totp/confirm', 'POST', { code }) as Promise<TotpRecoveryCodes> }
 export async function regenerateTotpRecoveryCodes(current_password: string, code: string): Promise<TotpRecoveryCodes> { return sendJson('/account/security/totp/recovery-codes/regenerate', 'POST', { current_password, code }) as Promise<TotpRecoveryCodes> }
 export async function disableTotp(current_password: string, code: string): Promise<void> { await sendBodyWithoutResponse('/account/security/totp/disable', 'POST', { current_password, code }) }
@@ -32,15 +40,3 @@ export async function createPersonalApiKey(data: { name: string; provider: 'goog
 export async function updatePersonalApiKey(id: string, data: { name?: string; api_key?: string }): Promise<PersonalApiKey> { return sendJson(`/account/api-keys/${encodeURIComponent(id)}`, 'PATCH', data) as Promise<PersonalApiKey> }
 export async function verifyPersonalApiKey(id: string): Promise<PersonalApiKey> { return sendJson(`/account/api-keys/${encodeURIComponent(id)}/verify`, 'POST', {}) as Promise<PersonalApiKey> }
 export async function deletePersonalApiKey(id: string): Promise<void> { await sendWithoutResponse(`/account/api-keys/${encodeURIComponent(id)}`, 'DELETE') }
-export async function getGoogleRoutesCredential(signal?: AbortSignal): Promise<GoogleRoutesCredentialStatus> { return getJson('/account/integrations/google-routes', new URLSearchParams(), signal) as Promise<GoogleRoutesCredentialStatus> }
-export async function storeGoogleRoutesCredential(apiKey: string): Promise<GoogleRoutesCredentialStatus> { return sendJson('/account/integrations/google-routes', 'PUT', { api_key: apiKey }) as Promise<GoogleRoutesCredentialStatus> }
-export async function verifyGoogleRoutesCredential(): Promise<GoogleRoutesCredentialStatus> { return sendJson('/account/integrations/google-routes/verify', 'POST', {}) as Promise<GoogleRoutesCredentialStatus> }
-export async function deleteGoogleRoutesCredential(currentPassword: string): Promise<GoogleRoutesCredentialDeletion> { return sendJson('/account/integrations/google-routes', 'DELETE', { current_password: currentPassword }) as Promise<GoogleRoutesCredentialDeletion> }
-export async function getGooglePlacesCredential(signal?: AbortSignal): Promise<GooglePlacesCredentialStatus> { return getJson('/account/integrations/google-places', new URLSearchParams(), signal) as Promise<GooglePlacesCredentialStatus> }
-export async function storeGooglePlacesCredential(apiKey: string): Promise<GooglePlacesCredentialStatus> { return sendJson('/account/integrations/google-places', 'PUT', { api_key: apiKey }) as Promise<GooglePlacesCredentialStatus> }
-export async function verifyGooglePlacesCredential(): Promise<GooglePlacesCredentialStatus> { return sendJson('/account/integrations/google-places/verify', 'POST', {}) as Promise<GooglePlacesCredentialStatus> }
-export async function deleteGooglePlacesCredential(currentPassword: string): Promise<GooglePlacesCredentialDeletion> { return sendJson('/account/integrations/google-places', 'DELETE', { current_password: currentPassword }) as Promise<GooglePlacesCredentialDeletion> }
-export async function getOpenRouteServiceCredential(signal?: AbortSignal): Promise<OpenRouteServiceCredentialStatus> { return getJson('/account/integrations/openrouteservice', new URLSearchParams(), signal) as Promise<OpenRouteServiceCredentialStatus> }
-export async function storeOpenRouteServiceCredential(apiKey: string): Promise<OpenRouteServiceCredentialStatus> { return sendJson('/account/integrations/openrouteservice', 'PUT', { api_key: apiKey }) as Promise<OpenRouteServiceCredentialStatus> }
-export async function verifyOpenRouteServiceCredential(): Promise<OpenRouteServiceCredentialStatus> { return sendJson('/account/integrations/openrouteservice/verify', 'POST', {}) as Promise<OpenRouteServiceCredentialStatus> }
-export async function deleteOpenRouteServiceCredential(currentPassword: string): Promise<OpenRouteServiceCredentialDeletion> { return sendJson('/account/integrations/openrouteservice', 'DELETE', { current_password: currentPassword }) as Promise<OpenRouteServiceCredentialDeletion> }

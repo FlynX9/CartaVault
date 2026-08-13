@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type MouseEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react'
 import { ChevronLeft, ChevronRight, Copy, GalleryHorizontal, List, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 
 import { createQuotaProfile, deleteQuotaProfile, duplicateQuotaProfile, getQuotaProfiles, getQuotaRegistry, setDefaultQuotaProfile, updateQuotaProfile } from '../../../api/adminConsole'
@@ -16,22 +16,57 @@ function formatLimit(value: number | null, unit: string) {
   return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(value / 1024 ** 3)} Gio`
 }
 
+function quotaProfileName(profile: QuotaProfile) {
+  return profile.is_system && profile.name === 'Unlimited' ? 'Illimité' : profile.name
+}
+
 function QuotaProfileCard({ profile, registry, selected, variant, onSelect, onAction }: { profile: QuotaProfile; registry: QuotaRegistryItem[]; selected: boolean; variant: ViewMode; onSelect: () => void; onAction: (kind: 'edit' | 'duplicate' | 'default' | 'delete') => void }) {
   const stop = (callback: () => void) => (event: MouseEvent) => { event.stopPropagation(); callback() }
   return <article className={`admin-console__card quota-profile quota-profile--${variant} ${selected ? 'is-selected' : ''}`} aria-current={selected ? 'true' : undefined} tabIndex={0} onClick={onSelect} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect() } }}>
-    <header><div><h3>{profile.name}</h3><div className="quota-profile__badges">{profile.is_default && <span>Par défaut</span>}{profile.is_system && <span>Système</span>}</div></div><strong>{profile.assigned_users_count} utilisateur(s)</strong></header>
+    <header><div><h3>{quotaProfileName(profile)}</h3><div className="quota-profile__badges">{profile.is_default && <span>Par défaut</span>}{profile.is_system && <span>Système</span>}</div></div><strong>{profile.assigned_users_count} utilisateur(s)</strong></header>
     <p>{profile.description || 'Aucune description.'}</p>
     <dl>{registry.slice(0, 4).map((item) => <div key={item.key}><dt>{item.label}</dt><dd>{formatLimit(profile.limits[item.key], item.unit)}</dd></div>)}</dl>
     <small>Mis à jour le {new Date(profile.updated_at).toLocaleDateString('fr-FR')}</small>
-    <footer className="admin-console__actions quota-profile__actions"><button type="button" onClick={stop(() => onAction('edit'))}><Pencil size={15} />Modifier</button><button type="button" onClick={stop(() => onAction('duplicate'))}><Copy size={15} />Dupliquer</button><button type="button" disabled={profile.is_default || !profile.is_active} title={profile.is_default ? 'Ce profil est déjà le profil par défaut.' : 'Profil indisponible.'} onClick={stop(() => onAction('default'))}><Star size={15} />Par défaut</button><button className="danger" type="button" disabled={profile.is_system || profile.is_default || profile.assigned_users_count > 0} title={profile.assigned_users_count > 0 ? 'Réaffectez les utilisateurs avant suppression.' : ''} onClick={stop(() => onAction('delete'))}><Trash2 size={15} />Supprimer</button></footer>
+    <footer className="admin-console__actions quota-profile__actions"><button type="button" disabled={profile.is_system} title={profile.is_system ? 'Le profil système Illimité ne peut pas être modifié.' : ''} onClick={stop(() => onAction('edit'))}><Pencil size={15} />Modifier</button><button type="button" onClick={stop(() => onAction('duplicate'))}><Copy size={15} />Dupliquer</button><button type="button" disabled={profile.is_default || !profile.is_active} title={profile.is_default ? 'Ce profil est déjà le profil par défaut.' : 'Profil indisponible.'} onClick={stop(() => onAction('default'))}><Star size={15} />Par défaut</button><button className="danger" type="button" disabled={profile.is_system || profile.is_default || profile.assigned_users_count > 0} title={profile.assigned_users_count > 0 ? 'Réaffectez les utilisateurs avant suppression.' : ''} onClick={stop(() => onAction('delete'))}><Trash2 size={15} />Supprimer</button></footer>
   </article>
 }
 
 function QuotaProfilesCarousel({ profiles, registry, selectedProfileId, onSelect, onAction }: { profiles: QuotaProfile[]; registry: QuotaRegistryItem[]; selectedProfileId: string | null; onSelect: (id: string) => void; onAction: (profile: QuotaProfile, kind: 'edit' | 'duplicate' | 'default' | 'delete') => void }) {
   const selectedIndex = Math.max(0, profiles.findIndex((profile) => profile.id === selectedProfileId))
-  const selectIndex = useCallback((index: number) => { const profile = profiles[index]; if (profile) onSelect(profile.id) }, [onSelect, profiles])
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const selectIndex = useCallback((index: number) => {
+    if (profiles.length === 0) return
+    const profile = profiles[(index + profiles.length) % profiles.length]
+    if (profile) onSelect(profile.id)
+  }, [onSelect, profiles])
+  const startSwipe = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0]
+    if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY }
+  }
+  const finishSwipe = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current
+    const touch = event.changedTouches[0]
+    touchStart.current = null
+    if (!start || !touch) return
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+    if (Math.abs(deltaX) < 42 || Math.abs(deltaX) <= Math.abs(deltaY)) return
+    selectIndex(selectedIndex + (deltaX < 0 ? 1 : -1))
+  }
   if (profiles.length === 0) return <p className="quota-profiles__empty">Aucun profil de quotas.</p>
-  return <section className="quota-carousel" aria-label="Profils de quotas"><button className="quota-carousel__arrow" type="button" aria-label="Profil précédent" title="Profil précédent" disabled={selectedIndex === 0} onClick={() => selectIndex(selectedIndex - 1)}><ChevronLeft size={18} /></button><div className="quota-carousel__viewport"><div className="quota-carousel__container" style={{ transform: `translateX(-${selectedIndex * 100}%)` }}>{profiles.map((profile) => <div className="quota-carousel__slide" key={profile.id}><QuotaProfileCard profile={profile} registry={registry} selected={profile.id === selectedProfileId} variant="carousel" onSelect={() => onSelect(profile.id)} onAction={(kind) => onAction(profile, kind)} /></div>)}</div></div><button className="quota-carousel__arrow" type="button" aria-label="Profil suivant" title="Profil suivant" disabled={selectedIndex >= profiles.length - 1} onClick={() => selectIndex(selectedIndex + 1)}><ChevronRight size={18} /></button>{profiles.length > 1 && <div className="quota-carousel__pagination" aria-label={`Profil ${selectedIndex + 1} sur ${profiles.length}`}>{profiles.map((profile, index) => <button key={profile.id} type="button" className={index === selectedIndex ? 'is-active' : ''} aria-label={`Afficher ${profile.name}`} aria-current={index === selectedIndex ? 'true' : undefined} onClick={() => selectIndex(index)} />)}</div>}</section>
+  const previousIndex = (selectedIndex - 1 + profiles.length) % profiles.length
+  const nextIndex = (selectedIndex + 1) % profiles.length
+  return <section className="quota-carousel" aria-label="Profils de quotas">
+    <div className="quota-carousel__viewport" onTouchStart={startSwipe} onTouchEnd={finishSwipe}>
+      <div className="quota-carousel__container">{profiles.map((profile, index) => {
+        const position = index === selectedIndex ? 'is-current' : profiles.length > 1 && index === previousIndex ? 'is-previous' : profiles.length > 2 && index === nextIndex ? 'is-next' : 'is-distant'
+        return <div className={`quota-carousel__slide ${position}`} key={profile.id} aria-hidden={index !== selectedIndex} onClick={index === selectedIndex ? undefined : () => selectIndex(index)}><QuotaProfileCard profile={profile} registry={registry} selected={profile.id === selectedProfileId} variant="carousel" onSelect={() => onSelect(profile.id)} onAction={(kind) => onAction(profile, kind)} /></div>
+      })}</div>
+    </div>
+    <button className="quota-carousel__arrow quota-carousel__arrow--previous" type="button" aria-label="Profil précédent" title="Profil précédent" disabled={profiles.length < 2} onClick={() => selectIndex(selectedIndex - 1)}><ChevronLeft size={18} /></button>
+    <button className="quota-carousel__arrow quota-carousel__arrow--next" type="button" aria-label="Profil suivant" title="Profil suivant" disabled={profiles.length < 2} onClick={() => selectIndex(selectedIndex + 1)}><ChevronRight size={18} /></button>
+    {profiles.length > 1 && <div className="quota-carousel__pagination" aria-label={`Profil ${selectedIndex + 1} sur ${profiles.length}`}>{profiles.map((profile, index) => <button key={profile.id} type="button" className={index === selectedIndex ? 'is-active' : ''} aria-label={`Afficher ${profile.name}`} aria-current={index === selectedIndex ? 'true' : undefined} onClick={() => selectIndex(index)} />)}</div>}
+  </section>
 }
 
 export function QuotaProfilesPage() {

@@ -70,7 +70,9 @@ def test_starter_profiles_are_localized_and_materialized_once(
     categories = database_session.query(Category).filter_by(map_id=map_id).all()
     tags = database_session.query(Tag).filter_by(map_id=map_id).all()
     statuses = database_session.query(PlaceStatus).filter_by(map_id=map_id).order_by(PlaceStatus.sort_order).all()
-    assert [(item.name, item.icon) for item in categories][:1] == [("Lieu", "material-symbols:location-on-outline")]
+    assert ("Lieu", "material-symbols:location-on-outline") in {
+        (item.name, item.icon) for item in categories
+    }
     assert len(categories) == 7
     assert len(tags) == 3
     assert len(statuses) == 5

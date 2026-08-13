@@ -26,6 +26,11 @@ const nearbyPlace: MapPlace = {
   longitude: 2.00001,
 }
 
+const photographedPlace: MapPlace = {
+  ...place,
+  primary_photo_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+}
+
 afterEach(cleanup)
 
 function MapHarness({ initiallySelected = false, markerFilter }: { initiallySelected?: boolean; markerFilter?: { query: string; categoryId: string; statusId: string | null; tagId: string } }) {
@@ -60,6 +65,18 @@ function MapHarness({ initiallySelected = false, markerFilter }: { initiallySele
 }
 
 describe('PoiMap selection lifecycle', () => {
+  it('uses only circular markers in photo mode, including the status/category fallback', async () => {
+    const { container, rerender } = render(
+      <PoiMap places={[photographedPlace]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 13 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="photo-marker" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} photoMarkersEnabled />,
+    )
+    expect(await screen.findByTitle('Manufacture')).toBeVisible()
+    expect(container.querySelector('.photo-poi-marker__image')).toBeInTheDocument()
+    expect(container.querySelector('.status-marker')).not.toBeInTheDocument()
+
+    rerender(<PoiMap places={[place]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 13 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="photo-marker" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} photoMarkersEnabled />)
+    await waitFor(() => expect(container.querySelector('.photo-poi-marker__glyph')).toBeInTheDocument())
+    expect(container.querySelector('.status-marker')).not.toBeInTheDocument()
+  })
   it('keeps marker selection independent while measurement mode is active', async () => {
     const onPlaceSelect = vi.fn()
     const onMeasurementPointAdd = vi.fn()

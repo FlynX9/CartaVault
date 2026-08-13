@@ -135,6 +135,10 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
                 "The TEST_DATABASE_URL database must enable PostGIS"
             )
 
+        # Integration tests run only against the defensively validated test
+        # database. Rebuild the model schema so a stale local test database
+        # cannot silently exercise an older application schema.
+        Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         with engine.begin() as connection:
             if connection.execute(QuotaProfile.__table__.select().where(QuotaProfile.id == UNLIMITED_PROFILE_ID)).first() is None:
@@ -150,6 +154,7 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
                     Country.__table__.insert(),
                     [dict(country) for country in load_country_catalog()],
                 )
+
         yield engine
     finally:
         engine.dispose()

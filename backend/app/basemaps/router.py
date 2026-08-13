@@ -6,9 +6,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,6 @@ from app.auth.credential_encryption import CredentialEncryptionError, Credential
 from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import User, UserApiCredential
-from app.auth.security import verify_password
 from app.basemaps.models import GoogleSatelliteUsageDaily
 from app.config import email_settings, google_map_tiles_settings
 from app.database import get_db
@@ -25,8 +24,6 @@ from app.database import get_db
 
 router = APIRouter(prefix="/basemaps/google-satellite", tags=["basemaps"])
 admin_router = APIRouter(prefix="/admin/console/google-satellite", tags=["admin-console"], dependencies=[Depends(require_admin)])
-credential_router = APIRouter(prefix="/account/integrations/google-map-tiles", tags=["account"])
-PROVIDER = "google_map_tiles"
 SETTING_KEY = "google_satellite"
 DEFAULTS: dict[str, object] = {
     "enabled": False,
@@ -67,10 +64,6 @@ def _save_setting(session: Session, values: dict[str, object]) -> None:
         row.value = values
 
 
-def _credential(session: Session, user_id: object) -> UserApiCredential | None:
-    return session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == user_id, UserApiCredential.provider == PROVIDER))
-
-
 def _usage(session: Session) -> dict[str, int]:
     today = datetime.now(UTC).date()
     month_start = today.replace(day=1)
@@ -105,17 +98,6 @@ def _admin_status(session: Session) -> dict[str, object]:
         "usage": usage,
         "warning_level": _warning_level(values, usage),
         "authoritative_monitoring": {"connected": False, "console_url": "https://console.cloud.google.com/google/maps-apis/metrics", "notice": "La facturation Google Cloud reste la source autoritative."},
-    }
-
-
-def _credential_status(credential: UserApiCredential | None) -> dict[str, object]:
-    return {
-        "configured": credential is not None,
-        "last4": credential.secret_last4 if credential else None,
-        "verified": bool(credential and credential.verified_at),
-        "verified_at": credential.verified_at if credential else None,
-        "last_used_at": credential.last_used_at if credential else None,
-        "last_error_code": credential.last_error_code if credential else None,
     }
 
 
@@ -196,100 +178,10 @@ def record_usage(event: UsageEvent, session: Session = Depends(get_db), user: Us
     values = event.model_dump()
     if any(values.values()):
         _record(session, user.id, values)
-        row, settings = _setting(session)
-        del row
-        if event.tiles_completed:
-            settings["consecutive_errors"] = 0
-        elif event.tiles_failed:
-            settings["consecutive_errors"] = int(settings["consecutive_errors"]) + 1
-            if int(settings["consecutive_errors"]) >= int(settings["repeated_error_limit"]):
-                settings["enabled"] = False; settings["disabled_reason"] = "REPEATED_TILE_ERRORS"
-        usage = _usage(session)
-        if _usage_percent(settings, usage) >= int(settings["auto_disable_percent"]):
-            settings["enabled"] = False; settings["disabled_reason"] = "USAGE_THRESHOLD_REACHED"
-        _save_setting(session, settings); session.commit()
-    return Response(status_code=204)
-
-
-async def _json_object(request: Request) -> dict[str, object]:
-    try:
-        payload = await request.json()
-    except Exception as error:
-        raise HTTPException(400, {"code": "CREDENTIAL_PAYLOAD_INVALID", "message": "La requête est invalide."}) from error
-    if not isinstance(payload, dict):
-        raise HTTPException(400, {"code": "CREDENTIAL_PAYLOAD_INVALID", "message": "La requête est invalide."})
-    return payload
-
-
-@credential_router.get("")
-def user_credential_status(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    return _credential_status(_credential(session, user.id))
-
-
-@credential_router.put("")
-async def store_user_credential(request: Request, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    value = (await _json_object(request)).get("api_key")
-    if not isinstance(value, str) or not value.strip() or len(value.strip()) > 512:
-        raise HTTPException(422, {"code": "CREDENTIAL_VALUE_INVALID", "message": "Une clé Google Map Tiles est requise."})
-    api_key = value.strip()
-    try:
-        encrypted = CredentialEncryptionService.from_settings().encrypt(api_key)
-    except CredentialEncryptionError as error:
-        raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
-    credential = _credential(session, user.id)
-    if credential is None:
-        credential = UserApiCredential(
-            user_id=user.id,
-            provider=PROVIDER,
-            encrypted_secret=encrypted.ciphertext,
-            encryption_version=encrypted.version,
-            secret_last4=api_key[-4:],
-        )
-        session.add(credential)
-    else:
-        credential.encrypted_secret = encrypted.ciphertext
-        credential.encryption_version = encrypted.version
-        credential.secret_last4 = api_key[-4:]
-        credential.verified_at = None
-        credential.last_used_at = None
-        credential.last_error_code = None
-    session.commit()
-    return _credential_status(credential)
-
-
-@credential_router.post("/verify")
-def verify_user_credential(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = _credential(session, user.id)
-    if credential is None:
-        raise HTTPException(404, {"code": "GOOGLE_MAP_TILES_CREDENTIAL_NOT_CONFIGURED", "message": "Aucune clé Google Map Tiles n’est configurée."})
-    try:
-        _create_google_session(_api_key(credential), str((user.preferences or {}).get("language", "fr")))
-    except HTTPException as error:
-        credential.verified_at = None
-        credential.last_error_code = str(error.detail.get("code")) if isinstance(error.detail, dict) else "GOOGLE_MAP_TILES_UNAVAILABLE"
+        # Browser telemetry is informative only: a client-controlled counter
+        # must never be able to disable a provider for the whole instance.
         session.commit()
-        raise
-    credential.verified_at = datetime.now(UTC).replace(tzinfo=None)
-    credential.last_error_code = None
-    session.commit()
-    return _credential_status(credential)
-
-
-@credential_router.delete("")
-async def delete_user_credential(request: Request, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    password = (await _json_object(request)).get("current_password")
-    if not isinstance(password, str) or not verify_password(user.password_hash, password)[0]:
-        raise HTTPException(400, {"code": "CURRENT_PASSWORD_INVALID", "message": "Le mot de passe actuel est incorrect."})
-    credential = _credential(session, user.id)
-    if credential is not None:
-        session.delete(credential)
-    preferences = dict(user.preferences or {})
-    provider_reset = preferences.get("preferred_basemap") == "google-satellite"
-    if provider_reset:
-        preferences["preferred_basemap"] = "cartavault-light"
-        user.preferences = preferences
-    session.commit()
-    return {"deleted": credential is not None, "provider_reset": provider_reset, "basemap": "cartavault-light"}
+    return Response(status_code=204)
 
 
 @admin_router.get("")

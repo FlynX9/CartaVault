@@ -78,12 +78,18 @@ def test_system_unlimited_profile_cannot_be_restricted_or_deleted(
         f"/admin/quota-profiles/{UNLIMITED_PROFILE_ID}",
         json={"is_active": False},
     )
+    renamed = integration_client.patch(
+        f"/admin/quota-profiles/{UNLIMITED_PROFILE_ID}",
+        json={"name": "Unlimited"},
+    )
     deleted = integration_client.delete(f"/admin/quota-profiles/{UNLIMITED_PROFILE_ID}")
 
     assert restricted.status_code == 409
-    assert restricted.json()["detail"]["code"] == "quota.profile.system_unlimited"
+    assert restricted.json()["detail"]["code"] == "quota.profile.system_protected"
     assert deactivated.status_code == 409
     assert deactivated.json()["detail"]["code"] == "quota.profile.system_protected"
+    assert renamed.status_code == 409
+    assert renamed.json()["detail"]["code"] == "quota.profile.system_protected"
     assert deleted.status_code == 409
 
 

@@ -28,6 +28,14 @@ const closeMobileModalLayers = () => {
   }
 }
 
+const mobilePersistentPanels = new Set<Exclude<WorkspacePanel, null>>([
+  'media',
+  'categories',
+  'tags',
+  'statuses',
+  'annotation-templates',
+])
+
 export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, dashboardActive = false, onOpenDashboard, hasMaps = true }: Props) {
   const { t } = useI18n()
   const [organizationOpen, setOrganizationOpen] = useState(false)
@@ -42,9 +50,9 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
   }, [organizationOpen])
   const togglePanel = (panel: Exclude<WorkspacePanel, null>) => {
     closeMobileModalLayers()
-    // On touch, Media is a full workspace view rather than a collapsible
-    // sidebar. A second tap must therefore keep it open.
-    if (panel === 'media' && activePanel === panel && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 760px)').matches) return
+    // These entries are full workspace views on mobile, not collapsible
+    // sidebars. Re-selecting the active entry must keep its panel open.
+    if (mobilePersistentPanels.has(panel) && activePanel === panel && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 760px)').matches) return
     if (activePanel === panel) onWorkspacePanelToggle(panel)
     else onPanelChange(panel)
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import { useAuth } from '../auth/useAuth'
+import { getAccountPreferences } from '../api/account'
 import {
   applyTheme,
   loadThemePreference,
@@ -30,6 +31,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return
     setPreferenceState(loadThemePreference(browserStorage(), userId))
+    const controller = new AbortController()
+    void getAccountPreferences(controller.signal).then((preferences) => {
+      if (controller.signal.aborted) return
+      setPreferenceState(preferences.default_theme)
+      saveThemePreference(preferences.default_theme, browserStorage(), userId)
+    }).catch(() => undefined)
+    return () => controller.abort()
   }, [userId])
 
   useEffect(() => {
@@ -54,7 +62,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     toggleTheme: () => {
       const nextPreference = resolvedTheme === 'dark' ? 'light' : 'dark'
       setPreferenceState(nextPreference)
-      saveThemePreference(nextPreference, browserStorage(), userId)
     },
   }), [preference, resolvedTheme, userId])
 

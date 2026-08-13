@@ -20,6 +20,7 @@ class PlaceMapRead(BaseModel):
     latitude: float
     status: MapStatusRead
     primary_category_icon: str | None
+    primary_photo_id: UUID | None
     category_ids: list[UUID]
     tag_ids: list[UUID]
     is_favorite: bool

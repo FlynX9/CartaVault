@@ -21,6 +21,11 @@ from app.trips.models import Trip, TripDay, TripNight, TripNightPhoto, TripStop
 
 
 class QuotaService:
+    NON_MEASURABLE_KEYS = {
+        QuotaKey.IMAGE_UPLOAD_MEGABYTES_MAX,
+        QuotaKey.IMAGE_DIMENSION_MAX,
+    }
+
     def __init__(self, session: Session):
         self.session = session
 
@@ -73,6 +78,8 @@ class QuotaService:
         return owner_id
 
     def usage(self, owner_id: UUID, key: QuotaKey, scope_id: UUID | None = None) -> int:
+        if key in self.NON_MEASURABLE_KEYS:
+            raise ValueError(f"{key.value} is a configuration limit and has no usage counter")
         now = datetime.now(UTC).replace(tzinfo=None)
         if key == QuotaKey.PHOTOS_TOTAL_MAX:
             place_photos = self.session.scalar(

@@ -56,6 +56,7 @@ export interface MapPlace {
   latitude: number
   status: { id: string; color: string }
   primary_category_icon: string | null
+  primary_photo_id?: string | null
   category_ids: string[]
   tag_ids: string[]
   is_favorite: boolean

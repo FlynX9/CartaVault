@@ -1,58 +1,47 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, Copy, HardDriveDownload, Image as ImageIcon, Info, KeyRound, Languages, Link, List, LockKeyhole, Mail, Map as MapIcon, MonitorSmartphone, Route, Settings2, Shield, ShieldCheck, ShieldCog, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock3, Copy, Globe2, HardDriveDownload, Image as ImageIcon, Info, KeyRound, LayoutDashboard, Link, List, LockKeyhole, Mail, Map as MapIcon, Monitor, MonitorSmartphone, Moon, Save, Settings2, Shield, ShieldCheck, ShieldCog, Sun, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
-import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, confirmEmailMfaSetup, confirmTotpSetup, deleteAccountAvatar, deleteOwnAccount, disableEmailMfa, disableTotp, getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getGooglePlacesCredential, getGoogleRoutesCredential, getOpenRouteServiceCredential, getTotpStatus, regenerateTotpRecoveryCodes, resetAccountPreferences, revokeAccountSession, revokeOtherAccountSessions, startEmailMfaSetup, startTotpSetup, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, confirmEmailMfaSetup, confirmTotpSetup, deleteAccountAvatar, deleteOwnAccount, disableEmailMfa, disableTotp, getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getTotpStatus, regenerateTotpRecoveryCodes, revokeAccountSession, revokeOtherAccountSessions, startEmailMfaSetup, startTotpSetup, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
-import { getRoutingProviders } from '../../api/routing'
-import { getGoogleSatelliteStatus } from '../../api/googleSatellite'
 import { useAuth } from '../../auth/useAuth'
 import { notifyNotificationsChanged } from '../notifications/events'
-import { clearCredentialIssue, reportCredentialIssue } from '../notifications/important'
 import { useI18n } from '../../i18n/useI18n'
 import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
-import type { AccountPreferences, AccountProfile, AccountSession, GooglePlacesCredentialStatus, GoogleRoutesCredentialStatus, OpenRouteServiceCredentialStatus, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../../types/account'
+import { saveThemePreference } from '../../theme/theme'
+import type { AccountPreferences, AccountProfile, AccountSession, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
-import { GoogleRoutesCredentialPanel } from './GoogleRoutesCredentialPanel'
-import { GooglePlacesCredentialPanel } from './GooglePlacesCredentialPanel'
-import { OpenRouteServiceCredentialPanel } from './OpenRouteServiceCredentialPanel'
-import { GoogleSatelliteCredentialPanel } from './GoogleSatelliteCredentialPanel'
-import { GoogleSatelliteAdminPanel } from './GoogleSatelliteAdminPanel'
-import { StadiaMapsCredentialPanel } from './StadiaMapsCredentialPanel'
-import { StadiaPlacesCredentialPanel } from './StadiaPlacesCredentialPanel'
-import { getStadiaMapsCredential, type StadiaMapsCredentialStatus } from '../../api/stadiaMaps'
-import { getStadiaPlacesCredential, type StadiaPlacesCredentialStatus } from '../../api/stadiaPlaces'
-import { getGoogleSatelliteCredential, type GoogleSatelliteCredentialStatus } from '../../api/googleSatellite'
+import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog'
 import { OfflineDataSection } from './OfflineDataSection'
-import { formatCredentialDate } from './credentialDate'
-import { useCredentialVerificationState } from './CredentialVerificationBadge'
 import { PersonalApiKeysSection } from './PersonalApiKeysSection'
 import { IntegrationPreferences } from './IntegrationPreferences'
 
 type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'offline'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', default_theme: 'system', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' } }
 
 const fallbackTimeZones = ['Europe/Paris', 'Europe/London', 'Europe/Brussels', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Zurich', 'America/New_York', 'America/Los_Angeles', 'America/Toronto', 'Asia/Tbilisi', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney', 'Pacific/Auckland', 'UTC']
 const supportedTimeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : fallbackTimeZones
 
 export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpenAdmin?: () => void; trigger: HTMLElement | null }) {
   const { user, refresh } = useAuth()
-  const { t } = useI18n()
+  const { t, setLocale } = useI18n()
   const translationRef = useRef(t)
   const [section, setSection] = useState<Section>('profile')
   const [profile, setProfile] = useState<AccountProfile | null>(null)
   const [sessions, setSessions] = useState<AccountSession[]>([])
   const [preferences, setPreferences] = useState<AccountPreferences>(emptyPreferences)
-  const [, setGoogleSatelliteAvailable] = useState(false)
+  const [savedPreferences, setSavedPreferences] = useState<AccountPreferences>(emptyPreferences)
   const [draftName, setDraftName] = useState('')
-  const [apiKeysDirty, setApiKeysDirty] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
   const modal = useRef<HTMLElement>(null)
   const profileDirty = profile !== null && draftName.trim() !== profile.display_name
-  const dirty = profileDirty || apiKeysDirty
+  const preferencesDirty = JSON.stringify(preferences) !== JSON.stringify(savedPreferences)
+  const dirty = profileDirty || preferencesDirty
   const dirtyRef = useRef(false)
   const closeRef = useRef(onClose)
   dirtyRef.current = dirty
@@ -62,14 +51,12 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   const initials = (profile?.display_name ?? user?.display_name ?? '?').trim().charAt(0).toUpperCase()
 
   const load = async () => {
-    const [nextProfile, nextSessions, nextPreferences, satelliteStatus] = await Promise.all([
+    const [nextProfile, nextSessions, nextPreferences] = await Promise.all([
       getAccountProfile(),
       getAccountSessions(),
       getAccountPreferences(),
-      getGoogleSatelliteStatus().catch(() => ({ available: false, warning_level: 0 })),
     ])
-    setProfile(nextProfile); setDraftName(nextProfile.display_name); setSessions(nextSessions); setPreferences(nextPreferences)
-    setGoogleSatelliteAvailable(satelliteStatus.available)
+    setProfile(nextProfile); setDraftName(nextProfile.display_name); setSessions(nextSessions); setPreferences(nextPreferences); setSavedPreferences(nextPreferences)
   }
   useEffect(() => {
     void load().catch((reason: unknown) => setError(messageFor(reason, translationRef.current('account.loadError'))))
@@ -82,7 +69,8 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
       if (event.key === 'Escape') {
         if (document.querySelector('.account-security-dialog[aria-modal="true"]')) return
         event.preventDefault()
-        if (!dirtyRef.current || window.confirm(t('account.discard'))) closeRef.current()
+        if (!dirtyRef.current) closeRef.current()
+        else setConfirmClose(true)
         return
       }
       if (event.key !== 'Tab' || !modal.current) return
@@ -96,7 +84,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown); trigger?.focus() }
   }, [trigger, t])
 
-  const requestClose = () => { if (!dirty || window.confirm(t('account.discard'))) onClose() }
+  const requestClose = () => { if (!dirty) onClose(); else setConfirmClose(true) }
   useEffect(() => {
     const closeFromMobileNavigation = () => requestClose()
     window.addEventListener('cartavault:close-mobile-modal-layers', closeFromMobileNavigation)
@@ -104,22 +92,30 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   }, [requestClose])
   const selectSection = (next: Section) => {
     if (next === section) return
-    if (dirty && !window.confirm(t('account.discard'))) return
-    if (profileDirty && profile) setDraftName(profile.display_name)
-    if (apiKeysDirty) {
-      setApiKeysDirty(false)
-      void getAccountPreferences().then(setPreferences).catch(() => undefined)
-    }
     setSection(next)
   }
   const run = async (action: () => Promise<void>, success: string): Promise<boolean> => {
     setError(null); setMessage(null)
     try { await action(); setMessage(success); return true } catch (reason) { setError(messageFor(reason, t('account.operationError'))); return false }
   }
-  const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const saveChanges = async () => {
     if (!dirty) return
-    await run(async () => { await updateAccountProfile(draftName); await refresh(); await load() }, t('account.profileUpdated'))
+    setSaving(true)
+    const ok = await run(async () => {
+      if (profileDirty) await updateAccountProfile(draftName.trim())
+      if (preferencesDirty) {
+        const next = await updateAccountPreferences(preferences)
+        saveThemePreference(next.default_theme, window.localStorage, user?.id)
+        setLocale(next.language)
+        applyDisplayDensity(next.density)
+        saveDisplayDensity(next.density, window.localStorage)
+        window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next }))
+      }
+      await refresh()
+      await load()
+    }, 'Modifications enregistrées.')
+    setSaving(false)
+    return ok
   }
   const uploadAvatar = async (file: File) => {
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError(t('account.avatarInvalid')); return }
@@ -132,31 +128,31 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         <header className="account-modal__header">
           <div className="account-avatar">{avatar ? <img src={avatar} alt={`Avatar de ${profile?.display_name ?? user?.display_name}`} /> : initials}</div>
           <div><h2 id="account-title">{t('account.title')}</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />{t('account.admin')}</span>}</div>
-          <button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button>
+          <div className="account-modal__header-actions"><button className="account-button account-button--primary account-modal__save" type="button" disabled={!dirty || saving} onClick={() => void saveChanges()}><Save size={14} />{saving ? 'Enregistrement…' : 'Enregistrer'}</button><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button></div>
         </header>
         <nav className="account-modal__nav" aria-label={t('account.navigation')}>
           {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCog, t('account.security') ], [ 'preferences', Settings2, t('account.preferences') ], [ 'api_keys', KeyRound, t('account.apiKeys') ], [ 'offline', HardDriveDownload, t('account.offline') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
         </nav>
         <main className="account-modal__content">
           {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
-          {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} dirty={profileDirty} setDraftName={setDraftName} saveProfile={saveProfile} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
+          {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} setDraftName={setDraftName} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} sessions={sessions} run={run} refreshProfile={async () => { await refresh(); await load() }} reload={load} />}
-          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} run={run} />}
+          {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} />}
           {section === 'api_keys' && <PersonalApiKeysSection />}
           {section === 'offline' && <OfflineDataSection />}
         </main>
       </section>
+      {confirmClose && <UnsavedChangesDialog saving={saving} onCancel={() => setConfirmClose(false)} onDiscard={onClose} onSave={() => { void saveChanges().then((ok) => { if (ok) onClose() }) }} />}
     </div>, document.body,
   )
 }
 
-function ProfileSection({ profile, avatar, initials, draftName, dirty, setDraftName, saveProfile, uploadAvatar, removeAvatar }: { profile: AccountProfile; avatar: string | null; initials: string; draftName: string; dirty: boolean; setDraftName: (name: string) => void; saveProfile: (event: FormEvent<HTMLFormElement>) => Promise<void>; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
+function ProfileSection({ profile, avatar, initials, draftName, setDraftName, uploadAvatar, removeAvatar }: { profile: AccountProfile; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
   return <><AccountHeading title="Profil" description="Gérez votre identité CartaVault et votre avatar." />
     <div className="account-profile-grid">
-      <form className="account-form account-preference-card account-profile-card" onSubmit={saveProfile}>
+      <form className="account-form account-preference-card account-profile-card" onSubmit={(event) => event.preventDefault()}>
         <PreferenceCardHeading icon={UserRound} title="Informations de profil" />
         <div className="account-profile-field"><label htmlFor="account-display-name">Nom d’affichage</label><input id="account-display-name" name="display_name" value={draftName} placeholder="Votre nom d’affichage" required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></div>
-        <button className="account-button account-button--primary" type="submit" disabled={!dirty}>Enregistrer</button>
       </form>
       <section className="account-preference-card account-avatar-editor">
         <PreferenceCardHeading icon={ImageIcon} title="Avatar" />
@@ -220,8 +216,8 @@ function SecuritySection({ profile, sessions, run, refreshProfile, reload }: { p
     <section className="account-security-block" aria-labelledby="security-mfa-title">
       <SecuritySectionTitle id="security-mfa-title" icon={ShieldCheck}>Authentification renforcée</SecuritySectionTitle>
       <div className="account-security-action-list">
-        <SecurityActionRow icon={LockKeyhole} title="Application d’authentification (TOTP)" description="Utilisez une application comme Google Authenticator ou Authy." status={totpStatus?.enabled ? 'Configurée' : 'Non configurée'} tone={totpStatus?.enabled ? 'success' : 'warning'} action={totpStatus?.enabled ? 'Gérer' : 'Configurer'} primary={!totpStatus?.enabled} disabled={Boolean(emailMfaStatus?.enabled)} disabledTitle={emailMfaStatus?.enabled ? 'Désactivez d’abord le code par e-mail.' : undefined} onClick={() => setDialog('totp')} />
-        <SecurityActionRow icon={Mail} title="Code par e-mail" description="Recevez un code de sécurité à chaque connexion." status={emailMfaStatus?.enabled ? 'Activé' : emailMfaStatus?.available ? 'Disponible' : 'Indisponible'} tone={emailMfaStatus?.enabled ? 'success' : emailMfaStatus?.available ? 'success' : 'muted'} action={emailMfaStatus?.enabled ? 'Gérer' : 'Activer'} disabled={!emailMfaStatus?.available || Boolean(totpStatus?.enabled)} disabledTitle={totpStatus?.enabled ? 'Désactivez d’abord l’authentification TOTP.' : !emailMfaStatus?.available ? 'Configurez un service d’envoi d’e-mails dans CartaVault.' : undefined} onClick={() => setDialog('email-mfa')} />
+        <SecurityActionRow icon={LockKeyhole} title="Application d’authentification (TOTP)" description="Utilisez une application comme Google Authenticator ou Authy." status={totpStatus?.enabled ? 'Configurée' : 'Non configurée'} tone={totpStatus?.enabled ? 'success' : 'warning'} action={totpStatus?.enabled ? 'Gérer' : 'Activer'} disabled={Boolean(emailMfaStatus?.enabled)} disabledTitle={emailMfaStatus?.enabled ? 'Désactivez d’abord le code par e-mail.' : undefined} onClick={() => setDialog('totp')} />
+        <SecurityActionRow icon={Mail} title="Code par e-mail" description="Recevez un code de sécurité à chaque connexion." status={emailMfaStatus?.enabled ? 'Activé' : emailMfaStatus?.available ? 'Disponible' : 'Indisponible'} tone={emailMfaStatus?.enabled ? 'success' : 'muted'} action={emailMfaStatus?.enabled ? 'Gérer' : 'Activer'} disabled={!emailMfaStatus?.available || Boolean(totpStatus?.enabled)} disabledTitle={totpStatus?.enabled ? 'Désactivez d’abord l’authentification TOTP.' : !emailMfaStatus?.available ? 'Configurez un service d’envoi d’e-mails dans CartaVault.' : undefined} onClick={() => setDialog('email-mfa')} />
         <SecurityActionRow icon={ShieldCheck} title="Codes de récupération" description="Utilisez ces codes pour récupérer l’accès à votre compte." status={totpStatus?.enabled ? `${totpStatus.recovery_codes_remaining} restant${totpStatus.recovery_codes_remaining > 1 ? 's' : ''}` : 'Non générés'} tone={totpStatus?.enabled ? 'success' : 'muted'} action="Régénérer" disabled={!totpStatus?.enabled} disabledTitle={!totpStatus?.enabled ? 'Configurez d’abord l’authentification TOTP.' : undefined} onClick={() => setDialog('recovery')} />
       </div>
     </section>
@@ -256,9 +252,9 @@ function SecurityActionCard({ icon: Icon, title, description, detail, action, on
   return <article><div className="account-security-action-card__body"><Icon size={20} /><div><h3>{title}</h3><p>{description}</p>{detail && <strong>{detail}</strong>}</div></div><button className="account-security-action-card__button" type="button" onClick={onClick}>{action}<ChevronRight size={16} /></button></article>
 }
 
-function SecurityActionRow({ icon: Icon, title, description, status, tone, action, primary = false, disabled = false, disabledTitle, onClick }: { icon: LucideIcon; title: string; description: string; status: string; tone: 'success' | 'warning' | 'muted'; action: string; primary?: boolean; disabled?: boolean; disabledTitle?: string; onClick: () => void }) {
-  const apiTone: ApiServiceTone = tone === 'success' ? 'success' : tone === 'warning' ? 'warning' : 'neutral'
-  return <article title={disabledTitle}><span className="account-security-action-row__icon"><Icon size={18} /></span><div><h3>{title}</h3><p>{description}</p></div><ApiServiceBadge state={{ label: status, tone: apiTone, date: null }} /><button className={`account-button ${primary ? 'account-button--primary' : 'account-button--secondary'}`} type="button" disabled={disabled} onClick={onClick}>{action}</button><ChevronRight size={16} aria-hidden="true" /></article>
+function SecurityActionRow({ icon: Icon, title, description, status, tone, action, disabled = false, disabledTitle, onClick }: { icon: LucideIcon; title: string; description: string; status: string; tone: 'success' | 'warning' | 'info' | 'muted'; action: string; disabled?: boolean; disabledTitle?: string; onClick: () => void }) {
+  const apiTone: ApiServiceTone = tone === 'muted' ? 'neutral' : tone
+  return <article title={disabledTitle}><span className="account-security-action-row__icon"><Icon size={18} /></span><div><h3>{title}</h3><p>{description}</p></div><ApiServiceBadge state={{ label: status, tone: apiTone, date: null }} /><button className="account-button account-button--secondary" type="button" disabled={disabled} onClick={onClick}>{action}<ChevronRight size={16} aria-hidden="true" /></button></article>
 }
 
 function AccountSecurityDialog({ icon: Icon, title, onClose, wide = false, children }: { icon: LucideIcon; title: string; onClose: () => void; wide?: boolean; children: ReactNode }) {
@@ -288,13 +284,32 @@ function EmailMfaSection({ status, run, onStatusChange }: { status: EmailMfaStat
 
 function TotpSection({ status, run, onStatusChange }: { status: TotpSecurityStatus; run: (action: () => Promise<void>, success: string) => Promise<boolean>; onStatusChange: (status: TotpSecurityStatus) => void }) {
   const [setup, setSetup] = useState<TotpSetup | null>(null)
+  const [setupLoading, setSetupLoading] = useState(!status.enabled)
   const [code, setCode] = useState('')
   const [recovery, setRecovery] = useState<TotpRecoveryCodes | null>(null)
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const copy = async (value: string) => { try { await navigator.clipboard.writeText(value) } catch { setError('Copiez la valeur affichée manuellement.') } }
+  const setupErrorMessage = (reason: unknown) => {
+    const message = reason instanceof Error ? reason.message.trim() : ''
+    return message || 'Impossible de démarrer la configuration TOTP.'
+  }
+  const loadSetup = () => {
+    setSetupLoading(true)
+    setError(null)
+    void startTotpSetup()
+      .then(setSetup)
+      .catch((reason) => setError(setupErrorMessage(reason)))
+      .finally(() => setSetupLoading(false))
+  }
+  useEffect(() => {
+    if (!status.enabled) loadSetup()
+    // The setup is intentionally started once when the dedicated dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return <section className="account-security-dialog__form">
-    {!status.enabled && !setup && <><p className="account-card-description">{error ?? 'Protégez votre compte avec une application d’authentification compatible TOTP.'}</p><button className="account-button account-button--primary" type="button" onClick={() => void startTotpSetup().then((value) => { setSetup(value); setError(null) }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Impossible de démarrer la configuration.'))}>Activer l’authentification à deux facteurs</button></>}
+    {!status.enabled && !setup && setupLoading && <p className="account-card-description" role="status">Préparation de la configuration TOTP…</p>}
+    {!status.enabled && !setup && !setupLoading && error && <><p className="form-alert" role="alert">{error}</p><button className="account-button account-button--secondary" type="button" onClick={loadSetup}>Réessayer</button></>}
     {setup && !recovery && <><p className="account-card-description">Scannez le QR Code ou ajoutez la clé dans votre application, puis saisissez le code généré.</p><div className="totp-setup"><img className="totp-qr-code" src={setup.qr_code_data_url} alt="Code QR de configuration CartaVault" /><div className="totp-setup__key"><span>Clé de configuration</span><code>{setup.secret.replace(/(.{4})/g, '$1 ').trim()}</code><div><button className="panel-icon-button" type="button" title="Copier la clé" aria-label="Copier la clé" onClick={() => void copy(setup.secret)}><Copy size={15} /></button><button className="panel-icon-button" type="button" title="Copier le lien de configuration" aria-label="Copier le lien de configuration" onClick={() => void copy(setup.provisioning_uri)}><Link size={15} /></button></div></div></div><label className="totp-setup__code">Code à 6 chiffres *<input inputMode="numeric" autoComplete="one-time-code" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value)} /></label>{error && <p className="form-alert" role="alert">{error}</p>}<button className="account-button account-button--primary" type="button" disabled={!code} onClick={() => void confirmTotpSetup(code).then((value) => { setRecovery(value); setSetup(null); onStatusChange({ ...status, enabled: true, verified_at: new Date().toISOString(), recovery_codes_remaining: value.recovery_codes.length }); notifyNotificationsChanged() }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Code invalide.'))}>Vérifier et activer</button></>}
     {recovery && <><p className="form-alert">Enregistrez ces codes maintenant. Ils ne seront plus affichés.</p><pre className="totp-recovery-codes">{recovery.recovery_codes.join('\n')}</pre><button className="account-button account-button--secondary" type="button" onClick={() => void copy(recovery.recovery_codes.join('\n'))}>Copier tous les codes</button></>}
     {status.enabled && !recovery && <><p className="account-card-description">Activée{status.verified_at ? ` le ${formatDate(status.verified_at)}` : ''}. {status.recovery_codes_remaining} code(s) de récupération restant(s).</p><label>Mot de passe actuel *<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" /></label><label>Code d’authentification *<input inputMode="numeric" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value)} /></label>{error && <p className="form-alert" role="alert">{error}</p>}<button className="account-button account-button--danger-hover" type="button" disabled={!password || !code} onClick={() => void run(() => disableTotp(password, code), 'Authentification à deux facteurs désactivée.').then((ok) => { if (ok) { onStatusChange({ enabled: false, verified_at: null, recovery_codes_remaining: 0 }); notifyNotificationsChanged() } })}>Désactiver</button></>}
@@ -316,270 +331,61 @@ function PreferenceCardHeading({ icon: Icon, title }: { icon: LucideIcon; title:
   return <header className="account-preference-card__heading"><span className="account-preference-card__icon"><Icon size={19} aria-hidden="true" /></span><h3>{displayTitle}</h3></header>
 }
 
-type ApiServiceId = 'routing' | 'places' | 'maps'
-type ApiServiceTone = 'success' | 'error' | 'warning' | 'neutral' | 'loading'
+type ApiServiceTone = 'success' | 'error' | 'warning' | 'info' | 'neutral' | 'loading'
 type ApiServiceState = { label: string; tone: ApiServiceTone; date: string | null }
-type ApiCredentialStatus = { configured: boolean; verified: boolean; verified_at: string | null; last_error_code: string | null }
-
-function credentialServiceState(status: ApiCredentialStatus, optional = false, failedAt: string | null = null): ApiServiceState {
-  if (status.last_error_code || failedAt) return { label: 'Erreur', tone: 'error', date: failedAt ?? status.verified_at }
-  if (status.verified) return { label: 'Vérifiée', tone: 'success', date: status.verified_at }
-  if (!status.configured && optional) return { label: 'Opérationnel', tone: 'success', date: null }
-  return { label: status.configured ? 'À vérifier' : 'Non configurée', tone: 'neutral', date: null }
-}
 
 function ApiServiceBadge({ state }: { state: ApiServiceState }) {
-  const Icon = state.tone === 'success' ? CheckCircle2 : state.tone === 'error' || state.tone === 'warning' ? AlertTriangle : KeyRound
+  const Icon = state.tone === 'success' || state.tone === 'info' ? CheckCircle2 : state.tone === 'error' || state.tone === 'warning' ? AlertTriangle : KeyRound
   return <span className={`account-api-service-badge is-${state.tone}`}><Icon size={13} aria-hidden="true" />{state.label}</span>
 }
 
-function ApiKeyGroup({ id, icon: Icon, title, modifier, providerLabel, state, expanded, onToggle, children }: { id: ApiServiceId; icon: LucideIcon; title: string; modifier: string; providerLabel: string; state: ApiServiceState; expanded: boolean; onToggle: (id: ApiServiceId) => void; children: ReactNode }) {
-  return <section className={`account-preference-card account-preference-card--${modifier} account-api-key-group${expanded ? ' account-api-key-group--expanded' : ''}`}>
-    <button className="account-api-key-group__toggle" type="button" aria-label={title} aria-expanded={expanded} aria-controls={`account-api-${id}-content`} onClick={() => onToggle(id)}>
-      <span className="account-preference-card__icon"><Icon size={19} aria-hidden="true" /></span>
-      <span className="account-api-key-group__identity"><h3>{title}</h3><span>Fournisseur : {providerLabel}</span></span>
-      <span className="account-api-key-group__state"><ApiServiceBadge state={state} />{state.date && <time dateTime={state.date}>{formatCredentialDate(state.date)}</time>}</span>
-      <ChevronDown size={18} aria-hidden="true" />
-    </button>
-    {expanded && <div id={`account-api-${id}-content`} className="account-api-key-group__content">{children}</div>}
-  </section>
-}
-
-function ApiProviderCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  return <section className="account-api-provider-card"><div><h4>{title}</h4><p>{description}</p></div>{children}</section>
-}
-
-function PreferenceField({ icon: Icon, label, htmlFor, help, children, className = '' }: { icon?: LucideIcon; label: string; htmlFor: string; help?: ReactNode; children: ReactNode; className?: string }) {
+function PreferenceField({ icon: Icon, label, htmlFor, help, description, children, className = '' }: { icon?: LucideIcon; label: string; htmlFor: string; help?: ReactNode; description?: string; children: ReactNode; className?: string }) {
   return <div className={`account-preference-field ${className}`.trim()}>
-    <div className="account-preference-field__label">{Icon && <Icon size={16} aria-hidden="true" />}<label id={`${htmlFor}-label`} htmlFor={htmlFor}>{label}</label>{help && <FieldHelp>{help}</FieldHelp>}</div>
+    <div className="account-preference-field__identity">{Icon && <Icon size={17} aria-hidden="true" />}<div><div className="account-preference-field__label"><label id={`${htmlFor}-label`} htmlFor={htmlFor}>{label}</label>{help && <FieldHelp>{help}</FieldHelp>}</div>{description && <p>{description}</p>}</div></div>
     {children}
   </div>
 }
 
-function PreferencesSection({ preferences, setPreferences, run }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; run: (action: () => Promise<void>, success: string) => Promise<boolean> }) {
-  const { setLocale, t } = useI18n()
+function PreferencesSection({ preferences, setPreferences }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void }) {
+  const { t } = useI18n()
   const update = <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => setPreferences({ ...preferences, [key]: value })
-  const apply = (next: AccountPreferences) => { setPreferences(next); window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next })) }
-  const savePreferences = () => { void run(async () => { apply(await updateAccountPreferences(preferences)) }, t('account.preferences.saved')) }
   return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><div className="account-form account-preferences-form">
     <section className="account-preference-card">
-      <PreferenceCardHeading icon={Settings2} title={t('account.preferences.general')} />
+      <PreferenceCardHeading icon={Settings2} title="Interface" />
       <div className="account-preference-grid">
-        <PreferenceField icon={Languages} label={t('common.language')} htmlFor="account-language" help={t('account.preferences.languageHelp')}>
-          <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => { const language = event.target.value as AccountPreferences['language']; update('language', language); setLocale(language) }}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
+        <div className="account-preference-field account-preference-field--wide account-theme-preference"><div className="account-preference-field__identity"><Moon size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><span id="account-theme-label">Thème de l’interface par défaut</span></div><p>Apparence appliquée à la prochaine ouverture de CartaVault.</p></div></div><div className="account-segmented-choice account-theme-choice" role="group" aria-labelledby="account-theme-label"><button type="button" className={preferences.default_theme === 'light' ? 'is-selected' : ''} onClick={() => update('default_theme', 'light')}><Sun size={15} />Clair</button><button type="button" className={preferences.default_theme === 'dark' ? 'is-selected' : ''} onClick={() => update('default_theme', 'dark')}><Moon size={15} />Sombre</button><button type="button" className={preferences.default_theme === 'system' ? 'is-selected' : ''} onClick={() => update('default_theme', 'system')}><Monitor size={15} />Système</button></div></div>
+        <div className="account-preference-field account-preference-field--wide account-basemap-preference"><div className="account-preference-field__identity"><MapIcon size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><span id="account-basemap-label">Fond de carte par défaut</span></div><p>Style de carte utilisé par défaut.</p></div></div><div className="account-segmented-choice account-basemap-choice" role="group" aria-labelledby="account-basemap-label"><button type="button" className={preferences.preferred_basemap === 'cartavault-light' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'cartavault-light')}><Sun size={15} />Clair</button><button type="button" className={preferences.preferred_basemap === 'cartavault-dark' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'cartavault-dark')}><Moon size={15} />Sombre</button><button type="button" className={preferences.preferred_basemap === 'satellite' || preferences.preferred_basemap === 'google-satellite' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', (preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')) === 'google' ? 'google-satellite' : 'satellite')}><ImageIcon size={15} />Satellite</button><button type="button" className={preferences.preferred_basemap === 'osm' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'osm')}><Globe2 size={15} />OpenStreetMap</button></div></div>
+        <PreferenceField icon={Globe2} label={t('common.language')} htmlFor="account-language" description="Langue utilisée dans l’interface.">
+          <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => update('language', event.target.value as AccountPreferences['language'])}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
         </PreferenceField>
-        <PreferenceField icon={MapIcon} label={t('account.preferences.basemap')} htmlFor="account-basemap">
-          <select id="account-basemap" aria-labelledby="account-basemap-label" value={preferences.preferred_basemap} onChange={(event) => update('preferred_basemap', event.target.value as AccountPreferences['preferred_basemap'])}><option value="cartavault-light">{t('common.light')}</option><option value="cartavault-dark">{t('common.dark')}</option><option value={(preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')) === 'google' ? 'google-satellite' : 'satellite'}>Satellite</option><option value="osm">OpenStreetMap</option></select>
+        <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density" description="Compacité des éléments à l’écran.">
+          <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>
         </PreferenceField>
-        <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density">
-          <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => { const density = event.target.value as AccountPreferences['density']; update('density', density); applyDisplayDensity(density); saveDisplayDensity(density, window.localStorage) }}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>
-        </PreferenceField>
-        <PreferenceField icon={MonitorSmartphone} label={t('account.preferences.startup')} htmlFor="account-startup">
+        <PreferenceField icon={LayoutDashboard} label={t('account.preferences.startup')} htmlFor="account-startup" description="Page affichée au lancement.">
           <select id="account-startup" aria-labelledby="account-startup-label" value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="dashboard">{t('dashboard.title')}</option><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select>
         </PreferenceField>
         <TimezoneCombobox value={preferences.timezone} label={t('account.preferences.timezone')} onChange={(timezone) => update('timezone', timezone)} />
-        <PreferenceField icon={Trash2} label={t('account.preferences.trashRetention')} htmlFor="account-trash-retention" help={t('account.preferences.trashRetentionHelp')}>
+        <PreferenceField icon={Trash2} label={t('account.preferences.trashRetention')} htmlFor="account-trash-retention" description="Durée de conservation des éléments supprimés.">
           <select id="account-trash-retention" aria-labelledby="account-trash-retention-label" value={preferences.trash_retention_days} onChange={(event) => update('trash_retention_days', Number(event.target.value))}>{[7, 14, 30, 60, 90, 180, 365].map((days) => <option key={days} value={days}>{days} {t('account.preferences.days')}</option>)}</select>
+        </PreferenceField>
+        <PreferenceField icon={ImageIcon} label="Photos sur les marqueurs" htmlFor="account-photo-markers" description="Photo ronde ou, sans photo, couleur du statut avec l’icône de catégorie.">
+          <label className="cv-toggle account-preference-toggle"><input id="account-photo-markers" type="checkbox" role="switch" checked={preferences.photo_markers_enabled} onChange={(event) => update('photo_markers_enabled', event.target.checked)} /><i aria-hidden="true" /><span>{preferences.photo_markers_enabled ? 'Activé' : 'Désactivé'}</span></label>
         </PreferenceField>
       </div>
     </section>
     <IntegrationPreferences preferences={preferences} setPreferences={setPreferences} />
-    <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={savePreferences}>{t('common.save')}</button>
-    <button className="account-button account-button--secondary" type="button" onClick={() => void run(async () => { apply(await resetAccountPreferences()) }, t('account.preferences.resetDone'))}>{t('account.preferences.reset')}</button>
+    <div className="account-preferences-form__actions"><button className="account-button account-button--secondary" type="button" onClick={() => setPreferences(emptyPreferences)}>{t('account.preferences.reset')}</button>
   </div></div></>
 }
 
-export function ApiKeysSection({ preferences, setPreferences, onDirtyChange, onSatelliteAvailabilityChanged, isAdmin }: { preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; onDirtyChange: (dirty: boolean) => void; onSatelliteAvailabilityChanged: (available: boolean) => void; isAdmin: boolean }) {
-  const { t } = useI18n()
-  const emptyCredential = { configured: false, last4: null, verified: false, verified_at: null, last_used_at: null, last_error_code: null }
-  const [routes, setRoutes] = useState<GoogleRoutesCredentialStatus>(emptyCredential)
-  const [ors, setOrs] = useState<OpenRouteServiceCredentialStatus>({ ...emptyCredential, self_hosted: false })
-  const [places, setPlaces] = useState<GooglePlacesCredentialStatus>(emptyCredential)
-  const [stadiaPlaces, setStadiaPlaces] = useState<StadiaPlacesCredentialStatus>(emptyCredential)
-  const [satellite, setSatellite] = useState<GoogleSatelliteCredentialStatus>(emptyCredential)
-  const [stadiaMaps, setStadiaMaps] = useState<StadiaMapsCredentialStatus>(emptyCredential)
-  const [storageAvailable, setStorageAvailable] = useState(false)
-  const [orsAvailable, setOrsAvailable] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [expandedGroup, setExpandedGroup] = useState<ApiServiceId | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
-  const routesVerification = useCredentialVerificationState('google_routes', routes.last4, routes.last_error_code)
-  const orsVerification = useCredentialVerificationState('openrouteservice', ors.last4, ors.last_error_code)
-  const placesVerification = useCredentialVerificationState('google_places', places.last4, places.last_error_code)
-  const stadiaPlacesVerification = useCredentialVerificationState('stadia_places', stadiaPlaces.last4, stadiaPlaces.last_error_code)
-  const satelliteVerification = useCredentialVerificationState('google_map_tiles', satellite.last4, satellite.last_error_code)
-  const stadiaMapsVerification = useCredentialVerificationState('stadia_maps', stadiaMaps.last4, stadiaMaps.last_error_code)
-  const providerSignature = `${preferences.routing.provider}|${preferences.places.provider}|${preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')}`
-  const savedProviderSignature = useRef(providerSignature)
-
-  useEffect(() => { onDirtyChange(providerSignature !== savedProviderSignature.current) }, [onDirtyChange, providerSignature])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void Promise.all([
-      getRoutingProviders(controller.signal),
-      getGoogleRoutesCredential(controller.signal),
-      getOpenRouteServiceCredential(controller.signal),
-      getGooglePlacesCredential(controller.signal),
-      getStadiaPlacesCredential(controller.signal),
-      getGoogleSatelliteCredential(controller.signal),
-      getStadiaMapsCredential(controller.signal),
-    ]).then(([providers, routesStatus, orsStatus, placesStatus, stadiaPlacesStatus, satelliteStatus, stadiaMapsStatus]) => {
-      if (controller.signal.aborted) return
-      setStorageAvailable(providers.credential_storage_available)
-      setOrsAvailable(providers.providers.some((provider) => provider.id === 'openrouteservice' && (provider.available || providers.credential_storage_available)))
-      setRoutes(routesStatus); setOrs(orsStatus); setPlaces(placesStatus); setStadiaPlaces(stadiaPlacesStatus); setSatellite(satelliteStatus); setStadiaMaps(stadiaMapsStatus)
-      setLoading(false)
-      ;([
-        ['google_routes', 'Google Routes', routesStatus],
-        ['openrouteservice', 'OpenRouteService', orsStatus],
-        ['google_places', 'Google Places', placesStatus],
-        ['stadia_places', 'Stadia Places', stadiaPlacesStatus],
-        ['google_map_tiles', 'Google Map Tiles', satelliteStatus],
-        ['stadia_maps', 'Stadia Maps', stadiaMapsStatus],
-      ] as const).forEach(([provider, label, status]) => {
-        if (status.configured && status.last_error_code) reportCredentialIssue(provider, `La clé API ${label} ne fonctionne plus. Vérifiez-la ou remplacez-la.`)
-        else clearCredentialIssue(provider)
-      })
-    }).catch((reason) => { if (!controller.signal.aborted) { setLoading(false); setError(reason instanceof Error ? reason.message : t('account.loadError')) } })
-    return () => controller.abort()
-  }, [t])
-
-  const resetRouting = (reset?: boolean) => { if (reset) setPreferences({ ...preferences, routing: { ...preferences.routing, provider: 'osrm' } }) }
-  const resetPlaces = (reset?: boolean) => { if (reset) setPreferences({ ...preferences, places: { provider: 'stadia' } }) }
-  const resetBasemap = (reset?: boolean) => { if (reset) setPreferences({ ...preferences, preferred_basemap: 'cartavault-light' }) }
-  const refreshSatelliteAvailability = () => { void getGoogleSatelliteStatus().then((status) => onSatelliteAvailabilityChanged(status.available)).catch(() => onSatelliteAvailabilityChanged(false)) }
-  const updateRouting = <K extends keyof AccountPreferences['routing']>(key: K, value: AccountPreferences['routing'][K]) => setPreferences({ ...preferences, routing: { ...preferences.routing, [key]: value } })
-  const googleSelected = preferences.routing.provider === 'google'
-  const satelliteProvider = preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')
-  const loadingState: ApiServiceState = { label: 'Chargement', tone: 'loading', date: null }
-  const routingState = loading ? loadingState : preferences.routing.provider === 'osrm'
-    ? { label: 'Opérationnel', tone: 'success', date: null } satisfies ApiServiceState
-    : preferences.routing.provider === 'openrouteservice' && ors.self_hosted && !ors.configured
-      ? { label: 'Opérationnel', tone: 'success', date: null } satisfies ApiServiceState
-      : preferences.routing.provider === 'google'
-        ? credentialServiceState(routes, false, routesVerification.failedAt)
-        : credentialServiceState(ors, false, orsVerification.failedAt)
-  const placesState = loading ? loadingState : preferences.places.provider === 'google'
-    ? credentialServiceState(places, false, placesVerification.failedAt)
-    : credentialServiceState(stadiaPlaces, true, stadiaPlacesVerification.failedAt)
-  const mapsState = loading ? loadingState : satelliteProvider === 'google'
-    ? credentialServiceState(satellite, false, satelliteVerification.failedAt)
-    : credentialServiceState(stadiaMaps, true, stadiaMapsVerification.failedAt)
-  const serviceStates: Array<{ id: ApiServiceId; title: string; icon: LucideIcon; state: ApiServiceState }> = [
-    { id: 'routing', title: t('account.apiKeys.routing'), icon: Route, state: routingState },
-    { id: 'places', title: t('account.apiKeys.places'), icon: MapIcon, state: placesState },
-    { id: 'maps', title: t('account.apiKeys.maps'), icon: ImageIcon, state: mapsState },
-  ]
-  const credentials = [routes, ors, places, stadiaPlaces, satellite, stadiaMaps]
-  const configuredCount = credentials.filter((status) => status.configured).length
-  const verifiedCount = credentials.filter((status) => status.configured && status.verified).length
-  const credentialErrorCount = credentials.filter((status) => status.configured && Boolean(status.last_error_code)).length
-  const routingProviderLabel = preferences.routing.provider === 'google' ? 'Google Routes' : preferences.routing.provider === 'openrouteservice' ? 'OpenRouteService' : 'OSRM'
-  const placesProviderLabel = preferences.places.provider === 'google' ? 'Google Places' : 'Stadia Places'
-  const mapsProviderLabel = satelliteProvider === 'google' ? 'Google Map Tiles' : 'Stadia Maps'
-
-  useEffect(() => {
-    if (loading || expandedGroup !== null) return
-    if (routingState.tone === 'error') setExpandedGroup('routing')
-    else if (placesState.tone === 'error') setExpandedGroup('places')
-    else if (mapsState.tone === 'error') setExpandedGroup('maps')
-  }, [expandedGroup, loading, mapsState.tone, placesState.tone, routingState.tone])
-
-  const toggleGroup = (id: ApiServiceId) => setExpandedGroup((current) => current === id ? null : id)
-  const saveIntegrations = async () => {
-    setError(null); setMessage(null)
-    if (googleSelected && !routes.verified) { setError(t('account.preferences.googleCredentialRequired')); return }
-    if (preferences.routing.provider === 'openrouteservice' && !ors.verified && !ors.self_hosted) { setError('Ajoutez et vérifiez votre clé OpenRouteService avant d’enregistrer ce moteur.'); return }
-    if (preferences.places.provider === 'google' && !places.verified) { setError('Ajoutez et vérifiez votre clé Google Places avant d’enregistrer ce moteur.'); return }
-    if (satelliteProvider === 'google' && !satellite.verified) { setError('Ajoutez et vérifiez votre clé Google Map Tiles avant d’enregistrer ce fournisseur.'); return }
-    try {
-      const next = await updateAccountPreferences(preferences)
-      setPreferences(next)
-      savedProviderSignature.current = `${next.routing.provider}|${next.places.provider}|${next.basemaps?.satellite_provider ?? (next.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')}`
-      onDirtyChange(false)
-      window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next }))
-      setMessage(t('account.preferences.saved'))
-    } catch (reason) { setError(reason instanceof Error ? reason.message : t('account.loadError')) }
-  }
-
-  return <><AccountHeading title={t('account.apiKeys.title')} description={t('account.apiKeys.description')} />
-    {error && <div className="form-alert" role="alert">{error}</div>}
-    <div className="account-form account-preferences-form account-api-keys">
-      <section className="account-api-summary" aria-label="Résumé des services API">
-        {serviceStates.map(({ id, title, icon: Icon, state }) => <div key={id} className="account-api-summary__item"><span className="account-api-summary__icon"><Icon size={17} aria-hidden="true" /></span><div><strong>{title}</strong><ApiServiceBadge state={state} /></div></div>)}
-        <div className="account-api-summary__item account-api-summary__credentials"><span className="account-api-summary__icon"><KeyRound size={17} aria-hidden="true" /></span><div><strong>{configuredCount} clé{configuredCount > 1 ? 's' : ''} configurée{configuredCount > 1 ? 's' : ''}</strong><span>{verifiedCount} vérifiée{verifiedCount > 1 ? 's' : ''} · {credentialErrorCount} erreur{credentialErrorCount > 1 ? 's' : ''}</span></div></div>
-      </section>
-      <ApiKeyGroup id="routing" icon={Route} title={t('account.apiKeys.routing')} modifier="routing" providerLabel={routingProviderLabel} state={routingState} expanded={expandedGroup === 'routing'} onToggle={toggleGroup}>
-        <ApiProviderCard title={t('account.preferences.engine')} description="Sélectionnez le moteur utilisé pour calculer les itinéraires.">
-        <PreferenceField label={t('account.preferences.engine')} htmlFor="account-routing-engine" help={storageAvailable ? t('account.preferences.googlePersonalKeyHelp') : t('account.preferences.googleUnavailable')} className="account-integration-engine">
-          <select id="account-routing-engine" aria-labelledby="account-routing-engine-label" value={preferences.routing.provider} onChange={(event) => { setError(null); updateRouting('provider', event.target.value as AccountPreferences['routing']['provider']) }}><option value="osrm">OSRM</option><option value="openrouteservice" disabled={!orsAvailable}>OpenRouteService</option><option value="google" disabled={!storageAvailable}>Google Routes</option></select>
-        </PreferenceField>
-        {preferences.routing.provider !== 'osrm' && <small>Fallback : OSRM</small>}
-        </ApiProviderCard>
-        {preferences.routing.provider === 'osrm' && <section className="account-api-no-credential"><KeyRound size={18} aria-hidden="true" /><div><h4>Aucune clé requise</h4><p>OSRM est opérationnel sans credential personnel.</p></div></section>}
-        {preferences.routing.provider === 'google' && <GoogleRoutesCredentialPanel status={routes} storageAvailable={storageAvailable} onChanged={(next, reset) => { setRoutes(next); resetRouting(reset) }} />}
-        {preferences.routing.provider === 'openrouteservice' && <OpenRouteServiceCredentialPanel status={ors} storageAvailable={storageAvailable} onChanged={(next, reset) => { setOrs(next); resetRouting(reset) }} />}
-      </ApiKeyGroup>
-      <ApiKeyGroup id="places" icon={MapIcon} title={t('account.apiKeys.places')} modifier="places" providerLabel={placesProviderLabel} state={placesState} expanded={expandedGroup === 'places'} onToggle={toggleGroup}>
-        <ApiProviderCard title="Moteur de recherche" description="Sélectionnez le fournisseur utilisé pour rechercher des lieux.">
-        <PreferenceField label="Moteur de recherche de lieux" htmlFor="account-places-engine" help="Stadia est utilisé par défaut. Google Places nécessite une clé séparée autorisant Places API (New)." className="account-integration-engine">
-          <select id="account-places-engine" aria-labelledby="account-places-engine-label" value={preferences.places.provider} onChange={(event) => { setError(null); setPreferences({ ...preferences, places: { provider: event.target.value as AccountPreferences['places']['provider'] } }) }}><option value="stadia">Stadia</option><option value="google" disabled={!storageAvailable}>Google Places</option></select>
-        </PreferenceField>
-        </ApiProviderCard>
-        {preferences.places.provider === 'stadia' && <StadiaPlacesCredentialPanel status={stadiaPlaces} storageAvailable={storageAvailable} onChanged={setStadiaPlaces} />}
-        {preferences.places.provider === 'google' && <GooglePlacesCredentialPanel status={places} storageAvailable={storageAvailable} onChanged={(next, reset) => { setPlaces(next); resetPlaces(reset) }} />}
-      </ApiKeyGroup>
-      <ApiKeyGroup id="maps" icon={ImageIcon} title={t('account.apiKeys.maps')} modifier="maps" providerLabel={mapsProviderLabel} state={mapsState} expanded={expandedGroup === 'maps'} onToggle={toggleGroup}>
-        <ApiProviderCard title="Fournisseur" description="Sélectionnez le fournisseur de tuiles satellite à utiliser.">
-        <PreferenceField label="Fournisseur satellite" htmlFor="account-basemap-provider" help="Stadia fonctionne sans clé personnelle. Google Map Tiles exige une clé vérifiée et l’activation de l’administrateur." className="account-integration-engine">
-          <select id="account-basemap-provider" aria-labelledby="account-basemap-provider-label" value={satelliteProvider} onChange={(event) => { const provider = event.target.value as 'stadia' | 'google'; setError(null); setPreferences({ ...preferences, basemaps: { satellite_provider: provider }, preferred_basemap: preferences.preferred_basemap === 'satellite' || preferences.preferred_basemap === 'google-satellite' ? (provider === 'google' ? 'google-satellite' : 'satellite') : preferences.preferred_basemap }) }}><option value="stadia">Stadia Maps</option><option value="google">Google Map Tiles</option></select>
-        </PreferenceField>
-        </ApiProviderCard>
-        {satelliteProvider === 'stadia' && <StadiaMapsCredentialPanel status={stadiaMaps} storageAvailable={storageAvailable} onChanged={setStadiaMaps} />}
-        {satelliteProvider === 'google' && <>
-          <GoogleSatelliteCredentialPanel
-            status={satellite}
-            storageAvailable={storageAvailable}
-            onChanged={(next, reset) => {
-              setSatellite(next)
-              resetBasemap(reset)
-              refreshSatelliteAvailability()
-            }}
-          />
-          {isAdmin && <GoogleSatelliteAdminPanel />}
-        </>}
-      </ApiKeyGroup>
-      {message && <div className="account-success" role="status">{message}</div>}
-      <div className="account-preferences-form__actions"><button className="account-button account-button--primary" type="button" onClick={() => void saveIntegrations()}>{t('common.save')}</button></div>
-    </div>
-  </>
-}
-
 function TimezoneCombobox({ value, label, onChange }: { value: string; label: string; onChange: (timezone: string) => void }) {
-  const [query, setQuery] = useState(value)
-  const matches = supportedTimeZones.filter((timeZone) => timeZone.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 100)
-  useEffect(() => setQuery(value), [value])
-
   return <div className="account-preference-field account-timezone-combobox">
-    <div className="account-preference-field__label"><Clock3 size={16} aria-hidden="true" /><label htmlFor="account-timezone">{label}</label></div>
-    <input
+    <div className="account-preference-field__identity"><Clock3 size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><label htmlFor="account-timezone">{label}</label></div><p>Heure et dates selon votre région.</p></div></div>
+    <select
       id="account-timezone"
-      list="account-timezone-options"
-      value={query}
-      placeholder="Europe/Paris"
-      autoComplete="off"
-      onChange={(event) => {
-        const nextValue = event.target.value
-        setQuery(nextValue)
-        if (supportedTimeZones.includes(nextValue)) onChange(nextValue)
-      }}
-      onBlur={() => setQuery(value)}
-    />
-    <datalist id="account-timezone-options">
-      {(matches.length > 0 ? matches : [value]).map((timeZone) => <option key={timeZone} value={timeZone} />)}
-    </datalist>
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >{supportedTimeZones.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select>
   </div>
 }
 

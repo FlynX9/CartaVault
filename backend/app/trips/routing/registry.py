@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
-from app.auth.api_keys import selected_api_key
+from app.auth.api_keys import mark_api_key_used, selected_api_key
 from app.auth.models import User, UserApiCredential
 from app.config import google_routes_settings, google_routing_limit_settings, openroute_service_settings, task_settings
 from app.trips.routing.base import RoutingError, RoutingProvider
@@ -157,9 +157,7 @@ class RoutingProviderRegistry:
         )
 
         def success() -> None:
-            credential.last_used_at = datetime.now(UTC).replace(tzinfo=None)
-            credential.last_error_code = None
-            session.commit()
+            mark_api_key_used(session, credential)
 
         def failure(code: str) -> None:
             credential.last_error_code = code
@@ -190,9 +188,7 @@ class RoutingProviderRegistry:
 
         def success() -> None:
             if credential is not None:
-                credential.last_used_at = datetime.now(UTC).replace(tzinfo=None)
-                credential.last_error_code = None
-                session.commit()
+                mark_api_key_used(session, credential)
 
         def failure(code: str) -> None:
             if credential is not None:

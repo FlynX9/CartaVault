@@ -145,19 +145,17 @@ describe('AdminConsole', () => {
 
   it('shows user promotion confirmation above the administration dialog', async () => {
     const target = {
-      id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur',
-      avatar_url: null,
+      id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur', avatar_url: null,
       role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
       last_login_at: null, owned_map_count: 0, shared_map_count: 0, place_count: 0,
       quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
     }
     vi.mocked(getAdminUsers).mockResolvedValue({ items: [target], total: 1, page: 1, page_size: 25, pages: 1 })
-
     render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: 'Promouvoir' }))
-
-    expect(screen.getByRole('alertdialog', { name: 'Modifier le rôle' })).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmer' }))
+    fireEvent.click(await screen.findByRole('button', { name: `Actions pour ${target.display_name}` }))
+    fireEvent.click(screen.getByRole('button', { name: /Promouvoir/ }))
+    expect(screen.getByRole('alertdialog', { name: `Promouvoir ${target.display_name}` })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Promouvoir' }))
     await waitFor(() => expect(updateAdminUser).toHaveBeenCalledWith(target.id, { role: 'admin' }))
   })
 
@@ -174,10 +172,12 @@ describe('AdminConsole', () => {
     vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile, restricted])
 
     render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
-    fireEvent.change(await screen.findByLabelText(`Profil de quotas de ${target.email}`), { target: { value: restricted.id } })
+    fireEvent.click(await screen.findByRole('button', { name: `Actions pour ${target.display_name}` }))
+    fireEvent.click(screen.getByRole('button', { name: 'Modifier le quota' }))
+    const dialog = screen.getByRole('dialog', { name: 'Modifier le quota' })
+    fireEvent.change(within(dialog).getByLabelText('Profil de quota'), { target: { value: restricted.id } })
 
-    expect(screen.getByText(/possède 7 cartes pour une limite de 5/)).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Affecter' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(assignUserQuotaProfile).toHaveBeenCalledWith(target.id, restricted.id))
   })
 
@@ -194,7 +194,7 @@ describe('AdminConsole', () => {
     render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
 
     await screen.findByText(target.display_name)
-    const avatar = document.querySelector<HTMLImageElement>('.admin-console__avatar img')
+    const avatar = document.querySelector<HTMLImageElement>('.admin-users__avatar img')
     expect(avatar).not.toBeNull()
     expect(avatar).toHaveAttribute('src', expect.stringContaining(target.avatar_url))
   })
@@ -233,11 +233,34 @@ describe('AdminConsole', () => {
     render(<StrictMode><MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter></StrictMode>)
 
     expect(await screen.findByRole('heading', { name: 'Quotas' })).toBeVisible()
-    expect(screen.getByText('Unlimited')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Illimité' })).toBeVisible()
     expect(screen.getAllByText('Par défaut').length).toBeGreaterThan(0)
     expect(screen.getByText('Système')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Nouveau profil' })).toBeVisible()
     expect(screen.queryByText('Usages par utilisateur')).not.toBeInTheDocument()
+  })
+
+  it('cycles through quota profiles with the carousel controls', async () => {
+    const secondProfile = { ...unlimitedProfile, id: 'standard-profile', name: 'Standard', is_default: false, is_system: false }
+    const thirdProfile = { ...unlimitedProfile, id: 'large-profile', name: 'Large', is_default: false, is_system: false }
+    vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile, secondProfile, thirdProfile])
+    vi.mocked(getQuotaRegistry).mockResolvedValue(quotaRegistry)
+
+    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+
+    const next = await screen.findByRole('button', { name: 'Profil suivant' })
+    const previous = screen.getByRole('button', { name: 'Profil précédent' })
+    expect(screen.getByLabelText('Profil 1 sur 3')).toBeVisible()
+    fireEvent.click(next)
+    expect(screen.getByLabelText('Profil 2 sur 3')).toBeVisible()
+    fireEvent.click(previous)
+    expect(screen.getByLabelText('Profil 1 sur 3')).toBeVisible()
+    fireEvent.click(previous)
+    expect(screen.getByLabelText('Profil 3 sur 3')).toBeVisible()
+    const carousel = screen.getByLabelText('Profils de quotas')
+    fireEvent.touchStart(carousel.querySelector('.quota-carousel__viewport')!, { touches: [{ clientX: 260, clientY: 120 }] })
+    fireEvent.touchEnd(carousel.querySelector('.quota-carousel__viewport')!, { changedTouches: [{ clientX: 120, clientY: 126 }] })
+    expect(screen.getByLabelText('Profil 1 sur 3')).toBeVisible()
   })
 
   it('creates a quota profile from the tabbed modal and keeps the page compact', async () => {
@@ -282,15 +305,13 @@ describe('AdminConsole', () => {
     await waitFor(() => expect(updateQuotaProfile).toHaveBeenCalledWith(editable.id, expect.objectContaining({ description: 'Texte modifié' })))
   })
 
-  it('protects system quota fields in the edit modal', async () => {
+  it('prevents editing the system unlimited profile', async () => {
     vi.mocked(getQuotaRegistry).mockResolvedValue(quotaRegistry)
     render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: /Modifier/ }))
-    const dialog = screen.getByRole('dialog', { name: 'Modifier Unlimited' })
-    expect(within(dialog).getByLabelText('Nom')).toBeDisabled()
-    expect(within(dialog).getByRole('checkbox', { name: /Profil actif/ })).toBeDisabled()
-    fireEvent.click(within(dialog).getByRole('tab', { name: 'Compte' }))
-    expect(within(dialog).getAllByRole('checkbox').every((input) => input.hasAttribute('disabled'))).toBe(true)
+    const edit = await screen.findByRole('button', { name: /Modifier/ })
+    expect(edit).toBeDisabled()
+    expect(edit).toHaveAttribute('title', 'Le profil système Illimité ne peut pas être modifié.')
+    expect(screen.queryByRole('dialog', { name: /Modifier/ })).not.toBeInTheDocument()
   })
 
   it('keeps a non-system default quota profile active', async () => {

@@ -84,17 +84,13 @@ def get_profile(profile_id: UUID, session: Session = Depends(get_db)) -> QuotaPr
 @router.patch("/quota-profiles/{profile_id}", response_model=QuotaProfileRead)
 def update_profile(profile_id: UUID, payload: QuotaProfileUpdate, session: Session = Depends(get_db)) -> QuotaProfileRead:
     profile = QuotaService(session).resolve_profile(profile_id, active_only=False, lock=True)
-    if profile.is_system and payload.limits is not None and any(value is not None for value in payload.limits.model_dump().values()):
-        raise HTTPException(409, detail={"code": "quota.profile.system_unlimited", "params": {}})
+    if profile.is_system:
+        raise HTTPException(409, detail={"code": "quota.profile.system_protected", "params": {}})
     if payload.name is not None:
-        if profile.is_system and payload.name != "Unlimited":
-            raise HTTPException(409, detail={"code": "quota.profile.system_protected", "params": {}})
         profile.name = payload.name
     if "description" in payload.model_fields_set:
         profile.description = payload.description
     if payload.is_active is not None:
-        if profile.is_system and not payload.is_active:
-            raise HTTPException(409, detail={"code": "quota.profile.system_protected", "params": {}})
         if profile.is_default and not payload.is_active:
             raise HTTPException(409, detail={"code": "quota.profile.default_required", "params": {}})
         profile.is_active = payload.is_active
@@ -166,7 +162,11 @@ def effective_quotas(user_id: UUID, session: Session = Depends(get_db)) -> Effec
     items: list[EffectiveQuotaItem] = []
     for key, definition in QUOTA_REGISTRY.items():
         limit = getattr(profile, key.value)
-        usage = service.usage(user_id, key) if definition.scope.value == "user" else None
+        usage = (
+            service.usage(user_id, key)
+            if definition.scope.value == "user" and key not in service.NON_MEASURABLE_KEYS
+            else None
+        )
         items.append(EffectiveQuotaItem(
             key=key, scope=definition.scope, limit=limit, usage=usage,
             remaining=None if limit is None or usage is None else max(0, limit - usage),

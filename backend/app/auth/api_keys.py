@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -32,11 +32,16 @@ def decrypt_api_key(credential: UserApiCredential) -> str:
 
 
 def mark_api_key_used(session: Session, credential: UserApiCredential) -> None:
-    credential.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    if credential.last_error_code is None and credential.last_used_at is not None and now - credential.last_used_at < timedelta(minutes=5):
+        return
+    credential.last_used_at = now
     credential.last_error_code = None
     session.commit()
 
 
 def mark_api_key_error(session: Session, credential: UserApiCredential, code: str) -> None:
+    if credential.last_error_code == code:
+        return
     credential.last_error_code = code
     session.commit()

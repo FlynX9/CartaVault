@@ -104,6 +104,7 @@ function parseMapPlace(value: unknown): MapPlace {
       }
     })(),
     primary_category_icon: readNullableString(value, 'primary_category_icon', context),
+    primary_photo_id: readOptionalNullableString(value, 'primary_photo_id', context),
     category_ids: readArray(value, 'category_ids', context).map((id) => {
       if (typeof id !== 'string') throw new Error(`${context} contient une catégorie invalide.`)
       return id
@@ -218,7 +219,7 @@ export async function getMapPlaces(
     const cached = await offlinePlaces(query.mapId)
     const items = cached.flatMap((place): MapPlace[] => {
       if (place.latitude === null || place.longitude === null || place.latitude < query.bounds.minLatitude || place.latitude > query.bounds.maxLatitude || place.longitude < query.bounds.minLongitude || place.longitude > query.bounds.maxLongitude) return []
-      return [{ id: place.id, map_id: place.map_id, name: place.name, latitude: place.latitude, longitude: place.longitude, status: { id: place.status.id, color: place.status.color }, primary_category_icon: place.categories.find((category) => category.is_primary)?.icon ?? null, category_ids: place.categories.map((category) => category.id), tag_ids: place.tags.map((tag) => tag.id), is_favorite: place.is_favorite === true }]
+      return [{ id: place.id, map_id: place.map_id, name: place.name, latitude: place.latitude, longitude: place.longitude, status: { id: place.status.id, color: place.status.color }, primary_category_icon: place.categories.find((category) => category.is_primary)?.icon ?? null, primary_photo_id: place.primary_photo_id ?? null, category_ids: place.categories.map((category) => category.id), tag_ids: place.tags.map((tag) => tag.id), is_favorite: place.is_favorite === true }]
     })
     if (items.length === 0 && cached.length === 0) throw error
     const limited = items.slice(0, query.limit ?? items.length)

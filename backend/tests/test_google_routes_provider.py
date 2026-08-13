@@ -133,13 +133,14 @@ def test_registry_exposes_capabilities_without_secret_and_rejects_unknown(monkey
     with pytest.raises(RoutingError) as error:
         registry.resolve(session, user, "other")
     assert error.value.code == "ROUTING_PROVIDER_UNKNOWN"
-    session.scalar.return_value = SimpleNamespace(
+    credential = SimpleNamespace(
         encrypted_secret="ciphertext",
         encryption_version=1,
         verified_at=datetime.now(UTC).replace(tzinfo=None),
         last_error_code=None,
         last_used_at=None,
     )
+    monkeypatch.setattr("app.trips.routing.registry.google_credential", lambda *_: credential)
     monkeypatch.setattr("app.trips.routing.registry.CredentialEncryptionService.from_settings", lambda: SimpleNamespace(decrypt=lambda *_: "test-only"))
     monkeypatch.setattr("app.trips.routing.registry.google_routes_settings", settings())
     resolved = registry.resolve(session, user, "google", {"avoid_tolls": True, "traffic_mode": "traffic_aware"})
@@ -206,5 +207,6 @@ def test_registry_uses_each_users_decrypted_key_without_cross_access(monkeypatch
         credentials.append(SimpleNamespace(encrypted_secret=encrypted.ciphertext, encryption_version=encrypted.version, verified_at=datetime.now(UTC).replace(tzinfo=None), last_error_code=None, last_used_at=None))
     for user_id, credential in zip(("user-a", "user-b"), credentials, strict=True):
         session = Mock(); session.scalar.return_value = credential
+        monkeypatch.setattr("app.trips.routing.registry.google_credential", lambda *_args, value=credential: value)
         registry.resolve(session, SimpleNamespace(id=user_id), "google").calculate_route([(-120.2, 38.5), (-120.95, 40.7), (-126.453, 43.252)])
     assert captured_keys == ["fake-user-a", "fake-user-b"]

@@ -20,46 +20,31 @@ def _login(client, monkeypatch, user: User) -> str:
 
 
 def _configure_encryption(monkeypatch) -> None:
-    settings = SimpleNamespace(encryption_key=Fernet.generate_key().decode())
-    monkeypatch.setattr("app.auth.credential_encryption.credential_settings", settings)
+    monkeypatch.setattr("app.auth.credential_encryption.credential_settings", SimpleNamespace(encryption_key=Fernet.generate_key().decode()))
 
 
-def test_personal_google_credential_lifecycle_is_masked_and_csrf_protected(integration_client, database_session, auth_user, monkeypatch) -> None:
+def _create_key(client, csrf: str, *, name: str, provider: str, secret: str):
+    return client.post("/account/api-keys", json={"name": name, "provider": provider, "api_key": secret}, headers={"X-CSRF-Token": csrf})
+
+
+def test_personal_api_key_lifecycle_is_masked_scoped_and_csrf_protected(integration_client, database_session, auth_user, monkeypatch) -> None:
     _configure_encryption(monkeypatch)
-    assert integration_client.get("/account/integrations/google-routes").status_code == 401
+    assert integration_client.get("/account/api-keys").status_code == 401
     csrf = _login(integration_client, monkeypatch, auth_user)
-    assert integration_client.get("/account/integrations/google-routes").json()["configured"] is False
-    fake_key = "fake-google-key-user-a"
-    assert integration_client.put("/account/integrations/google-routes", json={"api_key": fake_key}).status_code == 403
-    stored = integration_client.put("/account/integrations/google-routes", json={"api_key": fake_key}, headers={"X-CSRF-Token": csrf})
+    assert _create_key(integration_client, "", name="Google", provider="google", secret="fake-google-key-user-a").status_code == 403
+    stored = _create_key(integration_client, csrf, name="Google", provider="google", secret="fake-google-key-user-a")
     assert stored.status_code == 200
-    assert stored.json() == {"configured": True, "last4": "er-a", "verified": False, "verified_at": None, "last_used_at": None, "last_error_code": None}
-    assert fake_key not in stored.text
-    credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == auth_user.id))
-    assert credential is not None
-    assert credential.encrypted_secret != fake_key and fake_key not in credential.encrypted_secret
+    payload = stored.json()
+    assert payload["last4"] == "er-a" and payload["verified"] is False
+    assert "fake-google-key-user-a" not in stored.text
+    credential = database_session.get(UserApiCredential, payload["id"])
+    assert credential is not None and "fake-google-key-user-a" not in credential.encrypted_secret
 
-    replacement = "fake-google-key-user-a-replaced"
-    replaced = integration_client.put("/account/integrations/google-routes", json={"api_key": replacement}, headers={"X-CSRF-Token": csrf})
-    assert replaced.status_code == 200 and replaced.json()["last4"] == "aced"
-    database_session.refresh(credential)
-    assert credential.verified_at is None and replacement not in credential.encrypted_secret
-
-    monkeypatch.setattr("app.auth.credential_router.GoogleRoutesProvider.calculate_route", lambda *_args, **_kwargs: SimpleNamespace())
-    verified = integration_client.post("/account/integrations/google-routes/verify", headers={"X-CSRF-Token": csrf})
-    assert verified.status_code == 200 and verified.json()["verified"] is True
-    providers = integration_client.get("/routing/providers").json()
-    google = next(item for item in providers["providers"] if item["id"] == "google")
-    assert google["available"] is True and google["credential_verified"] is True
-    assert "api_key" not in str(providers).lower() and replacement not in str(providers)
-
-    auth_user.preferences = {"routing": {"provider": "google"}}
-    database_session.flush()
-    monkeypatch.setattr("app.auth.credential_router.verify_password", lambda _hash, password: (password == "current password", False))
-    deleted = integration_client.request("DELETE", "/account/integrations/google-routes", json={"current_password": "current password"}, headers={"X-CSRF-Token": csrf})
-    assert deleted.status_code == 200 and deleted.json()["provider_reset"] is True
-    assert database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == auth_user.id)) is None
-    assert auth_user.preferences["routing"]["provider"] == "osrm"
+    replacement = integration_client.patch(f"/account/api-keys/{payload['id']}", json={"name": "Google principal", "api_key": "replacement-secret"}, headers={"X-CSRF-Token": csrf})
+    assert replacement.status_code == 200 and replacement.json()["last4"] == "cret"
+    deleted = integration_client.delete(f"/account/api-keys/{payload['id']}", headers={"X-CSRF-Token": csrf})
+    assert deleted.status_code == 200
+    assert database_session.get(UserApiCredential, payload["id"]) is None
 
 
 def test_credentials_are_isolated_between_users(integration_client, database_session, auth_user, monkeypatch) -> None:
@@ -67,106 +52,44 @@ def test_credentials_are_isolated_between_users(integration_client, database_ses
     other = User(email=f"other-{uuid4()}@example.test", display_name="Other", password_hash="hash", is_admin=False, is_active=True)
     database_session.add(other); database_session.flush()
     first_csrf = _login(integration_client, monkeypatch, auth_user)
-    integration_client.put("/account/integrations/google-routes", json={"api_key": "fake-google-key-user-a"}, headers={"X-CSRF-Token": first_csrf})
+    first = _create_key(integration_client, first_csrf, name="First", provider="google", secret="fake-google-key-user-a").json()
     second_csrf = _login(integration_client, monkeypatch, other)
-    assert integration_client.get("/account/integrations/google-routes").json()["configured"] is False
-    integration_client.put("/account/integrations/google-routes", json={"api_key": "fake-google-key-user-b"}, headers={"X-CSRF-Token": second_csrf})
+    assert integration_client.get("/account/api-keys").json() == []
+    assert integration_client.patch(f"/account/api-keys/{first['id']}", json={"name": "stolen"}, headers={"X-CSRF-Token": second_csrf}).status_code == 404
+    _create_key(integration_client, second_csrf, name="Second", provider="google", secret="fake-google-key-user-b")
     rows = database_session.scalars(select(UserApiCredential).where(UserApiCredential.user_id.in_([auth_user.id, other.id]))).all()
-    assert len(rows) == 2
-    assert {row.secret_last4 for row in rows} == {"er-a", "er-b"}
-    assert all("fake-google-key" not in row.encrypted_secret for row in rows)
+    assert len(rows) == 2 and {row.secret_last4 for row in rows} == {"er-a", "er-b"}
 
 
-def test_personal_google_map_tiles_key_is_independent_and_masked(integration_client, database_session, auth_user, monkeypatch) -> None:
-    _configure_encryption(monkeypatch)
-    csrf = _login(integration_client, monkeypatch, auth_user)
-    map_key = "fake-google-map-tiles-user-a"
-    stored = integration_client.put(
-        "/account/integrations/google-map-tiles",
-        json={"api_key": map_key},
-        headers={"X-CSRF-Token": csrf},
-    )
-    assert stored.status_code == 200
-    assert stored.json()["last4"] == "er-a"
-    assert map_key not in stored.text
-    credential = database_session.scalar(select(UserApiCredential).where(
-        UserApiCredential.user_id == auth_user.id,
-        UserApiCredential.provider == "google_map_tiles",
-    ))
-    assert credential is not None
-    assert map_key not in credential.encrypted_secret
-    assert database_session.scalar(select(UserApiCredential).where(
-        UserApiCredential.user_id == auth_user.id,
-        UserApiCredential.provider == "google_routes",
-    )) is None
-
-    monkeypatch.setattr("app.basemaps.router._create_google_session", lambda *_args: {"session": "verified"})
-    verified = integration_client.post("/account/integrations/google-map-tiles/verify", headers={"X-CSRF-Token": csrf})
-    assert verified.status_code == 200
-    assert verified.json()["verified"] is True
-
-    auth_user.preferences = {"preferred_basemap": "google-satellite"}
-    database_session.flush()
-    monkeypatch.setattr("app.basemaps.router.verify_password", lambda _hash, password: (password == "current password", False))
-    deleted = integration_client.request(
-        "DELETE",
-        "/account/integrations/google-map-tiles",
-        json={"current_password": "current password"},
-        headers={"X-CSRF-Token": csrf},
-    )
-    assert deleted.status_code == 200
-    assert deleted.json()["provider_reset"] is True
-    assert auth_user.preferences["preferred_basemap"] == "cartavault-light"
-
-
-def test_verified_google_credential_searches_places_without_exposing_the_key(integration_client, database_session, auth_user, monkeypatch) -> None:
+def test_selected_google_key_searches_places_without_exposing_secret(integration_client, database_session, auth_user, monkeypatch) -> None:
     _configure_encryption(monkeypatch)
     csrf = _login(integration_client, monkeypatch, auth_user)
     api_key = "fake-google-key-places"
-    integration_client.put("/account/integrations/google-places", json={"api_key": api_key}, headers={"X-CSRF-Token": csrf})
-    credential = database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == auth_user.id, UserApiCredential.provider == "google_places"))
-    assert credential is not None
+    created = _create_key(integration_client, csrf, name="Places", provider="google", secret=api_key).json()
+    credential = database_session.get(UserApiCredential, created["id"])
     credential.verified_at = datetime.now(UTC).replace(tzinfo=None)
+    auth_user.preferences = {"places": {"provider": "google", "api_key_id": created["id"]}}
     database_session.commit()
-    calls: list[tuple[str, str, str | None, int]] = []
+    calls = []
 
     def fake_search(key: str, query: str, country: str | None, limit: int):
         calls.append((key, query, country, limit))
-        return [SimpleNamespace(
-            id="google:panorama", name="Panorama Boutique Hotel", formatted_address="13 Samreklo Street, 0103 Tbilisi, Georgia",
-            latitude=41.697122, longitude=44.8135, country_code="GE", locality="Tbilisi", postal_code="0103",
-        )] if key == api_key and country == "GE" else []
+        return [SimpleNamespace(id="google:panorama", name="Panorama", formatted_address="Tbilisi", latitude=41.69, longitude=44.81, country_code="GE", locality="Tbilisi", postal_code="0103")]
 
     monkeypatch.setattr("app.auth.google_places_credential_router.search_google_places", fake_search)
-
-    default_response = integration_client.get("/account/integrations/google-places/search", params={"q": "Panorama Boutique Hotel", "country_code": "GE"})
-
-    assert default_response.status_code == 200
-    assert default_response.json() == {"items": [], "available": False, "warning_code": "GOOGLE_PLACES_NOT_SELECTED"}
-    assert calls == []
-
-    auth_user.preferences = {"places": {"provider": "google"}}
-    database_session.commit()
-
-    response = integration_client.get("/account/integrations/google-places/search", params={"q": "Panorama Boutique Hotel", "country_code": "GE"})
-
-    assert response.status_code == 200
-    assert response.json()["items"][0] == {
-        "id": "google:panorama", "name": "Panorama Boutique Hotel", "formattedAddress": "13 Samreklo Street, 0103 Tbilisi, Georgia",
-        "latitude": 41.697122, "longitude": 44.8135, "countryCode": "GE", "locality": "Tbilisi", "postalCode": "0103",
-        "source": "google_places", "confidence": 1,
-    }
-    assert len(calls) == 1
-    assert api_key not in response.text
+    response = integration_client.get("/account/integrations/google-places/search", params={"q": "Panorama", "country_code": "GE"})
+    assert response.status_code == 200 and response.json()["items"][0]["name"] == "Panorama"
+    assert calls[0][0] == api_key and api_key not in response.text
 
 
-def test_account_anonymization_deletes_credential(integration_client, database_session, monkeypatch) -> None:
+def test_account_anonymization_deletes_all_personal_keys(integration_client, database_session, monkeypatch) -> None:
     _configure_encryption(monkeypatch)
     user = User(email=f"delete-credential-{uuid4()}@example.test", display_name="Delete", password_hash="hash", is_admin=False, is_active=True)
     database_session.add(user); database_session.flush()
     csrf = _login(integration_client, monkeypatch, user)
-    integration_client.put("/account/integrations/google-routes", json={"api_key": "fake-google-key-delete"}, headers={"X-CSRF-Token": csrf})
+    _create_key(integration_client, csrf, name="Google", provider="google", secret="fake-google-key-delete")
+    _create_key(integration_client, csrf, name="Stadia", provider="stadia", secret="fake-stadia-key-delete")
     monkeypatch.setattr("app.auth.account_router.verify_password", lambda *_: (True, False))
     response = integration_client.request("DELETE", "/account", json={"current_password": "current password", "confirmation": "SUPPRIMER MON COMPTE", "acknowledged": True}, headers={"X-CSRF-Token": csrf})
     assert response.status_code == 204
-    assert database_session.scalar(select(UserApiCredential).where(UserApiCredential.user_id == user.id)) is None
+    assert database_session.scalars(select(UserApiCredential).where(UserApiCredential.user_id == user.id)).all() == []
