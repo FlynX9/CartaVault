@@ -11,16 +11,17 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   variant?: 'danger' | 'positive'
   busy?: boolean
+  overlayClassName?: string
   onCancel: () => void
   onConfirm: () => void
 }
 
-export function ConfirmDialog({ title, message, confirmLabel = 'Supprimer', cancelLabel = 'Annuler', variant = 'danger', busy = false, onCancel, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, message, confirmLabel = 'Supprimer', cancelLabel = 'Annuler', variant = 'danger', busy = false, overlayClassName = '', onCancel, onConfirm }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   useModalFocus({ dialogRef, initialFocusRef: cancelButtonRef, onEscape: () => { if (!busy) onCancel() } })
 
-  return createPortal(<div className="cv-overlay confirmation-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onCancel() }}>
+  return createPortal(<div className={`cv-overlay confirmation-overlay ${overlayClassName}`.trim()} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onCancel() }}>
     <section ref={dialogRef} className={`cv-modal confirmation-dialog confirmation-dialog--${variant}`} role="alertdialog" aria-modal="true" aria-labelledby="confirmation-dialog-title" aria-describedby="confirmation-dialog-message">
       <header><span className="confirmation-dialog__icon" aria-hidden="true">{variant === 'positive' ? <CalendarPlus size={18} /> : <AlertTriangle size={18} />}</span><div><p className="cv-workspace-panel__eyebrow">Confirmation</p><h2 id="confirmation-dialog-title">{title}</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onCancel}><X size={17} /></button></header>
       <p id="confirmation-dialog-message">{message}</p>

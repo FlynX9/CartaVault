@@ -8,9 +8,11 @@ interface ConfirmDialogOptions {
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'danger' | 'positive'
+  overlayClassName?: string
 }
 
-export function useConfirmDialog() {
+export function useConfirmDialog(defaults: Pick<ConfirmDialogOptions, 'overlayClassName'> = {}) {
+  const defaultOverlayClassName = defaults.overlayClassName
   const [options, setOptions] = useState<ConfirmDialogOptions | null>(null)
   const resolverRef = useRef<((confirmed: boolean) => void) | null>(null)
 
@@ -23,8 +25,8 @@ export function useConfirmDialog() {
   const confirm = useCallback((nextOptions: ConfirmDialogOptions) => new Promise<boolean>((resolve) => {
     resolverRef.current?.(false)
     resolverRef.current = resolve
-    setOptions(nextOptions)
-  }), [])
+    setOptions({ ...nextOptions, overlayClassName: nextOptions.overlayClassName ?? defaultOverlayClassName })
+  }), [defaultOverlayClassName])
 
   useEffect(() => () => resolverRef.current?.(false), [])
   useEffect(() => {

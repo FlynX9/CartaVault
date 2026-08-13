@@ -20,7 +20,7 @@ export function PersonalApiKeysSection() {
   const [showSecret, setShowSecret] = useState(false)
   const [busy, setBusy] = useState(false)
   const [detailsKey, setDetailsKey] = useState<PersonalApiKey | null>(null)
-  const { confirm, confirmationDialog } = useConfirmDialog()
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
   const load = () => void getPersonalApiKeys().then(setKeys).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Impossible de charger les clés API.')).finally(() => setLoading(false))
   useEffect(load, [])
   const metrics = useMemo(() => ({ configured: keys.length, verified: keys.filter((key) => key.verified).length, errors: keys.filter((key) => !key.verified).length, lastActivity: keys.map((key) => key.last_used_at ?? key.verified_at).filter((value): value is string => Boolean(value)).sort().at(-1) ?? null }), [keys])

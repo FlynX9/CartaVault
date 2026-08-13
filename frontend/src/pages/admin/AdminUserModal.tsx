@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock3, Mail, ShieldCheck, Users, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 import type { AdminUserActivity, AdminUserDetails } from '../../types/adminConsole'
 
@@ -24,7 +25,7 @@ export function AdminUserModal({ detail, activityUser, activity, loading, onClos
   onClose: () => void
 }) {
   const title = detail ? `Fiche de ${detail.display_name}` : activityUser ? `Historique de ${activityUser.display_name}` : 'Chargement…'
-  return <div className="cv-overlay admin-user-modal-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+  return createPortal(<div className="cv-overlay admin-user-modal-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section className="cv-modal admin-user-modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-modal-title">
       <header><div><p className="cv-workspace-panel__eyebrow">UTILISATEUR</p><h2 id="admin-user-modal-title">{title}</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={16} /></button></header>
       {loading ? <p className="admin-user-modal__loading">Chargement…</p> : detail ? <div className="admin-user-detail">
@@ -33,5 +34,5 @@ export function AdminUserModal({ detail, activityUser, activity, loading, onClos
         <section className="admin-user-detail__counts"><h3>Utilisation</h3><div><span>{detail.owned_map_count}<small>cartes</small></span><span>{detail.shared_map_count}<small>participations</small></span><span>{detail.place_count}<small>POI</small></span><span>{detail.trip_count}<small>sorties</small></span></div></section>
       </div> : <div className="admin-user-activity"><p>Les 100 événements les plus récents sont conservés pour ce compte.</p>{activity.length === 0 ? <p className="admin-user-modal__empty">Aucun événement enregistré pour le moment.</p> : <ol>{activity.map((event) => <li key={event.id}><Clock3 size={15} /><div><strong>{activityLabels[event.event_type] ?? event.event_type}</strong>{event.previous_value !== null && <span>{event.previous_value} → {event.next_value}</span>}<small>{new Date(event.occurred_at).toLocaleString('fr-FR')}{event.actor_display_name ? ` · par ${event.actor_display_name}` : ''}</small></div></li>)}</ol>}</div>}
     </section>
-  </div>
+  </div>, document.body)
 }

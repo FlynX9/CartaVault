@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { useConfirmDialog } from './useConfirmDialog'
 
 function Harness() {
-  const { confirm, confirmationDialog } = useConfirmDialog()
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'test-confirmation-overlay' })
 
   return <>
     <button type="button" onClick={() => void confirm({ title: 'Supprimer cet élément ?', message: 'Cette action est irréversible.' }).then((confirmed) => { document.body.dataset.confirmed = String(confirmed) })}>Ouvrir</button>
@@ -21,6 +21,7 @@ describe('useConfirmDialog', () => {
 
     const dialog = screen.getByRole('alertdialog', { name: 'Supprimer cet élément ?' })
     expect(dialog).toHaveTextContent('Cette action est irréversible.')
+    expect(dialog.parentElement).toHaveClass('test-confirmation-overlay')
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annuler' })).toHaveFocus())
 
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))

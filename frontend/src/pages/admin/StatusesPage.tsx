@@ -38,7 +38,7 @@ interface StatusesPanelProps {
 }
 
 export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: StatusesPanelProps) {
-  const { confirm, confirmationDialog } = useConfirmDialog()
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
   const [statuses, setStatuses] = useState<PlaceStatus[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<PlaceStatus | null>(null)

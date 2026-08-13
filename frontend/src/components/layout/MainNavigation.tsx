@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CircleDot, Images, LayoutDashboard, MapPinned, MapPin, Route, Shapes, Tag, Trash2, Spline } from 'lucide-react'
+import { IconMap2, IconTimelineEvent, IconVault, IconWorldMap } from '@tabler/icons-react'
+import { CircleDot, Images, LayoutDashboard, Route, Shapes, Tag, Trash2, Spline } from 'lucide-react'
 import { useI18n } from '../../i18n/useI18n'
 
 export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates' | null
@@ -10,9 +11,11 @@ interface Props {
   onPanelChange: (panel: WorkspacePanel) => void
   onWorkspacePanelToggle?: (panel: Exclude<WorkspacePanel, null>) => void
   onPlacesPanelToggle?: () => void
+  placesPanelCollapsed?: boolean
   isAdmin?: boolean
   onOpenTrips?: () => void
   tripPlanningActive?: boolean
+  tripTimelineShortcutActive?: boolean
   dashboardActive?: boolean
   onOpenDashboard?: () => void
   hasMaps?: boolean
@@ -36,10 +39,19 @@ const mobilePersistentPanels = new Set<Exclude<WorkspacePanel, null>>([
   'annotation-templates',
 ])
 
-export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, dashboardActive = false, onOpenDashboard, hasMaps = true }: Props) {
+export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelToggle = (panel) => onPanelChange(activePanel === panel ? null : panel), onPlacesPanelToggle = () => undefined, placesPanelCollapsed = false, isAdmin = false, onOpenTrips = () => undefined, tripPlanningActive = false, tripTimelineShortcutActive = false, dashboardActive = false, onOpenDashboard, hasMaps = true }: Props) {
   const { t } = useI18n()
   const [organizationOpen, setOrganizationOpen] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches === true)
   const organizationMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const mediaQuery = window.matchMedia('(max-width: 760px)')
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches)
+    updateViewport()
+    mediaQuery.addEventListener?.('change', updateViewport)
+    return () => mediaQuery.removeEventListener?.('change', updateViewport)
+  }, [])
   useEffect(() => {
     if (!organizationOpen) return
     const closeOutside = (event: PointerEvent) => {
@@ -57,6 +69,11 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
     else onPanelChange(panel)
   }
   const placesActive = activePanel === 'places' && !tripPlanningActive
+  const placesPanelOpen = placesActive && !placesPanelCollapsed
+  const placesMapMode = isMobileViewport && placesActive && placesPanelCollapsed
+  const placesNavigationLabel = placesMapMode ? t('nav.map') : t('nav.places')
+  const tripTimelineActive = isMobileViewport && tripPlanningActive && !tripTimelineShortcutActive
+  const tripsNavigationLabel = tripTimelineActive ? t('trips.timeline') : t('nav.trips')
   const selectOrganizationPanel = (panel: 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates') => {
     closeMobileModalLayers()
     setOrganizationOpen(false)
@@ -71,9 +88,35 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
       </div>
       <div className="cv-main-navigation__separator" role="separator" />
       <div className="cv-main-navigation__group" aria-label={t('app.workspace')}>
-        <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><MapPinned size={23} /><span>{t('nav.maps')}</span></button>
-        {hasMaps && <><button type="button" className={navClass(placesActive)} aria-label={t('nav.places')} aria-pressed={placesActive} onClick={() => { closeMobileModalLayers(); placesActive ? onPlacesPanelToggle() : onPanelChange('places') }}><MapPin size={23} /><span>{t('nav.places')}</span></button>
-        <button type="button" className={navClass(tripPlanningActive)} aria-label={t('nav.trips')} aria-pressed={tripPlanningActive} onClick={() => { closeMobileModalLayers(); onOpenTrips() }}><Route size={23} /><span>{t('nav.trips')}</span></button></>}
+        <button type="button" className={navClass(activePanel === 'maps')} aria-label={t('nav.maps')} aria-pressed={activePanel === 'maps'} onClick={() => togglePanel('maps')}><IconVault className="cv-main-navigation__vault-icon" aria-hidden="true" size={23} stroke={2} /><span>{t('nav.maps')}</span></button>
+        {hasMaps && <><button type="button" className={`${navClass(placesActive)} cv-main-navigation__places-toggle`} data-panel-open={placesPanelOpen} aria-label={placesNavigationLabel} aria-pressed={placesActive} onClick={() => { closeMobileModalLayers(); if (placesActive) onPlacesPanelToggle(); else onPanelChange('places') }}>
+          <span className="cv-main-navigation__icon-slot" aria-hidden="true">
+            <IconMap2 className={`cv-main-navigation__places-default-icon${placesMapMode ? '' : ' is-visible'}`} size={23} stroke={2} />
+            <IconWorldMap className={`cv-main-navigation__places-world-map-icon${placesMapMode ? ' is-visible' : ''}`} size={23} stroke={2} />
+          </span>
+          <span className="cv-main-navigation__label-slot" aria-hidden="true">
+            <span className={placesMapMode ? '' : 'is-visible'}>{t('nav.places')}</span>
+            <span className={placesMapMode ? 'is-visible' : ''}>{t('nav.map')}</span>
+            {isMobileViewport && <small className="cv-main-navigation__mode-dots">
+              <i className={placesMapMode ? '' : 'is-active'} />
+              <i className={placesMapMode ? 'is-active' : ''} />
+            </small>}
+          </span>
+        </button>
+        <button type="button" className={navClass(tripPlanningActive)} aria-label={tripsNavigationLabel} aria-pressed={tripPlanningActive} onClick={() => { closeMobileModalLayers(); onOpenTrips() }}>
+          <span className="cv-main-navigation__icon-slot" aria-hidden="true">
+            <Route className={`cv-main-navigation__trip-default-icon${tripTimelineActive ? '' : ' is-visible'}`} size={23} />
+            <IconTimelineEvent className={`cv-main-navigation__trip-timeline-icon${tripTimelineActive ? ' is-visible' : ''}`} size={23} stroke={2} />
+          </span>
+          <span className="cv-main-navigation__label-slot" aria-hidden="true">
+            <span className={tripTimelineActive ? '' : 'is-visible'}>{t('nav.trips')}</span>
+            <span className={tripTimelineActive ? 'is-visible' : ''}>{t('trips.timeline')}</span>
+            {isMobileViewport && <small className="cv-main-navigation__mode-dots">
+              <i className={tripTimelineActive ? '' : 'is-active'} />
+              <i className={tripTimelineActive ? 'is-active' : ''} />
+            </small>}
+          </span>
+        </button></>}
       </div>
       {hasMaps && <><div className="cv-main-navigation__separator" role="separator" aria-label={t('nav.media')} />
       <div className="cv-main-navigation__group" aria-label={t('nav.media')}>

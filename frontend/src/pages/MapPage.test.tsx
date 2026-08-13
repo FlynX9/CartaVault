@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { useContext, useState } from 'react'
@@ -6,6 +6,7 @@ import { useContext, useState } from 'react'
 import { MapPage } from './MapPage'
 import { MapMarkerFilterContext } from '../components/map/mapMarkerFilterContext'
 import { RESET_DESKTOP_PANEL_LAYOUT_EVENT } from '../components/layout/FloatingPanelWindow'
+import { GlobalFeedbackToasts } from '../components/common/GlobalFeedbackToasts'
 
 const themeState = vi.hoisted(() => ({
   resolvedTheme: 'light' as 'light' | 'dark',
@@ -467,9 +468,46 @@ describe('MapPage', () => {
     await screen.findByTestId('poi-map')
     expect(getCurrentPosition).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Me localiser' }))
+    fireEvent.click(within(screen.getByRole('region', { name: 'Outils cartographiques' })).getByRole('button', { name: 'Me localiser' }))
     expect(getCurrentPosition).toHaveBeenCalledOnce()
     expect(getCurrentPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 })
+  })
+
+  it('offers direct geolocation from the mobile map control', async () => {
+    const getCurrentPosition = vi.fn()
+    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition } })
+    render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await screen.findByTestId('poi-map')
+
+    const locateButton = screen.getAllByRole('button', { name: 'Me localiser' }).find((button) => button.classList.contains('mobile-map-geolocation'))
+    expect(locateButton).toBeDefined()
+    fireEvent.click(locateButton!)
+
+    expect(getCurrentPosition).toHaveBeenCalledOnce()
+    expect(locateButton).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('explains that HTTPS is required before requesting geolocation', async () => {
+    const secureContextDescriptor = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
+    const getCurrentPosition = vi.fn()
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })
+    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition } })
+
+    try {
+      render(<><MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter><GlobalFeedbackToasts /></>)
+      await screen.findByTestId('poi-map')
+      const locateButton = screen.getAllByRole('button', { name: 'Me localiser' }).find((button) => button.classList.contains('mobile-map-geolocation'))
+      fireEvent.click(locateButton!)
+
+      expect(getCurrentPosition).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent(/nécessite une connexion HTTPS/i)
+      expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
+        expect.objectContaining({ kind: 'error', message: expect.stringMatching(/nécessite une connexion HTTPS/i) }),
+      ])
+    } finally {
+      if (secureContextDescriptor) Object.defineProperty(window, 'isSecureContext', secureContextDescriptor)
+      else Reflect.deleteProperty(window, 'isSecureContext')
+    }
   })
 
   it('copies stable coordinates and can create a place at the chosen point', async () => {

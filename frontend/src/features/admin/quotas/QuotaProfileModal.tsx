@@ -52,7 +52,7 @@ export function QuotaProfileModal({ profile, registry, busy, serverError, onClos
   const dialogRef = useRef<HTMLElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const { confirm, confirmationDialog } = useConfirmDialog()
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
   const system = profile?.is_system === true
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialDraft)
   const customized = Object.values(draft.limits).filter((value) => value !== null).length
@@ -74,7 +74,7 @@ export function QuotaProfileModal({ profile, registry, busy, serverError, onClos
     }
     onClose()
   }, [confirm, onClose])
-  useModalFocus({ dialogRef, initialFocusRef: system ? undefined : nameRef, onEscape: () => void requestClose() })
+  useModalFocus({ dialogRef, initialFocusRef: profile ? undefined : nameRef, onEscape: () => void requestClose() })
 
   const tabForField = (field: keyof FieldErrors): TabId => field === 'name' ? 'general' : TABS.find((tab) => tab.keys.includes(field as QuotaKey))?.id ?? 'general'
   const validate = () => {

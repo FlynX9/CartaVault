@@ -1551,12 +1551,14 @@ function WorkspaceApp() {
         activePanel={dashboardOpen ? null : workspacePanel}
         dashboardActive={dashboardOpen}
         tripPlanningActive={!dashboardOpen && tripPlannerOpen}
+        tripTimelineShortcutActive={!dashboardOpen && tripPlannerOpen && !tripViewOnly && !tripPlannerCollapsed}
         onOpenDashboard={openDashboard}
         onPanelChange={handleWorkspacePanelChange}
         onWorkspacePanelToggle={toggleWorkspacePanelCollapsed}
         onPlacesPanelToggle={() =>
           setPlacesPanelCollapsed((collapsed) => !collapsed)
         }
+        placesPanelCollapsed={placesPanelCollapsed}
         onOpenTrips={toggleTripsFromNavigation}
         isAdmin={user?.is_admin === true}
         hasMaps={maps.length > 0}

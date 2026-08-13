@@ -21,7 +21,7 @@ describe('MainNavigation', () => {
 
     const dashboard = screen.getByRole('button', { name: 'Accueil' })
     expect(dashboard).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Cartes' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Coffre' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(dashboard)
     expect(onOpenDashboard).toHaveBeenCalledOnce()
@@ -30,9 +30,11 @@ describe('MainNavigation', () => {
   it('keeps a single active workspace entry and exposes the maps catalog', () => {
     const onPanelChange = vi.fn()
     render(<MemoryRouter><MainNavigation activePanel={'maps' as WorkspacePanel} onPanelChange={onPanelChange} /></MemoryRouter>)
-    expect(screen.getByRole('button', { name: 'Cartes' })).toHaveAttribute('aria-pressed', 'true')
+    const vault = screen.getByRole('button', { name: 'Coffre' })
+    expect(vault).toHaveAttribute('aria-pressed', 'true')
+    expect(vault.querySelector('.cv-main-navigation__vault-icon')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(vault)
     expect(onPanelChange).toHaveBeenCalledWith(null)
   })
 
@@ -68,7 +70,7 @@ describe('MainNavigation', () => {
   it('hides map-dependent entries when the user has no accessible maps', () => {
     render(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={vi.fn()} isAdmin hasMaps={false} /></MemoryRouter>)
 
-    expect(screen.getByRole('button', { name: 'Cartes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Coffre' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Corbeille' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Lieux' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sorties' })).not.toBeInTheDocument()
@@ -84,6 +86,28 @@ describe('MainNavigation', () => {
 
     expect(onPlacesPanelToggle).toHaveBeenCalledOnce()
     expect(onPanelChange).not.toHaveBeenCalled()
+  })
+
+  it('switches the Places icon and title only while its panel is displayed', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    const { rerender } = render(<MemoryRouter><MainNavigation activePanel="places" placesPanelCollapsed onPanelChange={vi.fn()} /></MemoryRouter>)
+    const places = screen.getByRole('button', { name: 'Carte' })
+    expect(places).toHaveAttribute('data-panel-open', 'false')
+    expect(places.querySelector('.cv-main-navigation__places-default-icon')).not.toHaveClass('is-visible')
+    expect(places.querySelector('.cv-main-navigation__places-world-map-icon')).toHaveClass('is-visible')
+    expect(places.querySelectorAll('.cv-main-navigation__mode-dots i')[0]).not.toHaveClass('is-active')
+    expect(places.querySelectorAll('.cv-main-navigation__mode-dots i')[1]).toHaveClass('is-active')
+
+    rerender(<MemoryRouter><MainNavigation activePanel="places" placesPanelCollapsed={false} onPanelChange={vi.fn()} /></MemoryRouter>)
+    const map = screen.getByRole('button', { name: 'Lieux' })
+    expect(map).toHaveAttribute('data-panel-open', 'true')
+    expect(map.querySelector('.cv-main-navigation__places-world-map-icon')).not.toHaveClass('is-visible')
+    expect(map.querySelector('.cv-main-navigation__places-default-icon')).toHaveClass('is-visible')
+    expect(map.querySelectorAll('.cv-main-navigation__mode-dots i')[0]).toHaveClass('is-active')
+    expect(map.querySelectorAll('.cv-main-navigation__mode-dots i')[1]).not.toHaveClass('is-active')
+
+    rerender(<MemoryRouter><MainNavigation activePanel="media" placesPanelCollapsed={false} onPanelChange={vi.fn()} /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Lieux' }).querySelector('.cv-main-navigation__places-default-icon')).toHaveClass('is-visible')
   })
 
   it('delegates repeated workspace entries to the shared collapse toggle', () => {
@@ -142,10 +166,24 @@ describe('MainNavigation', () => {
     expect(screen.queryByRole('menu', { name: 'Organisation' })).not.toBeInTheDocument()
   })
 
-  it('marks only Sorties active while trip planning extends the Places workspace', () => {
-    render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
+  it('keeps desktop Places and Sorties navigation static without mode dots', () => {
+    render(<MemoryRouter><MainNavigation activePanel="places" placesPanelCollapsed tripPlanningActive tripTimelineShortcutActive={false} onPanelChange={vi.fn()} /></MemoryRouter>)
     const places = screen.getByRole('button', { name: 'Lieux' })
     const trips = screen.getByRole('button', { name: 'Sorties' })
+
+    expect(places.querySelector('.cv-main-navigation__places-default-icon')).toHaveClass('is-visible')
+    expect(places.querySelector('.cv-main-navigation__places-world-map-icon')).not.toHaveClass('is-visible')
+    expect(trips.querySelector('.cv-main-navigation__trip-default-icon')).toHaveClass('is-visible')
+    expect(trips.querySelector('.cv-main-navigation__trip-timeline-icon')).not.toHaveClass('is-visible')
+    expect(places.querySelector('.cv-main-navigation__mode-dots')).not.toBeInTheDocument()
+    expect(trips.querySelector('.cv-main-navigation__mode-dots')).not.toBeInTheDocument()
+  })
+
+  it('marks only the timeline mode active while trip planning extends the Places workspace on mobile', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} /></MemoryRouter>)
+    const places = screen.getByRole('button', { name: 'Lieux' })
+    const trips = screen.getByRole('button', { name: 'Chronologie' })
     const media = screen.getByRole('button', { name: 'Médias' })
     const categories = screen.getByRole('button', { name: 'Catégories' })
     expect(trips).toHaveAttribute('aria-pressed', 'true')
@@ -154,5 +192,28 @@ describe('MainNavigation', () => {
     expect(trips.compareDocumentPosition(media) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(media.compareDocumentPosition(categories) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(trips.compareDocumentPosition(categories) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('shows the current Sorties or timeline mode while toggling between them', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    const onOpenTrips = vi.fn()
+    const { rerender } = render(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive tripTimelineShortcutActive onPanelChange={vi.fn()} onOpenTrips={onOpenTrips} /></MemoryRouter>)
+
+    const timeline = screen.getByRole('button', { name: 'Sorties' })
+    expect(timeline).toHaveTextContent('Sorties')
+    expect(timeline.querySelector('.cv-main-navigation__trip-timeline-icon')).not.toHaveClass('is-visible')
+    expect(timeline.querySelector('.cv-main-navigation__trip-default-icon')).toHaveClass('is-visible')
+    expect(timeline.querySelectorAll('.cv-main-navigation__mode-dots i')[0]).toHaveClass('is-active')
+    expect(timeline.querySelectorAll('.cv-main-navigation__mode-dots i')[1]).not.toHaveClass('is-active')
+    fireEvent.click(timeline)
+    expect(onOpenTrips).toHaveBeenCalledOnce()
+
+    rerender(<MemoryRouter><MainNavigation activePanel="places" tripPlanningActive onPanelChange={vi.fn()} onOpenTrips={onOpenTrips} /></MemoryRouter>)
+    const trips = screen.getByRole('button', { name: 'Chronologie' })
+    expect(trips).toHaveTextContent('Chronologie')
+    expect(trips.querySelector('.cv-main-navigation__trip-default-icon')).not.toHaveClass('is-visible')
+    expect(trips.querySelector('.cv-main-navigation__trip-timeline-icon')).toHaveClass('is-visible')
+    expect(trips.querySelectorAll('.cv-main-navigation__mode-dots i')[0]).not.toHaveClass('is-active')
+    expect(trips.querySelectorAll('.cv-main-navigation__mode-dots i')[1]).toHaveClass('is-active')
   })
 })

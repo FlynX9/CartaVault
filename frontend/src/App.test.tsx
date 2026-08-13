@@ -95,7 +95,7 @@ describe('map URL workspace', () => {
   it('opens the maps panel and starts creation from its dedicated button', async () => {
     render(<MemoryRouter initialEntries={['/']}><App /><Path /></MemoryRouter>)
     await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`))
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Coffre' }))
     expect(await screen.findByRole('heading', { name: 'Cartes' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Créer une carte' }))
     expect(screen.getByRole('heading', { name: 'Créer une carte' })).toBeVisible()
@@ -103,13 +103,13 @@ describe('map URL workspace', () => {
 
   it('collapses and restores the Places panel when its active navigation entry is clicked again', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
-    const placesNavigation = await screen.findByRole('button', { name: 'Lieux' })
+    const placesNavigation = await screen.findByRole('button', { name: 'Carte' })
 
     fireEvent.click(placesNavigation)
     expect(await screen.findByRole('button', { name: 'Déployer le panneau Lieux' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Lieux' })).toBeVisible()
 
-    fireEvent.click(placesNavigation)
+    fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
     expect(await screen.findByRole('button', { name: 'Réduire le panneau Lieux' })).toBeVisible()
     expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
@@ -150,7 +150,7 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
     expect(screen.queryByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Coffre' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
     expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
@@ -161,7 +161,7 @@ describe('map URL workspace', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Charger une sortie' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Coffre' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Sélectionner l’étape POI' }))
 
@@ -210,7 +210,7 @@ describe('map URL workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
 
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Carte' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
@@ -222,14 +222,14 @@ describe('map URL workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
 
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Sorties' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Chronologie' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Catégories' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('reports an API failure when moving a map to trash', async () => {
     vi.mocked(deleteMap).mockRejectedValue(new ApiError(409, 'Conflict'))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: 'Cartes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Coffre' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer Carte France' }))
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Conflict')
@@ -293,7 +293,7 @@ describe('map URL workspace', () => {
   it('refreshes map access silently without hiding the current catalog', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
     await waitFor(() => expect(getMaps).toHaveBeenCalled())
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Coffre' }))
     expect(await screen.findByRole('button', { name: 'Carte France est ouverte' })).toBeVisible()
 
     let resolveRefresh!: (maps: typeof MAP[]) => void

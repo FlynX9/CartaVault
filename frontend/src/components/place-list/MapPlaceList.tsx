@@ -734,11 +734,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
           )}
         </div>
         <div className="places-redesign-header-actions">
-          {collapsed && (
-            <button className="places-mobile-expand-toggle" type="button" aria-label={t("places.openPanel")} onClick={() => onCollapsedChange(false)}>
-              <ChevronDown size={18} aria-hidden="true" />
-            </button>
-          )}
           {!collapsed && poiMap && canImportKmz && (
             <button className="panel-icon-button places-import-kmz" type="button" aria-label={t("places.import")} onClick={() => setImporting(true)}>
               <Import size={17} />

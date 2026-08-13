@@ -103,7 +103,7 @@ export function AnnotationTemplatesWorkspacePanel({ mapId, canEdit = true, colla
           <div className="admin-form-actions"><button className="primary-button" data-cv-save="true" type="submit"><Check size={15} />Enregistrer</button><button className="secondary-button" type="button" onClick={() => setEditing(undefined)}><X size={15} />Annuler</button></div>
         </form>}
         <ul className="admin-entity-list cv-panel-status-list cv-panel-annotation-list cv-workspace-panel__list">{visibleItems.map((item) => <li
-          className={`cv-workspace-panel__card${draggedId === item.id ? ' is-dragging' : ''}${dropTarget?.id === item.id ? ` is-drop-${dropTarget.position}` : ''}`}
+          className={`cv-workspace-panel__card cv-mobile-swipe-entity${draggedId === item.id ? ' is-dragging' : ''}${dropTarget?.id === item.id ? ` is-drop-${dropTarget.position}` : ''}`}
           key={item.id}
           draggable={canEdit && !search}
           onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; setDraggedId(item.id) }}

@@ -140,6 +140,7 @@ export const workspaceFr = {
   'map.tools.geolocation.loading': 'Localisation…',
   'map.tools.geolocation.once': 'Position affichée une seule fois et jamais enregistrée.',
   'map.tools.geolocation.denied': 'L’autorisation de localisation a été refusée.',
+  'map.tools.geolocation.secureContext': 'La localisation nécessite une connexion HTTPS sur mobile. Ouvrez CartaVault avec une adresse HTTPS.',
   'map.tools.geolocation.unavailable': 'La géolocalisation est indisponible.',
   'map.tools.external.place-creation': 'La création d’un lieu est active.',
   'map.tools.external.trip-planning': 'La préparation de sortie est active.',

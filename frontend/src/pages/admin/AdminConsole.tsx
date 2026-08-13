@@ -111,7 +111,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
         {visitedSections.has('quotas') && <div hidden={activeSection !== 'quotas'}><QuotaProfilesPage /></div>}
         {visitedSections.has('instance') && <div hidden={activeSection !== 'instance'}><InstanceStatusPage /></div>}
       </div></AdminSaveContext.Provider>
-      {closePromptOpen && <div className="cv-overlay admin-unsaved-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setClosePromptOpen(false) }}><section className="cv-modal admin-unsaved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-unsaved-title"><header><div><p className="cv-workspace-panel__eyebrow">{t('admin.unsaved.eyebrow')}</p><h2 id="admin-unsaved-title">{t('admin.unsaved.title')}</h2></div><button className="panel-icon-button" type="button" aria-label={t('admin.users.close')} onClick={() => setClosePromptOpen(false)}><X size={16} /></button></header><p>{t('admin.unsaved.description')}</p><footer><button className="secondary-button" type="button" onClick={() => setClosePromptOpen(false)}>{t('admin.unsaved.continue')}</button><button className="danger-button" type="button" onClick={() => { dirtyEntries.forEach((entry) => entry.discard()); setClosePromptOpen(false); performClose() }}>{t('admin.unsaved.discard')}</button><button className="primary-button" type="button" disabled={savingAll} onClick={() => void saveAll().then((saved) => { if (saved) { setClosePromptOpen(false); performClose() } })}><Save size={15} />{t('admin.save')}</button></footer></section></div>}
+      {closePromptOpen && <div className="cv-overlay admin-unsaved-overlay account-admin-modal-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setClosePromptOpen(false) }}><section className="cv-modal admin-unsaved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-unsaved-title"><header><div><p className="cv-workspace-panel__eyebrow">{t('admin.unsaved.eyebrow')}</p><h2 id="admin-unsaved-title">{t('admin.unsaved.title')}</h2></div><button className="panel-icon-button" type="button" aria-label={t('admin.users.close')} onClick={() => setClosePromptOpen(false)}><X size={16} /></button></header><p>{t('admin.unsaved.description')}</p><footer><button className="secondary-button" type="button" onClick={() => setClosePromptOpen(false)}>{t('admin.unsaved.continue')}</button><button className="danger-button" type="button" onClick={() => { dirtyEntries.forEach((entry) => entry.discard()); setClosePromptOpen(false); performClose() }}>{t('admin.unsaved.discard')}</button><button className="primary-button" type="button" disabled={savingAll} onClick={() => void saveAll().then((saved) => { if (saved) { setClosePromptOpen(false); performClose() } })}><Save size={15} />{t('admin.save')}</button></footer></section></div>}
     </section>
   </div>, document.body)
 }
@@ -136,7 +136,7 @@ export function LegacyAdminUsersSection() {
   const [activity, setActivity] = useState<AdminUserActivity[]>([])
   const [modalLoading, setModalLoading] = useState(false)
   const [approvalProfiles, setApprovalProfiles] = useState<Record<string, string>>({})
-  const { confirm, confirmationDialog } = useConfirmDialog()
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
   const load = useCallback((signal?: AbortSignal) => {
     setLoading(true); setError(null)
     void Promise.all([getAdminUsers({ q: q.trim(), role, state, page }, signal), getRegistrationRequests(signal), getQuotaProfiles(signal), getPublicRegistrationSettings(signal)])
@@ -263,8 +263,8 @@ function PrivacySettingsPanel() {
     {error && <div className="form-alert" role="alert">{error}</div>}
     {settings && <form className="admin-console__setting-form admin-privacy-settings__form" onSubmit={(event) => event.preventDefault()}>
       <label>Mode d’analyse<select value={settings.analytics_mode} onChange={(event) => update('analytics_mode', event.target.value as PrivacySettings['analytics_mode'])}><option value="disabled">Désactivé</option><option value="privacy_preserving">Respectueux de la vie privée</option><option value="consent_required">Soumis au consentement</option></select></label>
-      <label>Opérateur<input value={settings.operator_name} maxLength={160} onChange={(event) => update('operator_name', event.target.value)} /></label>
-      <label>Contact confidentialité<input type="email" value={settings.contact_email} maxLength={320} onChange={(event) => update('contact_email', event.target.value)} /></label>
+      <label>Nom de l’instance<input value={settings.operator_name} maxLength={160} onChange={(event) => update('operator_name', event.target.value)} /></label>
+      <label>Contact de l’instance<input type="email" value={settings.contact_email} maxLength={320} onChange={(event) => update('contact_email', event.target.value)} /></label>
       <label>URL politique de confidentialité<input type="url" value={settings.privacy_policy_url} maxLength={2048} placeholder="https://…" onChange={(event) => update('privacy_policy_url', event.target.value)} /></label>
       <label>URL politique de cookies<input type="url" value={settings.cookie_policy_url} maxLength={2048} placeholder="https://…" onChange={(event) => update('cookie_policy_url', event.target.value)} /></label>
       <label>Version des politiques<input value={settings.policy_version} maxLength={32} onChange={(event) => update('policy_version', event.target.value)} /></label>
@@ -306,7 +306,7 @@ function SaasSettingsPanel() {
 function MediaMaintenancePanel() {
   const [limit, setLimit] = useState(5); const [maxDimension, setMaxDimension] = useState(2560); const [task, setTask] = useState<{ id: string; status: string; percent: number; message: string | null; result: Record<string, unknown> | null; error: string | null } | null>(null); const [error, setError] = useState<string | null>(null); const [busy, setBusy] = useState(false)
   const [savedSettings, setSavedSettings] = useState({ limit: 5, maxDimension: 2560 })
-  const { confirm, confirmationDialog } = useConfirmDialog()
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
   useEffect(() => { const controller = new AbortController(); void getMediaUploadSettings(controller.signal).then((value) => { setLimit(value.max_upload_megabytes); setMaxDimension(value.max_image_dimension); setSavedSettings({ limit: value.max_upload_megabytes, maxDimension: value.max_image_dimension }) }).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Réglage média indisponible.') }); return () => controller.abort() }, [])
   useEffect(() => {
     if (!task || !['pending', 'running'].includes(task.status)) return

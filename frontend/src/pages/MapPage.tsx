@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, RotateCcw, SquareDashed, X } from 'lucide-react'
+import { Check, LocateFixed, RotateCcw, SquareDashed, X } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
@@ -34,6 +34,7 @@ import { createPlaceAnnotation, getPlaceAnnotations } from '../api/annotations'
 import type { AnnotationTemplate, PlaceAnnotation } from '../types/annotation'
 import type { AnnotationDrawingState } from '../components/map/AnnotationDrawingLayer'
 import { distanceBetweenPoints } from '../components/map/measurement'
+import { publishGlobalFeedback } from '../components/common/globalFeedback'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -604,7 +605,11 @@ export function MapPage({
 
   const requestGeolocation = () => {
     if (tripPlanningActive || placeCreationActive || draftPosition !== null) return
-    if (!navigator.geolocation) { setMapToolsNotice(t('map.tools.geolocation.unavailable')); return }
+    if (window.isSecureContext === false) {
+      publishGlobalFeedback('error', t('map.tools.geolocation.secureContext'))
+      return
+    }
+    if (!navigator.geolocation) { publishGlobalFeedback('error', t('map.tools.geolocation.unavailable')); return }
     if (placeSelectionMode) onPlaceSelectionModeChange(false)
     setInternalToolMode('geolocation')
     setMeasurementActive(false)
@@ -620,7 +625,7 @@ export function MapPage({
     }, (error) => {
       setGeolocationLoading(false)
       setInternalToolMode('navigation')
-      setMapToolsNotice(error.code === error.PERMISSION_DENIED ? t('map.tools.geolocation.denied') : t('map.tools.geolocation.unavailable'))
+      publishGlobalFeedback('error', error.code === error.PERMISSION_DENIED ? t('map.tools.geolocation.denied') : t('map.tools.geolocation.unavailable'))
     }, { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 })
   }
 
@@ -742,6 +747,20 @@ export function MapPage({
           {annotationDrawingComplete && <button type="button" className="primary-button" onClick={() => void finishAnnotationDrawing()}><Check size={14} />Valider</button>}
         </div>}
         <div className="map-overlay-controls">
+          <div className="map-overlay-control-slot map-overlay-control-slot--mobile-geolocation">
+            <button
+              className={`mobile-map-geolocation${internalToolMode === 'geolocation' ? ' active' : ''}${geolocationLoading ? ' is-loading' : ''}`}
+              type="button"
+              aria-label={geolocationLoading ? t('map.tools.geolocation.loading') : t('map.tools.mode.geolocation')}
+              aria-pressed={internalToolMode === 'geolocation'}
+              title={geolocationLoading ? t('map.tools.geolocation.loading') : t('map.tools.mode.geolocation')}
+              disabled={tripPlanningActive || placeCreationActive || draftPosition !== null || geolocationLoading}
+              onClick={requestGeolocation}
+            >
+              <LocateFixed className={geolocationLoading ? 'is-spinning' : ''} size={19} aria-hidden="true" />
+            </button>
+            {mapToolsNotice && <p className="mobile-map-geolocation__notice" role="status">{mapToolsNotice}</p>}
+          </div>
           <MapToolsControl
             mode={effectiveMode}
             internalMode={internalToolMode}

@@ -154,9 +154,31 @@ describe('AdminConsole', () => {
     render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: `Actions pour ${target.display_name}` }))
     fireEvent.click(screen.getByRole('button', { name: /Promouvoir/ }))
-    expect(screen.getByRole('alertdialog', { name: `Promouvoir ${target.display_name}` })).toBeVisible()
+    const roleDialog = screen.getByRole('alertdialog', { name: `Promouvoir ${target.display_name}` })
+    expect(roleDialog).toBeVisible()
+    expect(roleDialog.parentElement).toHaveClass('admin-user-action-overlay')
     fireEvent.click(screen.getByRole('button', { name: 'Promouvoir' }))
     await waitFor(() => expect(updateAdminUser).toHaveBeenCalledWith(target.id, { role: 'admin' }))
+  })
+
+  it('closes the user action menu when tapping outside it', async () => {
+    const target = {
+      id: '11111111-1111-4111-8111-111111111111', email: 'user@example.test', display_name: 'Utilisateur', avatar_url: null,
+      role: 'user' as const, state: 'active' as const, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00',
+      last_login_at: null, owned_map_count: 0, shared_map_count: 0, place_count: 0,
+      quota_profile_id: unlimitedProfile.id, quota_profile_name: unlimitedProfile.name,
+    }
+    vi.mocked(getAdminUsers).mockResolvedValue({ items: [target], total: 1, page: 1, page_size: 25, pages: 1 })
+    render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
+
+    const trigger = await screen.findByRole('button', { name: `Actions pour ${target.display_name}` })
+    fireEvent.click(trigger)
+    expect(screen.getByRole('button', { name: /Promouvoir/ })).toBeVisible()
+
+    fireEvent.pointerDown(document.body)
+
+    expect(screen.queryByRole('button', { name: /Promouvoir/ })).not.toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('warns before assigning a profile that is below current map usage', async () => {
@@ -175,6 +197,7 @@ describe('AdminConsole', () => {
     fireEvent.click(await screen.findByRole('button', { name: `Actions pour ${target.display_name}` }))
     fireEvent.click(screen.getByRole('button', { name: 'Modifier le quota' }))
     const dialog = screen.getByRole('dialog', { name: 'Modifier le quota' })
+    expect(dialog.parentElement).toHaveClass('admin-user-quota-overlay')
     fireEvent.change(within(dialog).getByLabelText('Profil de quota'), { target: { value: restricted.id } })
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
@@ -296,6 +319,8 @@ describe('AdminConsole', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Modifier/ }))
     const dialog = screen.getByRole('dialog', { name: 'Modifier X-Large' })
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Fermer' })).toHaveFocus())
+    expect(within(dialog).getByLabelText('Nom')).not.toHaveFocus()
     fireEvent.change(within(dialog).getByLabelText('Description'), { target: { value: 'Texte modifié' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Fermer' }))
     const warning = await screen.findByRole('alertdialog', { name: 'Modifications non enregistrées' })

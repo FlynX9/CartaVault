@@ -142,6 +142,7 @@ export const workspaceEn = {
   'map.tools.geolocation.loading': 'Locating…',
   'map.tools.geolocation.once': 'Position shown once and never stored.',
   'map.tools.geolocation.denied': 'Location permission was denied.',
+  'map.tools.geolocation.secureContext': 'Location requires an HTTPS connection on mobile. Open CartaVault from an HTTPS address.',
   'map.tools.geolocation.unavailable': 'Geolocation is unavailable.',
   'map.tools.external.place-creation': 'Place creation is active.',
   'map.tools.external.trip-planning': 'Trip planning is active.',

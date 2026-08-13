@@ -45,7 +45,7 @@ export function AdminApiKeysSection() {
   const [secret, setSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { confirm, confirmationDialog } = useConfirmDialog();
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' });
   const load = () =>
     void getAdminApiKeys()
       .then(setKeys)
