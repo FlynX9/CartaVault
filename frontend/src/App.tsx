@@ -80,6 +80,7 @@ import { getSetupStatus, type SetupStatus } from "./api/setup";
 import { useConfirmDialog } from "./components/common/useConfirmDialog";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { useI18n } from "./i18n/useI18n";
+import { PrivacyConsentBanner } from "./components/privacy/PrivacyConsentBanner";
 
 const MapsWorkspacePanel = lazy(async () => ({
   default: (await import("./components/maps/MapsWorkspacePanel"))
@@ -621,7 +622,7 @@ function WorkspaceApp() {
     if (isMobile && !fromPlacesList) setPlacesPanelCollapsed(true);
     setWorkspacePanel(tripViewOnly ? null : "places");
     suppressedRouteFocusPlaceId.current = focusPlace ? null : place.id;
-    navigate(withMap(`/places/${place.id}`, activeMapId, activeStatusId));
+    navigate({ pathname: `/places/${place.id}`, search: location.search });
     if (focusPlace && place.latitude !== null && place.longitude !== null) {
       focusedRoutePlaceId.current = place.id;
       setFocusRequest({
@@ -994,7 +995,7 @@ function WorkspaceApp() {
     setMobilePlaceDetailOrigin(null);
     if (sidebarState.mode === "details" || sidebarState.mode === "preview") {
       setSelectedPlace(null);
-      navigate(withMap("/", activeMapId, activeStatusId));
+      navigate({ pathname: "/", search: location.search });
     }
   };
   const showSelectedPlaceOnMap = () => {
@@ -1010,7 +1011,7 @@ function WorkspaceApp() {
     setWorkspacePanel("places");
     setPlacesPanelCollapsed(true);
     setSelectedPlace(null);
-    navigate(withMap("/", activeMapId, activeStatusId));
+    navigate({ pathname: "/", search: location.search });
     focusedRoutePlaceId.current = place.id;
     setFocusRequest({
       id: ++focusSequence.current,
@@ -1824,6 +1825,7 @@ function WorkspaceApp() {
         </RequireAdmin>
       )}
       {confirmationDialog}
+      <PrivacyConsentBanner />
     </main>
   );
 }

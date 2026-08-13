@@ -1,342 +1,769 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import {
-  AlertTriangle,
-  ArrowUpDown,
-  Check,
-  ChevronDown,
-  Download,
-  ExternalLink,
-  Filter,
-  Grid2X2,
-  Image as ImageIcon,
-  List,
-  MapPin,
-  Maximize2,
-  Minimize2,
-  MoreHorizontal,
-  Minus as IconMinimize,
-  Plus as IconMaximize,
-  Camera,
-  Upload,
-  Search,
-  Star,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AlertTriangle, ArrowUpDown, Check, ChevronDown, Download, ExternalLink, Filter, Grid2X2, Image as ImageIcon, List, MapPin, Maximize2, Minimize2, MoreHorizontal, Minus as IconMinimize, Plus as IconMaximize, Plus as IconPlus, Camera, Upload, Search, Star, Trash2, X } from "lucide-react";
 
-import {
-  bulkDeleteMedia,
-  deleteMedia,
-  getMedia,
-  getMediaDownloadUrl,
-  getSuggestedMediaMap,
-  getMediaThumbnailUrl,
-  getMediaUploadPolicy,
-  setMainMedia,
-  updateMedia,
-  uploadMedia,
-} from '../../api/media'
-import { FloatingPanelWindowContext } from '../layout/FloatingPanelWindow'
-import type { MediaItem, MediaPage, MediaQuery } from '../../types/media'
-import { useConfirmDialog } from '../common/useConfirmDialog'
-import { mediaMessages } from './mediaI18n'
-import { getMaps } from '../../api/maps'
-import type { PoiMap } from '../../types/map'
+import { bulkDeleteMedia, deleteMedia, getMedia, getMediaDownloadUrl, getSuggestedMediaMap, getMediaThumbnailUrl, getMediaUploadPolicy, setMainMedia, updateMedia, uploadMedia } from "../../api/media";
+import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
+import { PanelLayoutLockButton } from "../layout/PanelLayoutLockButton";
+import type { MediaItem, MediaPage, MediaQuery } from "../../types/media";
+import { useConfirmDialog } from "../common/useConfirmDialog";
+import { mediaMessages } from "./mediaI18n";
+import { getMaps } from "../../api/maps";
+import type { PoiMap } from "../../types/map";
 
 const DEFAULT_QUERY: MediaQuery = {
   page: 1,
   pageSize: 18,
-  query: '',
-  mapId: '',
-  countryCode: '',
-  format: '',
-  uploaderId: '',
-  primary: '',
-  fileState: '',
-  createdFrom: '',
-  createdTo: '',
-  minSize: '',
-  maxSize: '',
-  minWidth: '',
-  minHeight: '',
-  sortBy: 'created_at',
-  sortDirection: 'desc',
-}
+  query: "",
+  mapId: "",
+  countryCode: "",
+  format: "",
+  uploaderId: "",
+  primary: "",
+  fileState: "",
+  createdFrom: "",
+  createdTo: "",
+  minSize: "",
+  maxSize: "",
+  minWidth: "",
+  minHeight: "",
+  sortBy: "created_at",
+  sortDirection: "desc",
+};
 
 function formatBytes(value: number | null): string {
-  if (value === null) return '—'
-  if (value < 1024) return `${value} o`
-  if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} Kio`
-  return `${(value / 1024 ** 2).toFixed(1)} Mio`
+  if (value === null) return "—";
+  if (value < 1024) return `${value} o`;
+  if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} Kio`;
+  return `${(value / 1024 ** 2).toFixed(1)} Mio`;
 }
 
 function formatDate(value: string | null): string {
-  if (!value) return '—'
-  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value))
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(value));
 }
 
 interface DetailsProps {
-  media: MediaItem
-  onClose: () => void
-  onChanged: () => void
-  onOpenPlace: (media: MediaItem) => void
-  onCreatePlace: (media: MediaItem) => void
+  media: MediaItem;
+  onClose: () => void;
+  onChanged: () => void;
+  onOpenPlace: (media: MediaItem) => void;
+  onCreatePlace: (media: MediaItem) => void;
 }
 
 async function requestPlaceCreationFromMedia(media: MediaItem) {
-  if (!media.can_create_place) return
-  const mapId = media.map?.id ?? await getSuggestedMediaMap(media.id)
-  window.dispatchEvent(new CustomEvent('cartavault:create-place-from-media', {
-    detail: { mediaId: media.id, mapId, latitude: media.latitude, longitude: media.longitude },
-  }))
+  if (!media.can_create_place) return;
+  const mapId = media.map?.id ?? (await getSuggestedMediaMap(media.id));
+  window.dispatchEvent(
+    new CustomEvent("cartavault:create-place-from-media", {
+      detail: {
+        mediaId: media.id,
+        mapId,
+        latitude: media.latitude,
+        longitude: media.longitude,
+      },
+    }),
+  );
 }
 
 export function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const fileRef = useRef<HTMLInputElement>(null); const cameraRef = useRef<HTMLInputElement>(null)
-  const [maps, setMaps] = useState<PoiMap[]>([]); const [mapId, setMapId] = useState(''); const [maxUploadBytes, setMaxUploadBytes] = useState(5 * 1024 * 1024); const [maxImageDimension, setMaxImageDimension] = useState(2560); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null)
-  useEffect(() => { const controller = new AbortController(); void Promise.all([getMaps(controller.signal), getMediaUploadPolicy(controller.signal)]).then(([items, policy]) => { if (controller.signal.aborted) return; setMaps(items.filter((map) => map.can_edit)); setMapId((current) => current || items.find((map) => map.can_edit)?.id || ''); setMaxUploadBytes(policy.max_upload_bytes); setMaxImageDimension(policy.max_image_dimension) }).catch((caught) => { if (controller.signal.aborted || (caught instanceof DOMException && caught.name === 'AbortError')) return; setError(caught instanceof Error ? caught.message : 'Cartes indisponibles.') }); return () => controller.abort() }, [])
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [maps, setMaps] = useState<PoiMap[]>([]);
+  const [mapId, setMapId] = useState("");
+  const [maxUploadBytes, setMaxUploadBytes] = useState(5 * 1024 * 1024);
+  const [maxImageDimension, setMaxImageDimension] = useState(2560);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([getMaps(controller.signal), getMediaUploadPolicy(controller.signal)])
+      .then(([items, policy]) => {
+        if (controller.signal.aborted) return;
+        setMaps(items.filter((map) => map.can_edit));
+        setMapId((current) => current || items.find((map) => map.can_edit)?.id || "");
+        setMaxUploadBytes(policy.max_upload_bytes);
+        setMaxImageDimension(policy.max_image_dimension);
+      })
+      .catch((caught) => {
+        if (controller.signal.aborted || (caught instanceof DOMException && caught.name === "AbortError")) return;
+        setError(caught instanceof Error ? caught.message : "Cartes indisponibles.");
+      });
+    return () => controller.abort();
+  }, []);
   const submit = async (files: FileList | null) => {
-    if (!files?.length || !mapId) return
-    setBusy(true); setError(null)
-    try { const { readImageLocation, compressImage } = await import('../../media/imageUpload'); for (const source of Array.from(files)) { const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source, maxImageDimension)]); if (compressed.size > maxUploadBytes) throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString('fr-FR')} Mo.`); await uploadMedia(compressed, coordinates, undefined, source) }; onDone(); onClose() }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Import impossible.') } finally { setBusy(false) }
-  }
-  return createPortal(<div className="media-details-overlay media-upload-overlay" role="presentation"><section className="media-details-dialog media-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title"><header><div><p className="cv-workspace-panel__eyebrow">Médiathèque</p><h2 id="media-upload-title">Importer des photos</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={18} /></button></header><div className="media-details-fields"><label>Carte<select value={mapId} onChange={(event) => setMapId(event.target.value)}>{maps.map((map) => <option key={map.id} value={map.id}>{map.name} · {map.country.name}</option>)}</select></label><p>Les images sont compressées automatiquement jusqu’à {maxImageDimension.toLocaleString('fr-FR')} px sur leur plus grand côté. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>{error && <p className="form-alert">{error}</p>}</div><footer><input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => void submit(event.target.files)} /><input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => void submit(event.target.files)} /><button className="secondary-button" disabled={busy || !mapId} type="button" onClick={(event) => { event.stopPropagation(); fileRef.current?.click() }}><Upload size={16} />Choisir des photos</button><button className="primary-button media-upload-camera" disabled={busy || !mapId} type="button" onClick={(event) => { event.stopPropagation(); cameraRef.current?.click() }}><Camera size={16} />Prendre une photo</button></footer></section></div>, document.body)
+    if (!files?.length || !mapId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { readImageLocation, compressImage } = await import("../../media/imageUpload");
+      for (const source of Array.from(files)) {
+        const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source, maxImageDimension)]);
+        if (compressed.size > maxUploadBytes) throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString("fr-FR")} Mo.`);
+        await uploadMedia(compressed, coordinates, undefined, source);
+      }
+      onDone();
+      onClose();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Import impossible.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return createPortal(
+    <div className="media-details-overlay media-upload-overlay" role="presentation">
+      <section className="media-details-dialog media-upload-dialog" role="dialog" aria-modal="true" aria-labelledby="media-upload-title">
+        <header>
+          <div>
+            <p className="cv-workspace-panel__eyebrow">Médiathèque</p>
+            <h2 id="media-upload-title">Importer des photos</h2>
+          </div>
+          <button className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+        <div className="media-details-fields">
+          <label>
+            Carte
+            <select value={mapId} onChange={(event) => setMapId(event.target.value)}>
+              {maps.map((map) => (
+                <option key={map.id} value={map.id}>
+                  {map.name} · {map.country.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p>Les images sont compressées automatiquement jusqu’à {maxImageDimension.toLocaleString("fr-FR")} px sur leur plus grand côté. Les coordonnées GPS sont conservées pour créer un POI ultérieurement.</p>
+          {error && <p className="form-alert">{error}</p>}
+        </div>
+        <footer>
+          <input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => void submit(event.target.files)} />
+          <input ref={cameraRef} hidden type="file" accept="image/*" capture="environment" onChange={(event) => void submit(event.target.files)} />
+          <button
+            className="secondary-button"
+            disabled={busy || !mapId}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              fileRef.current?.click();
+            }}
+          >
+            <Upload size={16} />
+            Choisir des photos
+          </button>
+          <button
+            className="primary-button media-upload-camera"
+            disabled={busy || !mapId}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              cameraRef.current?.click();
+            }}
+          >
+            <Camera size={16} />
+            Prendre une photo
+          </button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  );
 }
 
 function MediaDetails({ media, onClose, onChanged, onOpenPlace, onCreatePlace }: DetailsProps) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const [caption, setCaption] = useState(media.caption ?? '')
-  const [takenAt, setTakenAt] = useState(media.taken_at ?? '')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [caption, setCaption] = useState(media.caption ?? "");
+  const [takenAt, setTakenAt] = useState(media.taken_at ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const previouslyFocused = document.activeElement
-    closeButtonRef.current?.focus()
+    const previouslyFocused = document.activeElement;
+    closeButtonRef.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', closeOnEscape)
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.removeEventListener('keydown', closeOnEscape)
-      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
-    }
-  }, [onClose])
-  useEffect(() => { window.addEventListener('cartavault:close-mobile-modal-layers', onClose); return () => window.removeEventListener('cartavault:close-mobile-modal-layers', onClose) }, [onClose])
+      document.removeEventListener("keydown", closeOnEscape);
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, [onClose]);
+  useEffect(() => {
+    window.addEventListener("cartavault:close-mobile-modal-layers", onClose);
+    return () => window.removeEventListener("cartavault:close-mobile-modal-layers", onClose);
+  }, [onClose]);
 
   const save = async () => {
-    setBusy(true); setError(null)
+    setBusy(true);
+    setError(null);
     try {
-      await updateMedia(media.id, { caption: caption.trim() || null, taken_at: takenAt || null })
-      onChanged()
+      await updateMedia(media.id, {
+        caption: caption.trim() || null,
+        taken_at: takenAt || null,
+      });
+      onChanged();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Modification impossible.')
-    } finally { setBusy(false) }
-  }
+      setError(caught instanceof Error ? caught.message : "Modification impossible.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  return createPortal(<div className="media-details-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <section className="media-details-dialog" role="dialog" aria-modal="true" aria-labelledby="media-details-title">
-      <header>
-        <div><p className="cv-workspace-panel__eyebrow">Médiathèque</p><h2 id="media-details-title">{media.original_name || media.place?.name || 'Média non rattaché'}</h2></div>
-        <button ref={closeButtonRef} type="button" className="panel-icon-button" aria-label="Fermer" onClick={onClose}><X size={18} /></button>
-      </header>
-      <div className="media-details-layout">
-        <img src={getMediaThumbnailUrl(media.id)} alt={media.caption || media.original_name || media.place?.name || 'Média'} />
-        <dl>
-          <div><dt>Lieu</dt><dd>{media.place?.name ?? 'Non rattaché à un POI'}</dd></div>
-          <div><dt>Carte</dt><dd>{media.map ? `${media.map.name} · ${media.map.country_name}` : 'À choisir lors de la création du POI'}</dd></div>
-          <div><dt>Fichier</dt><dd>{media.format ?? '—'} · {formatBytes(media.file_size_bytes)}</dd></div>
-          <div><dt>Dimensions</dt><dd>{media.width && media.height ? `${media.width} × ${media.height} px` : '—'}</dd></div>
-          <div><dt>Ajouté le</dt><dd>{formatDate(media.created_at)}</dd></div>
-          <div><dt>Ajouté par</dt><dd>{media.uploader?.name ?? 'Inconnu'}</dd></div>
-        </dl>
-      </div>
-      {media.can_edit && <div className="media-details-fields">
-        <label>Légende<textarea value={caption} onChange={(event) => setCaption(event.target.value)} /></label>
-        <label>Date de prise de vue<input type="date" value={takenAt} onChange={(event) => setTakenAt(event.target.value)} /></label>
-      </div>}
-      {error && <p className="form-alert" role="alert">{error}</p>}
-      <footer>
-        {media.can_create_place && <button type="button" className="secondary-button" onClick={() => { onClose(); onCreatePlace(media) }}><MapPin size={16} />Créer un POI</button>}
-        {media.place && <button type="button" className="secondary-button" onClick={() => onOpenPlace(media)}><MapPin size={16} />Ouvrir le lieu</button>}
-        <a className="secondary-button" href={getMediaDownloadUrl(media.id)}><Download size={16} />Télécharger</a>
-        {media.can_edit && <button type="button" className="primary-button" data-cv-save="true" disabled={busy} onClick={() => void save()}>Enregistrer</button>}
-      </footer>
-    </section>
-  </div>, document.body)
+  return createPortal(
+    <div
+      className="media-details-overlay"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="media-details-dialog" role="dialog" aria-modal="true" aria-labelledby="media-details-title">
+        <header>
+          <div>
+            <p className="cv-workspace-panel__eyebrow">Médiathèque</p>
+            <h2 id="media-details-title">{media.original_name || media.place?.name || "Média non rattaché"}</h2>
+          </div>
+          <button ref={closeButtonRef} type="button" className="panel-icon-button" aria-label="Fermer" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </header>
+        <div className="media-details-layout">
+          <img src={getMediaThumbnailUrl(media.id)} alt={media.caption || media.original_name || media.place?.name || "Média"} />
+          <dl>
+            <div>
+              <dt>Lieu</dt>
+              <dd>{media.place?.name ?? "Non rattaché à un POI"}</dd>
+            </div>
+            <div>
+              <dt>Carte</dt>
+              <dd>{media.map ? `${media.map.name} · ${media.map.country_name}` : "À choisir lors de la création du POI"}</dd>
+            </div>
+            <div>
+              <dt>Fichier</dt>
+              <dd>
+                {media.format ?? "—"} · {formatBytes(media.file_size_bytes)}
+              </dd>
+            </div>
+            <div>
+              <dt>Dimensions</dt>
+              <dd>{media.width && media.height ? `${media.width} × ${media.height} px` : "—"}</dd>
+            </div>
+            <div>
+              <dt>Ajouté le</dt>
+              <dd>{formatDate(media.created_at)}</dd>
+            </div>
+            <div>
+              <dt>Ajouté par</dt>
+              <dd>{media.uploader?.name ?? "Inconnu"}</dd>
+            </div>
+          </dl>
+        </div>
+        {media.can_edit && (
+          <div className="media-details-fields">
+            <label>
+              Légende
+              <textarea value={caption} onChange={(event) => setCaption(event.target.value)} />
+            </label>
+            <label>
+              Date de prise de vue
+              <input type="date" value={takenAt} onChange={(event) => setTakenAt(event.target.value)} />
+            </label>
+          </div>
+        )}
+        {error && (
+          <p className="form-alert" role="alert">
+            {error}
+          </p>
+        )}
+        <footer>
+          {media.can_create_place && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                onClose();
+                onCreatePlace(media);
+              }}
+            >
+              <MapPin size={16} />
+              Créer un POI
+            </button>
+          )}
+          {media.place && (
+            <button type="button" className="secondary-button" onClick={() => onOpenPlace(media)}>
+              <MapPin size={16} />
+              Ouvrir le lieu
+            </button>
+          )}
+          <a className="secondary-button" href={getMediaDownloadUrl(media.id)}>
+            <Download size={16} />
+            Télécharger
+          </a>
+          {media.can_edit && (
+            <button type="button" className="primary-button" data-cv-save="true" disabled={busy} onClick={() => void save()}>
+              Enregistrer
+            </button>
+          )}
+        </footer>
+      </section>
+    </div>,
+    document.body,
+  );
 }
 
 interface Props {
-  collapsed?: boolean
-  onCollapsedChange?: (collapsed: boolean) => void
-  onClose?: () => void
-  onOpenPlace: (media: MediaItem) => void
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+  onClose?: () => void;
+  onOpenPlace: (media: MediaItem) => void;
 }
 
 export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onClose, onOpenPlace }: Props) {
-  const floatingWindow = useContext(FloatingPanelWindowContext)
-  const t = mediaMessages()
-  const { confirm, confirmationDialog } = useConfirmDialog()
-  const [query, setQuery] = useState<MediaQuery>(DEFAULT_QUERY)
-  const [debouncedQuery, setDebouncedQuery] = useState(query)
-  const [data, setData] = useState<MediaPage | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Set<string>>(() => new Set())
-  const [details, setDetails] = useState<MediaItem | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false)
-  const [refresh, setRefresh] = useState(0)
+  const floatingWindow = useContext(FloatingPanelWindowContext);
+  const t = mediaMessages();
+  const { confirm, confirmationDialog } = useConfirmDialog();
+  const [query, setQuery] = useState<MediaQuery>(DEFAULT_QUERY);
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [data, setData] = useState<MediaPage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [details, setDetails] = useState<MediaItem | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedQuery(query), 300)
-    return () => window.clearTimeout(timer)
-  }, [query])
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true); setError(null)
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
     void getMedia(debouncedQuery, controller.signal)
       .then(setData)
       .catch((caught: unknown) => {
-        if (caught instanceof Error && caught.name === 'AbortError') return
-        setError(caught instanceof Error ? caught.message : 'Médiathèque indisponible.')
+        if (caught instanceof Error && caught.name === "AbortError") return;
+        setError(caught instanceof Error ? caught.message : "Médiathèque indisponible.");
       })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
-  }, [debouncedQuery, refresh])
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [debouncedQuery, refresh]);
 
   const change = <K extends keyof MediaQuery>(key: K, value: MediaQuery[K]) => {
-    setQuery((current) => ({ ...current, page: 1, [key]: value }))
-  }
-  const reload = useCallback(() => setRefresh((value) => value + 1), [])
+    setQuery((current) => ({ ...current, page: 1, [key]: value }));
+  };
+  const reload = useCallback(() => setRefresh((value) => value + 1), []);
   useEffect(() => {
-    window.addEventListener('cartavault:media-uploaded', reload)
-    return () => window.removeEventListener('cartavault:media-uploaded', reload)
-  }, [reload])
-  const editableSelection = useMemo(
-    () => data?.items.filter((item) => selected.has(item.id) && item.can_edit) ?? [],
-    [data, selected],
-  )
-  const countryOptions = useMemo(
-    () => Array.from(
-      new Map((data?.filters.maps ?? []).map((item) => [
-        item.country_code,
-        { code: item.country_code, name: item.country_name },
-      ])).values(),
-    ).sort((left, right) => left.name.localeCompare(right.name)),
-    [data],
-  )
+    window.addEventListener("cartavault:media-uploaded", reload);
+    return () => window.removeEventListener("cartavault:media-uploaded", reload);
+  }, [reload]);
+  const editableSelection = useMemo(() => data?.items.filter((item) => selected.has(item.id) && item.can_edit) ?? [], [data, selected]);
+  const countryOptions = useMemo(() => Array.from(new Map((data?.filters.maps ?? []).map((item) => [item.country_code, { code: item.country_code, name: item.country_name }])).values()).sort((left, right) => left.name.localeCompare(right.name)), [data]);
   const pageNumbers = useMemo(() => {
-    if (!data) return []
-    return [...new Set([1, data.pages, query.page - 1, query.page, query.page + 1])]
-      .filter((value) => value >= 1 && value <= data.pages)
-      .sort((left, right) => left - right)
-  }, [data, query.page])
+    if (!data) return [];
+    return [...new Set([1, data.pages, query.page - 1, query.page, query.page + 1])].filter((value) => value >= 1 && value <= data.pages).sort((left, right) => left - right);
+  }, [data, query.page]);
 
   const removeOne = async (media: MediaItem) => {
-    if (!await confirm({ title: 'Supprimer ce média ?', message: `« ${media.original_name || media.place?.name || 'ce média'} » sera définitivement supprimé.` })) return
-    try { await deleteMedia(media.id); setDetails(null); setSelected((current) => { const next = new Set(current); next.delete(media.id); return next }); reload() }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Suppression impossible.') }
-  }
+    if (
+      !(await confirm({
+        title: "Supprimer ce média ?",
+        message: `« ${media.original_name || media.place?.name || "ce média"} » sera définitivement supprimé.`,
+      }))
+    )
+      return;
+    try {
+      await deleteMedia(media.id);
+      setDetails(null);
+      setSelected((current) => {
+        const next = new Set(current);
+        next.delete(media.id);
+        return next;
+      });
+      reload();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Suppression impossible.");
+    }
+  };
   const removeSelected = async () => {
-    if (!editableSelection.length) return
-    if (!await confirm({ title: 'Supprimer les médias sélectionnés ?', message: `${editableSelection.length} média(s) seront définitivement supprimés.` })) return
-    try { await bulkDeleteMedia(editableSelection.map((item) => item.id)); setSelected(new Set()); reload() }
-    catch (caught) { setError(caught instanceof Error ? caught.message : 'Suppression groupée impossible.') }
-  }
+    if (!editableSelection.length) return;
+    if (
+      !(await confirm({
+        title: "Supprimer les médias sélectionnés ?",
+        message: `${editableSelection.length} média(s) seront définitivement supprimés.`,
+      }))
+    )
+      return;
+    try {
+      await bulkDeleteMedia(editableSelection.map((item) => item.id));
+      setSelected(new Set());
+      reload();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Suppression groupée impossible.");
+    }
+  };
 
-  return <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? ' is-collapsed' : ''}${mobileFiltersOpen ? ' mobile-filters-open' : ''}`} aria-label="Médiathèque" tabIndex={-1}>
-    <header className="cv-workspace-panel__header">
-      <div className="cv-workspace-panel__heading"><p className="cv-workspace-panel__eyebrow">Bibliothèque</p><h1 className="cv-workspace-panel__title">{t.title}</h1></div>
-      <div className="cv-workspace-panel__header-actions">
-        <span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span>
-        <button type="button" className="panel-icon-button" aria-label="Importer des photos" title="Importer des photos" onClick={() => window.dispatchEvent(new Event('cartavault:open-media-upload'))}><Upload size={17} /></button>
-        <button type="button" className={`panel-icon-button media-mobile-filters-toggle${mobileFiltersOpen ? ' active' : ''}`} aria-label={mobileFiltersOpen ? 'Masquer les filtres' : 'Afficher les filtres'} title={mobileFiltersOpen ? 'Masquer les filtres' : 'Afficher les filtres'} aria-expanded={mobileFiltersOpen} onClick={() => setMobileFiltersOpen((value) => !value)}><Filter size={17} /></button>
-        <button type="button" className="panel-icon-button media-mobile-view-toggle" aria-label={viewMode === 'grid' ? 'Afficher en liste' : 'Afficher en galerie'} title={viewMode === 'grid' ? 'Afficher en liste' : 'Afficher en galerie'} onClick={() => setViewMode((current) => current === 'grid' ? 'list' : 'grid')}>
-          {viewMode === 'grid' ? <List size={18} /> : <Grid2X2 size={17} />}
-        </button>
-        {!collapsed && floatingWindow && <button type="button" className="panel-icon-button media-window-maximize" aria-label={floatingWindow.maximized ? 'Rétablir la taille précédente de la fenêtre Médias' : 'Agrandir la fenêtre Médias au maximum'} title={floatingWindow.maximized ? 'Rétablir la taille précédente' : 'Agrandir la fenêtre au maximum'} aria-pressed={floatingWindow.maximized} onClick={floatingWindow.toggleMaximize}>{floatingWindow.maximized ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}</button>}
-        <button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? 'Agrandir le panneau' : 'Réduire le panneau'} title={collapsed ? 'Agrandir' : 'Réduire'} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>{collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}</button>
-      </div>
-    </header>
-    <div className="media-toolbar">
-      <label className="media-search"><Search size={17} /><input value={query.query} onChange={(event) => change('query', event.target.value)} placeholder={t.search} /></label>
-      {data && mobileFiltersOpen && <div className="media-aggregates media-aggregates--mobile-filters" aria-label="Résumé du stockage">
-        <span><i><ImageIcon size={19} /></i><b>{data.aggregates.total_count}<small>fichiers</small></b></span>
-        <span><i className="primary"><Star size={19} fill="currentColor" /></i><b>{data.aggregates.primary_count}<small>principales</small></b></span>
-        <span><i className="warning"><AlertTriangle size={19} /></i><b>{data.aggregates.missing_count + data.aggregates.error_count}<small>à vérifier</small></b></span>
-      </div>}
-      <div className="media-toolbar__actions">
-      <details className="media-filters" open={advancedFiltersOpen} onToggle={(event) => setAdvancedFiltersOpen((event.currentTarget as HTMLDetailsElement).open)}>
-        <summary><Filter size={16} />{t.filters}<ChevronDown className="media-filters__chevron" size={15} aria-hidden="true" /></summary>
-        <div>
-          <label>Carte<select value={query.mapId} onChange={(event) => change('mapId', event.target.value)}><option value="">Toutes</option>{data?.filters.maps.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label>Pays<select value={query.countryCode} onChange={(event) => change('countryCode', event.target.value)}><option value="">Tous</option>{countryOptions.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
-          <label>Format<select value={query.format} onChange={(event) => change('format', event.target.value)}><option value="">Tous</option>{data?.filters.formats.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label>Ajouté par<select value={query.uploaderId} onChange={(event) => change('uploaderId', event.target.value)}><option value="">Tous</option>{data?.filters.uploaders.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label>Type<select value={query.primary} onChange={(event) => change('primary', event.target.value as MediaQuery['primary'])}><option value="">Tous</option><option value="true">Photos principales</option><option value="false">Photos secondaires</option></select></label>
-          <label>Diagnostic<select value={query.fileState} onChange={(event) => change('fileState', event.target.value as MediaQuery['fileState'])}><option value="">Tous</option><option value="healthy">Sains</option><option value="missing">Fichiers manquants</option><option value="error">En erreur</option></select></label>
-          <label>Ajouté depuis<input type="date" value={query.createdFrom} max={query.createdTo || undefined} onChange={(event) => change('createdFrom', event.target.value)} /></label>
-          <label>Ajouté jusqu’au<input type="date" value={query.createdTo} min={query.createdFrom || undefined} onChange={(event) => change('createdTo', event.target.value)} /></label>
-          <label>Taille min. (octets)<input type="number" min="0" value={query.minSize} onChange={(event) => change('minSize', event.target.value)} /></label>
-          <label>Taille max. (octets)<input type="number" min={query.minSize || '0'} value={query.maxSize} onChange={(event) => change('maxSize', event.target.value)} /></label>
-          <label>Largeur min. (px)<input type="number" min="1" value={query.minWidth} onChange={(event) => change('minWidth', event.target.value)} /></label>
-          <label>Hauteur min. (px)<input type="number" min="1" value={query.minHeight} onChange={(event) => change('minHeight', event.target.value)} /></label>
+  return (
+    <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? " is-collapsed" : ""}${mobileFiltersOpen ? " mobile-filters-open" : ""}`} aria-label="Médiathèque" tabIndex={-1}>
+      <header className="cv-workspace-panel__header">
+        <div className="cv-workspace-panel__heading">
+          <p className="cv-workspace-panel__eyebrow">Bibliothèque</p>
+          <h1 className="cv-workspace-panel__title">{t.title}</h1>
         </div>
-      </details>
-      <label className="media-sort"><ArrowUpDown size={16} aria-hidden="true" /><span className="sr-only">Trier</span><select aria-label="Trier les médias" value={query.sortBy} onChange={(event) => change('sortBy', event.target.value as MediaQuery['sortBy'])}><option value="created_at">Ajout récent</option><option value="name">Nom</option><option value="place">Lieu</option><option value="map">Carte</option><option value="size">Taille</option></select><ChevronDown className="media-sort__chevron" size={15} aria-hidden="true" /></label>
-      <div className="media-view-switch" role="group" aria-label="Mode d’affichage">
-        <button type="button" className={viewMode === 'grid' ? 'active' : ''} aria-label="Affichage en grille" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}><Grid2X2 size={17} /></button>
-        <button type="button" className={viewMode === 'list' ? 'active' : ''} aria-label="Affichage en liste" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><List size={18} /></button>
-      </div>
-      </div>
-    </div>
-    {error && <div className="form-alert" role="alert">{error}<button type="button" onClick={reload}>Réessayer</button></div>}
-    {loading && <p className="media-state" role="status">{t.loading}</p>}
-    {!loading && data?.items.length === 0 && <p className="media-state">{t.empty}</p>}
-    <div className={`media-grid ${viewMode}`}>
-      {data?.items.map((media) => {
-        const checked = selected.has(media.id)
-        return <article className={`media-card${checked ? ' selected' : ''}`} key={media.id}>
-          <button type="button" className="media-card__preview" onClick={() => setDetails(media)} aria-label={`Ouvrir ${media.original_name || media.place?.name || 'média'}`}>
-            {media.file_state === 'healthy' ? <img loading="lazy" src={getMediaThumbnailUrl(media.id)} alt="" /> : <span><AlertTriangle size={25} />Fichier indisponible</span>}
+        <div className="cv-workspace-panel__header-actions">
+          <span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span>
+          <button type="button" className="panel-icon-button primary panel-create-action" aria-label="Importer des photos" title="Importer des photos" onClick={() => window.dispatchEvent(new Event("cartavault:open-media-upload"))}>
+            <IconPlus size={18} aria-hidden="true" />
           </button>
-          <label className="media-card__select"><input type="checkbox" checked={checked} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(media.id)) next.delete(media.id); else next.add(media.id); return next })} /><span className="sr-only">Sélectionner</span></label>
-          {media.is_primary && <span className="media-primary" title="Photo principale"><Star size={14} fill="currentColor" />Principale</span>}
-          <div className="media-card__body">
-            <strong title={media.original_name ?? media.place?.name ?? 'Média non rattaché'}>{media.original_name || media.place?.name || 'Média non rattaché'}</strong>
-            {media.place ? <button type="button" onClick={() => onOpenPlace(media)}><MapPin size={14} />{media.place.name}</button> : <span className="media-card__unattached">Non rattaché à un POI</span>}
-            {media.can_create_place && <button type="button" className="media-card__create-place" onClick={() => requestPlaceCreationFromMedia(media)}><MapPin size={15} />Créer un POI</button>}
-            <span>{media.map ? `${media.map.name} · ${media.map.country_code}` : 'Carte à définir'}</span>
-            <small>{media.format ?? '—'} · {formatBytes(media.file_size_bytes)} · {media.width && media.height ? `${media.width}×${media.height}` : 'dimensions inconnues'}</small>
+          <button type="button" className={`panel-icon-button media-mobile-filters-toggle${mobileFiltersOpen ? " active" : ""}`} aria-label={mobileFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"} title={mobileFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"} aria-expanded={mobileFiltersOpen} onClick={() => setMobileFiltersOpen((value) => !value)}>
+            <Filter size={17} />
+          </button>
+          <button type="button" className="panel-icon-button media-mobile-view-toggle" aria-label={viewMode === "grid" ? "Afficher en liste" : "Afficher en galerie"} title={viewMode === "grid" ? "Afficher en liste" : "Afficher en galerie"} onClick={() => setViewMode((current) => (current === "grid" ? "list" : "grid"))}>
+            {viewMode === "grid" ? <List size={18} /> : <Grid2X2 size={17} />}
+          </button>
+          {!collapsed && floatingWindow && (
+            <button type="button" className="panel-icon-button media-window-maximize" aria-label={floatingWindow.maximized ? "Rétablir la taille précédente de la fenêtre Médias" : "Agrandir la fenêtre Médias au maximum"} title={floatingWindow.maximized ? "Rétablir la taille précédente" : "Agrandir la fenêtre au maximum"} aria-pressed={floatingWindow.maximized} onClick={floatingWindow.toggleMaximize}>
+              {floatingWindow.maximized ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}
+            </button>
+          )}
+          <PanelLayoutLockButton />
+          <button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? "Agrandir le panneau" : "Réduire le panneau"} title={collapsed ? "Agrandir" : "Réduire"} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>
+            {collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}
+          </button>
+        </div>
+      </header>
+      <div className="media-toolbar">
+        <label className="media-search">
+          <Search size={17} />
+          <input value={query.query} onChange={(event) => change("query", event.target.value)} placeholder={t.search} />
+        </label>
+        {data && mobileFiltersOpen && (
+          <div className="media-aggregates media-aggregates--mobile-filters" aria-label="Résumé du stockage">
+            <span>
+              <i>
+                <ImageIcon size={19} />
+              </i>
+              <b>
+                {data.aggregates.total_count}
+                <small>fichiers</small>
+              </b>
+            </span>
+            <span>
+              <i className="primary">
+                <Star size={19} fill="currentColor" />
+              </i>
+              <b>
+                {data.aggregates.primary_count}
+                <small>principales</small>
+              </b>
+            </span>
+            <span>
+              <i className="warning">
+                <AlertTriangle size={19} />
+              </i>
+              <b>
+                {data.aggregates.missing_count + data.aggregates.error_count}
+                <small>à vérifier</small>
+              </b>
+            </span>
           </div>
-          <details className="media-card__menu">
-            <summary aria-label={`Actions pour ${media.original_name || media.place?.name || 'média'}`}><MoreHorizontal size={17} /></summary>
-            <div className="media-card__actions">
-              <a href={getMediaDownloadUrl(media.id)} aria-label="Télécharger"><Download size={15} />Télécharger</a>
-              {media.place && <button type="button" onClick={() => onOpenPlace(media)}><ExternalLink size={15} />Ouvrir le lieu</button>}
-              {media.can_edit && !media.is_primary && <button type="button" onClick={() => void setMainMedia(media.id).then(reload)}><Star size={15} />Définir comme principale</button>}
-              {media.can_edit && <button type="button" className="danger" onClick={() => void removeOne(media)}><Trash2 size={15} />Supprimer</button>}
+        )}
+        <div className="media-toolbar__actions">
+          <details className="media-filters" open={advancedFiltersOpen} onToggle={(event) => setAdvancedFiltersOpen((event.currentTarget as HTMLDetailsElement).open)}>
+            <summary>
+              <Filter size={16} />
+              {t.filters}
+              <ChevronDown className="media-filters__chevron" size={15} aria-hidden="true" />
+            </summary>
+            <div>
+              <label>
+                Carte
+                <select value={query.mapId} onChange={(event) => change("mapId", event.target.value)}>
+                  <option value="">Toutes</option>
+                  {data?.filters.maps.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Pays
+                <select value={query.countryCode} onChange={(event) => change("countryCode", event.target.value)}>
+                  <option value="">Tous</option>
+                  {countryOptions.map((item) => (
+                    <option key={item.code} value={item.code}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Format
+                <select value={query.format} onChange={(event) => change("format", event.target.value)}>
+                  <option value="">Tous</option>
+                  {data?.filters.formats.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Ajouté par
+                <select value={query.uploaderId} onChange={(event) => change("uploaderId", event.target.value)}>
+                  <option value="">Tous</option>
+                  {data?.filters.uploaders.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Type
+                <select value={query.primary} onChange={(event) => change("primary", event.target.value as MediaQuery["primary"])}>
+                  <option value="">Tous</option>
+                  <option value="true">Photos principales</option>
+                  <option value="false">Photos secondaires</option>
+                </select>
+              </label>
+              <label>
+                Diagnostic
+                <select value={query.fileState} onChange={(event) => change("fileState", event.target.value as MediaQuery["fileState"])}>
+                  <option value="">Tous</option>
+                  <option value="healthy">Sains</option>
+                  <option value="missing">Fichiers manquants</option>
+                  <option value="error">En erreur</option>
+                </select>
+              </label>
+              <label>
+                Ajouté depuis
+                <input type="date" value={query.createdFrom} max={query.createdTo || undefined} onChange={(event) => change("createdFrom", event.target.value)} />
+              </label>
+              <label>
+                Ajouté jusqu’au
+                <input type="date" value={query.createdTo} min={query.createdFrom || undefined} onChange={(event) => change("createdTo", event.target.value)} />
+              </label>
+              <label>
+                Taille min. (octets)
+                <input type="number" min="0" value={query.minSize} onChange={(event) => change("minSize", event.target.value)} />
+              </label>
+              <label>
+                Taille max. (octets)
+                <input type="number" min={query.minSize || "0"} value={query.maxSize} onChange={(event) => change("maxSize", event.target.value)} />
+              </label>
+              <label>
+                Largeur min. (px)
+                <input type="number" min="1" value={query.minWidth} onChange={(event) => change("minWidth", event.target.value)} />
+              </label>
+              <label>
+                Hauteur min. (px)
+                <input type="number" min="1" value={query.minHeight} onChange={(event) => change("minHeight", event.target.value)} />
+              </label>
             </div>
           </details>
-        </article>
-      })}
-    </div>
-    {data && <footer className="media-pagination">
-      <label>Résultats par page<select value={query.pageSize} onChange={(event) => setQuery((current) => ({ ...current, page: 1, pageSize: Number(event.target.value) }))}><option value="18">18</option><option value="30">30</option><option value="60">60</option></select></label>
-      <nav aria-label="Pagination des médias">
-        <button type="button" aria-label="Page précédente" disabled={query.page === 1} onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}>‹</button>
-        {pageNumbers.map((page, index) => <span key={page}>{index > 0 && page - pageNumbers[index - 1] > 1 && <i>…</i>}<button type="button" className={page === query.page ? 'active' : ''} aria-current={page === query.page ? 'page' : undefined} onClick={() => setQuery((current) => ({ ...current, page }))}>{page}</button></span>)}
-        <button type="button" aria-label="Page suivante" disabled={query.page >= data.pages} onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}>›</button>
-      </nav>
-      <span>Page {query.page} sur {data.pages}</span>
-    </footer>}
-    {selected.size > 0 && <div className="media-bulk-bar"><span><Check size={16} />{selected.size} sélectionné(s)</span><button type="button" onClick={() => setSelected(new Set())}>Tout désélectionner</button>{editableSelection.length > 0 && <button type="button" className="danger" onClick={() => void removeSelected()}><Trash2 size={15} />Supprimer</button>}</div>}
-    {details && <MediaDetails media={details} onClose={() => setDetails(null)} onChanged={() => { setDetails(null); reload() }} onOpenPlace={onOpenPlace} onCreatePlace={requestPlaceCreationFromMedia} />}
-    {confirmationDialog}
-  </aside>
+          <label className="media-sort">
+            <ArrowUpDown size={16} aria-hidden="true" />
+            <span className="sr-only">Trier</span>
+            <select aria-label="Trier les médias" value={query.sortBy} onChange={(event) => change("sortBy", event.target.value as MediaQuery["sortBy"])}>
+              <option value="created_at">Ajout récent</option>
+              <option value="name">Nom</option>
+              <option value="place">Lieu</option>
+              <option value="map">Carte</option>
+              <option value="size">Taille</option>
+            </select>
+            <ChevronDown className="media-sort__chevron" size={15} aria-hidden="true" />
+          </label>
+          <div className="media-view-switch" role="group" aria-label="Mode d’affichage">
+            <button type="button" className={viewMode === "grid" ? "active" : ""} aria-label="Affichage en grille" aria-pressed={viewMode === "grid"} onClick={() => setViewMode("grid")}>
+              <Grid2X2 size={17} />
+            </button>
+            <button type="button" className={viewMode === "list" ? "active" : ""} aria-label="Affichage en liste" aria-pressed={viewMode === "list"} onClick={() => setViewMode("list")}>
+              <List size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+      {error && (
+        <div className="form-alert" role="alert">
+          {error}
+          <button type="button" onClick={reload}>
+            Réessayer
+          </button>
+        </div>
+      )}
+      {loading && (
+        <p className="media-state" role="status">
+          {t.loading}
+        </p>
+      )}
+      {!loading && data?.items.length === 0 && <p className="media-state">{t.empty}</p>}
+      <div className={`media-grid ${viewMode}`}>
+        {data?.items.map((media) => {
+          const checked = selected.has(media.id);
+          return (
+            <article className={`media-card${checked ? " selected" : ""}`} key={media.id}>
+              <button type="button" className="media-card__preview" onClick={() => setDetails(media)} aria-label={`Ouvrir ${media.original_name || media.place?.name || "média"}`}>
+                {media.file_state === "healthy" ? (
+                  <img loading="lazy" src={getMediaThumbnailUrl(media.id)} alt="" />
+                ) : (
+                  <span>
+                    <AlertTriangle size={25} />
+                    Fichier indisponible
+                  </span>
+                )}
+              </button>
+              <label className="media-card__select">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    setSelected((current) => {
+                      const next = new Set(current);
+                      if (next.has(media.id)) next.delete(media.id);
+                      else next.add(media.id);
+                      return next;
+                    })
+                  }
+                />
+                <span className="sr-only">Sélectionner</span>
+              </label>
+              {media.is_primary && (
+                <span className="media-primary" title="Photo principale">
+                  <Star size={14} fill="currentColor" />
+                  Principale
+                </span>
+              )}
+              <div className="media-card__body">
+                <strong title={media.original_name ?? media.place?.name ?? "Média non rattaché"}>{media.original_name || media.place?.name || "Média non rattaché"}</strong>
+                {media.place ? (
+                  <button type="button" onClick={() => onOpenPlace(media)}>
+                    <MapPin size={14} />
+                    {media.place.name}
+                  </button>
+                ) : (
+                  <span className="media-card__unattached">Non rattaché à un POI</span>
+                )}
+                {media.can_create_place && (
+                  <button type="button" className="media-card__create-place" onClick={() => requestPlaceCreationFromMedia(media)}>
+                    <MapPin size={15} />
+                    Créer un POI
+                  </button>
+                )}
+                <span>{media.map ? `${media.map.name} · ${media.map.country_code}` : "Carte à définir"}</span>
+                <small>
+                  {media.format ?? "—"} · {formatBytes(media.file_size_bytes)} · {media.width && media.height ? `${media.width}×${media.height}` : "dimensions inconnues"}
+                </small>
+              </div>
+              <details className="media-card__menu">
+                <summary aria-label={`Actions pour ${media.original_name || media.place?.name || "média"}`}>
+                  <MoreHorizontal size={17} />
+                </summary>
+                <div className="media-card__actions">
+                  <a href={getMediaDownloadUrl(media.id)} aria-label="Télécharger">
+                    <Download size={15} />
+                    Télécharger
+                  </a>
+                  {media.place && (
+                    <button type="button" onClick={() => onOpenPlace(media)}>
+                      <ExternalLink size={15} />
+                      Ouvrir le lieu
+                    </button>
+                  )}
+                  {media.can_edit && !media.is_primary && (
+                    <button type="button" onClick={() => void setMainMedia(media.id).then(reload)}>
+                      <Star size={15} />
+                      Définir comme principale
+                    </button>
+                  )}
+                  {media.can_edit && (
+                    <button type="button" className="danger" onClick={() => void removeOne(media)}>
+                      <Trash2 size={15} />
+                      Supprimer
+                    </button>
+                  )}
+                </div>
+              </details>
+            </article>
+          );
+        })}
+      </div>
+      {data && (
+        <footer className="media-pagination">
+          <label>
+            Résultats par page
+            <select
+              value={query.pageSize}
+              onChange={(event) =>
+                setQuery((current) => ({
+                  ...current,
+                  page: 1,
+                  pageSize: Number(event.target.value),
+                }))
+              }
+            >
+              <option value="18">18</option>
+              <option value="30">30</option>
+              <option value="60">60</option>
+            </select>
+          </label>
+          <nav aria-label="Pagination des médias">
+            <button type="button" aria-label="Page précédente" disabled={query.page === 1} onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}>
+              ‹
+            </button>
+            {pageNumbers.map((page, index) => (
+              <span key={page}>
+                {index > 0 && page - pageNumbers[index - 1] > 1 && <i>…</i>}
+                <button type="button" className={page === query.page ? "active" : ""} aria-current={page === query.page ? "page" : undefined} onClick={() => setQuery((current) => ({ ...current, page }))}>
+                  {page}
+                </button>
+              </span>
+            ))}
+            <button type="button" aria-label="Page suivante" disabled={query.page >= data.pages} onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}>
+              ›
+            </button>
+          </nav>
+          <span>
+            Page {query.page} sur {data.pages}
+          </span>
+        </footer>
+      )}
+      {selected.size > 0 && (
+        <div className="media-bulk-bar">
+          <span>
+            <Check size={16} />
+            {selected.size} sélectionné(s)
+          </span>
+          <button type="button" onClick={() => setSelected(new Set())}>
+            Tout désélectionner
+          </button>
+          {editableSelection.length > 0 && (
+            <button type="button" className="danger" onClick={() => void removeSelected()}>
+              <Trash2 size={15} />
+              Supprimer
+            </button>
+          )}
+        </div>
+      )}
+      {details && (
+        <MediaDetails
+          media={details}
+          onClose={() => setDetails(null)}
+          onChanged={() => {
+            setDetails(null);
+            reload();
+          }}
+          onOpenPlace={onOpenPlace}
+          onCreatePlace={requestPlaceCreationFromMedia}
+        />
+      )}
+      {confirmationDialog}
+    </aside>
+  );
 }

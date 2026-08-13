@@ -72,8 +72,8 @@ export interface PlaceMutation { placeId: string; mapId: string }
 export interface MapPlaceQuery { bounds: MapBounds; mapId?: string; filters?: PlaceFilters; categoryId?: string; tagId?: string; statusId?: string; limit?: number }
 export interface MapPlaceResult { items: MapPlace[]; total: number; returned: number; truncated: boolean }
 export interface PlaceListQuery { mapId?: string; filters?: PlaceFilters; statusId?: string; q?: string; limit?: number; offset?: number }
-export type PlaceBulkAction = 'set_status' | 'add_category' | 'remove_category' | 'add_tag' | 'remove_tag' | 'delete'
-export interface PlaceBulkPayload { place_ids: string[]; action: PlaceBulkAction; status_id?: string; category_id?: string; tag_id?: string }
+export type PlaceBulkAction = 'set_status' | 'set_category' | 'add_category' | 'remove_category' | 'add_tag' | 'remove_tag' | 'delete'
+export interface PlaceBulkPayload { place_ids: string[]; action: PlaceBulkAction; status_id?: string; category_id?: string; tag_id?: string; tag_ids?: string[] }
 export interface PlaceBulkResult { selected_count: number; updated_count: number; unchanged_count: number; deleted_count: number }
 export interface PlaceFacetItem { id: string; name: string; count: number; icon?: string; color?: string; value?: string }
 export interface PlaceFacets { total: number; non_visited: number; visited: number; favorites: number; categories: PlaceFacetItem[]; tags: PlaceFacetItem[]; statuses: PlaceFacetItem[]; regions: PlaceFacetItem[]; danger_levels: PlaceFacetItem[]; condition_values: PlaceFacetItem[]; with_photos: number; without_photos: number; with_coordinates: number; without_coordinates: number; in_trip: number; not_in_trip: number }

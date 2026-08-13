@@ -17,6 +17,7 @@ export function parseCategory(value: unknown): CategoryRead {
     description: readNullableString(value, 'description', context),
     icon: readString(value, 'icon', context),
     marks_as_visited: value.marks_as_visited === true,
+    sort_order: readNumber(value, 'sort_order', context),
     places_count: readNumber(value, 'places_count', context),
   }
 }
@@ -68,4 +69,10 @@ export async function updateCategory(
 
 export async function deleteCategory(categoryId: string, signal?: AbortSignal): Promise<void> {
   await sendWithoutResponse(`/categories/${encodeURIComponent(categoryId)}`, 'DELETE', signal)
+}
+
+export async function reorderCategories(mapId: string, ids: string[], signal?: AbortSignal): Promise<CategoryRead[]> {
+  const payload = await sendJson(`/categories/reorder?${new URLSearchParams({ map_id: mapId })}`, 'POST', { ids }, signal)
+  if (!Array.isArray(payload)) throw new Error("L'ordre des catégories renvoyé par l'API est invalide.")
+  return payload.map(parseCategory)
 }

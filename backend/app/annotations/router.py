@@ -4,11 +4,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.annotations.models import AnnotationTemplate, PlaceAnnotation
-from app.annotations.schemas import AnnotationTemplateCreate, AnnotationTemplateRead, AnnotationTemplateUpdate, PlaceAnnotationCreate, PlaceAnnotationRead, PlaceAnnotationUpdate, validate_geometry
+from app.annotations.schemas import AnnotationTemplateCreate, AnnotationTemplateOrder, AnnotationTemplateRead, AnnotationTemplateUpdate, PlaceAnnotationCreate, PlaceAnnotationRead, PlaceAnnotationUpdate, validate_geometry
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_map_role, require_place_role
@@ -58,6 +58,33 @@ def create_template(data: AnnotationTemplateCreate, database_session: Session = 
     except IntegrityError as error:
         database_session.rollback(); raise HTTPException(status_code=409, detail="An annotation template with this name already exists in this map") from error
     return _template_read(template)
+
+
+@router.post("/templates/reorder", response_model=list[AnnotationTemplateRead])
+def reorder_templates(data: AnnotationTemplateOrder, map_id: UUID = Query(), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[AnnotationTemplateRead]:
+    require_map_role(database_session, map_id, current_user, "editor")
+    templates = list(database_session.scalars(
+        select(AnnotationTemplate)
+        .where(AnnotationTemplate.map_id == map_id)
+        .order_by(AnnotationTemplate.sort_order, func.lower(AnnotationTemplate.name), AnnotationTemplate.id)
+    ))
+    if len(data.ids) != len(templates) or set(data.ids) != {item.id for item in templates}:
+        raise HTTPException(status_code=422, detail="The annotation template order must contain every template exactly once")
+
+    try:
+        by_id = {item.id: item for item in templates}
+        for index, template_id in enumerate(data.ids, start=1):
+            by_id[template_id].sort_order = index * 10
+        database_session.commit()
+        usage_counts = dict(database_session.execute(
+            select(PlaceAnnotation.template_id, func.count(PlaceAnnotation.id))
+            .where(PlaceAnnotation.template_id.in_(data.ids))
+            .group_by(PlaceAnnotation.template_id)
+        ).all())
+        return [_template_read(by_id[template_id], usage_counts.get(template_id, 0)) for template_id in data.ids]
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to reorder annotation templates") from error
 
 
 @router.patch("/templates/{template_id}", response_model=AnnotationTemplateRead)

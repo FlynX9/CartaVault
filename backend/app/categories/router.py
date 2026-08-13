@@ -9,7 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_category_role, require_map_role
 from app.categories.models import IMPORTED_CATEGORY_NAME, Category
-from app.categories.schemas import CategoryCreate, CategoryRead, CategoryUpdate
+from app.categories.schemas import CategoryCreate, CategoryOrder, CategoryRead, CategoryUpdate
 from app.database import get_db
 from app.places.models import Place
 from app.quotas.registry import QuotaKey
@@ -44,7 +44,27 @@ def get_categories(map_id: UUID = Query(), q: str | None = Query(default=None, m
     statement = _read_statement().where(Category.map_id == map_id)
     if q is not None:
         statement = statement.where(Category.name.ilike(f"%{q.strip()}%"))
-    return [_read(*row) for row in database_session.execute(statement.order_by(func.lower(Category.name), Category.id)).all()]
+    return [_read(*row) for row in database_session.execute(statement.order_by(Category.sort_order, func.lower(Category.name), Category.id)).all()]
+
+
+@router.post("/reorder", response_model=list[CategoryRead])
+def reorder_categories(data: CategoryOrder, map_id: UUID = Query(...), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[CategoryRead]:
+    require_map_role(database_session, map_id, current_user, "editor")
+    categories = list(database_session.scalars(select(Category).where(Category.map_id == map_id).order_by(Category.sort_order, func.lower(Category.name), Category.id)))
+    if len(data.ids) != len(categories) or set(data.ids) != {item.id for item in categories}:
+        raise HTTPException(status_code=422, detail="The category order must contain every category exactly once")
+    try:
+        for item in categories:
+            item.sort_order += 10_000
+        database_session.flush()
+        by_id = {item.id: item for item in categories}
+        for index, category_id in enumerate(data.ids, start=1):
+            by_id[category_id].sort_order = index * 10
+        database_session.commit()
+        return [_read_category(database_session, by_id[category_id]) for category_id in data.ids]
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to reorder categories") from error
 
 
 @router.get("/{category_id}", response_model=CategoryRead)
@@ -56,7 +76,7 @@ def get_category(category_id: UUID, database_session: Session = Depends(get_db),
 def create_category(data: CategoryCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> CategoryRead:
     require_map_role(database_session, data.map_id, current_user, "editor")
     QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.CATEGORIES_PER_MAP_MAX, scope_id=data.map_id)
-    category = Category(map_id=data.map_id, name=data.name.strip(), description=data.description, icon=data.icon, marks_as_visited=data.marks_as_visited)
+    category = Category(map_id=data.map_id, name=data.name.strip(), description=data.description, icon=data.icon, marks_as_visited=data.marks_as_visited, sort_order=(database_session.scalar(select(func.coalesce(func.max(Category.sort_order), 0)).where(Category.map_id == data.map_id)) + 10))
     try:
         database_session.add(category)
         database_session.commit()

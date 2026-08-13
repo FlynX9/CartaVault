@@ -240,6 +240,73 @@ def test_bulk_place_delete_and_validated_filters(integration_client: TestClient,
     assert deleted.json() == {"selected_count": 2, "updated_count": 0, "unchanged_count": 0, "deleted_count": 2}
 
 
+def test_bulk_set_category_replaces_the_existing_category(integration_client: TestClient, poi_map: PoiMap) -> None:
+    first_category = integration_client.post(
+        "/categories",
+        json={"map_id": str(poi_map.id), "name": f"Bulk initial {uuid4().hex}"},
+    )
+    replacement_category = integration_client.post(
+        "/categories",
+        json={"map_id": str(poi_map.id), "name": f"Bulk replacement {uuid4().hex}"},
+    )
+    place = integration_client.post(
+        "/places",
+        json={"name": f"Bulk category {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1},
+    )
+    assert first_category.status_code == replacement_category.status_code == place.status_code == 201
+    assert integration_client.post(
+        f"/places/{place.json()['id']}/categories/{first_category.json()['id']}",
+    ).status_code == 200
+
+    replaced = integration_client.post(
+        "/places/bulk",
+        json={
+            "place_ids": [place.json()["id"]],
+            "action": "set_category",
+            "category_id": replacement_category.json()["id"],
+        },
+    )
+
+    assert replaced.status_code == 200
+    categories = integration_client.get(f"/places/{place.json()['id']}").json()["categories"]
+    assert [(item["id"], item["is_primary"]) for item in categories] == [
+        (replacement_category.json()["id"], True),
+    ]
+
+
+def test_bulk_adds_and_removes_multiple_tags_atomically(integration_client: TestClient, poi_map: PoiMap) -> None:
+    first_tag = integration_client.post(
+        "/tags",
+        json={"map_id": str(poi_map.id), "name": f"Bulk tag one {uuid4().hex}"},
+    )
+    second_tag = integration_client.post(
+        "/tags",
+        json={"map_id": str(poi_map.id), "name": f"Bulk tag two {uuid4().hex}"},
+    )
+    place = integration_client.post(
+        "/places",
+        json={"name": f"Bulk tags {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1},
+    )
+    assert first_tag.status_code == second_tag.status_code == place.status_code == 201
+    tag_ids = [first_tag.json()["id"], second_tag.json()["id"]]
+
+    added = integration_client.post(
+        "/places/bulk",
+        json={"place_ids": [place.json()["id"]], "action": "add_tag", "tag_ids": tag_ids},
+    )
+    assert added.status_code == 200
+    assert added.json()["updated_count"] == 1
+    assert {tag["id"] for tag in integration_client.get(f"/places/{place.json()['id']}").json()["tags"]} == set(tag_ids)
+
+    removed = integration_client.post(
+        "/places/bulk",
+        json={"place_ids": [place.json()["id"]], "action": "remove_tag", "tag_ids": tag_ids},
+    )
+    assert removed.status_code == 200
+    assert removed.json()["updated_count"] == 1
+    assert integration_client.get(f"/places/{place.json()['id']}").json()["tags"] == []
+
+
 def test_place_facets_and_bulk_trip_add_are_map_scoped(integration_client: TestClient, poi_map: PoiMap) -> None:
     first = integration_client.post("/places", json={"name": f"Facet one {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.1, "longitude": 2.1, "region": "Centre"})
     second = integration_client.post("/places", json={"name": f"Facet two {uuid4().hex}", "map_id": str(poi_map.id), "latitude": 47.2, "longitude": 2.2, "region": "Centre"})

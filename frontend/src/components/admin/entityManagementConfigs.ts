@@ -1,5 +1,5 @@
-import { createCategory, deleteCategory, getCategories, updateCategory } from '../../api/categories'
-import { createTag, deleteTag, getTags, updateTag } from '../../api/tags'
+import { createCategory, deleteCategory, getCategories, reorderCategories, updateCategory } from '../../api/categories'
+import { createTag, deleteTag, getTags, reorderTags, updateTag } from '../../api/tags'
 import { DEFAULT_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import type { CategoryUpdatePayload } from '../../types/admin'
 import type { EntityManagementConfig } from '../../pages/admin/EntityManagementPage'
@@ -25,6 +25,7 @@ export const categoriesConfig = (mapId?: string): EntityManagementConfig => ({
     return Object.keys(payload).length === 0 ? entity : updateCategory(entity.id, payload)
   },
   remove: deleteCategory,
+  reorder: mapId ? (ids) => reorderCategories(mapId, ids) : undefined,
   canDelete: (entity) => entity.name.trim().toLocaleLowerCase('fr-FR') !== 'importé',
 })
 
@@ -42,4 +43,5 @@ export const tagsConfig = (mapId?: string): EntityManagementConfig => ({
     return Object.keys(payload).length === 0 ? Promise.resolve(entity) : updateTag(entity.id, payload)
   },
   remove: deleteTag,
+  reorder: mapId ? (ids) => reorderTags(mapId, ids) : undefined,
 })

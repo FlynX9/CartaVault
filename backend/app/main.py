@@ -52,11 +52,14 @@ from app.statuses.router import router as statuses_router
 from app.setup.router import router as setup_router
 from app.setup.service import setup_token
 from app.saas.router import admin_router as saas_admin_router, router as saas_router
+from app.privacy.router import admin_router as privacy_admin_router, account_router as privacy_account_router, router as privacy_router
 from app.security_headers import SecurityHeadersMiddleware
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
 from app.tasks.router import router as tasks_router
 from app.tasks.cleanup import purge_expired_task_artifacts
+from app.privacy.settings import get_privacy_settings
+from app.privacy.service import purge_expired_privacy_artifacts
 from app.config import legacy_google_routes_api_key_configured
 from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
@@ -152,6 +155,7 @@ def _purge_expired_maintenance() -> None:
     with SessionLocal() as session:
         purge_expired_trash(session)
         purge_expired_task_artifacts(session)
+        purge_expired_privacy_artifacts(session, get_privacy_settings(session))
 
 
 @asynccontextmanager
@@ -169,6 +173,7 @@ async def lifespan(_: FastAPI):
                 validate_startup_security_state(session)
                 purge_expired_trash(session)
                 purge_expired_task_artifacts(session)
+                purge_expired_privacy_artifacts(session, get_privacy_settings(session))
         except SQLAlchemyError as error:
             raise RuntimeError("CartaVault authentication schema is missing. Apply the schema migration, then run: python -m app.cli create-admin") from error
         purge_task = asyncio.create_task(_trash_purge_loop())
@@ -245,6 +250,9 @@ app.include_router(trips_router, prefix=API_PREFIX)
 app.include_router(tasks_router, prefix=API_PREFIX)
 app.include_router(saas_router, prefix=API_PREFIX)
 app.include_router(saas_admin_router, prefix=API_PREFIX)
+app.include_router(privacy_router, prefix=API_PREFIX)
+app.include_router(privacy_account_router, prefix=API_PREFIX)
+app.include_router(privacy_admin_router, prefix=API_PREFIX)
 app.include_router(trash_router, prefix=API_PREFIX)
 
 

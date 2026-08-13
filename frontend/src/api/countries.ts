@@ -1,8 +1,8 @@
 import { getJson } from './client'
 import { isRecord, readArray, readDateTime, readNullableNumber, readNumber, readString, readUuid } from './validation'
-import type { Country, CountryBoundary } from '../types/map'
+import type { Country, CountryBoundary, CountryBoundaryDetail } from '../types/map'
 
-const COUNTRY_BOUNDARY_DATA_VERSION = '10m-v2'
+const COUNTRY_BOUNDARY_DATA_VERSION = 'osm-multires-v1'
 
 function parseCountry(value: unknown): Country {
   const context = 'Le pays renvoyé par l’API'
@@ -42,9 +42,14 @@ function parseCountryBoundary(value: unknown): CountryBoundary {
   if (!isRecord(value) || !isRecord(value.geometry) || value.geometry.type !== 'MultiPolygon' || !Array.isArray(value.geometry.coordinates)) {
     throw new Error(`${context} est invalide.`)
   }
+  const detail = readString(value, 'detail', context)
+  if (detail !== 'low' && detail !== 'medium' && detail !== 'high') {
+    throw new Error(`${context} contient un niveau de détail invalide.`)
+  }
   return {
     country_id: readUuid(value, 'country_id', context),
     iso_alpha3: readString(value, 'iso_alpha3', context),
+    detail,
     geometry: {
       type: 'MultiPolygon',
       coordinates: value.geometry.coordinates.map((polygon) => {
@@ -59,10 +64,10 @@ function parseCountryBoundary(value: unknown): CountryBoundary {
   }
 }
 
-export async function getCountryBoundary(countryId: string, signal?: AbortSignal): Promise<CountryBoundary> {
+export async function getCountryBoundary(countryId: string, detail: CountryBoundaryDetail, signal?: AbortSignal): Promise<CountryBoundary> {
   return parseCountryBoundary(await getJson(
     `/countries/${encodeURIComponent(countryId)}/boundary`,
-    new URLSearchParams({ v: COUNTRY_BOUNDARY_DATA_VERSION }),
+    new URLSearchParams({ detail, v: COUNTRY_BOUNDARY_DATA_VERSION }),
     signal,
   ))
 }

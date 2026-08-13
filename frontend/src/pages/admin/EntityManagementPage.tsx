@@ -28,6 +28,7 @@ export interface EntityManagementConfig {
   load: (signal: AbortSignal, q?: string) => Promise<ManagedEntity[]>
   save: (entity: ManagedEntity | null, values: EntityFormValues) => Promise<ManagedEntity>
   remove: (id: string) => Promise<void>
+  reorder?: (ids: string[]) => Promise<ManagedEntity[]>
   canDelete?: (entity: ManagedEntity) => boolean
 }
 
@@ -110,6 +111,18 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
   }
 
   const create = () => { if (!readOnly) { setEditing(null); setFieldErrors({}); setError(null) } }
+  const reorder = async (ids: string[]) => {
+    if (!config.reorder || readOnly || query) return
+    const previous = entities
+    const byId = new Map(previous.map((entity) => [entity.id, entity]))
+    setEntities(ids.map((id) => byId.get(id)).filter((entity): entity is ManagedEntity => entity !== undefined))
+    try {
+      setEntities(await config.reorder(ids))
+    } catch (caught) {
+      setEntities(previous)
+      publishGlobalFeedback('error', caught instanceof Error ? caught.message : `Impossible de réorganiser les ${config.pluralLabel.toLowerCase()}.`)
+    }
+  }
   const isPanel = variant === 'panel'
   const createAction = readOnly ? undefined : <div className="cv-workspace-panel__resource-actions">{config.mapId && config.profileResourceType && <button className="panel-icon-button panel-import-action" type="button" aria-label={`Importer ${config.singularLabel} depuis un profil`} title="Importer depuis un profil" onClick={() => setShowProfileImport(true)}><IconPackageImport size={18} stroke={1.8} aria-hidden="true" /></button>}<button className="panel-icon-button primary panel-create-action" type="button" aria-label={`Créer ${config.singularLabel}`} title={config.newLabel} onClick={create}><Plus size={18} aria-hidden="true" /><span className="panel-create-action__label">{config.newLabel}</span></button></div>
 
@@ -126,6 +139,6 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
     {!readOnly && deleting && <DeleteConfirmation entityName={deleting.name} isDeleting={isDeleting} onCancel={() => setDeleting(null)} onConfirm={() => void confirmDelete()} />}
     {!readOnly && showProfileImport && config.mapId && config.profileResourceType && <ProfileImportDialog mapId={config.mapId} resourceType={config.profileResourceType} onClose={() => setShowProfileImport(false)} onImported={(message) => { setSuccess(message); setRefreshVersion((value) => value + 1) }} />}
     {!isPanel && <div className="admin-list-heading"><h3>Liste</h3><span aria-live="polite">{entities.length} résultat{entities.length > 1 ? 's' : ''}</span></div>}
-    {isLoading ? <SkeletonList rows={5} label={`Chargement des ${config.pluralLabel.toLowerCase()}`} /> : <EntityList variant={variant} entities={entities} emptyMessage={`Aucun élément dans les ${config.pluralLabel.toLowerCase()}.`} onEdit={setEditing} onDelete={setDeleting} canDelete={config.canDelete} readOnly={readOnly} />}
+    {isLoading ? <SkeletonList rows={5} label={`Chargement des ${config.pluralLabel.toLowerCase()}`} /> : <EntityList variant={variant} entities={entities} emptyMessage={`Aucun élément dans les ${config.pluralLabel.toLowerCase()}.`} onEdit={setEditing} onDelete={setDeleting} onReorder={config.reorder && !query ? reorder : undefined} canDelete={config.canDelete} readOnly={readOnly} />}
   </section>
 }

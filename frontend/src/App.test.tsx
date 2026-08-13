@@ -245,6 +245,17 @@ describe('map URL workspace', () => {
     expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
   })
 
+  it('preserves the place search while opening and closing a POI card', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}&q=musée`]}><App /><Path /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Marqueur POI' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
+    expect(screen.getByTestId('path')).toHaveTextContent(`/places/place-id?map=${MAP_ID}&q=musée`)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer popup' }))
+    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}&q=musée`)
+  })
+
   it('centers a POI only when its popup opens and preserves manual map navigation', async () => {
     vi.mocked(getMapPlaces).mockResolvedValue({ items: [], total: 0, returned: 0, truncated: false })
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)

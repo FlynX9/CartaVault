@@ -37,7 +37,7 @@ def import_map_profile_resources(
     require_map_role(database_session, data.map_id, current_user, "editor")
     locale = str((getattr(current_user, "preferences", {}) or {}).get("language") or "fr")
     created, skipped = import_profile_resources(
-        database_session, data.map_id, profile_id, data.resource_type, locale,
+        database_session, data.map_id, profile_id, data.resource_type, locale, data.selected_keys,
     )
     quota_key = {
         "categories": QuotaKey.CATEGORIES_PER_MAP_MAX,
@@ -55,7 +55,7 @@ def import_map_profile_resources(
         database_session.rollback()
         # A concurrent import may have inserted one of the same names.
         created, skipped = import_profile_resources(
-            database_session, data.map_id, profile_id, data.resource_type, locale,
+            database_session, data.map_id, profile_id, data.resource_type, locale, data.selected_keys,
         )
         if created:
             with database_session.no_autoflush:

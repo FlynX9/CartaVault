@@ -132,7 +132,7 @@ describe('AdminConsole', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un test' }))
 
     await waitFor(() => expect(verifyAdminApiKey).toHaveBeenCalledWith(resend.id))
-    expect(await screen.findByText('Email de test envoyé à votre adresse administrateur.')).toBeVisible()
+    expect(await screen.findByText(/Test de la clé Resend « Resend » réussi : e-mail envoyé à votre adresse administrateur\./)).toBeVisible()
   })
 
   it('closes from the CartaVault dialog with Escape', async () => {

@@ -1,7 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import { bulkAddPlacesToTrip, getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
+import { bulkAddPlacesToTrip, bulkUpdatePlaces, getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
+import { getCategories } from '../../api/categories'
+import { getTags } from '../../api/tags'
 import { getTrip, listTrips } from '../../api/trips'
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
 import { MapPlaceList } from './MapPlaceList'
@@ -48,10 +50,12 @@ describe('MapPlaceList', () => {
     }
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={filters} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Réinitialiser tous les filtres' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Filtres/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser tous les filtres' }))
 
     expect(onFiltersChange).toHaveBeenCalledWith({
       ...DEFAULT_PLACE_FILTERS,
+      query: 'église',
       sortBy: 'updated_at',
       sortDirection: 'desc',
     })
@@ -242,7 +246,7 @@ describe('MapPlaceList', () => {
     const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set()} onSelectedPlaceIdsChange={onSelectedPlaceIdsChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     await screen.findByRole('checkbox', { name: 'Sélectionner Sélection annoncée' })
-    const liveCounter = screen.getByText('0 lieu sélectionné').parentElement
+    const liveCounter = screen.getByText('0 lieux sélectionnés').parentElement
     expect(liveCounter).toHaveAttribute('aria-live', 'polite')
     expect(liveCounter).toHaveAttribute('aria-atomic', 'true')
 
@@ -251,6 +255,59 @@ describe('MapPlaceList', () => {
 
     rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set(['place-id'])} onSelectedPlaceIdsChange={onSelectedPlaceIdsChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     expect(screen.getByText('1 lieu sélectionné')).toBeVisible()
+  })
+
+  it('shows and applies bulk POI changes below the selection controls', async () => {
+    const place = { id: 'place-id', name: 'Lieu groupé', latitude: 48, longitude: 2, status: { id: 'status-old', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    vi.mocked(bulkUpdatePlaces).mockResolvedValue({ selected_count: 1, updated_count: 1, unchanged_count: 0, deleted_count: 0 } as never)
+
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} statuses={[{ id: 'status-new', name: 'Visité', slug: 'visite', color: '#0FA68A', is_active: true }] as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('checkbox', { name: 'Sélectionner Lieu groupé' })
+    expect(screen.getByRole('group', { name: 'Actions groupées' })).toBeVisible()
+    fireEvent.change(screen.getByLabelText('Statut'), { target: { value: 'status-new' } })
+    fireEvent.click(within(screen.getByLabelText('Statut').closest('.places-bulk-action-group') as HTMLElement).getByRole('button', { name: 'Appliquer' }))
+
+    await waitFor(() => expect(bulkUpdatePlaces).toHaveBeenCalledWith({ place_ids: ['place-id'], action: 'set_status', status_id: 'status-new' }))
+    expect(screen.getByRole('button', { name: 'Supprimer la sélection' })).toBeVisible()
+  })
+
+  it('replaces the unique category with the bulk category action', async () => {
+    const place = { id: 'place-id', name: 'Lieu à reclasser', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    vi.mocked(getCategories).mockResolvedValue([{ id: 'category-new', name: 'Musée', icon: 'mdi:museum' }] as never)
+    vi.mocked(bulkUpdatePlaces).mockResolvedValue({ selected_count: 1, updated_count: 1, unchanged_count: 0, deleted_count: 0 } as never)
+
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('checkbox', { name: 'Sélectionner Lieu à reclasser' })
+    fireEvent.change(screen.getByLabelText('Catégorie'), { target: { value: 'category-new' } })
+    fireEvent.click(within(screen.getByLabelText('Catégorie').closest('.places-bulk-action-group') as HTMLElement).getByRole('button', { name: 'Appliquer' }))
+
+    await waitFor(() => expect(bulkUpdatePlaces).toHaveBeenCalledWith({ place_ids: ['place-id'], action: 'set_category', category_id: 'category-new' }))
+  })
+
+  it('adds several selected tags in one bulk action', async () => {
+    const place = { id: 'place-id', name: 'Lieu à taguer', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    vi.mocked(getTags).mockResolvedValue([
+      { id: 'tag-first', name: 'Favori', color: '#0FA68A' },
+      { id: 'tag-second', name: 'Prioritaire', color: '#E67E22' },
+    ] as never)
+    vi.mocked(bulkUpdatePlaces).mockResolvedValue({ selected_count: 1, updated_count: 1, unchanged_count: 0, deleted_count: 0 } as never)
+
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} selectionMode selectedPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('checkbox', { name: 'Sélectionner Lieu à taguer' })
+    const tagGroup = screen.getByText('Tag').closest('.places-bulk-action-group') as HTMLElement
+    fireEvent.click(within(tagGroup).getByRole('button', { name: 'Tag' }))
+    fireEvent.click(within(tagGroup).getByRole('option', { name: 'Favori' }))
+    fireEvent.click(within(tagGroup).getByRole('option', { name: 'Prioritaire' }))
+    expect(within(tagGroup).getByText('2 tags sélectionnés')).toBeVisible()
+    fireEvent.click(within(tagGroup).getByRole('button', { name: 'Ajouter' }))
+
+    await waitFor(() => expect(bulkUpdatePlaces).toHaveBeenCalledWith({ place_ids: ['place-id'], action: 'add_tag', tag_ids: ['tag-first', 'tag-second'] }))
   })
 
   it('offers only editable active trips and refreshes the active trip after a bulk add', async () => {

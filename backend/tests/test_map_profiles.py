@@ -19,8 +19,8 @@ def test_profile_catalog_is_complete_ordered_and_localized() -> None:
 
 
 def test_import_profile_categories_skips_existing_names(integration_client, poi_map, database_session) -> None:
-    existing_name = public_profiles("fr")[0].categories[0].name
-    database_session.add(Category(map_id=poi_map.id, name=f"  {existing_name.upper()}  ", icon="mdi:church"))
+    existing_category = public_profiles("fr")[0].categories[0]
+    database_session.add(Category(map_id=poi_map.id, name=f"  {existing_category.name.upper()}  ", icon=existing_category.icon_id))
     database_session.commit()
 
     response = integration_client.post(
@@ -31,6 +31,26 @@ def test_import_profile_categories_skips_existing_names(integration_client, poi_
     assert response.status_code == 200
     assert response.json() == {"created": 6, "skipped": 1}
     assert database_session.query(Category).filter_by(map_id=poi_map.id).count() == 7
+
+
+def test_import_profile_category_with_same_name_and_different_icon_is_created(
+    integration_client, poi_map, database_session,
+) -> None:
+    profile_category = public_profiles("fr")[0].categories[0]
+    database_session.add(Category(map_id=poi_map.id, name=profile_category.name, icon="mdi:church"))
+    database_session.commit()
+
+    response = integration_client.post(
+        "/map-profiles/general/import",
+        json={
+            "map_id": str(poi_map.id),
+            "resource_type": "categories",
+            "selected_keys": [profile_category.key],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"created": 1, "skipped": 0}
 
 
 def test_import_profile_statuses_preserves_current_default_and_is_idempotent(

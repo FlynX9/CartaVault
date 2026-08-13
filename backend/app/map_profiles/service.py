@@ -28,15 +28,23 @@ def import_profile_resources(
     profile_id: str,
     resource_type: StarterProfileResourceType,
     locale: str,
+    selected_keys: list[str] | None = None,
 ) -> tuple[int, int]:
     """Append one profile resource type while preserving every existing item."""
 
     profile = PROFILE_BY_ID[profile_id]
     language = "en" if locale == "en" else "fr"
     definitions = profile[resource_type]
+    if selected_keys is not None:
+        selected = set(selected_keys)
+        definitions = [definition for definition in definitions if definition["key"] in selected]
     model = {"categories": Category, "tags": Tag, "statuses": PlaceStatus}[resource_type]
     existing = list(database_session.scalars(select(model).where(model.map_id == map_id)))
     names = {_normalized_name(item.name) for item in existing}
+    category_signatures = {
+        (_normalized_name(item.name), item.icon)
+        for item in existing
+    } if resource_type == "categories" else set()
     created = 0
 
     if resource_type == "statuses":
@@ -45,8 +53,12 @@ def import_profile_resources(
 
     for definition in definitions:
         name = definition["name"][language]
-        aliases = {_normalized_name(value) for value in definition["name"].values()}
-        if aliases & names:
+        aliases = {_normalized_name(name)}
+        if resource_type == "categories":
+            is_duplicate = any((alias, definition["icon_id"]) in category_signatures for alias in aliases)
+        else:
+            is_duplicate = bool(aliases & names)
+        if is_duplicate:
             continue
         if resource_type == "categories":
             item = Category(map_id=map_id, name=name, icon=definition["icon_id"])
@@ -69,6 +81,8 @@ def import_profile_resources(
             )
         database_session.add(item)
         names.update(aliases)
+        if resource_type == "categories":
+            category_signatures.update((alias, definition["icon_id"]) for alias in aliases)
         created += 1
 
     return created, len(definitions) - created

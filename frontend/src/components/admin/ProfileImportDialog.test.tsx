@@ -44,7 +44,7 @@ describe('ProfileImportDialog', () => {
     expect(screen.getByText('Monument')).toBeVisible()
   })
 
-  it('previews only categories that will actually be created', async () => {
+  it('greys duplicate categories and keeps them out of the import selection', async () => {
     vi.mocked(getMapProfiles).mockResolvedValue([PROFILE])
     vi.mocked(getCategories).mockResolvedValue([{ id: 'category-1', map_id: 'map-1', name: 'Musée', description: null, icon: 'museum', marks_as_visited: false, places_count: 0 }])
     vi.mocked(getTags).mockResolvedValue([])
@@ -56,11 +56,40 @@ describe('ProfileImportDialog', () => {
 
     expect(screen.getByText('Éléments à créer')).toBeVisible()
     expect(screen.getByText('Monument')).toBeVisible()
-    expect(screen.queryByText('Musée')).not.toBeInTheDocument()
+    expect(screen.getByText('Musée').closest('li')).toHaveClass('is-duplicate')
+    expect(screen.getByText('Musée').closest('label')?.querySelector('input')).toBeDisabled()
     expect(screen.getByText(/1 déjà présent ignoré/)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Annuler' })).toHaveClass('cv-home-action-button')
     expect(screen.getByRole('button', { name: /Importer/ })).toHaveClass('cv-home-action-button', 'primary')
     expect(screen.getByRole('button', { name: /Importer/ })).toBeEnabled()
+  })
+
+  it('allows a category with the same name when its icon differs', async () => {
+    vi.mocked(getMapProfiles).mockResolvedValue([PROFILE])
+    vi.mocked(getCategories).mockResolvedValue([{ id: 'category-1', map_id: 'map-1', name: 'Musée', description: null, icon: 'castle', marks_as_visited: false, places_count: 0 }])
+    vi.mocked(getTags).mockResolvedValue([])
+    vi.mocked(getStatuses).mockResolvedValue([])
+
+    render(<ProfileImportDialog mapId="map-1" resourceType="categories" onClose={vi.fn()} onImported={vi.fn()} />)
+
+    const museumCheckbox = (await screen.findByText('Musée')).closest('label')?.querySelector('input')
+    expect(museumCheckbox).toBeChecked()
+    expect(museumCheckbox).toBeEnabled()
+  })
+
+  it('lets the user exclude individual entries from the import', async () => {
+    vi.mocked(getMapProfiles).mockResolvedValue([PROFILE])
+    vi.mocked(getCategories).mockResolvedValue([])
+    vi.mocked(getTags).mockResolvedValue([])
+    vi.mocked(getStatuses).mockResolvedValue([])
+    vi.mocked(importMapProfileResources).mockResolvedValue({ created: 1, skipped: 0 })
+
+    render(<ProfileImportDialog mapId="map-1" resourceType="categories" onClose={vi.fn()} onImported={vi.fn()} />)
+    const museumCheckbox = (await screen.findByText('Musée')).closest('label')?.querySelector('input') as HTMLInputElement
+    fireEvent.click(museumCheckbox)
+    fireEvent.click(screen.getByRole('button', { name: /^Importer$/ }))
+
+    await waitFor(() => expect(importMapProfileResources).toHaveBeenCalledWith('map-1', 'tourism', 'categories', ['monument']))
   })
 
   it('disables import when every profile entry already exists', async () => {
@@ -72,7 +101,8 @@ describe('ProfileImportDialog', () => {
     render(<ProfileImportDialog mapId="map-1" resourceType="tags" onClose={vi.fn()} onImported={vi.fn()} />)
     fireEvent.click(await screen.findByRole('radio', { name: /Tourisme/ }))
 
-    await waitFor(() => expect(screen.getByText('Tous les éléments de ce profil existent déjà sur la carte.')).toBeVisible())
+    await waitFor(() => expect(screen.getByText(/1 déjà présent ignoré/)).toBeVisible())
+    expect(screen.getByText('Favori').closest('li')).toHaveClass('is-duplicate')
     expect(screen.getByRole('button', { name: /Importer/ })).toBeDisabled()
   })
 })

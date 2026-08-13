@@ -1,9 +1,11 @@
 import { accountEn } from './locales/en/account'
+import { adminEn } from './locales/en/admin'
 import { authEn } from './locales/en/auth'
 import { commonEn } from './locales/en/common'
 import { dashboardEn } from './locales/en/dashboard'
 import { workspaceEn } from './locales/en/workspace'
 import { accountFr } from './locales/fr/account'
+import { adminFr } from './locales/fr/admin'
 import { authFr } from './locales/fr/auth'
 import { commonFr } from './locales/fr/common'
 import { dashboardFr } from './locales/fr/dashboard'
@@ -13,6 +15,7 @@ export const frMessages = {
   ...commonFr,
   ...authFr,
   ...accountFr,
+  ...adminFr,
   ...workspaceFr,
   ...dashboardFr,
 } as const
@@ -23,6 +26,7 @@ export const enMessages = {
   ...commonEn,
   ...authEn,
   ...accountEn,
+  ...adminEn,
   ...workspaceEn,
   ...dashboardEn,
 } as const satisfies Record<TranslationKey, string>

@@ -27,10 +27,13 @@ import {
 } from "../../api/adminConsole";
 import type { AdminApiKey } from "../../types/adminConsole";
 import { useConfirmDialog } from "../../components/common/useConfirmDialog";
+import { useI18n } from "../../i18n/useI18n";
+import type { I18nContextValue } from "../../i18n/i18nContext";
 
 type EditableProvider = "google" | "stadia" | "openrouteservice" | "resend";
 
 export function AdminApiKeysSection() {
+  const { t, locale } = useI18n();
   const [keys, setKeys] = useState<AdminApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +65,9 @@ export function AdminApiKeysSection() {
         (key) => key.provider !== "master" || key.verified,
       ).length,
       verified: keys.filter((key) => key.verified).length,
-      errors: keys.filter((key) => key.last_error_code).length,
+      errors: keys.filter(
+        (key) => (key.provider !== "master" || key.verified) && !key.verified,
+      ).length,
       lastActivity:
         keys
           .map((key) => key.last_used_at ?? key.verified_at)
@@ -108,13 +113,25 @@ export function AdminApiKeysSection() {
     return key;
   };
   const save = async () => {
+    const creating = editing === "new";
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
-      if (await persist()) setEditing(null);
+      const key = await persist();
+      if (key) {
+        setEditing(null);
+        setNotice(
+          creating
+            ? `Clé API d’instance « ${key.name} » ajoutée.`
+            : `Clé API d’instance « ${key.name} » modifiée.`,
+        );
+      }
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : "Enregistrement impossible.",
+        reason instanceof Error
+          ? `Échec de ${creating ? "l’ajout" : "la modification"} de la clé API d’instance. ${reason.message}`
+          : `Échec de ${creating ? "l’ajout" : "la modification"} de la clé API d’instance.`,
       );
     } finally {
       setBusy(false);
@@ -134,19 +151,22 @@ export function AdminApiKeysSection() {
         setKeys((items) =>
           items.map((item) => (item.id === key.id ? tested : item)),
         );
-        if (key.provider === "resend")
-          setNotice("Email de test envoyé à votre adresse administrateur.");
+        setNotice(
+          key.provider === "resend"
+            ? `Test de la clé Resend « ${key.name} » réussi : e-mail envoyé à votre adresse administrateur.`
+            : `Test de la clé API d’instance « ${key.name} » réussi.`,
+        );
       } catch (reason) {
         setError(
           reason instanceof Error
-            ? reason.message
-            : "Le test a échoué. La clé reste enregistrée.",
+            ? `Échec du test de la clé API d’instance « ${key.name} ». ${reason.message}`
+            : `Échec du test de la clé API d’instance « ${key.name} ». La clé reste enregistrée.`,
         );
         load();
       }
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : "Enregistrement impossible.",
+        reason instanceof Error ? `Échec de l’enregistrement de la clé API d’instance. ${reason.message}` : "Échec de l’enregistrement de la clé API d’instance.",
       );
     } finally {
       setBusy(false);
@@ -162,10 +182,13 @@ export function AdminApiKeysSection() {
       setKeys((items) =>
         items.map((item) => (item.id === key.id ? tested : item)),
       );
-      if (key.provider === "resend")
-        setNotice("Email de test envoyé à votre adresse administrateur.");
+      setNotice(
+        key.provider === "resend"
+          ? `Test de la clé Resend « ${key.name} » réussi : e-mail envoyé à votre adresse administrateur.`
+          : `Test de la clé API d’instance « ${key.name} » réussi.`,
+      );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Le test a échoué.");
+      setError(reason instanceof Error ? `Échec du test de la clé API d’instance « ${key.name} ». ${reason.message}` : `Échec du test de la clé API d’instance « ${key.name} ».`);
       load();
     } finally {
       setBusy(false);
@@ -186,12 +209,17 @@ export function AdminApiKeysSection() {
     )
       return;
     setBusy(true);
+    setError(null);
+    setNotice(null);
     try {
       await deleteAdminApiKey(key.id);
       setKeys((items) => items.filter((item) => item.id !== key.id));
+      setNotice(`Clé API d’instance « ${key.name} » supprimée.`);
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : "Suppression impossible.",
+        reason instanceof Error
+          ? `Échec de la suppression de la clé API d’instance « ${key.name} ». ${reason.message}`
+          : `Échec de la suppression de la clé API d’instance « ${key.name} ».`,
       );
     } finally {
       setBusy(false);
@@ -202,12 +230,9 @@ export function AdminApiKeysSection() {
   return (
     <section>
       <header className="account-content-heading">
-        <p className="cv-workspace-panel__eyebrow">Intégrations</p>
-        <h2>Clés API</h2>
-        <span>
-          Ajoutez les clés globales de l’instance et contrôlez leur état de
-          fonctionnement.
-        </span>
+        <p className="cv-workspace-panel__eyebrow">{t('admin.api.eyebrow')}</p>
+        <h2>{t('admin.api.title')}</h2>
+        <span>{t('admin.api.description')}</span>
       </header>
       {error && !editing && (
         <div className="form-alert" role="alert">
@@ -221,29 +246,29 @@ export function AdminApiKeysSection() {
       )}
       <section
         className="account-security-summary account-personal-api-summary"
-        aria-label="Résumé des clés API administrateur"
+        aria-label={t('admin.api.summary')}
       >
         <div className="account-api-summary">
           <Metric
             icon={KeyRound}
             value={metrics.configured}
-            label="Clés enregistrées"
+            label={t('account.apiCatalog.registered')}
           />
-          <Metric icon={Check} value={metrics.verified} label="Vérifiées" />
+          <Metric icon={Check} value={metrics.verified} label={t('account.apiCatalog.verifiedPlural')} />
           <Metric
             icon={TriangleAlert}
             value={metrics.errors}
-            label="Erreurs"
+            label={t('account.apiCatalog.errors')}
             tone="warning"
           />
           <Metric
             icon={CalendarDays}
             value={
               metrics.lastActivity
-                ? formatDate(metrics.lastActivity, false)
-                : "Jamais"
+                ? new Date(metrics.lastActivity).toLocaleDateString(locale)
+                : t('account.apiCatalog.never')
             }
-            label="Dernière activité"
+            label={t('account.apiCatalog.lastActivity')}
           />
         </div>
       </section>
@@ -254,13 +279,9 @@ export function AdminApiKeysSection() {
               <span className="account-preference-card__icon">
                 <KeyRound size={19} />
               </span>
-              <h3>Clés API de l’instance</h3>
+              <h3>{t('admin.api.instanceKeys')}</h3>
             </div>
-            <p>
-              Les clés Google, Stadia et ORS pourront être
-              partagées ultérieurement par les profils de quotas. Resend assure
-              l’envoi des e-mails.
-            </p>
+            <p>{t('admin.api.instanceHelp')}</p>
           </div>
           <button
             className="account-button account-button--primary"
@@ -268,14 +289,14 @@ export function AdminApiKeysSection() {
             onClick={() => open("new")}
           >
             <Plus size={16} />
-            Ajouter une clé
+            {t('account.apiCatalog.add')}
           </button>
         </header>
         {loading ? (
-          <p className="account-card-description">Chargement…</p>
+          <p className="account-card-description">{t('account.apiCatalog.loading')}</p>
         ) : keys.length === 0 ? (
           <p className="account-api-catalog__empty">
-            Aucune clé d’instance configurée.
+            {t('admin.api.empty')}
           </p>
         ) : (
           <div className="account-api-catalog__cards">
@@ -288,6 +309,7 @@ export function AdminApiKeysSection() {
                 onEdit={open}
                 onDelete={remove}
                 onDetails={setDetailsKey}
+                t={t}
               />
             ))}
           </div>
@@ -295,13 +317,7 @@ export function AdminApiKeysSection() {
       </section>
       <aside className="account-api-key-note">
         <Info size={22} />
-        <p>
-          Le test d’une clé Resend envoie un e-mail réel à l’adresse de
-          l’administrateur connecté.
-          <br />
-          La clé maîtresse est issue de la configuration serveur et reste
-          strictement en lecture seule.
-        </p>
+        <p>{t('admin.api.noteResend')}<br />{t('admin.api.noteMaster')}</p>
       </aside>
       {editing &&
         createPortal(
@@ -608,6 +624,7 @@ function AdminKeyCard({
   onEdit,
   onDelete,
   onDetails,
+  t,
 }: {
   item: AdminApiKey;
   busy: boolean;
@@ -615,6 +632,7 @@ function AdminKeyCard({
   onEdit: (item: AdminApiKey) => void;
   onDelete: (item: AdminApiKey) => void;
   onDetails: (item: AdminApiKey) => void;
+  t: I18nContextValue['t'];
 }) {
   const errored = Boolean(item.last_error_code);
   const brand = brandFor(item.provider);
@@ -636,14 +654,14 @@ function AdminKeyCard({
         </span>
         <div>
           <h3 title={item.name}>
-            {item.provider === "master" ? "Clé maîtresse" : item.name}
+            {item.provider === "master" ? t('admin.api.masterKey') : item.name}
           </h3>
           <p>{providerLabel(item.provider)}</p>
         </div>
         <b
           className={errored ? "is-error" : item.verified ? "is-verified" : ""}
         >
-          {errored ? "Erreur" : item.verified ? "Vérifiée" : "À tester"}
+          {errored ? t('account.apiCatalog.error') : item.verified ? t('account.apiCatalog.verified') : t('account.apiCatalog.toTest')}
         </b>
       </header>
       {item.provider !== "master" && (
@@ -656,17 +674,17 @@ function AdminKeyCard({
           <TriangleAlert size={20} />
           <p>
             {item.last_error_message ??
-              `La clé ${providerLabel(item.provider)} n’a pas pu être vérifiée.`}
+              t('admin.api.testFailed', { provider: providerLabel(item.provider) })}
             <button type="button" onClick={() => onDetails(item)}>
-              Détails
+              {t('account.apiCatalog.details')}
             </button>
           </p>
         </aside>
       ) : (
         <dl>
-          <dt>Vérifiée le</dt>
+          <dt>{t('account.apiCatalog.verifiedOn')}</dt>
           <dd>{formatDate(item.verified_at)}</dd>
-          <dt>Dernière utilisation</dt>
+          <dt>{t('account.apiCatalog.lastUse')}</dt>
           <dd>{formatDate(item.last_used_at)}</dd>
         </dl>
       )}
@@ -675,13 +693,13 @@ function AdminKeyCard({
           <>
             <button type="button" disabled={busy} onClick={() => onTest(item)}>
               <Play size={16} />
-              {item.provider === "resend" ? "Envoyer un test" : "Tester"}
+              {item.provider === "resend" ? t('admin.api.sendTest') : t('account.apiCatalog.test')}
             </button>
             <div className="account-api-key-card__actions">
               <button
                 type="button"
                 aria-label={`Modifier ${item.name}`}
-                title="Modifier"
+                title={t('account.apiCatalog.edit')}
                 onClick={() => onEdit(item)}
               >
                 <Pencil size={15} />
@@ -690,7 +708,7 @@ function AdminKeyCard({
                 className="danger"
                 type="button"
                 aria-label={`Supprimer ${item.name}`}
-                title="Supprimer"
+                title={t('account.apiCatalog.delete')}
                 onClick={() => void onDelete(item)}
               >
                 <Trash2 size={15} />
@@ -700,7 +718,7 @@ function AdminKeyCard({
         ) : (
           <span className="admin-api-key-card__readonly">
             <LockKeyhole size={14} />
-            Lecture seule
+            {t('admin.api.readOnly')}
           </span>
         )}
       </footer>

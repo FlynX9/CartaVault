@@ -76,4 +76,11 @@ class TagRead(BaseModel):
     map_id: UUID
     name: str
     color: str
+    sort_order: int
     places_count: int = 0
+
+
+class TagOrder(BaseModel):
+    """The complete, user-defined order of tags for one map."""
+
+    ids: list[UUID] = Field(min_length=1, max_length=500)

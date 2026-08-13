@@ -20,12 +20,15 @@ export interface Country extends CountrySummary {
 export interface CountryBoundary {
   country_id: string
   iso_alpha3: string
+  detail: CountryBoundaryDetail
   geometry: {
     type: 'MultiPolygon'
     coordinates: [number, number][][][]
   }
   point_count: number
 }
+
+export type CountryBoundaryDetail = 'low' | 'medium' | 'high'
 
 export interface PoiMap {
   id: string

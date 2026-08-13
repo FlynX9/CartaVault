@@ -73,6 +73,10 @@ class AnnotationTemplateRead(BaseModel):
     usage_count: int = 0
 
 
+class AnnotationTemplateOrder(BaseModel):
+    ids: list[UUID] = Field(min_length=1, max_length=100)
+
+
 class PlaceAnnotationCreate(BaseModel):
     template_id: UUID
     geometry: dict[str, Any]

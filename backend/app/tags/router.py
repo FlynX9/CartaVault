@@ -11,7 +11,7 @@ from app.auth.permissions import require_map_role, require_tag_role
 from app.database import get_db
 from app.places.models import Place
 from app.tags.models import Tag
-from app.tags.schemas import TagCreate, TagRead, TagUpdate
+from app.tags.schemas import TagCreate, TagOrder, TagRead, TagUpdate
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 
@@ -44,7 +44,27 @@ def get_tags(map_id: UUID = Query(), q: str | None = Query(default=None, min_len
     statement = _read_statement().where(Tag.map_id == map_id)
     if q is not None:
         statement = statement.where(Tag.name.ilike(f"%{q.strip()}%"))
-    return [_read(*row) for row in database_session.execute(statement.order_by(func.lower(Tag.name), Tag.id)).all()]
+    return [_read(*row) for row in database_session.execute(statement.order_by(Tag.sort_order, func.lower(Tag.name), Tag.id)).all()]
+
+
+@router.post("/reorder", response_model=list[TagRead])
+def reorder_tags(data: TagOrder, map_id: UUID = Query(...), database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[TagRead]:
+    require_map_role(database_session, map_id, current_user, "editor")
+    tags = list(database_session.scalars(select(Tag).where(Tag.map_id == map_id).order_by(Tag.sort_order, func.lower(Tag.name), Tag.id)))
+    if len(data.ids) != len(tags) or set(data.ids) != {item.id for item in tags}:
+        raise HTTPException(status_code=422, detail="The tag order must contain every tag exactly once")
+    try:
+        for item in tags:
+            item.sort_order += 10_000
+        database_session.flush()
+        by_id = {item.id: item for item in tags}
+        for index, tag_id in enumerate(data.ids, start=1):
+            by_id[tag_id].sort_order = index * 10
+        database_session.commit()
+        return [_read_tag(database_session, by_id[tag_id]) for tag_id in data.ids]
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to reorder tags") from error
 
 
 @router.get("/{tag_id}", response_model=TagRead)
@@ -56,7 +76,7 @@ def get_tag(tag_id: UUID, database_session: Session = Depends(get_db), current_u
 def create_tag(data: TagCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> TagRead:
     require_map_role(database_session, data.map_id, current_user, "editor")
     QuotaService(database_session).ensure_can_create(current_user.id, QuotaKey.TAGS_PER_MAP_MAX, scope_id=data.map_id)
-    tag = Tag(map_id=data.map_id, name=data.name, color=data.color)
+    tag = Tag(map_id=data.map_id, name=data.name, color=data.color, sort_order=(database_session.scalar(select(func.coalesce(func.max(Tag.sort_order), 0)).where(Tag.map_id == data.map_id)) + 10))
     try:
         database_session.add(tag)
         database_session.commit()

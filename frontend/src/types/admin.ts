@@ -5,6 +5,7 @@ export interface CategoryRead {
   description: string | null
   icon?: string
   marks_as_visited?: boolean
+  sort_order?: number
   places_count: number
 }
 
@@ -28,6 +29,7 @@ export interface TagRead {
   map_id?: string
   name: string
   color: string
+  sort_order?: number
   places_count: number
 }
 

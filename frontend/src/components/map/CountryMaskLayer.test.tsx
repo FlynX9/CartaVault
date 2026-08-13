@@ -6,6 +6,10 @@ import { CountryMaskLayer } from './CountryMaskLayer'
 
 vi.mock('../../api/countries', () => ({ getCountryBoundary: vi.fn() }))
 vi.mock('react-leaflet', () => ({
+  useMapEvents: () => ({
+    getZoom: () => 9,
+    attributionControl: { addAttribution: vi.fn(), removeAttribution: vi.fn() },
+  }),
   Polygon: ({ positions, smoothFactor, interactive, bubblingMouseEvents }: {
     positions: unknown[]
     smoothFactor: number
@@ -24,11 +28,15 @@ describe('CountryMaskLayer', () => {
     vi.mocked(getCountryBoundary).mockResolvedValue({
       country_id: '11111111-1111-4111-8111-111111111111',
       iso_alpha3: 'FRA',
+      detail: 'high',
       point_count: 10,
       geometry: {
         type: 'MultiPolygon',
         coordinates: [
-          [[[2, 48], [3, 48], [3, 49], [2, 48]]],
+          [
+            [[2, 48], [3, 48], [3, 49], [2, 48]],
+            [[2.2, 48.2], [2.3, 48.2], [2.3, 48.3], [2.2, 48.2]],
+          ],
           [[[-61, 16], [-60, 16], [-60, 17], [-61, 16]]],
         ],
       },
@@ -37,7 +45,8 @@ describe('CountryMaskLayer', () => {
     render(<CountryMaskLayer countryId="11111111-1111-4111-8111-111111111111" enabled />)
 
     const mask = await screen.findByTestId('country-mask')
-    expect(mask).toHaveAttribute('data-rings', '3')
+    expect(getCountryBoundary).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', 'high', expect.any(AbortSignal))
+    expect(mask).toHaveAttribute('data-rings', '4')
     expect(mask).toHaveAttribute('data-smooth-factor', '0')
     expect(mask).toHaveAttribute('data-interactive', 'false')
     expect(mask).toHaveAttribute('data-bubbling', 'false')

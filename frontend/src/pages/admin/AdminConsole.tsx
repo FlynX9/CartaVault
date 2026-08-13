@@ -8,10 +8,13 @@ import {
   getInstanceLogRetention, getSaasSettings, optimizeStoredMedia, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings,
   updateAdminUser,
 } from '../../api/adminConsole'
+import { getAdminPrivacySettings, saveAdminPrivacySettings, type PrivacySettings } from '../../api/privacy'
 import { accountAvatarUrl } from '../../api/account'
 import { getGoogleSatelliteAdminStatus, resetGoogleSatelliteErrors, saveGoogleSatelliteSettings, type GoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 import { getPublicRegistrationSettings, getRegistrationRequests, reviewRegistration, updatePublicRegistrationSettings, type RegistrationRequest } from '../../api/registration'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
+import { publishGlobalFeedback } from '../../components/common/globalFeedback'
+import { useI18n } from '../../i18n/useI18n'
 import { InstanceStatusPage } from '../../features/admin/instance-status/InstanceStatusPage'
 import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage'
 import { AdminUsersSection } from './AdminUsersSection'
@@ -20,12 +23,12 @@ import { AdminApiKeysSection } from './AdminApiKeysSection'
 import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, QuotaProfile } from '../../types/adminConsole'
 
 const sections = [
-  ['users', Users, 'Utilisateurs'], ['general', Settings2, 'Général'], ['credentials', KeyRound, 'Clés API'],
-  ['quotas', Gauge, 'Quotas'], ['instance', Activity, 'État de l’instance'],
+  ['users', Users, 'admin.sections.users'], ['general', Settings2, 'admin.sections.general'], ['credentials', KeyRound, 'admin.sections.apiKeys'],
+  ['quotas', Gauge, 'admin.sections.quotas'], ['instance', Activity, 'admin.sections.instance'],
 ] as const
 
 type AdminSectionKey = typeof sections[number][0]
-type AdminSaveEntry = { dirty: boolean; busy: boolean; save: () => Promise<void>; discard: () => void }
+type AdminSaveEntry = { label: string; dirty: boolean; busy: boolean; save: () => Promise<void>; discard: () => void }
 type AdminSaveContextValue = { register: (id: string, entry: AdminSaveEntry) => void; unregister: (id: string) => void }
 const AdminSaveContext = createContext<AdminSaveContextValue | null>(null)
 
@@ -38,6 +41,7 @@ function useAdminSaveEntry(id: string, entry: AdminSaveEntry) {
 }
 
 export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
+  const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
   const modal = useRef<HTMLElement>(null)
@@ -59,8 +63,15 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     const entries = Object.values(saveEntries).filter((entry) => entry.dirty)
     if (entries.length === 0) return true
     setSavingAll(true)
-    try { for (const entry of entries) await entry.save(); return true }
-    catch { return false }
+    try {
+      for (const entry of entries) await entry.save()
+      publishGlobalFeedback('success', `Paramètres d’administration enregistrés : ${entries.map((entry) => entry.label).join(', ')}.`)
+      return true
+    }
+    catch {
+      publishGlobalFeedback('error', `Échec de l’enregistrement des paramètres d’administration : ${entries.map((entry) => entry.label).join(', ')}.`)
+      return false
+    }
     finally { setSavingAll(false) }
   }, [saveEntries])
   useEffect(() => { setVisitedSections((current) => current.has(activeSection) ? current : new Set([...current, activeSection])) }, [activeSection])
@@ -89,9 +100,9 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
   }, [requestClose])
   return createPortal(<div className="account-overlay admin-console-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose() }}>
     <section ref={modal} className="admin-console" role="dialog" aria-modal="true" aria-labelledby="admin-console-title">
-      <header className="admin-console__header"><div className="admin-console__header-icon"><ShieldCheck size={20} /></div><div><h2 id="admin-console-title">Administration</h2><p>Configuration et supervision de l’instance CartaVault.</p></div><div className="admin-console__header-actions"><button className="primary-button admin-console__save-all" type="button" disabled={!hasDirtyChanges || savingAll || dirtyEntries.some((entry) => entry.busy)} onClick={() => void saveAll()}><Save size={15} />{savingAll ? 'Enregistrement…' : 'Enregistrer'}</button><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label="Fermer l’administration" onClick={requestClose}><X size={14} /></button></div></header>
-      <nav className="admin-console__nav" aria-label="Sections d’administration">
-        {sections.map(([path, Icon, label]) => <NavLink key={path} to={{ pathname: `/admin/${path}`, search: location.search }}><Icon size={18} /><span>{label}</span></NavLink>)}
+      <header className="admin-console__header"><div className="admin-console__header-icon"><ShieldCheck size={20} /></div><div><h2 id="admin-console-title">{t('admin.title')}</h2><p>{t('admin.description')}</p></div><div className="admin-console__header-actions"><button className="primary-button admin-console__save-all" type="button" disabled={!hasDirtyChanges || savingAll || dirtyEntries.some((entry) => entry.busy)} onClick={() => void saveAll()}><Save size={15} />{savingAll ? t('admin.saving') : t('admin.save')}</button><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('admin.close')} onClick={requestClose}><X size={14} /></button></div></header>
+      <nav className="admin-console__nav" aria-label={t('admin.navigation')}>
+        {sections.map(([path, Icon, label]) => <NavLink key={path} to={{ pathname: `/admin/${path}`, search: location.search }}><Icon size={18} /><span>{t(label)}</span></NavLink>)}
       </nav>
       <AdminSaveContext.Provider value={saveContext}><div className="admin-console__content">
         {visitedSections.has('users') && <div hidden={activeSection !== 'users'}><AdminUsersSection /></div>}
@@ -100,7 +111,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
         {visitedSections.has('quotas') && <div hidden={activeSection !== 'quotas'}><QuotaProfilesPage /></div>}
         {visitedSections.has('instance') && <div hidden={activeSection !== 'instance'}><InstanceStatusPage /></div>}
       </div></AdminSaveContext.Provider>
-      {closePromptOpen && <div className="cv-overlay admin-unsaved-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setClosePromptOpen(false) }}><section className="cv-modal admin-unsaved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-unsaved-title"><header><div><p className="cv-workspace-panel__eyebrow">MODIFICATIONS</p><h2 id="admin-unsaved-title">Enregistrer ou Annuler les modifications</h2></div><button className="panel-icon-button" type="button" aria-label="Fermer la confirmation" onClick={() => setClosePromptOpen(false)}><X size={16} /></button></header><p>Des modifications n’ont pas encore été enregistrées dans le panneau Administration.</p><footer><button className="secondary-button" type="button" onClick={() => setClosePromptOpen(false)}>Continuer l’édition</button><button className="danger-button" type="button" onClick={() => { dirtyEntries.forEach((entry) => entry.discard()); setClosePromptOpen(false); performClose() }}>Annuler les modifications</button><button className="primary-button" type="button" disabled={savingAll} onClick={() => void saveAll().then((saved) => { if (saved) { setClosePromptOpen(false); performClose() } })}><Save size={15} />Enregistrer</button></footer></section></div>}
+      {closePromptOpen && <div className="cv-overlay admin-unsaved-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setClosePromptOpen(false) }}><section className="cv-modal admin-unsaved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-unsaved-title"><header><div><p className="cv-workspace-panel__eyebrow">{t('admin.unsaved.eyebrow')}</p><h2 id="admin-unsaved-title">{t('admin.unsaved.title')}</h2></div><button className="panel-icon-button" type="button" aria-label={t('admin.users.close')} onClick={() => setClosePromptOpen(false)}><X size={16} /></button></header><p>{t('admin.unsaved.description')}</p><footer><button className="secondary-button" type="button" onClick={() => setClosePromptOpen(false)}>{t('admin.unsaved.continue')}</button><button className="danger-button" type="button" onClick={() => { dirtyEntries.forEach((entry) => entry.discard()); setClosePromptOpen(false); performClose() }}>{t('admin.unsaved.discard')}</button><button className="primary-button" type="button" disabled={savingAll} onClick={() => void saveAll().then((saved) => { if (saved) { setClosePromptOpen(false); performClose() } })}><Save size={15} />{t('admin.save')}</button></footer></section></div>}
     </section>
   </div>, document.body)
 }
@@ -218,7 +229,50 @@ export function LegacyAdminUsersSection() {
 }
 
 function AdminGeneralSection() {
-  return <section><SectionHeading eyebrow="Instance" title="Général" description="Réglages généraux de l’instance et maintenance de la médiathèque." /><SaasSettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
+  const { t } = useI18n()
+  return <section><SectionHeading eyebrow={t('admin.general.eyebrow')} title={t('admin.general.title')} description={t('admin.general.description')} /><SaasSettingsPanel /><PrivacySettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
+}
+
+function PrivacySettingsPanel() {
+  const [settings, setSettings] = useState<PrivacySettings | null>(null)
+  const [saved, setSaved] = useState<PrivacySettings | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    void getAdminPrivacySettings(controller.signal).then((value) => { if (!controller.signal.aborted) { setSettings(value); setSaved(value) } }).catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Réglages de confidentialité indisponibles.') })
+    return () => controller.abort()
+  }, [])
+  const update = <K extends keyof PrivacySettings>(key: K, value: PrivacySettings[K]) => setSettings((current) => current ? { ...current, [key]: value } : current)
+  const save = useCallback(async () => {
+    if (!settings) return
+    setBusy(true); setError(null)
+    try {
+      const { consent_required, consent_version, ...payload } = settings
+      void consent_required; void consent_version
+      const next = await saveAdminPrivacySettings(payload)
+      setSettings(next); setSaved(next)
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
+    finally { setBusy(false) }
+  }, [settings])
+  const dirty = JSON.stringify(settings) !== JSON.stringify(saved)
+  const entry = useMemo<AdminSaveEntry>(() => ({ label: 'confidentialité', dirty, busy, save, discard: () => setSettings(saved) }), [busy, dirty, save, saved])
+  useAdminSaveEntry('general-privacy', entry)
+  return <section className="admin-console__card admin-console__setting-card admin-privacy-settings" aria-labelledby="privacy-settings-title">
+    <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ShieldCheck size={17} /></span><div><h3 id="privacy-settings-title">Confidentialité et conformité</h3><p>Configurez l’opérateur, les politiques et les durées de conservation de l’instance.</p></div></header>
+    {error && <div className="form-alert" role="alert">{error}</div>}
+    {settings && <form className="admin-console__setting-form admin-privacy-settings__form" onSubmit={(event) => event.preventDefault()}>
+      <label>Mode d’analyse<select value={settings.analytics_mode} onChange={(event) => update('analytics_mode', event.target.value as PrivacySettings['analytics_mode'])}><option value="disabled">Désactivé</option><option value="privacy_preserving">Respectueux de la vie privée</option><option value="consent_required">Soumis au consentement</option></select></label>
+      <label>Opérateur<input value={settings.operator_name} maxLength={160} onChange={(event) => update('operator_name', event.target.value)} /></label>
+      <label>Contact confidentialité<input type="email" value={settings.contact_email} maxLength={320} onChange={(event) => update('contact_email', event.target.value)} /></label>
+      <label>URL politique de confidentialité<input type="url" value={settings.privacy_policy_url} maxLength={2048} placeholder="https://…" onChange={(event) => update('privacy_policy_url', event.target.value)} /></label>
+      <label>URL politique de cookies<input type="url" value={settings.cookie_policy_url} maxLength={2048} placeholder="https://…" onChange={(event) => update('cookie_policy_url', event.target.value)} /></label>
+      <label>Version des politiques<input value={settings.policy_version} maxLength={32} onChange={(event) => update('policy_version', event.target.value)} /></label>
+      <label>Conservation des journaux d’authentification (jours)<input type="number" min="1" max="3650" value={settings.auth_log_retention_days} onChange={(event) => update('auth_log_retention_days', Number(event.target.value))} /></label>
+      <label>Conservation des sessions (jours)<input type="number" min="1" max="365" value={settings.session_retention_days} onChange={(event) => update('session_retention_days', Number(event.target.value))} /></label>
+      <p className="admin-console__hint">Par défaut, CartaVault n’utilise aucun service d’analyse ou de marketing : aucune bannière de consentement n’est requise. Les comptes supprimés sont anonymisés de manière sûre, sans suppression relationnelle automatique.</p>
+    </form>}
+  </section>
 }
 
 function SaasSettingsPanel() {
@@ -241,7 +295,7 @@ function SaasSettingsPanel() {
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
     finally { setBusy(false) }
   }, [enabled])
-  const saasSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: enabled !== savedEnabled, busy, save, discard: () => setEnabled(savedEnabled) }), [busy, enabled, save, savedEnabled])
+  const saasSaveEntry = useMemo<AdminSaveEntry>(() => ({ label: 'mode SaaS', dirty: enabled !== savedEnabled, busy, save, discard: () => setEnabled(savedEnabled) }), [busy, enabled, save, savedEnabled])
   useAdminSaveEntry('general-saas', saasSaveEntry)
   return <section className="admin-console__card admin-console__setting-card" aria-labelledby="saas-settings-title">
     <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ShieldCheck size={17} /></span><div><h3 id="saas-settings-title">Mode SaaS</h3><p>Active les fonctions destinées à une instance ouverte au public. Pour le moment, cela affiche le menu Contact aux utilisateurs.</p></div><label className="cv-toggle admin-console__setting-toggle"><input type="checkbox" role="switch" aria-label="Mode SaaS" checked={enabled} disabled={loading || busy} onChange={(event) => setEnabled(event.target.checked)} /><i aria-hidden="true" /><span>{enabled ? 'Actif' : 'Inactif'}</span></label></header>
@@ -268,7 +322,7 @@ function MediaMaintenancePanel() {
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
     finally { setBusy(false) }
   }, [limit, maxDimension])
-  const mediaSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: limit !== savedSettings.limit || maxDimension !== savedSettings.maxDimension, busy, save, discard: () => { setLimit(savedSettings.limit); setMaxDimension(savedSettings.maxDimension) } }), [busy, limit, maxDimension, save, savedSettings])
+  const mediaSaveEntry = useMemo<AdminSaveEntry>(() => ({ label: 'médiathèque', dirty: limit !== savedSettings.limit || maxDimension !== savedSettings.maxDimension, busy, save, discard: () => { setLimit(savedSettings.limit); setMaxDimension(savedSettings.maxDimension) } }), [busy, limit, maxDimension, save, savedSettings])
   useAdminSaveEntry('general-media', mediaSaveEntry)
   const optimize = async () => { setBusy(true); setError(null); try { const started = await optimizeStoredMedia(); setTask({ id: started.task_id, status: started.status, percent: 0, message: 'Préparation…', result: null, error: null }) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Optimisation impossible.') } finally { setBusy(false) } }
   const requestOptimize = async () => {
@@ -297,7 +351,7 @@ function LogRetentionPanel() {
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason }
     finally { setBusy(false) }
   }, [days])
-  const logsSaveEntry = useMemo<AdminSaveEntry>(() => ({ dirty: days !== savedDays, busy, save, discard: () => setDays(savedDays) }), [busy, days, save, savedDays])
+  const logsSaveEntry = useMemo<AdminSaveEntry>(() => ({ label: 'journaux d’instance', dirty: days !== savedDays, busy, save, discard: () => setDays(savedDays) }), [busy, days, save, savedDays])
   useAdminSaveEntry('general-logs', logsSaveEntry)
   return <section className="admin-console__card admin-console__setting-card" aria-labelledby="log-retention-title"><header className="admin-console__setting-header"><span className="admin-console__setting-icon"><Activity size={17} /></span><div><h3 id="log-retention-title">Journaux d’instance</h3><p>Les journaux applicatifs sont conservés en base puis nettoyés automatiquement après la durée choisie.</p></div></header>{error && <div className="form-alert" role="alert">{error}</div>}{notice && <div className="form-alert success" role="status">{notice}</div>}<form className="admin-console__setting-form" onSubmit={(event) => event.preventDefault()}><label>Durée de conservation (jours)<input type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /></label></form><p className="admin-console__hint">Valeur par défaut : 7 jours. Les messages sont filtrés pour retirer les secrets et limiter les données personnelles.</p></section>
 }

@@ -22,12 +22,12 @@ describe('place filters', () => {
     expect(buildPlaceFilterSearchParams(deserializePlaceFilters(params)).toString()).toContain('rating_min=4')
   })
 
-  it('does not count sorting as a filter and preserves it when filters are reset', () => {
+  it('does not count sorting as a filter and preserves sorting and search when other filters are reset', () => {
     const sorted = { ...DEFAULT_PLACE_FILTERS, sortBy: 'updated_at' as const, sortDirection: 'desc' as const }
     expect(countActivePlaceFilters(sorted)).toBe(0)
     expect(hasActivePlaceFilters(sorted)).toBe(false)
 
     const reset = resetPlaceFilters({ ...sorted, query: 'église', categoryIds: ['category-id'], isFavorite: true })
-    expect(reset).toEqual({ ...DEFAULT_PLACE_FILTERS, sortBy: 'updated_at', sortDirection: 'desc' })
+    expect(reset).toEqual({ ...DEFAULT_PLACE_FILTERS, query: 'église', sortBy: 'updated_at', sortDirection: 'desc' })
   })
 })

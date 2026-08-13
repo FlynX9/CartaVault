@@ -70,6 +70,7 @@ export const hasActivePlaceFilters = (filters: PlaceFilters) => countActivePlace
 export function resetPlaceFilters(filters: PlaceFilters): PlaceFilters {
   return {
     ...DEFAULT_PLACE_FILTERS,
+    query: filters.query,
     categoryIds: [],
     tagIds: [],
     statusIds: [],

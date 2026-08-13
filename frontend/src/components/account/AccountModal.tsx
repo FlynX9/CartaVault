@@ -15,8 +15,9 @@ import { UnsavedChangesDialog } from '../common/UnsavedChangesDialog'
 import { OfflineDataSection } from './OfflineDataSection'
 import { PersonalApiKeysSection } from './PersonalApiKeysSection'
 import { IntegrationPreferences } from './IntegrationPreferences'
+import { PrivacySection } from './PrivacySection'
 
-type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'offline'
+type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'privacy' | 'offline'
 
 const emptyPreferences: AccountPreferences = { language: 'fr', default_theme: 'system', preferred_basemap: 'cartavault-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' } }
 
@@ -94,12 +95,17 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     if (next === section) return
     setSection(next)
   }
-  const run = async (action: () => Promise<void>, success: string): Promise<boolean> => {
+  const run = async (action: () => Promise<void>, success: string, failure = t('account.operationError')): Promise<boolean> => {
     setError(null); setMessage(null)
-    try { await action(); setMessage(success); return true } catch (reason) { setError(messageFor(reason, t('account.operationError'))); return false }
+    try { await action(); setMessage(success); return true } catch (reason) { setError(messageFor(reason, failure)); return false }
   }
   const saveChanges = async () => {
     if (!dirty) return
+    const successMessage = profileDirty && preferencesDirty
+      ? t('account.feedback.profilePreferencesSaved')
+      : profileDirty
+        ? t('account.feedback.profileSaved')
+        : t('account.feedback.preferencesSaved')
     setSaving(true)
     const ok = await run(async () => {
       if (profileDirty) await updateAccountProfile(draftName.trim())
@@ -113,7 +119,11 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
       }
       await refresh()
       await load()
-    }, 'Modifications enregistrées.')
+    }, successMessage, profileDirty && preferencesDirty
+      ? t('account.feedback.profilePreferencesFailed')
+      : profileDirty
+        ? t('account.feedback.profileFailed')
+        : t('account.feedback.preferencesFailed'))
     setSaving(false)
     return ok
   }
@@ -128,10 +138,10 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         <header className="account-modal__header">
           <div className="account-avatar">{avatar ? <img src={avatar} alt={`Avatar de ${profile?.display_name ?? user?.display_name}`} /> : initials}</div>
           <div><h2 id="account-title">{t('account.title')}</h2><p>{profile?.email ?? user?.email}</p>{user?.is_admin && <span><Shield size={13} />{t('account.admin')}</span>}</div>
-          <div className="account-modal__header-actions"><button className="account-button account-button--primary account-modal__save" type="button" disabled={!dirty || saving} onClick={() => void saveChanges()}><Save size={14} />{saving ? 'Enregistrement…' : 'Enregistrer'}</button><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button></div>
+          <div className="account-modal__header-actions"><button className="account-button account-button--primary account-modal__save" type="button" disabled={!dirty || saving} onClick={() => void saveChanges()}><Save size={14} />{saving ? t('account.feedback.saving') : t('account.feedback.save')}</button><button ref={closeButton} className="panel-icon-button modal-header-close" type="button" aria-label={t('account.close')} onClick={requestClose}><X size={14} /></button></div>
         </header>
         <nav className="account-modal__nav" aria-label={t('account.navigation')}>
-          {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCog, t('account.security') ], [ 'preferences', Settings2, t('account.preferences') ], [ 'api_keys', KeyRound, t('account.apiKeys') ], [ 'offline', HardDriveDownload, t('account.offline') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
+          {([[ 'profile', UserRound, t('account.profile') ], [ 'security', ShieldCog, t('account.security') ], [ 'preferences', Settings2, t('account.preferences') ], [ 'api_keys', KeyRound, t('account.apiKeys') ], [ 'privacy', ShieldCheck, t('account.privacy') ], [ 'offline', HardDriveDownload, t('account.offline') ]] as const).map(([id, Icon, label]) => <button key={id} type="button" aria-current={section === id ? 'page' : undefined} onClick={() => selectSection(id)}><Icon size={17} />{label}</button>)}
         </nav>
         <main className="account-modal__content">
           {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
@@ -139,6 +149,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'security' && profile && <SecuritySection profile={profile} sessions={sessions} run={run} refreshProfile={async () => { await refresh(); await load() }} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} />}
           {section === 'api_keys' && <PersonalApiKeysSection />}
+          {section === 'privacy' && <PrivacySection />}
           {section === 'offline' && <OfflineDataSection />}
         </main>
       </section>
@@ -148,29 +159,30 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
 }
 
 function ProfileSection({ profile, avatar, initials, draftName, setDraftName, uploadAvatar, removeAvatar }: { profile: AccountProfile; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
-  return <><AccountHeading title="Profil" description="Gérez votre identité CartaVault et votre avatar." />
+  const { t, locale } = useI18n()
+  return <><AccountHeading title={t('account.profile')} description={t('account.profileSection.description')} />
     <div className="account-profile-grid">
       <form className="account-form account-preference-card account-profile-card" onSubmit={(event) => event.preventDefault()}>
-        <PreferenceCardHeading icon={UserRound} title="Informations de profil" />
-        <div className="account-profile-field"><label htmlFor="account-display-name">Nom d’affichage</label><input id="account-display-name" name="display_name" value={draftName} placeholder="Votre nom d’affichage" required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></div>
+        <PreferenceCardHeading icon={UserRound} title={t('account.profileSection.information')} />
+        <div className="account-profile-field"><label htmlFor="account-display-name">{t('account.profileSection.displayName')}</label><input id="account-display-name" name="display_name" value={draftName} placeholder={t('account.profileSection.displayNamePlaceholder')} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></div>
       </form>
       <section className="account-preference-card account-avatar-editor">
-        <PreferenceCardHeading icon={ImageIcon} title="Avatar" />
-        <p className="account-card-description">Une image carrée, traitée et stockée séparément de vos photos de lieux.</p>
+        <PreferenceCardHeading icon={ImageIcon} title={t('account.avatar')} />
+        <p className="account-card-description">{t('account.profileSection.avatarDescription')}</p>
         <div className="account-avatar-editor__content">
-          <div className="account-avatar large">{avatar ? <img src={avatar} alt="Aperçu de l’avatar" /> : initials}</div>
-          <div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />Importer une image<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />Supprimer</button>}</div>
+          <div className="account-avatar large">{avatar ? <img src={avatar} alt={t('account.profileSection.avatarPreview')} /> : initials}</div>
+          <div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />{t('account.profileSection.importImage')}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />{t('account.profileSection.delete')}</button>}</div>
         </div>
-        <small>JPEG, PNG ou WebP · 5 Mio maximum.</small>
+        <small>{t('account.profileSection.imageFormats')}</small>
       </section>
     </div>
     <section className="account-preference-card account-profile-metadata-card">
-      <PreferenceCardHeading icon={Info} title="Informations du compte" />
+      <PreferenceCardHeading icon={Info} title={t('account.profileSection.accountInformation')} />
       <dl className="account-metadata">
-        <div><dt><Mail size={15} aria-hidden="true" />Adresse e-mail</dt><dd>{profile.email}</dd></div>
-        <div><dt><CalendarDays size={15} aria-hidden="true" />Compte créé</dt><dd>{formatDate(profile.created_at)}</dd></div>
-        <div><dt><Clock3 size={15} aria-hidden="true" />Dernière connexion</dt><dd>{profile.last_login_at ? formatDate(profile.last_login_at, true) : 'Non disponible'}</dd></div>
-        <div><dt><MapIcon size={15} aria-hidden="true" />Cartes possédées</dt><dd>{profile.owned_maps.length}</dd></div>
+        <div><dt><Mail size={15} aria-hidden="true" />{t('account.profileSection.email')}</dt><dd>{profile.email}</dd></div>
+        <div><dt><CalendarDays size={15} aria-hidden="true" />{t('account.profileSection.created')}</dt><dd>{new Date(profile.created_at).toLocaleDateString(locale)}</dd></div>
+        <div><dt><Clock3 size={15} aria-hidden="true" />{t('account.profileSection.lastLogin')}</dt><dd>{profile.last_login_at ? new Date(profile.last_login_at).toLocaleString(locale) : t('account.profileSection.unavailable')}</dd></div>
+        <div><dt><MapIcon size={15} aria-hidden="true" />{t('account.profileSection.ownedMaps')}</dt><dd>{profile.owned_maps.length}</dd></div>
       </dl>
     </section>
   </>
@@ -180,6 +192,7 @@ type EmailMfaStatus = { enabled: boolean; verified_at: string | null; available:
 type SecurityDialogKind = 'email' | 'password' | 'totp' | 'email-mfa' | 'recovery' | 'sessions' | 'delete'
 
 function SecuritySection({ profile, sessions, run, refreshProfile, reload }: { profile: AccountProfile; sessions: AccountSession[]; run: (action: () => Promise<void>, success: string) => Promise<boolean>; refreshProfile: () => Promise<void>; reload: () => Promise<void> }) {
+  const { t } = useI18n()
   const [dialog, setDialog] = useState<SecurityDialogKind | null>(null)
   const [totpStatus, setTotpStatus] = useState<TotpSecurityStatus | null>(null)
   const [emailMfaStatus, setEmailMfaStatus] = useState<EmailMfaStatus | null>(null)
@@ -188,54 +201,54 @@ function SecuritySection({ profile, sessions, run, refreshProfile, reload }: { p
     let active = true
     void Promise.all([getTotpStatus(), getEmailMfaStatus()])
       .then(([totp, email]) => { if (active) { setTotpStatus(totp); setEmailMfaStatus(email); setStatusError(null) } })
-      .catch(() => { if (active) setStatusError('Impossible de charger l’état de sécurité du compte.') })
+      .catch(() => { if (active) setStatusError(t('account.securitySection.loadError')) })
     return () => { active = false }
   }, [])
   const mfaEnabled = Boolean(totpStatus?.enabled || emailMfaStatus?.enabled)
   const closeDialog = () => setDialog(null)
   return <section className="account-security-dashboard">
-    <AccountHeading title="Sécurité" description="Gérez la sécurité, les accès et les appareils associés à votre compte." />
-    <section className="account-security-summary" aria-label="Résumé du niveau de sécurité">
+    <AccountHeading title={t('account.security')} description={t('account.securitySection.description')} />
+    <section className="account-security-summary" aria-label={t('account.securitySection.summary')}>
       <div className="account-api-summary account-security-summary__grid">
-        <SecuritySummaryItem icon={ShieldCheck} label="Compte" value={profile.is_active ? 'Actif' : 'Inactif'} tone={profile.is_active ? 'success' : 'danger'} />
-        <SecuritySummaryItem icon={Mail} label="E-mail" value={profile.email_verified ? 'Vérifié' : 'À vérifier'} tone={profile.email_verified ? 'success' : 'warning'} />
-        <SecuritySummaryItem icon={MonitorSmartphone} label="Sessions actives" value={String(profile.active_session_count)} tone="success" />
-        <SecuritySummaryItem icon={LockKeyhole} label="Authentification MFA" value={mfaEnabled ? 'Activée' : 'Non activée'} tone={mfaEnabled ? 'success' : 'warning'} />
+        <SecuritySummaryItem icon={ShieldCheck} label={t('account.securitySection.account')} value={profile.is_active ? t('account.securitySection.active') : t('account.securitySection.inactive')} tone={profile.is_active ? 'success' : 'danger'} />
+        <SecuritySummaryItem icon={Mail} label={t('account.securitySection.email')} value={profile.email_verified ? t('account.securitySection.verified') : t('account.securitySection.toVerify')} tone={profile.email_verified ? 'success' : 'warning'} />
+        <SecuritySummaryItem icon={MonitorSmartphone} label={t('account.securitySection.activeSessions')} value={String(profile.active_session_count)} tone="success" />
+        <SecuritySummaryItem icon={LockKeyhole} label={t('account.securitySection.mfa')} value={mfaEnabled ? t('account.securitySection.enabledFeminine') : t('account.securitySection.notEnabledFeminine')} tone={mfaEnabled ? 'success' : 'warning'} />
       </div>
       {statusError && <p className="form-alert" role="alert">{statusError}</p>}
     </section>
 
     <section className="account-security-block" aria-labelledby="security-access-title">
-      <SecuritySectionTitle id="security-access-title" icon={UserRound}>Identité et accès</SecuritySectionTitle>
+      <SecuritySectionTitle id="security-access-title" icon={UserRound}>{t('account.securitySection.identityAccess')}</SecuritySectionTitle>
       <div className="account-security-access-grid">
-        <SecurityActionCard icon={Mail} title="Adresse e-mail" description="Votre adresse e-mail actuelle" detail={profile.email} action="Changer l’adresse e-mail" onClick={() => setDialog('email')} />
-        <SecurityActionCard icon={LockKeyhole} title="Mot de passe" description="Assurez la sécurité de votre compte avec un mot de passe fort et unique." action="Changer le mot de passe" onClick={() => setDialog('password')} />
+        <SecurityActionCard icon={Mail} title={t('account.securitySection.emailAddress')} description={t('account.securitySection.currentEmail')} detail={profile.email} action={t('account.securitySection.changeEmail')} onClick={() => setDialog('email')} />
+        <SecurityActionCard icon={LockKeyhole} title={t('account.securitySection.password')} description={t('account.securitySection.passwordHelp')} action={t('account.securitySection.changePassword')} onClick={() => setDialog('password')} />
       </div>
     </section>
 
     <section className="account-security-block" aria-labelledby="security-mfa-title">
-      <SecuritySectionTitle id="security-mfa-title" icon={ShieldCheck}>Authentification renforcée</SecuritySectionTitle>
+      <SecuritySectionTitle id="security-mfa-title" icon={ShieldCheck}>{t('account.securitySection.strongAuth')}</SecuritySectionTitle>
       <div className="account-security-action-list">
-        <SecurityActionRow icon={LockKeyhole} title="Application d’authentification (TOTP)" description="Utilisez une application comme Google Authenticator ou Authy." status={totpStatus?.enabled ? 'Configurée' : 'Non configurée'} tone={totpStatus?.enabled ? 'success' : 'warning'} action={totpStatus?.enabled ? 'Gérer' : 'Activer'} disabled={Boolean(emailMfaStatus?.enabled)} disabledTitle={emailMfaStatus?.enabled ? 'Désactivez d’abord le code par e-mail.' : undefined} onClick={() => setDialog('totp')} />
-        <SecurityActionRow icon={Mail} title="Code par e-mail" description="Recevez un code de sécurité à chaque connexion." status={emailMfaStatus?.enabled ? 'Activé' : emailMfaStatus?.available ? 'Disponible' : 'Indisponible'} tone={emailMfaStatus?.enabled ? 'success' : 'muted'} action={emailMfaStatus?.enabled ? 'Gérer' : 'Activer'} disabled={!emailMfaStatus?.available || Boolean(totpStatus?.enabled)} disabledTitle={totpStatus?.enabled ? 'Désactivez d’abord l’authentification TOTP.' : !emailMfaStatus?.available ? 'Configurez un service d’envoi d’e-mails dans CartaVault.' : undefined} onClick={() => setDialog('email-mfa')} />
-        <SecurityActionRow icon={ShieldCheck} title="Codes de récupération" description="Utilisez ces codes pour récupérer l’accès à votre compte." status={totpStatus?.enabled ? `${totpStatus.recovery_codes_remaining} restant${totpStatus.recovery_codes_remaining > 1 ? 's' : ''}` : 'Non générés'} tone={totpStatus?.enabled ? 'success' : 'muted'} action="Régénérer" disabled={!totpStatus?.enabled} disabledTitle={!totpStatus?.enabled ? 'Configurez d’abord l’authentification TOTP.' : undefined} onClick={() => setDialog('recovery')} />
+        <SecurityActionRow icon={LockKeyhole} title={t('account.securitySection.authenticatorApp')} description={t('account.securitySection.authenticatorHelp')} status={totpStatus?.enabled ? t('account.securitySection.configured') : t('account.securitySection.notConfigured')} tone={totpStatus?.enabled ? 'success' : 'warning'} action={totpStatus?.enabled ? t('account.securitySection.manage') : t('account.securitySection.activate')} disabled={Boolean(emailMfaStatus?.enabled)} disabledTitle={emailMfaStatus?.enabled ? t('account.securitySection.disableEmailFirst') : undefined} onClick={() => setDialog('totp')} />
+        <SecurityActionRow icon={Mail} title={t('account.securitySection.emailCode')} description={t('account.securitySection.emailCodeHelp')} status={emailMfaStatus?.enabled ? t('account.securitySection.enabled') : emailMfaStatus?.available ? t('account.securitySection.available') : t('account.securitySection.unavailable')} tone={emailMfaStatus?.enabled ? 'success' : 'muted'} action={emailMfaStatus?.enabled ? t('account.securitySection.manage') : t('account.securitySection.activate')} disabled={!emailMfaStatus?.available || Boolean(totpStatus?.enabled)} disabledTitle={totpStatus?.enabled ? t('account.securitySection.disableTotpFirst') : !emailMfaStatus?.available ? t('account.securitySection.configureEmailService') : undefined} onClick={() => setDialog('email-mfa')} />
+        <SecurityActionRow icon={ShieldCheck} title={t('account.securitySection.recoveryCodes')} description={t('account.securitySection.recoveryHelp')} status={totpStatus?.enabled ? t('account.securitySection.remaining', { count: totpStatus.recovery_codes_remaining }) : t('account.securitySection.notGenerated')} tone={totpStatus?.enabled ? 'success' : 'muted'} action={t('account.securitySection.regenerate')} disabled={!totpStatus?.enabled} disabledTitle={!totpStatus?.enabled ? t('account.securitySection.configureTotpFirst') : undefined} onClick={() => setDialog('recovery')} />
       </div>
     </section>
 
     <section className="account-security-sessions">
-      <span className="account-security-section-title__icon"><MonitorSmartphone size={19} /></span><div><h3>Sessions et appareils</h3><p>Consultez et gérez les appareils connectés à votre compte.</p></div><button className="account-button account-button--secondary" type="button" onClick={() => setDialog('sessions')}>Gérer les sessions<ChevronRight size={16} /></button>
+      <span className="account-security-section-title__icon"><MonitorSmartphone size={19} /></span><div><h3>{t('account.securitySection.sessionsDevices')}</h3><p>{t('account.securitySection.sessionsHelp')}</p></div><button className="account-button account-button--secondary" type="button" onClick={() => setDialog('sessions')}>{t('account.securitySection.manageSessions')}<ChevronRight size={16} /></button>
     </section>
     <section className="account-security-danger">
-      <span className="account-security-section-title__icon"><AlertTriangle size={19} /></span><div><h3>Zone sensible</h3><p>Ces actions sont irréversibles. Veuillez procéder avec prudence.</p></div><button className="account-button account-button--danger" type="button" onClick={() => setDialog('delete')}>Supprimer le compte</button>
+      <span className="account-security-section-title__icon"><AlertTriangle size={19} /></span><div><h3>{t('account.securitySection.sensitiveZone')}</h3><p>{t('account.securitySection.sensitiveHelp')}</p></div><button className="account-button account-button--danger" type="button" onClick={() => setDialog('delete')}>{t('account.securitySection.deleteAccount')}</button>
     </section>
 
-    {dialog === 'email' && <AccountSecurityDialog icon={Mail} title="Changer l’adresse e-mail" onClose={closeDialog}><EmailChangePanel run={run} refreshProfile={refreshProfile} onComplete={closeDialog} /></AccountSecurityDialog>}
-    {dialog === 'password' && <AccountSecurityDialog icon={LockKeyhole} title="Changer le mot de passe" onClose={closeDialog}><PasswordChangePanel run={run} onComplete={closeDialog} /></AccountSecurityDialog>}
-    {dialog === 'totp' && totpStatus && <AccountSecurityDialog icon={LockKeyhole} title="Application d’authentification (TOTP)" onClose={closeDialog}><TotpSection status={totpStatus} run={run} onStatusChange={setTotpStatus} /></AccountSecurityDialog>}
-    {dialog === 'email-mfa' && emailMfaStatus && <AccountSecurityDialog icon={Mail} title="Code par e-mail" onClose={closeDialog}><EmailMfaSection status={emailMfaStatus} run={run} onStatusChange={setEmailMfaStatus} /></AccountSecurityDialog>}
-    {dialog === 'recovery' && totpStatus?.enabled && <AccountSecurityDialog icon={ShieldCheck} title="Régénérer les codes de récupération" onClose={closeDialog}><RecoveryCodesPanel status={totpStatus} onStatusChange={setTotpStatus} /></AccountSecurityDialog>}
-    {dialog === 'sessions' && <AccountSecurityDialog icon={MonitorSmartphone} title="Sessions et appareils" onClose={closeDialog} wide><SessionsSection sessions={sessions} run={run} reload={reload} embedded /></AccountSecurityDialog>}
-    {dialog === 'delete' && <AccountSecurityDialog icon={AlertTriangle} title="Supprimer le compte" onClose={closeDialog}><DangerSection profile={profile} run={run} embedded /></AccountSecurityDialog>}
+    {dialog === 'email' && <AccountSecurityDialog icon={Mail} title={t('account.securitySection.changeEmail')} onClose={closeDialog}><EmailChangePanel run={run} refreshProfile={refreshProfile} onComplete={closeDialog} /></AccountSecurityDialog>}
+    {dialog === 'password' && <AccountSecurityDialog icon={LockKeyhole} title={t('account.securitySection.changePassword')} onClose={closeDialog}><PasswordChangePanel run={run} onComplete={closeDialog} /></AccountSecurityDialog>}
+    {dialog === 'totp' && totpStatus && <AccountSecurityDialog icon={LockKeyhole} title={t('account.securitySection.authenticatorApp')} onClose={closeDialog}><TotpSection status={totpStatus} run={run} onStatusChange={setTotpStatus} /></AccountSecurityDialog>}
+    {dialog === 'email-mfa' && emailMfaStatus && <AccountSecurityDialog icon={Mail} title={t('account.securitySection.emailCode')} onClose={closeDialog}><EmailMfaSection status={emailMfaStatus} run={run} onStatusChange={setEmailMfaStatus} /></AccountSecurityDialog>}
+    {dialog === 'recovery' && totpStatus?.enabled && <AccountSecurityDialog icon={ShieldCheck} title={t('account.securitySection.regenerateRecovery')} onClose={closeDialog}><RecoveryCodesPanel status={totpStatus} onStatusChange={setTotpStatus} /></AccountSecurityDialog>}
+    {dialog === 'sessions' && <AccountSecurityDialog icon={MonitorSmartphone} title={t('account.securitySection.sessionsDevices')} onClose={closeDialog} wide><SessionsSection sessions={sessions} run={run} reload={reload} embedded /></AccountSecurityDialog>}
+    {dialog === 'delete' && <AccountSecurityDialog icon={AlertTriangle} title={t('account.securitySection.deleteAccount')} onClose={closeDialog}><DangerSection profile={profile} run={run} embedded /></AccountSecurityDialog>}
   </section>
 }
 
@@ -258,6 +271,7 @@ function SecurityActionRow({ icon: Icon, title, description, status, tone, actio
 }
 
 function AccountSecurityDialog({ icon: Icon, title, onClose, wide = false, children }: { icon: LucideIcon; title: string; onClose: () => void; wide?: boolean; children: ReactNode }) {
+  const { t, locale } = useI18n()
   const closeButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     closeButton.current?.focus()
@@ -265,16 +279,18 @@ function AccountSecurityDialog({ icon: Icon, title, onClose, wide = false, child
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [onClose])
-  const titleId = `account-security-dialog-${title.toLocaleLowerCase('fr').replace(/[^a-z0-9]+/g, '-')}`
-  return createPortal(<div className="account-security-dialog-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><section className={`account-security-dialog${wide ? ' account-security-dialog--wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}><header><span><Icon size={19} /></span><div><p>SÉCURITÉ</p><h2 id={titleId}>{title}</h2></div><button ref={closeButton} className="panel-icon-button" type="button" aria-label="Fermer" onClick={onClose}><X size={16} /></button></header><div className="account-security-dialog__content">{children}</div></section></div>, document.body)
+  const titleId = `account-security-dialog-${title.toLocaleLowerCase(locale).replace(/[^a-z0-9]+/g, '-')}`
+  return createPortal(<div className="account-security-dialog-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><section className={`account-security-dialog${wide ? ' account-security-dialog--wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}><header><span><Icon size={19} /></span><div><p>{t('account.securitySection.dialogEyebrow')}</p><h2 id={titleId}>{title}</h2></div><button ref={closeButton} className="panel-icon-button" type="button" aria-label={t('account.securitySection.close')} onClick={onClose}><X size={16} /></button></header><div className="account-security-dialog__content">{children}</div></section></div>, document.body)
 }
 
 function EmailChangePanel({ run, refreshProfile, onComplete }: { run: (action: () => Promise<void>, success: string) => Promise<boolean>; refreshProfile: () => Promise<void>; onComplete: () => void }) {
-  return <form className="account-form account-security-dialog__form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(async () => { await changeAccountEmail(String(data.get('current_password')), String(data.get('new_email'))); await refreshProfile() }, 'Adresse e-mail mise à jour.').then((ok) => { if (ok) { form.reset(); onComplete() } }) }}><p className="account-card-description">Mettez à jour l’adresse e-mail associée à votre compte.</p><label>Nouvelle adresse<input name="new_email" type="email" placeholder="exemple@domaine.com" required /></label><label>Mot de passe actuel<input name="current_password" type="password" placeholder="Saisissez votre mot de passe actuel" required autoComplete="current-password" /></label><div className="dialog-actions"><button className="account-button account-button--primary" type="submit">Modifier l’e-mail</button></div></form>
+  const { t } = useI18n()
+  return <form className="account-form account-security-dialog__form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(async () => { await changeAccountEmail(String(data.get('current_password')), String(data.get('new_email'))); await refreshProfile() }, t('account.securitySection.emailUpdated')).then((ok) => { if (ok) { form.reset(); onComplete() } }) }}><p className="account-card-description">{t('account.securitySection.updateEmailHelp')}</p><label>{t('account.securitySection.newEmail')}<input name="new_email" type="email" placeholder={t('account.securitySection.emailPlaceholder')} required /></label><label>{t('account.securitySection.currentPassword')}<input name="current_password" type="password" placeholder={t('account.securitySection.currentPasswordPlaceholder')} required autoComplete="current-password" /></label><div className="dialog-actions"><button className="account-button account-button--primary" type="submit">{t('account.securitySection.updateEmail')}</button></div></form>
 }
 
 function PasswordChangePanel({ run, onComplete }: { run: (action: () => Promise<void>, success: string) => Promise<boolean>; onComplete: () => void }) {
-  return <form className="account-form account-security-dialog__form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(() => changeAccountPassword(String(data.get('current_password')), String(data.get('new_password')), String(data.get('confirmation'))), 'Mot de passe mis à jour.').then((ok) => { if (ok) { form.reset(); onComplete() } }) }}><p className="account-card-description">Choisissez un mot de passe fort et unique.</p><label>Mot de passe actuel<input name="current_password" type="password" placeholder="Saisissez votre mot de passe actuel" required autoComplete="current-password" /></label><label>Nouveau mot de passe<input name="new_password" type="password" placeholder="Minimum 12 caractères" minLength={12} required autoComplete="new-password" /></label><label>Confirmation<input name="confirmation" type="password" placeholder="Confirmez votre nouveau mot de passe" minLength={12} required autoComplete="new-password" /></label><div className="dialog-actions"><button className="account-button account-button--primary" type="submit">Modifier le mot de passe</button></div></form>
+  const { t } = useI18n()
+  return <form className="account-form account-security-dialog__form" onSubmit={(event) => { event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); void run(() => changeAccountPassword(String(data.get('current_password')), String(data.get('new_password')), String(data.get('confirmation'))), t('account.securitySection.passwordUpdated')).then((ok) => { if (ok) { form.reset(); onComplete() } }) }}><p className="account-card-description">{t('account.securitySection.chooseStrongPassword')}</p><label>{t('account.securitySection.currentPassword')}<input name="current_password" type="password" placeholder={t('account.securitySection.currentPasswordPlaceholder')} required autoComplete="current-password" /></label><label>{t('account.securitySection.newPassword')}<input name="new_password" type="password" placeholder={t('account.securitySection.passwordPlaceholder')} minLength={12} required autoComplete="new-password" /></label><label>{t('account.securitySection.confirmation')}<input name="confirmation" type="password" placeholder={t('account.securitySection.confirmPasswordPlaceholder')} minLength={12} required autoComplete="new-password" /></label><div className="dialog-actions"><button className="account-button account-button--primary" type="submit">{t('account.securitySection.updatePassword')}</button></div></form>
 }
 
 function EmailMfaSection({ status, run, onStatusChange }: { status: EmailMfaStatus; run: (action: () => Promise<void>, success: string) => Promise<boolean>; onStatusChange: (status: EmailMfaStatus) => void }) {
@@ -351,25 +367,25 @@ function PreferencesSection({ preferences, setPreferences }: { preferences: Acco
   const update = <K extends keyof AccountPreferences>(key: K, value: AccountPreferences[K]) => setPreferences({ ...preferences, [key]: value })
   return <><AccountHeading title={t('account.preferences.title')} description={t('account.preferences.description')} /><div className="account-form account-preferences-form">
     <section className="account-preference-card">
-      <PreferenceCardHeading icon={Settings2} title="Interface" />
+      <PreferenceCardHeading icon={Settings2} title={t('account.preferences.interface')} />
       <div className="account-preference-grid">
-        <div className="account-preference-field account-preference-field--wide account-theme-preference"><div className="account-preference-field__identity"><Moon size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><span id="account-theme-label">Thème de l’interface par défaut</span></div><p>Apparence appliquée à la prochaine ouverture de CartaVault.</p></div></div><div className="account-segmented-choice account-theme-choice" role="group" aria-labelledby="account-theme-label"><button type="button" className={preferences.default_theme === 'light' ? 'is-selected' : ''} onClick={() => update('default_theme', 'light')}><Sun size={15} />Clair</button><button type="button" className={preferences.default_theme === 'dark' ? 'is-selected' : ''} onClick={() => update('default_theme', 'dark')}><Moon size={15} />Sombre</button><button type="button" className={preferences.default_theme === 'system' ? 'is-selected' : ''} onClick={() => update('default_theme', 'system')}><Monitor size={15} />Système</button></div></div>
-        <div className="account-preference-field account-preference-field--wide account-basemap-preference"><div className="account-preference-field__identity"><MapIcon size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><span id="account-basemap-label">Fond de carte par défaut</span></div><p>Style de carte utilisé par défaut.</p></div></div><div className="account-segmented-choice account-basemap-choice" role="group" aria-labelledby="account-basemap-label"><button type="button" className={preferences.preferred_basemap === 'cartavault-light' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'cartavault-light')}><Sun size={15} />Clair</button><button type="button" className={preferences.preferred_basemap === 'cartavault-dark' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'cartavault-dark')}><Moon size={15} />Sombre</button><button type="button" className={preferences.preferred_basemap === 'satellite' || preferences.preferred_basemap === 'google-satellite' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', (preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')) === 'google' ? 'google-satellite' : 'satellite')}><ImageIcon size={15} />Satellite</button><button type="button" className={preferences.preferred_basemap === 'osm' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'osm')}><Globe2 size={15} />OpenStreetMap</button></div></div>
-        <PreferenceField icon={Globe2} label={t('common.language')} htmlFor="account-language" description="Langue utilisée dans l’interface.">
+        <div className="account-preference-field account-preference-field--wide account-theme-preference"><div className="account-preference-field__identity"><Moon size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><span id="account-theme-label">{t('account.preferences.defaultTheme')}</span></div><p>{t('account.preferences.defaultThemeHelp')}</p></div></div><div className="account-segmented-choice account-theme-choice" role="group" aria-labelledby="account-theme-label"><button type="button" className={preferences.default_theme === 'light' ? 'is-selected' : ''} onClick={() => update('default_theme', 'light')}><Sun size={15} />{t('account.preferences.light')}</button><button type="button" className={preferences.default_theme === 'dark' ? 'is-selected' : ''} onClick={() => update('default_theme', 'dark')}><Moon size={15} />{t('account.preferences.dark')}</button><button type="button" className={preferences.default_theme === 'system' ? 'is-selected' : ''} onClick={() => update('default_theme', 'system')}><Monitor size={15} />{t('account.preferences.system')}</button></div></div>
+        <div className="account-preference-field account-preference-field--wide account-basemap-preference"><div className="account-preference-field__identity"><MapIcon size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><span id="account-basemap-label">{t('account.preferences.defaultBasemap')}</span></div><p>{t('account.preferences.defaultBasemapHelp')}</p></div></div><div className="account-segmented-choice account-basemap-choice" role="group" aria-labelledby="account-basemap-label"><button type="button" className={preferences.preferred_basemap === 'cartavault-light' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'cartavault-light')}><Sun size={15} />{t('account.preferences.light')}</button><button type="button" className={preferences.preferred_basemap === 'cartavault-dark' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'cartavault-dark')}><Moon size={15} />{t('account.preferences.dark')}</button><button type="button" className={preferences.preferred_basemap === 'satellite' || preferences.preferred_basemap === 'google-satellite' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', (preferences.basemaps?.satellite_provider ?? (preferences.preferred_basemap === 'google-satellite' ? 'google' : 'stadia')) === 'google' ? 'google-satellite' : 'satellite')}><ImageIcon size={15} />{t('account.preferences.satellite')}</button><button type="button" className={preferences.preferred_basemap === 'osm' ? 'is-selected' : ''} onClick={() => update('preferred_basemap', 'osm')}><Globe2 size={15} />{t('account.preferences.openStreetMap')}</button></div></div>
+        <PreferenceField icon={Globe2} label={t('common.language')} htmlFor="account-language" description={t('account.preferences.languageDescription')}>
           <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => update('language', event.target.value as AccountPreferences['language'])}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
         </PreferenceField>
-        <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density" description="Compacité des éléments à l’écran.">
+        <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density" description={t('account.preferences.densityDescription')}>
           <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>
         </PreferenceField>
-        <PreferenceField icon={LayoutDashboard} label={t('account.preferences.startup')} htmlFor="account-startup" description="Page affichée au lancement.">
+        <PreferenceField icon={LayoutDashboard} label={t('account.preferences.startup')} htmlFor="account-startup" description={t('account.preferences.startupDescription')}>
           <select id="account-startup" aria-labelledby="account-startup-label" value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="dashboard">{t('dashboard.title')}</option><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select>
         </PreferenceField>
         <TimezoneCombobox value={preferences.timezone} label={t('account.preferences.timezone')} onChange={(timezone) => update('timezone', timezone)} />
-        <PreferenceField icon={Trash2} label={t('account.preferences.trashRetention')} htmlFor="account-trash-retention" description="Durée de conservation des éléments supprimés.">
+        <PreferenceField icon={Trash2} label={t('account.preferences.trashRetention')} htmlFor="account-trash-retention" description={t('account.preferences.trashDescription')}>
           <select id="account-trash-retention" aria-labelledby="account-trash-retention-label" value={preferences.trash_retention_days} onChange={(event) => update('trash_retention_days', Number(event.target.value))}>{[7, 14, 30, 60, 90, 180, 365].map((days) => <option key={days} value={days}>{days} {t('account.preferences.days')}</option>)}</select>
         </PreferenceField>
-        <PreferenceField icon={ImageIcon} label="Photos sur les marqueurs" htmlFor="account-photo-markers" description="Photo ronde ou, sans photo, couleur du statut avec l’icône de catégorie.">
-          <label className="cv-toggle account-preference-toggle"><input id="account-photo-markers" type="checkbox" role="switch" checked={preferences.photo_markers_enabled} onChange={(event) => update('photo_markers_enabled', event.target.checked)} /><i aria-hidden="true" /><span>{preferences.photo_markers_enabled ? 'Activé' : 'Désactivé'}</span></label>
+        <PreferenceField icon={ImageIcon} label={t('account.preferences.photoMarkers')} htmlFor="account-photo-markers" description={t('account.preferences.photoMarkersDescription')}>
+          <label className="cv-toggle account-preference-toggle"><input id="account-photo-markers" type="checkbox" role="switch" checked={preferences.photo_markers_enabled} onChange={(event) => update('photo_markers_enabled', event.target.checked)} /><i aria-hidden="true" /><span>{preferences.photo_markers_enabled ? t('account.preferences.enabled') : t('account.preferences.disabled')}</span></label>
         </PreferenceField>
       </div>
     </section>
@@ -379,8 +395,9 @@ function PreferencesSection({ preferences, setPreferences }: { preferences: Acco
 }
 
 function TimezoneCombobox({ value, label, onChange }: { value: string; label: string; onChange: (timezone: string) => void }) {
+  const { t } = useI18n()
   return <div className="account-preference-field account-timezone-combobox">
-    <div className="account-preference-field__identity"><Clock3 size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><label htmlFor="account-timezone">{label}</label></div><p>Heure et dates selon votre région.</p></div></div>
+    <div className="account-preference-field__identity"><Clock3 size={17} aria-hidden="true" /><div><div className="account-preference-field__label"><label htmlFor="account-timezone">{label}</label></div><p>{t('account.preferences.timezoneDescription')}</p></div></div>
     <select
       id="account-timezone"
       value={value}
@@ -397,4 +414,4 @@ function DangerSection({ profile, run, embedded = false }: { profile: AccountPro
 
 function AccountHeading({ title, description }: { title: string; description: string }) { return <header className="account-content-heading"><p className="cv-workspace-panel__eyebrow">Compte</p><h2>{title}</h2><span>{description}</span></header> }
 function formatDate(value: string, withTime = false): string { return new Intl.DateTimeFormat('fr-FR', withTime ? { dateStyle: 'long', timeStyle: 'short' } : { dateStyle: 'long' }).format(new Date(value)) }
-function messageFor(reason: unknown, fallback: string): string { return reason instanceof Error ? reason.message : fallback }
+function messageFor(reason: unknown, fallback: string): string { return reason instanceof Error ? `${fallback} ${reason.message}` : fallback }

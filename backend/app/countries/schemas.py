@@ -32,5 +32,6 @@ class CountryBoundaryGeometry(BaseModel):
 class CountryBoundaryRead(BaseModel):
     country_id: UUID
     iso_alpha3: str
+    detail: Literal["low", "medium", "high"]
     geometry: CountryBoundaryGeometry
     point_count: int

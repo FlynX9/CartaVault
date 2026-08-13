@@ -211,17 +211,22 @@ class PlaceBulkAction(BaseModel):
     """Explicit, bounded atomic action for a selected page of places."""
 
     place_ids: list[UUID] = Field(min_length=1, max_length=500)
-    action: Literal["set_status", "add_category", "remove_category", "add_tag", "remove_tag", "delete"]
+    action: Literal["set_status", "set_category", "add_category", "remove_category", "add_tag", "remove_tag", "delete"]
     status_id: UUID | None = None
     category_id: UUID | None = None
     tag_id: UUID | None = None
+    tag_ids: list[UUID] | None = Field(default=None, min_length=1, max_length=100)
 
     @model_validator(mode="after")
     def validate_action_target(self) -> Self:
-        required = {"set_status": "status_id", "add_category": "category_id", "remove_category": "category_id", "add_tag": "tag_id", "remove_tag": "tag_id"}
+        required = {"set_status": "status_id", "set_category": "category_id", "add_category": "category_id", "remove_category": "category_id"}
         field_name = required.get(self.action)
         if field_name and getattr(self, field_name) is None:
             raise ValueError(f"{field_name} is required for {self.action}")
+        if self.action in {"add_tag", "remove_tag"} and self.tag_id is None and not self.tag_ids:
+            raise ValueError(f"tag_id or tag_ids is required for {self.action}")
+        if self.tag_ids and len(set(self.tag_ids)) != len(self.tag_ids):
+            raise ValueError("tag_ids must not contain duplicates")
         if len(set(self.place_ids)) != len(self.place_ids):
             raise ValueError("place_ids must not contain duplicates")
         return self

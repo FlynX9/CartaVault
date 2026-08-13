@@ -20,6 +20,7 @@ class StarterProfileOptions(BaseModel):
 class StarterProfileImport(BaseModel):
     map_id: UUID
     resource_type: StarterProfileResourceType
+    selected_keys: list[str] | None = Field(default=None, max_length=100)
 
 
 class StarterProfileImportResult(BaseModel):

@@ -7,14 +7,21 @@ def _point_count(polygons) -> int:
 
 
 def test_display_boundaries_are_detailed_but_bounded() -> None:
-    display = load_display_boundaries()
     routing = load_boundaries()
+    low = load_display_boundaries("low")
+    medium = load_display_boundaries("medium")
+    high = load_display_boundaries("high")
 
-    assert _point_count(display["GEO"]) >= 450
-    assert max(_point_count(polygons) for polygons in display.values()) <= 15_000
-    assert all(
-        ring[0][:2] == ring[-1][:2]
-        for polygons in display.values()
-        for polygon in polygons
-        for ring in polygon
-    )
+    assert low.keys() == medium.keys() == high.keys()
+    assert len(low) >= 230
+    assert _point_count(routing["GEO"]) < _point_count(low["GEO"])
+    assert _point_count(low["GEO"]) < _point_count(medium["GEO"])
+    assert _point_count(medium["GEO"]) < _point_count(high["GEO"])
+    for display, maximum in ((low, 3_000), (medium, 12_000), (high, 30_000)):
+        assert max(_point_count(polygons) for polygons in display.values()) <= maximum
+        assert all(
+            ring[0][:2] == ring[-1][:2]
+            for polygons in display.values()
+            for polygon in polygons
+            for ring in polygon
+        )

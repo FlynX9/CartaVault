@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +19,7 @@ class Tag(Base):
     __tablename__ = "tags"
     __table_args__ = (
         CheckConstraint("color ~ '^#[0-9A-F]{6}$'", name="tags_color_format"),
+        CheckConstraint("sort_order >= 0", name="tags_sort_order_nonnegative"),
         Index("tags_map_name_key", "map_id", text("lower(btrim(name))"), unique=True),
     )
 
@@ -38,6 +39,8 @@ class Tag(Base):
         nullable=False,
         server_default=text("'#0FA68A'"),
     )
+
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     map_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),

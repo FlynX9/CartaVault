@@ -57,8 +57,8 @@ export async function getMapProfiles(signal?: AbortSignal): Promise<StarterProfi
   return getJson('/map-profiles', new URLSearchParams(), signal) as Promise<StarterProfile[]>
 }
 
-export async function importMapProfileResources(mapId: string, profileId: StarterProfileId, resourceType: StarterProfileResourceType): Promise<StarterProfileImportResult> {
-  return sendJson(`/map-profiles/${encodeURIComponent(profileId)}/import`, 'POST', { map_id: mapId, resource_type: resourceType }) as Promise<StarterProfileImportResult>
+export async function importMapProfileResources(mapId: string, profileId: StarterProfileId, resourceType: StarterProfileResourceType, selectedKeys?: string[]): Promise<StarterProfileImportResult> {
+  return sendJson(`/map-profiles/${encodeURIComponent(profileId)}/import`, 'POST', { map_id: mapId, resource_type: resourceType, selected_keys: selectedKeys }) as Promise<StarterProfileImportResult>
 }
 
 export async function deleteMap(mapId: string): Promise<void> {

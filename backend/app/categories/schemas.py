@@ -75,4 +75,11 @@ class CategoryRead(BaseModel):
     description: str | None
     icon: str
     marks_as_visited: bool
+    sort_order: int
     places_count: int = 0
+
+
+class CategoryOrder(BaseModel):
+    """The complete, user-defined order of categories for one map."""
+
+    ids: list[UUID] = Field(min_length=1, max_length=500)

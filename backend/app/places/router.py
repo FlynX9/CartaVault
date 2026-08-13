@@ -219,6 +219,7 @@ def place_to_read(
                 description=category.description,
                 icon=category.icon,
                 marks_as_visited=category.marks_as_visited,
+                sort_order=category.sort_order,
                 is_primary=(place.id, category.id) in primary_categories,
             )
             for category in place.categories
@@ -229,6 +230,7 @@ def place_to_read(
                 map_id=tag.map_id,
                 name=tag.name,
                 color=tag.color,
+                sort_order=tag.sort_order,
             )
             for tag in place.tags
         ],
@@ -376,15 +378,16 @@ def bulk_update_places(
         require_map_role(database_session, selected_map_id, current_user, "editor")
 
     target_category = None
-    target_tag = None
+    target_tags: list[Tag] = []
     target_status = None
     if action_data.category_id is not None:
         target_category = database_session.get(Category, action_data.category_id)
         if target_category is None or target_category.map_id not in map_ids:
             raise HTTPException(status_code=409, detail="BULK_CATEGORY_FORBIDDEN")
-    if action_data.tag_id is not None:
-        target_tag = database_session.get(Tag, action_data.tag_id)
-        if target_tag is None or target_tag.map_id not in map_ids:
+    requested_tag_ids = action_data.tag_ids or ([action_data.tag_id] if action_data.tag_id is not None else [])
+    if requested_tag_ids:
+        target_tags = list(database_session.scalars(select(Tag).where(Tag.id.in_(requested_tag_ids))).all())
+        if len(target_tags) != len(requested_tag_ids) or any(target_tag.map_id not in map_ids for target_tag in target_tags):
             raise HTTPException(status_code=409, detail="BULK_TAG_FORBIDDEN")
     if action_data.status_id is not None:
         target_status = database_session.get(PlaceStatus, action_data.status_id)
@@ -403,6 +406,21 @@ def bulk_update_places(
             if action_data.action == "set_status" and target_status is not None:
                 if place.status_id == target_status.id: unchanged_count += 1
                 else: place.status_id = target_status.id; updated_count += 1
+            elif action_data.action == "set_category" and target_category is not None:
+                if len(place.categories) == 1 and place.categories[0].id == target_category.id:
+                    unchanged_count += 1
+                else:
+                    place.categories[:] = [target_category]
+                    database_session.flush()
+                    database_session.execute(
+                        update(place_categories_table)
+                        .where(
+                            place_categories_table.c.place_id == place.id,
+                            place_categories_table.c.category_id == target_category.id,
+                        )
+                        .values(is_primary=True)
+                    )
+                    updated_count += 1
             elif action_data.action == "add_category" and target_category is not None:
                 if target_category in place.categories: unchanged_count += 1
                 else:
@@ -413,12 +431,17 @@ def bulk_update_places(
             elif action_data.action == "remove_category" and target_category is not None:
                 if target_category not in place.categories: unchanged_count += 1
                 else: place.categories.remove(target_category); updated_count += 1
-            elif action_data.action == "add_tag" and target_tag is not None:
-                if target_tag in place.tags: unchanged_count += 1
-                else: place.tags.append(target_tag); updated_count += 1
-            elif action_data.action == "remove_tag" and target_tag is not None:
-                if target_tag not in place.tags: unchanged_count += 1
-                else: place.tags.remove(target_tag); updated_count += 1
+            elif action_data.action == "add_tag" and target_tags:
+                missing_tags = [target_tag for target_tag in target_tags if target_tag not in place.tags]
+                if not missing_tags: unchanged_count += 1
+                else: place.tags.extend(missing_tags); updated_count += 1
+            elif action_data.action == "remove_tag" and target_tags:
+                attached_tags = [target_tag for target_tag in target_tags if target_tag in place.tags]
+                if not attached_tags: unchanged_count += 1
+                else:
+                    for target_tag in attached_tags:
+                        place.tags.remove(target_tag)
+                    updated_count += 1
         database_session.commit()
     except SQLAlchemyError as error:
         database_session.rollback()

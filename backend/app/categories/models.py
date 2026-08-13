@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, Index, String, Text, text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,7 +20,10 @@ class Category(Base):
     """Database representation of a place category."""
 
     __tablename__ = "categories"
-    __table_args__ = (Index("categories_map_name_key", "map_id", text("lower(btrim(name))"), unique=True),)
+    __table_args__ = (
+        CheckConstraint("sort_order >= 0", name="categories_sort_order_nonnegative"),
+        Index("categories_map_name_icon_key", "map_id", text("lower(btrim(name))"), "icon", unique=True),
+    )
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
@@ -55,3 +58,4 @@ class Category(Base):
         server_default=text("'material-symbols:location-on-outline'"),
     )
     marks_as_visited: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))

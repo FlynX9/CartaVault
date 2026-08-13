@@ -36,6 +36,12 @@ export async function deleteAnnotationTemplate(id: string): Promise<void> {
   await sendWithoutResponse(`/annotations/templates/${encodeURIComponent(id)}`, 'DELETE')
 }
 
+export async function reorderAnnotationTemplates(mapId: string, ids: string[]): Promise<AnnotationTemplate[]> {
+  const payload = await sendJson(`/annotations/templates/reorder?${new URLSearchParams({ map_id: mapId })}`, 'POST', { ids })
+  if (!Array.isArray(payload)) throw new Error('La liste des modèles d’annotation réordonnée est invalide.')
+  return payload.map(parseTemplate)
+}
+
 export async function getPlaceAnnotations(placeId: string, signal?: AbortSignal): Promise<PlaceAnnotation[]> {
   const result = await getJson(`/annotations/places/${encodeURIComponent(placeId)}`, new URLSearchParams(), signal)
   if (!Array.isArray(result)) throw new Error('La liste des annotations est invalide.')

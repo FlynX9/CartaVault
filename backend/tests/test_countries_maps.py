@@ -20,14 +20,16 @@ def test_country_catalog_list_search_codes_and_read(integration_client: TestClie
     read = integration_client.get(f"/countries/{france_country.id}")
     assert read.status_code == 200
     assert read.json()["name"] == "France"
-    boundary = integration_client.get(f"/countries/{france_country.id}/boundary")
+    boundary = integration_client.get(f"/countries/{france_country.id}/boundary", params={"detail": "high"})
     assert boundary.status_code == 200
     assert boundary.json()["iso_alpha3"] == "FRA"
     assert boundary.json()["geometry"]["type"] == "MultiPolygon"
-    assert boundary.json()["point_count"] <= 15_000
+    assert boundary.json()["detail"] == "high"
+    assert boundary.json()["point_count"] <= 30_000
     assert boundary.headers["cache-control"] == "private, max-age=86400"
     cached = integration_client.get(
         f"/countries/{france_country.id}/boundary",
+        params={"detail": "high"},
         headers={"If-None-Match": boundary.headers["etag"]},
     )
     assert cached.status_code == 304

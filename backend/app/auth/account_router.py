@@ -85,6 +85,10 @@ def preferences(current: UserSession = Depends(get_current_session)) -> dict[str
 def update_preferences(data: AccountPreferences, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
     next_preferences = data.model_dump(mode="json")
     previous_preferences = current.user.preferences
+    # Consent has its own dedicated endpoint and must not disappear when the
+    # user later saves ordinary interface preferences.
+    if isinstance(previous_preferences, dict) and "privacy_consent" in previous_preferences:
+        next_preferences["privacy_consent"] = previous_preferences["privacy_consent"]
     current.user.preferences = next_preferences
     if data.routing.provider == "google" and selected_api_key(database_session, current.user, "routing", "google") is None:
         current.user.preferences = previous_preferences
@@ -103,7 +107,11 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
 
 @router.post("/preferences/reset")
 def reset_preferences(database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
-    current.user.preferences = dict(DEFAULT_PREFERENCES)
+    consent = (current.user.preferences or {}).get("privacy_consent")
+    current.user.preferences = {
+        **DEFAULT_PREFERENCES,
+        **({"privacy_consent": consent} if isinstance(consent, dict) else {}),
+    }
     database_session.commit()
     return _preferences(current.user)
 

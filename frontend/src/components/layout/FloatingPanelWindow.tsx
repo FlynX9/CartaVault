@@ -1,405 +1,447 @@
-import { Children, createContext, isValidElement, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { Children, createContext, isValidElement, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
-export const RESET_DESKTOP_PANEL_LAYOUT_EVENT = 'cartavault:reset-desktop-panel-layout'
-export const DESKTOP_PANEL_LAYOUT_MODE_EVENT = 'cartavault:desktop-panel-layout-mode-changed'
-const LEGACY_PANEL_LAYOUT_MODE_KEY = 'cartavault:desktop-panel-layout-mode'
-const PANEL_LAYOUT_MODE_KEY_PREFIX = 'cartavault:desktop-panel-layout-mode:'
+export const RESET_DESKTOP_PANEL_LAYOUT_EVENT = "cartavault:reset-desktop-panel-layout";
+export const DESKTOP_PANEL_LAYOUT_MODE_EVENT = "cartavault:desktop-panel-layout-mode-changed";
+const LEGACY_PANEL_LAYOUT_MODE_KEY = "cartavault:desktop-panel-layout-mode";
+const PANEL_LAYOUT_MODE_KEY_PREFIX = "cartavault:desktop-panel-layout-mode:";
 
-export type DesktopPanelLayoutMode = 'default' | 'custom'
+export type DesktopPanelLayoutMode = "default" | "custom";
 
 export function panelLayoutModeStorageKey(scope: string): string {
-  return `${PANEL_LAYOUT_MODE_KEY_PREFIX}${scope}`
+  return `${PANEL_LAYOUT_MODE_KEY_PREFIX}${scope}`;
 }
 
 export function readPanelLayoutMode(scope: string, migrateLegacy = false): DesktopPanelLayoutMode {
-  const key = panelLayoutModeStorageKey(scope)
-  const scoped = window.localStorage.getItem(key)
-  if (scoped === 'default' || scoped === 'custom') return scoped
+  const key = panelLayoutModeStorageKey(scope);
+  const scoped = window.localStorage.getItem(key);
+  if (scoped === "default" || scoped === "custom") return scoped;
   if (migrateLegacy) {
-    const legacy = window.localStorage.getItem(LEGACY_PANEL_LAYOUT_MODE_KEY)
-    if (legacy === 'default' || legacy === 'custom') {
-      window.localStorage.setItem(key, legacy)
-      window.localStorage.removeItem(LEGACY_PANEL_LAYOUT_MODE_KEY)
-      return legacy
+    const legacy = window.localStorage.getItem(LEGACY_PANEL_LAYOUT_MODE_KEY);
+    if (legacy === "default" || legacy === "custom") {
+      window.localStorage.setItem(key, legacy);
+      window.localStorage.removeItem(LEGACY_PANEL_LAYOUT_MODE_KEY);
+      return legacy;
     }
   }
-  return 'custom'
+  return "custom";
 }
 
 export interface FloatingPanelGeometry {
-  x: number
-  y: number
-  width: number
-  height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-export const FloatingPanelWindowContext = createContext<{ locked: boolean; maximized: boolean; toggleMaximize: () => void } | null>(null)
+export const FloatingPanelWindowContext = createContext<{
+  locked: boolean;
+  maximized: boolean;
+  toggleMaximize: () => void;
+  toggleLock: () => void;
+} | null>(null);
 
 interface FloatingPanelWindowProps {
-  kind: 'workspace' | 'trips' | 'timeline' | 'detail' | 'editor'
-  label: string
-  storageKey: string
-  initialGeometry: FloatingPanelGeometry
-  minWidth: number
-  maxWidth?: number
-  minHeight?: number
-  fitContentSelector?: string
-  fitContentMaxHeight?: number
-  collapsed?: boolean
-  collapsedWidth?: number
-  resetVersion: number
-  active: boolean
-  hidden?: boolean
-  locked?: boolean
-  onActivate: () => void
-  onGeometryCommit?: (geometry: FloatingPanelGeometry) => void
-  children: ReactNode
+  kind: "workspace" | "trips" | "timeline" | "detail" | "editor";
+  label: string;
+  storageKey: string;
+  initialGeometry: FloatingPanelGeometry;
+  minWidth: number;
+  maxWidth?: number;
+  minHeight?: number;
+  fitContentSelector?: string;
+  fitContentMaxHeight?: number;
+  collapsed?: boolean;
+  collapsedWidth?: number;
+  resetVersion: number;
+  active: boolean;
+  hidden?: boolean;
+  locked?: boolean;
+  onActivate: () => void;
+  onGeometryCommit?: (geometry: FloatingPanelGeometry) => void;
+  children: ReactNode;
 }
 
-type ResizeEdge = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw'
+type ResizeEdge = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 type Interaction = {
-  pointerId: number
-  startX: number
-  startY: number
-  geometry: FloatingPanelGeometry
-  mode: 'move' | ResizeEdge
-}
+  pointerId: number;
+  startX: number;
+  startY: number;
+  geometry: FloatingPanelGeometry;
+  mode: "move" | ResizeEdge;
+};
 
-const VIEWPORT_MARGIN = 12
-const DEFAULT_MIN_HEIGHT = 260
-const PANEL_HEADER_HEIGHT = 56
+const VIEWPORT_MARGIN = 12;
+const DEFAULT_MIN_HEIGHT = 260;
+const PANEL_HEADER_HEIGHT = 56;
 
 function timelineGeometry(workspace: HTMLElement, minWidth: number, minHeight: number): FloatingPanelGeometry {
-  const width = Math.min(workspace.clientWidth - VIEWPORT_MARGIN * 2, Math.max(minWidth, Math.round(workspace.clientWidth * .72)))
-  const height = Math.min(workspace.clientHeight - VIEWPORT_MARGIN * 2, Math.max(minHeight, Math.round(workspace.clientHeight * .34)))
+  const width = Math.min(workspace.clientWidth - VIEWPORT_MARGIN * 2, Math.max(minWidth, Math.round(workspace.clientWidth * 0.72)));
+  const height = Math.min(workspace.clientHeight - VIEWPORT_MARGIN * 2, Math.max(minHeight, Math.round(workspace.clientHeight * 0.34)));
   return {
     x: Math.max(VIEWPORT_MARGIN, Math.round((workspace.clientWidth - width) / 2)),
     y: Math.max(VIEWPORT_MARGIN, workspace.clientHeight - height - VIEWPORT_MARGIN),
     width,
     height,
-  }
+  };
 }
 
 function containsTripTimeline(node: ReactNode): boolean {
-  if (!isValidElement(node)) return false
-  const props = node.props as { tripViewOnly?: boolean; children?: ReactNode }
-  return props.tripViewOnly === true || Children.toArray(props.children).some(containsTripTimeline)
+  if (!isValidElement(node)) return false;
+  const props = node.props as { tripViewOnly?: boolean; children?: ReactNode };
+  return props.tripViewOnly === true || Children.toArray(props.children).some(containsTripTimeline);
 }
 
 function readGeometry(storageKey: string, fallback: FloatingPanelGeometry): FloatingPanelGeometry {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '') as Partial<FloatingPanelGeometry>
-    if ([parsed.x, parsed.y, parsed.width, parsed.height].every(Number.isFinite)) return parsed as FloatingPanelGeometry
-  } catch { /* Invalid or unavailable local storage falls back to the default layout. */ }
-  return fallback
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "") as Partial<FloatingPanelGeometry>;
+    if ([parsed.x, parsed.y, parsed.width, parsed.height].every(Number.isFinite)) return parsed as FloatingPanelGeometry;
+  } catch {
+    /* Invalid or unavailable local storage falls back to the default layout. */
+  }
+  return fallback;
 }
 
 function hasSavedGeometry(storageKey: string): boolean {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '') as Partial<FloatingPanelGeometry>
-    return [parsed.x, parsed.y, parsed.width, parsed.height].every(Number.isFinite)
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "") as Partial<FloatingPanelGeometry>;
+    return [parsed.x, parsed.y, parsed.width, parsed.height].every(Number.isFinite);
   } catch {
-    return false
+    return false;
   }
 }
 
 function saveGeometry(storageKey: string, geometry: FloatingPanelGeometry): void {
-  try { window.localStorage.setItem(storageKey, JSON.stringify(geometry)) } catch { /* Private contexts may block storage. */ }
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(geometry));
+  } catch {
+    /* Private contexts may block storage. */
+  }
 }
 
-function clampGeometry(
-  geometry: FloatingPanelGeometry,
-  workspace: HTMLElement,
-  minWidth: number,
-  maxWidth: number,
-  minHeight: number,
-): FloatingPanelGeometry {
-  if (workspace.clientWidth <= 0 || workspace.clientHeight <= 0) return geometry
-  const availableWidth = Math.max(1, workspace.clientWidth - VIEWPORT_MARGIN * 2)
-  const availableHeight = Math.max(1, workspace.clientHeight - VIEWPORT_MARGIN * 2)
-  const width = Math.min(availableWidth, Math.max(Math.min(minWidth, availableWidth), Math.min(maxWidth, geometry.width)))
-  const height = Math.min(availableHeight, Math.max(Math.min(minHeight, availableHeight), geometry.height))
+function clampGeometry(geometry: FloatingPanelGeometry, workspace: HTMLElement, minWidth: number, maxWidth: number, minHeight: number): FloatingPanelGeometry {
+  if (workspace.clientWidth <= 0 || workspace.clientHeight <= 0) return geometry;
+  const availableWidth = Math.max(1, workspace.clientWidth - VIEWPORT_MARGIN * 2);
+  const availableHeight = Math.max(1, workspace.clientHeight - VIEWPORT_MARGIN * 2);
+  const width = Math.min(availableWidth, Math.max(Math.min(minWidth, availableWidth), Math.min(maxWidth, geometry.width)));
+  const height = Math.min(availableHeight, Math.max(Math.min(minHeight, availableHeight), geometry.height));
   return {
     x: Math.min(Math.max(VIEWPORT_MARGIN, geometry.x), Math.max(VIEWPORT_MARGIN, workspace.clientWidth - width - VIEWPORT_MARGIN)),
     y: Math.min(Math.max(VIEWPORT_MARGIN, geometry.y), Math.max(VIEWPORT_MARGIN, workspace.clientHeight - PANEL_HEADER_HEIGHT - VIEWPORT_MARGIN)),
     width,
     height,
-  }
+  };
 }
 
 function resizedGeometry(start: FloatingPanelGeometry, edge: ResizeEdge, deltaX: number, deltaY: number): FloatingPanelGeometry {
-  const next = { ...start }
-  if (edge.includes('e')) next.width = start.width + deltaX
-  if (edge.includes('s')) next.height = start.height + deltaY
-  if (edge.includes('w')) { next.x = start.x + deltaX; next.width = start.width - deltaX }
-  if (edge.includes('n')) { next.y = start.y + deltaY; next.height = start.height - deltaY }
-  return next
+  const next = { ...start };
+  if (edge.includes("e")) next.width = start.width + deltaX;
+  if (edge.includes("s")) next.height = start.height + deltaY;
+  if (edge.includes("w")) {
+    next.x = start.x + deltaX;
+    next.width = start.width - deltaX;
+  }
+  if (edge.includes("n")) {
+    next.y = start.y + deltaY;
+    next.height = start.height - deltaY;
+  }
+  return next;
 }
 
-export function FloatingPanelWindow({
-  kind,
-  label,
-  storageKey,
-  initialGeometry,
-  minWidth,
-  maxWidth = Number.POSITIVE_INFINITY,
-  minHeight = DEFAULT_MIN_HEIGHT,
-  fitContentSelector,
-  fitContentMaxHeight = Number.POSITIVE_INFINITY,
-  collapsed = false,
-  collapsedWidth = 208,
-  resetVersion,
-  active,
-  hidden = false,
-  locked = false,
-  onActivate,
-  onGeometryCommit,
-  children,
-}: FloatingPanelWindowProps) {
-  const frameRef = useRef<HTMLDivElement>(null)
-  const [timelineContent, setTimelineContent] = useState(false)
-  const isTimelinePanel = kind === 'trips' && (containsTripTimeline(children) || timelineContent)
-  const effectiveKind = isTimelinePanel ? 'timeline' : kind
-  const effectiveStorageKey = isTimelinePanel ? `${storageKey}:timeline` : storageKey
-  const interactionRef = useRef<Interaction | null>(null)
-  const restoreGeometryRef = useRef<FloatingPanelGeometry | null>(null)
+export function FloatingPanelWindow({ kind, label, storageKey, initialGeometry, minWidth, maxWidth = Number.POSITIVE_INFINITY, minHeight = DEFAULT_MIN_HEIGHT, fitContentSelector, fitContentMaxHeight = Number.POSITIVE_INFINITY, collapsed = false, collapsedWidth = 208, resetVersion, active, hidden = false, locked = false, onActivate, onGeometryCommit, children }: FloatingPanelWindowProps) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [timelineContent, setTimelineContent] = useState(false);
+  const isTimelinePanel = kind === "trips" && (containsTripTimeline(children) || timelineContent);
+  const effectiveKind = isTimelinePanel ? "timeline" : kind;
+  const effectiveStorageKey = isTimelinePanel ? `${storageKey}:timeline` : storageKey;
+  const interactionRef = useRef<Interaction | null>(null);
+  const restoreGeometryRef = useRef<FloatingPanelGeometry | null>(null);
   // Detail popups are mounted only while a POI is selected.  Persisting the
   // manual-height flag alongside the geometry prevents the content-fitting
   // observer from overwriting the user's chosen height every time the popup
   // is opened again.
-  const heightManuallyResizedRef = useRef(!locked && hasSavedGeometry(effectiveStorageKey))
-  const maximizedRef = useRef(false)
-  const initialResetVersionRef = useRef(resetVersion)
-  const [geometry, setGeometry] = useState(() => locked ? initialGeometry : readGeometry(effectiveStorageKey, initialGeometry))
-  const [maximized, setMaximized] = useState(false)
-  const geometryRef = useRef(geometry)
+  const heightManuallyResizedRef = useRef(!locked && hasSavedGeometry(effectiveStorageKey));
+  const maximizedRef = useRef(false);
+  const initialResetVersionRef = useRef(resetVersion);
+  const [geometry, setGeometry] = useState(() => (locked ? initialGeometry : readGeometry(effectiveStorageKey, initialGeometry)));
+  const [maximized, setMaximized] = useState(false);
+  const geometryRef = useRef(geometry);
 
   useEffect(() => {
-    if (kind !== 'trips') {
-      setTimelineContent(false)
-      return
+    if (kind !== "trips") {
+      setTimelineContent(false);
+      return;
     }
-    const frame = frameRef.current
-    if (!frame) return
-    const inspect = () => setTimelineContent(Boolean(frame.querySelector('.trip-planner-panel--trip-view')))
-    inspect()
-    const observer = typeof MutationObserver === 'undefined' ? null : new MutationObserver(inspect)
-    observer?.observe(frame, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
-    return () => observer?.disconnect()
-  }, [children, kind])
+    const frame = frameRef.current;
+    if (!frame) return;
+    const inspect = () => setTimelineContent(Boolean(frame.querySelector(".trip-planner-panel--trip-view")));
+    inspect();
+    const observer = typeof MutationObserver === "undefined" ? null : new MutationObserver(inspect);
+    observer?.observe(frame, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer?.disconnect();
+  }, [children, kind]);
 
   const updateGeometry = (next: FloatingPanelGeometry) => {
-    geometryRef.current = next
-    setGeometry(next)
-  }
+    geometryRef.current = next;
+    setGeometry(next);
+  };
   const updateMaximized = (next: boolean) => {
-    maximizedRef.current = next
-    setMaximized(next)
-  }
+    maximizedRef.current = next;
+    setMaximized(next);
+  };
 
-  const workspace = () => frameRef.current?.closest<HTMLElement>('.map-workspace') ?? null
+  const workspace = () => frameRef.current?.closest<HTMLElement>(".map-workspace") ?? null;
   const normalize = (candidate: FloatingPanelGeometry) => {
-    const owner = workspace()
-    return owner ? clampGeometry(candidate, owner, minWidth, maxWidth, minHeight) : candidate
-  }
-  const fillLockedHeight = (candidate: FloatingPanelGeometry, owner: HTMLElement) => clampGeometry({
-    ...candidate,
-    y: VIEWPORT_MARGIN,
-    height: owner.clientHeight - VIEWPORT_MARGIN * 2,
-  }, owner, minWidth, maxWidth, minHeight)
+    const owner = workspace();
+    return owner ? clampGeometry(candidate, owner, minWidth, maxWidth, minHeight) : candidate;
+  };
+  const fillLockedHeight = (candidate: FloatingPanelGeometry, owner: HTMLElement) =>
+    clampGeometry(
+      {
+        ...candidate,
+        y: VIEWPORT_MARGIN,
+        height: owner.clientHeight - VIEWPORT_MARGIN * 2,
+      },
+      owner,
+      minWidth,
+      maxWidth,
+      minHeight,
+    );
   const commit = (candidate: FloatingPanelGeometry) => {
-    const next = normalize(candidate)
-    updateGeometry(next)
-    saveGeometry(effectiveStorageKey, next)
-    onGeometryCommit?.(next)
-  }
+    const next = normalize(candidate);
+    updateGeometry(next);
+    saveGeometry(effectiveStorageKey, next);
+    onGeometryCommit?.(next);
+  };
 
   useEffect(() => {
-    if (initialResetVersionRef.current === resetVersion) return
-    initialResetVersionRef.current = resetVersion
-    heightManuallyResizedRef.current = false
-    updateMaximized(false)
-    const owner = workspace()
+    if (initialResetVersionRef.current === resetVersion) return;
+    initialResetVersionRef.current = resetVersion;
+    heightManuallyResizedRef.current = false;
+    updateMaximized(false);
+    const owner = workspace();
     if (locked) {
-      updateGeometry(owner && !isTimelinePanel ? fillLockedHeight(initialGeometry, owner) : initialGeometry)
+      updateGeometry(owner && !isTimelinePanel ? fillLockedHeight(initialGeometry, owner) : initialGeometry);
     } else {
-      commit(initialGeometry)
+      commit(initialGeometry);
     }
-  }, [initialGeometry, resetVersion])
+  }, [initialGeometry, resetVersion]);
 
   useEffect(() => {
-    const owner = workspace()
-    const fallback = isTimelinePanel && owner
-      ? timelineGeometry(owner, minWidth, minHeight)
-      : initialGeometry
-    heightManuallyResizedRef.current = !locked && hasSavedGeometry(effectiveStorageKey)
-    updateMaximized(false)
-    updateGeometry(locked && owner && !isTimelinePanel
-      ? fillLockedHeight(fallback, owner)
-      : locked ? fallback : readGeometry(effectiveStorageKey, fallback))
-  }, [effectiveStorageKey, initialGeometry, isTimelinePanel, locked, minHeight, minWidth])
+    const owner = workspace();
+    const fallback = isTimelinePanel && owner ? timelineGeometry(owner, minWidth, minHeight) : initialGeometry;
+    heightManuallyResizedRef.current = !locked && hasSavedGeometry(effectiveStorageKey);
+    updateMaximized(false);
+    updateGeometry(locked && owner && !isTimelinePanel ? fillLockedHeight(fallback, owner) : locked ? fallback : readGeometry(effectiveStorageKey, fallback));
+  }, [effectiveStorageKey, initialGeometry, isTimelinePanel, locked, minHeight, minWidth]);
 
   useEffect(() => {
-    if (!locked || !isTimelinePanel) return
-    const owner = workspace()
-    if (owner) updateGeometry(timelineGeometry(owner, minWidth, minHeight))
-  }, [isTimelinePanel, locked, minHeight, minWidth])
+    if (!locked || !isTimelinePanel) return;
+    const owner = workspace();
+    if (owner) updateGeometry(timelineGeometry(owner, minWidth, minHeight));
+  }, [isTimelinePanel, locked, minHeight, minWidth]);
 
   useEffect(() => {
-    if (!fitContentSelector || heightManuallyResizedRef.current) return
-    const content = frameRef.current?.querySelector<HTMLElement>(fitContentSelector)
-    if (!content) return
+    if (!fitContentSelector || heightManuallyResizedRef.current) return;
+    const content = frameRef.current?.querySelector<HTMLElement>(fitContentSelector);
+    if (!content) return;
     const fit = () => {
-      if (heightManuallyResizedRef.current) return
-      const measuredHeight = Math.ceil(content.getBoundingClientRect().height) || content.scrollHeight
-      if (measuredHeight <= 0) return
-      const owner = workspace()
-      const availableHeight = owner ? owner.clientHeight - VIEWPORT_MARGIN * 2 : fitContentMaxHeight
-      const nextHeight = Math.min(fitContentMaxHeight, availableHeight, Math.max(minHeight, measuredHeight))
-      if (Math.abs(geometryRef.current.height - nextHeight) < 1) return
-      commit({ ...geometryRef.current, height: nextHeight })
-    }
-    fit()
-    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit)
-    resizeObserver?.observe(content)
-    const mutationObserver = typeof MutationObserver === 'undefined' ? null : new MutationObserver(fit)
-    mutationObserver?.observe(content, { childList: true, subtree: true, characterData: true })
-    return () => { resizeObserver?.disconnect(); mutationObserver?.disconnect() }
-  }, [fitContentMaxHeight, fitContentSelector, minHeight])
+      if (heightManuallyResizedRef.current) return;
+      const measuredHeight = Math.ceil(content.getBoundingClientRect().height) || content.scrollHeight;
+      if (measuredHeight <= 0) return;
+      const owner = workspace();
+      const availableHeight = owner ? owner.clientHeight - VIEWPORT_MARGIN * 2 : fitContentMaxHeight;
+      const nextHeight = Math.min(fitContentMaxHeight, availableHeight, Math.max(minHeight, measuredHeight));
+      if (Math.abs(geometryRef.current.height - nextHeight) < 1) return;
+      commit({ ...geometryRef.current, height: nextHeight });
+    };
+    fit();
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    resizeObserver?.observe(content);
+    const mutationObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver(fit);
+    mutationObserver?.observe(content, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+    };
+  }, [fitContentMaxHeight, fitContentSelector, minHeight]);
 
   useEffect(() => {
-    const owner = workspace()
-    if (!owner) return
+    const owner = workspace();
+    if (!owner) return;
     const keepVisible = () => {
-      const next = locked && isTimelinePanel
-        ? timelineGeometry(owner, minWidth, minHeight)
-        : locked
-        ? fillLockedHeight(geometryRef.current, owner)
-        : maximizedRef.current
-        ? clampGeometry({ x: VIEWPORT_MARGIN, y: VIEWPORT_MARGIN, width: owner.clientWidth - VIEWPORT_MARGIN * 2, height: owner.clientHeight - VIEWPORT_MARGIN * 2 }, owner, minWidth, maxWidth, minHeight)
-        : clampGeometry(geometryRef.current, owner, minWidth, maxWidth, minHeight)
-      updateGeometry(next)
-      const fillsWorkspace = next.x === VIEWPORT_MARGIN && next.y === VIEWPORT_MARGIN && Math.abs(next.width - (owner.clientWidth - VIEWPORT_MARGIN * 2)) < 1 && Math.abs(next.height - (owner.clientHeight - VIEWPORT_MARGIN * 2)) < 1
-      updateMaximized(fillsWorkspace)
-    }
-    keepVisible()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(keepVisible)
-    observer.observe(owner)
-    return () => observer.disconnect()
-  }, [isTimelinePanel, locked, maxWidth, minHeight, minWidth])
+      const next =
+        locked && isTimelinePanel
+          ? timelineGeometry(owner, minWidth, minHeight)
+          : locked
+            ? fillLockedHeight(geometryRef.current, owner)
+            : maximizedRef.current
+              ? clampGeometry(
+                  {
+                    x: VIEWPORT_MARGIN,
+                    y: VIEWPORT_MARGIN,
+                    width: owner.clientWidth - VIEWPORT_MARGIN * 2,
+                    height: owner.clientHeight - VIEWPORT_MARGIN * 2,
+                  },
+                  owner,
+                  minWidth,
+                  maxWidth,
+                  minHeight,
+                )
+              : clampGeometry(geometryRef.current, owner, minWidth, maxWidth, minHeight);
+      updateGeometry(next);
+      const fillsWorkspace = next.x === VIEWPORT_MARGIN && next.y === VIEWPORT_MARGIN && Math.abs(next.width - (owner.clientWidth - VIEWPORT_MARGIN * 2)) < 1 && Math.abs(next.height - (owner.clientHeight - VIEWPORT_MARGIN * 2)) < 1;
+      updateMaximized(fillsWorkspace);
+    };
+    keepVisible();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(keepVisible);
+    observer.observe(owner);
+    return () => observer.disconnect();
+  }, [isTimelinePanel, locked, maxWidth, minHeight, minWidth]);
 
-  useEffect(() => () => {
-    document.body.classList.remove('cv-panel-window-moving', 'cv-panel-window-resizing')
-  }, [])
+  useEffect(
+    () => () => {
+      document.body.classList.remove("cv-panel-window-moving", "cv-panel-window-resizing");
+    },
+    [],
+  );
 
   const beginMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || locked || window.matchMedia?.('(max-width: 760px)').matches) return
-    const target = event.target as HTMLElement
-    if (target.closest('button, a, input, select, textarea, [role="button"], [data-panel-no-drag]')) return
-    if (!target.closest('.cv-workspace-panel__header, .places-redesign-header, .trip-panel-header, .popup-heading, .sidebar-header')) return
-    updateMaximized(false)
-    interactionRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, geometry, mode: 'move' }
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-    document.body.classList.add('cv-panel-window-moving')
-    onActivate()
-    event.preventDefault()
-  }
+    if (event.button !== 0 || locked || window.matchMedia?.("(max-width: 760px)").matches) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('button, a, input, select, textarea, [role="button"], [data-panel-no-drag]')) return;
+    if (!target.closest(".cv-workspace-panel__header, .places-redesign-header, .trip-panel-header, .popup-heading, .sidebar-header")) return;
+    updateMaximized(false);
+    interactionRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      geometry,
+      mode: "move",
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    document.body.classList.add("cv-panel-window-moving");
+    onActivate();
+    event.preventDefault();
+  };
 
   const beginResize = (event: PointerEvent<HTMLDivElement>, edge: ResizeEdge) => {
-    if (event.button !== 0 || collapsed || locked || window.matchMedia?.('(max-width: 760px)').matches) return
-    if (edge.includes('n') || edge.includes('s')) heightManuallyResizedRef.current = true
-    updateMaximized(false)
-    interactionRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, geometry, mode: edge }
-    frameRef.current?.setPointerCapture?.(event.pointerId)
-    document.body.classList.add('cv-panel-window-resizing')
-    onActivate()
-    event.preventDefault()
-    event.stopPropagation()
-  }
+    if (event.button !== 0 || collapsed || locked || window.matchMedia?.("(max-width: 760px)").matches) return;
+    if (edge.includes("n") || edge.includes("s")) heightManuallyResizedRef.current = true;
+    updateMaximized(false);
+    interactionRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      geometry,
+      mode: edge,
+    };
+    frameRef.current?.setPointerCapture?.(event.pointerId);
+    document.body.classList.add("cv-panel-window-resizing");
+    onActivate();
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const move = (event: PointerEvent<HTMLDivElement>) => {
-    const interaction = interactionRef.current
-    if (!interaction || interaction.pointerId !== event.pointerId) return
-    const deltaX = event.clientX - interaction.startX
-    const deltaY = event.clientY - interaction.startY
-    const candidate = interaction.mode === 'move'
-      ? { ...interaction.geometry, x: interaction.geometry.x + deltaX, y: interaction.geometry.y + deltaY }
-      : resizedGeometry(interaction.geometry, interaction.mode, deltaX, deltaY)
-    updateGeometry(normalize(candidate))
-  }
+    const interaction = interactionRef.current;
+    if (!interaction || interaction.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - interaction.startX;
+    const deltaY = event.clientY - interaction.startY;
+    const candidate =
+      interaction.mode === "move"
+        ? {
+            ...interaction.geometry,
+            x: interaction.geometry.x + deltaX,
+            y: interaction.geometry.y + deltaY,
+          }
+        : resizedGeometry(interaction.geometry, interaction.mode, deltaX, deltaY);
+    updateGeometry(normalize(candidate));
+  };
 
   const finish = (event: PointerEvent<HTMLDivElement>) => {
-    if (interactionRef.current?.pointerId !== event.pointerId) return
-    interactionRef.current = null
-    document.body.classList.remove('cv-panel-window-moving', 'cv-panel-window-resizing')
-    commit(geometryRef.current)
-  }
+    if (interactionRef.current?.pointerId !== event.pointerId) return;
+    interactionRef.current = null;
+    document.body.classList.remove("cv-panel-window-moving", "cv-panel-window-resizing");
+    commit(geometryRef.current);
+  };
 
   const resizeWithKeyboard = (event: KeyboardEvent<HTMLDivElement>, edge: ResizeEdge) => {
-    const step = event.shiftKey ? 64 : 24
-    const deltaX = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0
-    const deltaY = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0
-    if ((deltaX === 0 && deltaY === 0) || collapsed || locked) return
-    if ((edge.includes('n') || edge.includes('s')) && deltaY !== 0) heightManuallyResizedRef.current = true
-    updateMaximized(false)
-    commit(resizedGeometry(geometryRef.current, edge, deltaX, deltaY))
-    event.preventDefault()
-  }
+    const step = event.shiftKey ? 64 : 24;
+    const deltaX = event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0;
+    const deltaY = event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0;
+    if ((deltaX === 0 && deltaY === 0) || collapsed || locked) return;
+    if ((edge.includes("n") || edge.includes("s")) && deltaY !== 0) heightManuallyResizedRef.current = true;
+    updateMaximized(false);
+    commit(resizedGeometry(geometryRef.current, edge, deltaX, deltaY));
+    event.preventDefault();
+  };
 
   const resizeLabel = (edge: ResizeEdge) => {
-    if (edge === 'e') return kind === 'workspace' ? 'Redimensionner le panneau de navigation' : 'Redimensionner le panneau Sorties'
-    return `Redimensionner ${label} (${edge})`
-  }
+    if (edge === "e") return kind === "workspace" ? "Redimensionner le panneau de navigation" : "Redimensionner le panneau Sorties";
+    return `Redimensionner ${label} (${edge})`;
+  };
 
   const toggleMaximize = () => {
-    const owner = workspace()
-    if (!owner) return
+    const owner = workspace();
+    if (!owner) return;
     if (maximizedRef.current) {
-      const restore = restoreGeometryRef.current ?? readGeometry(`${effectiveStorageKey}:restore`, initialGeometry)
-      updateMaximized(false)
-      commit(restore)
-      onActivate()
-      return
+      const restore = restoreGeometryRef.current ?? readGeometry(`${effectiveStorageKey}:restore`, initialGeometry);
+      updateMaximized(false);
+      commit(restore);
+      onActivate();
+      return;
     }
-    restoreGeometryRef.current = geometryRef.current
-    saveGeometry(`${effectiveStorageKey}:restore`, geometryRef.current)
-    updateMaximized(true)
-    commit({ x: VIEWPORT_MARGIN, y: VIEWPORT_MARGIN, width: owner.clientWidth - VIEWPORT_MARGIN * 2, height: owner.clientHeight - VIEWPORT_MARGIN * 2 })
-    onActivate()
-  }
+    restoreGeometryRef.current = geometryRef.current;
+    saveGeometry(`${effectiveStorageKey}:restore`, geometryRef.current);
+    updateMaximized(true);
+    commit({
+      x: VIEWPORT_MARGIN,
+      y: VIEWPORT_MARGIN,
+      width: owner.clientWidth - VIEWPORT_MARGIN * 2,
+      height: owner.clientHeight - VIEWPORT_MARGIN * 2,
+    });
+    onActivate();
+  };
 
-  const displayedWidth = collapsed ? collapsedWidth : geometry.width
-  const displayedHeight = collapsed ? PANEL_HEADER_HEIGHT : geometry.height
-  const owner = workspace()
-  const displayedX = owner ? Math.min(geometry.x, Math.max(VIEWPORT_MARGIN, owner.clientWidth - displayedWidth - VIEWPORT_MARGIN)) : geometry.x
-  const displayedY = owner ? Math.min(geometry.y, Math.max(VIEWPORT_MARGIN, owner.clientHeight - PANEL_HEADER_HEIGHT - VIEWPORT_MARGIN)) : geometry.y
+  const toggleLock = () => window.dispatchEvent(new Event(RESET_DESKTOP_PANEL_LAYOUT_EVENT));
 
-  return <div
-    ref={frameRef}
-    className={`cv-floating-panel-window cv-floating-panel-window--${effectiveKind}${collapsed ? ' is-collapsed' : ''}${active ? ' is-active' : ''}${hidden ? ' is-hidden' : ''}${locked ? ' is-locked' : ''}`}
-    aria-label={label}
-    style={{ left: displayedX, top: displayedY, width: displayedWidth, height: displayedHeight }}
-    onPointerDown={beginMove}
-    onPointerMove={move}
-    onPointerUp={finish}
-    onPointerCancel={finish}
-    onMouseDown={onActivate}
-  >
-    <div className="cv-floating-panel-window__content"><FloatingPanelWindowContext.Provider value={{ locked, maximized, toggleMaximize }}>{children}</FloatingPanelWindowContext.Provider></div>
-    {!collapsed && !locked && (['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'] as ResizeEdge[]).map((edge) => <div
-      key={edge}
-      className={`cv-floating-panel-window__resize cv-floating-panel-window__resize--${edge}`}
-      data-panel-no-drag
-      role="separator"
-      tabIndex={edge === 'e' || edge === 's' ? 0 : -1}
-      aria-label={resizeLabel(edge)}
-      aria-orientation={edge === 'e' || edge === 'w' ? 'vertical' : edge === 'n' || edge === 's' ? 'horizontal' : undefined}
-      aria-valuemin={edge === 'e' || edge === 'w' ? minWidth : minHeight}
-      aria-valuemax={(edge === 'e' || edge === 'w') && Number.isFinite(maxWidth) ? maxWidth : undefined}
-      aria-valuenow={edge === 'e' || edge === 'w' ? Math.round(geometry.width) : edge === 'n' || edge === 's' ? Math.round(geometry.height) : undefined}
-      onKeyDown={(event) => resizeWithKeyboard(event, edge)}
-      onPointerDown={(event) => beginResize(event, edge)}
-    />)}
-  </div>
+  const displayedWidth = collapsed ? collapsedWidth : geometry.width;
+  const displayedHeight = collapsed ? PANEL_HEADER_HEIGHT : geometry.height;
+  const owner = workspace();
+  const displayedX = owner ? Math.min(geometry.x, Math.max(VIEWPORT_MARGIN, owner.clientWidth - displayedWidth - VIEWPORT_MARGIN)) : geometry.x;
+  const displayedY = owner ? Math.min(geometry.y, Math.max(VIEWPORT_MARGIN, owner.clientHeight - PANEL_HEADER_HEIGHT - VIEWPORT_MARGIN)) : geometry.y;
+
+  return (
+    <div
+      ref={frameRef}
+      className={`cv-floating-panel-window cv-floating-panel-window--${effectiveKind}${collapsed ? " is-collapsed" : ""}${active ? " is-active" : ""}${hidden ? " is-hidden" : ""}${locked ? " is-locked" : ""}`}
+      aria-label={label}
+      style={{
+        left: displayedX,
+        top: displayedY,
+        width: displayedWidth,
+        height: displayedHeight,
+      }}
+      onPointerDown={beginMove}
+      onPointerMove={move}
+      onPointerUp={finish}
+      onPointerCancel={finish}
+      onMouseDown={onActivate}
+    >
+      <div className="cv-floating-panel-window__content">
+        <FloatingPanelWindowContext.Provider value={{ locked, maximized, toggleMaximize, toggleLock }}>{children}</FloatingPanelWindowContext.Provider>
+      </div>
+      {!collapsed && !locked && (["n", "ne", "e", "se", "s", "sw", "w", "nw"] as ResizeEdge[]).map((edge) => <div key={edge} className={`cv-floating-panel-window__resize cv-floating-panel-window__resize--${edge}`} data-panel-no-drag role="separator" tabIndex={edge === "e" || edge === "s" ? 0 : -1} aria-label={resizeLabel(edge)} aria-orientation={edge === "e" || edge === "w" ? "vertical" : edge === "n" || edge === "s" ? "horizontal" : undefined} aria-valuemin={edge === "e" || edge === "w" ? minWidth : minHeight} aria-valuemax={(edge === "e" || edge === "w") && Number.isFinite(maxWidth) ? maxWidth : undefined} aria-valuenow={edge === "e" || edge === "w" ? Math.round(geometry.width) : edge === "n" || edge === "s" ? Math.round(geometry.height) : undefined} onKeyDown={(event) => resizeWithKeyboard(event, edge)} onPointerDown={(event) => beginResize(event, edge)} />)}
+    </div>
+  );
 }

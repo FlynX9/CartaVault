@@ -38,7 +38,7 @@ from reportlab.platypus import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.countries.display_boundary import load_display_boundaries
+from app.countries.display_boundary import load_display_boundary
 from app.exports.temporary_exports import TemporaryExport, create
 from app.photos.models import Photo
 from app.photos.storage import PhotoStorageError, get_photo_thumbnail
@@ -877,7 +877,7 @@ def _overview_map(
         )
 
     country_code = getattr(getattr(trip.map, "country", None), "iso_alpha3", None)
-    boundary = load_display_boundaries().get(country_code) if country_code else None
+    boundary = load_display_boundary(country_code, "medium") if country_code else None
     if boundary:
         for polygon in boundary:
             for ring in polygon:
