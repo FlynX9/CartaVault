@@ -73,7 +73,7 @@ describe('ProfileImportDialog', () => {
     render(<ProfileImportDialog mapId="map-1" resourceType="categories" onClose={vi.fn()} onImported={vi.fn()} />)
 
     const museumCheckbox = (await screen.findByText('Musée')).closest('label')?.querySelector('input')
-    expect(museumCheckbox).toBeChecked()
+    await waitFor(() => expect(museumCheckbox).toBeChecked())
     expect(museumCheckbox).toBeEnabled()
   })
 
@@ -86,6 +86,7 @@ describe('ProfileImportDialog', () => {
 
     render(<ProfileImportDialog mapId="map-1" resourceType="categories" onClose={vi.fn()} onImported={vi.fn()} />)
     const museumCheckbox = (await screen.findByText('Musée')).closest('label')?.querySelector('input') as HTMLInputElement
+    await waitFor(() => expect(museumCheckbox).toBeChecked())
     fireEvent.click(museumCheckbox)
     fireEvent.click(screen.getByRole('button', { name: /^Importer$/ }))
 

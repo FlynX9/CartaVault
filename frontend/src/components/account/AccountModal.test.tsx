@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AccountModal } from './AccountModal'
-import { getAccountPreferences, getAccountProfile, getAccountSessions, getPersonalApiKeys, startTotpSetup, updateAccountPreferences, updateAccountProfile } from '../../api/account'
+import { getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getPersonalApiKeys, getTotpStatus, startTotpSetup, updateAccountPreferences, updateAccountProfile } from '../../api/account'
 
 vi.mock('../../api/account', () => ({
   accountAvatarUrl: (value: string | null) => value,
@@ -23,6 +23,7 @@ const preferences = { language: 'fr' as const, default_theme: 'system' as const,
 beforeEach(async () => {
   const account = await import('../../api/account')
   vi.mocked(account.getTotpStatus).mockResolvedValue({ enabled: false, verified_at: null, recovery_codes_remaining: 0 })
+  vi.mocked(account.getEmailMfaStatus).mockResolvedValue({ enabled: false, verified_at: null, available: true })
   vi.mocked(getAccountProfile).mockResolvedValue(profile)
   vi.mocked(getAccountSessions).mockResolvedValue([])
   vi.mocked(getAccountPreferences).mockResolvedValue(preferences)
@@ -142,20 +143,189 @@ describe('AccountModal', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
     const totpRow = (await screen.findByText('Application d’authentification (TOTP)')).closest('article')
     expect(totpRow).not.toBeNull()
-    fireEvent.click(within(totpRow!).getByRole('button', { name: 'Activer' }))
+    fireEvent.click(within(totpRow!).getByRole('button', { name: 'Configurer' }))
     expect(await screen.findByAltText('Code QR de configuration CartaVault')).toBeVisible()
+    const dialog = screen.getByRole('dialog', { name: 'Application d’authentification (TOTP)' })
+    expect(within(dialog).getByText('Scannez le QR Code ou ajoutez la clé dans votre application, puis saisissez le code généré.').closest('header')).not.toBeNull()
+    expect(within(dialog).getByRole('button', { name: 'Copier' })).toBeVisible()
+    expect(within(dialog).getByRole('link', { name: 'Ouvrir' })).toBeVisible()
+    expect(within(dialog).getByRole('group', { name: 'Code à 6 chiffres' }).querySelectorAll('input')).toHaveLength(6)
+    expect(within(dialog).getByText(/Pour finaliser l’activation/)).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'Vérifier et activer' })).toBeDisabled()
     expect(startTotpSetup).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: 'Activer l’authentification à deux facteurs' })).not.toBeInTheDocument()
   })
 
-  it('uses the secondary TOTP action and a neutral available e-mail badge', async () => {
+  it('uses a neutral secondary TOTP configuration action without chevron', async () => {
     render(<AccountModal onClose={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
     const totpRow = (await screen.findByText('Application d’authentification (TOTP)')).closest('article')
     expect(totpRow).not.toBeNull()
-    const action = within(totpRow!).getByRole('button', { name: 'Activer' })
+    const action = within(totpRow!).getByRole('button', { name: 'Configurer' })
     expect(action).toHaveClass('account-button--secondary')
-    expect(action.querySelector('.lucide-chevron-right')).toBeInTheDocument()
-    expect(screen.getByText('Disponible').closest('.account-api-service-badge')).toHaveClass('is-neutral')
+    expect(action.querySelector('.lucide-chevron-right')).not.toBeInTheDocument()
+    expect(totpRow).not.toHaveClass('is-configured')
+    expect(screen.queryByText('Disponible')).not.toBeInTheDocument()
+    const disabledMfaSummary = screen.getByText('MFA').closest('article')
+    expect(disabledMfaSummary).toHaveClass('is-warning')
+    expect(within(disabledMfaSummary!).getByText('Désactivé')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Conseil sécurité' })).toBeVisible()
+  })
+
+  it('keeps TOTP available as the replacement method when e-mail MFA is enabled', async () => {
+    vi.mocked(getTotpStatus).mockResolvedValue({ enabled: false, verified_at: null, recovery_codes_remaining: 0 })
+    vi.mocked(getEmailMfaStatus).mockResolvedValue({ enabled: true, verified_at: '2026-08-14T10:00:00Z', available: true })
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+
+    const totpRow = (await screen.findByText('Application d’authentification (TOTP)')).closest('article')
+    expect(within(totpRow!).getByRole('button', { name: 'Configurer' })).toBeEnabled()
+    expect(totpRow).not.toHaveClass('is-configured')
+    expect(screen.getByText('Code par e-mail').closest('article')).toHaveClass('is-configured')
+    expect(screen.queryByText('Codes de récupération')).not.toBeInTheDocument()
+    const emailMfaSummary = screen.getByText('MFA').closest('article')
+    expect(emailMfaSummary).toHaveClass('is-success')
+    expect(within(emailMfaSummary!).getByText('Activé')).toBeVisible()
+    expect(screen.getByText('Pour une protection renforcée, privilégiez une application d’authentification (TOTP).')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Conseil sécurité' })).not.toBeInTheDocument()
+  })
+
+  it('highlights TOTP only when configured and hides the e-mail method', async () => {
+    vi.mocked(getTotpStatus).mockResolvedValue({ enabled: true, verified_at: '2026-08-14T10:00:00Z', recovery_codes_remaining: 8 })
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+
+    const totpRow = (await screen.findByText('Application d’authentification (TOTP)')).closest('article')
+    expect(totpRow).toHaveClass('is-configured')
+    expect(screen.queryByText('Code par e-mail')).not.toBeInTheDocument()
+    expect(screen.getByText('Codes de récupération')).toBeVisible()
+    const totpMfaSummary = screen.getByText('MFA').closest('article')
+    expect(totpMfaSummary).toHaveClass('is-success')
+    expect(within(totpMfaSummary!).getByText('Renforcée')).toBeVisible()
+    expect(screen.getByText('Une méthode d’authentification à deux facteurs est active sur votre compte.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Conseil sécurité' })).not.toBeInTheDocument()
+  })
+
+  it('shows concise device, location, browser and activity session details', async () => {
+    vi.mocked(getAccountSessions).mockResolvedValue([{
+      id: 'session-1', created_at: '2026-08-14T08:00:00Z', last_used_at: new Date(Date.now() - 5 * 60_000).toISOString(),
+      expires_at: '2026-09-14T08:00:00Z', user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36',
+      is_current: false, city: 'Paris', country: 'France',
+    }])
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+
+    expect(await screen.findByText('PC Windows')).toBeVisible()
+    expect(screen.getByText(/Paris, France · Chrome · Il y a [45] min/)).toBeVisible()
+  })
+
+  it('uses the live device and detects Brave for the current session', async () => {
+    const originalUserAgent = navigator.userAgent
+    const originalBrave = (navigator as Navigator & { brave?: unknown }).brave
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36' })
+    Object.defineProperty(navigator, 'brave', { configurable: true, value: {} })
+    vi.mocked(getAccountSessions).mockResolvedValue([{
+      id: 'current-session', created_at: '2026-08-14T08:00:00Z', last_used_at: new Date().toISOString(), expires_at: '2026-09-14T08:00:00Z',
+      user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) Version/18.5 Mobile/15E148 Safari/604.1', is_current: true,
+    }])
+    try {
+      render(<AccountModal onClose={vi.fn()} trigger={null} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+      expect(await screen.findByText('PC Windows')).toBeVisible()
+      expect(screen.getByText(/Localisation inconnue · Brave ·/)).toBeVisible()
+    } finally {
+      Object.defineProperty(navigator, 'userAgent', { configurable: true, value: originalUserAgent })
+      Object.defineProperty(navigator, 'brave', { configurable: true, value: originalBrave })
+    }
+  })
+
+  it('makes the security card session list scrollable beyond three entries', async () => {
+    vi.mocked(getAccountSessions).mockResolvedValue(Array.from({ length: 4 }, (_, index) => ({
+      id: `session-${index}`, created_at: '2026-08-14T08:00:00Z', last_used_at: new Date(Date.now() - index * 60_000).toISOString(),
+      expires_at: '2026-09-14T08:00:00Z', user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0 Safari/537.36',
+      is_current: false, city: `Ville ${index + 1}`, country: 'France',
+    })))
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+
+    expect(await screen.findByText(/Ville 1, France/)).toBeVisible()
+    expect(screen.getByText(/Ville 3, France/)).toBeVisible()
+    expect(screen.getByText(/Ville 4, France/)).toBeInTheDocument()
+    expect(screen.getByText(/Ville 1, France/).closest('ul')).toHaveClass('is-scrollable')
+  })
+
+  it('renders the redesigned e-mail change dialog and toggles password visibility', async () => {
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+    const emailCard = screen.getByRole('heading', { name: 'Adresse e-mail' }).closest('article')
+    fireEvent.click(within(emailCard!).getByRole('button', { name: 'Modifier' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Changer l’adresse e-mail' })
+    expect(within(dialog).getByText('Mettez à jour l’adresse e-mail associée à votre compte.')).toBeVisible()
+    expect(within(dialog).getByPlaceholderText('exemple@domaine.com')).toHaveAttribute('type', 'email')
+    const password = within(dialog).getByPlaceholderText('Saisissez votre mot de passe actuel')
+    expect(password).toHaveAttribute('type', 'password')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Afficher le mot de passe' }))
+    expect(password).toHaveAttribute('type', 'text')
+    expect(within(dialog).getByText(/nous vérifierons votre mot de passe/)).toBeVisible()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }))
+    expect(screen.queryByRole('dialog', { name: 'Changer l’adresse e-mail' })).not.toBeInTheDocument()
+  })
+
+  it('enforces and displays every password complexity rule in the password dialog', async () => {
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+    const passwordCard = screen.getByRole('heading', { name: 'Mot de passe' }).closest('article')
+    fireEvent.click(within(passwordCard!).getByRole('button', { name: 'Modifier' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Changer le mot de passe' })
+    expect(within(dialog).getByText('Choisissez un mot de passe fort et unique pour sécuriser votre compte.')).toBeVisible()
+    const currentPassword = within(dialog).getByPlaceholderText('Saisissez votre mot de passe actuel')
+    const newPassword = within(dialog).getByPlaceholderText('Minimum 12 caractères')
+    const confirmation = within(dialog).getByPlaceholderText('Confirmez votre nouveau mot de passe')
+    const submit = within(dialog).getByRole('button', { name: 'Modifier le mot de passe' })
+    expect(submit).toBeDisabled()
+
+    fireEvent.change(currentPassword, { target: { value: 'Old Password 1!' } })
+    fireEvent.change(newPassword, { target: { value: 'Strong Password 42!' } })
+    fireEvent.change(confirmation, { target: { value: 'Strong Password 42!' } })
+    expect(within(dialog).getByText('Fort')).toBeVisible()
+    expect(within(dialog).getByText('Au moins 12 caractères').closest('li')).toHaveClass('is-valid')
+    expect(within(dialog).getByText('1 majuscule et 1 minuscule').closest('li')).toHaveClass('is-valid')
+    expect(within(dialog).getByText('1 chiffre').closest('li')).toHaveClass('is-valid')
+    expect(within(dialog).getByText('1 caractère spécial').closest('li')).toHaveClass('is-valid')
+    expect(submit).toBeEnabled()
+  })
+
+  it('places the sessions guidance in the dialog header', async () => {
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gérer les sessions' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Sessions et appareils' })
+    const guidance = within(dialog).getByText('Contrôlez les appareils actuellement connectés à votre compte.')
+    expect(guidance.closest('header')).not.toBeNull()
+  })
+
+  it('renders the redesigned e-mail MFA activation dialog', async () => {
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+    const emailMfaCard = screen.getByText('Code par e-mail').closest('article')
+    const activate = within(emailMfaCard!).getByRole('button', { name: 'Activer' })
+    await waitFor(() => expect(activate).toBeEnabled())
+    fireEvent.click(activate)
+
+    const dialog = await screen.findByRole('dialog', { name: 'Code par e-mail' })
+    expect(within(dialog).getByText('Recevez un code de sécurité à chaque connexion.').closest('header')).not.toBeNull()
+    expect(within(dialog).getByText('À savoir')).toBeVisible()
+    expect(within(dialog).getByText('greg@example.test')).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'Modifier l’e-mail' })).toBeVisible()
+    const send = within(dialog).getByRole('button', { name: 'Envoyer un code' })
+    expect(send).toBeDisabled()
+    const password = within(dialog).getByPlaceholderText('Saisissez votre mot de passe actuel')
+    fireEvent.change(password, { target: { value: 'Current Password 1!' } })
+    expect(send).toBeEnabled()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Afficher le mot de passe' }))
+    expect(password).toHaveAttribute('type', 'text')
   })
 })

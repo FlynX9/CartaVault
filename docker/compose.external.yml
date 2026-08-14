@@ -25,6 +25,9 @@ x-cartavault-environment: &cartavault-environment
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
   IMPORT_STORAGE_PATH: /app/storage/imports
+  CARTAVAULT_VECTOR_MAP_ENABLED: ${CARTAVAULT_VECTOR_MAP_ENABLED:-false}
+  CARTAVAULT_VECTOR_MAP_PATH: /data/maps/europe.pmtiles
+  CARTAVAULT_VECTOR_MAP_VERSION: ${CARTAVAULT_VECTOR_MAP_VERSION:-europe-current}
   CARTAVAULT_TASK_MODE: sync
   CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE: ${CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE:-120}
   CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS: ${CARTAVAULT_GOOGLE_ROUTES_RATE_WINDOW_SECONDS:-60}
@@ -73,6 +76,7 @@ services:
       - avatars_data:/app/storage/avatars
       - exports_data:/app/storage/exports
       - imports_data:/app/storage/imports
+      - ${CARTAVAULT_VECTOR_MAP_DIR:-./maps}:/data/maps:ro
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     healthcheck:

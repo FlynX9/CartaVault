@@ -25,13 +25,13 @@ describe('basemap registry', () => {
     }, {
       lightStyle: 'https://maps.example.test/styles/light.json',
       darkStyle: 'https://maps.example.test/styles/dark.json',
-      openFreeMapTileJson: 'https://maps.example.test/tiles.json',
+      openFreeMapTileJson: 'https://maps.example.test/planet',
       openFreeMapGlyphs: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf',
       satellite: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg',
       osm: 'https://maps.example.test/osm/{z}/{x}/{y}.png',
     })
-    expect(basemaps[0]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/light.json', tileJsonUrl: 'https://maps.example.test/tiles.json' })
-    expect(basemaps[1]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/dark.json', glyphsUrl: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf' })
+    expect(basemaps[0]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/light.json', tileJsonUrl: 'https://maps.example.test/planet', glyphsUrl: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf' })
+    expect(basemaps[1]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/dark.json', tileJsonUrl: 'https://maps.example.test/planet', glyphsUrl: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf' })
     expect(basemaps.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg' })
     expect(basemaps.find((basemap) => basemap.id === 'osm')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/osm/{z}/{x}/{y}.png' })
     expect(basemaps.every((basemap) => !basemap.requiresStadiaAuthentication)).toBe(true)

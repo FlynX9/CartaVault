@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, CheckCircle2, ChevronRight, Image as ImageIcon, MapPin, Route, Save, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronRight, Image as ImageIcon, KeyRound, MapPin, Route, Save, X } from 'lucide-react'
 
 import { getPersonalApiKeys } from '../../api/account'
 import { useI18n } from '../../i18n/useI18n'
@@ -97,7 +97,7 @@ export function IntegrationPreferences({ preferences, setPreferences }: { prefer
 
   return <>
     <section className="account-preference-card account-integration-preferences">
-      <header className="account-integration-preferences__heading"><div><h3>{t('account.integrations.title')}</h3><p>{t('account.integrations.description')}</p></div></header>
+      <header className="account-integration-preferences__heading"><span><KeyRound size={19} aria-hidden="true" /></span><div><h3>{t('account.integrations.title')}</h3><p>{t('account.integrations.description')}</p></div></header>
       <div className="account-integration-preferences__list">
         <ServiceRow icon={Route} title={t('account.integrations.routing')} description={t('account.integrations.routingDescription')} providerLabel={providerLabels[preferences.routing.provider]} providerCaption={t('account.integrations.engine')} keyName={preferences.routing.provider === 'osrm' ? t('account.integrations.noKeyRequired') : keyLabel(routingKeys, preferences.routing.api_key_id, t('account.integrations.noKey'))} state={<ServiceState keys={routingKeys} value={preferences.routing.api_key_id} optional={preferences.routing.provider === 'osrm'} />} onEdit={() => setEditing('routing')} />
         <ServiceRow icon={MapPin} title={t('account.integrations.places')} description={t('account.integrations.placesDescription')} providerLabel={preferences.places.provider === 'google' ? 'Google Places' : 'Stadia'} providerCaption={t('account.integrations.engine')} keyName={keyLabel(placesKeys, preferences.places.api_key_id, t('account.integrations.noKey'))} state={<ServiceState keys={placesKeys} value={preferences.places.api_key_id} />} onEdit={() => setEditing('places')} />

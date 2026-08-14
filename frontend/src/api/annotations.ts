@@ -1,6 +1,7 @@
 import { getJson, sendJson, sendWithoutResponse } from './client'
 import { isRecord, readNullableString, readNumber, readString, readUuid } from './validation'
 import type { AnnotationShapeType, AnnotationTemplate, PlaceAnnotation, PlaceAnnotationPayload } from '../types/annotation'
+import { isNetworkFailure, offlineAnnotations } from '../pwa/offlineData'
 
 const shapes: ReadonlySet<string> = new Set(['rectangle', 'triangle', 'circle', 'line', 'path'])
 
@@ -43,9 +44,14 @@ export async function reorderAnnotationTemplates(mapId: string, ids: string[]): 
 }
 
 export async function getPlaceAnnotations(placeId: string, signal?: AbortSignal): Promise<PlaceAnnotation[]> {
-  const result = await getJson(`/annotations/places/${encodeURIComponent(placeId)}`, new URLSearchParams(), signal)
-  if (!Array.isArray(result)) throw new Error('La liste des annotations est invalide.')
-  return result.map(parseAnnotation)
+  try {
+    const result = await getJson(`/annotations/places/${encodeURIComponent(placeId)}`, new URLSearchParams(), signal)
+    if (!Array.isArray(result)) throw new Error('La liste des annotations est invalide.')
+    return result.map(parseAnnotation)
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error
+    return offlineAnnotations(placeId)
+  }
 }
 
 export async function createPlaceAnnotation(placeId: string, payload: PlaceAnnotationPayload): Promise<PlaceAnnotation> {

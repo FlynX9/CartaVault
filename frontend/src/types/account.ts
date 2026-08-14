@@ -6,6 +6,7 @@ export interface AccountProfile {
 }
 export interface AccountSession {
   id: string; created_at: string; last_used_at: string; expires_at: string; user_agent: string | null; is_current: boolean
+  city?: string | null; country?: string | null
 }
 export interface TotpSecurityStatus { enabled: boolean; verified_at: string | null; recovery_codes_remaining: number }
 export interface TotpSetup { secret: string; provisioning_uri: string; qr_code_data_url: string; expires_at: string; issuer: string; account: string; digits: number; period: number }

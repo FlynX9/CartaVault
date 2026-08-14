@@ -25,6 +25,9 @@ x-cartavault-environment: &cartavault-environment
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
   IMPORT_STORAGE_PATH: /app/storage/imports
+  CARTAVAULT_VECTOR_MAP_ENABLED: ${CARTAVAULT_VECTOR_MAP_ENABLED:-false}
+  CARTAVAULT_VECTOR_MAP_PATH: /data/maps/europe.pmtiles
+  CARTAVAULT_VECTOR_MAP_VERSION: ${CARTAVAULT_VECTOR_MAP_VERSION:-europe-current}
   # The supported single-instance stack executes background work in-process.
   # Use compose.redis.yml explicitly when a Redis queue and worker are wanted.
   CARTAVAULT_TASK_MODE: sync
@@ -92,6 +95,7 @@ services:
       - avatars_data:/app/storage/avatars
       - exports_data:/app/storage/exports
       - imports_data:/app/storage/imports
+      - ${CARTAVAULT_VECTOR_MAP_DIR:-./maps}:/data/maps:ro
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     depends_on:

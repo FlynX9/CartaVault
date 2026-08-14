@@ -1,18 +1,18 @@
 {
   "version": 8,
-  "name": "CartaVault Light (OpenFreeMap Positron derivative)",
+  "name": "CartaVault Light",
   "metadata": {
-    "cartavault:based-on": "OpenFreeMap Positron",
+    "cartavault:schema": "OpenMapTiles",
     "cartavault:purpose": "Reduced-context basemap for CartaVault overlays"
   },
   "sources": {
     "openmaptiles": {
       "type": "vector",
-      "url": "https://tiles.openfreemap.org/planet",
-      "attribution": "OpenFreeMap © OpenMapTiles Data from OpenStreetMap"
+      "url": "about:blank",
+      "attribution": "© OpenStreetMap contributors · OpenMapTiles · CartaVault"
     }
   },
-  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  "glyphs": "/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf",
   "layers": [
     { "id": "background", "type": "background", "paint": { "background-color": "#f4f5f3" } },
     { "id": "landcover", "type": "fill", "source": "openmaptiles", "source-layer": "landcover", "maxzoom": 9, "paint": { "fill-color": ["match", ["get", "class"], "wood", "#e6ece5", "grass", "#edf1ea", "#eef0ed"], "fill-opacity": 0.72 } },

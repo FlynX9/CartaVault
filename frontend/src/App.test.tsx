@@ -103,7 +103,7 @@ describe('map URL workspace', () => {
 
   it('collapses and restores the Places panel when its active navigation entry is clicked again', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
-    const placesNavigation = await screen.findByRole('button', { name: 'Carte' })
+    const placesNavigation = await screen.findByRole('button', { name: 'Lieux' })
 
     fireEvent.click(placesNavigation)
     expect(await screen.findByRole('button', { name: 'Déployer le panneau Lieux' })).toBeVisible()
@@ -211,7 +211,7 @@ describe('map URL workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
 
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Carte' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
   })
 
@@ -223,7 +223,7 @@ describe('map URL workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Catégories' }))
 
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Chronologie' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Sorties' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Catégories' })).toHaveAttribute('aria-pressed', 'false')
   })
 

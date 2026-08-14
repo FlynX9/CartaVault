@@ -77,7 +77,7 @@ COPY --chown=cartavault:cartavault shared /shared
 COPY --chown=cartavault:cartavault demo /demo
 COPY --from=frontend-builder --chown=cartavault:cartavault /build/frontend/dist ./frontend
 
-RUN mkdir -p /app/storage/photos /app/storage/avatars /app/storage/exports /app/storage/imports \
+RUN mkdir -p /app/storage/photos /app/storage/avatars /app/storage/exports /app/storage/imports /data/maps \
     && chown -R cartavault:cartavault /app/storage
 
 USER cartavault

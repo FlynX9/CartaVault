@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import {
   CalendarDays,
   Check,
+  CheckCircle2,
   Eye,
   EyeOff,
   Info,
@@ -608,7 +609,7 @@ function Metric({
             </>
           ) : (
             <>
-              <Check size={13} />
+              <CheckCircle2 size={13} />
               {value}
             </>
           )}

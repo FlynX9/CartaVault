@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { BasemapLayer } from './BasemapLayer'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
+import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 
 const { mapMock } = vi.hoisted(() => ({
   mapMock: {
@@ -22,6 +23,8 @@ vi.mock('react-leaflet', () => ({
 }))
 vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
 vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, tile_url: null }) }))
+vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ available: true, archive_url: '/api/basemaps/cartavault/archive.pmtiles', version: 'test', min_zoom: 0, max_zoom: 14 }) }))
+vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
 
 afterEach(() => {
   cleanup()
@@ -69,5 +72,16 @@ describe('BasemapLayer', () => {
     expect(() => rendered.unmount()).not.toThrow()
     expect(layer.removeFrom).toHaveBeenCalledWith(mapMock)
     expect(mapLibreMap.off).not.toHaveBeenCalled()
+  })
+
+  it('keeps CartaVault light and dark online through the legacy vector source when PMTiles is absent', async () => {
+    vi.mocked(getCartaVaultVectorConfig).mockResolvedValue({ available: false, archive_url: null, glyphs_url: '', version: 'missing', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' })
+    const layer = { addTo: vi.fn(), removeFrom: vi.fn(), getMaplibreMap: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })) }
+    vi.mocked(loadCartaVaultStyle).mockResolvedValue({ version: 8, sources: {}, layers: [] })
+    vi.spyOn(L, 'maplibreGL').mockReturnValue(layer as unknown as L.MaplibreGLLayer)
+
+    render(<BasemapLayer basemapId="cartavault-dark" onTileError={vi.fn()} />)
+    await waitFor(() => expect(loadCartaVaultStyle).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('openfreemap.org/planet'), expect.stringContaining('openfreemap.org/fonts'), expect.any(AbortSignal)))
+    expect(layer.addTo).toHaveBeenCalledWith(mapMock)
   })
 })

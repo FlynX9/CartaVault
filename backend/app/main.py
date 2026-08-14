@@ -22,6 +22,7 @@ from app.auth.api_key_router import router as api_key_router
 from app.places.stadia_credential_router import router as stadia_places_credential_router
 from app.basemaps.router import admin_router as basemap_admin_router, router as basemap_router
 from app.basemaps.stadia_router import router as stadia_basemap_router
+from app.basemaps.vector_router import router as vector_basemap_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
@@ -206,9 +207,11 @@ app.add_middleware(
     allow_headers=[
         "Accept",
         "Content-Type",
+        "Range",
         "X-CSRF-Token",
         "X-CartaVault-Setup-Token",
     ],
+    expose_headers=["Accept-Ranges", "Content-Length", "Content-Range", "ETag"],
 )
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -222,6 +225,7 @@ app.include_router(api_key_router, prefix=API_PREFIX)
 app.include_router(google_places_credential_router, prefix=API_PREFIX)
 app.include_router(basemap_router, prefix=API_PREFIX)
 app.include_router(stadia_basemap_router, prefix=API_PREFIX)
+app.include_router(vector_basemap_router, prefix=API_PREFIX)
 app.include_router(stadia_places_credential_router, prefix=API_PREFIX)
 app.include_router(invitations_router, prefix=API_PREFIX)
 app.include_router(admin_users_router, prefix=API_PREFIX)

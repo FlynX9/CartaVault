@@ -2,6 +2,7 @@ const CACHE_PREFIX = 'cartavault-shell-'
 // Cache Storage is deliberately limited to the public app shell. Private map,
 // trip and POI data lives in the user-isolated IndexedDB offline store.
 const CACHE_NAME = `${CACHE_PREFIX}v3`
+const MAP_ASSET_CACHE = 'cartavault-map-assets-v1'
 const APP_SHELL = [
   '/',
   '/offline.html',
@@ -37,9 +38,19 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
 
-  // API responses and third-party map tiles must stay fresh and are never
-  // cached here: they can contain private data or provider-controlled assets.
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return
+  if (url.origin !== self.location.origin) return
+
+  // Glyphs are shared, non-sensitive parts of the self-hosted basemap. They
+  // are the only API responses cached by the service worker.
+  if (url.pathname.includes('/basemaps/cartavault/fonts/')) {
+    event.respondWith(caches.open(MAP_ASSET_CACHE).then((cache) => cache.match(request).then((cached) => cached ?? fetch(request).then((response) => {
+      if (response.ok) void cache.put(request, response.clone())
+      return response
+    }))))
+    return
+  }
+  // Other API responses can contain private data and stay in IndexedDB only.
+  if (url.pathname.startsWith('/api/')) return
 
   if (request.mode === 'navigate') {
     event.respondWith(

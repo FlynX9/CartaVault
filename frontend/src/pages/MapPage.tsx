@@ -35,6 +35,8 @@ import type { AnnotationTemplate, PlaceAnnotation } from '../types/annotation'
 import type { AnnotationDrawingState } from '../components/map/AnnotationDrawingLayer'
 import { distanceBetweenPoints } from '../components/map/measurement'
 import { publishGlobalFeedback } from '../components/common/globalFeedback'
+import { getCartaVaultVectorConfig } from '../api/vectorBasemap'
+import { getOfflineBasemapVersion, hasOfflineBasemap } from '../pwa/offlineData'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -236,6 +238,8 @@ export function MapPage({
   const [photoMarkersEnabled, setPhotoMarkersEnabled] = useState(false)
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const [googleSatelliteAvailable, setGoogleSatelliteAvailable] = useState(false)
+  const [cartaVaultAvailable, setCartaVaultAvailable] = useState(true)
+  const onlineBasemapRef = useRef<BasemapId | null>(null)
   const googleSatelliteAvailableRef = useRef(false)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
   const explicitBasemapSelectionRef = useRef<BasemapId | null>(null)
@@ -497,6 +501,37 @@ export function MapPage({
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+    const applyConnectivity = async () => {
+      try {
+        const offlineVersion = await getOfflineBasemapVersion()
+        if (controller.signal.aborted) return
+        const offlineReady = offlineVersion !== null
+        setCartaVaultAvailable(navigator.onLine !== false || offlineReady)
+        if (navigator.onLine === false && offlineReady) {
+          onlineBasemapRef.current ??= basemapId
+          setBasemapId(resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light')
+          setBasemapNotice('Fond CartaVault hors ligne activé temporairement. Votre préférence sera restaurée au retour de la connexion.')
+        } else if (navigator.onLine && onlineBasemapRef.current) {
+          const preferred = onlineBasemapRef.current
+          onlineBasemapRef.current = null
+          setBasemapId(preferred)
+          setBasemapNotice(null)
+        } else if (navigator.onLine === false && !offlineReady && basemapId.startsWith('cartavault-')) {
+          setBasemapId('osm')
+        }
+      } catch {
+        // A transient status failure must not rewrite the user's preference.
+        // Tile errors still activate the established controlled fallback.
+      }
+    }
+    void applyConnectivity()
+    window.addEventListener('online', applyConnectivity)
+    window.addEventListener('offline', applyConnectivity)
+    return () => { controller.abort(); window.removeEventListener('online', applyConnectivity); window.removeEventListener('offline', applyConnectivity) }
+  }, [basemapId, resolvedTheme])
+
+  useEffect(() => {
     const changeAllVisibility = (event: Event) => {
       const detail = (event as CustomEvent<{ placeId?: string; annotationIds?: string[]; visible?: boolean }>).detail
       if (detail?.placeId !== selectedPlaceId || !Array.isArray(detail.annotationIds) || typeof detail.visible !== 'boolean') return
@@ -667,7 +702,15 @@ export function MapPage({
       return
     }
     setBasemapId('osm')
-    saveBasemapPreference('osm')
+    void getCartaVaultVectorConfig().then(async (config) => {
+      if (!sourceId.startsWith('cartavault-') && await hasOfflineBasemap(config.version)) {
+        onlineBasemapRef.current ??= sourceId
+        setBasemapId(resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light')
+        setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. Le fond CartaVault local est utilisé temporairement.`)
+        return
+      }
+      setBasemapId('osm')
+    }).catch(() => setBasemapId('osm'))
     setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. OpenStreetMap a été activé automatiquement.`)
   }
   return (
@@ -821,7 +864,7 @@ export function MapPage({
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
-            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} googleSatelliteAvailable={googleSatelliteAvailable} satelliteProvider={satelliteProvider} />
+            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} googleSatelliteAvailable={googleSatelliteAvailable} satelliteProvider={satelliteProvider} cartaVaultAvailable={cartaVaultAvailable} />
           </div>
           {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
             <button

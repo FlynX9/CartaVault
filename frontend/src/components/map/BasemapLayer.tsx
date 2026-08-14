@@ -9,6 +9,9 @@ import { getBasemap, type BasemapId, type RasterBasemapDefinition, type VectorBa
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { createGoogleSatelliteSession, reportGoogleSatelliteUsage } from '../../api/googleSatellite'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
+import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
+import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
+import { getOfflineBasemapVersion } from '../../pwa/offlineData'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
@@ -25,8 +28,23 @@ function VectorBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDe
     let layer: L.MaplibreGLLayer | null = null
     let mapLibreErrorHandler: (() => void) | null = null
 
-    void loadCartaVaultStyle(basemap.styleUrl, basemap.tileJsonUrl, basemap.glyphsUrl, controller.signal)
-      .then((style) => {
+    void (async () => {
+      let configured
+      try {
+        configured = await getCartaVaultVectorConfig(controller.signal)
+      } catch (error) {
+        if (controller.signal.aborted || navigator.onLine === false) throw error
+        return loadCartaVaultStyle(basemap.styleUrl, basemap.tileJsonUrl, basemap.glyphsUrl, controller.signal)
+      }
+      const offlineVersion = navigator.onLine === false ? await getOfflineBasemapVersion() : null
+      const config = offlineVersion ? { ...configured, version: offlineVersion, available: true } : configured
+      if (config.available && config.archive_url) {
+        configureCartaVaultProtocol(config)
+        return loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
+      }
+      if (navigator.onLine === false) throw new Error('CartaVault vector basemap unavailable offline')
+      return loadCartaVaultStyle(basemap.styleUrl, basemap.tileJsonUrl, basemap.glyphsUrl, controller.signal)
+    })().then((style) => {
         if (controller.signal.aborted) return
         layer = L.maplibreGL({ style, interactive: false, attributionControl: false })
         layer.addTo(map)

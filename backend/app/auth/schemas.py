@@ -91,6 +91,13 @@ class EmailChange(EmailModel):
 class AccountPasswordChange(PasswordChange):
     confirmation: str = Field(min_length=security_settings.password_min_length, max_length=1024)
 
+    @field_validator("new_password")
+    @classmethod
+    def enforce_password_complexity(cls, value: str) -> str:
+        if not all((any(character.islower() for character in value), any(character.isupper() for character in value), any(character.isdigit() for character in value), any(not character.isalnum() for character in value))):
+            raise ValueError("Password must contain an uppercase letter, a lowercase letter, a digit, and a special character")
+        return value
+
     @model_validator(mode="after")
     def passwords_match(self) -> Self:
         if self.new_password != self.confirmation:

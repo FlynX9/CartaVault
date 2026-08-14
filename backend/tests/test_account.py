@@ -35,7 +35,9 @@ def test_account_profile_email_password_and_sessions(integration_client, databas
     extra2 = UserSession(user_id=auth_user.id, token_hash="e" * 64, csrf_token_hash="f" * 64, expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=1), last_used_at=datetime.now(UTC).replace(tzinfo=None))
     database_session.add(extra2); database_session.flush()
     monkeypatch.setattr("app.auth.account_router.hash_password", lambda password: f"account::{password}")
-    changed_password = integration_client.post("/account/change-password", json={"current_password": "current password", "new_password": "a new sufficiently long password", "confirmation": "a new sufficiently long password"}, headers=headers)
+    weak_password = integration_client.post("/account/change-password", json={"current_password": "current password", "new_password": "a new sufficiently long password", "confirmation": "a new sufficiently long password"}, headers=headers)
+    assert weak_password.status_code == 422
+    changed_password = integration_client.post("/account/change-password", json={"current_password": "current password", "new_password": "New Strong Password 42!", "confirmation": "New Strong Password 42!"}, headers=headers)
     assert changed_password.status_code == 204 and auth_user.password_hash.startswith("account::")
     database_session.refresh(extra2); assert extra2.revoked_at is not None
 
