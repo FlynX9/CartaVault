@@ -317,7 +317,7 @@ function WorkspaceApp() {
   const tripAddPending = useRef(new Set<string>());
   const tripNoticeTimer = useRef<number | null>(null);
   const openAdmin = useCallback(
-    () => navigate({ pathname: "/admin/users", search: location.search }),
+    () => navigate({ pathname: "/admin/general", search: location.search }),
     [location.search, navigate],
   );
   const openRegistrationRequests = useCallback(() => {

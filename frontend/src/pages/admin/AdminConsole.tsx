@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Activity, Check, ChevronLeft, ChevronRight, Gauge, ImageDown, KeyRound, RefreshCw, Save, Settings2, ShieldCheck, Users, X } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
@@ -21,6 +21,7 @@ import { AdminUsersSection } from './AdminUsersSection'
 import { AdminUserModal } from './AdminUserModal'
 import { AdminApiKeysSection } from './AdminApiKeysSection'
 import { AdminPublicRegistrationSection } from './AdminPublicRegistrationSection'
+import { AdminSaveContext, useAdminSaveEntry, type AdminSaveContextValue, type AdminSaveEntry } from './adminSaveContext'
 import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, QuotaProfile } from '../../types/adminConsole'
 
 const sections = [
@@ -29,18 +30,6 @@ const sections = [
 ] as const
 
 type AdminSectionKey = typeof sections[number][0]
-type AdminSaveEntry = { label: string; dirty: boolean; busy: boolean; save: () => Promise<void>; discard: () => void }
-type AdminSaveContextValue = { register: (id: string, entry: AdminSaveEntry) => void; unregister: (id: string) => void }
-const AdminSaveContext = createContext<AdminSaveContextValue | null>(null)
-
-function useAdminSaveEntry(id: string, entry: AdminSaveEntry) {
-  const context = useContext(AdminSaveContext)
-  useEffect(() => {
-    context?.register(id, entry)
-    return () => context?.unregister(id)
-  }, [context, entry, id])
-}
-
 export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
   const { t } = useI18n()
   const location = useLocation()
@@ -50,7 +39,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
   const [saveEntries, setSaveEntries] = useState<Record<string, AdminSaveEntry>>({})
   const [savingAll, setSavingAll] = useState(false)
   const [closePromptOpen, setClosePromptOpen] = useState(false)
-  const activeSection = sections.find(([path]) => location.pathname === `/admin/${path}`)?.[0] ?? 'users'
+  const activeSection = sections.find(([path]) => location.pathname === `/admin/${path}`)?.[0] ?? 'general'
   const [visitedSections, setVisitedSections] = useState<Set<AdminSectionKey>>(() => new Set([activeSection]))
   const saveContext = useMemo<AdminSaveContextValue>(() => ({
     register: (id, entry) => setSaveEntries((current) => current[id] === entry ? current : { ...current, [id]: entry }),
@@ -76,7 +65,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     finally { setSavingAll(false) }
   }, [saveEntries])
   useEffect(() => { setVisitedSections((current) => current.has(activeSection) ? current : new Set([...current, activeSection])) }, [activeSection])
-  useEffect(() => { if (location.pathname === '/admin') navigate('/admin/users', { replace: true }) }, [location.pathname, navigate])
+  useEffect(() => { if (location.pathname === '/admin') navigate('/admin/general', { replace: true }) }, [location.pathname, navigate])
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -299,7 +288,7 @@ function SaasSettingsPanel() {
   const saasSaveEntry = useMemo<AdminSaveEntry>(() => ({ label: 'mode SaaS', dirty: enabled !== savedEnabled, busy, save, discard: () => setEnabled(savedEnabled) }), [busy, enabled, save, savedEnabled])
   useAdminSaveEntry('general-saas', saasSaveEntry)
   return <section className="admin-console__card admin-console__setting-card" aria-labelledby="saas-settings-title">
-    <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ShieldCheck size={17} /></span><div><h3 id="saas-settings-title">Mode SaaS</h3><p>Active les fonctions destinées à une instance ouverte au public. Pour le moment, cela affiche le menu Contact aux utilisateurs.</p></div><label className="cv-toggle admin-console__setting-toggle"><input type="checkbox" role="switch" aria-label="Mode SaaS" checked={enabled} disabled={loading || busy} onChange={(event) => setEnabled(event.target.checked)} /><i aria-hidden="true" /><span>{enabled ? 'Actif' : 'Inactif'}</span></label></header>
+    <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><ShieldCheck size={17} /></span><div><h3 id="saas-settings-title">Mode SaaS</h3><p>Active les fonctions destinées à une instance ouverte au public. Pour le moment, cela affiche le menu Contact aux utilisateurs.</p></div><label className="cv-toggle admin-console__setting-toggle"><input type="checkbox" role="switch" aria-label="Mode SaaS" checked={enabled} disabled={loading || busy} onChange={(event) => setEnabled(event.target.checked)} /><i aria-hidden="true" /></label></header>
     {error && <div className="form-alert" role="alert">{error}</div>}
   </section>
 }

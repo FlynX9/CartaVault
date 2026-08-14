@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
 import { assignUserQuotaProfile, createQuotaProfile, getAdminApiKeys, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, updateAdminUser, updateQuotaProfile, verifyAdminApiKey } from '../../api/adminConsole'
-import { getPublicRegistrationSettings } from '../../api/registration'
+import { getPublicRegistrationSettings, updatePublicRegistrationSettings } from '../../api/registration'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 import type { QuotaRegistryItem } from '../../types/adminConsole'
 
@@ -23,6 +23,7 @@ beforeEach(() => {
   vi.mocked(getAdminApiKeys).mockResolvedValue([])
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
+  vi.mocked(updatePublicRegistrationSettings).mockImplementation(async (settings) => settings)
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getInstanceLogRetention).mockResolvedValue({ retention_days: 7 })
@@ -53,9 +54,18 @@ describe('AdminConsole', () => {
     render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
 
     expect(await screen.findByRole('heading', { name: 'Inscriptions publiques' })).toBeVisible()
-    expect(screen.getByRole('switch', { name: 'Activer les inscriptions publiques' })).not.toBeChecked()
+    const registrationSwitch = screen.getByRole('switch', { name: 'Activer les inscriptions publiques' })
+    await waitFor(() => expect(registrationSwitch).not.toBeDisabled())
+    expect(registrationSwitch).not.toBeChecked()
     expect(screen.getByRole('switch', { name: 'Validation des demandes' })).toBeDisabled()
     expect(getPublicRegistrationSettings).toHaveBeenCalledOnce()
+
+    fireEvent.click(registrationSwitch)
+    expect(updatePublicRegistrationSettings).not.toHaveBeenCalled()
+    const saveButton = screen.getByRole('button', { name: 'Enregistrer' })
+    expect(saveButton).toBeEnabled()
+    fireEvent.click(saveButton)
+    await waitFor(() => expect(updatePublicRegistrationSettings).toHaveBeenCalledWith({ enabled: true, approval_required: true }))
   })
 
   it('navigates to credentials without reloading the application', async () => {

@@ -118,8 +118,9 @@ describe('map URL workspace', () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Menu utilisateur de Admin' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Administration' }))
-    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/admin/users'))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/admin/general'))
     expect(await screen.findByRole('dialog', { name: 'Administration' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Général' })).toHaveClass('active')
     expect(screen.getByTestId('workspace')).toBeVisible()
     const mapCallsBeforeSectionChange = vi.mocked(getMaps).mock.calls.length
     fireEvent.click(screen.getByRole('link', { name: 'Clés API' }))
