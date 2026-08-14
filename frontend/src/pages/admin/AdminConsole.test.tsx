@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { AdminConsole } from './AdminConsole'
 import { assignUserQuotaProfile, createQuotaProfile, getAdminApiKeys, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, updateAdminUser, updateQuotaProfile, verifyAdminApiKey } from '../../api/adminConsole'
 import { getPublicRegistrationSettings, updatePublicRegistrationSettings } from '../../api/registration'
+import { getAdminPrivacySettings, saveAdminPrivacySettings } from '../../api/privacy'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 import type { QuotaRegistryItem } from '../../types/adminConsole'
 
@@ -15,6 +16,7 @@ vi.mock('../../api/adminConsole', () => ({
   saveInstanceLogRetention: vi.fn(), saveMediaUploadSettings: vi.fn(), saveSaasSettings: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminApiKey: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyAdminApiKey: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
+vi.mock('../../api/privacy', () => ({ getAdminPrivacySettings: vi.fn(), saveAdminPrivacySettings: vi.fn() }))
 vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
 
@@ -24,6 +26,8 @@ beforeEach(() => {
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
   vi.mocked(updatePublicRegistrationSettings).mockImplementation(async (settings) => settings)
+  vi.mocked(getAdminPrivacySettings).mockResolvedValue(privacySettings)
+  vi.mocked(saveAdminPrivacySettings).mockImplementation(async (settings) => ({ ...settings, consent_required: settings.analytics_mode === 'consent_required', consent_version: '1' }))
   vi.mocked(getQuotaRegistry).mockResolvedValue([])
   vi.mocked(getInstanceHealth).mockResolvedValue(instanceHealth)
   vi.mocked(getInstanceLogRetention).mockResolvedValue({ retention_days: 7 })
@@ -66,6 +70,24 @@ describe('AdminConsole', () => {
     expect(saveButton).toBeEnabled()
     fireEvent.click(saveButton)
     await waitFor(() => expect(updatePublicRegistrationSettings).toHaveBeenCalledWith({ enabled: true, approval_required: true }))
+  })
+
+  it('only reveals privacy inputs after enabling the section and saves its selected mode from the header', async () => {
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+
+    const privacyToggle = await screen.findByRole('switch', { name: 'Activer la confidentialité et la conformité' })
+    expect(privacyToggle).not.toBeChecked()
+    expect(screen.queryByLabelText('Nom de l’instance')).not.toBeInTheDocument()
+
+    fireEvent.click(privacyToggle)
+    expect(screen.getByRole('button', { name: /^Respect de la vie privée/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('Nom de l’instance')).toBeVisible()
+    expect(screen.getByLabelText('Contact de l’instance')).toHaveAttribute('placeholder', 'admin@exemple.fr')
+    fireEvent.click(screen.getByRole('button', { name: /^Consentement requis/ }))
+    expect(saveAdminPrivacySettings).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(saveAdminPrivacySettings).toHaveBeenCalledWith(expect.objectContaining({ analytics_mode: 'consent_required' })))
   })
 
   it('navigates to credentials without reloading the application', async () => {
@@ -379,6 +401,10 @@ const quotaRegistry: QuotaRegistryItem[] = [
   { key: 'maps_max', scope: 'user', unit: 'count', label: 'Cartes', description: 'Nombre de cartes possédées', minimum: 0, maximum: 2147483647, enforced: true },
   { key: 'storage_bytes_max', scope: 'user', unit: 'bytes', label: 'Stockage', description: 'Volume total des médias', minimum: 0, maximum: Number.MAX_SAFE_INTEGER, enforced: true },
 ]
+
+const privacySettings = {
+  analytics_mode: 'disabled' as const, consent_required: false, consent_version: '1', operator_name: '', privacy_policy_url: '', cookie_policy_url: '', contact_email: '', auth_log_retention_days: 90, session_retention_days: 30, deleted_account_retention_days: 0,
+}
 
 const unlimitedProfile = {
   id: '00000000-0000-0000-0000-000000000001', name: 'Unlimited', description: null,

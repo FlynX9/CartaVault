@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
+from email_validator import EmailNotValidError, validate_email
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -14,7 +15,6 @@ class PrivacySettingsRead(BaseModel):
     privacy_policy_url: str
     cookie_policy_url: str
     contact_email: str
-    policy_version: str
     auth_log_retention_days: int
     session_retention_days: int
     deleted_account_retention_days: int
@@ -26,7 +26,6 @@ class PrivacySettingsUpdate(BaseModel):
     privacy_policy_url: str = Field(default="", max_length=2048)
     cookie_policy_url: str = Field(default="", max_length=2048)
     contact_email: str = Field(default="", max_length=320)
-    policy_version: str = Field(default="1", min_length=1, max_length=32)
     auth_log_retention_days: int = Field(default=90, ge=1, le=3650)
     session_retention_days: int = Field(default=30, ge=1, le=365)
     deleted_account_retention_days: int = Field(default=0, ge=0, le=3650)
@@ -38,6 +37,17 @@ class PrivacySettingsUpdate(BaseModel):
         if normalized and not normalized.startswith(("https://", "http://")):
             raise ValueError("A policy URL must use HTTP(S)")
         return normalized
+
+    @field_validator("contact_email")
+    @classmethod
+    def validate_optional_contact_email(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            return ""
+        try:
+            return validate_email(normalized, check_deliverability=False, test_environment=True).normalized
+        except EmailNotValidError as error:
+            raise ValueError("Contact email must be a valid email address") from error
 
 
 class ConsentPreferences(BaseModel):

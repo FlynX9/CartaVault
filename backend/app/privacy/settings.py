@@ -25,7 +25,6 @@ class PrivacySettings:
     privacy_policy_url: str = ""
     cookie_policy_url: str = ""
     contact_email: str = ""
-    policy_version: str = "1"
     auth_log_retention_days: int = 90
     session_retention_days: int = 30
     deleted_account_retention_days: int = 0
@@ -56,7 +55,6 @@ def _normalized(value: object) -> PrivacySettings:
         privacy_policy_url=text("privacy_policy_url", 2048),
         cookie_policy_url=text("cookie_policy_url", 2048),
         contact_email=text("contact_email", 320),
-        policy_version=text("policy_version", 32) or "1",
         auth_log_retention_days=days("auth_log_retention_days", 90, 1, 3650),
         session_retention_days=days("session_retention_days", 30, 1, 365),
         deleted_account_retention_days=days("deleted_account_retention_days", 0, 0, 3650),
@@ -75,7 +73,6 @@ def save_privacy_settings(session: Session, settings: PrivacySettings) -> Privac
         "privacy_policy_url": settings.privacy_policy_url,
         "cookie_policy_url": settings.cookie_policy_url,
         "contact_email": settings.contact_email,
-        "policy_version": settings.policy_version,
         "auth_log_retention_days": settings.auth_log_retention_days,
         "session_retention_days": settings.session_retention_days,
         "deleted_account_retention_days": settings.deleted_account_retention_days,

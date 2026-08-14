@@ -30,7 +30,6 @@ def test_admin_can_configure_privacy_and_user_can_manage_consent(integration_cli
             "privacy_policy_url": "https://example.test/privacy",
             "cookie_policy_url": "https://example.test/cookies",
             "contact_email": "privacy@example.test",
-            "policy_version": "2026-08",
             "auth_log_retention_days": 45,
             "session_retention_days": 30,
             "deleted_account_retention_days": 0,
@@ -49,6 +48,16 @@ def test_admin_can_configure_privacy_and_user_can_manage_consent(integration_cli
         assert read.json()["analytics"] is True
     finally:
         app.dependency_overrides.pop(get_current_session, None)
+        app.dependency_overrides.pop(require_admin, None)
+
+
+def test_admin_rejects_an_invalid_privacy_contact_email(integration_client, auth_user):
+    app.dependency_overrides[require_admin] = lambda: auth_user
+    try:
+        response = integration_client.put("/api/admin/console/privacy/settings", json={"contact_email": "admin-at-example.fr"})
+
+        assert response.status_code == 422
+    finally:
         app.dependency_overrides.pop(require_admin, None)
 
 

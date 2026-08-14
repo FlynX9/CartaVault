@@ -10,7 +10,6 @@ export interface PrivacySettings {
   privacy_policy_url: string
   cookie_policy_url: string
   contact_email: string
-  policy_version: string
   auth_log_retention_days: number
   session_retention_days: number
   deleted_account_retention_days: number
