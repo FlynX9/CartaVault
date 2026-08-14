@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock3, Copy, Globe2, HardDriveDownload, Image as ImageIcon, Info, KeyRound, LayoutDashboard, Link, List, LockKeyhole, Mail, Map as MapIcon, Monitor, MonitorSmartphone, Moon, Save, Settings2, Shield, ShieldCheck, ShieldCog, Sun, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarDays, CheckCircle2, ChevronRight, Clock3, Copy, Globe2, HardDriveDownload, Image as ImageIcon, KeyRound, LayoutDashboard, Link, List, LockKeyhole, Mail, Map as MapIcon, Monitor, MonitorSmartphone, Moon, Save, Settings2, Shield, ShieldCheck, ShieldCog, Sparkles, Sun, Trash2, Upload, UserRound, X, type LucideIcon } from 'lucide-react'
 
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, changeAccountEmail, changeAccountPassword, confirmEmailMfaSetup, confirmTotpSetup, deleteAccountAvatar, deleteOwnAccount, disableEmailMfa, disableTotp, getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getTotpStatus, regenerateTotpRecoveryCodes, revokeAccountSession, revokeOtherAccountSessions, startEmailMfaSetup, startTotpSetup, updateAccountPreferences, updateAccountProfile, uploadAccountAvatar } from '../../api/account'
 import { SESSION_EXPIRED_EVENT } from '../../api/client'
@@ -161,32 +161,23 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
 function ProfileSection({ profile, preferences, setPreferences, avatar, initials, draftName, setDraftName, uploadAvatar, removeAvatar }: { profile: AccountProfile; preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
   const { t, locale } = useI18n()
   return <><AccountHeading title={t('account.profile')} description={t('account.profileSection.description')} />
-    <div className="account-profile-grid">
-      <form className="account-form account-preference-card account-profile-card" onSubmit={(event) => event.preventDefault()}>
-        <PreferenceCardHeading icon={UserRound} title={t('account.profileSection.information')} />
-        <div className="account-profile-field"><label htmlFor="account-display-name">{t('account.profileSection.displayName')}</label><input id="account-display-name" name="display_name" value={draftName} placeholder={t('account.profileSection.displayNamePlaceholder')} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /></div>
-      </form>
-      <section className="account-preference-card account-avatar-editor">
-        <PreferenceCardHeading icon={ImageIcon} title={t('account.avatar')} />
-        <p className="account-card-description">{t('account.profileSection.avatarDescription')}</p>
-        <div className="account-avatar-editor__content">
-          <div className="account-avatar large">{avatar ? <img src={avatar} alt={t('account.profileSection.avatarPreview')} /> : initials}</div>
-          <div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />{t('account.profileSection.importImage')}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />{t('account.profileSection.delete')}</button>}</div>
-        </div>
-        <small>{t('account.profileSection.imageFormats')}</small>
-      </section>
-    </div>
-    <section className="account-preference-card account-profile-metadata-card">
-      <PreferenceCardHeading icon={Info} title={t('account.profileSection.accountInformation')} />
+    <section className="account-preference-card account-profile-identity-card">
+      <div className="account-profile-identity-card__body">
+        <div className="account-profile-avatar"><div className="account-avatar large">{avatar ? <img src={avatar} alt={t('account.profileSection.avatarPreview')} /> : initials}</div><small>{t('account.profileSection.imageFormats')}</small></div>
+        <form className="account-profile-field" onSubmit={(event) => event.preventDefault()}><label htmlFor="account-display-name">{t('account.profileSection.displayName')}</label><span><input id="account-display-name" name="display_name" value={draftName} placeholder={t('account.profileSection.displayNamePlaceholder')} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /><UserRound size={17} aria-hidden="true" /></span><p>{t('account.profileSection.avatarDescription')}</p><div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />{t('account.profileSection.importImage')}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />{t('account.profileSection.delete')}</button>}</div></form>
+      </div>
+    </section>
+    <section className="account-profile-metadata-card">
+      <h3>{t('account.profileSection.accountInformation')}</h3>
       <dl className="account-metadata">
-        <div><dt><Mail size={15} aria-hidden="true" />{t('account.profileSection.email')}</dt><dd>{profile.email}</dd></div>
-        <div><dt><CalendarDays size={15} aria-hidden="true" />{t('account.profileSection.created')}</dt><dd>{new Date(profile.created_at).toLocaleDateString(locale)}</dd></div>
-        <div><dt><Clock3 size={15} aria-hidden="true" />{t('account.profileSection.lastLogin')}</dt><dd>{profile.last_login_at ? new Date(profile.last_login_at).toLocaleString(locale) : t('account.profileSection.unavailable')}</dd></div>
-        <div><dt><MapIcon size={15} aria-hidden="true" />{t('account.profileSection.ownedMaps')}</dt><dd>{profile.owned_maps.length}</dd></div>
+        <div><dt><Mail size={16} aria-hidden="true" /></dt><dd><strong>{t('account.profileSection.email')}</strong><span>{profile.email}</span></dd></div>
+        <div><dt><CalendarDays size={16} aria-hidden="true" /></dt><dd><strong>{t('account.profileSection.created')}</strong><span>{new Date(profile.created_at).toLocaleDateString(locale)}</span></dd></div>
+        <div><dt><Clock3 size={16} aria-hidden="true" /></dt><dd><strong>{t('account.profileSection.lastLogin')}</strong><span>{profile.last_login_at ? new Date(profile.last_login_at).toLocaleString(locale) : t('account.profileSection.unavailable')}</span></dd></div>
+        <div><dt><MapIcon size={16} aria-hidden="true" /></dt><dd><strong>{t('account.profileSection.ownedMaps')}</strong><span>{profile.owned_maps.length}</span></dd></div>
       </dl>
     </section>
     <section className="account-preference-card account-onboarding-guide">
-      <PreferenceCardHeading icon={LayoutDashboard} title="Guide de démarrage" />
+      <PreferenceCardHeading icon={Sparkles} title="Guide de démarrage" />
       <div className="account-onboarding-guide__option"><div><strong>Afficher le guide de démarrage</strong><p>Affiche les étapes de prise en main sur votre tableau de bord.</p></div><label className="cv-toggle"><input id="account-onboarding-guide" type="checkbox" role="switch" aria-label="Afficher le guide de démarrage" checked={!preferences.onboarding.dismissed} onChange={(event) => setPreferences({ ...preferences, onboarding: { ...preferences.onboarding, dismissed: !event.target.checked } })} /><i aria-hidden="true" /><span>{preferences.onboarding.dismissed ? 'Masqué' : 'Affiché'}</span></label></div>
     </section>
   </>
