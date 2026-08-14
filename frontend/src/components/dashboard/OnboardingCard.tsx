@@ -60,7 +60,7 @@ export function OnboardingCard({ maps, dashboard, onCreateMap, onCreatePlace, on
     if (step === 'trip' && targetMap) onCreateTrip(targetMap.id)
     if (step === 'organization') complete('organization')
   }
-  if (preferences.onboarding.dismissed) return <button className="dashboard-onboarding-resume" type="button" onClick={() => void persist({ ...preferences, onboarding: { ...preferences.onboarding, dismissed: false } })}>Reprendre le guide de démarrage</button>
+  if (preferences.onboarding.dismissed) return null
   if (!showCard) return null
   return <section className="dashboard-onboarding" aria-labelledby="onboarding-title">
     <header><div><span>Bienvenue dans CartaVault</span><h2 id="onboarding-title">Configurez votre premier voyage</h2><p>Quelques étapes facultatives pour prendre vos repères. Vous pouvez les reprendre à tout moment.</p></div><button type="button" disabled={saving} onClick={() => void persist({ ...preferences, onboarding: { ...preferences.onboarding, dismissed: true } })}>Passer le guide</button></header>

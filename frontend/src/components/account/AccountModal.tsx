@@ -145,7 +145,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         </nav>
         <main className="account-modal__content">
           {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
-          {section === 'profile' && profile && <ProfileSection profile={profile} avatar={avatar} initials={initials} draftName={draftName} setDraftName={setDraftName} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
+          {section === 'profile' && profile && <ProfileSection profile={profile} preferences={preferences} setPreferences={setPreferences} avatar={avatar} initials={initials} draftName={draftName} setDraftName={setDraftName} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} sessions={sessions} run={run} refreshProfile={async () => { await refresh(); await load() }} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} />}
           {section === 'api_keys' && <PersonalApiKeysSection />}
@@ -158,7 +158,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   )
 }
 
-function ProfileSection({ profile, avatar, initials, draftName, setDraftName, uploadAvatar, removeAvatar }: { profile: AccountProfile; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
+function ProfileSection({ profile, preferences, setPreferences, avatar, initials, draftName, setDraftName, uploadAvatar, removeAvatar }: { profile: AccountProfile; preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
   const { t, locale } = useI18n()
   return <><AccountHeading title={t('account.profile')} description={t('account.profileSection.description')} />
     <div className="account-profile-grid">
@@ -184,6 +184,10 @@ function ProfileSection({ profile, avatar, initials, draftName, setDraftName, up
         <div><dt><Clock3 size={15} aria-hidden="true" />{t('account.profileSection.lastLogin')}</dt><dd>{profile.last_login_at ? new Date(profile.last_login_at).toLocaleString(locale) : t('account.profileSection.unavailable')}</dd></div>
         <div><dt><MapIcon size={15} aria-hidden="true" />{t('account.profileSection.ownedMaps')}</dt><dd>{profile.owned_maps.length}</dd></div>
       </dl>
+    </section>
+    <section className="account-preference-card account-onboarding-guide">
+      <PreferenceCardHeading icon={LayoutDashboard} title="Guide de démarrage" />
+      <div className="account-onboarding-guide__option"><div><strong>Afficher le guide de démarrage</strong><p>Affiche les étapes de prise en main sur votre tableau de bord.</p></div><label className="cv-toggle"><input id="account-onboarding-guide" type="checkbox" role="switch" aria-label="Afficher le guide de démarrage" checked={!preferences.onboarding.dismissed} onChange={(event) => setPreferences({ ...preferences, onboarding: { ...preferences.onboarding, dismissed: !event.target.checked } })} /><i aria-hidden="true" /><span>{preferences.onboarding.dismissed ? 'Masqué' : 'Affiché'}</span></label></div>
     </section>
   </>
 }

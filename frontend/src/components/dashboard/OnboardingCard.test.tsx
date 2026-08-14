@@ -21,6 +21,7 @@ describe('OnboardingCard', () => {
     expect(await screen.findByRole('heading', { name: 'Configurez votre premier voyage' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Passer le guide' }))
     await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ onboarding: expect.objectContaining({ dismissed: true }) })))
+    expect(screen.queryByRole('button', { name: 'Reprendre le guide de démarrage' })).not.toBeInTheDocument()
   })
 
   it('opens the import flow and persists the exploration step', async () => {

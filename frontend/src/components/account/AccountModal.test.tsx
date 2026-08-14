@@ -53,6 +53,17 @@ describe('AccountModal', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('stages the onboarding guide visibility from the profile section', async () => {
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    expect(await screen.findByRole('heading', { name: 'Guide de démarrage' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Afficher le guide de démarrage' }))
+    expect(screen.getByText('Masqué')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(updateAccountPreferences).toHaveBeenCalledWith({ ...preferences, onboarding: { ...preferences.onboarding, dismissed: true } }))
+  })
+
   it('persists account preferences', async () => {
     render(<AccountModal onClose={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Préférences' }))
