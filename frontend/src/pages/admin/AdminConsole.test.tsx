@@ -40,9 +40,22 @@ afterEach(() => { cleanup(); vi.clearAllMocks() })
 describe('AdminConsole', () => {
   it('renders its reusable navigation and empty users state', async () => {
     render(<MemoryRouter initialEntries={['/admin/users']}><AdminConsole /></MemoryRouter>)
-    expect(screen.getByRole('navigation', { name: 'Sections d’administration' })).toBeVisible()
+    const navigation = screen.getByRole('navigation', { name: 'Sections d’administration' })
+    expect(navigation).toBeVisible()
+    expect(within(navigation).getAllByRole('link').slice(0, 2).map((link) => link.textContent)).toEqual(['Général', 'Utilisateurs'])
     expect(screen.getByRole('link', { name: 'Utilisateurs' })).toHaveClass('active')
     expect(await screen.findByText('Aucun utilisateur trouvé.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Inscriptions publiques' })).not.toBeInTheDocument()
+    expect(getPublicRegistrationSettings).not.toHaveBeenCalled()
+  })
+
+  it('shows public registration settings in General', async () => {
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+
+    expect(await screen.findByRole('heading', { name: 'Inscriptions publiques' })).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'Activer les inscriptions publiques' })).not.toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Validation des demandes' })).toBeDisabled()
+    expect(getPublicRegistrationSettings).toHaveBeenCalledOnce()
   })
 
   it('navigates to credentials without reloading the application', async () => {

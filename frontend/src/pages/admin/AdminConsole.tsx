@@ -20,10 +20,11 @@ import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage
 import { AdminUsersSection } from './AdminUsersSection'
 import { AdminUserModal } from './AdminUserModal'
 import { AdminApiKeysSection } from './AdminApiKeysSection'
+import { AdminPublicRegistrationSection } from './AdminPublicRegistrationSection'
 import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, QuotaProfile } from '../../types/adminConsole'
 
 const sections = [
-  ['users', Users, 'admin.sections.users'], ['general', Settings2, 'admin.sections.general'], ['credentials', KeyRound, 'admin.sections.apiKeys'],
+  ['general', Settings2, 'admin.sections.general'], ['users', Users, 'admin.sections.users'], ['credentials', KeyRound, 'admin.sections.apiKeys'],
   ['quotas', Gauge, 'admin.sections.quotas'], ['instance', Activity, 'admin.sections.instance'],
 ] as const
 
@@ -230,7 +231,7 @@ export function LegacyAdminUsersSection() {
 
 function AdminGeneralSection() {
   const { t } = useI18n()
-  return <section><SectionHeading eyebrow={t('admin.general.eyebrow')} title={t('admin.general.title')} description={t('admin.general.description')} /><SaasSettingsPanel /><PrivacySettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
+  return <section><SectionHeading eyebrow={t('admin.general.eyebrow')} title={t('admin.general.title')} description={t('admin.general.description')} /><AdminPublicRegistrationSection /><SaasSettingsPanel /><PrivacySettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
 }
 
 function PrivacySettingsPanel() {
