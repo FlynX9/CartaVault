@@ -5,7 +5,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 from app.categories.icon_catalog import CATEGORY_ICON_IDS, DEFAULT_CATEGORY_ICON_ID
 from app.categories.icon_migration import (
@@ -71,25 +71,17 @@ def _delete_test_categories(connection, category_ids: list[str]) -> None:
 
 
 def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
-    test_database_url,
-    monkeypatch: pytest.MonkeyPatch,
+    migration_environment,
 ) -> None:
-    """Exercise the category icon migration exclusively on cartavault_test."""
+    """Exercise the category icon migration in a disposable schema."""
 
-    print(test_database_url.database)
-    assert test_database_url.database == "cartavault_test"
-    monkeypatch.setenv(
-        "DATABASE_URL",
-        test_database_url.render_as_string(hide_password=False),
-    )
-
-    engine = create_engine(test_database_url, pool_pre_ping=True)
-    config = Config("alembic.ini")
+    engine = migration_environment.engine
+    config = migration_environment.config
     expected_upgrade = _category_rows()
     category_ids = [_category_id(icon_id) for icon_id in expected_upgrade]
 
     try:
-        command.downgrade(config, PARENT_REVISION)
+        migration_environment.upgrade(PARENT_REVISION)
 
         with engine.begin() as connection:
             _delete_test_categories(connection, category_ids)
@@ -106,14 +98,14 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
                     },
                 )
 
-        command.upgrade(config, MIGRATION_REVISION)
+        migration_environment.upgrade(MIGRATION_REVISION)
 
         with engine.connect() as connection:
             migrated_icons = _read_icons(connection)
             default = connection.scalar(
                 text(
                     "SELECT column_default FROM information_schema.columns "
-                    "WHERE table_schema = 'public' AND table_name = 'categories' "
+                    "WHERE table_schema = current_schema() AND table_name = 'categories' "
                     "AND column_name = 'icon'"
                 )
             )
@@ -127,14 +119,14 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
         assert all_icons <= CATEGORY_ICON_IDS
         assert not all_icons.intersection(LEGACY_CATEGORY_ICON_TO_ICONIFY)
 
-        command.downgrade(config, PARENT_REVISION)
+        migration_environment.downgrade(PARENT_REVISION)
 
         with engine.connect() as connection:
             downgraded_icons = _read_icons(connection)
             default = connection.scalar(
                 text(
                     "SELECT column_default FROM information_schema.columns "
-                    "WHERE table_schema = 'public' AND table_name = 'categories' "
+                    "WHERE table_schema = current_schema() AND table_name = 'categories' "
                     "AND column_name = 'icon'"
                 )
             )
@@ -157,9 +149,4 @@ def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
         assert final_revision == ScriptDirectory.from_config(config).get_current_head()
         assert final_icons <= CATEGORY_ICON_IDS
     finally:
-        try:
-            _upgrade_to_head_with_test_admin(config, engine)
-            with engine.begin() as connection:
-                _delete_test_categories(connection, category_ids)
-        finally:
-            engine.dispose()
+        _upgrade_to_head_with_test_admin(config, engine)

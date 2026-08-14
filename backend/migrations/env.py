@@ -16,8 +16,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-database_url = os.getenv("DATABASE_URL")
-version_table_schema = os.getenv("CARTAVAULT_ALEMBIC_VERSION_SCHEMA") or None
+database_url = config.attributes.get("database_url") or os.getenv("DATABASE_URL")
+version_table_schema = (
+    config.attributes.get("version_table_schema")
+    or os.getenv("CARTAVAULT_ALEMBIC_VERSION_SCHEMA")
+    or None
+)
 
 if not database_url:
     raise RuntimeError("DATABASE_URL is not defined")

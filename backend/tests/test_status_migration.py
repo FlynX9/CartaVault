@@ -1,6 +1,4 @@
 import pytest
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import inspect, text
 
 
@@ -21,17 +19,13 @@ PREVIOUS_REVISION = "a4f9c2e7d631"
 MIGRATION_REVISION = "d6f1a3b8c902"
 
 
-def test_status_migration_downgrade_upgrade_cycle(
-    test_engine,
-    test_database_url,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_status_migration_downgrade_upgrade_cycle(migration_environment) -> None:
     """Exercise the destructive cycle only on the validated test database."""
 
-    monkeypatch.setenv("DATABASE_URL", test_database_url.render_as_string(hide_password=False))
-    config = Config("alembic.ini")
+    migration_environment.upgrade(MIGRATION_REVISION)
+    engine = migration_environment.engine
 
-    with test_engine.begin() as connection:
+    with engine.begin() as connection:
         owner_id = connection.scalar(text("INSERT INTO users (email, display_name, password_hash, is_admin, is_active) VALUES ('status-cycle@example.test', 'Status cycle', 'test-only-hash', true, true) ON CONFLICT (email) DO UPDATE SET is_admin=true, is_active=true RETURNING id"))
         country_id = connection.scalar(text("SELECT c.id FROM countries c WHERE NOT EXISTS (SELECT 1 FROM poi_maps m WHERE m.country_id = c.id) ORDER BY c.id LIMIT 1"))
         connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
@@ -54,29 +48,29 @@ def test_status_migration_downgrade_upgrade_cycle(
         )
 
     try:
-        command.downgrade(config, PREVIOUS_REVISION)
-        previous_columns = {column["name"] for column in inspect(test_engine).get_columns("place_statuses")}
+        migration_environment.downgrade(PREVIOUS_REVISION)
+        previous_columns = {column["name"] for column in inspect(engine).get_columns("place_statuses")}
         assert "map_id" not in previous_columns
         assert "functional_state" not in previous_columns
-        previous_indexes = {index["name"] for index in inspect(test_engine).get_indexes("place_statuses")}
+        previous_indexes = {index["name"] for index in inspect(engine).get_indexes("place_statuses")}
         assert "place_statuses_map_slug_key" not in previous_indexes
-        with test_engine.connect() as connection:
+        with engine.connect() as connection:
             assert connection.scalar(text("SELECT count(*) FROM place_statuses")) == len(MIGRATION_STATUS_ROWS)
             assert str(connection.scalar(
                 text("SELECT status_id FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID}
             )) == MIGRATION_STATUS_ID
 
-        command.upgrade(config, MIGRATION_REVISION)
-        status_columns = {column["name"]: column for column in inspect(test_engine).get_columns("place_statuses")}
+        migration_environment.upgrade(MIGRATION_REVISION)
+        status_columns = {column["name"]: column for column in inspect(engine).get_columns("place_statuses")}
         assert status_columns["map_id"]["nullable"] is False
         assert status_columns["functional_state"]["nullable"] is False
-        status_indexes = {index["name"] for index in inspect(test_engine).get_indexes("place_statuses")}
+        status_indexes = {index["name"] for index in inspect(engine).get_indexes("place_statuses")}
         assert {
             "place_statuses_map_slug_key",
             "place_statuses_one_default_idx",
             "place_statuses_map_functional_state_idx",
         } <= status_indexes
-        with test_engine.connect() as connection:
+        with engine.connect() as connection:
             assert connection.scalar(text("SELECT count(*) FROM place_statuses")) == len(MIGRATION_STATUS_ROWS)
             assert connection.scalar(text("SELECT count(*) FROM place_statuses WHERE map_id IS NULL OR functional_state IS NULL")) == 0
             assert dict(connection.execute(text("SELECT slug, functional_state FROM place_statuses")).all()) == {
@@ -93,10 +87,6 @@ def test_status_migration_downgrade_upgrade_cycle(
                 {"id": MIGRATION_PLACE_ID},
             ) is True
     finally:
-        # Always restore the shared integration database to the real current
-        # head.  Keeping the historical migration revision here used to leave
-        # tables introduced later in the chain absent for following tests.
-        command.upgrade(config, "head")
-        with test_engine.begin() as connection:
-            connection.execute(text("DELETE FROM places WHERE id = :id"), {"id": MIGRATION_PLACE_ID})
-            connection.execute(text("DELETE FROM poi_maps WHERE id = :id"), {"id": MIGRATION_MAP_ID})
+        migration_environment.upgrade("heads")
+
+    migration_environment.assert_at_head()

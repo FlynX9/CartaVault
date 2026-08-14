@@ -7,6 +7,10 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from alembic import command
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session
@@ -23,6 +27,7 @@ from app.main import app
 from app.places.reverse_geocoding import ReverseGeocodingResult, get_reverse_geocoder
 from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
 from app.statuses.service import create_default_statuses
+from tests.migration_environment import MigrationTestEnvironment, provision_migration_environment
 
 
 MISSING_TEST_DATABASE_REASON = (
@@ -119,6 +124,9 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
         test_database_url,
         pool_pre_ping=True,
     )
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config.attributes["database_url"] = test_database_url.render_as_string(hide_password=False)
+    schema_prepared = False
 
     try:
         with engine.connect() as connection:
@@ -140,6 +148,8 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
         # cannot silently exercise an older application schema.
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
+        command.stamp(config, "heads")
+        schema_prepared = True
         with engine.begin() as connection:
             if connection.execute(QuotaProfile.__table__.select().where(QuotaProfile.id == UNLIMITED_PROFILE_ID)).first() is None:
                 connection.execute(QuotaProfile.__table__.insert().values(
@@ -157,7 +167,27 @@ def test_engine(test_database_url: URL) -> Generator[Engine, None, None]:
 
         yield engine
     finally:
+        if schema_prepared:
+            expected_heads = set(ScriptDirectory.from_config(config).get_heads())
+            with engine.connect() as connection:
+                current_heads = set(MigrationContext.configure(connection).get_current_heads())
+            assert current_heads == expected_heads, (
+                "The shared integration schema did not remain at Alembic head: "
+                f"current={sorted(current_heads)}, expected={sorted(expected_heads)}"
+            )
         engine.dispose()
+
+
+@pytest.fixture
+def migration_environment(
+    test_database_url: URL,
+    request: pytest.FixtureRequest,
+) -> Generator[MigrationTestEnvironment, None, None]:
+    """Give each Alembic cycle its own database and version table."""
+
+    worker_id = getattr(request.config, "workerinput", {}).get("workerid", "main")
+    with provision_migration_environment(test_database_url, worker_id=worker_id) as environment:
+        yield environment
 
 
 @pytest.fixture

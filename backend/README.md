@@ -198,7 +198,7 @@ python -m alembic heads
 python -m alembic check
 ```
 
-Apply migrations to a development or production database only when authorized and after a verified backup. Test all upgrade/downgrade cycles exclusively against `cartavault_test`.
+Apply migrations to a development or production database only when authorized and after a verified backup. Test upgrade/downgrade cycles exclusively in temporary PostgreSQL databases provisioned from the validated `TEST_DATABASE_URL` server; they must never downgrade the shared integration schema. CartaVault guarantees only the targeted parent/migration downgrade contracts covered by those tests, not arbitrary historical downgrade chains from the current production head. Use a verified backup and matching application release for production rollback.
 
 Production rollout, backup, restore, rollback, Portainer, and Synology
 procedures are documented in [`../docker/README.md`](../docker/README.md).

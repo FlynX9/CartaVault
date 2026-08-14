@@ -1,6 +1,6 @@
 # CartaVault backend tests
 
-Trip tests verify provider raw metrics (meters and seconds), visits, buffers, margins, estimated duration, midnight transitions, recommended departure, estimated arrival, day-load thresholds and colors, empty trips, stale or route-less days, partial totals, and optimization distance/duration comparisons. `test_trip_time_planning_migration.py` runs the previous-revision → upgrade → downgrade → final-upgrade cycle exclusively against `cartavault_test`.
+Trip tests verify provider raw metrics (meters and seconds), visits, buffers, margins, estimated duration, midnight transitions, recommended departure, estimated arrival, day-load thresholds and colors, empty trips, stale or route-less days, partial totals, and optimization distance/duration comparisons. `test_trip_time_planning_migration.py` runs the previous-revision → upgrade → downgrade → final-upgrade cycle in a disposable migration database.
 
 `test_account.py` covers personal profiles, sensitive changes, no secrets in sessions, and anonymization. Every integration operation uses `TEST_DATABASE_URL` exclusively.
 
@@ -8,17 +8,42 @@ Trip tests verify provider raw metrics (meters and seconds), visits, buffers, ma
 
 The suite covers sessions, cookies, CSRF, active/inactive accounts, last-administrator protection, map roles, invitations, ownership transfer, anti-IDOR behavior, map-scoped categories/tags, and temporary import/export isolation.
 
-Destructive scenarios and Alembic cycles require `TEST_DATABASE_URL` to target exactly `cartavault_test`; the database name is printed alone before the operation. They must never use `DATABASE_URL` or run against `cartavault`.
+Destructive scenarios and Alembic cycles require `TEST_DATABASE_URL` to target a dedicated test database. They must never use `DATABASE_URL` or run against `cartavault`.
 
-The multi-user migration cycle is previous revision → `d8f4a2c7e910` → bootstrap test administrator and map assignment → `e5b9c3d1a742` → downgrade → final upgrade. The test database is restored to `head` after verification.
+### Alembic cycle isolation and downgrade policy
+
+Every Alembic cycle receives a unique PostgreSQL database named with the pytest
+worker and a UUID. The fixture stores an independent `alembic_version` table in
+that database and removes the database with `DROP DATABASE ... WITH (FORCE)`
+during teardown, including after a failed assertion. A database is used instead
+of `search_path` schema isolation because PostgreSQL can otherwise resolve an
+absent temporary table from the shared `public` schema. Migration cycles never
+downgrade the shared integration database. Its schema is explicitly checked
+against the current Alembic heads when the session fixture ends.
+
+CartaVault supports the targeted `parent revision -> migration -> parent
+revision` contracts covered by the migration tests. It does not promise that a
+current production schema can be downgraded through an arbitrary chain of
+historical revisions. A migration that cannot preserve a meaningful downgrade
+must reject it explicitly and document why; tests must not silently weaken or
+skip that contract. Production rollback should restore a verified backup and
+the matching application release rather than depend on an untested historical
+downgrade chain.
+
+Database names are unique per test and worker, so the fixture does not introduce
+a fixed-name lock or collision for future `pytest-xdist` execution. Failure
+diagnostics report the operation, source revision, target revision, and schema
+identifier without printing database credentials.
+
+The multi-user migration cycle is previous revision → `d8f4a2c7e910` → bootstrap test administrator and map assignment → `e5b9c3d1a742` → downgrade → final upgrade. Its disposable database is removed after verification.
 
 ## Status and migration tests
 
-Category-icon and `place_categories.is_primary` migrations must be cycled only with `TEST_DATABASE_URL` targeting `cartavault_test`. Never run a downgrade against `cartavault`.
+Category-icon and `place_categories.is_primary` migrations are cycled only in disposable databases created on the server validated by `TEST_DATABASE_URL`. Never run a downgrade against `cartavault`.
 
 Unit tests cover slug and color normalization. Integration scenarios cover CRUD, the single default, deletion conflicts, place assignment, and map filtering. They require a dedicated `TEST_DATABASE_URL`.
 
-The `upgrade → downgrade → upgrade` Alembic cycle must run only on `cartavault_test`: downgrade removes `places.status_id` and therefore loses status associations. Never run that cycle against a development database.
+The `upgrade → downgrade → upgrade` Alembic cycle must run only in its disposable migration database: downgrade removes `places.status_id` and therefore loses status associations. Never run that cycle against a development database.
 
 ## Country and map scenarios
 
@@ -31,7 +56,7 @@ Integration tests cover the country catalog, map CRUD and conflicts, place creat
 
 Category-icon tests accept only qualified identifiers from the shared catalog for new writes. Historic Lucide values remain readable until a dedicated migration is applied, but are no longer accepted for writes.
 
-The `f3a7c1d9e842` migration test first prints only the target database name and requires exactly `cartavault_test`. It prepares 17 Lucide values, one unknown value, and one Iconify ID, then runs `upgrade → downgrade → upgrade`. Its downgrade is documented as destructive for Iconify IDs without a Lucide equivalent. Never run it against `cartavault`.
+The `f3a7c1d9e842` migration test prepares 17 Lucide values, one unknown value, and one Iconify ID in a disposable database, then runs `upgrade → downgrade → upgrade`. Its downgrade is documented as destructive for Iconify IDs without a Lucide equivalent. Never run it against `cartavault`.
 
 Without `TEST_DATABASE_URL`, integration tests are skipped with an explicit reason and never fall back to `DATABASE_URL`.
 
@@ -56,7 +81,7 @@ $env:TEST_DATABASE_URL="postgresql+psycopg://poi_user:change_me@localhost:5432/c
 
 The suite requires PostgreSQL, verifies PostGIS, requires a database name containing `test`, and rejects an URL pointing to the same host, port, and database as `DATABASE_URL`.
 
-## Temporary schema preparation
+## Integration schema preparation
 
 The first Alembic migration creates the historical base schema, so `alembic
 upgrade heads` can build a clean database without an external SQL snapshot.
@@ -67,9 +92,10 @@ bootstrap. For the rest of the suite, the session fixture:
 1. strictly validates `TEST_DATABASE_URL`;
 2. verifies that PostGIS is installed;
 3. loads all models through `app.main`;
-4. calls `Base.metadata.create_all()` only in the test database.
+4. rebuilds the model schema with `Base.metadata.drop_all()` / `create_all()`;
+5. stamps that freshly rebuilt schema at the current Alembic heads.
 
-The suite never drops tables and does not apply migrations in its general fixture. This is temporary until migrations can reconstruct the entire schema from a fresh database.
+This general fixture never executes downgrade cycles. Those cycles use the disposable databases described above, while the shared integration schema remains stable for transactional application tests.
 
 ## Isolation and cleanup
 
@@ -116,7 +142,7 @@ Map metadata tests (`include_meta=true`) must use `cartavault_test` and verify a
 
 Credential tests cover Fernet encryption, integrity, a wrong master key, format version, absence of secrets in errors, masked API lifecycle, CSRF, replacement, mocked verification, deletion, and user isolation. Test keys are explicitly fake; no real Google call is performed.
 
-Google tests use mocked HTTP responses only. They cover field masks, options, polyline decoding, durations, errors, and the 25-intermediate limit. Persistence and migration integrations must use only `TEST_DATABASE_URL` pointing at `cartavault_test`.
+Google tests use mocked HTTP responses only. They cover field masks, options, polyline decoding, durations, errors, and the 25-intermediate limit. Persistence tests use only the validated `TEST_DATABASE_URL`; migration cycles use disposable databases on that same PostgreSQL server.
 
 Advanced integration scenarios cover configurable fields, favorites, both ratings, derived visited status, shared list/map filters, HTTP(S) links, history, and the trash/restore/purge lifecycle. Alembic cycles must run only after `TEST_DATABASE_URL` validation confirms that the database name contains `test` and is not `cartavault`.
 
@@ -129,7 +155,7 @@ Status tests also cover four defaults on a new map, `functional_state` validatio
 
 ## Quota profiles
 
-`test_quota_profiles.py` covers administrator authorization, lifecycle, unlimited and zero values, case-insensitive uniqueness, the one default profile, system-profile protections, assignment, and transactional creation blocking. Integration tests must load `backend/.env`, print only the database name through `make_url`, and refuse every target other than `cartavault_test`. The expected cycle is `upgrade head`, `downgrade -1`, `upgrade head`, then `alembic check`.
+`test_quota_profiles.py` covers administrator authorization, lifecycle, unlimited and zero values, case-insensitive uniqueness, the one default profile, system-profile protections, assignment, and transactional creation blocking. Integration tests load the guarded `TEST_DATABASE_URL` and never target the development database.
 
 ## Media coverage
 

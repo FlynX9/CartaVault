@@ -1,8 +1,4 @@
 import pytest
-from alembic import command
-from alembic.config import Config
-from alembic.runtime.migration import MigrationContext
-from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
 
@@ -13,47 +9,29 @@ TRIP_REVISION = "f8d2c4a6b910"
 TRIP_TABLES = {"trips", "trip_days", "trip_stops", "trip_nights"}
 
 
-def test_trip_migration_upgrade_downgrade_upgrade_cycle(test_engine, test_database_url, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trip_migration_upgrade_downgrade_upgrade_cycle(migration_environment) -> None:
     """Exercise the trip schema only against the guarded test database."""
 
-    assert test_database_url.database == "cartavault_test"
-    monkeypatch.setenv("DATABASE_URL", test_database_url.render_as_string(hide_password=False))
-    config = Config("alembic.ini")
-
-    # metadata.create_all may expose the gallery table while Alembic is still
-    # stamped at the pre-gallery revision. Only remove that untracked table;
-    # a revision at or after the gallery head must downgrade it itself.
-    with test_engine.begin() as connection:
-        if MigrationContext.configure(connection).get_current_revision() == "a5d9b2f7e410":
-            connection.execute(text("DROP TABLE IF EXISTS trip_night_photos CASCADE"))
-    command.downgrade(config, PARENT_REVISION)
-    # The session fixture calls metadata.create_all; remove only the new domain
-    # so this test exercises Alembic from the actual parent revision.
-    with test_engine.begin() as connection:
-        connection.execute(text("DROP TABLE IF EXISTS trip_night_photos CASCADE"))
-        connection.execute(text("DROP TABLE IF EXISTS trip_nights CASCADE"))
-        connection.execute(text("DROP TABLE IF EXISTS trip_stops CASCADE"))
-        connection.execute(text("DROP TABLE IF EXISTS trip_days CASCADE"))
-        connection.execute(text("DROP TABLE IF EXISTS trips CASCADE"))
+    migration_environment.upgrade(PARENT_REVISION)
+    engine = migration_environment.engine
 
     try:
-        command.upgrade(config, TRIP_REVISION)
-        inspector = inspect(test_engine)
+        migration_environment.upgrade(TRIP_REVISION)
+        inspector = inspect(engine)
         assert TRIP_TABLES <= set(inspector.get_table_names())
         assert {"trips_map_id_idx", "trips_created_by_user_id_idx"} <= {item["name"] for item in inspector.get_indexes("trips")}
         assert "trip_stops_day_sort_order_key" in {item["name"] for item in inspector.get_unique_constraints("trip_stops")}
         assert "trip_nights_trip_days_key" in {item["name"] for item in inspector.get_unique_constraints("trip_nights")}
 
-        command.downgrade(config, PARENT_REVISION)
-        assert TRIP_TABLES.isdisjoint(inspect(test_engine).get_table_names())
+        migration_environment.downgrade(PARENT_REVISION)
+        assert TRIP_TABLES.isdisjoint(inspect(engine).get_table_names())
     finally:
-        command.upgrade(config, "head")
+        migration_environment.upgrade("heads")
 
-    with test_engine.connect() as connection:
-        assert MigrationContext.configure(connection).get_current_revision() == ScriptDirectory.from_config(config).get_current_head()
-    assert TRIP_TABLES <= set(inspect(test_engine).get_table_names())
-    assert "trip_departures" in inspect(test_engine).get_table_names()
-    assert "trip_night_photos" in inspect(test_engine).get_table_names()
-    assert "trip_night_photos_night_order_key" in {item["name"] for item in inspect(test_engine).get_unique_constraints("trip_night_photos")}
-    assert {"website_url", "check_in_from_time", "check_in_until_time", "check_out_from_time", "check_out_until_time"} <= {item["name"] for item in inspect(test_engine).get_columns("trip_nights")}
-    assert "trip_departures_trip_id_key" in {item["name"] for item in inspect(test_engine).get_unique_constraints("trip_departures")}
+    migration_environment.assert_at_head()
+    assert TRIP_TABLES <= set(inspect(engine).get_table_names())
+    assert "trip_departures" in inspect(engine).get_table_names()
+    assert "trip_night_photos" in inspect(engine).get_table_names()
+    assert "trip_night_photos_night_order_key" in {item["name"] for item in inspect(engine).get_unique_constraints("trip_night_photos")}
+    assert {"website_url", "check_in_from_time", "check_in_until_time", "check_out_from_time", "check_out_until_time"} <= {item["name"] for item in inspect(engine).get_columns("trip_nights")}
+    assert "trip_departures_trip_id_key" in {item["name"] for item in inspect(engine).get_unique_constraints("trip_departures")}
