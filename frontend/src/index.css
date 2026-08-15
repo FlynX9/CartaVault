@@ -6049,7 +6049,7 @@ body {
 .map-action-dialog__footer .primary-button:focus-visible { background: #0b8f77; border-color: #0b8f77; }
 
 .map-action-dialog .map-place-fields-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0; }
-.map-action-dialog .map-place-fields-grid label { display: flex; min-height: 2.65rem; align-items: center; justify-content: space-between; gap: 0.65rem; padding: 0.55rem 0.65rem; color: var(--cv-color-navy); background: white; border: 1px solid var(--cv-border-subtle); border-radius: 0.55rem; font-size: 0.75rem; font-weight: 650; cursor: pointer; }
+.map-action-dialog .map-place-fields-grid label { display: flex; min-height: 2.65rem; align-items: center; justify-content: space-between; gap: 0.65rem; padding: 0.55rem 0.65rem; color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: 0.55rem; font-size: 0.75rem; font-weight: 650; cursor: pointer; }
 .map-action-dialog .map-place-fields-grid label:hover { border-color: rgb(15 166 138 / 38%); }
 .map-action-dialog .map-place-fields-grid input,
 .kmz-export-options input { width: 1rem; height: 1rem; flex: 0 0 auto; margin: 0; accent-color: var(--cv-color-teal); }
@@ -7770,11 +7770,11 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
 .profile-import-dialog__header-icon svg { width: 1.15rem; height: 1.15rem; }
 .profile-import-dialog > header h2 { margin: 0; font-size: 1.15rem; }
 .profile-import-dialog > header p { margin: 0; color: var(--cv-color-gray); font-size: 0.72rem; }
-.profile-import-dialog > header button { display: grid; width: 2.35rem; height: 2.35rem; padding: 0; color: var(--cv-color-navy); background: white; border: 1px solid var(--cv-border-strong); border-radius: 0.65rem; place-items: center; }
+.profile-import-dialog > header button { display: grid; width: 2.35rem; height: 2.35rem; padding: 0; color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid var(--cv-border-strong); border-radius: 0.65rem; place-items: center; }
 .profile-import-dialog > header button svg { width: 1.1rem; }
 .profile-import-dialog__body { display: grid; min-height: 12rem; align-content: start; gap: .8rem; padding: 1rem 1.25rem; overflow: auto; background: var(--cv-surface); }
 .profile-import-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
-.profile-import-grid > button { position: relative; display: grid; min-height: 5rem; grid-template-columns: 2.25rem minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; padding: 0.75rem; color: var(--cv-color-navy); background: white; border: 1px solid var(--cv-border-strong); border-radius: 0.75rem; font: inherit; text-align: left; }
+.profile-import-grid > button { position: relative; display: grid; min-height: 5rem; grid-template-columns: 2.25rem minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; padding: 0.75rem; color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid var(--cv-border-strong); border-radius: 0.75rem; font: inherit; text-align: left; }
 .profile-import-grid > button:is(:hover, :focus-visible), .profile-import-grid > button.selected { border-color: var(--cv-color-teal); outline: 0; }
 .profile-import-grid > button.selected { background: rgb(15 166 138 / 8%); }
 .profile-import-card__icon { display: grid; width: 2.25rem; height: 2.25rem; color: var(--cv-color-teal); background: transparent; border-radius: 0; place-items: center; }
@@ -7784,7 +7784,7 @@ button.admin-console__refresh svg { width: .8rem; height: .8rem; }
 .profile-import-grid small { color: var(--cv-color-gray); font-size: 0.65rem; line-height: 1.3; }
 .profile-import-grid b { min-width: 1.75rem; align-self: center; padding: 0.25rem 0.4rem; color: var(--cv-color-teal); background: rgb(15 166 138 / 10%); border-radius: 999px; font-size: 0.65rem; text-align: center; }
 .profile-import-card__check { position: absolute; right: 0.4rem; bottom: 0.4rem; width: 0.9rem; color: var(--cv-color-teal); }
-.profile-import-preview { padding: .75rem; background: white; border: 1px solid var(--cv-border-strong); border-radius: .75rem; }
+.profile-import-preview { padding: .75rem; background: var(--cv-surface); border: 1px solid var(--cv-border-strong); border-radius: .75rem; }
 .profile-import-preview > header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .65rem; }
 .profile-import-preview > header h3 { margin: 0; color: var(--cv-color-navy); font-size: .78rem; }
 .profile-import-preview > header p { margin: .12rem 0 0; color: var(--cv-color-gray); font-size: .65rem; }
@@ -17828,5 +17828,143 @@ html[data-theme='dark'] .profile-import-dialog > footer > .cv-home-action-button
 @media (max-width: 760px) {
   .main-navigation .cv-main-navigation__item {
     transition: color 160ms ease, background-color 160ms ease, transform 90ms ease;
+  }
+
+  /* Keep the four security indicators visible at a glance on mobile. */
+  .account-security-summary__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .35rem;
+  }
+
+  .account-security-summary__grid .account-api-summary__item,
+  .account-security-summary__grid .account-api-summary__item:last-child {
+    min-height: 5.35rem;
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: .3rem;
+    padding: .48rem .15rem;
+    border: 1px solid var(--cv-border-subtle);
+    border-radius: .65rem;
+  }
+
+  .account-security-summary__grid .account-api-summary__icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .account-security-summary__grid .account-api-summary__icon svg {
+    width: .82rem;
+    height: .82rem;
+  }
+
+  .account-security-summary__grid .account-api-summary__item > div {
+    gap: .18rem;
+  }
+
+  .account-security-summary__grid .account-api-summary__item strong {
+    font-size: .56rem;
+    line-height: 1.1;
+  }
+
+  .account-security-summary__grid .account-api-service-badge {
+    min-height: 1.15rem;
+    gap: .12rem;
+    padding: .1rem .22rem;
+    font-size: .5rem;
+  }
+
+  .account-security-summary__grid .account-api-service-badge > svg {
+    width: .56rem;
+    height: .56rem;
+  }
+
+  .account-personal-api-summary .account-api-summary,
+  .account-offline-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .35rem;
+  }
+
+  .account-security-summary__grid .account-api-summary__item,
+  .account-personal-api-summary .account-api-summary__item,
+  .account-offline-summary > article {
+    box-sizing: border-box;
+    height: 5.35rem;
+    min-height: 5.35rem;
+    max-height: 5.35rem;
+  }
+
+  .account-personal-api-summary .account-api-summary__item {
+    min-height: 5.35rem;
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: .3rem;
+    padding: .48rem .15rem;
+    border-radius: .65rem;
+  }
+
+  .account-personal-api-summary .account-api-summary__icon {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .account-personal-api-summary .account-api-summary__icon svg {
+    width: .82rem;
+    height: .82rem;
+  }
+
+  .account-personal-api-summary .account-api-summary__item > div {
+    gap: .18rem;
+  }
+
+  .account-personal-api-summary .account-api-summary__item strong {
+    min-height: 1.25rem;
+    font-size: .52rem;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .account-personal-api-summary__item > div > b {
+    min-height: 1.15rem;
+    gap: .12rem;
+    padding: .1rem .22rem;
+    font-size: .48rem;
+  }
+
+  .account-personal-api-summary__item > div > b > svg {
+    width: .56rem;
+    height: .56rem;
+  }
+
+  .account-offline-summary {
+    margin-top: .8rem;
+  }
+
+  .account-offline-summary > article {
+    min-height: 5.35rem;
+    gap: .2rem;
+    padding: .45rem .12rem;
+    border-radius: .65rem;
+  }
+
+  .account-offline-summary > article > span {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .account-offline-summary > article > span > svg {
+    width: .82rem;
+    height: .82rem;
+  }
+
+  .account-offline-summary > article > strong {
+    min-height: 1.25rem;
+    font-size: .52rem;
+    line-height: 1.15;
+  }
+
+  .account-offline-summary > article > b {
+    min-height: 1.15rem;
+    padding: .1rem .25rem;
+    font-size: .5rem;
   }
 }
