@@ -20,6 +20,7 @@ from app.tags.associations import place_tags_table
 from app.tags.models import Tag
 from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripStop
 from app.tasks.models import BackgroundTask, GeneratedExport, KmzImportPreview
+from app.basemaps.vector_models import VectorBasemap
 
 __all__ = (
     "Category",
@@ -54,6 +55,7 @@ __all__ = (
     "BackgroundTask",
     "GeneratedExport",
     "KmzImportPreview",
+    "VectorBasemap",
     "place_categories_table",
     "place_tags_table",
 )

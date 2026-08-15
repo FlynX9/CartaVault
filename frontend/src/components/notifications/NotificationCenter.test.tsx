@@ -6,6 +6,7 @@ import { getRegistrationRequests } from '../../api/registration'
 import { getTotpStatus } from '../../api/account'
 import { GlobalFeedbackToasts } from '../common/GlobalFeedbackToasts'
 import { reportCredentialIssue } from './important'
+import { beginOfflineProgress, clearOfflineProgress, offlineProgressId, reportOfflineProgress } from '../../pwa/offlineProgress'
 import { NotificationCenter } from './NotificationCenter'
 
 vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn(), getPendingMapInvitations: vi.fn() }))
@@ -16,6 +17,7 @@ const INVITATION = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', map_id: 'bbbbbb
 const REGISTRATION = { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', email: 'new@example.test', display_name: 'New user', status: 'pending' as const, created_at: '2026-07-17T08:00:00', reviewed_at: null, notification_sent_at: null, notification_error_code: null, email_verified_at: '2026-07-17T08:05:00', verification_expires_at: null }
 
 beforeEach(() => {
+  clearOfflineProgress()
   window.localStorage.clear()
   vi.mocked(getPendingMapInvitations).mockResolvedValue([INVITATION])
   vi.mocked(getRegistrationRequests).mockResolvedValue([])
@@ -129,6 +131,26 @@ describe('NotificationCenter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
     expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('La clé API Google Routes ne fonctionne plus')
+  })
+
+  it('shows offline progress between important notifications and history', async () => {
+    const progressId = offlineProgressId('user-1', 'map', 'map-1')
+    beginOfflineProgress({ id: progressId, userId: 'user-1', kind: 'map', title: 'Belgique' })
+    reportOfflineProgress(progressId, { phase: 'basemap', completed: 42, total: 100, bytes: 12 * 1024 * 1024 })
+    render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /^Notifications,/ }))
+    const panel = screen.getByLabelText('Centre de notifications')
+    const important = screen.getByRole('heading', { name: /Notifications importantes/ })
+    const offline = screen.getByRole('heading', { name: /Mise hors ligne/ })
+    const history = screen.getByRole('heading', { name: /Historique/ })
+
+    expect(panel).toHaveTextContent('Belgique')
+    expect(panel).toHaveTextContent('Téléchargement de la carte')
+    expect(panel).toHaveTextContent('43 % · 12 Mo')
+    expect(screen.getByRole('progressbar', { name: 'Mise hors ligne de Belgique' })).toHaveAttribute('aria-valuenow', '43')
+    expect(important.compareDocumentPosition(offline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(offline.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 

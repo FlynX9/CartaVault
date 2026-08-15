@@ -54,6 +54,19 @@ describe('AccountModal', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
+  it('opens the crop editor before uploading a selected avatar', async () => {
+    const account = await import('../../api/account')
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    await screen.findByRole('heading', { name: 'Profil' })
+    const input = document.querySelector<HTMLInputElement>('input[type="file"][accept*="image/jpeg"]')
+    expect(input).not.toBeNull()
+
+    fireEvent.change(input!, { target: { files: [new File(['avatar'], 'avatar.jpg', { type: 'image/jpeg' })] } })
+
+    expect(screen.getByRole('dialog', { name: 'Recadrer la photo' })).toBeVisible()
+    expect(account.uploadAccountAvatar).not.toHaveBeenCalled()
+  })
+
   it('stages the onboarding guide visibility from the profile section', async () => {
     render(<AccountModal onClose={vi.fn()} trigger={null} />)
     expect(await screen.findByRole('heading', { name: 'Guide de démarrage' })).toBeVisible()
@@ -122,6 +135,8 @@ describe('AccountModal', () => {
     expect(editButtons).toHaveLength(3)
     fireEvent.click(editButtons[0])
     const dialog = await screen.findByRole('dialog', { name: 'Configurer le routage' })
+    expect(within(dialog).getByText('Choisissez le service à utiliser et la clé API personnelle à lui associer.').closest('header')).not.toBeNull()
+    expect(dialog.querySelector('.account-integration-dialog__icon')).not.toBeNull()
     fireEvent.change(within(dialog).getByLabelText('Moteur'), { target: { value: 'google' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Enregistrer' }))
     expect(screen.queryByRole('dialog', { name: 'Configurer le routage' })).not.toBeInTheDocument()

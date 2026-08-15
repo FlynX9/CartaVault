@@ -24,6 +24,9 @@ def test_compiled_frontend_serves_assets_and_deep_links_without_intercepting_api
     assets.mkdir(parents=True)
     (frontend / "index.html").write_text("<html>CartaVault shell</html>", encoding="utf-8")
     (frontend / "manifest.webmanifest").write_text("{}", encoding="utf-8")
+    docs_page = frontend / "docs" / "fr" / "account" / "security"
+    docs_page.mkdir(parents=True)
+    (docs_page / "index.html").write_text("<html>Documentation sécurité</html>", encoding="utf-8")
     (assets / "index-abc123.js").write_text("console.log('ok')", encoding="utf-8")
 
     app = FastAPI()
@@ -55,6 +58,11 @@ def test_compiled_frontend_serves_assets_and_deep_links_without_intercepting_api
     manifest_response = client.get("/manifest.webmanifest")
     assert manifest_response.status_code == 200
     assert manifest_response.headers["cache-control"] == "public, max-age=3600"
+
+    docs_response = client.get("/docs/fr/account/security/")
+    assert docs_response.status_code == 200
+    assert "Documentation sécurité" in docs_response.text
+    assert "CartaVault shell" not in docs_response.text
 
 
 @pytest.mark.unit

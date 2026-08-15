@@ -753,6 +753,7 @@ export function MapPage({
           selectedPlaceIds={selectedPlaceIds}
           onPlaceSelectionToggle={onPlaceSelectionToggle}
           countryId={activeCountryId ?? null}
+          countryCode={activeCountryCode ?? null}
           countryMaskEnabled={countryMaskEnabled}
           measurementActive={measurementActive}
           measurementPoints={measurementPoints}

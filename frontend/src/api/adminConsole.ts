@@ -5,6 +5,10 @@ export interface MediaUploadSettings { max_upload_megabytes: number; max_image_d
 export interface BackgroundTaskResult { task_id: string; status: string }
 export interface SaasSettings { enabled: boolean }
 export interface InstanceLogRetentionSettings { retention_days: number }
+export type VectorBasemapState = 'not_installed' | 'downloading' | 'generating' | 'validating' | 'ready' | 'update_available' | 'error' | 'deleting'
+export interface VectorBasemapSettings { enabled: boolean; preparation_policy: 'on_map_creation' | 'on_first_cartavault_use' | 'on_first_offline_use' | 'manual'; update_policy: 'disabled' | 'monthly' | 'quarterly'; min_zoom: number; max_zoom: number; offline_min_zoom: number; offline_max_zoom: number; offline_padding_km: number; offline_max_tiles: number }
+export interface VectorBasemapItem { country_code: string; country_name: string; state: VectorBasemapState; phase: string | null; progress: number | null; version: string | null; file_size: number | null; source_size: number | null; installed_at: string | null; source_date: string | null; min_zoom: number | null; max_zoom: number | null; schema: string | null; error_code: string | null; error_message: string | null; task_id: string | null; map_count: number; supported: boolean }
+export interface VectorBasemapLibrary { settings: VectorBasemapSettings; items: VectorBasemapItem[] }
 
 const empty = () => new URLSearchParams()
 
@@ -39,6 +43,12 @@ export function getSaasSettings(signal?: AbortSignal) { return getJson('/admin/c
 export function saveSaasSettings(enabled: boolean) { return sendJson('/admin/console/saas/settings', 'PUT', { enabled }) as Promise<SaasSettings> }
 export function getInstanceLogRetention(signal?: AbortSignal) { return getJson('/admin/console/instance/log-retention', empty(), signal) as Promise<InstanceLogRetentionSettings> }
 export function saveInstanceLogRetention(retentionDays: number) { return sendJson('/admin/console/instance/log-retention', 'PUT', { retention_days: retentionDays }) as Promise<InstanceLogRetentionSettings> }
+export function getVectorBasemapLibrary(signal?: AbortSignal) { return getJson('/admin/console/vector-basemaps', empty(), signal) as Promise<VectorBasemapLibrary> }
+export function saveVectorBasemapSettings(settings: VectorBasemapSettings) { return sendJson('/admin/console/vector-basemaps/settings', 'PUT', settings) as Promise<VectorBasemapSettings> }
+export function installVectorBasemap(countryCode: string) { return sendJson(`/admin/console/vector-basemaps/${encodeURIComponent(countryCode)}/install`, 'POST', {}) as Promise<{ item: VectorBasemapItem; task_id: string | null }> }
+export function updateVectorBasemap(countryCode: string) { return sendJson(`/admin/console/vector-basemaps/${encodeURIComponent(countryCode)}/update`, 'POST', {}) as Promise<{ item: VectorBasemapItem; task_id: string | null }> }
+export function cancelVectorBasemap(countryCode: string) { return sendJson(`/admin/console/vector-basemaps/${encodeURIComponent(countryCode)}/cancel`, 'POST', {}) as Promise<{ item: VectorBasemapItem }> }
+export function deleteVectorBasemap(countryCode: string) { return sendJson(`/admin/console/vector-basemaps/${encodeURIComponent(countryCode)}`, 'DELETE', {}) as Promise<{ country_code: string; map_count: number; state: string }> }
 export function getQuotaProfiles(signal?: AbortSignal) { return getJson('/admin/quota-profiles', empty(), signal) as Promise<QuotaProfile[]> }
 export function getQuotaRegistry(signal?: AbortSignal) { return getJson('/admin/quota-registry', empty(), signal) as Promise<QuotaRegistryItem[]> }
 export function createQuotaProfile(payload: { name: string; description: string | null; is_active: boolean; limits: QuotaLimits }) { return sendJson('/admin/quota-profiles', 'POST', payload) as Promise<QuotaProfile> }

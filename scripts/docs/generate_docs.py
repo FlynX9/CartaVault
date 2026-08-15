@@ -7,6 +7,7 @@ from export_openapi import generate as generate_openapi
 from generate_cli_reference import generate as generate_cli
 from generate_environment_reference import generate as generate_environment
 from generate_feature_reference import generate as generate_features
+from functional_docs import generate as generate_functional
 
 
 def main() -> int:
@@ -14,6 +15,7 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="fail when generated files are stale")
     args = parser.parse_args()
     results = [
+        generate_functional(check=args.check),
         generate_environment(check=args.check),
         generate_cli(check=args.check),
         generate_features(check=args.check),

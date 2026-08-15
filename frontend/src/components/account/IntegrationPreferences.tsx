@@ -53,6 +53,7 @@ function ServiceDialog({ kind, initial, keys, onClose, onSave }: { kind: Service
   const { t } = useI18n()
   const [draft, setDraft] = useState(initial)
   const title = kind === 'routing' ? t('account.integrations.configureRouting') : kind === 'places' ? t('account.integrations.configurePlaces') : t('account.integrations.configureBasemap')
+  const DialogIcon = kind === 'routing' ? Route : kind === 'places' ? MapPin : ImageIcon
   const availableKeys = useMemo(() => compatibleKeys(keys, kind, draft.provider), [draft.provider, keys, kind])
   const keyDisabled = kind === 'routing' && draft.provider === 'osrm'
   const keyOptional = keyDisabled || (kind === 'basemap' && draft.provider === 'stadia')
@@ -60,9 +61,12 @@ function ServiceDialog({ kind, initial, keys, onClose, onSave }: { kind: Service
 
   return createPortal(<div className="account-integration-dialog-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <section className="account-integration-dialog" role="dialog" aria-modal="true" aria-labelledby="account-integration-dialog-title">
-      <header><div><p>{t('account.integrations.dialogEyebrow')}</p><h3 id="account-integration-dialog-title">{title}</h3></div><button className="panel-icon-button" type="button" aria-label={t('account.integrations.close')} onClick={onClose}><X size={16} /></button></header>
+      <header>
+        <span className="account-integration-dialog__icon"><DialogIcon size={19} aria-hidden="true" /></span>
+        <div><p>{t('account.integrations.dialogEyebrow')}</p><h2 id="account-integration-dialog-title">{title}</h2><small>{t('account.integrations.dialogDescription')}</small></div>
+        <button className="panel-icon-button" type="button" aria-label={t('account.integrations.close')} onClick={onClose}><X size={16} /></button>
+      </header>
       <div className="account-integration-dialog__content">
-        <p>{t('account.integrations.dialogDescription')}</p>
         <label>{kind === 'basemap' ? t('account.integrations.provider') : t('account.integrations.engine')}<select value={draft.provider} onChange={(event) => changeProvider(event.target.value)}>{kind === 'routing' ? <><option value="osrm">OSRM</option><option value="google">Google Routes</option><option value="openrouteservice">OpenRouteService</option></> : kind === 'places' ? <><option value="stadia">Stadia</option><option value="google">Google Places</option></> : <><option value="stadia">Stadia Maps</option><option value="google">Google Map Tiles</option></>}</select></label>
         <label>{t('account.integrations.associatedKey')} {keyOptional && <small>({t('account.integrations.optional')})</small>}<select value={draft.apiKeyId} disabled={keyDisabled} onChange={(event) => setDraft({ ...draft, apiKeyId: event.target.value })}><option value="">{keyOptional ? t('account.integrations.noKeyRequired') : t('account.integrations.selectKey')}</option>{availableKeys.map((key) => <option key={key.id} value={key.id}>{key.name} · ••••{key.last4}</option>)}</select></label>
         {!keyOptional && availableKeys.length === 0 && <p className="account-integration-dialog__warning"><AlertTriangle size={15} />{t('account.integrations.noCompatibleKey')}</p>}

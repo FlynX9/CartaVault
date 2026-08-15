@@ -80,11 +80,17 @@ describe("TopBar account entry", () => {
       name: "Administration",
     });
     const api = screen.getByRole("menuitem", { name: "API" });
+    const documentation = screen.getByRole("menuitem", { name: "Documentation" });
     expect(options).toBeVisible();
     expect(administration).toBeVisible();
     expect(api).toHaveAttribute("href", `${window.location.origin}/api/docs`);
     expect(api).toHaveAttribute("target", "_blank");
     expect(api).toHaveAttribute("rel", "noopener noreferrer");
+    expect(documentation).toHaveAttribute("href", `${window.location.origin}/docs/`);
+    expect(documentation).toHaveAttribute("target", "_blank");
+    expect(documentation).toHaveAttribute("rel", "noopener noreferrer");
+    expect(documentation).toHaveClass("user-account-menu__documentation-link");
+    expect(documentation).not.toHaveClass("user-account-menu__api-link");
     expect(options.compareDocumentPosition(api) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /connexion$/i })).toBeVisible();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

@@ -30,10 +30,13 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `CARTAVAULT_FRONTEND_DIST` | — | `backend/app/main.py` |
 | `CARTAVAULT_FRONTEND_VERSION` | — | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL` | `https://tile.googleapis.com` | `backend/app/config.py` |
+| `CARTAVAULT_JAVA_EXECUTABLE` | `java` | `backend/app/config.py` |
 | `CARTAVAULT_ORS_BASE_URL` | `https://api.openrouteservice.org` | `backend/app/config.py` |
 | `CARTAVAULT_PDF_MAP_TILES_ENABLED` | `true` | `backend/app/trips/pdf_export.py` |
 | `CARTAVAULT_PDF_MAP_TILE_CACHE` | dynamic | `backend/app/trips/pdf_export.py` |
 | `CARTAVAULT_PDF_MAP_TILE_URL` | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `backend/app/trips/pdf_export.py` |
+| `CARTAVAULT_PLANETILER_JAR` | `/opt/planetiler/planetiler-openmaptiles.jar` | `backend/app/config.py` |
+| `CARTAVAULT_PLANETILER_JAVA_HEAP` | `2g` | `backend/app/config.py` |
 | `CARTAVAULT_PUBLIC_URL` | — | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_REVERSE_GEOCODING_URL` | `https://nominatim.openstreetmap.org` | `backend/app/config.py` |
 | `CARTAVAULT_REVERSE_GEOCODING_USER_AGENT` | `CartaVault/0.1 (self-hosted POI manager)` | `backend/app/config.py` |
@@ -42,6 +45,8 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `CARTAVAULT_SETUP_TOKEN` | sensitive value | `backend/app/setup/service.py` |
 | `CARTAVAULT_TASK_MODE` | `sync` | `backend/app/config.py` |
 | `CARTAVAULT_TASK_QUEUE` | `cartavault` | `backend/app/config.py` |
+| `CARTAVAULT_VECTOR_MAP_DIR` | `/data/maps` | `backend/app/config.py` |
+| `CARTAVAULT_VECTOR_MAP_FONTS_PATH` | `/app/vector-assets/fonts` | `backend/app/config.py` |
 | `CARTAVAULT_VERSION` | `0.1.0` | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_WORKERS` | — | `backend/app/instance_status/service.py` |
 | `CORS_ALLOWED_ORIGINS` | — | `backend/app/main.py` |
@@ -63,6 +68,6 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `OSRM_BASE_URL` | `https://router.project-osrm.org` | `backend/app/config.py` |
 | `OSRM_PROFILE` | `driving` | `backend/app/config.py` |
 | `PHOTO_STORAGE_PATH` | dynamic | `backend/app/photos/storage.py` |
-| `PYTEST_CURRENT_TEST` | — | `backend/app/main.py` |
+| `PYTEST_CURRENT_TEST` | — | `backend/app/basemaps/vector_service.py` |
 | `REDIS_URL` | `redis://localhost:6379/0` | `backend/app/config.py` |
 | `WEB_CONCURRENCY` | — | `backend/app/instance_status/service.py` |

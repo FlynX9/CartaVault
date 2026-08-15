@@ -1,7 +1,10 @@
 const CACHE_PREFIX = 'cartavault-shell-'
 // Cache Storage is deliberately limited to the public app shell. Private map,
 // trip and POI data lives in the user-isolated IndexedDB offline store.
-const CACHE_NAME = `${CACHE_PREFIX}v3`
+// These two constants are replaced in the production output by vite.config.ts.
+const BUILD_ID = 'development'
+const BUILD_ASSETS = []
+const CACHE_NAME = `${CACHE_PREFIX}${BUILD_ID}`
 const MAP_ASSET_CACHE = 'cartavault-map-assets-v1'
 const APP_SHELL = [
   '/',
@@ -14,6 +17,7 @@ const APP_SHELL = [
   '/icons/cartavault-maskable-512.png',
   '/pwa/capture-desktop.png',
   '/pwa/capture-mobile.png',
+  ...BUILD_ASSETS,
 ]
 
 self.addEventListener('install', (event) => {

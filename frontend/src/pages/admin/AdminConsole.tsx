@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { IconShieldCheck, IconUserCheck } from '@tabler/icons-react'
-import { Activity, Check, ChevronLeft, ChevronRight, FileText, Gauge, ImageDown, Info, KeyRound, RefreshCw, Save, Settings2, ShieldCheck, Users, X } from 'lucide-react'
+import { Activity, Check, ChevronLeft, ChevronRight, Database, Download, FileText, Gauge, ImageDown, Info, KeyRound, MapPinned, RefreshCw, Save, Settings2, ShieldCheck, Trash2, Users, X } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import {
   assignUserQuotaProfile, cancelBackgroundTask, getAdminUserActivity, getAdminUserDetails, getAdminUsers, getBackgroundTask, getMediaUploadSettings, getQuotaProfiles,
   getInstanceLogRetention, getSaasSettings, optimizeStoredMedia, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings,
-  updateAdminUser,
+  updateAdminUser, cancelVectorBasemap, deleteVectorBasemap, getVectorBasemapLibrary, installVectorBasemap, saveVectorBasemapSettings, updateVectorBasemap,
+  type VectorBasemapItem, type VectorBasemapSettings,
 } from '../../api/adminConsole'
 import { getAdminPrivacySettings, saveAdminPrivacySettings, type PrivacyAnalyticsMode, type PrivacySettings } from '../../api/privacy'
 import { accountAvatarUrl } from '../../api/account'
@@ -15,6 +16,7 @@ import { getGoogleSatelliteAdminStatus, resetGoogleSatelliteErrors, saveGoogleSa
 import { getPublicRegistrationSettings, getRegistrationRequests, reviewRegistration, updatePublicRegistrationSettings, type RegistrationRequest } from '../../api/registration'
 import { useConfirmDialog } from '../../components/common/useConfirmDialog'
 import { publishGlobalFeedback } from '../../components/common/globalFeedback'
+import { CountryFlag } from '../../components/maps/CountryFlag'
 import { useI18n } from '../../i18n/useI18n'
 import { InstanceStatusPage } from '../../features/admin/instance-status/InstanceStatusPage'
 import { QuotaProfilesPage } from '../../features/admin/quotas/QuotaProfilesPage'
@@ -221,7 +223,47 @@ export function LegacyAdminUsersSection() {
 
 function AdminGeneralSection() {
   const { t } = useI18n()
-  return <section><SectionHeading eyebrow={t('admin.general.eyebrow')} title={t('admin.general.title')} description={t('admin.general.description')} /><AdminPublicRegistrationSection /><SaasSettingsPanel /><PrivacySettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
+  return <section><SectionHeading eyebrow={t('admin.general.eyebrow')} title={t('admin.general.title')} description={t('admin.general.description')} /><AdminPublicRegistrationSection /><SaasSettingsPanel /><VectorBasemapSettingsPanel /><PrivacySettingsPanel /><MediaMaintenancePanel /><LogRetentionPanel /></section>
+}
+
+const ACTIVE_VECTOR_STATES = new Set(['downloading', 'generating', 'validating', 'deleting'])
+const vectorStateLabels: Record<string, string> = { not_installed: 'Non installé', downloading: 'Téléchargement', generating: 'Génération', validating: 'Validation', ready: 'Disponible', update_available: 'Mise à jour disponible', error: 'Erreur', deleting: 'Suppression' }
+function countryFlag(code: string) { return [...code.toUpperCase()].map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0))).join('') }
+function formatBasemapSize(value: number | null) { if (value === null) return 'Taille inconnue'; const units = ['o', 'Ko', 'Mo', 'Go']; let size = value; let unit = 0; while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1 } return `${size.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} ${units[unit]}` }
+function VectorBasemapProgress({ item }: { item: VectorBasemapItem }) {
+  if (!ACTIVE_VECTOR_STATES.has(item.state) || item.progress === null) return null
+  const value = Math.min(100, Math.max(0, item.progress))
+  return <div className="admin-vector-basemaps__progress" role="progressbar" aria-label={`${item.phase ?? vectorStateLabels[item.state]} de ${item.country_name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}><i style={{ width: `${value}%` }} /></div>
+}
+
+function VectorBasemapSettingsPanel() {
+  const [settings, setSettings] = useState<VectorBasemapSettings | null>(null)
+  const [saved, setSaved] = useState<VectorBasemapSettings | null>(null)
+  const [items, setItems] = useState<VectorBasemapItem[]>([])
+  const [selectedCountry, setSelectedCountry] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
+  const load = useCallback((signal?: AbortSignal) => getVectorBasemapLibrary(signal).then((library) => { setSettings((current) => current ?? library.settings); setSaved((current) => current ?? library.settings); setItems(library.items); setSelectedCountry((current) => current || library.items.find((item) => item.state === 'not_installed' && item.supported)?.country_code || '') }), [])
+  useEffect(() => { const controller = new AbortController(); void load(controller.signal).catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Fonds CartaVault indisponibles.') }); return () => controller.abort() }, [load])
+  useEffect(() => { if (!items.some((item) => ACTIVE_VECTOR_STATES.has(item.state))) return; const timer = window.setInterval(() => void getVectorBasemapLibrary().then((value) => setItems(value.items)).catch(() => undefined), 1800); return () => window.clearInterval(timer) }, [items])
+  const updateSetting = <K extends keyof VectorBasemapSettings>(key: K, value: VectorBasemapSettings[K]) => setSettings((current) => current ? { ...current, [key]: value } : current)
+  const save = useCallback(async () => { if (!settings) return; setBusy(true); setError(null); try { const next = await saveVectorBasemapSettings(settings); setSettings(next); setSaved(next) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Enregistrement impossible.'); throw reason } finally { setBusy(false) } }, [settings])
+  const dirty = JSON.stringify(settings) !== JSON.stringify(saved)
+  useAdminSaveEntry('general-vector-basemaps', useMemo(() => ({ label: 'fonds CartaVault', dirty, busy, save, discard: () => setSettings(saved) }), [busy, dirty, save, saved]))
+  const run = async (action: () => Promise<unknown>) => { setBusy(true); setError(null); try { await action(); const library = await getVectorBasemapLibrary(); setItems(library.items) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Opération impossible.') } finally { setBusy(false) } }
+  const remove = async (item: VectorBasemapItem) => { const accepted = await confirm({ title: `Supprimer le fond ${item.country_name}`, message: `Ce fond est utilisé par ${item.map_count} carte(s). Les packages déjà présents sur les appareils ne seront pas supprimés.`, confirmLabel: 'Supprimer', variant: 'danger' }); if (accepted) await run(() => deleteVectorBasemap(item.country_code)) }
+  const installed = items.filter((item) => item.state !== 'not_installed')
+  const available = items.filter((item) => item.state === 'not_installed')
+  const selectedItem = items.find((item) => item.country_code === selectedCountry)
+  return <><section className="admin-console__card admin-console__setting-card admin-vector-basemaps" aria-labelledby="vector-basemap-title">
+    <header className="admin-console__setting-header"><span className="admin-console__setting-icon"><MapPinned size={17} /></span><div><h3 id="vector-basemap-title">Fond de carte CartaVault</h3><p>Prépare automatiquement des fonds OpenStreetMap vectoriels par pays, utilisables en ligne et hors ligne.</p></div><label className="cv-toggle admin-console__setting-toggle"><input type="checkbox" role="switch" aria-label="Activer le fond CartaVault" checked={settings?.enabled ?? false} disabled={!settings || busy} onChange={(event) => updateSetting('enabled', event.target.checked)} /><i aria-hidden="true" /></label></header>
+    {error && <div className="form-alert" role="alert">{error}</div>}
+    {settings && <form className="admin-vector-basemaps__settings" onSubmit={(event) => event.preventDefault()}><label>Préparation automatique<select value={settings.preparation_policy} onChange={(event) => updateSetting('preparation_policy', event.target.value as VectorBasemapSettings['preparation_policy'])}><option value="on_map_creation">À la création d’une carte</option><option value="on_first_cartavault_use">À la première utilisation du fond CartaVault</option><option value="on_first_offline_use">Lors du premier téléchargement hors ligne</option><option value="manual">Manuellement</option></select></label><label>Mise à jour automatique<select value={settings.update_policy} onChange={(event) => updateSetting('update_policy', event.target.value as VectorBasemapSettings['update_policy'])}><option value="disabled">Désactivée</option><option value="monthly">Mensuelle</option><option value="quarterly">Trimestrielle</option></select></label><label>Zoom offline minimum<input type="number" min="0" max={settings.offline_max_zoom} value={settings.offline_min_zoom} onChange={(event) => updateSetting('offline_min_zoom', Number(event.target.value))} /></label><label>Zoom offline maximum<input type="number" min={settings.offline_min_zoom} max={settings.max_zoom} value={settings.offline_max_zoom} onChange={(event) => updateSetting('offline_max_zoom', Number(event.target.value))} /></label><label>Marge autour des sorties<span className="admin-vector-basemaps__unit"><input type="number" min="0" max="500" value={settings.offline_padding_km} onChange={(event) => updateSetting('offline_padding_km', Number(event.target.value))} /><em>km</em></span></label><label>Maximum de tuiles par package<input type="number" min="100" max="250000" value={settings.offline_max_tiles} onChange={(event) => updateSetting('offline_max_tiles', Number(event.target.value))} /></label></form>}
+    <section className="admin-vector-basemaps__library"><h4><Database size={16} />Fonds installés</h4>{installed.length === 0 ? <p className="admin-vector-basemaps__empty">Aucun fond n’est encore installé.</p> : <div className="admin-vector-basemaps__cards">{installed.map((item) => <article key={item.country_code} data-state={item.state}><CountryFlag countryCode={item.country_code} className="admin-vector-basemaps__flag" fallbackSize={22} /><div><strong>{item.country_name}</strong><span className={`admin-vector-basemaps__badge is-${item.state}`}>{vectorStateLabels[item.state]}</span><small>{item.phase}{item.progress !== null ? ` · ${item.progress} %` : ''}</small><VectorBasemapProgress item={item} />{item.state === 'ready' || item.state === 'update_available' ? <small>{formatBasemapSize(item.file_size)} · {item.version}</small> : null}{item.error_message && <small className="is-error">{item.error_message}</small>}</div><div className="admin-vector-basemaps__actions">{ACTIVE_VECTOR_STATES.has(item.state) ? <button type="button" disabled={busy} onClick={() => void run(() => cancelVectorBasemap(item.country_code))}>Annuler</button> : <><button type="button" disabled={busy} onClick={() => void run(() => item.state === 'error' ? installVectorBasemap(item.country_code) : updateVectorBasemap(item.country_code))}><RefreshCw size={14} />{item.state === 'error' ? 'Réessayer' : 'Mettre à jour'}</button>{(item.state === 'ready' || item.state === 'update_available') && <button className="danger" type="button" disabled={busy} onClick={() => void remove(item)}><Trash2 size={14} />Supprimer</button>}</>}</div></article>)}</div>}</section>
+    <section className="admin-vector-basemaps__add"><h4><Download size={16} />Ajouter un fond</h4><label>Pays<select value={selectedCountry} onChange={(event) => setSelectedCountry(event.target.value)}>{available.map((item) => <option key={item.country_code} value={item.country_code} disabled={!item.supported}>{countryFlag(item.country_code)} {item.country_name}{item.supported ? '' : ' — indisponible'}</option>)}</select></label><button className="primary-button" type="button" disabled={busy || !selectedCountry || !selectedItem?.supported} onClick={() => void run(() => installVectorBasemap(selectedCountry))}><Download size={15} />Télécharger et préparer</button></section>
+    <p className="admin-console__hint admin-console__setting-note"><Info size={17} />Les données proviennent d’extraits Geofabrik contrôlés. Planetiler s’exécute uniquement pendant la préparation ; un seul fond est généré à la fois.</p>
+  </section>{confirmationDialog}</>
 }
 
 function PrivacySettingsPanel() {

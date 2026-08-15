@@ -23,7 +23,7 @@ vi.mock('react-leaflet', () => ({
 }))
 vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
 vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, tile_url: null }) }))
-vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ available: true, archive_url: '/api/basemaps/cartavault/archive.pmtiles', version: 'test', min_zoom: 0, max_zoom: 14 }) }))
+vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ enabled: true, available: true, country_code: 'FR', country_name: 'France', state: 'ready', phase: 'Disponible', error_code: null, error_message: null, archive_url: '/api/basemaps/cartavault/archive/fr.pmtiles', glyphs_url: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf', version: 'test', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' }) }))
 vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
 
 afterEach(() => {
@@ -74,14 +74,17 @@ describe('BasemapLayer', () => {
     expect(mapLibreMap.off).not.toHaveBeenCalled()
   })
 
-  it('keeps CartaVault light and dark online through the legacy vector source when PMTiles is absent', async () => {
-    vi.mocked(getCartaVaultVectorConfig).mockResolvedValue({ available: false, archive_url: null, glyphs_url: '', version: 'missing', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' })
+  it('restores the matching Stadia theme while the country PMTiles is absent', async () => {
+    vi.mocked(getCartaVaultVectorConfig).mockResolvedValue({ enabled: true, available: false, country_code: 'FR', country_name: 'France', state: 'generating', phase: 'Génération', error_code: null, error_message: null, archive_url: null, glyphs_url: '', version: 'missing', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' })
     const layer = { addTo: vi.fn(), removeFrom: vi.fn(), getMaplibreMap: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })) }
     vi.mocked(loadCartaVaultStyle).mockResolvedValue({ version: 8, sources: {}, layers: [] })
     vi.spyOn(L, 'maplibreGL').mockReturnValue(layer as unknown as L.MaplibreGLLayer)
+    const onTileError = vi.fn()
 
-    render(<BasemapLayer basemapId="cartavault-dark" onTileError={vi.fn()} />)
-    await waitFor(() => expect(loadCartaVaultStyle).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('openfreemap.org/planet'), expect.stringContaining('openfreemap.org/fonts'), expect.any(AbortSignal)))
-    expect(layer.addTo).toHaveBeenCalledWith(mapMock)
+    render(<BasemapLayer basemapId="cartavault-dark" countryCode="FR" onTileError={onTileError} />)
+    await waitFor(() => expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', expect.stringContaining('alidade_smooth_dark')))
+    expect(onTileError).not.toHaveBeenCalled()
+    expect(loadCartaVaultStyle).not.toHaveBeenCalled()
+    expect(layer.addTo).not.toHaveBeenCalled()
   })
 })

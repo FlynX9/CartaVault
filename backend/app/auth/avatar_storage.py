@@ -31,10 +31,14 @@ def store_avatar(content: bytes) -> str:
         with Image.open(BytesIO(content)) as source:
             if source.format not in {"JPEG", "PNG", "WEBP"} or getattr(source, "is_animated", False):
                 raise AvatarError("Only static JPEG, PNG and WebP avatars are supported")
-            if source.width > MAX_AVATAR_DIMENSION or source.height > MAX_AVATAR_DIMENSION:
-                raise AvatarError("Avatar dimensions exceed 4096 pixels")
             source.load()
-            image = ImageOps.fit(source.convert("RGB"), (256, 256), method=Image.Resampling.LANCZOS)
+            # Phone cameras commonly store portrait photos as landscape pixels
+            # plus an EXIF orientation flag. Apply that flag before cropping;
+            # otherwise the generated WebP is permanently saved sideways.
+            oriented = ImageOps.exif_transpose(source)
+            if oriented.width > MAX_AVATAR_DIMENSION or oriented.height > MAX_AVATAR_DIMENSION:
+                raise AvatarError("Avatar dimensions exceed 4096 pixels")
+            image = ImageOps.fit(oriented.convert("RGB"), (256, 256), method=Image.Resampling.LANCZOS)
             root = avatar_root(); root.mkdir(parents=True, exist_ok=True)
             filename = f"{uuid4()}.webp"; partial = root / f".{filename}.partial"
             image.save(partial, format="WEBP", quality=85, method=6, exif=b"")

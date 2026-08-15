@@ -25,9 +25,7 @@ x-cartavault-environment: &cartavault-environment
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
   IMPORT_STORAGE_PATH: /app/storage/imports
-  CARTAVAULT_VECTOR_MAP_ENABLED: ${CARTAVAULT_VECTOR_MAP_ENABLED:-false}
-  CARTAVAULT_VECTOR_MAP_PATH: /data/maps/europe.pmtiles
-  CARTAVAULT_VECTOR_MAP_VERSION: ${CARTAVAULT_VECTOR_MAP_VERSION:-europe-current}
+  CARTAVAULT_VECTOR_MAP_DIR: /data/maps
   # Standard Portainer/Synology deployment: one application replica, no queue.
   CARTAVAULT_TASK_MODE: sync
   CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE: ${CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE:-120}
@@ -90,7 +88,7 @@ services:
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/avatars:/app/storage/avatars
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/exports:/app/storage/exports
       - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/imports:/app/storage/imports
-      - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/maps:/data/maps:ro
+      - ${CARTAVAULT_DATA_ROOT:-/volume2/docker/cartavault}/maps:/data/maps
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     depends_on:

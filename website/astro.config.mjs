@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
+import { functionalSidebar } from './src/generated/functionalSidebar.mjs';
 
 const canonicalRedirects = new Set([
   'https://cartavault.fr/',
@@ -33,8 +34,36 @@ export default defineConfig({
       routeMiddleware: './src/starlightRouteData.ts',
       sidebar: [
         { label: 'CartaVault.fr', link: '/fr/' },
-        { label: 'Français', items: [{ autogenerate: { directory: 'docs/fr' } }] },
-        { label: 'English', items: [{ autogenerate: { directory: 'docs/en' } }] },
+        {
+          label: 'Français',
+          items: [
+            { label: 'Accueil de la documentation', link: '/docs/fr/' },
+            ...functionalSidebar.fr,
+            {
+              label: 'Guides transversaux', collapsed: true, items: [
+                { label: 'Interface desktop', link: '/docs/fr/interface-desktop/' },
+                { label: 'Interface mobile', link: '/docs/fr/interface-mobile/' },
+                { label: 'Dépannage', link: '/docs/fr/troubleshooting/' },
+                { label: 'Référence technique', items: [{ autogenerate: { directory: 'docs/fr/reference' } }] },
+              ],
+            },
+          ],
+        },
+        {
+          label: 'English',
+          items: [
+            { label: 'Documentation home', link: '/docs/en/' },
+            ...functionalSidebar.en,
+            {
+              label: 'Cross-cutting guides', collapsed: true, items: [
+                { label: 'Desktop interface', link: '/docs/en/interface-desktop/' },
+                { label: 'Mobile interface', link: '/docs/en/interface-mobile/' },
+                { label: 'Troubleshooting', link: '/docs/en/troubleshooting/' },
+                { label: 'Technical reference', items: [{ autogenerate: { directory: 'docs/en/reference' } }] },
+              ],
+            },
+          ],
+        },
         { label: 'GitHub', link: 'https://github.com/FlynX9/CartaVault' },
         { label: 'Mentions légales · Legal', link: '/fr/legal/' },
       ],

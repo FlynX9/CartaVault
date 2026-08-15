@@ -3,7 +3,6 @@ import { CircleMarker, MapContainer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 
 import { BasemapLayer } from '../map/BasemapLayer'
-import { useTheme } from '../../theme/useTheme'
 import type { DashboardMapPoint } from '../../types/dashboard'
 
 function FitDashboardPoints({ points }: { points: DashboardMapPoint[] }) {
@@ -17,7 +16,6 @@ function FitDashboardPoints({ points }: { points: DashboardMapPoint[] }) {
 }
 
 export function DashboardMapPreview({ points, label }: { points: DashboardMapPoint[]; label: string }) {
-  const { resolvedTheme } = useTheme()
   return (
     <div className="dashboard-map-wrapper" role="region" aria-label={label}>
       <MapContainer
@@ -30,7 +28,7 @@ export function DashboardMapPreview({ points, label }: { points: DashboardMapPoi
         attributionControl
       >
         <BasemapLayer
-          basemapId={resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light'}
+          basemapId="osm"
           onTileError={() => undefined}
         />
         {points.map((point) => (

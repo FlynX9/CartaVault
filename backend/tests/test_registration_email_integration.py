@@ -220,8 +220,8 @@ def test_account_security_changes_notify_old_and_current_addresses(
         "/account/change-password",
         json={
             "current_password": "current password",
-            "new_password": "a new sufficiently long password",
-            "confirmation": "a new sufficiently long password",
+            "new_password": "A new sufficiently long password 9!",
+            "confirmation": "A new sufficiently long password 9!",
         },
         headers=headers,
     )

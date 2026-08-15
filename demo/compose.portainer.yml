@@ -19,12 +19,16 @@ x-demo-environment: &demo-environment
   CARTAVAULT_DATABASE_STABLE_CHECKS: "2"
   CARTAVAULT_TASK_MODE: sync
   CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  CARTAVAULT_VECTOR_MAP_DIR: /data/maps
   PHOTO_STORAGE_PATH: /app/storage/photos
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
   IMPORT_STORAGE_PATH: /app/storage/imports
-  EMAIL_PROVIDER: none
+  EMAIL_PROVIDER: smtp
   EMAIL_FROM_ADDRESS: demo@cartavault.local
+  EMAIL_SMTP_HOST: mailpit-demo
+  EMAIL_SMTP_PORT: "1025"
+  EMAIL_SMTP_SECURITY: none
   TZ: Europe/Paris
 
 services:
@@ -57,6 +61,7 @@ services:
       - demo_avatars:/app/storage/avatars
       - demo_exports:/app/storage/exports
       - demo_imports:/app/storage/imports
+      - demo_maps:/data/maps
     depends_on:
       postgis-demo:
         condition: service_healthy
@@ -77,6 +82,7 @@ services:
       - demo_avatars:/app/storage/avatars
       - demo_exports:/app/storage/exports
       - demo_imports:/app/storage/imports
+      - demo_maps:/data/maps
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
     depends_on:
@@ -95,6 +101,7 @@ volumes:
   demo_avatars:
   demo_exports:
   demo_imports:
+  demo_maps:
 
 networks:
   demo_private:

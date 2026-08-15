@@ -55,6 +55,12 @@ def install_frontend(
             raise HTTPException(status_code=404, detail="Not Found")
 
         requested_file = (frontend_root / frontend_path).resolve()
+        requested_index = requested_file / "index.html"
+        if requested_file.is_relative_to(frontend_root) and requested_index.is_file():
+            return FileResponse(
+                requested_index,
+                headers={"Cache-Control": "public, max-age=3600"},
+            )
         if requested_file.is_relative_to(frontend_root) and requested_file.is_file():
             return FileResponse(
                 requested_file,

@@ -58,8 +58,8 @@ export interface BasemapUrls {
 const DEFAULT_BASEMAP_URLS: BasemapUrls = {
   lightStyle: '/map-styles/cartavault-light.json',
   darkStyle: '/map-styles/cartavault-dark.json',
-  openFreeMapTileJson: 'https://tiles.openfreemap.org/planet',
-  openFreeMapGlyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  openFreeMapTileJson: 'about:blank',
+  openFreeMapGlyphs: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf',
   satellite: 'https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg',
   osm: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 }

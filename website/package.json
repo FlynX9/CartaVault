@@ -16,7 +16,11 @@
     "docs:dev": "astro dev",
     "docs:generate": "node scripts/run-docs.mjs",
     "docs:check": "node scripts/run-docs.mjs --check",
-    "docs:screenshots": "docker compose -f ../demo/compose.yml --profile screenshots run --rm screenshots",
+    "docs:discover": "node scripts/run-docs.mjs",
+    "docs:capture": "docker compose -f ../demo/compose.yml --profile screenshots run --build --rm screenshots && node scripts/run-python.mjs scripts/docs/sync_screenshots.py",
+    "docs:screenshots": "npm run docs:capture",
+    "docs:build": "npm run docs:generate && npm run build",
+    "docs:refresh": "npm run docs:generate && npm run docs:capture && npm run docs:generate && npm run docs:check && npm run build",
     "demo:reset": "docker compose -f ../demo/compose.yml run --rm demo-reset reset",
     "preview": "astro preview",
     "astro": "astro"

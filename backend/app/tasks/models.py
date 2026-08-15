@@ -23,6 +23,14 @@ class BackgroundTask(Base):
         Index("background_tasks_status_created_idx", "status", "created_at"),
         Index("background_tasks_expires_at_idx", "expires_at"),
         Index("background_tasks_dedupe_idx", "dedupe_key", "status"),
+        Index(
+            "background_tasks_vector_basemap_active_key",
+            "dedupe_key",
+            unique=True,
+            postgresql_where=text(
+                "task_type = 'vector_basemap_prepare' AND status IN ('pending','running')"
+            ),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))

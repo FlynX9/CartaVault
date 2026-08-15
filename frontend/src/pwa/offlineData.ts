@@ -15,15 +15,22 @@ import type { Trip } from '../types/trip'
 import type { PlaceAnnotation } from '../types/annotation'
 
 const DB_NAME = 'cartavault-offline'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const PACKAGE_STORE = 'packages'
 const IDENTITY_STORE = 'identities'
 const TILE_STORE = 'vector-tiles'
+const DOWNLOAD_JOB_STORE = 'download-jobs'
 const ACTIVE_USER_KEY = 'cartavault:offline-active-user'
 const SCHEMA_VERSION = 1
+export const OFFLINE_PACKAGES_CHANGED_EVENT = 'cartavault:offline-packages-changed'
+
+const notifyOfflinePackagesChanged = (userId: string) => {
+  window.dispatchEvent(new CustomEvent(OFFLINE_PACKAGES_CHANGED_EVENT, { detail: { userId } }))
+}
 
 export type OfflinePackageKind = 'map' | 'trip'
 export interface OfflinePackageOptions {
+  basemap: boolean
   places: boolean
   organization: boolean
   trip: boolean
@@ -43,7 +50,7 @@ export interface OfflineSnapshot {
   annotations: Record<string, PlaceAnnotation[]>
 }
 export interface OfflineBasemapMetadata { version: string; bbox: [number, number, number, number]; minZoom: number; maxZoom: number; tileKeys: string[]; tileBytes: number }
-export interface OfflineDownloadProgress { phase: 'data' | 'basemap' | 'saving'; completed: number; total: number; bytes: number }
+export interface OfflineDownloadProgress { phase: 'data' | 'basemap' | 'saving'; completed: number; total: number; bytes: number; reused?: number }
 export interface OfflinePackage {
   id: string
   kind: OfflinePackageKind
@@ -63,6 +70,21 @@ export interface OfflinePackage {
   status?: 'ready'
   basemap?: OfflineBasemapMetadata
 }
+export interface OfflineDownloadJob {
+  id: string
+  userId: string
+  kind: OfflinePackageKind
+  sourceId: string
+  map: PoiMap
+  tripId: string | null
+  title: string
+  options: OfflinePackageOptions
+  status: 'queued' | 'running' | 'error'
+  progress: OfflineDownloadProgress | null
+  error: string | null
+  createdAt: string
+  updatedAt: string
+}
 export interface OfflineIdentity { id: string; email: string; display_name: string; is_admin: boolean }
 interface OfflineVectorTile { id: string; version: string; z: number; x: number; y: number; data: Blob; size: number }
 
@@ -81,6 +103,10 @@ function database(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(TILE_STORE)) {
         const tiles = db.createObjectStore(TILE_STORE, { keyPath: 'id' })
         tiles.createIndex('by-version', 'version', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(DOWNLOAD_JOB_STORE)) {
+        const jobs = db.createObjectStore(DOWNLOAD_JOB_STORE, { keyPath: 'id' })
+        jobs.createIndex('by-user', 'userId', { unique: false })
       }
     }
     request.onsuccess = () => resolve(request.result)
@@ -121,14 +147,26 @@ export async function getOfflinePackage(userId: string, kind: OfflinePackageKind
   const result = await transaction<OfflinePackage | undefined>(PACKAGE_STORE, 'readonly', (store) => store.index('by-source').get([userId, kind, sourceId]))
   return result?.schemaVersion === SCHEMA_VERSION ? result : null
 }
+export async function saveOfflineDownloadJob(job: OfflineDownloadJob): Promise<void> {
+  await transaction(DOWNLOAD_JOB_STORE, 'readwrite', (store) => store.put(job))
+}
+export async function listOfflineDownloadJobs(userId: string): Promise<OfflineDownloadJob[]> {
+  const jobs = await transaction<OfflineDownloadJob[]>(DOWNLOAD_JOB_STORE, 'readonly', (store) => store.index('by-user').getAll(userId))
+  return jobs.sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+}
+export async function deleteOfflineDownloadJob(id: string): Promise<void> {
+  await transaction(DOWNLOAD_JOB_STORE, 'readwrite', (store) => store.delete(id))
+}
 export async function deleteOfflinePackage(id: string): Promise<void> {
   const db = await database()
+  let removedUserId: string | null = null
   try {
     const packages = await new Promise<OfflinePackage[]>((resolve, reject) => {
       const request = db.transaction(PACKAGE_STORE).objectStore(PACKAGE_STORE).getAll()
       request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error)
     })
     const removed = packages.find((item) => item.id === id)
+    removedUserId = removed?.userId ?? null
     const retainedKeys = new Set(packages.filter((item) => item.id !== id).flatMap((item) => item.basemap?.tileKeys ?? []))
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction([PACKAGE_STORE, TILE_STORE], 'readwrite')
@@ -137,6 +175,7 @@ export async function deleteOfflinePackage(id: string): Promise<void> {
       tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error)
     })
   } finally { db.close() }
+  if (removedUserId) notifyOfflinePackagesChanged(removedUserId)
 }
 export async function getOfflineBasemapTile(version: string, z: number, x: number, y: number): Promise<Blob | null> {
   const tile = await transaction<OfflineVectorTile | undefined>(TILE_STORE, 'readonly', (store) => store.get(`${version}/${z}/${x}/${y}`))
@@ -155,6 +194,7 @@ export async function getOfflineBasemapVersion(): Promise<string | null> {
 export async function clearOfflineDataForUser(userId: string): Promise<void> {
   const packages = await listOfflinePackages(userId)
   for (const item of packages) await deleteOfflinePackage(item.id)
+  for (const job of await listOfflineDownloadJobs(userId)) await deleteOfflineDownloadJob(job.id)
   await transaction(IDENTITY_STORE, 'readwrite', (store) => store.delete(userId))
   if (window.localStorage.getItem(ACTIVE_USER_KEY) === userId) window.localStorage.removeItem(ACTIVE_USER_KEY)
 }
@@ -256,12 +296,15 @@ function tilesForBounds(bbox: [number, number, number, number], minZoom: number,
   }
   return output
 }
-async function prepareBasemap(snapshot: OfflineSnapshot, signal?: AbortSignal, onProgress?: (progress: OfflineDownloadProgress) => void): Promise<{ metadata?: OfflineBasemapMetadata; tiles: OfflineVectorTile[] }> {
+async function prepareBasemap(snapshot: OfflineSnapshot, signal?: AbortSignal, onProgress?: (progress: OfflineDownloadProgress) => void): Promise<{ metadata?: OfflineBasemapMetadata }> {
   let config: CartaVaultVectorConfig
-  try { config = await getCartaVaultVectorConfig(signal) } catch { return { tiles: [] } }
-  if (!config.available || !config.archive_url) return { tiles: [] }
+  try { config = await getCartaVaultVectorConfig(signal, true, snapshot.map.country.iso_alpha2, 'offline') } catch { throw new Error('Le fond CartaVault de ce pays est indisponible.') }
+  if (!config.available || !config.archive_url) {
+    if (['downloading', 'generating', 'validating'].includes(config.state)) throw new Error(`Préparation du fond CartaVault ${config.country_name ?? snapshot.map.country.name}…`)
+    throw new Error(config.error_message || `Le fond CartaVault ${snapshot.map.country.name} est indisponible.`)
+  }
   const bbox = paddedBounds(snapshot, config)
-  if (!bbox) return { tiles: [] }
+  if (!bbox) return {}
   const coordinates = tilesForBounds(bbox, config.offline_min_zoom, config.offline_max_zoom)
   if (coordinates.length > config.offline_max_tiles) throw new Error(`La zone hors ligne contient ${coordinates.length.toLocaleString('fr-FR')} tuiles (maximum ${config.offline_max_tiles.toLocaleString('fr-FR')}). Réduisez la sortie ou le niveau de détail.`)
   const storage = await getOfflineStorageEstimate()
@@ -276,30 +319,48 @@ async function prepareBasemap(snapshot: OfflineSnapshot, signal?: AbortSignal, o
   }
   const { PMTiles } = await import('pmtiles')
   const archive = new PMTiles(config.archive_url)
-  const tiles: OfflineVectorTile[] = []
-  let bytes = 0; let completed = 0
+  const tileKeys: string[] = []
+  let downloadedBytes = 0; let totalBytes = 0; let reused = 0; let completed = 0
   for (let offset = 0; offset < coordinates.length; offset += 6) {
     signal?.throwIfAborted()
     const batch = await Promise.all(coordinates.slice(offset, offset + 6).map(async ({ z, x, y }) => {
       const id = `${config.version}/${z}/${x}/${y}`
       const existing = await transaction<OfflineVectorTile | undefined>(TILE_STORE, 'readonly', (store) => store.get(id))
-      if (existing) return existing
+      if (existing) return { tile: existing, downloaded: false }
       const result = await archive.getZxy(z, x, y, signal)
       if (!result) return null
       const data = new Blob([result.data], { type: 'application/vnd.mapbox-vector-tile' })
-      return { id, version: config.version, z, x, y, data, size: data.size }
+      return { tile: { id, version: config.version, z, x, y, data, size: data.size } satisfies OfflineVectorTile, downloaded: true }
     }))
-    for (const tile of batch) if (tile) { tiles.push(tile); bytes += tile.size }
+    const available = batch.filter((item): item is NonNullable<typeof item> => item !== null)
+    const downloaded = available.filter((item) => item.downloaded).map((item) => item.tile)
+    if (downloaded.length > 0) {
+      const db = await database()
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(TILE_STORE, 'readwrite')
+          for (const tile of downloaded) tx.objectStore(TILE_STORE).put(tile)
+          tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error)
+        })
+      } finally { db.close() }
+    }
+    for (const item of available) {
+      tileKeys.push(item.tile.id)
+      totalBytes += item.tile.size
+      if (item.downloaded) downloadedBytes += item.tile.size
+      else reused += 1
+    }
     completed += batch.length
-    onProgress?.({ phase: 'basemap', completed, total: coordinates.length, bytes })
+    onProgress?.({ phase: 'basemap', completed, total: coordinates.length, bytes: downloadedBytes, reused })
   }
-  return { metadata: { version: config.version, bbox, minZoom: config.offline_min_zoom, maxZoom: config.offline_max_zoom, tileKeys: tiles.map((tile) => tile.id), tileBytes: bytes }, tiles }
+  return { metadata: { version: config.version, bbox, minZoom: config.offline_min_zoom, maxZoom: config.offline_max_zoom, tileKeys, tileBytes: totalBytes } }
 }
 
 async function savePackage(userId: string, kind: OfflinePackageKind, sourceId: string, map: PoiMap, title: string, trip: Trip | null, options: OfflinePackageOptions, signal?: AbortSignal, onProgress?: (progress: OfflineDownloadProgress) => void): Promise<OfflinePackage> {
   onProgress?.({ phase: 'data', completed: 0, total: 1, bytes: 0 })
   const snapshot = await buildSnapshot(map, trip, options, signal)
-  const prepared = await prepareBasemap(snapshot, signal, onProgress)
+  onProgress?.({ phase: 'data', completed: 1, total: 1, bytes: sizeOf(snapshot) })
+  const prepared = options.basemap ? await prepareBasemap(snapshot, signal, onProgress) : {}
   const current = await getOfflinePackage(userId, kind, sourceId)
   const timestamp = now()
   const byteSize = sizeOf(snapshot) + Object.values(snapshot.thumbnails).reduce((total, thumbnail) => total + thumbnail.size, 0)
@@ -308,8 +369,7 @@ async function savePackage(userId: string, kind: OfflinePackageKind, sourceId: s
   onProgress?.({ phase: 'saving', completed: 0, total: 1, bytes: actualBytes })
   const db = await database()
   try { await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction([PACKAGE_STORE, TILE_STORE], 'readwrite')
-    for (const tile of prepared.tiles) tx.objectStore(TILE_STORE).put(tile)
+    const tx = db.transaction(PACKAGE_STORE, 'readwrite')
     tx.objectStore(PACKAGE_STORE).put(value)
     tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error)
   }) } catch (error) {
@@ -323,6 +383,7 @@ async function savePackage(userId: string, kind: OfflinePackageKind, sourceId: s
     }
   }
   onProgress?.({ phase: 'saving', completed: 1, total: 1, bytes: actualBytes })
+  notifyOfflinePackagesChanged(userId)
   return value
 }
 export async function downloadMapOfflinePackage(userId: string, map: PoiMap, options: OfflinePackageOptions, signal?: AbortSignal, onProgress?: (progress: OfflineDownloadProgress) => void) { return savePackage(userId, 'map', map.id, map, map.name, null, options, signal, onProgress) }
@@ -330,8 +391,8 @@ export async function downloadTripOfflinePackage(userId: string, map: PoiMap, tr
   const trip = await getTrip(tripId, signal)
   return savePackage(userId, 'trip', trip.id, map, trip.name, trip, options, signal, onProgress)
 }
-export const defaultMapOfflineOptions: OfflinePackageOptions = { places: true, organization: true, trip: false, annotations: true, routeGeometry: false, thumbnails: true }
-export const defaultTripOfflineOptions: OfflinePackageOptions = { places: true, organization: true, trip: true, annotations: true, routeGeometry: true, thumbnails: true }
+export const defaultMapOfflineOptions: OfflinePackageOptions = { basemap: true, places: true, organization: true, trip: false, annotations: true, routeGeometry: false, thumbnails: true }
+export const defaultTripOfflineOptions: OfflinePackageOptions = { basemap: true, places: true, organization: true, trip: true, annotations: true, routeGeometry: true, thumbnails: true }
 
 async function currentPackages() { const identity = await getOfflineIdentity(); return identity ? listOfflinePackages(identity.id) : [] }
 export async function offlineMaps(): Promise<PoiMap[]> { return (await currentPackages()).map((item) => item.snapshot.map).filter((map, index, maps) => maps.findIndex((item) => item.id === map.id) === index) }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import difflib
+import sys
 from pathlib import Path
 
 
@@ -16,7 +17,9 @@ def write_or_check(path: Path, content: str, *, check: bool) -> bool:
         if current == normalized:
             return True
         print(f"Generated documentation is stale: {path.relative_to(ROOT)}")
-        print("".join(difflib.unified_diff(current.splitlines(True), normalized.splitlines(True), fromfile="current", tofile="generated"))[:4000])
+        diff = "".join(difflib.unified_diff(current.splitlines(True), normalized.splitlines(True), fromfile="current", tofile="generated"))[:4000]
+        encoding = sys.stdout.encoding or "utf-8"
+        print(diff.encode(encoding, errors="backslashreplace").decode(encoding))
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(normalized, encoding="utf-8")

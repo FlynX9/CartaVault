@@ -64,12 +64,12 @@ CartaVault supports light, dark, and system preferences. The selection is persis
 
 The Leaflet map keeps CartaVault overlays while supporting configurable basemaps:
 
-- CartaVault Light, using OpenFreeMap vector tiles and the locally hosted light style;
-- CartaVault Dark, using OpenFreeMap vector tiles and the locally hosted dark style;
+- CartaVault Light, using the instance's country PMTiles library and the locally hosted light style;
+- CartaVault Dark, using the same local PMTiles archive and the locally hosted dark style;
 - OpenStreetMap Standard raster fallback;
 - Satellite.
 
-OpenFreeMap does not require an API key, account, or usage-based billing. Tile and style URLs are configurable via environment variables. Attribution remains visible. A future deployment may self-host OpenFreeMap or migrate to PMTiles without replacing Leaflet.
+CartaVault prepares the required OpenMapTiles-compatible country archive in the background. No remote vector source is used as a hidden fallback; OSM Standard remains the explicit controlled fallback while an archive is unavailable. Attribution remains visible.
 
 The application interface theme and selected basemap are independent. A light interface defaults to the light basemap and a dark interface defaults to the dark basemap only until the user explicitly changes the map background.
 

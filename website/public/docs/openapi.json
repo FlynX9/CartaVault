@@ -60,6 +60,16 @@
           "basemaps": {
             "$ref": "#/components/schemas/BasemapPreferences"
           },
+          "default_theme": {
+            "default": "system",
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ],
+            "title": "Default Theme",
+            "type": "string"
+          },
           "density": {
             "default": "compact",
             "enum": [
@@ -81,6 +91,11 @@
           },
           "onboarding": {
             "$ref": "#/components/schemas/OnboardingPreferences"
+          },
+          "photo_markers_enabled": {
+            "default": false,
+            "title": "Photo Markers Enabled",
+            "type": "boolean"
           },
           "places": {
             "$ref": "#/components/schemas/PlacesPreferences"
@@ -142,6 +157,255 @@
           "display_name"
         ],
         "title": "AccountProfileUpdate",
+        "type": "object"
+      },
+      "AdminApiKeyCreate": {
+        "properties": {
+          "api_key": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Api Key",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "google",
+              "stadia",
+              "openrouteservice",
+              "resend"
+            ],
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "api_key"
+        ],
+        "title": "AdminApiKeyCreate",
+        "type": "object"
+      },
+      "AdminApiKeyUpdate": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "AdminApiKeyUpdate",
+        "type": "object"
+      },
+      "AdminUserActivityRead": {
+        "properties": {
+          "actor_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Display Name"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "next_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Value"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "previous_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Value"
+          }
+        },
+        "required": [
+          "id",
+          "event_type",
+          "occurred_at"
+        ],
+        "title": "AdminUserActivityRead",
+        "type": "object"
+      },
+      "AdminUserDetails": {
+        "properties": {
+          "active_session_count": {
+            "title": "Active Session Count",
+            "type": "integer"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "mfa_enabled": {
+            "title": "Mfa Enabled",
+            "type": "boolean"
+          },
+          "owned_map_count": {
+            "title": "Owned Map Count",
+            "type": "integer"
+          },
+          "place_count": {
+            "title": "Place Count",
+            "type": "integer"
+          },
+          "quota_profile_id": {
+            "format": "uuid",
+            "title": "Quota Profile Id",
+            "type": "string"
+          },
+          "quota_profile_name": {
+            "title": "Quota Profile Name",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "user"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "shared_map_count": {
+            "title": "Shared Map Count",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "inactive",
+              "deleted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "trip_count": {
+            "title": "Trip Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name",
+          "avatar_url",
+          "role",
+          "state",
+          "created_at",
+          "updated_at",
+          "last_login_at",
+          "owned_map_count",
+          "shared_map_count",
+          "place_count",
+          "quota_profile_id",
+          "quota_profile_name",
+          "trip_count",
+          "active_session_count",
+          "email_verified",
+          "mfa_enabled"
+        ],
+        "title": "AdminUserDetails",
         "type": "object"
       },
       "AdminUserPage": {
@@ -375,6 +639,25 @@
         "title": "AnnotationTemplateCreate",
         "type": "object"
       },
+      "AnnotationTemplateOrder": {
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "AnnotationTemplateOrder",
+        "type": "object"
+      },
       "AnnotationTemplateRead": {
         "properties": {
           "color": {
@@ -520,6 +803,65 @@
           }
         },
         "title": "AnnotationTemplateUpdate",
+        "type": "object"
+      },
+      "ApiKeyCreate": {
+        "properties": {
+          "api_key": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Api Key",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "api_key"
+        ],
+        "title": "ApiKeyCreate",
+        "type": "object"
+      },
+      "ApiKeyUpdate": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "ApiKeyUpdate",
         "type": "object"
       },
       "ApplicationDiagnostic": {
@@ -1251,6 +1593,18 @@
       },
       "BasemapPreferences": {
         "properties": {
+          "api_key_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Id"
+          },
           "satellite_provider": {
             "default": "stadia",
             "enum": [
@@ -1404,11 +1758,6 @@
             ],
             "title": "Longitude"
           },
-          "map_id": {
-            "format": "uuid",
-            "title": "Map Id",
-            "type": "string"
-          },
           "taken_at": {
             "anyOf": [
               {
@@ -1423,7 +1772,6 @@
           }
         },
         "required": [
-          "map_id",
           "file"
         ],
         "title": "Body_upload_unassigned_media_media_actions_upload_post",
@@ -1472,6 +1820,26 @@
         "title": "CategoryCreate",
         "type": "object"
       },
+      "CategoryOrder": {
+        "description": "The complete, user-defined order of categories for one map.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "CategoryOrder",
+        "type": "object"
+      },
       "CategoryRead": {
         "description": "Public representation of a category.",
         "properties": {
@@ -1512,6 +1880,10 @@
             "default": 0,
             "title": "Places Count",
             "type": "integer"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
           }
         },
         "required": [
@@ -1520,7 +1892,8 @@
           "name",
           "description",
           "icon",
-          "marks_as_visited"
+          "marks_as_visited",
+          "sort_order"
         ],
         "title": "CategoryRead",
         "type": "object"
@@ -1576,6 +1949,83 @@
           }
         },
         "title": "CategoryUpdate",
+        "type": "object"
+      },
+      "ConsentPreferences": {
+        "properties": {
+          "analytics": {
+            "default": false,
+            "title": "Analytics",
+            "type": "boolean"
+          },
+          "functional_optional": {
+            "default": false,
+            "title": "Functional Optional",
+            "type": "boolean"
+          },
+          "marketing": {
+            "default": false,
+            "title": "Marketing",
+            "type": "boolean"
+          },
+          "third_party": {
+            "default": false,
+            "title": "Third Party",
+            "type": "boolean"
+          }
+        },
+        "title": "ConsentPreferences",
+        "type": "object"
+      },
+      "ConsentRead": {
+        "properties": {
+          "analytics": {
+            "default": false,
+            "title": "Analytics",
+            "type": "boolean"
+          },
+          "functional_optional": {
+            "default": false,
+            "title": "Functional Optional",
+            "type": "boolean"
+          },
+          "marketing": {
+            "default": false,
+            "title": "Marketing",
+            "type": "boolean"
+          },
+          "necessary": {
+            "const": true,
+            "default": true,
+            "title": "Necessary",
+            "type": "boolean"
+          },
+          "third_party": {
+            "default": false,
+            "title": "Third Party",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "ConsentRead",
         "type": "object"
       },
       "ContactMessage": {
@@ -1640,6 +2090,15 @@
             "title": "Country Id",
             "type": "string"
           },
+          "detail": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Detail",
+            "type": "string"
+          },
           "geometry": {
             "$ref": "#/components/schemas/CountryBoundaryGeometry"
           },
@@ -1655,6 +2114,7 @@
         "required": [
           "country_id",
           "iso_alpha3",
+          "detail",
           "geometry",
           "point_count"
         ],
@@ -5697,6 +6157,25 @@
               }
             ],
             "title": "Name"
+          },
+          "profile_options": {
+            "$ref": "#/components/schemas/StarterProfileOptions"
+          },
+          "starter_profile": {
+            "default": "custom",
+            "enum": [
+              "general",
+              "urbex",
+              "tourism",
+              "photography",
+              "hiking",
+              "heritage",
+              "road_trip",
+              "gastronomy",
+              "custom"
+            ],
+            "title": "Starter Profile",
+            "type": "string"
           }
         },
         "required": [
@@ -6348,7 +6827,14 @@
             "title": "Longitude"
           },
           "map": {
-            "$ref": "#/components/schemas/MediaMapSummary"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaMapSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "mime_type": {
             "anyOf": [
@@ -6600,6 +7086,10 @@
       },
       "MediaUploadPolicy": {
         "properties": {
+          "max_image_dimension": {
+            "title": "Max Image Dimension",
+            "type": "integer"
+          },
           "max_upload_bytes": {
             "title": "Max Upload Bytes",
             "type": "integer"
@@ -6611,13 +7101,21 @@
         },
         "required": [
           "max_upload_megabytes",
-          "max_upload_bytes"
+          "max_upload_bytes",
+          "max_image_dimension"
         ],
         "title": "MediaUploadPolicy",
         "type": "object"
       },
       "MediaUploadSettings": {
         "properties": {
+          "max_image_dimension": {
+            "default": 2560,
+            "maximum": 7680.0,
+            "minimum": 1024.0,
+            "title": "Max Image Dimension",
+            "type": "integer"
+          },
           "max_upload_megabytes": {
             "default": 5,
             "maximum": 100.0,
@@ -7639,6 +8137,14 @@
             "title": "Filename",
             "type": "string"
           },
+          "focal_x": {
+            "title": "Focal X",
+            "type": "number"
+          },
+          "focal_y": {
+            "title": "Focal Y",
+            "type": "number"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -7709,6 +8215,8 @@
           "taken_at",
           "sort_order",
           "is_primary",
+          "focal_x",
+          "focal_y",
           "created_at"
         ],
         "title": "PhotoRead",
@@ -7745,6 +8253,32 @@
               }
             ],
             "title": "Description"
+          },
+          "focal_x": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focal X"
+          },
+          "focal_y": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focal Y"
           },
           "is_primary": {
             "anyOf": [
@@ -7974,6 +8508,7 @@
           "action": {
             "enum": [
               "set_status",
+              "set_category",
               "add_category",
               "remove_category",
               "add_tag",
@@ -8028,6 +8563,23 @@
               }
             ],
             "title": "Tag Id"
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag Ids"
           }
         },
         "required": [
@@ -8162,6 +8714,10 @@
             "default": 0,
             "title": "Places Count",
             "type": "integer"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
           }
         },
         "required": [
@@ -8171,6 +8727,7 @@
           "description",
           "icon",
           "marks_as_visited",
+          "sort_order",
           "is_primary"
         ],
         "title": "PlaceCategoryRead",
@@ -8178,30 +8735,6 @@
       },
       "PlaceCreate": {
         "properties": {
-          "abandonment_date": {
-            "anyOf": [
-              {
-                "maxLength": 100,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Abandonment Date"
-          },
-          "access": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Access"
-          },
           "condition": {
             "anyOf": [
               {
@@ -8218,18 +8751,6 @@
             "default": false,
             "title": "Confirm Outside Country",
             "type": "boolean"
-          },
-          "construction_date": {
-            "anyOf": [
-              {
-                "maxLength": 100,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Construction Date"
           },
           "danger_level": {
             "anyOf": [
@@ -8428,13 +8949,6 @@
       },
       "PlaceFacets": {
         "properties": {
-          "access_values": {
-            "items": {
-              "$ref": "#/components/schemas/PlaceFacetItem"
-            },
-            "title": "Access Values",
-            "type": "array"
-          },
           "categories": {
             "items": {
               "$ref": "#/components/schemas/PlaceFacetItem"
@@ -8527,7 +9041,6 @@
           "tags",
           "statuses",
           "regions",
-          "access_values",
           "danger_levels",
           "condition_values",
           "with_photos",
@@ -8938,6 +9451,18 @@
             ],
             "title": "Primary Category Icon"
           },
+          "primary_photo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Photo Id"
+          },
           "status": {
             "$ref": "#/components/schemas/MapStatusRead"
           },
@@ -8958,6 +9483,7 @@
           "latitude",
           "status",
           "primary_category_icon",
+          "primary_photo_id",
           "category_ids",
           "tag_ids",
           "is_favorite"
@@ -8967,28 +9493,6 @@
       },
       "PlaceRead": {
         "properties": {
-          "abandonment_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Abandonment Date"
-          },
-          "access": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Access"
-          },
           "categories": {
             "items": {
               "$ref": "#/components/schemas/PlaceCategoryRead"
@@ -9006,17 +9510,6 @@
               }
             ],
             "title": "Condition"
-          },
-          "construction_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Construction Date"
           },
           "country": {
             "anyOf": [
@@ -9305,10 +9798,7 @@
           "region_source",
           "region_resolved_at",
           "region_manually_overridden",
-          "construction_date",
-          "abandonment_date",
           "condition",
-          "access",
           "danger_level",
           "custom_fields",
           "longitude",
@@ -9588,30 +10078,6 @@
       },
       "PlaceUpdate": {
         "properties": {
-          "abandonment_date": {
-            "anyOf": [
-              {
-                "maxLength": 100,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Abandonment Date"
-          },
-          "access": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Access"
-          },
           "condition": {
             "anyOf": [
               {
@@ -9628,18 +10094,6 @@
             "default": false,
             "title": "Confirm Outside Country",
             "type": "boolean"
-          },
-          "construction_date": {
-            "anyOf": [
-              {
-                "maxLength": 100,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Construction Date"
           },
           "danger_level": {
             "anyOf": [
@@ -9797,6 +10251,18 @@
       },
       "PlacesPreferences": {
         "properties": {
+          "api_key_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Id"
+          },
           "provider": {
             "default": "stadia",
             "enum": [
@@ -9808,6 +10274,231 @@
           }
         },
         "title": "PlacesPreferences",
+        "type": "object"
+      },
+      "PrivacySettingsRead": {
+        "properties": {
+          "analytics_mode": {
+            "enum": [
+              "disabled",
+              "privacy_preserving",
+              "consent_required"
+            ],
+            "title": "Analytics Mode",
+            "type": "string"
+          },
+          "auth_log_retention_days": {
+            "title": "Auth Log Retention Days",
+            "type": "integer"
+          },
+          "consent_required": {
+            "title": "Consent Required",
+            "type": "boolean"
+          },
+          "consent_version": {
+            "title": "Consent Version",
+            "type": "string"
+          },
+          "contact_email": {
+            "title": "Contact Email",
+            "type": "string"
+          },
+          "cookie_policy_url": {
+            "title": "Cookie Policy Url",
+            "type": "string"
+          },
+          "deleted_account_retention_days": {
+            "title": "Deleted Account Retention Days",
+            "type": "integer"
+          },
+          "operator_name": {
+            "title": "Operator Name",
+            "type": "string"
+          },
+          "privacy_policy_url": {
+            "title": "Privacy Policy Url",
+            "type": "string"
+          },
+          "session_retention_days": {
+            "title": "Session Retention Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "analytics_mode",
+          "consent_required",
+          "consent_version",
+          "operator_name",
+          "privacy_policy_url",
+          "cookie_policy_url",
+          "contact_email",
+          "auth_log_retention_days",
+          "session_retention_days",
+          "deleted_account_retention_days"
+        ],
+        "title": "PrivacySettingsRead",
+        "type": "object"
+      },
+      "PrivacySettingsUpdate": {
+        "properties": {
+          "analytics_mode": {
+            "default": "disabled",
+            "enum": [
+              "disabled",
+              "privacy_preserving",
+              "consent_required"
+            ],
+            "title": "Analytics Mode",
+            "type": "string"
+          },
+          "auth_log_retention_days": {
+            "default": 90,
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Auth Log Retention Days",
+            "type": "integer"
+          },
+          "contact_email": {
+            "default": "",
+            "maxLength": 320,
+            "title": "Contact Email",
+            "type": "string"
+          },
+          "cookie_policy_url": {
+            "default": "",
+            "maxLength": 2048,
+            "title": "Cookie Policy Url",
+            "type": "string"
+          },
+          "deleted_account_retention_days": {
+            "default": 0,
+            "maximum": 3650.0,
+            "minimum": 0.0,
+            "title": "Deleted Account Retention Days",
+            "type": "integer"
+          },
+          "operator_name": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Operator Name",
+            "type": "string"
+          },
+          "privacy_policy_url": {
+            "default": "",
+            "maxLength": 2048,
+            "title": "Privacy Policy Url",
+            "type": "string"
+          },
+          "session_retention_days": {
+            "default": 30,
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Session Retention Days",
+            "type": "integer"
+          }
+        },
+        "title": "PrivacySettingsUpdate",
+        "type": "object"
+      },
+      "ProfileCategoryRead": {
+        "properties": {
+          "icon_id": {
+            "title": "Icon Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sort_order": {
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "icon_id",
+          "sort_order"
+        ],
+        "title": "ProfileCategoryRead",
+        "type": "object"
+      },
+      "ProfileStatusRead": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "functional_state": {
+            "enum": [
+              "non_visited",
+              "visited"
+            ],
+            "title": "Functional State",
+            "type": "string"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sort_order": {
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "color",
+          "sort_order",
+          "functional_state",
+          "is_default"
+        ],
+        "title": "ProfileStatusRead",
+        "type": "object"
+      },
+      "ProfileTagRead": {
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sort_order": {
+            "minimum": 0.0,
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "color",
+          "sort_order"
+        ],
+        "title": "ProfileTagRead",
         "type": "object"
       },
       "PublicRegistrationSettings": {
@@ -9846,7 +10537,9 @@
           "photos_per_place_max",
           "links_per_place_max",
           "days_per_trip_max",
-          "steps_per_day_max"
+          "steps_per_day_max",
+          "image_upload_megabytes_max",
+          "image_dimension_max"
         ],
         "title": "QuotaKey",
         "type": "string"
@@ -9876,6 +10569,32 @@
               }
             ],
             "title": "Days Per Trip Max"
+          },
+          "image_dimension_max": {
+            "anyOf": [
+              {
+                "maximum": 7680.0,
+                "minimum": 1024.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Dimension Max"
+          },
+          "image_upload_megabytes_max": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Upload Megabytes Max"
           },
           "links_per_place_max": {
             "anyOf": [
@@ -10750,6 +11469,18 @@
       },
       "RoutingPreferences": {
         "properties": {
+          "api_key_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Id"
+          },
           "provider": {
             "default": "osrm",
             "enum": [
@@ -11381,6 +12112,149 @@
           "valid"
         ],
         "title": "SetupTokenVerification",
+        "type": "object"
+      },
+      "StarterProfileImport": {
+        "properties": {
+          "map_id": {
+            "format": "uuid",
+            "title": "Map Id",
+            "type": "string"
+          },
+          "resource_type": {
+            "enum": [
+              "categories",
+              "tags",
+              "statuses"
+            ],
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "selected_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Keys"
+          }
+        },
+        "required": [
+          "map_id",
+          "resource_type"
+        ],
+        "title": "StarterProfileImport",
+        "type": "object"
+      },
+      "StarterProfileImportResult": {
+        "properties": {
+          "created": {
+            "minimum": 0.0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "skipped": {
+            "minimum": 0.0,
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "skipped"
+        ],
+        "title": "StarterProfileImportResult",
+        "type": "object"
+      },
+      "StarterProfileOptions": {
+        "properties": {
+          "categories": {
+            "default": true,
+            "title": "Categories",
+            "type": "boolean"
+          },
+          "statuses": {
+            "default": true,
+            "title": "Statuses",
+            "type": "boolean"
+          },
+          "tags": {
+            "default": true,
+            "title": "Tags",
+            "type": "boolean"
+          }
+        },
+        "title": "StarterProfileOptions",
+        "type": "object"
+      },
+      "StarterProfileRead": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileCategoryRead"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "general",
+              "urbex",
+              "tourism",
+              "photography",
+              "hiking",
+              "heritage",
+              "road_trip",
+              "gastronomy",
+              "custom"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileStatusRead"
+            },
+            "title": "Statuses",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileTagRead"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "ui_icon": {
+            "title": "Ui Icon",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "ui_icon",
+          "categories",
+          "tags",
+          "statuses"
+        ],
+        "title": "StarterProfileRead",
         "type": "object"
       },
       "StopCreate": {
@@ -12085,6 +12959,26 @@
         "title": "TagCreate",
         "type": "object"
       },
+      "TagOrder": {
+        "description": "The complete, user-defined order of tags for one map.",
+        "properties": {
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "TagOrder",
+        "type": "object"
+      },
       "TagRead": {
         "description": "Public representation of a tag.",
         "properties": {
@@ -12110,13 +13004,18 @@
             "default": 0,
             "title": "Places Count",
             "type": "integer"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "map_id",
           "name",
-          "color"
+          "color",
+          "sort_order"
         ],
         "title": "TagRead",
         "type": "object"
@@ -13994,6 +14893,80 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VectorPolicyPayload": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_zoom": {
+            "default": 14,
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Max Zoom",
+            "type": "integer"
+          },
+          "min_zoom": {
+            "default": 0,
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Min Zoom",
+            "type": "integer"
+          },
+          "offline_max_tiles": {
+            "default": 25000,
+            "maximum": 250000.0,
+            "minimum": 100.0,
+            "title": "Offline Max Tiles",
+            "type": "integer"
+          },
+          "offline_max_zoom": {
+            "default": 14,
+            "maximum": 16.0,
+            "minimum": 1.0,
+            "title": "Offline Max Zoom",
+            "type": "integer"
+          },
+          "offline_min_zoom": {
+            "default": 5,
+            "maximum": 16.0,
+            "minimum": 0.0,
+            "title": "Offline Min Zoom",
+            "type": "integer"
+          },
+          "offline_padding_km": {
+            "default": 20,
+            "maximum": 500.0,
+            "minimum": 0.0,
+            "title": "Offline Padding Km",
+            "type": "integer"
+          },
+          "preparation_policy": {
+            "default": "on_first_cartavault_use",
+            "enum": [
+              "on_map_creation",
+              "on_first_cartavault_use",
+              "on_first_offline_use",
+              "manual"
+            ],
+            "title": "Preparation Policy",
+            "type": "string"
+          },
+          "update_policy": {
+            "default": "disabled",
+            "enum": [
+              "disabled",
+              "monthly",
+              "quarterly"
+            ],
+            "title": "Update Policy",
+            "type": "string"
+          }
+        },
+        "title": "VectorPolicyPayload",
+        "type": "object"
       }
     }
   },
@@ -14063,6 +15036,216 @@
           }
         },
         "summary": "Delete Account",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/api-keys": {
+      "get": {
+        "operationId": "list_api_keys_account_api_keys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Api Keys Account Api Keys Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Api Keys",
+        "tags": [
+          "account"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_key_account_api_keys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Api Key Account Api Keys Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Api Key",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/api-keys/{key_id}": {
+      "delete": {
+        "operationId": "delete_api_key_account_api_keys__key_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Api Key Account Api Keys  Key Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Api Key",
+        "tags": [
+          "account"
+        ]
+      },
+      "patch": {
+        "operationId": "update_api_key_account_api_keys__key_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Api Key Account Api Keys  Key Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Api Key",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/api-keys/{key_id}/verify": {
+      "post": {
+        "operationId": "verify_api_key_account_api_keys__key_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify Api Key Account Api Keys  Key Id  Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Api Key",
         "tags": [
           "account"
         ]
@@ -14217,159 +15400,6 @@
         ]
       }
     },
-    "/account/integrations/google-map-tiles": {
-      "delete": {
-        "operationId": "delete_user_credential_account_integrations_google_map_tiles_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete User Credential Account Integrations Google Map Tiles Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Delete User Credential",
-        "tags": [
-          "account"
-        ]
-      },
-      "get": {
-        "operationId": "user_credential_status_account_integrations_google_map_tiles_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response User Credential Status Account Integrations Google Map Tiles Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "User Credential Status",
-        "tags": [
-          "account"
-        ]
-      },
-      "put": {
-        "operationId": "store_user_credential_account_integrations_google_map_tiles_put",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Store User Credential Account Integrations Google Map Tiles Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Store User Credential",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/google-map-tiles/verify": {
-      "post": {
-        "operationId": "verify_user_credential_account_integrations_google_map_tiles_verify_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Verify User Credential Account Integrations Google Map Tiles Verify Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Verify User Credential",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/google-places": {
-      "delete": {
-        "operationId": "remove_account_integrations_google_places_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Remove Account Integrations Google Places Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Remove",
-        "tags": [
-          "account"
-        ]
-      },
-      "get": {
-        "operationId": "status_account_integrations_google_places_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Status Account Integrations Google Places Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Status",
-        "tags": [
-          "account"
-        ]
-      },
-      "put": {
-        "operationId": "store_account_integrations_google_places_put",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Store Account Integrations Google Places Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Store",
-        "tags": [
-          "account"
-        ]
-      }
-    },
     "/account/integrations/google-places/search": {
       "get": {
         "operationId": "search_account_integrations_google_places_search_get",
@@ -14446,358 +15476,6 @@
         ]
       }
     },
-    "/account/integrations/google-places/verify": {
-      "post": {
-        "operationId": "verify_account_integrations_google_places_verify_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Verify Account Integrations Google Places Verify Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Verify",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/google-routes": {
-      "delete": {
-        "operationId": "remove_credential_account_integrations_google_routes_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Remove Credential Account Integrations Google Routes Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Remove Credential",
-        "tags": [
-          "account"
-        ]
-      },
-      "get": {
-        "operationId": "credential_status_account_integrations_google_routes_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Credential Status Account Integrations Google Routes Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Credential Status",
-        "tags": [
-          "account"
-        ]
-      },
-      "put": {
-        "operationId": "store_credential_account_integrations_google_routes_put",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Store Credential Account Integrations Google Routes Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Store Credential",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/google-routes/verify": {
-      "post": {
-        "operationId": "verify_credential_account_integrations_google_routes_verify_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Verify Credential Account Integrations Google Routes Verify Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Verify Credential",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/openrouteservice": {
-      "delete": {
-        "operationId": "remove_credential_account_integrations_openrouteservice_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Remove Credential Account Integrations Openrouteservice Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Remove Credential",
-        "tags": [
-          "account"
-        ]
-      },
-      "get": {
-        "operationId": "credential_status_account_integrations_openrouteservice_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Credential Status Account Integrations Openrouteservice Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Credential Status",
-        "tags": [
-          "account"
-        ]
-      },
-      "put": {
-        "operationId": "store_credential_account_integrations_openrouteservice_put",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Store Credential Account Integrations Openrouteservice Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Store Credential",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/openrouteservice/verify": {
-      "post": {
-        "operationId": "verify_credential_account_integrations_openrouteservice_verify_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Verify Credential Account Integrations Openrouteservice Verify Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Verify Credential",
-        "tags": [
-          "account"
-        ]
-      }
-    },
-    "/account/integrations/stadia-maps": {
-      "delete": {
-        "operationId": "delete_credential_account_integrations_stadia_maps_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Credential Account Integrations Stadia Maps Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Delete Credential",
-        "tags": [
-          "basemaps"
-        ]
-      },
-      "get": {
-        "operationId": "credential_status_account_integrations_stadia_maps_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Credential Status Account Integrations Stadia Maps Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Credential Status",
-        "tags": [
-          "basemaps"
-        ]
-      },
-      "put": {
-        "operationId": "store_credential_account_integrations_stadia_maps_put",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Store Credential Account Integrations Stadia Maps Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Store Credential",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/account/integrations/stadia-maps/verify": {
-      "post": {
-        "operationId": "verify_credential_account_integrations_stadia_maps_verify_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Verify Credential Account Integrations Stadia Maps Verify Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Verify Credential",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/account/integrations/stadia-places": {
-      "delete": {
-        "operationId": "delete_credential_account_integrations_stadia_places_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Delete Credential Account Integrations Stadia Places Delete",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Delete Credential",
-        "tags": [
-          "places"
-        ]
-      },
-      "get": {
-        "operationId": "credential_status_account_integrations_stadia_places_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Credential Status Account Integrations Stadia Places Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Credential Status",
-        "tags": [
-          "places"
-        ]
-      },
-      "put": {
-        "operationId": "store_credential_account_integrations_stadia_places_put",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Store Credential Account Integrations Stadia Places Put",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Store Credential",
-        "tags": [
-          "places"
-        ]
-      }
-    },
     "/account/integrations/stadia-places/config": {
       "get": {
         "operationId": "search_config_account_integrations_stadia_places_config_get",
@@ -14812,29 +15490,6 @@
           }
         },
         "summary": "Search Config",
-        "tags": [
-          "places"
-        ]
-      }
-    },
-    "/account/integrations/stadia-places/verify": {
-      "post": {
-        "operationId": "verify_credential_account_integrations_stadia_places_verify_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Verify Credential Account Integrations Stadia Places Verify Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Verify Credential",
         "tags": [
           "places"
         ]
@@ -14922,6 +15577,86 @@
           }
         },
         "summary": "Reset Preferences",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/privacy/consent": {
+      "get": {
+        "operationId": "get_consent_account_privacy_consent_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Consent",
+        "tags": [
+          "account"
+        ]
+      },
+      "put": {
+        "operationId": "update_consent_account_privacy_consent_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Consent",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/account/privacy/export": {
+      "get": {
+        "description": "Return the authenticated user's own portable export without secrets.",
+        "operationId": "export_personal_data_account_privacy_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Personal Data",
         "tags": [
           "account"
         ]
@@ -15399,6 +16134,207 @@
           }
         },
         "summary": "List Credentials",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/credentials/keys": {
+      "get": {
+        "operationId": "list_admin_api_keys_admin_console_credentials_keys_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Admin Api Keys Admin Console Credentials Keys Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Admin Api Keys",
+        "tags": [
+          "admin-console"
+        ]
+      },
+      "post": {
+        "operationId": "create_admin_api_key_admin_console_credentials_keys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminApiKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Admin Api Key Admin Console Credentials Keys Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Admin Api Key",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/credentials/keys/{key_id}": {
+      "delete": {
+        "operationId": "delete_admin_api_key_admin_console_credentials_keys__key_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Admin Api Key",
+        "tags": [
+          "admin-console"
+        ]
+      },
+      "patch": {
+        "operationId": "update_admin_api_key_admin_console_credentials_keys__key_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminApiKeyUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Admin Api Key Admin Console Credentials Keys  Key Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Admin Api Key",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/credentials/keys/{key_id}/verify": {
+      "post": {
+        "operationId": "verify_admin_api_key_admin_console_credentials_keys__key_id__verify_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Key Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Verify Admin Api Key Admin Console Credentials Keys  Key Id  Verify Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Admin Api Key",
         "tags": [
           "admin-console"
         ]
@@ -15884,6 +16820,66 @@
         ]
       }
     },
+    "/admin/console/privacy/settings": {
+      "get": {
+        "operationId": "admin_privacy_settings_admin_console_privacy_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Privacy Settings",
+        "tags": [
+          "admin-console"
+        ]
+      },
+      "put": {
+        "operationId": "update_admin_privacy_settings_admin_console_privacy_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivacySettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Admin Privacy Settings",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
     "/admin/console/saas/settings": {
       "get": {
         "operationId": "get_saas_settings_admin_console_saas_settings_get",
@@ -16104,6 +17100,53 @@
         ]
       }
     },
+    "/admin/console/users/{user_id}/activity": {
+      "get": {
+        "operationId": "get_user_activity_admin_console_users__user_id__activity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserActivityRead"
+                  },
+                  "title": "Response Get User Activity Admin Console Users  User Id  Activity Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get User Activity",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
     "/admin/console/users/{user_id}/avatar": {
       "get": {
         "operationId": "user_avatar_admin_console_users__user_id__avatar_get",
@@ -16140,6 +17183,291 @@
           }
         },
         "summary": "User Avatar",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/users/{user_id}/details": {
+      "get": {
+        "operationId": "get_user_details_admin_console_users__user_id__details_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDetails"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get User Details",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/vector-basemaps": {
+      "get": {
+        "operationId": "admin_library_admin_console_vector_basemaps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Admin Library Admin Console Vector Basemaps Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin Library",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/vector-basemaps/settings": {
+      "put": {
+        "operationId": "update_settings_admin_console_vector_basemaps_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorPolicyPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Settings Admin Console Vector Basemaps Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Settings",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/vector-basemaps/{country_code}": {
+      "delete": {
+        "operationId": "remove_admin_console_vector_basemaps__country_code__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "country_code",
+            "required": true,
+            "schema": {
+              "title": "Country Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove Admin Console Vector Basemaps  Country Code  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/vector-basemaps/{country_code}/cancel": {
+      "post": {
+        "operationId": "cancel_admin_console_vector_basemaps__country_code__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "country_code",
+            "required": true,
+            "schema": {
+              "title": "Country Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Admin Console Vector Basemaps  Country Code  Cancel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/vector-basemaps/{country_code}/install": {
+      "post": {
+        "operationId": "install_admin_console_vector_basemaps__country_code__install_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "country_code",
+            "required": true,
+            "schema": {
+              "title": "Country Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Install Admin Console Vector Basemaps  Country Code  Install Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Install",
+        "tags": [
+          "admin-console"
+        ]
+      }
+    },
+    "/admin/console/vector-basemaps/{country_code}/update": {
+      "post": {
+        "operationId": "update_country_admin_console_vector_basemaps__country_code__update_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "country_code",
+            "required": true,
+            "schema": {
+              "title": "Country Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Country Admin Console Vector Basemaps  Country Code  Update Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Country",
         "tags": [
           "admin-console"
         ]
@@ -16458,49 +17786,6 @@
           }
         },
         "summary": "Update Profile",
-        "tags": [
-          "admin-quotas"
-        ]
-      }
-    },
-    "/admin/quota-profiles/{profile_id}/archive": {
-      "post": {
-        "operationId": "archive_profile_admin_quota_profiles__profile_id__archive_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "profile_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Profile Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QuotaProfileRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Archive Profile",
         "tags": [
           "admin-quotas"
         ]
@@ -17365,6 +18650,63 @@
         ]
       }
     },
+    "/annotations/templates/reorder": {
+      "post": {
+        "operationId": "reorder_templates_annotations_templates_reorder_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Map Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationTemplateOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AnnotationTemplateRead"
+                  },
+                  "title": "Response Reorder Templates Annotations Templates Reorder Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Templates",
+        "tags": [
+          "annotations"
+        ]
+      }
+    },
     "/annotations/templates/{template_id}": {
       "delete": {
         "operationId": "delete_template_annotations_templates__template_id__delete",
@@ -17930,6 +19272,179 @@
         ]
       }
     },
+    "/basemaps/cartavault/archive/{country_code}.pmtiles": {
+      "get": {
+        "operationId": "cartavault_vector_archive_basemaps_cartavault_archive__country_code__pmtiles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "country_code",
+            "required": true,
+            "schema": {
+              "title": "Country Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cartavault Vector Archive",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/basemaps/cartavault/config": {
+      "get": {
+        "operationId": "config_basemaps_cartavault_config_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "country_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "default": "status",
+              "enum": [
+                "status",
+                "online",
+                "offline"
+              ],
+              "title": "Purpose",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Config Basemaps Cartavault Config Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Config",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
+    "/basemaps/cartavault/fonts/{fontstack}/{glyph_range}.pbf": {
+      "get": {
+        "operationId": "cartavault_vector_font_basemaps_cartavault_fonts__fontstack___glyph_range__pbf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fontstack",
+            "required": true,
+            "schema": {
+              "title": "Fontstack",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "glyph_range",
+            "required": true,
+            "schema": {
+              "title": "Glyph Range",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cartavault Vector Font",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
     "/basemaps/google-satellite/session": {
       "post": {
         "operationId": "create_session_basemaps_google_satellite_session_post",
@@ -18128,6 +19643,63 @@
           }
         },
         "summary": "Create Category",
+        "tags": [
+          "categories"
+        ]
+      }
+    },
+    "/categories/reorder": {
+      "post": {
+        "operationId": "reorder_categories_categories_reorder_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Map Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryRead"
+                  },
+                  "title": "Response Reorder Categories Categories Reorder Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Categories",
         "tags": [
           "categories"
         ]
@@ -18433,6 +20005,21 @@
             }
           },
           {
+            "in": "query",
+            "name": "detail",
+            "required": false,
+            "schema": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Detail",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "if-none-match",
             "required": false,
@@ -18686,6 +20273,94 @@
         "summary": "Accept Invitation",
         "tags": [
           "invitations"
+        ]
+      }
+    },
+    "/map-profiles": {
+      "get": {
+        "operationId": "get_map_profiles_map_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StarterProfileRead"
+                  },
+                  "title": "Response Get Map Profiles Map Profiles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Map Profiles",
+        "tags": [
+          "map-profiles"
+        ]
+      }
+    },
+    "/map-profiles/{profile_id}/import": {
+      "post": {
+        "operationId": "import_map_profile_resources_map_profiles__profile_id__import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "enum": [
+                "general",
+                "urbex",
+                "tourism",
+                "photography",
+                "hiking",
+                "heritage",
+                "road_trip",
+                "gastronomy",
+                "custom"
+              ],
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StarterProfileImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StarterProfileImportResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Map Profile Resources",
+        "tags": [
+          "map-profiles"
         ]
       }
     },
@@ -20250,6 +21925,61 @@
         ]
       }
     },
+    "/media-actions/{media_id}/suggested-map": {
+      "get": {
+        "description": "Return the first editable map whose country contains the media GPS point.",
+        "operationId": "suggested_map_for_media_media_actions__media_id__suggested_map_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Suggested Map For Media Media Actions  Media Id  Suggested Map Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suggested Map For Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/media/bulk-delete": {
       "post": {
         "operationId": "bulk_delete_media_media_bulk_delete_post",
@@ -20729,6 +22459,43 @@
         ]
       }
     },
+    "/photos/{photo_id}/thumbnail": {
+      "get": {
+        "description": "Serve a generated thumbnail without exposing the storage path.",
+        "operationId": "get_photo_thumbnail_file_photos__photo_id__thumbnail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "photo_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Photo Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Photo Thumbnail File",
+        "tags": [
+          "photos"
+        ]
+      }
+    },
     "/places": {
       "get": {
         "description": "Return places using optional search, filters and pagination.",
@@ -21093,20 +22860,6 @@
                 }
               ],
               "title": "Updated To"
-            }
-          },
-          {
-            "in": "query",
-            "name": "access_values",
-            "required": false,
-            "schema": {
-              "default": [],
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 50,
-              "title": "Access Values",
-              "type": "array"
             }
           },
           {
@@ -21604,20 +23357,6 @@
                 }
               ],
               "title": "Updated To"
-            }
-          },
-          {
-            "in": "query",
-            "name": "access_values",
-            "required": false,
-            "schema": {
-              "default": [],
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 50,
-              "title": "Access Values",
-              "type": "array"
             }
           },
           {
@@ -22131,20 +23870,6 @@
                 }
               ],
               "title": "Updated To"
-            }
-          },
-          {
-            "in": "query",
-            "name": "access_values",
-            "required": false,
-            "schema": {
-              "default": [],
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 50,
-              "title": "Access Values",
-              "type": "array"
             }
           },
           {
@@ -23220,20 +24945,6 @@
           },
           {
             "in": "query",
-            "name": "access_values",
-            "required": false,
-            "schema": {
-              "default": [],
-              "items": {
-                "type": "string"
-              },
-              "maxItems": 50,
-              "title": "Access Values",
-              "type": "array"
-            }
-          },
-          {
-            "in": "query",
             "name": "danger_levels",
             "required": false,
             "schema": {
@@ -23874,6 +25585,28 @@
         ]
       }
     },
+    "/privacy/configuration": {
+      "get": {
+        "description": "Public, secret-free feature state used to decide whether consent is needed.",
+        "operationId": "privacy_configuration_privacy_configuration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Privacy Configuration",
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
     "/routing/providers": {
       "get": {
         "operationId": "routing_providers_routing_providers_get",
@@ -24446,6 +26179,63 @@
           }
         },
         "summary": "Create Tag",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
+    "/tags/reorder": {
+      "post": {
+        "operationId": "reorder_tags_tags_reorder_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Map Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagOrder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagRead"
+                  },
+                  "title": "Response Reorder Tags Tags Reorder Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reorder Tags",
         "tags": [
           "tags"
         ]

@@ -7,6 +7,6 @@ sidebar:
 
 <!-- GENERATED FILE — DO NOT EDIT DIRECTLY -->
 
-The schema contains **202 paths** and **274 operations**. On a running instance, use `/api/docs` for the interactive UI and `/api/openapi.json` for the JSON document.
+The schema contains **217 paths** and **283 operations**. On a running instance, use `/api/docs` for the interactive UI and `/api/openapi.json` for the JSON document.
 
 The versioned document is available at [`/docs/openapi.json`](/docs/openapi.json).

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
-import { assignUserQuotaProfile, createQuotaProfile, getAdminApiKeys, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, updateAdminUser, updateQuotaProfile, verifyAdminApiKey } from '../../api/adminConsole'
+import { assignUserQuotaProfile, createQuotaProfile, getAdminApiKeys, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, getVectorBasemapLibrary, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, saveVectorBasemapSettings, updateAdminUser, updateQuotaProfile, verifyAdminApiKey } from '../../api/adminConsole'
 import { getPublicRegistrationSettings, updatePublicRegistrationSettings } from '../../api/registration'
 import { getAdminPrivacySettings, saveAdminPrivacySettings } from '../../api/privacy'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
@@ -12,8 +12,8 @@ import type { QuotaRegistryItem } from '../../types/adminConsole'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteAdminApiKey: vi.fn(), duplicateQuotaProfile: vi.fn(),
-  createAdminApiKey: vi.fn(), getAdminApiKeys: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getMediaUploadSettings: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), getSaasSettings: vi.fn(), refreshInstanceHealth: vi.fn(),
-  saveInstanceLogRetention: vi.fn(), saveMediaUploadSettings: vi.fn(), saveSaasSettings: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminApiKey: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), verifyAdminApiKey: vi.fn(),
+  createAdminApiKey: vi.fn(), getAdminApiKeys: vi.fn(), getAdminUsers: vi.fn(), getInstanceHealth: vi.fn(), getInstanceLogRetention: vi.fn(), getInstanceLogs: vi.fn(), getMediaUploadSettings: vi.fn(), getQuotaProfiles: vi.fn(), getQuotaRegistry: vi.fn(), getSaasSettings: vi.fn(), getVectorBasemapLibrary: vi.fn(), refreshInstanceHealth: vi.fn(),
+  cancelVectorBasemap: vi.fn(), deleteVectorBasemap: vi.fn(), installVectorBasemap: vi.fn(), saveInstanceLogRetention: vi.fn(), saveMediaUploadSettings: vi.fn(), saveSaasSettings: vi.fn(), saveVectorBasemapSettings: vi.fn(), setDefaultQuotaProfile: vi.fn(), updateAdminApiKey: vi.fn(), updateAdminUser: vi.fn(), updateQuotaProfile: vi.fn(), updateVectorBasemap: vi.fn(), verifyAdminApiKey: vi.fn(),
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../api/privacy', () => ({ getAdminPrivacySettings: vi.fn(), saveAdminPrivacySettings: vi.fn() }))
@@ -33,6 +33,8 @@ beforeEach(() => {
   vi.mocked(getInstanceLogRetention).mockResolvedValue({ retention_days: 7 })
   vi.mocked(getMediaUploadSettings).mockResolvedValue({ max_upload_megabytes: 5, max_image_dimension: 2560 })
   vi.mocked(getSaasSettings).mockResolvedValue({ enabled: false })
+  vi.mocked(getVectorBasemapLibrary).mockResolvedValue({ settings: { enabled: true, preparation_policy: 'on_first_cartavault_use', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 }, items: [] })
+  vi.mocked(saveVectorBasemapSettings).mockImplementation(async (settings) => settings)
   vi.mocked(saveInstanceLogRetention).mockImplementation(async (retentionDays) => ({ retention_days: retentionDays }))
   vi.mocked(saveMediaUploadSettings).mockImplementation(async (maxUploadMegabytes, maxImageDimension) => ({ max_upload_megabytes: maxUploadMegabytes, max_image_dimension: maxImageDimension }))
   vi.mocked(saveSaasSettings).mockImplementation(async (enabled) => ({ enabled }))
@@ -70,6 +72,18 @@ describe('AdminConsole', () => {
     expect(saveButton).toBeEnabled()
     fireEvent.click(saveButton)
     await waitFor(() => expect(updatePublicRegistrationSettings).toHaveBeenCalledWith({ enabled: true, approval_required: true }))
+  })
+
+  it('shows the live vector basemap preparation percentage', async () => {
+    vi.mocked(getVectorBasemapLibrary).mockResolvedValue({
+      settings: { enabled: true, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
+      items: [{ country_code: 'BE', country_name: 'Belgique', state: 'generating', phase: 'Génération du fond', progress: 42, version: null, file_size: null, source_size: 1000, installed_at: null, source_date: null, min_zoom: null, max_zoom: null, schema: null, error_code: null, error_message: null, task_id: 'task-be', map_count: 1, supported: true }],
+    })
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+
+    const progress = await screen.findByRole('progressbar', { name: 'Génération du fond de Belgique' })
+    expect(progress).toHaveAttribute('aria-valuenow', '42')
+    expect(screen.getByText('Génération du fond · 42 %')).toBeVisible()
   })
 
   it('only reveals privacy inputs after enabling the section and saves its selected mode from the header', async () => {

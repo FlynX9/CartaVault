@@ -3,9 +3,9 @@ name: Marketing website
 on:
   push:
     branches: [master]
-    paths: ['website/**', 'scripts/docs/**', 'docs/features.json', '.github/workflows/website.yml', 'docs/screenshots/**', 'backend/app/**']
+    paths: ['website/**', 'scripts/docs/**', 'docs/features.json', 'docs/functional/**', 'demo/**', '.github/workflows/website.yml', 'docs/screenshots/**', 'backend/app/**']
   pull_request:
-    paths: ['website/**', 'scripts/docs/**', 'docs/features.json', '.github/workflows/website.yml', 'docs/screenshots/**', 'backend/app/**']
+    paths: ['website/**', 'scripts/docs/**', 'docs/features.json', 'docs/functional/**', 'demo/**', '.github/workflows/website.yml', 'docs/screenshots/**', 'backend/app/**']
   workflow_dispatch:
     inputs:
       deploy:
@@ -47,6 +47,14 @@ jobs:
         with:
           name: cartavault-website
           path: website/dist
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cartavault-documentation-coverage
+          path: |
+            docs/generated/documentation-coverage.json
+            docs/generated/documentation-coverage.md
+            docs/generated/documentation-source-hashes.json
           if-no-files-found: error
 
   deploy:

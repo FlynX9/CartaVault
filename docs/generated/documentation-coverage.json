@@ -1,0 +1,856 @@
+{
+  "summary": {
+    "detected": 49,
+    "detected_surfaces": 75,
+    "manifested": 49,
+    "documented": 49,
+    "scenarios": 49,
+    "captures_ready": 49,
+    "coverage_percent": 100.0
+  },
+  "sections": [
+    {
+      "id": "account",
+      "features": 13,
+      "documented": 13,
+      "scenarios": 13,
+      "captures_ready": 13
+    },
+    {
+      "id": "administration",
+      "features": 9,
+      "documented": 9,
+      "scenarios": 9,
+      "captures_ready": 9
+    },
+    {
+      "id": "concepts",
+      "features": 2,
+      "documented": 2,
+      "scenarios": 2,
+      "captures_ready": 2
+    },
+    {
+      "id": "deployment",
+      "features": 2,
+      "documented": 2,
+      "scenarios": 2,
+      "captures_ready": 2
+    },
+    {
+      "id": "getting-started",
+      "features": 1,
+      "documented": 1,
+      "scenarios": 1,
+      "captures_ready": 1
+    },
+    {
+      "id": "maps",
+      "features": 5,
+      "documented": 5,
+      "scenarios": 5,
+      "captures_ready": 5
+    },
+    {
+      "id": "media",
+      "features": 3,
+      "documented": 3,
+      "scenarios": 3,
+      "captures_ready": 3
+    },
+    {
+      "id": "offline",
+      "features": 3,
+      "documented": 3,
+      "scenarios": 3,
+      "captures_ready": 3
+    },
+    {
+      "id": "organization",
+      "features": 3,
+      "documented": 3,
+      "scenarios": 3,
+      "captures_ready": 3
+    },
+    {
+      "id": "places",
+      "features": 4,
+      "documented": 4,
+      "scenarios": 4,
+      "captures_ready": 4
+    },
+    {
+      "id": "trips",
+      "features": 4,
+      "documented": 4,
+      "scenarios": 4,
+      "captures_ready": 4
+    }
+  ],
+  "unmanifested_surfaces": [],
+  "unknown_manifest_surfaces": [
+    "account:api-keys",
+    "account:offline",
+    "account:preferences",
+    "account:privacy",
+    "account:profile",
+    "account:security",
+    "dialog:account-density-label",
+    "dialog:account-language-label",
+    "dialog:account-startup-label",
+    "dialog:account-trash-retention-label",
+    "dialog:quota-tab-general",
+    "dialog:trash-panel-title",
+    "menu:places",
+    "route:/login",
+    "route:/places/:id"
+  ],
+  "features": [
+    {
+      "id": "getting-started.dashboard",
+      "section": "getting-started",
+      "documentation": "getting-started/dashboard",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "dashboard-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "54f52063005595f1"
+    },
+    {
+      "id": "concepts.data-model",
+      "section": "concepts",
+      "documentation": "concepts/maps-places-trips",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "trip-france-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "2e39a385e7cb4b87"
+    },
+    {
+      "id": "concepts.permissions",
+      "section": "concepts",
+      "documentation": "concepts/sharing-permissions",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "map-members-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "adabdc419dc0189c"
+    },
+    {
+      "id": "maps.catalog",
+      "section": "maps",
+      "documentation": "maps/catalog",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "maps-catalog-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "168795f3a78f5c18"
+    },
+    {
+      "id": "maps.create",
+      "section": "maps",
+      "documentation": "maps/create",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "create-map-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "77e9a8bb442dc343"
+    },
+    {
+      "id": "maps.settings",
+      "section": "maps",
+      "documentation": "maps/place-fields",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "map-fields-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "168795f3a78f5c18"
+    },
+    {
+      "id": "maps.members",
+      "section": "maps",
+      "documentation": "maps/members",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "map-members-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "95da1b2fd805d162"
+    },
+    {
+      "id": "maps.trash",
+      "section": "maps",
+      "documentation": "maps/trash",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "trash-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "ae87fc0b139ce209"
+    },
+    {
+      "id": "places.browse",
+      "section": "places",
+      "documentation": "places/browse-search",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "places-france-fr-light",
+        "places-france-fr-mobile"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "82c88698540c3386"
+    },
+    {
+      "id": "places.edit",
+      "section": "places",
+      "documentation": "places/create-edit",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "place-editor-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "9d9164a5c5e6c47e"
+    },
+    {
+      "id": "places.media",
+      "section": "places",
+      "documentation": "places/photos-media",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "place-media-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "36a85f1e1571889a"
+    },
+    {
+      "id": "places.annotations",
+      "section": "places",
+      "documentation": "places/annotations",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "place-annotations-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "6e148e5b18f8faa7"
+    },
+    {
+      "id": "organization.classify",
+      "section": "organization",
+      "documentation": "organization/categories-tags-statuses",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "categories-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "aacf0985e6a9cc95"
+    },
+    {
+      "id": "organization.import-profiles",
+      "section": "organization",
+      "documentation": "organization/import-profiles",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "profile-import-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "b54b0042610db898"
+    },
+    {
+      "id": "organization.annotation-templates",
+      "section": "organization",
+      "documentation": "organization/annotation-templates",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "annotation-templates-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "6e148e5b18f8faa7"
+    },
+    {
+      "id": "trips.planning",
+      "section": "trips",
+      "documentation": "trips/create-plan",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "trip-france-fr-light",
+        "trip-france-fr-mobile"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "6241cf554ece9c66"
+    },
+    {
+      "id": "trips.routing",
+      "section": "trips",
+      "documentation": "trips/routing-optimization",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "trip-routing-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "6773eb112dff8a7b"
+    },
+    {
+      "id": "trips.timeline",
+      "section": "trips",
+      "documentation": "trips/timeline",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "timeline-france-fr-light",
+        "timeline-france-fr-mobile"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "5e576f4f762e734f"
+    },
+    {
+      "id": "trips.exports",
+      "section": "trips",
+      "documentation": "trips/exports",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "trip-pdf-export-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "87dc1717730ae5ad"
+    },
+    {
+      "id": "trips.offline",
+      "section": "offline",
+      "documentation": "offline/trips",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "trip-offline-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "2565e3875b808b4e"
+    },
+    {
+      "id": "media.library",
+      "section": "media",
+      "documentation": "media/library",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "media-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "42d0a79d202ed498"
+    },
+    {
+      "id": "media.upload",
+      "section": "media",
+      "documentation": "media/upload-exif",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "media-upload-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "6d40365b94d5fd18"
+    },
+    {
+      "id": "media.map-exchange",
+      "section": "media",
+      "documentation": "media/kmz-import-export",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "kmz-import-fr-light",
+        "kmz-export-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "2aab0c16d3d2f5f3"
+    },
+    {
+      "id": "offline.maps",
+      "section": "offline",
+      "documentation": "offline/maps",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "map-offline-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "4fb964eb5617974a"
+    },
+    {
+      "id": "offline.pwa-shell",
+      "section": "offline",
+      "documentation": "offline/pwa-navigation",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "places-france-fr-mobile"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "9ab1586d67315208"
+    },
+    {
+      "id": "account.profile",
+      "section": "account",
+      "documentation": "account/profile",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-profile-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "a49b18c30ae03936"
+    },
+    {
+      "id": "account.preferences",
+      "section": "account",
+      "documentation": "account/preferences",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-preferences-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "e24ba2aeca6d4066"
+    },
+    {
+      "id": "account.security",
+      "section": "account",
+      "documentation": "account/security/overview",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-security-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "a49b18c30ae03936"
+    },
+    {
+      "id": "account.email",
+      "section": "account",
+      "documentation": "account/security/email",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-email-change-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "a49b18c30ae03936"
+    },
+    {
+      "id": "account.password",
+      "section": "account",
+      "documentation": "account/security/password",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-password-change-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [
+        "backend/app/auth/password_policy.py"
+      ],
+      "potentially_stale": false,
+      "source_hash": "8586d9852942ac41"
+    },
+    {
+      "id": "account.totp",
+      "section": "account",
+      "documentation": "account/security/totp",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-totp-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "8d439f13377b056b"
+    },
+    {
+      "id": "account.email-mfa",
+      "section": "account",
+      "documentation": "account/security/email-mfa",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-email-mfa-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "50c63cd0ba1c2895"
+    },
+    {
+      "id": "account.recovery-codes",
+      "section": "account",
+      "documentation": "account/security/recovery-codes",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-recovery-codes-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "3f9614a95f38d36a"
+    },
+    {
+      "id": "account.sessions",
+      "section": "account",
+      "documentation": "account/security/sessions",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-sessions-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "a49b18c30ae03936"
+    },
+    {
+      "id": "account.api-keys",
+      "section": "account",
+      "documentation": "account/api-keys",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-api-keys-fr-light",
+        "account-api-key-dialog-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "d8f6644bbbdbff50"
+    },
+    {
+      "id": "account.privacy",
+      "section": "account",
+      "documentation": "account/privacy",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-privacy-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "d3c6204b239de026"
+    },
+    {
+      "id": "account.offline-data",
+      "section": "account",
+      "documentation": "account/offline-data",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-offline-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "c15800cce1adc146"
+    },
+    {
+      "id": "account.delete",
+      "section": "account",
+      "documentation": "account/delete",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "account-delete-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "a49b18c30ae03936"
+    },
+    {
+      "id": "admin.general",
+      "section": "administration",
+      "documentation": "administration/general",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-general-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "b2f81599b9642356"
+    },
+    {
+      "id": "admin.registration",
+      "section": "administration",
+      "documentation": "administration/public-registration",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-registration-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "133ea3c8df118724"
+    },
+    {
+      "id": "admin.users",
+      "section": "administration",
+      "documentation": "administration/users",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-users-fr-light",
+        "admin-user-details-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "64e3d2838b7e39ce"
+    },
+    {
+      "id": "admin.quotas",
+      "section": "administration",
+      "documentation": "administration/quotas",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-quotas-fr-light",
+        "admin-quota-edit-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "19b40181418c98cc"
+    },
+    {
+      "id": "admin.api-keys",
+      "section": "administration",
+      "documentation": "administration/api-keys",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-api-keys-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "1f3dd2737f56b3d9"
+    },
+    {
+      "id": "admin.vector-basemaps",
+      "section": "administration",
+      "documentation": "administration/cartavault-vector",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-vector-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "8527e79ff268a331"
+    },
+    {
+      "id": "admin.privacy",
+      "section": "administration",
+      "documentation": "administration/privacy-compliance",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-privacy-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "455ac0e0f44d5148"
+    },
+    {
+      "id": "admin.media-logs",
+      "section": "administration",
+      "documentation": "administration/media-logs",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-media-logs-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "0364c6ec1ae2dd0c"
+    },
+    {
+      "id": "admin.instance",
+      "section": "administration",
+      "documentation": "administration/instance-status",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-instance-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "f30aca07daab2e45"
+    },
+    {
+      "id": "deployment.install",
+      "section": "deployment",
+      "documentation": "self-hosting/install-update",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "login-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [],
+      "potentially_stale": false,
+      "source_hash": "b7e59db9bd2b0f34"
+    },
+    {
+      "id": "deployment.email",
+      "section": "deployment",
+      "documentation": "self-hosting/email",
+      "documented": true,
+      "scenario": true,
+      "captures": [
+        "admin-api-keys-fr-light"
+      ],
+      "missing_scenarios": [],
+      "missing_captures": [],
+      "missing_code_refs": [
+        "backend/app/email"
+      ],
+      "potentially_stale": false,
+      "source_hash": "255b71bb64f17973"
+    }
+  ]
+}

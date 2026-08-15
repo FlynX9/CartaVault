@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -157,7 +158,8 @@ def create_project_media(session, places_by_map: dict[str, list], uploader_id: U
         path = place_directory / filename
         shutil.copyfile(asset_path, path)
         session.add(Photo(
-            id=photo_id, place_id=place.id, filename=filename, original_name=asset_path.name,
+            id=photo_id, place_id=place.id, map_id=place.map_id, storage_scope_id=place.id,
+            filename=filename, original_name=asset_path.name,
             path=f"{place.id}/{filename}", description=f"Illustration originale du lieu fictif {place.name}.",
             sort_order=0, is_primary=True, mime_type="image/webp", file_size_bytes=path.stat().st_size,
             width=480, height=320, uploaded_by_user_id=uploader_id,
@@ -167,12 +169,16 @@ def create_project_media(session, places_by_map: dict[str, list], uploader_id: U
 
 def seed(session) -> dict[str, object]:
     import app.models  # noqa: F401 - register all mappings
-    from app.auth.models import User
+    from app.admin.models import SystemSetting
+    from app.annotations.models import AnnotationTemplate, PlaceAnnotation
+    from app.auth.credential_encryption import CredentialEncryptionService
+    from app.auth.models import AdminApiCredential, User, UserApiCredential, UserSession
     from app.categories.associations import place_categories_table
     from app.categories.models import Category
     from app.countries.models import Country
     from app.maps.models import MapMembership, PoiMap
     from app.places.models import Place, PlaceLink
+    from app.quotas.models import QuotaProfile
     from app.statuses.models import PlaceStatus
     from app.tags.models import Tag
     from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
@@ -193,6 +199,91 @@ def seed(session) -> dict[str, object]:
         session.add(user)
         users[slug] = user
     session.flush()
+
+    # Keep documentation runs deterministic: opening a map must not launch a
+    # country generation job. The administrator-triggered state is what the
+    # vector-basemap documentation is intended to illustrate.
+    session.add(SystemSetting(key="vector_basemap", value={
+        "enabled": True,
+        "preparation_policy": "manual",
+        "update_policy": "disabled",
+        "min_zoom": 0,
+        "max_zoom": 14,
+        "offline_min_zoom": 5,
+        "offline_max_zoom": 14,
+        "offline_padding_km": 20,
+        "offline_max_tiles": 25_000,
+    }))
+
+    demo_quota_id = stable_id("quota-profile", "voyageur")
+    demo_quota = session.get(QuotaProfile, demo_quota_id)
+    if demo_quota is None:
+        demo_quota = QuotaProfile(
+            id=demo_quota_id,
+            name="Voyageur",
+            description="Profil de démonstration avec des limites lisibles pour la documentation.",
+            is_default=False,
+            is_system=False,
+            is_active=True,
+            maps_max=10,
+            trips_total_max=25,
+            storage_bytes_max=5 * 1024 * 1024 * 1024,
+            photos_total_max=5000,
+            places_per_map_max=2500,
+            photos_per_place_max=20,
+        )
+        session.add(demo_quota)
+        session.flush()
+    for user in users.values():
+        user.quota_profile_id = demo_quota.id
+
+    # Keep several deterministic devices visible in Account > Security. The
+    # real Playwright login adds the current session on top of these fixtures.
+    for index, (agent, hours_ago) in enumerate([
+        ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/138.0 Safari/537.36", 18),
+        ("Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/138.0 Mobile Safari/537.36", 48),
+        ("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15", 96),
+    ]):
+        token = hashlib.sha256(f"cartavault-demo-session-{index}".encode()).hexdigest()
+        csrf = hashlib.sha256(f"cartavault-demo-csrf-{index}".encode()).hexdigest()
+        session.add(UserSession(
+            id=stable_id("session", f"owner-{index}"), user_id=users["owner"].id,
+            token_hash=token, csrf_token_hash=csrf,
+            created_at=FIXED_NOW - timedelta(days=15 + index),
+            last_used_at=FIXED_NOW - timedelta(hours=hours_ago),
+            expires_at=FIXED_NOW + timedelta(days=365), user_agent=agent,
+        ))
+
+    encryption = CredentialEncryptionService.from_settings()
+    user_key_specs = [
+        ("google", "Google Main", "demo-google-key-not-valid-DF20", True, None),
+        ("stadia", "Stadia Demo", "demo-stadia-key-not-valid-9A12", False, "PROVIDER_AUTH_FAILED"),
+    ]
+    for provider, name, secret, verified, error_code in user_key_specs:
+        encrypted = encryption.encrypt(secret)
+        session.add(UserApiCredential(
+            id=stable_id("user-api-key", provider), user_id=users["owner"].id,
+            provider=provider, name=name, encrypted_secret=encrypted.ciphertext,
+            encryption_version=encrypted.version, secret_last4=secret[-4:],
+            created_at=FIXED_NOW - timedelta(days=45), updated_at=FIXED_NOW,
+            verified_at=FIXED_NOW - timedelta(days=40) if verified else None,
+            last_used_at=FIXED_NOW - timedelta(days=2) if verified else None,
+            last_error_code=error_code, last_error_status=401 if error_code else None,
+            last_error_message="Clé fictive non transmise au fournisseur." if error_code else None,
+            last_error_at=FIXED_NOW - timedelta(days=1) if error_code else None,
+        ))
+    for provider, name, secret in [
+        ("google", "Google Routes — instance", "demo-admin-google-not-valid-7C31"),
+        ("openrouteservice", "ORS — secours", "demo-admin-ors-not-valid-2E44"),
+    ]:
+        encrypted = encryption.encrypt(secret)
+        session.add(AdminApiCredential(
+            id=stable_id("admin-api-key", provider), provider=provider, name=name,
+            encrypted_secret=encrypted.ciphertext, encryption_version=encrypted.version,
+            secret_last4=secret[-4:], created_at=FIXED_NOW - timedelta(days=60),
+            updated_at=FIXED_NOW, verified_at=FIXED_NOW - timedelta(days=55),
+            last_used_at=FIXED_NOW - timedelta(days=3),
+        ))
 
     maps: dict[str, PoiMap] = {}
     places_by_map: dict[str, list[Place]] = {}
@@ -272,8 +363,52 @@ def seed(session) -> dict[str, object]:
             map_places.append(place)
         places_by_map[map_slug] = map_places
 
+        template_specs = [
+            ("Parking", "rectangle", "tabler:parking", "#0EA5E9"),
+            ("Chemin d’accès", "path", "tabler:route", "#7C3AED"),
+            ("Attention", "triangle", "tabler:alert-triangle", "#E11D48"),
+            ("Important", "circle", "tabler:focus-2", "#F97316"),
+        ]
+        templates = []
+        for sort_order, (name, shape, icon, color) in enumerate(template_specs):
+            template = AnnotationTemplate(
+                id=stable_id("annotation-template", f"{map_slug}-{shape}"), map_id=poi_map.id,
+                name=name, shape_type=shape, icon=icon, color=color, sort_order=sort_order,
+                is_active=True, created_at=FIXED_NOW - timedelta(days=50), updated_at=FIXED_NOW,
+            )
+            session.add(template)
+            templates.append(template)
+        session.flush()
+        for index, template in enumerate(templates):
+            anchor = map_places[index]
+            point = REGIONS[map_slug][0]
+            latitude = point[1] + index * 0.01
+            longitude = point[2] + index * 0.01
+            geometry = (
+                {"type": "Point", "coordinates": [longitude, latitude]}
+                if template.shape_type == "circle" else
+                {"type": "LineString", "coordinates": [[longitude, latitude], [longitude + 0.015, latitude + 0.01]]}
+                if template.shape_type in {"line", "path"} else
+                {"type": "Polygon", "coordinates": [[[longitude, latitude], [longitude + 0.01, latitude], [longitude + 0.01, latitude + 0.01], [longitude, latitude + 0.01], [longitude, latitude]]]}
+            )
+            session.add(PlaceAnnotation(
+                id=stable_id("annotation", f"{map_slug}-{index}"), place_id=anchor.id,
+                template_id=template.id, geometry=geometry,
+                radius_meters=250.0 if template.shape_type == "circle" else None,
+                title=f"{template.name} — démonstration", description="Annotation fictive destinée aux captures de documentation.",
+                created_at=FIXED_NOW - timedelta(days=20), updated_at=FIXED_NOW,
+            ))
+
     session.flush()
     create_project_media(session, places_by_map, users["owner"].id)
+
+    # Keep one harmless, unused POI in the trash so the restoration workflow
+    # is documented with a real item instead of an unrelated empty state.
+    trashed_place = places_by_map["italy"][-1]
+    trashed_place.deleted_at = FIXED_NOW + timedelta(days=50)
+    trashed_place.purge_after = FIXED_NOW + timedelta(days=365)
+    trashed_place.deleted_by_user_id = users["owner"].id
+
     trip_specs = [
         ("italy-main", "italy", "Grand tour responsable", 5, date(2026, 9, 7), "planned"),
         ("france-short", "france", "Escapade culturelle", 2, date(2026, 10, 3), "planned"),
@@ -380,7 +515,8 @@ def seed(session) -> dict[str, object]:
 
 def validate(session) -> dict[str, object]:
     import app.models  # noqa: F401
-    from app.auth.models import User
+    from app.annotations.models import AnnotationTemplate, PlaceAnnotation
+    from app.auth.models import AdminApiCredential, User, UserApiCredential, UserSession
     from app.maps.models import MapMembership, PoiMap
     from app.places.models import Place
     from app.photos.models import Photo
@@ -396,8 +532,13 @@ def validate(session) -> dict[str, object]:
         "trip_days": session.scalar(select(func.count()).select_from(TripDay)),
         "trip_stops": session.scalar(select(func.count()).select_from(TripStop)),
         "trip_nights": session.scalar(select(func.count()).select_from(TripNight)),
+        "annotation_templates": session.scalar(select(func.count()).select_from(AnnotationTemplate)),
+        "annotations": session.scalar(select(func.count()).select_from(PlaceAnnotation)),
+        "seed_sessions": session.scalar(select(func.count()).select_from(UserSession)),
+        "user_api_keys": session.scalar(select(func.count()).select_from(UserApiCredential)),
+        "admin_api_keys": session.scalar(select(func.count()).select_from(AdminApiCredential)),
     }
-    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 30, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5}
+    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 30, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5, "annotation_templates": 8, "annotations": 8, "seed_sessions": 3, "user_api_keys": 2, "admin_api_keys": 2}
     errors = [f"{key}: expected {expected[key]}, got {counts[key]}" for key in expected if counts[key] != expected[key]]
     region_counts = dict(session.execute(select(Place.region, func.count()).group_by(Place.region)).all())
     if len(region_counts) != 6 or any(value != 10 for value in region_counts.values()):

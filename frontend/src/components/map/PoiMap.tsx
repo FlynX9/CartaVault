@@ -63,6 +63,7 @@ interface PoiMapProps {
   selectedPlaceIds?: ReadonlySet<string>
   onPlaceSelectionToggle?: (placeId: string) => void
   countryId?: string | null
+  countryCode?: string | null
   countryMaskEnabled?: boolean
   measurementActive?: boolean
   measurementPoints?: readonly MeasurementPoint[]
@@ -156,6 +157,7 @@ export function PoiMap({
   selectedPlaceIds = new Set<string>(),
   onPlaceSelectionToggle = () => undefined,
   countryId = null,
+  countryCode = null,
   countryMaskEnabled = true,
   measurementActive = false,
   measurementPoints = [],
@@ -195,7 +197,7 @@ export function PoiMap({
       maxBoundsViscosity={1}
       className={`poi-map${measurementActive ? ' is-measuring' : ''}`}
     >
-      <BasemapLayer basemapId={basemapId} onTileError={onBasemapTileError} />
+      <BasemapLayer basemapId={basemapId} countryCode={countryCode} onTileError={onBasemapTileError} />
       <CountryMaskLayer countryId={countryId} enabled={countryMaskEnabled} />
 
       <MapBoundsWatcher

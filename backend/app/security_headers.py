@@ -9,7 +9,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 SECURITY_HEADERS = {
     "content-security-policy": (
         "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; "
-        "script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; "
+        "script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; "
         "font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'"
     ),
     "permissions-policy": "camera=(), microphone=(), payment=(), usb=()",
@@ -24,7 +24,7 @@ SECURITY_HEADERS = {
 # pages (including deployments using an API prefix).
 DOCUMENTATION_CONTENT_SECURITY_POLICY = (
     "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; "
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "img-src 'self' data: blob: https:; font-src 'self' data: https://cdn.jsdelivr.net; "
     "connect-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'"
@@ -33,7 +33,12 @@ DOCUMENTATION_CONTENT_SECURITY_POLICY = (
 
 def _is_documentation_page(path: str) -> bool:
     normalized = path.rstrip("/") or "/"
-    return normalized.endswith("/docs") or normalized.endswith("/redoc")
+    return (
+        normalized.endswith("/docs")
+        or normalized.endswith("/redoc")
+        or normalized.startswith("/docs/")
+        or normalized.startswith("/pagefind/")
+    )
 
 
 class SecurityHeadersMiddleware:

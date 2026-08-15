@@ -16,6 +16,7 @@ import { OfflineDataSection } from './OfflineDataSection'
 import { PersonalApiKeysSection } from './PersonalApiKeysSection'
 import { IntegrationPreferences } from './IntegrationPreferences'
 import { PrivacySection } from './PrivacySection'
+import { AvatarCropDialog } from './AvatarCropDialog'
 
 type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'privacy' | 'offline'
 
@@ -38,6 +39,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
   const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const closeButton = useRef<HTMLButtonElement>(null)
   const modal = useRef<HTMLElement>(null)
   const profileDirty = profile !== null && draftName.trim() !== profile.display_name
@@ -68,7 +70,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     closeButton.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (document.querySelector('.account-security-dialog[aria-modal="true"]')) return
+        if (document.querySelector('.account-security-dialog[aria-modal="true"], .account-avatar-crop-dialog[aria-modal="true"]')) return
         event.preventDefault()
         if (!dirtyRef.current) closeRef.current()
         else setConfirmClose(true)
@@ -127,9 +129,13 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
     setSaving(false)
     return ok
   }
-  const uploadAvatar = async (file: File) => {
+  const chooseAvatar = (file: File) => {
+    setError(null); setMessage(null)
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setError(t('account.avatarInvalid')); return }
-    await run(async () => { await uploadAccountAvatar(file); await refresh(); await load() }, t('account.avatarUpdated'))
+    setAvatarFile(file)
+  }
+  const uploadAvatar = async (file: File): Promise<boolean> => {
+    return run(async () => { await uploadAccountAvatar(file); await refresh(); await load() }, t('account.avatarUpdated'))
   }
 
   return createPortal(
@@ -145,7 +151,7 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         </nav>
         <main className="account-modal__content">
           {error && <div className="form-alert" role="alert">{error}</div>}{message && <div className="account-success" role="status">{message}</div>}
-          {section === 'profile' && profile && <ProfileSection profile={profile} preferences={preferences} setPreferences={setPreferences} avatar={avatar} initials={initials} draftName={draftName} setDraftName={setDraftName} uploadAvatar={uploadAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
+          {section === 'profile' && profile && <ProfileSection profile={profile} preferences={preferences} setPreferences={setPreferences} avatar={avatar} initials={initials} draftName={draftName} setDraftName={setDraftName} chooseAvatar={chooseAvatar} removeAvatar={() => run(async () => { await deleteAccountAvatar(); await refresh(); await load() }, 'Avatar supprimé.')} />}
           {section === 'security' && profile && <SecuritySection profile={profile} sessions={sessions} run={run} refreshProfile={async () => { await refresh(); await load() }} reload={load} />}
           {section === 'preferences' && <PreferencesSection preferences={preferences} setPreferences={setPreferences} />}
           {section === 'api_keys' && <PersonalApiKeysSection />}
@@ -153,18 +159,19 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
           {section === 'offline' && <OfflineDataSection />}
         </main>
       </section>
+      {avatarFile && <AvatarCropDialog file={avatarFile} onCancel={() => setAvatarFile(null)} onConfirm={uploadAvatar} />}
       {confirmClose && <UnsavedChangesDialog saving={saving} onCancel={() => setConfirmClose(false)} onDiscard={onClose} onSave={() => { void saveChanges().then((ok) => { if (ok) onClose() }) }} />}
     </div>, document.body,
   )
 }
 
-function ProfileSection({ profile, preferences, setPreferences, avatar, initials, draftName, setDraftName, uploadAvatar, removeAvatar }: { profile: AccountProfile; preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; uploadAvatar: (file: File) => Promise<void>; removeAvatar: () => Promise<boolean> }) {
+function ProfileSection({ profile, preferences, setPreferences, avatar, initials, draftName, setDraftName, chooseAvatar, removeAvatar }: { profile: AccountProfile; preferences: AccountPreferences; setPreferences: (preferences: AccountPreferences) => void; avatar: string | null; initials: string; draftName: string; setDraftName: (name: string) => void; chooseAvatar: (file: File) => void; removeAvatar: () => Promise<boolean> }) {
   const { t, locale } = useI18n()
   return <><AccountHeading title={t('account.profile')} description={t('account.profileSection.description')} />
     <section className="account-preference-card account-profile-identity-card">
       <div className="account-profile-identity-card__body">
         <div className="account-profile-avatar"><div className="account-avatar large">{avatar ? <img src={avatar} alt={t('account.profileSection.avatarPreview')} /> : initials}</div><small>{t('account.profileSection.imageFormats')}</small></div>
-        <form className="account-profile-field" onSubmit={(event) => event.preventDefault()}><label htmlFor="account-display-name">{t('account.profileSection.displayName')}</label><span><input id="account-display-name" name="display_name" value={draftName} placeholder={t('account.profileSection.displayNamePlaceholder')} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /><UserRound size={17} aria-hidden="true" /></span><p>{t('account.profileSection.avatarDescription')}</p><div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />{t('account.profileSection.importImage')}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />{t('account.profileSection.delete')}</button>}</div></form>
+        <form className="account-profile-field" onSubmit={(event) => event.preventDefault()}><label htmlFor="account-display-name">{t('account.profileSection.displayName')}</label><span><input id="account-display-name" name="display_name" value={draftName} placeholder={t('account.profileSection.displayNamePlaceholder')} required maxLength={120} onChange={(event) => setDraftName(event.target.value)} /><UserRound size={17} aria-hidden="true" /></span><p>{t('account.profileSection.avatarDescription')}</p><div className="account-avatar-editor__actions"><label className="account-button account-button--secondary"><Upload size={15} />{t('account.profileSection.importImage')}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) chooseAvatar(file); event.currentTarget.value = '' }} /></label>{avatar && <button className="account-button account-button--danger-quiet" type="button" onClick={() => void removeAvatar()}><Trash2 size={15} />{t('account.profileSection.delete')}</button>}</div></form>
       </div>
     </section>
     <section className="account-profile-metadata-card">

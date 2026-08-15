@@ -33,6 +33,7 @@ from app.places.models import Place
 from app.places.fields import normalize_place_field_config
 from app.trash.service import trash_deadline
 from app.trips.models import Trip
+from app.basemaps.vector_service import maybe_prepare_for_policy
 
 router = APIRouter(prefix="/maps", tags=["maps"])
 logger = logging.getLogger(__name__)
@@ -175,6 +176,13 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
         database_session.commit()
         result = read_map(database_session, poi_map.id)
         assert result is not None
+        # This only persists/dispatches a background job; map creation never
+        # waits for a download or Planetiler process.
+        try:
+            maybe_prepare_for_policy(database_session, country.iso_alpha2, current_user.id, "map_creation")
+        except Exception:
+            database_session.rollback()
+            logger.exception("Unable to schedule optional CartaVault basemap country=%s map_id=%s", country.iso_alpha2, result.id)
         return map_to_read_with_counts(database_session, result, MapAccess(result, "owner"))
     except IntegrityError as error:
         database_session.rollback()

@@ -15,11 +15,13 @@ import { getOfflineBasemapVersion } from '../../pwa/offlineData'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
+  countryCode?: string | null
   onTileError: (id: BasemapId, fatal?: boolean) => void
 }
 
-function VectorBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const map = useMap()
+  const [stadiaFallbackUrl, setStadiaFallbackUrl] = useState<string | null>(null)
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
 
@@ -29,23 +31,21 @@ function VectorBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDe
     let mapLibreErrorHandler: (() => void) | null = null
 
     void (async () => {
-      let configured
-      try {
-        configured = await getCartaVaultVectorConfig(controller.signal)
-      } catch (error) {
-        if (controller.signal.aborted || navigator.onLine === false) throw error
-        return loadCartaVaultStyle(basemap.styleUrl, basemap.tileJsonUrl, basemap.glyphsUrl, controller.signal)
-      }
+      const configured = await getCartaVaultVectorConfig(controller.signal, true, countryCode ?? undefined, 'online')
       const offlineVersion = navigator.onLine === false ? await getOfflineBasemapVersion() : null
       const config = offlineVersion ? { ...configured, version: offlineVersion, available: true } : configured
       if (config.available && config.archive_url) {
         configureCartaVaultProtocol(config)
         return loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
       }
-      if (navigator.onLine === false) throw new Error('CartaVault vector basemap unavailable offline')
-      return loadCartaVaultStyle(basemap.styleUrl, basemap.tileJsonUrl, basemap.glyphsUrl, controller.signal)
+      const dark = basemap.id === 'cartavault-dark'
+      const publicUrl = `https://tiles.stadiamaps.com/tiles/${dark ? 'alidade_smooth_dark' : 'alidade_smooth'}/{z}/{x}/{y}{r}.png`
+      const stadia = await getStadiaBasemapConfig(controller.signal).catch(() => null)
+      const keyQuery = stadia?.tile_url?.match(/\?.*$/)?.[0] ?? ''
+      if (!controller.signal.aborted) setStadiaFallbackUrl(`${publicUrl}${keyQuery}`)
+      return null
     })().then((style) => {
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted || style === null) return
         layer = L.maplibreGL({ style, interactive: false, attributionControl: false })
         layer.addTo(map)
         map.attributionControl?.addAttribution(basemap.attribution)
@@ -67,8 +67,18 @@ function VectorBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDe
         map.attributionControl?.removeAttribution(basemap.attribution)
       }
     }
-  }, [basemap, map])
+  }, [basemap, countryCode, map])
 
+  if (stadiaFallbackUrl) {
+    return <TileLayer
+      key={`stadia-${basemap.id}`}
+      url={stadiaFallbackUrl}
+      attribution={basemap.attribution}
+      maxZoom={20}
+      detectRetina
+      eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }}
+    />
+  }
   return null
 }
 
@@ -110,11 +120,11 @@ function StadiaSatelliteLayer({ basemap, onTileError }: { basemap: RasterBasemap
 }
 
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
-export function BasemapLayer({ basemapId, onTileError }: BasemapLayerProps) {
+export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
 
   if (basemap.kind === 'vector') {
-    return <VectorBasemapLayer key={basemap.id} basemap={basemap} onTileError={onTileError} />
+    return <VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} />
   }
   if (basemap.kind === 'google') return <GoogleSatelliteLayer onTileError={onTileError} />
   if (basemap.id === 'satellite' && basemap.requiresStadiaAuthentication) return <StadiaSatelliteLayer basemap={basemap} onTileError={onTileError} />

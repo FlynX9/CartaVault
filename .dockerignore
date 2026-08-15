@@ -16,4 +16,7 @@ demo/output
 demo/runtime
 frontend/dist
 frontend/node_modules
+website/.astro
+website/dist
+website/node_modules
 node_modules

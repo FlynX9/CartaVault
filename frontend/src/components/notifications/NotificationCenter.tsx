@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, Check, CircleAlert, CircleCheck, Clock3, Info, MapPinned, ShieldAlert, UserRoundPlus, X } from 'lucide-react'
+import { Bell, Check, CircleAlert, CircleCheck, Clock3, DownloadCloud, Info, MapPinned, ShieldAlert, UserRoundPlus, X } from 'lucide-react'
 
 import { getTotpStatus } from '../../api/account'
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations } from '../../api/maps'
 import { getRegistrationRequests, type RegistrationRequest } from '../../api/registration'
 import type { PendingMapInvitation } from '../../types/map'
+import { OFFLINE_PROGRESS_CHANGED_EVENT, readOfflineProgress, type OfflineProgressItem } from '../../pwa/offlineProgress'
 import { NOTIFICATIONS_CHANGED_EVENT, notifyNotificationsChanged } from './events'
 import { addNotificationHistory, NOTIFICATION_HISTORY_CHANGED_EVENT, readNotificationHistory, type NotificationHistoryEntry } from './history'
 import { IMPORTANT_NOTIFICATIONS_CHANGED_EVENT, readImportantNotifications, type ImportantNotificationEntry } from './important'
@@ -28,7 +29,7 @@ type NotificationItem =
 const notificationId = (notification: NotificationItem) => `${notification.kind}:${notification.item.id}`
 const notificationCreatedAt = (notification: NotificationItem) => 'created_at' in notification.item ? notification.item.created_at : notification.item.createdAt
 
-export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenRegistrationRequests }: NotificationCenterProps) {
+export function NotificationCenter({ userId, isAdmin = false, onAccessChanged, onOpenRegistrationRequests }: NotificationCenterProps) {
   const [invitations, setInvitations] = useState<PendingMapInvitation[]>([])
   const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>([])
   const [mfaDisabled, setMfaDisabled] = useState(false)
@@ -38,6 +39,7 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<NotificationHistoryEntry[]>(readNotificationHistory)
   const [importantCredentials, setImportantCredentials] = useState<ImportantNotificationEntry[]>(readImportantNotifications)
+  const [offlineProgress, setOfflineProgress] = useState<OfflineProgressItem[]>(() => readOfflineProgress(userId))
   const announcedIds = useRef<Set<string>>(new Set())
   const container = useRef<HTMLDivElement>(null)
   const loadController = useRef<AbortController | null>(null)
@@ -124,6 +126,13 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
       window.removeEventListener('storage', updateImportantCredentials)
     }
   }, [])
+
+  useEffect(() => {
+    const updateOfflineProgress = () => setOfflineProgress(readOfflineProgress(userId))
+    updateOfflineProgress()
+    window.addEventListener(OFFLINE_PROGRESS_CHANGED_EVENT, updateOfflineProgress)
+    return () => window.removeEventListener(OFFLINE_PROGRESS_CHANGED_EVENT, updateOfflineProgress)
+  }, [userId])
 
   useEffect(() => {
     if (!panelOpen) return
@@ -218,6 +227,17 @@ export function NotificationCenter({ isAdmin = false, onAccessChanged, onOpenReg
           {notificationContent(notification)}
         </li>)}</ul>}
       </div>
+      {offlineProgress.length > 0 && <div className="notification-center__section notification-center__offline" aria-label="Téléchargements hors ligne">
+        <h3><span>Mise hors ligne</span><small>{offlineProgress.length}</small></h3>
+        <ul>{offlineProgress.map((item) => <li key={item.id} className={`notification-center__offline-item is-${item.status}`}>
+          <DownloadCloud size={18} aria-hidden="true" />
+          <div>
+            <p><strong>{item.title}</strong><span>{item.status === 'complete' ? 'Disponible hors ligne' : item.status === 'error' ? 'Échec du téléchargement' : item.status === 'paused' ? 'En attente de connexion' : item.phase === 'basemap' ? item.reused > 0 && item.bytes === 0 ? 'Réutilisation de la carte' : 'Téléchargement de la carte' : item.phase === 'saving' ? 'Enregistrement' : 'Téléchargement des données'}</span></p>
+            <div className="notification-center__offline-progress" role="progressbar" aria-label={`Mise hors ligne de ${item.title}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={item.percent}><i style={{ width: `${item.percent}%` }} /></div>
+            <small>{item.status === 'error' ? item.error : `${item.percent} %${item.bytes > 0 ? ` · ${Math.round(item.bytes / 1024 / 1024)} Mo téléchargés` : ''}${item.reused > 0 ? ` · ${item.reused.toLocaleString('fr-FR')} tuiles réutilisées` : ''}`}</small>
+          </div>
+        </li>)}</ul>
+      </div>}
       <div className="notification-center__section notification-center__history">
         <h3><span>Historique</span><small>{history.length}</small></h3>
         {history.length === 0 ? <p className="notification-center__empty">Aucune notification dans l’historique.</p> : <ul>{history.map((entry) => <li key={entry.id} className={`notification-center__history-item is-${entry.kind}`}>

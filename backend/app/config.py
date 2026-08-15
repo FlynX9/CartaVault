@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -160,28 +161,24 @@ google_map_tiles_settings = GoogleMapTilesSettings()
 
 @dataclass(frozen=True)
 class VectorBasemapSettings:
-    """Configuration for the pre-generated, self-hosted CartaVault PMTiles archive."""
+    """Infrastructure paths for the country-based CartaVault vector library.
 
-    enabled: bool = _boolean("CARTAVAULT_VECTOR_MAP_ENABLED", False)
-    archive_path: Path = Path(os.getenv("CARTAVAULT_VECTOR_MAP_PATH", "/data/maps/europe.pmtiles"))
-    fonts_path: Path = Path(os.getenv("CARTAVAULT_VECTOR_MAP_FONTS_PATH", "/data/maps/fonts"))
-    version: str = os.getenv("CARTAVAULT_VECTOR_MAP_VERSION", "europe-current").strip()
-    min_zoom: int = _nonnegative_int("CARTAVAULT_VECTOR_MAP_MIN_ZOOM", 0)
-    max_zoom: int = _positive_int("CARTAVAULT_VECTOR_MAP_MAX_ZOOM", 14)
-    offline_min_zoom: int = _nonnegative_int("CARTAVAULT_VECTOR_MAP_OFFLINE_MIN_ZOOM", 5)
-    offline_max_zoom: int = _positive_int("CARTAVAULT_VECTOR_MAP_OFFLINE_MAX_ZOOM", 14)
-    offline_padding_km: int = _nonnegative_int("CARTAVAULT_VECTOR_MAP_OFFLINE_PADDING_KM", 20)
-    offline_max_tiles: int = _positive_int("CARTAVAULT_VECTOR_MAP_OFFLINE_MAX_TILES", 25_000)
+    Functional choices live in ``system_settings`` and are editable from the
+    administration console.  These paths are deliberately infrastructure-only.
+    """
+
+    maps_path: Path = Path(os.getenv("CARTAVAULT_VECTOR_MAP_DIR", "/data/maps"))
+    fonts_path: Path = Path(os.getenv("CARTAVAULT_VECTOR_MAP_FONTS_PATH", "/app/vector-assets/fonts"))
+    planetiler_jar: Path = Path(os.getenv("CARTAVAULT_PLANETILER_JAR", "/opt/planetiler/planetiler-openmaptiles.jar"))
+    java_executable: str = os.getenv("CARTAVAULT_JAVA_EXECUTABLE", "java").strip()
+    java_heap: str = os.getenv("CARTAVAULT_PLANETILER_JAVA_HEAP", "2g").strip()
+    download_timeout_seconds: int = _positive_int("CARTAVAULT_VECTOR_DOWNLOAD_TIMEOUT_SECONDS", 3600)
 
     def __post_init__(self) -> None:
-        if self.archive_path.suffix.lower() != ".pmtiles":
-            raise RuntimeError("CARTAVAULT_VECTOR_MAP_PATH must reference a .pmtiles archive")
-        if not self.version:
-            raise RuntimeError("CARTAVAULT_VECTOR_MAP_VERSION cannot be empty")
-        if self.min_zoom > self.max_zoom:
-            raise RuntimeError("CARTAVAULT_VECTOR_MAP_MIN_ZOOM cannot exceed the maximum zoom")
-        if not self.min_zoom <= self.offline_min_zoom <= self.offline_max_zoom <= self.max_zoom:
-            raise RuntimeError("CartaVault offline zooms must be within the vector archive zoom range")
+        if not self.java_executable:
+            raise RuntimeError("CARTAVAULT_JAVA_EXECUTABLE must not be empty")
+        if not re.fullmatch(r"\d+[kKmMgG]", self.java_heap):
+            raise RuntimeError("CARTAVAULT_PLANETILER_JAVA_HEAP must look like 2g or 2048m")
 
 
 vector_basemap_settings = VectorBasemapSettings()

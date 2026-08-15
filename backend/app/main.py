@@ -13,6 +13,10 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+# Infrastructure settings must be available before importing modules that
+# instantiate their configuration objects at import time.
+load_dotenv()
+
 import app.models  # noqa: F401
 from app.auth.admin_router import router as admin_users_router
 from app.admin.router import router as admin_console_router
@@ -22,7 +26,7 @@ from app.auth.api_key_router import router as api_key_router
 from app.places.stadia_credential_router import router as stadia_places_credential_router
 from app.basemaps.router import admin_router as basemap_admin_router, router as basemap_router
 from app.basemaps.stadia_router import router as stadia_basemap_router
-from app.basemaps.vector_router import router as vector_basemap_router
+from app.basemaps.vector_router import admin_router as vector_basemap_admin_router, router as vector_basemap_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
 from app.auth.router import router as auth_router
@@ -65,6 +69,7 @@ from app.config import legacy_google_routes_api_key_configured
 from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
 from app.static_frontend import install_frontend, normalize_api_prefix
+from app.basemaps.vector_service import recover_vector_basemap_jobs, schedule_due_updates, start_pending_vector_basemap_jobs
 
 
 logger = logging.getLogger(__name__)
@@ -111,8 +116,6 @@ def get_cors_allowed_origins() -> list[str]:
     return origins
 
 
-load_dotenv()
-
 API_PREFIX = normalize_api_prefix(os.getenv("CARTAVAULT_API_PREFIX"))
 FRONTEND_DIST = os.getenv("CARTAVAULT_FRONTEND_DIST")
 
@@ -147,6 +150,16 @@ async def _trash_purge_loop() -> None:
             logger.exception("Unable to purge expired trash items")
 
 
+async def _vector_basemap_maintenance_loop() -> None:
+    while True:
+        await asyncio.sleep(6 * 3600)
+        try:
+            with SessionLocal() as session:
+                schedule_due_updates(session)
+        except SQLAlchemyError:
+            logger.exception("Unable to schedule CartaVault basemap updates")
+
+
 def _purge_expired_trash() -> None:
     with SessionLocal() as session:
         purge_expired_trash(session)
@@ -166,6 +179,7 @@ async def lifespan(_: FastAPI):
     install_instance_log_handler()
     record_instance_log(logging.INFO, "app.instance", "CartaVault instance log collector started")
     purge_task: asyncio.Task[None] | None = None
+    vector_maintenance_task: asyncio.Task[None] | None = None
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
@@ -175,9 +189,13 @@ async def lifespan(_: FastAPI):
                 purge_expired_trash(session)
                 purge_expired_task_artifacts(session)
                 purge_expired_privacy_artifacts(session, get_privacy_settings(session))
+                pending_vector_jobs = recover_vector_basemap_jobs(session)
+                schedule_due_updates(session)
         except SQLAlchemyError as error:
             raise RuntimeError("CartaVault authentication schema is missing. Apply the schema migration, then run: python -m app.cli create-admin") from error
         purge_task = asyncio.create_task(_trash_purge_loop())
+        vector_maintenance_task = asyncio.create_task(_vector_basemap_maintenance_loop())
+        start_pending_vector_basemap_jobs(pending_vector_jobs)
     try:
         yield
     finally:
@@ -185,6 +203,10 @@ async def lifespan(_: FastAPI):
             purge_task.cancel()
             with suppress(asyncio.CancelledError):
                 await purge_task
+        if vector_maintenance_task is not None:
+            vector_maintenance_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await vector_maintenance_task
 
 app = FastAPI(
     title="CartaVault API",
@@ -226,6 +248,7 @@ app.include_router(google_places_credential_router, prefix=API_PREFIX)
 app.include_router(basemap_router, prefix=API_PREFIX)
 app.include_router(stadia_basemap_router, prefix=API_PREFIX)
 app.include_router(vector_basemap_router, prefix=API_PREFIX)
+app.include_router(vector_basemap_admin_router, prefix=API_PREFIX)
 app.include_router(stadia_places_credential_router, prefix=API_PREFIX)
 app.include_router(invitations_router, prefix=API_PREFIX)
 app.include_router(admin_users_router, prefix=API_PREFIX)

@@ -19,7 +19,7 @@ const basemapIcons: Record<BasemapId, LucideIcon> = {
   osm: Map,
 }
 
-export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatelliteAvailable = false, satelliteProvider = 'stadia', cartaVaultAvailable = true }: BasemapSelectorProps) {
+export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatelliteAvailable = false, satelliteProvider = 'stadia' }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
   const activeBasemap = getBasemap(activeBasemapId)
   const selectBasemap = (id: BasemapId) => {
@@ -69,7 +69,10 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatell
     >
       <legend>Fond</legend>
       {expanded && <div className="basemap-selector-options">{[
-        ...AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== 'satellite' && (cartaVaultAvailable || !basemap.id.startsWith('cartavault-'))),
+        // Keep the historical light/dark choices visible. When the local
+        // CartaVault archive is not ready, BasemapLayer serves their Stadia
+        // equivalents instead of removing both controls from the map.
+        ...AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== 'satellite'),
         ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : googleSatelliteAvailable ? [getBasemap('google-satellite')] : []),
       ].filter((basemap, index, items) => basemap.id !== activeBasemapId && items.findIndex((item) => item.id === basemap.id) === index).map((basemap) => renderBasemapButton(basemap, false))}</div>}
       {renderBasemapButton(activeBasemap, true)}

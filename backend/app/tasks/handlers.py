@@ -17,6 +17,7 @@ from app.trips.permissions import require_trip_viewer
 from app.trips.schemas import TripPdfExportOptions
 from app.media.optimization import optimize_existing_media  # noqa: F401
 from app.trips.service import load_trip
+from app.basemaps import vector_generation as _vector_generation  # noqa: F401
 
 KMZ_IMPORT_TASK = "kmz_import"
 TRIP_PDF_TASK = "trip_pdf_export"

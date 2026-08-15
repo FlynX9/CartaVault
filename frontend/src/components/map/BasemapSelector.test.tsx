@@ -59,4 +59,11 @@ describe('BasemapSelector', () => {
     expect(screen.getByRole('button', { name: 'Utiliser le fond Google Satellite' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Utiliser le fond Satellite' })).not.toBeInTheDocument()
   })
+
+  it('keeps the light and dark choices visible while CartaVault generation is unavailable', () => {
+    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={vi.fn()} cartaVaultAvailable={false} />)
+    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
+    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault clair' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).toBeVisible()
+  })
 })

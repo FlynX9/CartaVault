@@ -46,11 +46,13 @@ def test_hsts_is_only_added_to_https_responses() -> None:
     assert response.headers["strict-transport-security"] == "max-age=31536000"
 
 
-@pytest.mark.parametrize("path", ["/docs", "/docs/", "/api/docs"])
-def test_documentation_pages_allow_fastapi_viewer_assets(path: str) -> None:
+@pytest.mark.parametrize("path, expected_status", [("/docs", 200), ("/docs/", 200), ("/docs/fr/", 404), ("/pagefind/pagefind.js", 404), ("/api/docs", 200)])
+def test_documentation_pages_allow_fastapi_viewer_assets(path: str, expected_status: int) -> None:
     response = build_client("http://testserver").get(path)
 
-    assert response.status_code == 200
+    assert response.status_code == expected_status
     assert response.headers["content-security-policy"] == DOCUMENTATION_CONTENT_SECURITY_POLICY
     assert "https://cdn.jsdelivr.net" in response.headers["content-security-policy"]
     assert "script-src 'self' 'unsafe-inline'" in response.headers["content-security-policy"]
+    assert "'unsafe-eval'" in response.headers["content-security-policy"]
+    assert "'wasm-unsafe-eval'" in response.headers["content-security-policy"]
