@@ -2,12 +2,18 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import BigInteger
 
 from app.auth.models import User
 from app.tasks.models import BackgroundTask
 
 
 pytestmark = pytest.mark.integration
+
+
+def test_background_task_progress_columns_support_large_downloads() -> None:
+    assert isinstance(BackgroundTask.__table__.c.progress_current.type, BigInteger)
+    assert isinstance(BackgroundTask.__table__.c.progress_total.type, BigInteger)
 
 
 def test_task_history_is_owner_scoped_and_pending_tasks_can_be_cancelled(

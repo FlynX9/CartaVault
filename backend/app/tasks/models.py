@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func, text
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -44,8 +44,11 @@ class BackgroundTask(Base):
     resource_type: Mapped[str | None] = mapped_column(String(40))
     resource_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'pending'"))
-    progress_current: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    progress_total: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    # Byte-oriented jobs (notably country-wide OSM downloads) routinely exceed
+    # PostgreSQL's 32-bit INTEGER limit. Keep progress counters 64-bit even for
+    # tasks that currently report only small item counts.
+    progress_current: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
+    progress_total: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("1"))
     progress_message: Mapped[str] = mapped_column(String(255), nullable=False, server_default=text("'En attente'"))
     input_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     result_json: Mapped[dict | None] = mapped_column(JSONB)
