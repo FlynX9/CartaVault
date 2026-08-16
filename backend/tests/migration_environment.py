@@ -76,20 +76,23 @@ def provision_migration_environment(
     database_name = f"cartavault_mig_{safe_worker_id}_{uuid4().hex}"
     administrative_url = _database_url(test_database_url, "postgres")
     administrative_engine = create_engine(administrative_url, isolation_level="AUTOCOMMIT", pool_pre_ping=True)
-    with administrative_engine.connect() as connection:
-        connection.execute(text(f'CREATE DATABASE "{database_name}" TEMPLATE template0'))
-
-    engine = create_engine(_database_url(test_database_url, database_name), pool_pre_ping=True)
-    config = Config(str(BACKEND_ROOT / "alembic.ini"))
-    config.attributes["database_url"] = engine.url.render_as_string(hide_password=False)
-    environment = MigrationTestEnvironment(database_name=database_name, engine=engine, config=config)
-
+    engine: Engine | None = None
+    database_created = False
     try:
+        with administrative_engine.connect() as connection:
+            connection.execute(text(f'CREATE DATABASE "{database_name}" TEMPLATE template0'))
+        database_created = True
+        engine = create_engine(_database_url(test_database_url, database_name), pool_pre_ping=True)
+        config = Config(str(BACKEND_ROOT / "alembic.ini"))
+        config.attributes["database_url"] = engine.url.render_as_string(hide_password=False)
+        environment = MigrationTestEnvironment(database_name=database_name, engine=engine, config=config)
         yield environment
     finally:
-        engine.dispose()
+        if engine is not None:
+            engine.dispose()
         try:
-            with administrative_engine.connect() as connection:
-                connection.execute(text(f'DROP DATABASE IF EXISTS "{database_name}" WITH (FORCE)'))
+            if database_created:
+                with administrative_engine.connect() as connection:
+                    connection.execute(text(f'DROP DATABASE IF EXISTS "{database_name}" WITH (FORCE)'))
         finally:
             administrative_engine.dispose()

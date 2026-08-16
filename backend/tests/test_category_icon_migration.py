@@ -73,7 +73,7 @@ def _delete_test_categories(connection, category_ids: list[str]) -> None:
 def test_category_icon_migration_upgrade_downgrade_upgrade_cycle(
     migration_environment,
 ) -> None:
-    """Exercise the category icon migration in a disposable schema."""
+    """Exercise the category icon migration in a disposable database."""
 
     engine = migration_environment.engine
     config = migration_environment.config
