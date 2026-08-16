@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import UTC, datetime, timedelta
 import json
 import logging
 from threading import Lock
@@ -10,8 +11,11 @@ from uuid import UUID, uuid4
 
 from redis import Redis
 from redis.exceptions import RedisError
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
-from app.config import google_routing_limit_settings, task_settings
+from app.config import google_routing_limit_settings
+from app.trips.models import RoutingOptimizationProposal
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +78,56 @@ class OptimizationProposalStore:
         return f"cartavault:routing:proposal:{proposal_id}"
 
 
-def _redis_client() -> Redis | None:
-    if task_settings.mode != "redis":
-        return None
-    return Redis.from_url(task_settings.redis_url, decode_responses=True)
+class DatabaseOptimizationProposalStore:
+    """PostgreSQL-backed proposal storage safe across Uvicorn workers."""
+
+    def __init__(self, *, ttl_seconds: int):
+        self.ttl_seconds = ttl_seconds
+
+    def create(self, session: Session, payload: dict[str, Any]) -> UUID:
+        proposal_id = uuid4()
+        self.restore(session, proposal_id, payload)
+        return proposal_id
+
+    def restore(self, session: Session, proposal_id: UUID, payload: dict[str, Any]) -> None:
+        try:
+            user_id = UUID(str(payload["user_id"]))
+            trip_id = UUID(str(payload["trip_id"]))
+        except (KeyError, TypeError, ValueError) as error:
+            raise OptimizationProposalUnavailable("La proposition d’optimisation est invalide.") from error
+        session.merge(RoutingOptimizationProposal(
+            id=proposal_id,
+            user_id=user_id,
+            trip_id=trip_id,
+            payload=deepcopy(payload),
+            expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=self.ttl_seconds),
+        ))
+        session.commit()
+
+    def take(self, session: Session, proposal_id: UUID) -> dict[str, Any] | None:
+        row = session.scalar(
+            select(RoutingOptimizationProposal)
+            .where(RoutingOptimizationProposal.id == proposal_id)
+            .with_for_update()
+        )
+        if row is None:
+            return None
+        payload = deepcopy(row.payload)
+        expired = row.expires_at <= datetime.now(UTC).replace(tzinfo=None)
+        session.delete(row)
+        session.commit()
+        return None if expired else payload
+
+    def purge_expired(self, session: Session) -> int:
+        result = session.execute(
+            delete(RoutingOptimizationProposal).where(
+                RoutingOptimizationProposal.expires_at <= datetime.now(UTC).replace(tzinfo=None)
+            )
+        )
+        session.commit()
+        return int(result.rowcount or 0)
 
 
-optimization_proposal_store = OptimizationProposalStore(
+optimization_proposal_store = DatabaseOptimizationProposalStore(
     ttl_seconds=google_routing_limit_settings.proposal_ttl_seconds,
-    redis_client=_redis_client(),
 )

@@ -7,6 +7,8 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
 
+from app.config import database_settings
+
 database_url = os.getenv("DATABASE_URL")
 
 if not database_url:
@@ -20,6 +22,10 @@ class Base(DeclarativeBase):
 engine = create_engine(
     database_url,
     pool_pre_ping=True,
+    pool_size=database_settings.pool_size,
+    max_overflow=database_settings.max_overflow,
+    pool_timeout=database_settings.pool_timeout_seconds,
+    pool_recycle=database_settings.pool_recycle_seconds,
 )
 
 SessionLocal = sessionmaker(

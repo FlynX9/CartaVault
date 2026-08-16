@@ -38,7 +38,7 @@ from app.categories.router import router as categories_router
 from app.annotations.router import router as annotations_router
 from app.countries.router import router as countries_router
 from app.dashboard.router import router as dashboard_router
-from app.database import SessionLocal, get_db
+from app.database import SessionLocal, engine, get_db
 from app.exports.router import router as exports_router
 from app.imports.router import router as imports_router
 from app.instance_status.router import router as instance_status_router
@@ -47,6 +47,7 @@ from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
 from app.map_profiles.router import router as map_profiles_router
+from app.maintenance_leader import release_maintenance_leadership, try_acquire_maintenance_leadership
 from app.media.router import router as media_router, upload_router as media_upload_router
 from app.photos.router import router as photos_router
 from app.quotas.router import router as quotas_router
@@ -61,6 +62,7 @@ from app.privacy.router import admin_router as privacy_admin_router, account_rou
 from app.security_headers import SecurityHeadersMiddleware
 from app.tags.router import router as tags_router
 from app.trips.router import router as trips_router
+from app.trips.optimization_store import optimization_proposal_store
 from app.tasks.router import router as tasks_router
 from app.tasks.cleanup import purge_expired_task_artifacts
 from app.privacy.settings import get_privacy_settings
@@ -170,6 +172,7 @@ def _purge_expired_maintenance() -> None:
         purge_expired_trash(session)
         purge_expired_task_artifacts(session)
         purge_expired_privacy_artifacts(session, get_privacy_settings(session))
+        optimization_proposal_store.purge_expired(session)
 
 
 @asynccontextmanager
@@ -180,22 +183,28 @@ async def lifespan(_: FastAPI):
     record_instance_log(logging.INFO, "app.instance", "CartaVault instance log collector started")
     purge_task: asyncio.Task[None] | None = None
     vector_maintenance_task: asyncio.Task[None] | None = None
+    maintenance_connection = None
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
         try:
             with SessionLocal() as session:
                 validate_startup_security_state(session)
-                purge_expired_trash(session)
-                purge_expired_task_artifacts(session)
-                purge_expired_privacy_artifacts(session, get_privacy_settings(session))
-                pending_vector_jobs = recover_vector_basemap_jobs(session)
-                schedule_due_updates(session)
+            maintenance_connection = try_acquire_maintenance_leadership(engine)
+            if maintenance_connection is not None:
+                with SessionLocal() as session:
+                    purge_expired_trash(session)
+                    purge_expired_task_artifacts(session)
+                    purge_expired_privacy_artifacts(session, get_privacy_settings(session))
+                    optimization_proposal_store.purge_expired(session)
+                    pending_vector_jobs = recover_vector_basemap_jobs(session)
+                    schedule_due_updates(session)
         except SQLAlchemyError as error:
             raise RuntimeError("CartaVault authentication schema is missing. Apply the schema migration, then run: python -m app.cli create-admin") from error
-        purge_task = asyncio.create_task(_trash_purge_loop())
-        vector_maintenance_task = asyncio.create_task(_vector_basemap_maintenance_loop())
-        start_pending_vector_basemap_jobs(pending_vector_jobs)
+        if maintenance_connection is not None:
+            purge_task = asyncio.create_task(_trash_purge_loop())
+            vector_maintenance_task = asyncio.create_task(_vector_basemap_maintenance_loop())
+            start_pending_vector_basemap_jobs(pending_vector_jobs)
     try:
         yield
     finally:
@@ -207,6 +216,8 @@ async def lifespan(_: FastAPI):
             vector_maintenance_task.cancel()
             with suppress(asyncio.CancelledError):
                 await vector_maintenance_task
+        if maintenance_connection is not None:
+            release_maintenance_leadership(maintenance_connection)
 
 app = FastAPI(
     title="CartaVault API",

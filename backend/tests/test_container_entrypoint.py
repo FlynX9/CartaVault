@@ -6,9 +6,32 @@ from app.container_entrypoint import build_default_command, run
 @pytest.mark.unit
 def test_default_container_command_does_not_trust_proxy_headers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CARTAVAULT_FORWARDED_ALLOW_IPS", raising=False)
+    monkeypatch.delenv("CARTAVAULT_UVICORN_WORKERS", raising=False)
     command = build_default_command()
     assert "--no-proxy-headers" in command
     assert "--forwarded-allow-ips" not in command
+    assert command[command.index("--workers") + 1] == "1"
+
+
+@pytest.mark.unit
+def test_container_command_uses_configured_worker_count(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CARTAVAULT_UVICORN_WORKERS", "3")
+
+    command = build_default_command()
+
+    assert command[command.index("--workers") + 1] == "3"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("value", ["0", "17", "not-a-number"])
+def test_container_command_rejects_invalid_worker_count(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("CARTAVAULT_UVICORN_WORKERS", value)
+
+    with pytest.raises(RuntimeError, match="CARTAVAULT_UVICORN_WORKERS"):
+        build_default_command()
 
 
 @pytest.mark.unit

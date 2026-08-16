@@ -1,5 +1,11 @@
 # CartaVault Docker deployment
 
+For the hosted single-VPS SaaS topology (Nginx/TLS, bounded multi-worker
+runtime, resource limits, monitoring, backup and rollback), use
+`compose.saas.yml` and follow [`../docs/saas-deployment.md`](../docs/saas-deployment.md).
+The standard two-service topology below remains the supported self-hosted
+default.
+
 ## Supported standard topology
 
 The beta and mono-instance deployment has exactly two services:

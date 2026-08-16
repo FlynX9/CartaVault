@@ -67,6 +67,20 @@ class Trip(Base):
     arrival: Mapped["TripArrival | None"] = relationship(back_populates="trip", cascade="all, delete-orphan", passive_deletes=True, uselist=False)
 
 
+class RoutingOptimizationProposal(Base):
+    """Short-lived, single-use proposal shared by all API workers."""
+
+    __tablename__ = "routing_optimization_proposals"
+    __table_args__ = (Index("routing_optimization_proposals_expires_at_idx", "expires_at"),)
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    trip_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+
 class TripDay(Base):
     __tablename__ = "trip_days"
     __table_args__ = (

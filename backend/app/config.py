@@ -39,6 +39,19 @@ def _boolean(name: str, default: bool) -> bool:
 
 
 @dataclass(frozen=True)
+class DatabaseSettings:
+    """Bound one SQLAlchemy pool per Uvicorn worker."""
+
+    pool_size: int = _positive_int("CARTAVAULT_DB_POOL_SIZE", 5)
+    max_overflow: int = _nonnegative_int("CARTAVAULT_DB_MAX_OVERFLOW", 5)
+    pool_timeout_seconds: int = _positive_int("CARTAVAULT_DB_POOL_TIMEOUT_SECONDS", 30)
+    pool_recycle_seconds: int = _positive_int("CARTAVAULT_DB_POOL_RECYCLE_SECONDS", 1800)
+
+
+database_settings = DatabaseSettings()
+
+
+@dataclass(frozen=True)
 class SecuritySettings:
     session_cookie_name: str = os.getenv("CARTAVAULT_SESSION_COOKIE_NAME", "cartavault_session")
     csrf_cookie_name: str = os.getenv("CARTAVAULT_CSRF_COOKIE_NAME", "cartavault_csrf")

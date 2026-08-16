@@ -1,0 +1,72 @@
+limit_req_zone $binary_remote_addr zone=cartavault_api:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=cartavault_auth:10m rate=10r/m;
+
+upstream cartavault_api {
+    server cartavault:8000;
+    keepalive 32;
+}
+
+server {
+    listen 8080 default_server;
+    server_name ${CARTAVAULT_HOSTNAME};
+    server_tokens off;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 8443 ssl default_server;
+    http2 on;
+    server_name ${CARTAVAULT_HOSTNAME};
+    server_tokens off;
+
+    ssl_certificate /etc/letsencrypt/live/${CARTAVAULT_HOSTNAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${CARTAVAULT_HOSTNAME}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    client_max_body_size ${CARTAVAULT_NGINX_MAX_BODY_SIZE};
+    client_body_timeout 30s;
+    keepalive_timeout 30s;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), payment=(), usb=()" always;
+
+    location = /api/auth/login {
+        limit_req zone=cartavault_auth burst=5 nodelay;
+        include /etc/nginx/includes/cartavault-proxy.conf;
+    }
+
+    location ~ ^/api/auth/(password-reset|register|mfa) {
+        limit_req zone=cartavault_auth burst=5 nodelay;
+        include /etc/nginx/includes/cartavault-proxy.conf;
+    }
+
+    location ^~ /api/ {
+        limit_req zone=cartavault_api burst=60 nodelay;
+        add_header Cache-Control "private, no-store" always;
+        include /etc/nginx/includes/cartavault-proxy.conf;
+    }
+
+    location ~ ^/(assets|_astro)/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/includes/cartavault-proxy.conf;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache";
+        include /etc/nginx/includes/cartavault-proxy.conf;
+    }
+}

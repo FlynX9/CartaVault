@@ -171,6 +171,23 @@ jobs:
           docker compose -f docker/compose.yml config --quiet
           test "$(docker compose -f docker/compose.yml config --services | sort | paste -sd ' ' -)" = "cartavault postgis"
 
+      - name: Validate the SaaS Compose contract
+        env:
+          CARTAVAULT_HOSTNAME: demo.example.invalid
+          CARTAVAULT_VERSION: 0.0.0-ci
+          POSTGRES_DB: cartavault
+          POSTGRES_USER: cartavault
+          POSTGRES_PASSWORD: ci-only-password
+          DATABASE_URL: postgresql+psycopg://cartavault:ci-only-password@postgis:5432/cartavault
+          CARTAVAULT_SESSION_SECRET: ci-session-secret-not-used-outside-github-actions
+          CARTAVAULT_SETUP_TOKEN: ci-setup-token-not-used-outside-github-actions
+          CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          EMAIL_FROM_ADDRESS: ci@example.invalid
+        run: |
+          docker compose -f docker/compose.saas.yml config --quiet
+          test "$(docker compose -f docker/compose.saas.yml config --services | sort | paste -sd ' ' -)" = "cartavault nginx postgis"
+          test -z "$(docker compose -f docker/compose.saas.yml config | sed -n '/^  postgis:/,/^[^ ]/p' | grep 'published:' || true)"
+
       - name: Validate the optional Redis worker extension
         env:
           REDIS_PASSWORD: ci-only-redis-password

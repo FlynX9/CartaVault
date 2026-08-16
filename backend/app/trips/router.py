@@ -870,9 +870,9 @@ def _build_day_optimization(day: TripDay, provider: RoutingProvider, options: Op
     return metrics, stored
 
 
-def _store_optimization(user: User, trip: Trip, days: list[dict[str, object]]) -> UUID:
+def _store_optimization(session: Session, user: User, trip: Trip, days: list[dict[str, object]]) -> UUID:
     try:
-        return optimization_proposal_store.create({"user_id": str(user.id), "trip_id": str(trip.id), "days": days})
+        return optimization_proposal_store.create(session, {"user_id": str(user.id), "trip_id": str(trip.id), "days": days})
     except OptimizationProposalUnavailable as error:
         raise HTTPException(503, str(error)) from error
 
@@ -884,7 +884,7 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
     day = next(item for item in trip.days if item.id == day_id)
     provider = provider or _routing_provider_for_trip(session, user, trip)
     metrics, stored = _build_day_optimization(day, provider, options)
-    proposal_id = _store_optimization(user, access.trip, [stored])
+    proposal_id = _store_optimization(session, user, access.trip, [stored])
     return {**metrics, "proposal_id": proposal_id}
 
 
@@ -899,7 +899,7 @@ def optimize_trip(trip_id: UUID, options: OptimizeOptions, session: Session = De
     # Intentionally sequential: this bounds Google concurrency and prevents a
     # single trip from producing a sudden billable burst.
     results = [_build_day_optimization(day, provider, options) for day in optimizable]
-    proposal_id = _store_optimization(user, trip, [stored for _, stored in results])
+    proposal_id = _store_optimization(session, user, trip, [stored for _, stored in results])
     return {
         "proposal_id": proposal_id,
         "trip_id": trip.id,
@@ -972,7 +972,7 @@ def confirm_trip_optimization(trip_id: UUID, data: TripOptimizeConfirm, session:
 
 def _apply_optimization_proposal(session: Session, user: User, trip: Trip, proposal_id: UUID, provider: RoutingProvider, expected_day_id: UUID | None = None) -> None:
     try:
-        proposal = optimization_proposal_store.take(proposal_id)
+        proposal = optimization_proposal_store.take(session, proposal_id)
     except OptimizationProposalUnavailable as error:
         raise HTTPException(503, str(error)) from error
     if proposal is None:
@@ -1009,7 +1009,7 @@ def _apply_optimization_proposal(session: Session, user: User, trip: Trip, propo
     except Exception:
         session.rollback()
         try:
-            optimization_proposal_store.restore(proposal_id, proposal)
+            optimization_proposal_store.restore(session, proposal_id, proposal)
         except OptimizationProposalUnavailable:
             pass
         raise
