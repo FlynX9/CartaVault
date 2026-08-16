@@ -309,9 +309,9 @@ jobs:
             -out "$tls_live/fullchain.pem" \
             -subj "/CN=$CARTAVAULT_HOSTNAME" \
             -addext "subjectAltName=DNS:$CARTAVAULT_HOSTNAME"
-          # Docker on GitHub uses user-namespace remapping. Make this disposable
-          # CI-only key readable through the read-only bind mount; production
-          # certificate permissions remain deployment-owned and unchanged.
+          # Nginx intentionally runs without DAC override capabilities. Make
+          # this disposable CI-only key readable through the read-only bind
+          # mount; production certificate permissions remain deployment-owned.
           chmod 644 "$tls_live/privkey.pem" "$tls_live/fullchain.pem"
           printf 'cartavault-acme-smoke' > "$CARTAVAULT_ACME_ROOT/.well-known/acme-challenge/smoke"
 
