@@ -16,6 +16,13 @@ from sqlalchemy.engine import URL, make_url
 from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
+# Test the ASGI application at its internal routes. A developer-specific
+# ``backend/.env`` may configure a reverse-proxy root path, but that deployment
+# concern must not change integration-test URLs or make local results differ
+# from a clean CI checkout.
+os.environ["CARTAVAULT_API_ROOT_PATH"] = ""
+os.environ["CARTAVAULT_API_PREFIX"] = ""
+
 from app.database import Base, get_db
 from app.admin.models import SystemSetting
 from app.auth.dependencies import get_current_user

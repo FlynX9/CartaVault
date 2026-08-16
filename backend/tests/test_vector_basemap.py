@@ -68,7 +68,7 @@ def test_controlled_geofabrik_catalog_maps_iso_codes() -> None:
 
 
 def test_vector_basemap_config_selects_country_archive(integration_client: TestClient, france_basemap: VectorBasemap) -> None:
-    response = integration_client.get("/api/basemaps/cartavault/config", params={"country_code": "FR"})
+    response = integration_client.get("/basemaps/cartavault/config", params={"country_code": "FR"})
     assert response.status_code == 200
     assert response.json()["available"] is True
     assert response.json()["version"] == "fr-2026-08-15-omt-3.16"
@@ -77,18 +77,18 @@ def test_vector_basemap_config_selects_country_archive(integration_client: TestC
 
 def test_vector_archive_supports_http_byte_ranges(integration_client: TestClient, france_basemap: VectorBasemap, vector_root: Path) -> None:
     archive = vector_root / "france.pmtiles"
-    response = integration_client.get("/api/basemaps/cartavault/archive/fr.pmtiles", headers={"Range": "bytes=10-19"})
+    response = integration_client.get("/basemaps/cartavault/archive/fr.pmtiles", headers={"Range": "bytes=10-19"})
     assert response.status_code == 206
     assert response.content == archive.read_bytes()[10:20]
     assert response.headers["accept-ranges"] == "bytes"
     assert response.headers["content-range"] == f"bytes 10-19/{archive.stat().st_size}"
-    head = integration_client.head("/api/basemaps/cartavault/archive/fr.pmtiles")
+    head = integration_client.head("/basemaps/cartavault/archive/fr.pmtiles")
     assert head.status_code == 200
     assert head.content == b""
 
 
 def test_vector_archive_rejects_multiple_ranges(integration_client: TestClient, france_basemap: VectorBasemap, vector_root: Path) -> None:
-    response = integration_client.get("/api/basemaps/cartavault/archive/fr.pmtiles", headers={"Range": "bytes=0-1,4-5"})
+    response = integration_client.get("/basemaps/cartavault/archive/fr.pmtiles", headers={"Range": "bytes=0-1,4-5"})
     assert response.status_code == 416
     assert response.headers["content-range"] == f"bytes */{(vector_root / 'france.pmtiles').stat().st_size}"
 
@@ -286,17 +286,17 @@ def test_admin_can_persist_policy_and_reject_unknown_country(integration_client:
         "min_zoom": 0, "max_zoom": 14, "offline_min_zoom": 6, "offline_max_zoom": 13,
         "offline_padding_km": 30, "offline_max_tiles": 20000,
     }
-    saved = integration_client.put("/api/admin/console/vector-basemaps/settings", json=payload)
+    saved = integration_client.put("/admin/console/vector-basemaps/settings", json=payload)
     assert saved.status_code == 200
     assert saved.json()["preparation_policy"] == "manual"
-    library = integration_client.get("/api/admin/console/vector-basemaps")
+    library = integration_client.get("/admin/console/vector-basemaps")
     assert library.status_code == 200
     assert library.json()["settings"]["offline_padding_km"] == 30
-    unsupported = integration_client.post("/api/admin/console/vector-basemaps/XX/install")
+    unsupported = integration_client.post("/admin/console/vector-basemaps/XX/install")
     assert unsupported.status_code == 422
 
 
 def test_vector_admin_endpoints_require_admin(integration_client: TestClient, auth_user: User) -> None:
     auth_user.is_admin = False
-    response = integration_client.get("/api/admin/console/vector-basemaps")
+    response = integration_client.get("/admin/console/vector-basemaps")
     assert response.status_code == 403

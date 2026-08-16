@@ -13,7 +13,7 @@ from app.privacy.settings import PrivacySettings
 
 
 def test_privacy_configuration_is_disabled_by_default(integration_client):
-    response = integration_client.get("/api/privacy/configuration")
+    response = integration_client.get("/privacy/configuration")
 
     assert response.status_code == 200
     assert response.json()["analytics_mode"] == "disabled"
@@ -24,7 +24,7 @@ def test_admin_can_configure_privacy_and_user_can_manage_consent(integration_cli
     app.dependency_overrides[get_current_session] = lambda: SimpleNamespace(user=auth_user)
     app.dependency_overrides[require_admin] = lambda: auth_user
     try:
-        settings = integration_client.put("/api/admin/console/privacy/settings", json={
+        settings = integration_client.put("/admin/console/privacy/settings", json={
             "analytics_mode": "consent_required",
             "operator_name": "CartaVault SAS",
             "privacy_policy_url": "https://example.test/privacy",
@@ -37,13 +37,13 @@ def test_admin_can_configure_privacy_and_user_can_manage_consent(integration_cli
         assert settings.status_code == 200
         assert settings.json()["consent_required"] is True
 
-        saved = integration_client.put("/api/account/privacy/consent", json={"analytics": True, "functional_optional": False, "marketing": False, "third_party": False})
+        saved = integration_client.put("/account/privacy/consent", json={"analytics": True, "functional_optional": False, "marketing": False, "third_party": False})
         assert saved.status_code == 200
         assert saved.json()["analytics"] is True
         assert saved.json()["necessary"] is True
         assert saved.json()["updated_at"] is not None
 
-        read = integration_client.get("/api/account/privacy/consent")
+        read = integration_client.get("/account/privacy/consent")
         assert read.status_code == 200
         assert read.json()["analytics"] is True
     finally:
@@ -54,7 +54,7 @@ def test_admin_can_configure_privacy_and_user_can_manage_consent(integration_cli
 def test_admin_rejects_an_invalid_privacy_contact_email(integration_client, auth_user):
     app.dependency_overrides[require_admin] = lambda: auth_user
     try:
-        response = integration_client.put("/api/admin/console/privacy/settings", json={"contact_email": "admin-at-example.fr"})
+        response = integration_client.put("/admin/console/privacy/settings", json={"contact_email": "admin-at-example.fr"})
 
         assert response.status_code == 422
     finally:
