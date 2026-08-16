@@ -6,6 +6,8 @@ The same **Basemaps** group offers an optional personal **Stadia Maps** key. Wit
 
 ## Google Cloud configuration
 
-Create a dedicated key, enable only **Map Tiles API**, and apply HTTP referrer restrictions for every CartaVault origin. Do not reuse a Routes or Places key. CartaVault stores each user's key encrypted, only returns its last four characters in the account panel, creates short-lived `createSession` sessions, shows Google attribution, and never caches or prefetches Google tiles.
+Create a dedicated key, enable only **Map Tiles API**, and restrict it to that API. Do not reuse a Routes or Places key. CartaVault stores each user's key encrypted and only returns its last four characters in the account panel. The backend creates the short-lived provider session and keeps both the persistent key and provider session behind an authenticated CartaVault tile proxy. The browser receives only a local tile path and an encrypted `HttpOnly` cookie scoped to the current user and selected credential. CartaVault shows Google attribution and never caches or prefetches Google tiles.
+
+Deleting, rotating or deselecting the credential invalidates an existing tile session. A session created for one account cannot be reused by another account. Provider responses are returned with private, no-store caching and provider errors are converted to stable CartaVault error codes without logging signed URLs.
 
 The local counters record only date, internal user identifier, sessions and aggregate initiated/completed/failed/cancelled tile counts. They never retain keys, session tokens, tile URLs or coordinates. Alerts are exposed at 50%, 80% and 95% of the configured daily or monthly estimates. The layer can be disabled automatically when the configured percentage or repeated-error threshold is reached. Google Cloud billing and Maps metrics remain authoritative; the administration panel links to that console instead of presenting delayed local counts as invoices.

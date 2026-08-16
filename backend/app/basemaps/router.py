@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -17,14 +17,19 @@ from app.auth.credential_encryption import CredentialEncryptionError, Credential
 from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import User, UserApiCredential
+from app.auth.provider_sessions import GoogleTilesSession, ProviderSessionError, decode_google_tiles_session, encode_google_tiles_session
 from app.basemaps.models import GoogleSatelliteUsageDaily
-from app.config import email_settings, google_map_tiles_settings
+from app.config import email_settings, google_map_tiles_settings, security_settings
 from app.database import get_db
+from app.trips.routing.base import RoutingError
+from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
 
 
 router = APIRouter(prefix="/basemaps/google-satellite", tags=["basemaps"])
 admin_router = APIRouter(prefix="/admin/console/google-satellite", tags=["admin-console"], dependencies=[Depends(require_admin)])
 SETTING_KEY = "google_satellite"
+GOOGLE_TILES_SESSION_COOKIE = "cartavault_google_tiles_session"
+google_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
 DEFAULTS: dict[str, object] = {
     "enabled": False,
     "daily_soft_limit": google_map_tiles_settings.daily_soft_limit,
@@ -129,6 +134,17 @@ def _create_google_session(api_key: str, language: str = "fr") -> dict[str, obje
     return payload
 
 
+def _provider_expiry(value: object) -> datetime:
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed > datetime.now(UTC):
+                return parsed
+        except ValueError:
+            pass
+    return datetime.now(UTC) + timedelta(hours=6)
+
+
 def _record(session: Session, user_id: object, values: dict[str, int]) -> None:
     statement = insert(GoogleSatelliteUsageDaily).values(usage_date=datetime.now(UTC).date(), user_id=user_id, **values)
     statement = statement.on_conflict_do_update(
@@ -168,9 +184,55 @@ def create_session(response: Response, session: Session = Depends(get_db), user:
     credential.last_used_at = now; credential.last_error_code = None
     values["consecutive_errors"] = 0; values["last_success_at"] = now.isoformat(); values["disabled_reason"] = None
     _save_setting(session, values); _record(session, user.id, {"sessions_started": 1}); session.commit()
+    expires_at = _provider_expiry(payload.get("expiry"))
+    opaque_session = encode_google_tiles_session(GoogleTilesSession(user.id, credential.id, str(payload["session"]), expires_at))
+    response.set_cookie(
+        GOOGLE_TILES_SESSION_COOKIE,
+        opaque_session,
+        max_age=max(1, int((expires_at - datetime.now(UTC)).total_seconds())),
+        httponly=True,
+        secure=security_settings.cookie_secure,
+        samesite="lax",
+        path="/",
+    )
     response.headers["Cache-Control"] = "no-store"
-    key = _api_key(credential)
-    return {"tile_url": f"{google_map_tiles_settings.base_url}/v1/2dtiles/{{z}}/{{x}}/{{y}}?session={quote(str(payload['session']))}&key={quote(key)}", "expires": payload.get("expiry"), "attribution": "© Google", "max_zoom": 22}
+    return {"tile_path": "/basemaps/google-satellite/tiles/{z}/{x}/{y}", "expires": expires_at.isoformat(), "attribution": "© Google", "max_zoom": 22}
+
+
+@router.get("/tiles/{z}/{x}/{y}")
+def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> Response:
+    maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
+    if x < 0 or y < 0 or x > maximum or y > maximum:
+        raise HTTPException(404, "Tile not found")
+    opaque_session = request.cookies.get(GOOGLE_TILES_SESSION_COOKIE)
+    if not opaque_session:
+        raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_SESSION_REQUIRED", "message": "La session cartographique a expiré."})
+    try:
+        provider_session = decode_google_tiles_session(opaque_session)
+    except ProviderSessionError as error:
+        raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_SESSION_INVALID", "message": "La session cartographique a expiré."}) from error
+    credential = selected_api_key(session, user, "basemaps", "google")
+    if provider_session.user_id != user.id or credential is None or credential.id != provider_session.credential_id:
+        raise HTTPException(403, {"code": "GOOGLE_MAP_TILES_SESSION_FORBIDDEN", "message": "Cette session cartographique n’est plus autorisée."})
+    try:
+        google_tiles_rate_limiter.check(f"google-tiles:{user.id}")
+    except RoutingError as error:
+        raise HTTPException(429, {"code": "GOOGLE_MAP_TILES_RATE_LIMITED", "message": str(error)}) from error
+    upstream_request = UrlRequest(
+        f"{google_map_tiles_settings.base_url}/v1/2dtiles/{z}/{x}/{y}?session={quote(provider_session.provider_session)}&key={quote(_api_key(credential))}",
+        headers={"Accept": "image/*", "User-Agent": "CartaVault/1", "Referer": f"{email_settings.frontend_public_url}/"},
+    )
+    try:
+        with urlopen(upstream_request, timeout=google_map_tiles_settings.timeout_seconds) as upstream:
+            content = upstream.read(8 * 1024 * 1024)
+            content_type = upstream.headers.get_content_type()
+    except HTTPError as error:
+        raise HTTPException(502, {"code": "GOOGLE_MAP_TILES_UPSTREAM_ERROR", "message": "Google Map Tiles est indisponible.", "provider_status": error.code}) from error
+    except (URLError, TimeoutError, OSError) as error:
+        raise HTTPException(503, {"code": "GOOGLE_MAP_TILES_UNAVAILABLE", "message": "Google Map Tiles est indisponible."}) from error
+    _record(session, user.id, {"tiles_started": 1, "tiles_completed": 1})
+    session.commit()
+    return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @router.post("/usage", status_code=204)

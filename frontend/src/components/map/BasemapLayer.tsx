@@ -12,6 +12,7 @@ import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
 import { getOfflineBasemapVersion } from '../../pwa/offlineData'
+import { API_BASE_URL } from '../../config'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
@@ -38,11 +39,12 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
         configureCartaVaultProtocol(config)
         return loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
       }
-      const dark = basemap.id === 'cartavault-dark'
-      const publicUrl = `https://tiles.stadiamaps.com/tiles/${dark ? 'alidade_smooth_dark' : 'alidade_smooth'}/{z}/{x}/{y}{r}.png`
+      const style = basemap.id === 'cartavault-dark' ? 'alidade_smooth_dark' : 'alidade_smooth'
       const stadia = await getStadiaBasemapConfig(controller.signal).catch(() => null)
-      const keyQuery = stadia?.tile_url?.match(/\?.*$/)?.[0] ?? ''
-      if (!controller.signal.aborted) setStadiaFallbackUrl(`${publicUrl}${keyQuery}`)
+      const tilePath = stadia?.tile_path
+        .replace('{style}', style)
+        .replace('{extension}', 'png') ?? null
+      if (!controller.signal.aborted) setStadiaFallbackUrl(tilePath ? `${API_BASE_URL}${tilePath}` : null)
       return null
     })().then((style) => {
         if (controller.signal.aborted || style === null) return
@@ -83,7 +85,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
 }
 
 function GoogleSatelliteLayer({ onTileError }: { onTileError: (id: BasemapId, fatal?: boolean) => void }) {
-  const [session, setSession] = useState<{ tile_url: string; attribution: string; max_zoom: number } | null>(null)
+  const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
   const counts = useRef({ tiles_started: 0, tiles_completed: 0, tiles_failed: 0, tiles_cancelled: 0 })
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
@@ -104,18 +106,22 @@ function GoogleSatelliteLayer({ onTileError }: { onTileError: (id: BasemapId, fa
     }
   }, [])
   if (!session) return null
-  return <TileLayer key="google-satellite" url={session.tile_url} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileloadstart: () => { counts.current.tiles_started += 1 }, tileload: () => { counts.current.tiles_completed += 1 }, tileerror: () => { counts.current.tiles_failed += 1; onTileErrorRef.current('google-satellite') }, tileabort: () => { counts.current.tiles_cancelled += 1 } }} />
+  return <TileLayer key="google-satellite" url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileloadstart: () => { counts.current.tiles_started += 1 }, tileload: () => { counts.current.tiles_completed += 1 }, tileerror: () => { counts.current.tiles_failed += 1; onTileErrorRef.current('google-satellite') }, tileabort: () => { counts.current.tiles_cancelled += 1 } }} />
 }
 
 function StadiaSatelliteLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
-  const [url, setUrl] = useState(basemap.url)
+  const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
     void getStadiaBasemapConfig(controller.signal).then((config) => {
-      if (!controller.signal.aborted && config.tile_url) setUrl(config.tile_url)
+      const tilePath = config.tile_path
+        .replace('{style}', 'alidade_satellite')
+        .replace('{extension}', 'jpg')
+      if (!controller.signal.aborted) setUrl(`${API_BASE_URL}${tilePath}`)
     }).catch(() => undefined)
     return () => controller.abort()
   }, [basemap.url])
+  if (!url) return null
   return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
 }
 

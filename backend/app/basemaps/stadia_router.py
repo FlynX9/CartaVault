@@ -4,8 +4,7 @@ from urllib.parse import quote
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
@@ -13,11 +12,15 @@ from app.auth.api_keys import selected_api_key
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserApiCredential
 from app.database import get_db
+from app.trips.routing.base import RoutingError
+from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
 
 
 router = APIRouter(tags=["basemaps"])
 STADIA_SATELLITE_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg"
 VERIFY_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/0/0/0.jpg"
+STADIA_TILE_STYLES = {"alidade_smooth", "alidade_smooth_dark", "alidade_satellite"}
+stadia_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
 
 
 def _validate_key(api_key: str) -> None:
@@ -41,9 +44,46 @@ def _decrypt(credential: UserApiCredential) -> str:
 
 
 @router.get("/basemaps/stadia/config")
-def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> JSONResponse:
+def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
     credential = selected_api_key(session, user, "basemaps", "stadia")
-    tile_url = None
-    if credential is not None:
-        tile_url = f"{STADIA_SATELLITE_URL}?api_key={quote(_decrypt(credential))}"
-    return JSONResponse({"personal_key_active": tile_url is not None, "tile_url": tile_url}, headers={"Cache-Control": "no-store"})
+    return {
+        "personal_key_active": credential is not None,
+        "tile_path": "/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}",
+    }
+
+
+@router.get("/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}")
+def basemap_tile(
+    style: str,
+    z: int,
+    x: int,
+    y: int,
+    extension: str,
+    retina: str = Query(default=""),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Response:
+    if style not in STADIA_TILE_STYLES or extension not in {"png", "jpg"} or retina not in {"", "@2x"}:
+        raise HTTPException(404, "Tile not found")
+    maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
+    if x < 0 or y < 0 or x > maximum or y > maximum:
+        raise HTTPException(404, "Tile not found")
+    credential = selected_api_key(session, user, "basemaps", "stadia")
+    try:
+        stadia_tiles_rate_limiter.check(f"stadia-tiles:{user.id}")
+    except RoutingError as error:
+        raise HTTPException(429, {"code": "STADIA_MAPS_RATE_LIMITED", "message": str(error)}) from error
+    query = f"?api_key={quote(_decrypt(credential))}" if credential is not None else ""
+    request = UrlRequest(
+        f"https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{retina}.{extension}{query}",
+        headers={"Accept": "image/*", "User-Agent": "CartaVault/1"},
+    )
+    try:
+        with urlopen(request, timeout=10) as upstream:
+            content = upstream.read(8 * 1024 * 1024)
+            content_type = upstream.headers.get_content_type()
+    except HTTPError as error:
+        raise HTTPException(502, {"code": "STADIA_MAPS_UPSTREAM_ERROR", "message": "Stadia Maps est momentanément indisponible.", "provider_status": error.code}) from error
+    except (TimeoutError, URLError, OSError) as error:
+        raise HTTPException(503, {"code": "STADIA_MAPS_UNAVAILABLE", "message": "Stadia Maps est momentanément indisponible."}) from error
+    return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})

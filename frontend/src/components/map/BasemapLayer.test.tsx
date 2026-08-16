@@ -22,7 +22,7 @@ vi.mock('react-leaflet', () => ({
   useMap: () => mapMock,
 }))
 vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
-vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, tile_url: null }) }))
+vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' }) }))
 vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ enabled: true, available: true, country_code: 'FR', country_name: 'France', state: 'ready', phase: 'Disponible', error_code: null, error_message: null, archive_url: '/api/basemaps/cartavault/archive/fr.pmtiles', glyphs_url: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf', version: 'test', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' }) }))
 vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
 
@@ -33,18 +33,20 @@ afterEach(() => {
 })
 
 describe('BasemapLayer', () => {
-  it('renders exactly the selected registry tile source', () => {
+  it('renders the selected source through the authenticated CartaVault proxy', async () => {
     render(<BasemapLayer basemapId="satellite" onTileError={vi.fn()} />)
-    const layer = screen.getByTestId('tile-layer')
+    const layer = await screen.findByTestId('tile-layer')
     expect(layer).toHaveAttribute('data-url', expect.stringContaining('alidade_satellite'))
+    expect(layer.getAttribute('data-url')).toMatch(/^\/api\/basemaps\/stadia\//)
     expect(layer).toHaveAttribute('data-max-zoom', '20')
     expect(layer.getAttribute('data-attribution')).toContain('CNES')
   })
 
-  it('uses the personal Stadia tile URL when a verified optional key exists', async () => {
-    vi.mocked(getStadiaBasemapConfig).mockResolvedValue({ personal_key_active: true, tile_url: 'https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg?api_key=personal' })
+  it('never puts a personal Stadia key in the browser-visible tile URL', async () => {
+    vi.mocked(getStadiaBasemapConfig).mockResolvedValue({ personal_key_active: true, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' })
     render(<BasemapLayer basemapId="satellite" onTileError={vi.fn()} />)
-    await waitFor(() => expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', expect.stringContaining('api_key=personal')))
+    await waitFor(() => expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', expect.stringContaining('/api/basemaps/stadia/tiles/alidade_satellite/')))
+    expect(screen.getByTestId('tile-layer').getAttribute('data-url')).not.toContain('api_key')
   })
 
   it('identifies a failing raster source to the fallback controller', () => {

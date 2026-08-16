@@ -1,7 +1,7 @@
 import { getJson, sendBodyWithoutResponse, sendJson } from './client'
 
 export interface GoogleSatelliteStatus { available: boolean; warning_level: 0 | 50 | 80 | 95 }
-export interface GoogleSatelliteSession { tile_url: string; expires: string | null; attribution: string; max_zoom: number }
+export interface GoogleSatelliteSession { tile_path: string; expires: string | null; attribution: string; max_zoom: number }
 export interface GoogleSatelliteAdminStatus {
   available: boolean; warning_level: number
   settings: { enabled: boolean; daily_soft_limit: number; monthly_soft_limit: number; auto_disable_percent: number; repeated_error_limit: number; consecutive_errors: number; disabled_reason: string | null }
