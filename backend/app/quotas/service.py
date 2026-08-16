@@ -11,7 +11,7 @@ from app.auth.models import User
 from app.categories.models import Category
 from app.maps.models import MapInvitation, MapMembership, PoiMap
 from app.photos.models import Photo
-from app.photos.storage import get_photo_storage_root
+from app.basemaps.models import GoogleSatelliteUsageDaily
 from app.places.models import Place, PlaceLink
 from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
 from app.quotas.registry import QUOTA_REGISTRY, QuotaKey
@@ -61,7 +61,7 @@ class QuotaService:
         return self.resolve_profile(user.quota_profile_id, active_only=False)
 
     def _owner_id(self, key: QuotaKey, scope_id: UUID | None, user_id: UUID) -> UUID:
-        if key in {QuotaKey.MAPS_MAX, QuotaKey.TRIPS_TOTAL_MAX, QuotaKey.STORAGE_BYTES_MAX, QuotaKey.PHOTOS_TOTAL_MAX, QuotaKey.MEMBERSHIPS_TOTAL_MAX, QuotaKey.PENDING_INVITATIONS_MAX}:
+        if key in {QuotaKey.MAPS_MAX, QuotaKey.TRIPS_TOTAL_MAX, QuotaKey.STORAGE_BYTES_MAX, QuotaKey.PHOTOS_TOTAL_MAX, QuotaKey.MEMBERSHIPS_TOTAL_MAX, QuotaKey.PENDING_INVITATIONS_MAX, QuotaKey.GOOGLE_SATELLITE_TILES_DAILY_MAX, QuotaKey.GOOGLE_SATELLITE_TILES_MONTHLY_MAX}:
             return user_id
         if scope_id is None:
             raise ValueError(f"scope_id is required for {key.value}")
@@ -94,6 +94,15 @@ class QuotaService:
                 .where(PoiMap.owner_id == owner_id)
             ) or 0
             return int(place_photos + night_photos)
+        if key in {QuotaKey.GOOGLE_SATELLITE_TILES_DAILY_MAX, QuotaKey.GOOGLE_SATELLITE_TILES_MONTHLY_MAX}:
+            today = datetime.now(UTC).date()
+            period_start = today if key == QuotaKey.GOOGLE_SATELLITE_TILES_DAILY_MAX else today.replace(day=1)
+            return int(self.session.scalar(
+                select(func.coalesce(func.sum(GoogleSatelliteUsageDaily.tiles_started), 0)).where(
+                    GoogleSatelliteUsageDaily.user_id == owner_id,
+                    GoogleSatelliteUsageDaily.usage_date >= period_start,
+                )
+            ) or 0)
         statements = {
             QuotaKey.MAPS_MAX: select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == owner_id, PoiMap.deleted_at.is_(None)),
             QuotaKey.TRIPS_TOTAL_MAX: select(func.count()).select_from(Trip).join(PoiMap).where(PoiMap.owner_id == owner_id, PoiMap.deleted_at.is_(None), Trip.deleted_at.is_(None)),
@@ -116,25 +125,17 @@ class QuotaService:
         return int(self.session.scalar(statements[key]) or 0)
 
     def storage_usage(self, owner_id: UUID) -> int:
-        place_paths = self.session.scalars(select(Photo.path).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id, Photo.path.is_not(None)))
-        night_paths = self.session.scalars(
-            select(TripNightPhoto.file_path)
+        place_bytes = self.session.scalar(
+            select(func.coalesce(func.sum(Photo.file_size_bytes), 0)).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id)
+        ) or 0
+        night_bytes = self.session.scalar(
+            select(func.coalesce(func.sum(TripNightPhoto.file_size_bytes), 0))
             .join(TripNight, TripNight.id == TripNightPhoto.night_id)
             .join(Trip, Trip.id == TripNight.trip_id)
             .join(PoiMap, PoiMap.id == Trip.map_id)
             .where(PoiMap.owner_id == owner_id)
-        )
-        root = get_photo_storage_root().resolve()
-        total = 0
-        for raw_path in (*place_paths.all(), *night_paths.all()):
-            try:
-                path = (root / str(raw_path)).resolve()
-                path.relative_to(root)
-                if path.is_file():
-                    total += path.stat().st_size
-            except (OSError, ValueError):
-                continue
-        return total
+        ) or 0
+        return int(place_bytes + night_bytes)
 
     def ensure_can_create(self, user_id: UUID, key: QuotaKey, *, scope_id: UUID | None = None, increment: int = 1) -> tuple[int, int | None]:
         if increment < 0:

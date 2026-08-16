@@ -28,6 +28,8 @@ class QuotaLimits(BaseModel):
     steps_per_day_max: int | None = Field(default=None, ge=0)
     image_upload_megabytes_max: int | None = Field(default=None, ge=1, le=100)
     image_dimension_max: int | None = Field(default=None, ge=1024, le=7680)
+    google_satellite_tiles_daily_max: int | None = Field(default=None, ge=0, le=1_000_000_000)
+    google_satellite_tiles_monthly_max: int | None = Field(default=None, ge=0, le=1_000_000_000)
 
     @field_validator("storage_bytes_max")
     @classmethod

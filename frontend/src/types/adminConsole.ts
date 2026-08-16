@@ -39,6 +39,7 @@ export interface QuotaLimits {
   pending_invitations_per_map_max: number | null; photos_per_place_max: number | null
   links_per_place_max: number | null; days_per_trip_max: number | null; steps_per_day_max: number | null
   image_upload_megabytes_max: number | null; image_dimension_max: number | null
+  google_satellite_tiles_daily_max: number | null; google_satellite_tiles_monthly_max: number | null
 }
 export type QuotaKey = keyof QuotaLimits
 export interface QuotaProfile {

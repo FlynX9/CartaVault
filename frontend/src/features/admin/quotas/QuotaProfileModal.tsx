@@ -14,6 +14,7 @@ const EMPTY_LIMITS: QuotaLimits = {
   trips_per_map_max: null, members_per_map_max: null, pending_invitations_per_map_max: null,
   photos_per_place_max: null, links_per_place_max: null, days_per_trip_max: null, steps_per_day_max: null,
   image_upload_megabytes_max: null, image_dimension_max: null,
+  google_satellite_tiles_daily_max: null, google_satellite_tiles_monthly_max: null,
 }
 
 export type QuotaProfileDraft = { name: string; description: string; is_active: boolean; limits: QuotaLimits }
@@ -26,7 +27,7 @@ const TABS: Array<{ id: TabId; label: string; keys: QuotaKey[] }> = [
   { id: 'maps', label: 'Cartes & POI', keys: ['places_per_map_max', 'tags_per_map_max', 'categories_per_map_max', 'statuses_per_map_max', 'members_per_map_max'] },
   { id: 'trips', label: 'Sorties', keys: ['trips_total_max', 'trips_per_map_max', 'days_per_trip_max', 'steps_per_day_max'] },
   { id: 'media', label: 'Médias', keys: ['storage_bytes_max', 'photos_total_max', 'photos_per_place_max', 'image_upload_megabytes_max', 'image_dimension_max'] },
-  { id: 'advanced', label: 'Avancé', keys: ['pending_invitations_max', 'pending_invitations_per_map_max', 'links_per_place_max'] },
+  { id: 'advanced', label: 'Avancé', keys: ['google_satellite_tiles_daily_max', 'google_satellite_tiles_monthly_max', 'pending_invitations_max', 'pending_invitations_per_map_max', 'links_per_place_max'] },
 ]
 
 export function quotaProfileDraft(profile?: QuotaProfile): QuotaProfileDraft {

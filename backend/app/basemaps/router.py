@@ -8,7 +8,7 @@ from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,8 @@ from app.auth.provider_sessions import GoogleTilesSession, ProviderSessionError,
 from app.basemaps.models import GoogleSatelliteUsageDaily
 from app.config import email_settings, google_map_tiles_settings, security_settings
 from app.database import get_db
+from app.quotas.registry import QuotaKey
+from app.quotas.service import QuotaService
 from app.trips.routing.base import RoutingError
 from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
 
@@ -39,13 +41,6 @@ DEFAULTS: dict[str, object] = {
     "consecutive_errors": 0,
     "disabled_reason": None,
 }
-
-
-class UsageEvent(BaseModel):
-    tiles_started: int = Field(default=0, ge=0, le=500)
-    tiles_completed: int = Field(default=0, ge=0, le=500)
-    tiles_failed: int = Field(default=0, ge=0, le=500)
-    tiles_cancelled: int = Field(default=0, ge=0, le=500)
 
 
 class SatelliteSettingsUpdate(BaseModel):
@@ -97,12 +92,27 @@ def _usage_percent(values: dict[str, object], usage: dict[str, int]) -> float:
 def _admin_status(session: Session) -> dict[str, object]:
     _, values = _setting(session)
     usage = _usage(session)
+    blocked = _instance_quota_reached(values, usage)
+    if values.get("disabled_reason") == "USAGE_THRESHOLD_REACHED" and not blocked:
+        values["enabled"] = True
+        values["disabled_reason"] = None
+    today = datetime.now(UTC).date()
+    next_month = (today.replace(day=28) + timedelta(days=4)).replace(day=1)
     return {
-        "available": bool(google_map_tiles_settings.enabled and values["enabled"]),
+        "available": bool(google_map_tiles_settings.enabled and values["enabled"] and not blocked),
         "settings": values,
         "usage": usage,
         "warning_level": _warning_level(values, usage),
-        "authoritative_monitoring": {"connected": False, "console_url": "https://console.cloud.google.com/google/maps-apis/metrics", "notice": "La facturation Google Cloud reste la source autoritative."},
+        "quota": {
+            "scope": "instance",
+            "daily_limit": _instance_limits(values)[0],
+            "monthly_limit": _instance_limits(values)[1],
+            "daily_reset_at": (today + timedelta(days=1)).isoformat(),
+            "monthly_reset_at": next_month.isoformat(),
+            "blocked": blocked,
+            "reason": "USAGE_THRESHOLD_REACHED" if blocked else None,
+        },
+        "authoritative_monitoring": {"connected": True, "source": "backend_proxy", "console_url": "https://console.cloud.google.com/google/maps-apis/metrics", "notice": "CartaVault compte chaque requête proxy ; Google Cloud reste la référence de facturation."},
     }
 
 
@@ -145,20 +155,72 @@ def _provider_expiry(value: object) -> datetime:
     return datetime.now(UTC) + timedelta(hours=6)
 
 
-def _record(session: Session, user_id: object, values: dict[str, int]) -> None:
-    statement = insert(GoogleSatelliteUsageDaily).values(usage_date=datetime.now(UTC).date(), user_id=user_id, **values)
+def _record(session: Session, user: User, credential: UserApiCredential, values: dict[str, int]) -> None:
+    statement = insert(GoogleSatelliteUsageDaily).values(
+        usage_date=datetime.now(UTC).date(),
+        user_id=user.id,
+        credential_id=credential.id,
+        quota_profile_id=user.quota_profile_id,
+        **values,
+    )
     statement = statement.on_conflict_do_update(
-        constraint="google_satellite_usage_daily_date_user_key",
+        index_elements=["usage_date", "user_id", "credential_id"],
         set_={key: getattr(GoogleSatelliteUsageDaily, key) + value for key, value in values.items()},
     )
     session.execute(statement)
+
+
+def _instance_limits(values: dict[str, object]) -> tuple[int, int]:
+    percent = int(values["auto_disable_percent"])
+    return (
+        max(1, int(values["daily_soft_limit"]) * percent // 100),
+        max(1, int(values["monthly_soft_limit"]) * percent // 100),
+    )
+
+
+def _instance_quota_reached(values: dict[str, object], usage: dict[str, int], increment: int = 0) -> bool:
+    daily_limit, monthly_limit = _instance_limits(values)
+    return usage["tiles_started_today"] + increment > daily_limit or usage["tiles_started_month"] + increment > monthly_limit
+
+
+def _user_quota_reached(session: Session, user: User, increment: int = 0) -> tuple[bool, str | None]:
+    quota_service = QuotaService(session)
+    profile = quota_service.effective_profile(user.id)
+    for key in (QuotaKey.GOOGLE_SATELLITE_TILES_DAILY_MAX, QuotaKey.GOOGLE_SATELLITE_TILES_MONTHLY_MAX):
+        limit = getattr(profile, key.value)
+        if limit is not None and quota_service.usage(user.id, key) + increment > limit:
+            return True, key.value
+    return False, None
+
+
+def _reserve_tile(session: Session, user: User, credential: UserApiCredential) -> None:
+    """Atomically reserve one provider request across workers and future replicas."""
+
+    session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:name))"), {"name": "cartavault:provider:google-satellite"})
+    _, values = _setting(session)
+    usage = _usage(session)
+    if _instance_quota_reached(values, usage, increment=1):
+        values["disabled_reason"] = "USAGE_THRESHOLD_REACHED"
+        _save_setting(session, values)
+        session.commit()
+        raise HTTPException(429, {"code": "GOOGLE_SATELLITE_INSTANCE_QUOTA", "message": "Le quota partagé Google Satellite est atteint."})
+    user_blocked, quota_key = _user_quota_reached(session, user, increment=1)
+    if user_blocked:
+        session.rollback()
+        raise HTTPException(429, {"code": "GOOGLE_SATELLITE_USER_QUOTA", "message": "Votre quota Google Satellite est atteint.", "quota": quota_key})
+    if values.get("disabled_reason") == "USAGE_THRESHOLD_REACHED":
+        values["disabled_reason"] = None
+        _save_setting(session, values)
+    _record(session, user, credential, {"tiles_started": 1})
+    session.commit()
 
 
 @router.get("/status")
 def public_status(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
     credential = selected_api_key(session, user, "basemaps", "google")
     status = _admin_status(session)
-    return {"available": bool(status["available"] and credential), "warning_level": status["warning_level"]}
+    user_blocked, _ = _user_quota_reached(session, user)
+    return {"available": bool(status["available"] and credential and not user_blocked), "warning_level": status["warning_level"]}
 
 
 @router.post("/session")
@@ -166,11 +228,18 @@ def create_session(response: Response, session: Session = Depends(get_db), user:
     credential = selected_api_key(session, user, "basemaps", "google")
     _, values = _setting(session)
     usage = _usage(session)
+    if values.get("disabled_reason") == "USAGE_THRESHOLD_REACHED" and not _instance_quota_reached(values, usage):
+        values["enabled"] = True
+        values["disabled_reason"] = None
+        _save_setting(session, values)
+        session.commit()
     if not google_map_tiles_settings.enabled or not values["enabled"] or credential is None:
         raise HTTPException(503, {"code": "GOOGLE_SATELLITE_UNAVAILABLE", "message": "Le fond Google Satellite n’est pas configuré."})
-    if _usage_percent(values, usage) >= int(values["auto_disable_percent"]):
-        values["enabled"] = False; values["disabled_reason"] = "USAGE_THRESHOLD_REACHED"; _save_setting(session, values); session.commit()
+    if _instance_quota_reached(values, usage):
         raise HTTPException(503, {"code": "GOOGLE_SATELLITE_USAGE_LIMIT", "message": "Le seuil d’usage local a désactivé Google Satellite."})
+    user_blocked, _ = _user_quota_reached(session, user)
+    if user_blocked:
+        raise HTTPException(429, {"code": "GOOGLE_SATELLITE_USER_QUOTA", "message": "Votre quota Google Satellite est atteint."})
     try:
         language = str((user.preferences or {}).get("language", "fr"))
         payload = _create_google_session(_api_key(credential), language)
@@ -183,7 +252,7 @@ def create_session(response: Response, session: Session = Depends(get_db), user:
     now = datetime.now(UTC).replace(tzinfo=None)
     credential.last_used_at = now; credential.last_error_code = None
     values["consecutive_errors"] = 0; values["last_success_at"] = now.isoformat(); values["disabled_reason"] = None
-    _save_setting(session, values); _record(session, user.id, {"sessions_started": 1}); session.commit()
+    _save_setting(session, values); _record(session, user, credential, {"sessions_started": 1}); session.commit()
     expires_at = _provider_expiry(payload.get("expiry"))
     opaque_session = encode_google_tiles_session(GoogleTilesSession(user.id, credential.id, str(payload["session"]), expires_at))
     response.set_cookie(
@@ -218,6 +287,7 @@ def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(ge
         google_tiles_rate_limiter.check(f"google-tiles:{user.id}")
     except RoutingError as error:
         raise HTTPException(429, {"code": "GOOGLE_MAP_TILES_RATE_LIMITED", "message": str(error)}) from error
+    _reserve_tile(session, user, credential)
     upstream_request = UrlRequest(
         f"{google_map_tiles_settings.base_url}/v1/2dtiles/{z}/{x}/{y}?session={quote(provider_session.provider_session)}&key={quote(_api_key(credential))}",
         headers={"Accept": "image/*", "User-Agent": "CartaVault/1", "Referer": f"{email_settings.frontend_public_url}/"},
@@ -227,23 +297,14 @@ def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(ge
             content = upstream.read(8 * 1024 * 1024)
             content_type = upstream.headers.get_content_type()
     except HTTPError as error:
+        _record(session, user, credential, {"tiles_failed": 1}); session.commit()
         raise HTTPException(502, {"code": "GOOGLE_MAP_TILES_UPSTREAM_ERROR", "message": "Google Map Tiles est indisponible.", "provider_status": error.code}) from error
     except (URLError, TimeoutError, OSError) as error:
+        _record(session, user, credential, {"tiles_failed": 1}); session.commit()
         raise HTTPException(503, {"code": "GOOGLE_MAP_TILES_UNAVAILABLE", "message": "Google Map Tiles est indisponible."}) from error
-    _record(session, user.id, {"tiles_started": 1, "tiles_completed": 1})
+    _record(session, user, credential, {"tiles_completed": 1})
     session.commit()
     return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
-
-
-@router.post("/usage", status_code=204)
-def record_usage(event: UsageEvent, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> Response:
-    values = event.model_dump()
-    if any(values.values()):
-        _record(session, user.id, values)
-        # Browser telemetry is informative only: a client-controlled counter
-        # must never be able to disable a provider for the whole instance.
-        session.commit()
-    return Response(status_code=204)
 
 
 @admin_router.get("")

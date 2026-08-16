@@ -32,6 +32,8 @@ class QuotaKey(StrEnum):
     STEPS_PER_DAY_MAX = "steps_per_day_max"
     IMAGE_UPLOAD_MEGABYTES_MAX = "image_upload_megabytes_max"
     IMAGE_DIMENSION_MAX = "image_dimension_max"
+    GOOGLE_SATELLITE_TILES_DAILY_MAX = "google_satellite_tiles_daily_max"
+    GOOGLE_SATELLITE_TILES_MONTHLY_MAX = "google_satellite_tiles_monthly_max"
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,8 @@ QUOTA_REGISTRY: dict[QuotaKey, QuotaDefinition] = {
     QuotaKey.STEPS_PER_DAY_MAX: _definition(QuotaKey.STEPS_PER_DAY_MAX, QuotaScope.DAY, "Étapes par journée", "Étapes planifiées dans une journée"),
     QuotaKey.IMAGE_UPLOAD_MEGABYTES_MAX: _definition(QuotaKey.IMAGE_UPLOAD_MEGABYTES_MAX, QuotaScope.USER, "Taille maximale par image", "Remplace le réglage général de l'instance pour les utilisateurs de ce profil", unit="megabytes", maximum=100),
     QuotaKey.IMAGE_DIMENSION_MAX: _definition(QuotaKey.IMAGE_DIMENSION_MAX, QuotaScope.USER, "Résolution maximale", "Plus grand côté de l'image ; remplace le réglage général de l'instance", unit="pixels", maximum=7680),
+    QuotaKey.GOOGLE_SATELLITE_TILES_DAILY_MAX: _definition(QuotaKey.GOOGLE_SATELLITE_TILES_DAILY_MAX, QuotaScope.USER, "Tuiles Google par jour", "Requêtes Google Satellite autorisées par jour UTC", unit="requests", maximum=1_000_000_000),
+    QuotaKey.GOOGLE_SATELLITE_TILES_MONTHLY_MAX: _definition(QuotaKey.GOOGLE_SATELLITE_TILES_MONTHLY_MAX, QuotaScope.USER, "Tuiles Google par mois", "Requêtes Google Satellite autorisées par mois calendaire UTC", unit="requests", maximum=1_000_000_000),
 }
 
 QUOTA_KEYS = tuple(definition.key.value for definition in QUOTA_REGISTRY.values())

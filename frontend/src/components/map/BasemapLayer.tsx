@@ -7,7 +7,7 @@ import { TileLayer, useMap } from 'react-leaflet'
 
 import { getBasemap, type BasemapId, type RasterBasemapDefinition, type VectorBasemapDefinition } from '../../map/basemaps'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
-import { createGoogleSatelliteSession, reportGoogleSatelliteUsage } from '../../api/googleSatellite'
+import { createGoogleSatelliteSession } from '../../api/googleSatellite'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
@@ -86,27 +86,15 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
 
 function GoogleSatelliteLayer({ onTileError }: { onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
-  const counts = useRef({ tiles_started: 0, tiles_completed: 0, tiles_failed: 0, tiles_cancelled: 0 })
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
   useEffect(() => {
     const controller = new AbortController()
     void createGoogleSatelliteSession(controller.signal).then(setSession).catch(() => { if (!controller.signal.aborted) onTileErrorRef.current('google-satellite', true) })
-    const flush = window.setInterval(() => {
-      const current = counts.current
-      if (Object.values(current).some(Boolean)) {
-        counts.current = { tiles_started: 0, tiles_completed: 0, tiles_failed: 0, tiles_cancelled: 0 }
-        void reportGoogleSatelliteUsage(current).catch(() => undefined)
-      }
-    }, 5000)
-    return () => {
-      controller.abort(); window.clearInterval(flush)
-      const current = counts.current
-      if (Object.values(current).some(Boolean)) void reportGoogleSatelliteUsage(current).catch(() => undefined)
-    }
+    return () => controller.abort()
   }, [])
   if (!session) return null
-  return <TileLayer key="google-satellite" url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileloadstart: () => { counts.current.tiles_started += 1 }, tileload: () => { counts.current.tiles_completed += 1 }, tileerror: () => { counts.current.tiles_failed += 1; onTileErrorRef.current('google-satellite') }, tileabort: () => { counts.current.tiles_cancelled += 1 } }} />
+  return <TileLayer key="google-satellite" url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current('google-satellite') }} />
 }
 
 function StadiaSatelliteLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {

@@ -553,7 +553,7 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
         delete_photo_file(stored.relative_path, night.id, photo_id)
         raise
 
-    night.photos.append(TripNightPhoto(id=photo_id, file_path=stored.relative_path, mime_type=stored.media_type, sort_order=len(night.photos)))
+    night.photos.append(TripNightPhoto(id=photo_id, file_path=stored.relative_path, mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, sort_order=len(night.photos)))
     try:
         session.commit()
         session.refresh(night)
