@@ -3,6 +3,7 @@ from collections.abc import Generator
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
@@ -19,14 +20,21 @@ class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models."""
 
 
-engine = create_engine(
-    database_url,
-    pool_pre_ping=True,
-    pool_size=database_settings.pool_size,
-    max_overflow=database_settings.max_overflow,
-    pool_timeout=database_settings.pool_timeout_seconds,
-    pool_recycle=database_settings.pool_recycle_seconds,
-)
+def _engine_options(url: str) -> dict[str, object]:
+    """Return pool options supported by the selected SQLAlchemy dialect."""
+
+    options: dict[str, object] = {"pool_pre_ping": True}
+    if make_url(url).get_backend_name() != "sqlite":
+        options.update(
+            pool_size=database_settings.pool_size,
+            max_overflow=database_settings.max_overflow,
+            pool_timeout=database_settings.pool_timeout_seconds,
+            pool_recycle=database_settings.pool_recycle_seconds,
+        )
+    return options
+
+
+engine = create_engine(database_url, **_engine_options(database_url))
 
 SessionLocal = sessionmaker(
     bind=engine,

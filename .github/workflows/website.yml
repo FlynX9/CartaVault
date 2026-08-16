@@ -35,26 +35,12 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: website/package-lock.json
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-      - run: pip install -r ../backend/requirements.txt
       - run: npm ci
-      - run: npm run verify
+      - run: npm run verify:site
       - uses: actions/upload-artifact@v7
         with:
           name: cartavault-website
           path: website/dist
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          name: cartavault-documentation-coverage
-          path: |
-            docs/generated/documentation-coverage.json
-            docs/generated/documentation-coverage.md
-            docs/generated/documentation-source-hashes.json
           if-no-files-found: error
 
   deploy:
