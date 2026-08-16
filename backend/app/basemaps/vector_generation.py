@@ -188,9 +188,18 @@ def _run_planetiler(
     _check_planetiler_runtime()
     jar = vector_basemap_settings.planetiler_jar
     output_tmp.unlink(missing_ok=True)
+    # The hardened production containers mount /tmp with noexec. Xerial's
+    # SQLite JDBC driver extracts a native library before loading Natural
+    # Earth data, so using /tmp would fail with "failed to map segment from
+    # shared object". Keep that trusted, task-scoped extraction inside the
+    # writable Planetiler work volume instead of weakening /tmp globally.
+    native_tmp = work_path / "native-tmp"
+    native_tmp.mkdir(parents=True, exist_ok=True)
     arguments = [
         vector_basemap_settings.java_executable,
-        f"-Xmx{vector_basemap_settings.java_heap}", "-XX:MaxHeapFreeRatio=40", "-jar", str(jar),
+        f"-Xmx{vector_basemap_settings.java_heap}", "-XX:MaxHeapFreeRatio=40",
+        f"-Dorg.sqlite.tmpdir={native_tmp}", f"-Djava.io.tmpdir={native_tmp}",
+        "-jar", str(jar),
         f"--osm-path={pbf_path}", f"--output={output_tmp}", f"--tmpdir={work_path / 'planetiler'}",
         f"--download-dir={work_path.parent / 'sources'}",
         f"--maxzoom={policy.max_zoom}", "--tile-format=mvt", "--download", "--force",

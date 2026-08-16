@@ -204,6 +204,41 @@ def test_planetiler_preflight_uses_configured_java_executable(monkeypatch: pytes
     assert calls == [[configured_java, "-version"]]
 
 
+def test_planetiler_uses_executable_workdir_for_native_libraries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+
+    class CompletedProcess:
+        returncode = 0
+
+        @staticmethod
+        def poll() -> int:
+            return 0
+
+    monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
+    monkeypatch.setattr(
+        vector_generation.subprocess,
+        "Popen",
+        lambda arguments, **_kwargs: calls.append(arguments) or CompletedProcess(),
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    vector_generation._run_planetiler(
+        tmp_path / "source.osm.pbf",
+        work / "output.tmp.pmtiles",
+        work,
+        SimpleNamespace(max_zoom=14),
+    )
+
+    native_tmp = work / "native-tmp"
+    assert native_tmp.is_dir()
+    assert f"-Dorg.sqlite.tmpdir={native_tmp}" in calls[0]
+    assert f"-Djava.io.tmpdir={native_tmp}" in calls[0]
+    assert calls[0].index(f"-Dorg.sqlite.tmpdir={native_tmp}") < calls[0].index("-jar")
+
+
 def test_planetiler_log_progress_tracks_generation_stages_monotonically() -> None:
     parser = vector_generation._PlanetilerProgressParser()
     assert parser.feed("0:00:04 INF [water_polygons] - Starting...") == 3
