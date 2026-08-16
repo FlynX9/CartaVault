@@ -38,10 +38,7 @@ server {
     client_body_timeout 30s;
     keepalive_timeout 30s;
 
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy "camera=(), microphone=(), payment=(), usb=()" always;
+    include /etc/nginx/includes/cartavault-security-headers.conf;
 
     location = /api/auth/login {
         limit_req zone=cartavault_auth burst=5 nodelay;
@@ -55,17 +52,20 @@ server {
 
     location ^~ /api/ {
         limit_req zone=cartavault_api burst=60 nodelay;
+        include /etc/nginx/includes/cartavault-security-headers.conf;
         add_header Cache-Control "private, no-store" always;
         include /etc/nginx/includes/cartavault-proxy.conf;
     }
 
     location ~ ^/(assets|_astro)/ {
         expires 1y;
+        include /etc/nginx/includes/cartavault-security-headers.conf;
         add_header Cache-Control "public, max-age=31536000, immutable";
         include /etc/nginx/includes/cartavault-proxy.conf;
     }
 
     location / {
+        include /etc/nginx/includes/cartavault-security-headers.conf;
         add_header Cache-Control "no-cache";
         include /etc/nginx/includes/cartavault-proxy.conf;
     }

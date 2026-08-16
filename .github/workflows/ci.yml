@@ -273,9 +273,128 @@ jobs:
           docker compose -f docker/compose.yml exec -T cartavault grep -q persisted /app/storage/photos/container-smoke.txt
           docker compose -f docker/compose.yml exec -T cartavault python -m alembic current
 
-      - name: Show container logs on failure
+      - name: Show standard container logs on failure
         if: failure()
         run: docker compose -f docker/compose.yml logs
+
+      - name: Stop the standard stack before the TLS proxy smoke test
+        run: docker compose -f docker/compose.yml down --volumes --remove-orphans
+
+      - name: Exercise the SaaS Nginx and TLS path
+        env:
+          CARTAVAULT_HOSTNAME: demo.example.invalid
+          CARTAVAULT_IMAGE: cartavault
+          CARTAVAULT_VERSION: 0.0.0-ci
+          CARTAVAULT_TLS_DIR: ${{ runner.temp }}/cartavault-tls
+          CARTAVAULT_ACME_ROOT: ${{ runner.temp }}/cartavault-acme
+          POSTGRES_DB: cartavault
+          POSTGRES_USER: cartavault
+          POSTGRES_PASSWORD: ci-only-password
+          DATABASE_URL: postgresql+psycopg://cartavault:ci-only-password@postgis:5432/cartavault
+          CARTAVAULT_SESSION_SECRET: ci-session-secret-not-used-outside-github-actions
+          CARTAVAULT_SETUP_TOKEN: ci-setup-token-not-used-outside-github-actions
+          CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          EMAIL_PROVIDER: none
+          EMAIL_FROM_ADDRESS: ci@example.invalid
+          MEDIA_STORAGE: local
+          S3_BUCKET: ci-unused-private-media
+          S3_ACCESS_KEY: ci-unused-access-key
+          S3_SECRET_KEY: ci-unused-secret-key
+        run: |
+          set -euo pipefail
+          tls_live="$CARTAVAULT_TLS_DIR/live/$CARTAVAULT_HOSTNAME"
+          mkdir -p "$tls_live" "$CARTAVAULT_ACME_ROOT/.well-known/acme-challenge"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout "$tls_live/privkey.pem" \
+            -out "$tls_live/fullchain.pem" \
+            -subj "/CN=$CARTAVAULT_HOSTNAME" \
+            -addext "subjectAltName=DNS:$CARTAVAULT_HOSTNAME"
+          printf 'cartavault-acme-smoke' > "$CARTAVAULT_ACME_ROOT/.well-known/acme-challenge/smoke"
+
+          docker compose -f docker/compose.saas.yml up -d --wait --wait-timeout 180
+          docker compose -f docker/compose.saas.yml exec -T nginx nginx -t
+
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --resolve "$CARTAVAULT_HOSTNAME:80:127.0.0.1" \
+            "http://$CARTAVAULT_HOSTNAME/maps/deep-link")" = "301"
+          test "$(curl --silent --output /dev/null --write-out '%{redirect_url}' \
+            --resolve "$CARTAVAULT_HOSTNAME:80:127.0.0.1" \
+            "http://$CARTAVAULT_HOSTNAME/maps/deep-link")" = "https://$CARTAVAULT_HOSTNAME/maps/deep-link"
+          test "$(curl --silent \
+            --resolve "$CARTAVAULT_HOSTNAME:80:127.0.0.1" \
+            "http://$CARTAVAULT_HOSTNAME/.well-known/acme-challenge/smoke")" = "cartavault-acme-smoke"
+
+          home_body="$(curl --fail --silent --insecure --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/")"
+          deep_link_body="$(curl --fail --silent --insecure --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/maps/deep-link")"
+          api_body="$(curl --fail --silent --insecure --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/api/")"
+          service_worker_body="$(curl --fail --silent --insecure --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/service-worker.js")"
+          grep -qi '<!doctype html>' <<<"$home_body"
+          grep -qi '<!doctype html>' <<<"$deep_link_body"
+          grep -q 'CartaVault API is running' <<<"$api_body"
+          grep -q 'BUILD_ASSETS' <<<"$service_worker_body"
+          curl --fail --silent --insecure --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/health/ready" >/dev/null
+          curl --fail --silent --insecure --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/manifest.webmanifest" >/dev/null
+
+          headers="$(curl --silent --insecure --head \
+            --resolve "$CARTAVAULT_HOSTNAME:443:127.0.0.1" \
+            "https://$CARTAVAULT_HOSTNAME/health/ready" | tr -d '\r')"
+          grep -qi '^strict-transport-security: max-age=31536000; includeSubDomains$' <<<"$headers"
+          grep -qi '^x-content-type-options: nosniff$' <<<"$headers"
+          grep -qi '^referrer-policy: strict-origin-when-cross-origin$' <<<"$headers"
+
+          app_container="$(docker compose -f docker/compose.saas.yml ps -q cartavault)"
+          database_container="$(docker compose -f docker/compose.saas.yml ps -q postgis)"
+          test "$(docker inspect "$app_container" --format '{{json (index .NetworkSettings.Ports "8000/tcp")}}')" = "null"
+          test "$(docker inspect "$database_container" --format '{{json (index .NetworkSettings.Ports "5432/tcp")}}')" = "null"
+          test "$(docker compose -f docker/compose.saas.yml exec -T nginx awk '/NoNewPrivs/ { print $2 }' /proc/1/status)" = "1"
+
+      - name: Show SaaS proxy logs on failure
+        if: failure()
+        env:
+          CARTAVAULT_HOSTNAME: demo.example.invalid
+          CARTAVAULT_IMAGE: cartavault
+          CARTAVAULT_VERSION: 0.0.0-ci
+          CARTAVAULT_TLS_DIR: ${{ runner.temp }}/cartavault-tls
+          CARTAVAULT_ACME_ROOT: ${{ runner.temp }}/cartavault-acme
+          POSTGRES_DB: cartavault
+          POSTGRES_USER: cartavault
+          POSTGRES_PASSWORD: ci-only-password
+          DATABASE_URL: postgresql+psycopg://cartavault:ci-only-password@postgis:5432/cartavault
+          CARTAVAULT_SESSION_SECRET: ci-session-secret-not-used-outside-github-actions
+          CARTAVAULT_SETUP_TOKEN: ci-setup-token-not-used-outside-github-actions
+          CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          EMAIL_FROM_ADDRESS: ci@example.invalid
+          S3_BUCKET: ci-unused-private-media
+          S3_ACCESS_KEY: ci-unused-access-key
+          S3_SECRET_KEY: ci-unused-secret-key
+        run: docker compose -f docker/compose.saas.yml logs
+
+      - name: Stop the SaaS proxy smoke stack
+        if: always()
+        env:
+          CARTAVAULT_HOSTNAME: demo.example.invalid
+          CARTAVAULT_IMAGE: cartavault
+          CARTAVAULT_VERSION: 0.0.0-ci
+          CARTAVAULT_TLS_DIR: ${{ runner.temp }}/cartavault-tls
+          CARTAVAULT_ACME_ROOT: ${{ runner.temp }}/cartavault-acme
+          POSTGRES_DB: cartavault
+          POSTGRES_USER: cartavault
+          POSTGRES_PASSWORD: ci-only-password
+          DATABASE_URL: postgresql+psycopg://cartavault:ci-only-password@postgis:5432/cartavault
+          CARTAVAULT_SESSION_SECRET: ci-session-secret-not-used-outside-github-actions
+          CARTAVAULT_SETUP_TOKEN: ci-setup-token-not-used-outside-github-actions
+          CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+          EMAIL_FROM_ADDRESS: ci@example.invalid
+          S3_BUCKET: ci-unused-private-media
+          S3_ACCESS_KEY: ci-unused-access-key
+          S3_SECRET_KEY: ci-unused-secret-key
+        run: docker compose -f docker/compose.saas.yml down --volumes --remove-orphans
 
       - name: Stop the smoke stack
         if: always()

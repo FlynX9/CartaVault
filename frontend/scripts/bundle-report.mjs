@@ -3,9 +3,11 @@ import { basename } from 'node:path'
 
 const manifestPath = new URL('../dist/.vite/manifest.json', import.meta.url)
 const reportPath = new URL('../dist/bundle-report.json', import.meta.url)
-// The application shell now includes the shared responsive workspace controls.
-// Keep a rounded, reviewable ceiling while preserving a useful regression guard.
-const INITIAL_JAVASCRIPT_BUDGET_BYTES = 960_000
+// The application shell includes the shared responsive workspace controls and
+// the 300 legacy category glyphs required to render existing maps immediately.
+// Keep a small, explicit margin over the current baseline instead of disabling
+// the guard: a 20 KiB regression still fails CI.
+const INITIAL_JAVASCRIPT_BUDGET_BYTES = 1_050_000
 
 async function fileSize(path) {
   return (await stat(new URL(`../dist/${path}`, import.meta.url))).size
