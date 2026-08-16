@@ -6,6 +6,9 @@ runtime, resource limits, monitoring, backup and rollback), use
 The standard two-service topology below remains the supported self-hosted
 default.
 
+Optional private S3-compatible photo storage and local-to-S3 migration are
+documented in [`../docs/object-storage.md`](../docs/object-storage.md).
+
 ## Supported standard topology
 
 The beta and mono-instance deployment has exactly two services:

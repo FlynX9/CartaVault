@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.photos.models import Photo
-from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, delete_photo_thumbnail, resolve_photo_file
+from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, delete_photo_file, delete_photo_thumbnail, persist_materialized_photo, resolve_photo_file
 from app.media.settings import get_max_image_dimension
 from app.tasks.models import BackgroundTask
 from app.tasks.registry import ProgressCallback, task_handler
@@ -38,8 +38,14 @@ def optimize_existing_media(session: Session, task: BackgroundTask, progress: Pr
                 width, height = image.size
             temporary.replace(target)
             if target != source:
-                source.unlink(missing_ok=True)
-            photo.path = PurePosixPath(str(photo.storage_scope_id), target.name).as_posix()
+                old_path = photo.path
+                new_path = PurePosixPath(str(photo.storage_scope_id), target.name).as_posix()
+                persist_materialized_photo(new_path, target, "image/webp")
+                delete_photo_file(old_path, photo.storage_scope_id, photo.id)
+            else:
+                new_path = photo.path
+                persist_materialized_photo(new_path, target, "image/webp")
+            photo.path = new_path
             photo.filename = target.name
             photo.mime_type = "image/webp"
             photo.file_size_bytes = target.stat().st_size

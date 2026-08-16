@@ -7,6 +7,8 @@ from uuid import UUID
 from dotenv import load_dotenv
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from app.photos.object_storage import ObjectStorageError, build_object_storage, media_storage_mode
+
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PHOTO_STORAGE_PATH = Path("storage/photos")
@@ -71,8 +73,8 @@ def get_photo_storage_root() -> Path:
 
     configured_path = Path(
         os.getenv(
-            "PHOTO_STORAGE_PATH",
-            str(DEFAULT_PHOTO_STORAGE_PATH),
+            "MEDIA_CACHE_PATH" if media_storage_mode() == "s3" else "PHOTO_STORAGE_PATH",
+            "storage/media-cache" if media_storage_mode() == "s3" else str(DEFAULT_PHOTO_STORAGE_PATH),
         )
     )
 
@@ -85,7 +87,7 @@ def get_photo_storage_root() -> Path:
         storage_root.relative_to(BACKEND_ROOT)
     except ValueError as error:
         raise PhotoStorageError(
-            "Relative PHOTO_STORAGE_PATH must stay inside the backend directory"
+            "Relative media storage paths must stay inside the backend directory"
         ) from error
 
     return storage_root
@@ -214,6 +216,13 @@ def store_photo_file(
         _remove_directory_if_empty(place_directory, storage_root)
         raise
 
+    try:
+        build_object_storage().put(relative_path, final_path, content_type=detected_type)
+    except ObjectStorageError as error:
+        final_path.unlink(missing_ok=True)
+        _remove_directory_if_empty(place_directory, storage_root)
+        raise PhotoStorageError(str(error)) from error
+
     return StoredPhoto(
         filename=filename,
         relative_path=relative_path,
@@ -330,10 +339,14 @@ def get_photo_thumbnail(
     except ValueError as error:
         raise PhotoStorageError("Unable to create a safe thumbnail path") from error
 
-    if (
-        thumbnail_path.is_file()
-        and thumbnail_path.stat().st_mtime_ns >= source_path.stat().st_mtime_ns
-    ):
+    backend = build_object_storage()
+    thumbnail_key = PurePosixPath(".thumbnails", f"{photo_id}.webp").as_posix()
+    try:
+        if media_storage_mode() == "s3" and backend.materialize(thumbnail_key, thumbnail_path):
+            return thumbnail_path
+    except ObjectStorageError as error:
+        raise PhotoStorageError(str(error)) from error
+    if thumbnail_path.is_file() and thumbnail_path.stat().st_mtime_ns >= source_path.stat().st_mtime_ns:
         return thumbnail_path
 
     temporary_path = thumbnail_path.with_suffix(".partial")
@@ -353,8 +366,9 @@ def get_photo_thumbnail(
                 icc_profile=None,
             )
         temporary_path.replace(thumbnail_path)
+        backend.put(thumbnail_key, thumbnail_path, content_type="image/webp")
         return thumbnail_path
-    except (OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError, ObjectStorageError) as error:
         temporary_path.unlink(missing_ok=True)
         raise PhotoStorageError("Unable to generate the photo thumbnail") from error
 
@@ -366,8 +380,9 @@ def delete_photo_thumbnail(photo_id: UUID) -> None:
     thumbnail_path = (thumbnail_directory / f"{photo_id}.webp").resolve()
     try:
         thumbnail_path.relative_to(thumbnail_directory)
+        build_object_storage().delete(PurePosixPath(".thumbnails", f"{photo_id}.webp").as_posix())
         thumbnail_path.unlink(missing_ok=True)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, ObjectStorageError) as error:
         raise PhotoStorageError("Unable to delete the photo thumbnail") from error
 
 
@@ -429,8 +444,13 @@ def resolve_photo_file(
             "The stored photo path escapes the storage directory"
         ) from error
 
-    if require_file and not absolute_path.is_file():
-        raise PhotoFileNotFoundError("The physical photo file was not found")
+    if require_file:
+        try:
+            available = build_object_storage().materialize(relative_path, absolute_path)
+        except ObjectStorageError as error:
+            raise PhotoStorageError(str(error)) from error
+        if not available:
+            raise PhotoFileNotFoundError("The physical photo file was not found")
 
     return absolute_path
 
@@ -460,9 +480,15 @@ def delete_photo_file(
     )
     storage_root = get_photo_storage_root()
 
+    backend = build_object_storage()
+    try:
+        remote_deleted = backend.delete(relative_path)
+    except ObjectStorageError as error:
+        raise PhotoStorageError(str(error)) from error
+
     if not file_path.exists():
         _remove_directory_if_empty(file_path.parent, storage_root)
-        return False
+        return remote_deleted
 
     if not file_path.is_file():
         raise InvalidPhotoPathError("The stored photo path is not a file")
@@ -474,6 +500,15 @@ def delete_photo_file(
         raise PhotoStorageError("Unable to delete the physical photo file") from error
 
     return True
+
+
+def persist_materialized_photo(relative_path: str, file_path: Path, media_type: str) -> None:
+    """Persist a processed local cache file to the selected backend."""
+
+    try:
+        build_object_storage().put(relative_path, file_path, content_type=media_type)
+    except ObjectStorageError as error:
+        raise PhotoStorageError(str(error)) from error
 
 
 def _remove_directory_if_empty(directory: Path, storage_root: Path) -> None:

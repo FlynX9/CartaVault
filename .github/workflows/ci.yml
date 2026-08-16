@@ -183,6 +183,9 @@ jobs:
           CARTAVAULT_SETUP_TOKEN: ci-setup-token-not-used-outside-github-actions
           CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
           EMAIL_FROM_ADDRESS: ci@example.invalid
+          S3_BUCKET: ci-private-media
+          S3_ACCESS_KEY: ci-only-access-key
+          S3_SECRET_KEY: ci-only-secret-key
         run: |
           docker compose -f docker/compose.saas.yml config --quiet
           test "$(docker compose -f docker/compose.saas.yml config --services | sort | paste -sd ' ' -)" = "cartavault nginx postgis"

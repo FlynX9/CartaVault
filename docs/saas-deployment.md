@@ -65,6 +65,27 @@ Copy `docker/.env.saas.example` to `/opt/cartavault/.env`, set mode `0600`, and 
 
 Required recovery material includes the PostgreSQL password, session/setup secrets and `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY`. Losing the encryption key makes saved provider credentials unrecoverable. Store a protected copy separately from database and media backups.
 
+The SaaS Compose contract defaults `MEDIA_STORAGE=s3`. Configure a private
+S3-compatible bucket with `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`,
+`S3_ACCESS_KEY` and `S3_SECRET_KEY`. MinIO and providers requiring path-style
+requests are supported with `S3_FORCE_PATH_STYLE=true`. CartaVault authorizes
+every media request before reading the private object and proxies the bytes;
+the bucket must not grant anonymous/public access.
+
+Self-hosted deployments keep `MEDIA_STORAGE=local` by default. To migrate an
+existing instance without deleting its source files, first back up the media
+tree, configure S3, then run a dry run followed by the explicit copy:
+
+```sh
+docker compose exec -T cartavault python -m scripts.migrate_photos_to_s3
+docker compose exec -T cartavault python -m scripts.migrate_photos_to_s3 --apply
+```
+
+Verify thumbnails, downloads, exports and deletion on a staging copy before
+switching production. The command is idempotent and deliberately never removes
+local media; rollback is therefore `MEDIA_STORAGE=local` while that tree is
+retained.
+
 The default three workers each own a SQLAlchemy pool of five persistent plus five overflow connections. The theoretical application ceiling is therefore 30 connections. Keep that calculation below PostgreSQL `max_connections` after reserving connections for migrations, backup and operations:
 
 ```text

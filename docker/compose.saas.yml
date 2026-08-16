@@ -29,6 +29,17 @@ x-app-environment: &app-environment
   CARTAVAULT_DB_POOL_TIMEOUT_SECONDS: ${CARTAVAULT_DB_POOL_TIMEOUT_SECONDS:-30}
   CARTAVAULT_DB_POOL_RECYCLE_SECONDS: ${CARTAVAULT_DB_POOL_RECYCLE_SECONDS:-1800}
   CARTAVAULT_TASK_MODE: sync
+  MEDIA_STORAGE: ${MEDIA_STORAGE:-s3}
+  MEDIA_CACHE_PATH: /tmp/cartavault-media-cache
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:?S3_BUCKET is required for the SaaS stack}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?S3_ACCESS_KEY is required for the SaaS stack}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY is required for the SaaS stack}
+  S3_PREFIX: ${S3_PREFIX:-media}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+  S3_USE_SSL: ${S3_USE_SSL:-true}
+  S3_VERIFY_TLS: ${S3_VERIFY_TLS:-true}
   PHOTO_STORAGE_PATH: /app/storage/photos
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
