@@ -54,6 +54,13 @@ def component_for_logger(name: str) -> str:
 
 class InstanceLogHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
+        # Access logging runs on Uvicorn's event-loop thread after a response.
+        # Persisting it would request another database connection while the
+        # request dependency may still own one. At pool capacity that creates
+        # a circular wait and can make the whole API unresponsive. Access logs
+        # are also high-volume and provide little value in the admin history.
+        if record.name == "uvicorn.access":
+            return
         try:
             message = sanitize_log_text(record.getMessage())
             if record.exc_info:
@@ -108,10 +115,9 @@ def install_instance_log_handler() -> None:
     if handler is None:
         handler = InstanceLogHandler(level=logging.DEBUG)
         root_logger.addHandler(handler)
-    # Uvicorn owns separate non-propagating loggers in production. Attach the
-    # collector there as well, otherwise the administrator only sees messages
-    # emitted by application loggers.
-    for logger_name in ("uvicorn.access", "uvicorn.error"):
+    # Uvicorn owns a separate non-propagating error logger in production.
+    # Access records are intentionally excluded in InstanceLogHandler.emit.
+    for logger_name in ("uvicorn.error",):
         service_logger = logging.getLogger(logger_name)
         # Development configurations commonly propagate these loggers to the
         # root logger. In that case the root handler is sufficient and adding

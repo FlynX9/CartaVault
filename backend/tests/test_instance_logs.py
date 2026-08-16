@@ -32,33 +32,6 @@ def test_log_sanitizer_redacts_credentials_and_minimizes_emails() -> None:
 
 def test_log_collector_filters_and_pages_bounded_entries() -> None:
     clear_logs_for_tests()
-
-
-def test_internal_instance_events_are_available_without_server_log_propagation() -> None:
-    clear_logs_for_tests()
-
-    record_instance_log(logging.INFO, "app.instance", "CartaVault instance log collector started")
-
-    items, _truncated, _next_before = query_logs(component="API", limit=10)
-
-    assert len(items) == 1
-    assert items[0]["level"] == "INFO"
-    assert items[0]["logger"] == "app.instance"
-    assert items[0]["message"] == "CartaVault instance log collector started"
-    clear_logs_for_tests()
-
-
-def test_collector_attaches_to_non_propagating_uvicorn_logger() -> None:
-    from app.instance_status.logs import install_instance_log_handler
-
-    logger = logging.getLogger("uvicorn.access")
-    previous_propagation = logger.propagate
-    try:
-        logger.propagate = False
-        install_instance_log_handler()
-        assert any(isinstance(handler, InstanceLogHandler) for handler in logger.handlers)
-    finally:
-        logger.propagate = previous_propagation
     handler = InstanceLogHandler()
     routing_record = logging.LogRecord(
         "app.routing.provider", logging.WARNING, __file__, 1,
@@ -79,4 +52,45 @@ def test_collector_attaches_to_non_propagating_uvicorn_logger() -> None:
     assert "provider-secret" not in str(items[0]["message"])
     assert truncated is False
     assert next_before is None
+    clear_logs_for_tests()
+
+
+def test_internal_instance_events_are_available_without_server_log_propagation() -> None:
+    clear_logs_for_tests()
+
+    record_instance_log(logging.INFO, "app.instance", "CartaVault instance log collector started")
+
+    items, _truncated, _next_before = query_logs(component="API", limit=10)
+
+    assert len(items) == 1
+    assert items[0]["level"] == "INFO"
+    assert items[0]["logger"] == "app.instance"
+    assert items[0]["message"] == "CartaVault instance log collector started"
+    clear_logs_for_tests()
+
+
+def test_collector_attaches_to_non_propagating_uvicorn_error_logger() -> None:
+    from app.instance_status.logs import install_instance_log_handler
+
+    logger = logging.getLogger("uvicorn.error")
+    previous_propagation = logger.propagate
+    try:
+        logger.propagate = False
+        install_instance_log_handler()
+        assert any(isinstance(handler, InstanceLogHandler) for handler in logger.handlers)
+    finally:
+        logger.propagate = previous_propagation
+
+
+def test_collector_ignores_uvicorn_access_records() -> None:
+    clear_logs_for_tests()
+    handler = InstanceLogHandler()
+    handler.emit(logging.LogRecord(
+        "uvicorn.access", logging.INFO, __file__, 1,
+        '127.0.0.1:12345 - "GET /api/auth/registration-status HTTP/1.1" 200', (), None,
+    ))
+
+    items, _truncated, _next_before = query_logs(limit=10)
+
+    assert items == []
     clear_logs_for_tests()
