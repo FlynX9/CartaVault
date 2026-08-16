@@ -309,6 +309,10 @@ jobs:
             -out "$tls_live/fullchain.pem" \
             -subj "/CN=$CARTAVAULT_HOSTNAME" \
             -addext "subjectAltName=DNS:$CARTAVAULT_HOSTNAME"
+          # Docker on GitHub uses user-namespace remapping. Make this disposable
+          # CI-only key readable through the read-only bind mount; production
+          # certificate permissions remain deployment-owned and unchanged.
+          chmod 644 "$tls_live/privkey.pem" "$tls_live/fullchain.pem"
           printf 'cartavault-acme-smoke' > "$CARTAVAULT_ACME_ROOT/.well-known/acme-challenge/smoke"
 
           docker compose -f docker/compose.saas.yml up -d --wait --wait-timeout 180
