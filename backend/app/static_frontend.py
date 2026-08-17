@@ -16,6 +16,9 @@ class ImmutableStaticFiles(StaticFiles):
         return response
 
 
+FRONTEND_ENTRYPOINT_CACHE_CONTROL = "no-cache, no-store, must-revalidate"
+
+
 def normalize_api_prefix(value: str | None) -> str:
     if not value:
         return ""
@@ -59,15 +62,28 @@ def install_frontend(
         if requested_file.is_relative_to(frontend_root) and requested_index.is_file():
             return FileResponse(
                 requested_index,
-                headers={"Cache-Control": "public, max-age=3600"},
+                headers={
+                    "Cache-Control": (
+                        FRONTEND_ENTRYPOINT_CACHE_CONTROL
+                        if requested_index == index_file
+                        else "public, max-age=3600"
+                    )
+                },
             )
         if requested_file.is_relative_to(frontend_root) and requested_file.is_file():
             return FileResponse(
                 requested_file,
-                headers={"Cache-Control": "public, max-age=3600"},
+                headers={
+                    "Cache-Control": (
+                        FRONTEND_ENTRYPOINT_CACHE_CONTROL
+                        if requested_file == index_file
+                        or requested_file.name == "service-worker.js"
+                        else "public, max-age=3600"
+                    )
+                },
             )
 
         return FileResponse(
             index_file,
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+            headers={"Cache-Control": FRONTEND_ENTRYPOINT_CACHE_CONTROL},
         )

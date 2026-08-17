@@ -24,6 +24,7 @@ def test_compiled_frontend_serves_assets_and_deep_links_without_intercepting_api
     assets.mkdir(parents=True)
     (frontend / "index.html").write_text("<html>CartaVault shell</html>", encoding="utf-8")
     (frontend / "manifest.webmanifest").write_text("{}", encoding="utf-8")
+    (frontend / "service-worker.js").write_text("self.addEventListener('fetch', () => {})", encoding="utf-8")
     docs_page = frontend / "docs" / "fr" / "account" / "security"
     docs_page.mkdir(parents=True)
     (docs_page / "index.html").write_text("<html>Documentation sécurité</html>", encoding="utf-8")
@@ -50,6 +51,18 @@ def test_compiled_frontend_serves_assets_and_deep_links_without_intercepting_api
     assert deep_link_response.status_code == 200
     assert "CartaVault shell" in deep_link_response.text
     assert deep_link_response.headers["cache-control"] == "no-cache, no-store, must-revalidate"
+
+    root_response = client.get("/")
+    assert root_response.status_code == 200
+    assert root_response.headers["cache-control"] == "no-cache, no-store, must-revalidate"
+
+    explicit_index_response = client.get("/index.html")
+    assert explicit_index_response.status_code == 200
+    assert explicit_index_response.headers["cache-control"] == "no-cache, no-store, must-revalidate"
+
+    service_worker_response = client.get("/service-worker.js")
+    assert service_worker_response.status_code == 200
+    assert service_worker_response.headers["cache-control"] == "no-cache, no-store, must-revalidate"
 
     asset_response = client.get("/assets/index-abc123.js")
     assert asset_response.status_code == 200

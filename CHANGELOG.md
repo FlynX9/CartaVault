@@ -30,6 +30,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - No documented changes yet.
 
+## [1.0.0-rc.2] - 2026-08-17
+
+Second CartaVault 1.0 release candidate.
+
+### Fixed
+
+- Prevented browsers and PWA installations from retaining a stale application entry point after a container upgrade.
+- Ensured the classic basemap configuration remains visible alongside the independently configured satellite basemap.
+
 ## [1.0.0-rc.1] - 2026-08-17
 
 First CartaVault 1.0 release candidate.
@@ -87,5 +96,6 @@ First CartaVault 1.0 release candidate.
 - Shared instance credentials remain encrypted, masked and read-only for users.
 - Release images run as a non-root user with a read-only filesystem and dropped capabilities.
 
-[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.1...HEAD
+[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.2...HEAD
+[1.0.0-rc.2]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.1
