@@ -26,10 +26,11 @@ export interface CredentialStatus {
 }
 
 export interface AdminApiKey {
-  id: string; name: string; provider: 'google' | 'stadia' | 'openrouteservice' | 'resend' | 'master'; last4: string
+  id: string; name: string; provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice' | 'resend' | 'master'; last4: string
   verified: boolean; verified_at: string | null; last_used_at: string | null
   last_error_code: string | null; last_error_status: number | null; last_error_message: string | null; last_error_at: string | null
   created_at: string | null; updated_at: string | null; editable: boolean
+  capabilities?: Array<'routing' | 'places_search' | 'classic_basemap' | 'satellite_basemap'>
 }
 
 export interface QuotaLimits {
@@ -45,7 +46,7 @@ export interface QuotaLimits {
 export type QuotaKey = keyof QuotaLimits
 export interface QuotaProfile {
   id: string; name: string; description: string | null; is_default: boolean; is_system: boolean; is_active: boolean
-  limits: QuotaLimits; assigned_users_count: number; created_at: string; updated_at: string
+  limits: QuotaLimits; assigned_users_count: number; created_at: string; updated_at: string; api_key_ids?: string[]
 }
 export interface EffectiveQuota {
   user_id: string; profile: Pick<QuotaProfile, 'id' | 'name' | 'is_default' | 'is_system' | 'is_active' | 'limits'>

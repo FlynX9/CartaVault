@@ -6,11 +6,12 @@ import { useModalFocus } from './useModalFocus'
 
 function TestDialog() {
   const [open, setOpen] = useState(true)
+  const [value, setValue] = useState('')
   const trigger = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLElement>(null)
   const first = useRef<HTMLButtonElement>(null)
   useModalFocus({ dialogRef: dialog, initialFocusRef: first, triggerRef: trigger, onEscape: () => setOpen(false) })
-  return <><button ref={trigger}>Ouvrir</button>{open && <section ref={dialog} role="dialog"><button ref={first}>Premier</button><button>Dernier</button></section>}</>
+  return <><button ref={trigger}>Ouvrir</button>{open && <section ref={dialog} role="dialog"><button ref={first}>Premier</button><input aria-label="Saisie" value={value} onChange={(event) => setValue(event.target.value)} /><button>Dernier</button></section>}</>
 }
 
 describe('useModalFocus', () => {
@@ -23,5 +24,16 @@ describe('useModalFocus', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ouvrir' })).toHaveFocus()
+  })
+
+  it('keeps focus on a controlled field when the dialog rerenders', () => {
+    render(<TestDialog />)
+    const input = screen.getByRole('textbox', { name: 'Saisie' })
+    input.focus()
+
+    fireEvent.change(input, { target: { value: 'Quota' } })
+
+    expect(input).toHaveFocus()
+    expect(input).toHaveValue('Quota')
   })
 })

@@ -128,6 +128,18 @@ describe('AdminConsole', () => {
     await waitFor(() => expect(getAdminApiKeys).toHaveBeenCalled())
   })
 
+  it('refreshes instance keys when returning to quotas', async () => {
+    render(<MemoryRouter initialEntries={['/admin/quotas']}><AdminConsole /></MemoryRouter>)
+    await waitFor(() => expect(getAdminApiKeys).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByRole('link', { name: 'Clés API' }))
+    expect(await screen.findByRole('heading', { name: 'Clés API' })).toBeVisible()
+    await waitFor(() => expect(getAdminApiKeys).toHaveBeenCalledTimes(2))
+
+    fireEvent.click(screen.getByRole('link', { name: 'Quotas' }))
+    await waitFor(() => expect(getAdminApiKeys).toHaveBeenCalledTimes(3))
+  })
+
   it('keeps drafts between tabs and saves all modified settings from the header', async () => {
     render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
 

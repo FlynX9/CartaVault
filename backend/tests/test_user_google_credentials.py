@@ -6,7 +6,9 @@ from cryptography.fernet import Fernet
 import pytest
 from sqlalchemy import select
 
-from app.auth.models import User, UserApiCredential
+from app.auth.credential_encryption import CredentialEncryptionService
+from app.auth.models import AdminApiCredential, User, UserApiCredential
+from app.quotas.models import QuotaProfile, QuotaProfileApiCredential
 
 
 pytestmark = pytest.mark.integration
@@ -59,6 +61,54 @@ def test_credentials_are_isolated_between_users(integration_client, database_ses
     _create_key(integration_client, second_csrf, name="Second", provider="google", secret="fake-google-key-user-b")
     rows = database_session.scalars(select(UserApiCredential).where(UserApiCredential.user_id.in_([auth_user.id, other.id]))).all()
     assert len(rows) == 2 and {row.secret_last4 for row in rows} == {"er-a", "er-b"}
+
+
+def test_quota_shared_instance_key_is_read_only_and_usable_for_authorized_service(
+    integration_client, database_session, auth_user, monkeypatch
+) -> None:
+    _configure_encryption(monkeypatch)
+    encrypted = CredentialEncryptionService.from_settings().encrypt("shared-google-places-secret")
+    key = AdminApiCredential(
+        provider="google", name="Google partagé", encrypted_secret=encrypted.ciphertext,
+        encryption_version=encrypted.version, secret_last4="cret", capabilities=["places_search"],
+    )
+    profile = QuotaProfile(name=f"Shared keys {uuid4()}", is_active=True)
+    profile.api_credential_links.append(QuotaProfileApiCredential(api_credential=key))
+    auth_user.quota_profile = profile
+    database_session.add_all([key, profile])
+    database_session.commit()
+    csrf = _login(integration_client, monkeypatch, auth_user)
+
+    catalog = integration_client.get("/account/api-keys")
+    assert catalog.status_code == 200
+    shared = catalog.json()[0]
+    assert shared["id"] == str(key.id)
+    assert shared["source"] == "instance" and shared["editable"] is False
+    assert shared["capabilities"] == ["places_search"]
+    assert "shared-google-places-secret" not in catalog.text
+    assert integration_client.patch(
+        f"/account/api-keys/{key.id}", json={"name": "stolen"}, headers={"X-CSRF-Token": csrf}
+    ).status_code == 404
+
+    auth_user.preferences = {"places": {"provider": "google", "api_key_id": str(key.id)}}
+    database_session.commit()
+    calls: list[str] = []
+    monkeypatch.setattr(
+        "app.auth.google_places_credential_router.search_google_places",
+        lambda secret, *_args, **_kwargs: calls.append(secret) or [],
+    )
+    response = integration_client.get("/account/integrations/google-places/search", params={"q": "Paris"})
+    assert response.status_code == 200
+    assert calls == ["shared-google-places-secret"]
+
+    key.capabilities = ["routing"]
+    database_session.commit()
+    unavailable = integration_client.get(
+        "/account/integrations/google-places/search", params={"q": "Paris"}
+    )
+    assert unavailable.status_code == 200
+    assert unavailable.json()["available"] is False
+    assert calls == ["shared-google-places-secret"]
 
 
 def test_selected_google_key_searches_places_without_exposing_secret(integration_client, database_session, auth_user, monkeypatch) -> None:

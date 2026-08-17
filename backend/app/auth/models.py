@@ -13,7 +13,7 @@ from app.database import Base
 if TYPE_CHECKING:
     from app.maps.models import MapInvitation, MapMembership, PoiMap
     from app.trips.models import Trip
-    from app.quotas.models import QuotaProfile
+    from app.quotas.models import QuotaProfile, QuotaProfileApiCredential
 
 
 class User(Base):
@@ -106,7 +106,7 @@ class UserActivityEvent(Base):
 class UserApiCredential(Base):
     __tablename__ = "user_api_credentials"
     __table_args__ = (
-        CheckConstraint("provider IN ('google', 'stadia', 'openrouteservice')", name="user_api_credentials_provider_check"),
+        CheckConstraint("provider IN ('google', 'stadia', 'mapbox', 'openrouteservice')", name="user_api_credentials_provider_check"),
         CheckConstraint("encryption_version > 0", name="user_api_credentials_encryption_version_check"),
         Index("user_api_credentials_user_id_idx", "user_id"),
     )
@@ -249,7 +249,7 @@ class SystemCredential(Base):
 class AdminApiCredential(Base):
     __tablename__ = "admin_api_credentials"
     __table_args__ = (
-        CheckConstraint("provider IN ('google', 'stadia', 'openrouteservice', 'resend')", name="admin_api_credentials_provider_check"),
+        CheckConstraint("provider IN ('google', 'stadia', 'mapbox', 'openrouteservice', 'resend')", name="admin_api_credentials_provider_check"),
         CheckConstraint("encryption_version > 0", name="admin_api_credentials_encryption_version_check"),
         Index("admin_api_credentials_provider_idx", "provider"),
     )
@@ -268,3 +268,8 @@ class AdminApiCredential(Base):
     last_error_status: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     last_error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_error_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    capabilities: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+
+    quota_profile_links: Mapped[list["QuotaProfileApiCredential"]] = relationship(
+        back_populates="api_credential", cascade="all, delete-orphan"
+    )

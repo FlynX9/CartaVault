@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth.api_keys import decrypt_api_key
+from app.auth.api_key_capabilities import default_capabilities
+from app.auth.api_keys import accessible_instance_api_keys, decrypt_api_key
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import get_current_session
 from app.auth.models import UserApiCredential, UserSession
@@ -52,6 +53,20 @@ def _serialize(key: UserApiCredential) -> dict[str, object]:
         "created_at": key.created_at,
         "updated_at": key.updated_at,
         "editable": True,
+        "source": "personal",
+        "capabilities": default_capabilities(key.provider),
+        "quota_profile_name": None,
+    }
+
+
+def _serialize_instance(key, profile_name: str) -> dict[str, object]:
+    return {
+        "id": key.id, "name": key.name, "provider": key.provider, "last4": key.secret_last4,
+        "verified": key.verified_at is not None, "verified_at": key.verified_at, "last_used_at": key.last_used_at,
+        "last_error_code": key.last_error_code, "last_error_status": key.last_error_status,
+        "last_error_message": key.last_error_message, "last_error_at": key.last_error_at,
+        "created_at": key.created_at, "updated_at": key.updated_at, "editable": False,
+        "source": "instance", "capabilities": key.capabilities, "quota_profile_name": profile_name,
     }
 
 
@@ -65,7 +80,8 @@ def _clean(value: str, label: str) -> str:
 @router.get("")
 def list_api_keys(session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> list[dict[str, object]]:
     rows = session.scalars(select(UserApiCredential).where(UserApiCredential.user_id == current.user_id).order_by(UserApiCredential.provider, UserApiCredential.name)).all()
-    return [_serialize(row) for row in rows]
+    profile_name = current.user.quota_profile.name
+    return [_serialize_instance(row, profile_name) for row in accessible_instance_api_keys(session, current.user)] + [_serialize(row) for row in rows]
 
 
 @router.post("")
@@ -145,7 +161,7 @@ def delete_api_key(key_id: UUID, session: Session = Depends(get_db), current: Us
         if isinstance(settings, dict):
             updated = dict(settings)
             changed = False
-            for field in ("api_key_id", "stadia_api_key_id", "google_api_key_id", "google_maps_js_api_key_id", "mapbox_api_key_id"):
+            for field in ("api_key_id", "stadia_api_key_id", "google_api_key_id", "google_maps_js_api_key_id", "mapbox_api_key_id", "classic_api_key_id", "satellite_api_key_id"):
                 if str(updated.get(field) or "") == str(key_id):
                     updated[field] = None
                     changed = True

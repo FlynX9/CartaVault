@@ -20,6 +20,7 @@ class GoogleTilesSession:
     credential_id: UUID
     provider_session: str
     expires_at: datetime
+    capability: str = "satellite_basemap"
 
 
 def encode_google_tiles_session(session: GoogleTilesSession) -> str:
@@ -30,6 +31,7 @@ def encode_google_tiles_session(session: GoogleTilesSession) -> str:
             "credential_id": str(session.credential_id),
             "provider_session": session.provider_session,
             "expires_at": session.expires_at.astimezone(UTC).isoformat(),
+            "capability": session.capability,
         },
         separators=(",", ":"),
     )
@@ -48,6 +50,7 @@ def decode_google_tiles_session(token: str) -> GoogleTilesSession:
             credential_id=UUID(str(payload["credential_id"])),
             provider_session=str(payload["provider_session"]),
             expires_at=expires_at,
+            capability=str(payload.get("capability") or "satellite_basemap"),
         )
     except (CredentialEncryptionError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         raise ProviderSessionError("Invalid provider session") from error

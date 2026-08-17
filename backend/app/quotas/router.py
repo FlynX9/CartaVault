@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_admin
 from app.auth.activity import record_user_activity
-from app.auth.models import User
+from app.auth.models import AdminApiCredential, User
 from app.database import get_db
-from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
+from app.quotas.models import QuotaProfile, QuotaProfileApiCredential, UNLIMITED_PROFILE_ID
 from app.quotas.registry import QUOTA_REGISTRY, QuotaKey
 from app.quotas.schemas import (
     EffectiveQuotaItem, EffectiveQuotaRead, QuotaLimits, QuotaProfileAssignment,
@@ -40,12 +40,25 @@ def _read(session: Session, profile: QuotaProfile) -> QuotaProfileRead:
     return QuotaProfileRead(
         **_summary(profile).model_dump(), description=profile.description,
         assigned_users_count=assigned, created_at=profile.created_at, updated_at=profile.updated_at,
+        api_key_ids=sorted((link.admin_api_credential_id for link in profile.api_credential_links), key=str),
     )
 
 
 def _apply_limits(profile: QuotaProfile, limits: QuotaLimits) -> None:
     for key, value in limits.model_dump().items():
         setattr(profile, key, value)
+
+
+def _apply_api_keys(session: Session, profile: QuotaProfile, key_ids: list[UUID]) -> None:
+    unique_ids = set(key_ids)
+    keys = session.scalars(select(AdminApiCredential).where(AdminApiCredential.id.in_(unique_ids))).all() if unique_ids else []
+    if len(keys) != len(unique_ids):
+        raise HTTPException(422, detail={"code": "quota.profile.api_key_not_found", "params": {}})
+    if any(key.provider == "resend" or not key.capabilities for key in keys):
+        raise HTTPException(422, detail={"code": "quota.profile.api_key_not_shareable", "params": {}})
+    profile.api_credential_links = [
+        QuotaProfileApiCredential(admin_api_credential_id=key_id) for key_id in sorted(unique_ids, key=str)
+    ]
 
 
 def _profile_conflict(error: IntegrityError) -> HTTPException:
@@ -69,6 +82,7 @@ def list_profiles(session: Session = Depends(get_db)) -> list[QuotaProfileRead]:
 def create_profile(payload: QuotaProfileCreate, session: Session = Depends(get_db)) -> QuotaProfileRead:
     profile = QuotaProfile(name=payload.name, description=payload.description, is_active=payload.is_active)
     _apply_limits(profile, payload.limits)
+    _apply_api_keys(session, profile, payload.api_key_ids)
     try:
         session.add(profile); session.commit(); session.refresh(profile)
         return _read(session, profile)
@@ -96,6 +110,8 @@ def update_profile(profile_id: UUID, payload: QuotaProfileUpdate, session: Sessi
         profile.is_active = payload.is_active
     if payload.limits is not None:
         _apply_limits(profile, payload.limits)
+    if payload.api_key_ids is not None:
+        _apply_api_keys(session, profile, payload.api_key_ids)
     try:
         session.commit(); session.refresh(profile); return _read(session, profile)
     except IntegrityError as error:
@@ -112,6 +128,7 @@ def duplicate_profile(profile_id: UUID, session: Session = Depends(get_db)) -> Q
         marker = f" ({suffix})"; name = f"{base[:100-len(marker)]}{marker}"; suffix += 1
     duplicate = QuotaProfile(name=name, description=source.description, is_active=True)
     _apply_limits(duplicate, _limits(source))
+    _apply_api_keys(session, duplicate, [link.admin_api_credential_id for link in source.api_credential_links])
     session.add(duplicate); session.commit(); session.refresh(duplicate)
     return _read(session, duplicate)
 

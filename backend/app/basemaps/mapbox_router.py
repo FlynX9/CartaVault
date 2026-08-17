@@ -41,7 +41,7 @@ def validate_mapbox_key(token: str) -> None:
 
 @router.get("/status")
 def status(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, bool]:
-    return {"available": selected_basemap_api_key(session, user, "mapbox") is not None}
+    return {"available": selected_basemap_api_key(session, user, "mapbox", "satellite_basemap") is not None}
 
 
 @router.get("/tiles/{z}/{x}/{y}")
@@ -49,7 +49,7 @@ def tile(z: int, x: int, y: int, session: Session = Depends(get_db), user: User 
     maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
-    credential = selected_basemap_api_key(session, user, "mapbox")
+    credential = selected_basemap_api_key(session, user, "mapbox", "satellite_basemap")
     if credential is None:
         raise HTTPException(503, {"code": "MAPBOX_NOT_CONFIGURED", "message": "Le fond Mapbox Satellite n’est pas configuré."})
     try:

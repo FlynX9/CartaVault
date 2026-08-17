@@ -14,11 +14,13 @@ from app.admin.schemas import (
     AdminApiKeyCreate, AdminApiKeyUpdate, AdminUserActivityRead, AdminUserDetails, AdminUserPage, AdminUserRead, AdminUserSummary, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
 )
 from app.auth.activity import record_user_activity
+from app.auth.api_key_capabilities import default_capabilities, normalized_capabilities
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.dependencies import require_admin
 from app.auth.avatar_storage import resolve_avatar
 from app.auth.models import AdminApiCredential, SystemCredential, User, UserActivityEvent, UserSession
 from app.basemaps.stadia_router import _validate_key as validate_stadia_key
+from app.basemaps.mapbox_router import validate_mapbox_key
 from app.config import GoogleRoutesSettings, credential_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
@@ -283,6 +285,7 @@ def _admin_api_key_read(key: AdminApiCredential) -> dict[str, object]:
         "last_error_code": key.last_error_code, "last_error_status": key.last_error_status,
         "last_error_message": key.last_error_message, "last_error_at": key.last_error_at,
         "created_at": key.created_at, "updated_at": key.updated_at, "editable": True,
+        "capabilities": key.capabilities,
     }
 
 
@@ -294,6 +297,7 @@ def _master_key_read() -> dict[str, object]:
         "last_error_code": None if configured else "CREDENTIAL_STORAGE_UNAVAILABLE", "last_error_status": None,
         "last_error_message": None if configured else "La clÃ© maÃ®tresse de chiffrement nâ€™est pas configurÃ©e.",
         "last_error_at": None, "created_at": None, "updated_at": None, "editable": False,
+        "capabilities": [],
     }
 
 
@@ -340,7 +344,11 @@ def create_admin_api_key(data: AdminApiKeyCreate, session: Session = Depends(get
         encrypted = CredentialEncryptionService.from_settings().encrypt(secret)
     except CredentialEncryptionError as error:
         raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
-    key = AdminApiCredential(provider=data.provider, name=data.name.strip(), encrypted_secret=encrypted.ciphertext, encryption_version=encrypted.version, secret_last4=secret[-4:])
+    requested = data.capabilities if data.capabilities is not None else default_capabilities(data.provider)
+    capabilities = normalized_capabilities(data.provider, requested)
+    if len(capabilities) != len(set(requested)):
+        raise HTTPException(422, {"code": "API_KEY_CAPABILITY_INVALID", "message": "Une capacité n’est pas compatible avec ce fournisseur."})
+    key = AdminApiCredential(provider=data.provider, name=data.name.strip(), encrypted_secret=encrypted.ciphertext, encryption_version=encrypted.version, secret_last4=secret[-4:], capabilities=capabilities)
     session.add(key); session.flush()
     if key.provider == "resend": _sync_resend_credential(session, key)
     session.commit(); session.refresh(key)
@@ -352,6 +360,11 @@ def update_admin_api_key(key_id: UUID, data: AdminApiKeyUpdate, session: Session
     key = session.get(AdminApiCredential, key_id)
     if key is None: raise HTTPException(404, {"code": "API_KEY_NOT_FOUND", "message": "ClÃ© API introuvable."})
     if data.name is not None: key.name = data.name.strip()
+    if data.capabilities is not None:
+        capabilities = normalized_capabilities(key.provider, data.capabilities)
+        if len(capabilities) != len(set(data.capabilities)):
+            raise HTTPException(422, {"code": "API_KEY_CAPABILITY_INVALID", "message": "Une capacité n’est pas compatible avec ce fournisseur."})
+        key.capabilities = capabilities
     if data.api_key is not None:
         secret = _clean_admin_key(data.api_key)
         if key.provider == "resend" and not secret.startswith("re_"): raise HTTPException(422, {"code": "RESEND_KEY_INVALID", "message": "Une clÃ© API Resend valide est requise."})
@@ -375,6 +388,8 @@ def verify_admin_api_key(key_id: UUID, session: Session = Depends(get_db), admin
             GoogleRoutesProvider(secret, GoogleRoutesSettings(routing_preference="TRAFFIC_UNAWARE")).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
         elif key.provider == "stadia":
             validate_stadia_key(secret)
+        elif key.provider == "mapbox":
+            validate_mapbox_key(secret)
         elif key.provider == "openrouteservice":
             OpenRouteServiceProvider(secret).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
         else:

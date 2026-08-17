@@ -137,6 +137,8 @@ class BasemapPreferences(BaseModel):
     google_api_key_id: UUID | None = None
     google_maps_js_api_key_id: UUID | None = None
     mapbox_api_key_id: UUID | None = None
+    classic_api_key_id: UUID | None = None
+    satellite_api_key_id: UUID | None = None
 
 
 class OnboardingPreferences(BaseModel):

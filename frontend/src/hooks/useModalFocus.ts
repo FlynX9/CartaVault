@@ -1,4 +1,4 @@
-import { type RefObject, useEffect } from 'react'
+import { type RefObject, useEffect, useRef } from 'react'
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -18,6 +18,9 @@ interface UseModalFocusOptions {
 
 /** Keeps keyboard focus inside a modal and restores it to its trigger on close. */
 export function useModalFocus({ dialogRef, initialFocusRef, triggerRef, onEscape }: UseModalFocusOptions) {
+  const onEscapeRef = useRef(onEscape)
+  onEscapeRef.current = onEscape
+
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return undefined
@@ -30,7 +33,11 @@ export function useModalFocus({ dialogRef, initialFocusRef, triggerRef, onEscape
     }
     const frame = window.requestAnimationFrame(focusInitialElement)
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { onEscape?.(); return }
+      if (event.key === 'Escape') {
+        onEscapeRef.current?.()
+        ;(triggerRef?.current ?? trigger ?? previousActiveElement)?.focus()
+        return
+      }
       if (event.key !== 'Tab') return
       const focusable = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
       if (!focusable.length) return
@@ -45,5 +52,5 @@ export function useModalFocus({ dialogRef, initialFocusRef, triggerRef, onEscape
       document.removeEventListener('keydown', onKeyDown)
       ;(trigger ?? previousActiveElement)?.focus()
     }
-  }, [dialogRef, initialFocusRef, onEscape, triggerRef])
+  }, [dialogRef, initialFocusRef, triggerRef])
 }

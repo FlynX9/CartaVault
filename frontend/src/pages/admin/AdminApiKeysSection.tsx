@@ -9,13 +9,17 @@ import {
   Info,
   KeyRound,
   LockKeyhole,
+  Map as MapIcon,
   Pencil,
   Play,
   Plus,
   Save,
+  Satellite,
+  Search,
   ShieldCheck,
   Trash2,
   TriangleAlert,
+  Route,
   X,
 } from "lucide-react";
 
@@ -31,7 +35,29 @@ import { useConfirmDialog } from "../../components/common/useConfirmDialog";
 import { useI18n } from "../../i18n/useI18n";
 import type { I18nContextValue } from "../../i18n/i18nContext";
 
-type EditableProvider = "google" | "stadia" | "openrouteservice" | "resend";
+type EditableProvider =
+  "google" | "stadia" | "mapbox" | "openrouteservice" | "resend";
+type Capability =
+  "routing" | "places_search" | "classic_basemap" | "satellite_basemap";
+const PROVIDER_CAPABILITIES: Record<EditableProvider, Capability[]> = {
+  google: ["routing", "places_search", "classic_basemap", "satellite_basemap"],
+  stadia: ["places_search", "classic_basemap", "satellite_basemap"],
+  mapbox: ["satellite_basemap"],
+  openrouteservice: ["routing"],
+  resend: [],
+};
+const CAPABILITY_LABELS: Record<Capability, string> = {
+  routing: "Routage",
+  places_search: "Recherche",
+  classic_basemap: "Fond classique",
+  satellite_basemap: "Satellite",
+};
+const CAPABILITY_ICONS = {
+  routing: Route,
+  places_search: Search,
+  classic_basemap: MapIcon,
+  satellite_basemap: Satellite,
+} satisfies Record<Capability, typeof Route>;
 
 export function AdminApiKeysSection() {
   const { t, locale } = useI18n();
@@ -43,10 +69,15 @@ export function AdminApiKeysSection() {
   const [detailsKey, setDetailsKey] = useState<AdminApiKey | null>(null);
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<EditableProvider>("google");
+  const [capabilities, setCapabilities] = useState<Capability[]>(
+    PROVIDER_CAPABILITIES.google,
+  );
   const [secret, setSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' });
+  const { confirm, confirmationDialog } = useConfirmDialog({
+    overlayClassName: "account-admin-modal-overlay",
+  });
   const load = () =>
     void getAdminApiKeys()
       .then(setKeys)
@@ -83,6 +114,12 @@ export function AdminApiKeysSection() {
     setEditing(key);
     setName(key === "new" ? "" : key.name);
     setProvider(key === "new" ? "google" : (key.provider as EditableProvider));
+    setCapabilities(
+      key === "new"
+        ? PROVIDER_CAPABILITIES.google
+        : (key.capabilities ??
+            PROVIDER_CAPABILITIES[key.provider as EditableProvider]),
+    );
     setSecret("");
     setShowSecret(false);
     setError(null);
@@ -97,10 +134,12 @@ export function AdminApiKeysSection() {
             name: name.trim(),
             provider,
             api_key: secret.trim(),
+            capabilities,
           })
         : await updateAdminApiKey(editing.id, {
             name: name.trim(),
             ...(secret.trim() ? { api_key: secret.trim() } : {}),
+            capabilities,
           });
     setKeys((items) =>
       editing === "new"
@@ -167,7 +206,9 @@ export function AdminApiKeysSection() {
       }
     } catch (reason) {
       setError(
-        reason instanceof Error ? `Échec de l’enregistrement de la clé API d’instance. ${reason.message}` : "Échec de l’enregistrement de la clé API d’instance.",
+        reason instanceof Error
+          ? `Échec de l’enregistrement de la clé API d’instance. ${reason.message}`
+          : "Échec de l’enregistrement de la clé API d’instance.",
       );
     } finally {
       setBusy(false);
@@ -189,7 +230,11 @@ export function AdminApiKeysSection() {
           : `Test de la clé API d’instance « ${key.name} » réussi.`,
       );
     } catch (reason) {
-      setError(reason instanceof Error ? `Échec du test de la clé API d’instance « ${key.name} ». ${reason.message}` : `Échec du test de la clé API d’instance « ${key.name} ».`);
+      setError(
+        reason instanceof Error
+          ? `Échec du test de la clé API d’instance « ${key.name} ». ${reason.message}`
+          : `Échec du test de la clé API d’instance « ${key.name} ».`,
+      );
       load();
     } finally {
       setBusy(false);
@@ -231,9 +276,9 @@ export function AdminApiKeysSection() {
   return (
     <section>
       <header className="account-content-heading">
-        <p className="cv-workspace-panel__eyebrow">{t('admin.api.eyebrow')}</p>
-        <h2>{t('admin.api.title')}</h2>
-        <span>{t('admin.api.description')}</span>
+        <p className="cv-workspace-panel__eyebrow">{t("admin.api.eyebrow")}</p>
+        <h2>{t("admin.api.title")}</h2>
+        <span>{t("admin.api.description")}</span>
       </header>
       {error && !editing && (
         <div className="form-alert" role="alert">
@@ -247,19 +292,23 @@ export function AdminApiKeysSection() {
       )}
       <section
         className="account-security-summary account-personal-api-summary"
-        aria-label={t('admin.api.summary')}
+        aria-label={t("admin.api.summary")}
       >
         <div className="account-api-summary">
           <Metric
             icon={KeyRound}
             value={metrics.configured}
-            label={t('account.apiCatalog.registered')}
+            label={t("account.apiCatalog.registered")}
           />
-          <Metric icon={Check} value={metrics.verified} label={t('account.apiCatalog.verifiedPlural')} />
+          <Metric
+            icon={Check}
+            value={metrics.verified}
+            label={t("account.apiCatalog.verifiedPlural")}
+          />
           <Metric
             icon={TriangleAlert}
             value={metrics.errors}
-            label={t('account.apiCatalog.errors')}
+            label={t("account.apiCatalog.errors")}
             tone="warning"
           />
           <Metric
@@ -267,9 +316,9 @@ export function AdminApiKeysSection() {
             value={
               metrics.lastActivity
                 ? new Date(metrics.lastActivity).toLocaleDateString(locale)
-                : t('account.apiCatalog.never')
+                : t("account.apiCatalog.never")
             }
-            label={t('account.apiCatalog.lastActivity')}
+            label={t("account.apiCatalog.lastActivity")}
           />
         </div>
       </section>
@@ -280,9 +329,9 @@ export function AdminApiKeysSection() {
               <span className="account-preference-card__icon">
                 <KeyRound size={19} />
               </span>
-              <h3>{t('admin.api.instanceKeys')}</h3>
+              <h3>{t("admin.api.instanceKeys")}</h3>
             </div>
-            <p>{t('admin.api.instanceHelp')}</p>
+            <p>{t("admin.api.instanceHelp")}</p>
           </div>
           <button
             className="account-button account-button--primary"
@@ -290,15 +339,15 @@ export function AdminApiKeysSection() {
             onClick={() => open("new")}
           >
             <Plus size={16} />
-            {t('account.apiCatalog.add')}
+            {t("account.apiCatalog.add")}
           </button>
         </header>
         {loading ? (
-          <p className="account-card-description">{t('account.apiCatalog.loading')}</p>
-        ) : keys.length === 0 ? (
-          <p className="account-api-catalog__empty">
-            {t('admin.api.empty')}
+          <p className="account-card-description">
+            {t("account.apiCatalog.loading")}
           </p>
+        ) : keys.length === 0 ? (
+          <p className="account-api-catalog__empty">{t("admin.api.empty")}</p>
         ) : (
           <div className="account-api-catalog__cards">
             {keys.map((key) => (
@@ -318,7 +367,11 @@ export function AdminApiKeysSection() {
       </section>
       <aside className="account-api-key-note">
         <Info size={22} />
-        <p>{t('admin.api.noteResend')}<br />{t('admin.api.noteMaster')}</p>
+        <p>
+          {t("admin.api.noteResend")}
+          <br />
+          {t("admin.api.noteMaster")}
+        </p>
       </aside>
       {editing &&
         createPortal(
@@ -383,25 +436,81 @@ export function AdminApiKeysSection() {
                       <ProviderButton
                         provider="google"
                         selected={provider === "google"}
-                        onClick={() => setProvider("google")}
+                        onClick={() => {
+                          setProvider("google");
+                          setCapabilities(PROVIDER_CAPABILITIES.google);
+                        }}
                       />
                       <ProviderButton
                         provider="stadia"
                         selected={provider === "stadia"}
-                        onClick={() => setProvider("stadia")}
+                        onClick={() => {
+                          setProvider("stadia");
+                          setCapabilities(PROVIDER_CAPABILITIES.stadia);
+                        }}
+                      />
+                      <ProviderButton
+                        provider="mapbox"
+                        selected={provider === "mapbox"}
+                        onClick={() => {
+                          setProvider("mapbox");
+                          setCapabilities(PROVIDER_CAPABILITIES.mapbox);
+                        }}
                       />
                       <ProviderButton
                         provider="openrouteservice"
                         selected={provider === "openrouteservice"}
-                        onClick={() => setProvider("openrouteservice")}
+                        onClick={() => {
+                          setProvider("openrouteservice");
+                          setCapabilities(
+                            PROVIDER_CAPABILITIES.openrouteservice,
+                          );
+                        }}
                       />
                       <ProviderButton
                         provider="resend"
                         selected={provider === "resend"}
                         disabled={resendExists}
-                        onClick={() => setProvider("resend")}
+                        onClick={() => {
+                          setProvider("resend");
+                          setCapabilities([]);
+                        }}
                       />
                     </div>
+                  </fieldset>
+                )}
+                {provider !== "resend" && (
+                  <fieldset className="admin-api-key-capabilities">
+                    <legend>Usages partagés autorisés</legend>
+                    <div>
+                      {PROVIDER_CAPABILITIES[provider].map((capability) => {
+                        const CapabilityIcon = CAPABILITY_ICONS[capability];
+                        const selected = capabilities.includes(capability);
+                        return <label key={capability} className={selected ? "is-selected" : ""}>
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            aria-label={CAPABILITY_LABELS[capability]}
+                            onChange={(event) =>
+                              setCapabilities((current) =>
+                                event.target.checked
+                                  ? [...current, capability]
+                                  : current.filter(
+                                      (item) => item !== capability,
+                                    ),
+                              )
+                            }
+                          />
+                          <CapabilityIcon size={18} aria-hidden="true" />
+                          <span>{CAPABILITY_LABELS[capability]}</span>
+                          <Check size={14} className="admin-api-key-capabilities__check" aria-hidden="true" />
+                        </label>
+                      })}
+                    </div>
+                    <small>
+                      Les quotas pourront uniquement partager cette clé pour les
+                      usages cochés.
+                    </small>
                   </fieldset>
                 )}
                 <label className="account-api-key-dialog__secret">
@@ -477,6 +586,7 @@ export function AdminApiKeysSection() {
             </section>
           </div>,
           document.body,
+          "admin-api-key-editor",
         )}
       {detailsKey &&
         createPortal(
@@ -542,6 +652,7 @@ export function AdminApiKeysSection() {
             </section>
           </div>,
           document.body,
+          "admin-api-key-error-details",
         )}
       {confirmationDialog}
     </section>
@@ -633,7 +744,7 @@ function AdminKeyCard({
   onEdit: (item: AdminApiKey) => void;
   onDelete: (item: AdminApiKey) => void;
   onDetails: (item: AdminApiKey) => void;
-  t: I18nContextValue['t'];
+  t: I18nContextValue["t"];
 }) {
   const errored = Boolean(item.last_error_code);
   const brand = brandFor(item.provider);
@@ -655,14 +766,18 @@ function AdminKeyCard({
         </span>
         <div>
           <h3 title={item.name}>
-            {item.provider === "master" ? t('admin.api.masterKey') : item.name}
+            {item.provider === "master" ? t("admin.api.masterKey") : item.name}
           </h3>
           <p>{providerLabel(item.provider)}</p>
         </div>
         <b
           className={errored ? "is-error" : item.verified ? "is-verified" : ""}
         >
-          {errored ? t('account.apiCatalog.error') : item.verified ? t('account.apiCatalog.verified') : t('account.apiCatalog.toTest')}
+          {errored
+            ? t("account.apiCatalog.error")
+            : item.verified
+              ? t("account.apiCatalog.verified")
+              : t("account.apiCatalog.toTest")}
         </b>
       </header>
       {item.provider !== "master" && (
@@ -675,17 +790,19 @@ function AdminKeyCard({
           <TriangleAlert size={20} />
           <p>
             {item.last_error_message ??
-              t('admin.api.testFailed', { provider: providerLabel(item.provider) })}
+              t("admin.api.testFailed", {
+                provider: providerLabel(item.provider),
+              })}
             <button type="button" onClick={() => onDetails(item)}>
-              {t('account.apiCatalog.details')}
+              {t("account.apiCatalog.details")}
             </button>
           </p>
         </aside>
       ) : (
         <dl>
-          <dt>{t('account.apiCatalog.verifiedOn')}</dt>
+          <dt>{t("account.apiCatalog.verifiedOn")}</dt>
           <dd>{formatDate(item.verified_at)}</dd>
-          <dt>{t('account.apiCatalog.lastUse')}</dt>
+          <dt>{t("account.apiCatalog.lastUse")}</dt>
           <dd>{formatDate(item.last_used_at)}</dd>
         </dl>
       )}
@@ -694,13 +811,15 @@ function AdminKeyCard({
           <>
             <button type="button" disabled={busy} onClick={() => onTest(item)}>
               <Play size={16} />
-              {item.provider === "resend" ? t('admin.api.sendTest') : t('account.apiCatalog.test')}
+              {item.provider === "resend"
+                ? t("admin.api.sendTest")
+                : t("account.apiCatalog.test")}
             </button>
             <div className="account-api-key-card__actions">
               <button
                 type="button"
                 aria-label={`Modifier ${item.name}`}
-                title={t('account.apiCatalog.edit')}
+                title={t("account.apiCatalog.edit")}
                 onClick={() => onEdit(item)}
               >
                 <Pencil size={15} />
@@ -709,7 +828,7 @@ function AdminKeyCard({
                 className="danger"
                 type="button"
                 aria-label={`Supprimer ${item.name}`}
-                title={t('account.apiCatalog.delete')}
+                title={t("account.apiCatalog.delete")}
                 onClick={() => void onDelete(item)}
               >
                 <Trash2 size={15} />
@@ -719,7 +838,7 @@ function AdminKeyCard({
         ) : (
           <span className="admin-api-key-card__readonly">
             <LockKeyhole size={14} />
-            {t('admin.api.readOnly')}
+            {t("admin.api.readOnly")}
           </span>
         )}
       </footer>
@@ -730,6 +849,7 @@ function providerLabel(provider: AdminApiKey["provider"]) {
   return {
     google: "Google",
     stadia: "Stadia",
+    mapbox: "Mapbox",
     openrouteservice: "ORS",
     resend: "Resend",
     master: "Infrastructure",
@@ -746,6 +866,8 @@ function brandFor(provider: AdminApiKey["provider"]) {
       src: "https://www.stadiamaps.com/favicon.ico",
       alt: "Stadia Maps",
     };
+  if (provider === "mapbox")
+    return { src: "/brands/mapbox-logo.svg", alt: "Mapbox" };
   return { src: "", alt: "" };
 }
 function formatDate(value: string | null, time = true) {

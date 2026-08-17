@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Index, Integer, String, Text, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,7 +12,7 @@ from app.database import Base
 from app.quotas.registry import QUOTA_KEYS
 
 if TYPE_CHECKING:
-    from app.auth.models import User
+    from app.auth.models import AdminApiCredential, User
 
 
 UNLIMITED_PROFILE_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -60,3 +60,21 @@ class QuotaProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
     users: Mapped[list["User"]] = relationship(back_populates="quota_profile")
+    api_credential_links: Mapped[list["QuotaProfileApiCredential"]] = relationship(
+        back_populates="quota_profile", cascade="all, delete-orphan"
+    )
+
+
+class QuotaProfileApiCredential(Base):
+    __tablename__ = "quota_profile_api_credentials"
+
+    quota_profile_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("quota_profiles.id", ondelete="CASCADE"), primary_key=True
+    )
+    admin_api_credential_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("admin_api_credentials.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+    quota_profile: Mapped[QuotaProfile] = relationship(back_populates="api_credential_links")
+    api_credential: Mapped["AdminApiCredential"] = relationship(back_populates="quota_profile_links")

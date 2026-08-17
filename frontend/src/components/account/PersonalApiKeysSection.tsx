@@ -60,6 +60,8 @@ export function PersonalApiKeysSection() {
       )
       .finally(() => setLoading(false));
   useEffect(load, []);
+  const personalKeys = keys.filter((key) => key.source !== "instance");
+  const instanceKeys = keys.filter((key) => key.source === "instance");
   const metrics = useMemo(
     () => ({
       configured: keys.length,
@@ -290,6 +292,37 @@ export function PersonalApiKeysSection() {
           />
         </div>
       </section>
+      {!loading && instanceKeys.length > 0 && (
+        <section className="account-preference-card account-api-catalog account-api-catalog--instance">
+          <header className="account-api-catalog__header">
+            <div className="account-preference-card__heading">
+              <span className="account-preference-card__icon">
+                <ShieldCheck size={19} aria-hidden="true" />
+              </span>
+              <div>
+                <h3>Clés fournies par l’instance</h3>
+                <p>
+                  Partagées en lecture seule par votre profil de quota. Vous
+                  pouvez les associer aux services autorisés.
+                </p>
+              </div>
+            </div>
+          </header>
+          <div className="account-api-catalog__cards">
+            {instanceKeys.map((key) => (
+              <ApiKeyCard
+                key={key.id}
+                item={key}
+                busy={busy}
+                onTest={test}
+                onEdit={open}
+                onDelete={remove}
+                onDetails={setDetailsKey}
+              />
+            ))}
+          </div>
+        </section>
+      )}
       <section
         className="account-preference-card account-api-catalog account-api-catalog--personal"
         onWheel={handleCatalogWheel}
@@ -317,13 +350,13 @@ export function PersonalApiKeysSection() {
           <p className="account-card-description">
             {t("account.apiCatalog.loading")}
           </p>
-        ) : keys.length === 0 ? (
+        ) : personalKeys.length === 0 ? (
           <p className="account-api-catalog__empty">
             {t("account.apiCatalog.empty")}
           </p>
         ) : (
           <div ref={cardsRef} className="account-api-catalog__cards">
-            {keys.map((key) => (
+            {personalKeys.map((key) => (
               <ApiKeyCard
                 key={key.id}
                 item={key}
@@ -559,7 +592,7 @@ export function PersonalApiKeysSection() {
                         ? "Stadia"
                         : detailsKey.provider === "mapbox"
                           ? "Mapbox"
-                        : "ORS"}
+                          : "ORS"}
                   </dd>
                   <dt>{t("account.apiCatalog.httpStatus")}</dt>
                   <dd>
@@ -661,9 +694,9 @@ function ApiKeyCard({
         }
       : item.provider === "stadia"
         ? { src: "https://www.stadiamaps.com/favicon.ico", alt: "Stadia Maps" }
-        : item.provider === "mapbox"
-          ? { src: "https://www.mapbox.com/favicon.ico", alt: "Mapbox" }
-        : { src: "/brands/ors-logo.jpeg", alt: "ORS" };
+      : item.provider === "mapbox"
+          ? { src: "/brands/mapbox-logo.svg", alt: "Mapbox" }
+          : { src: "/brands/ors-logo.jpeg", alt: "ORS" };
   const label =
     item.provider === "google"
       ? "Google"
@@ -671,7 +704,7 @@ function ApiKeyCard({
         ? "Stadia"
         : item.provider === "mapbox"
           ? "Mapbox"
-        : "ORS";
+          : "ORS";
   return (
     <article className={`account-api-key-card${errored ? " is-error" : ""}`}>
       <header>
@@ -693,6 +726,12 @@ function ApiKeyCard({
         </b>
       </header>
       <div className="account-api-key-card__secret">••••••••{item.last4}</div>
+      {item.source === "instance" && (
+        <p className="account-api-key-card__instance-note">
+          <ShieldCheck size={14} />
+          Clé d’instance · {item.quota_profile_name}
+        </p>
+      )}
       {errored ? (
         <aside className="account-api-key-card__error">
           <TriangleAlert size={20} />
@@ -715,31 +754,40 @@ function ApiKeyCard({
           <dd>{formatDate(item.last_used_at, locale)}</dd>
         </dl>
       )}
-      <footer>
-        <button type="button" disabled={busy} onClick={() => onTest(item)}>
-          <Play size={16} />
-          {t("account.apiCatalog.test")}
-        </button>
-        <div className="account-api-key-card__actions">
-          <button
-            type="button"
-            aria-label={`${t("account.apiCatalog.edit")} ${item.name}`}
-            title={t("account.apiCatalog.edit")}
-            onClick={() => onEdit(item)}
-          >
-            <Pencil size={15} />
+      {item.editable ? (
+        <footer>
+          <button type="button" disabled={busy} onClick={() => onTest(item)}>
+            <Play size={16} />
+            {t("account.apiCatalog.test")}
           </button>
-          <button
-            className="danger"
-            type="button"
-            aria-label={`${t("account.apiCatalog.delete")} ${item.name}`}
-            title={t("account.apiCatalog.delete")}
-            onClick={() => void onDelete(item)}
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      </footer>
+          <div className="account-api-key-card__actions">
+            <button
+              type="button"
+              aria-label={`${t("account.apiCatalog.edit")} ${item.name}`}
+              title={t("account.apiCatalog.edit")}
+              onClick={() => onEdit(item)}
+            >
+              <Pencil size={15} />
+            </button>
+            <button
+              className="danger"
+              type="button"
+              aria-label={`${t("account.apiCatalog.delete")} ${item.name}`}
+              title={t("account.apiCatalog.delete")}
+              onClick={() => void onDelete(item)}
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        </footer>
+      ) : (
+        <footer>
+          <span className="account-integration-state is-neutral">
+            <ShieldCheck size={14} />
+            Lecture seule
+          </span>
+        </footer>
+      )}
     </article>
   );
 }

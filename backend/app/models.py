@@ -8,7 +8,7 @@ from app.auth.models import AdminApiCredential, AuthActionToken, AuthSecurityEve
 from app.admin.models import SystemSetting
 from app.instance_status.models import InstanceLog
 from app.annotations.models import AnnotationTemplate, PlaceAnnotation
-from app.quotas.models import QuotaProfile
+from app.quotas.models import QuotaProfile, QuotaProfileApiCredential
 from app.categories.associations import place_categories_table
 from app.categories.models import Category
 from app.countries.models import Country
@@ -45,6 +45,7 @@ __all__ = (
     "SystemSetting",
     "InstanceLog",
     "QuotaProfile",
+    "QuotaProfileApiCredential",
     "UserApiCredential",
     "UserSession",
     "Trip",

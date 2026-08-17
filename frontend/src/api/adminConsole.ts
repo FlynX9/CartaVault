@@ -30,8 +30,8 @@ export function saveResendCredential(value: string) { return sendJson('/admin/co
 export function verifyResendCredential() { return sendJson('/admin/console/credentials/resend/verify', 'POST', {}) as Promise<CredentialStatus> }
 export function deleteResendCredential() { return sendWithoutResponse('/admin/console/credentials/resend', 'DELETE') }
 export function getAdminApiKeys(signal?: AbortSignal) { return getJson('/admin/console/credentials/keys', empty(), signal) as Promise<AdminApiKey[]> }
-export function createAdminApiKey(payload: { name: string; provider: 'google' | 'stadia' | 'openrouteservice' | 'resend'; api_key: string }) { return sendJson('/admin/console/credentials/keys', 'POST', payload) as Promise<AdminApiKey> }
-export function updateAdminApiKey(id: string, payload: { name?: string; api_key?: string }) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<AdminApiKey> }
+export function createAdminApiKey(payload: { name: string; provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice' | 'resend'; api_key: string; capabilities?: AdminApiKey['capabilities'] }) { return sendJson('/admin/console/credentials/keys', 'POST', payload) as Promise<AdminApiKey> }
+export function updateAdminApiKey(id: string, payload: { name?: string; api_key?: string; capabilities?: AdminApiKey['capabilities'] }) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<AdminApiKey> }
 export function verifyAdminApiKey(id: string) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}/verify`, 'POST', {}) as Promise<AdminApiKey> }
 export function deleteAdminApiKey(id: string) { return sendWithoutResponse(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'DELETE') }
 export function getMediaUploadSettings(signal?: AbortSignal) { return getJson('/admin/console/media/settings', empty(), signal) as Promise<MediaUploadSettings> }
@@ -51,8 +51,8 @@ export function cancelVectorBasemap(countryCode: string) { return sendJson(`/adm
 export function deleteVectorBasemap(countryCode: string) { return sendJson(`/admin/console/vector-basemaps/${encodeURIComponent(countryCode)}`, 'DELETE', {}) as Promise<{ country_code: string; map_count: number; state: string }> }
 export function getQuotaProfiles(signal?: AbortSignal) { return getJson('/admin/quota-profiles', empty(), signal) as Promise<QuotaProfile[]> }
 export function getQuotaRegistry(signal?: AbortSignal) { return getJson('/admin/quota-registry', empty(), signal) as Promise<QuotaRegistryItem[]> }
-export function createQuotaProfile(payload: { name: string; description: string | null; is_active: boolean; limits: QuotaLimits }) { return sendJson('/admin/quota-profiles', 'POST', payload) as Promise<QuotaProfile> }
-export function updateQuotaProfile(id: string, payload: Partial<{ name: string; description: string | null; is_active: boolean; limits: QuotaLimits }>) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<QuotaProfile> }
+export function createQuotaProfile(payload: { name: string; description: string | null; is_active: boolean; limits: QuotaLimits; api_key_ids: string[] }) { return sendJson('/admin/quota-profiles', 'POST', payload) as Promise<QuotaProfile> }
+export function updateQuotaProfile(id: string, payload: Partial<{ name: string; description: string | null; is_active: boolean; limits: QuotaLimits; api_key_ids: string[] }>) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<QuotaProfile> }
 export function duplicateQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/duplicate`, 'POST', {}) as Promise<QuotaProfile> }
 export function setDefaultQuotaProfile(id: string) { return sendJson(`/admin/quota-profiles/${encodeURIComponent(id)}/set-default`, 'POST', {}) as Promise<QuotaProfile> }
 export function deleteQuotaProfile(id: string) { return sendWithoutResponse(`/admin/quota-profiles/${encodeURIComponent(id)}`, 'DELETE') }

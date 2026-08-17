@@ -16,7 +16,7 @@ from app.admin.models import SystemSetting
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.api_keys import selected_basemap_api_key, selected_google_maps_javascript_key
 from app.auth.dependencies import get_current_user, require_admin
-from app.auth.models import User, UserApiCredential
+from app.auth.models import AdminApiCredential, User, UserApiCredential
 from app.auth.provider_sessions import GoogleTilesSession, ProviderSessionError, decode_google_tiles_session, encode_google_tiles_session
 from app.basemaps.models import GoogleSatelliteUsageDaily
 from app.config import email_settings, google_map_tiles_settings, security_settings
@@ -179,16 +179,19 @@ def _provider_expiry(value: object) -> datetime:
     return datetime.now(UTC) + timedelta(hours=6)
 
 
-def _record(session: Session, user: User, credential: UserApiCredential, values: dict[str, int]) -> None:
+def _record(session: Session, user: User, credential: UserApiCredential | AdminApiCredential, values: dict[str, int]) -> None:
+    personal_id = credential.id if isinstance(credential, UserApiCredential) else None
+    admin_id = credential.id if isinstance(credential, AdminApiCredential) else None
     statement = insert(GoogleSatelliteUsageDaily).values(
         usage_date=datetime.now(UTC).date(),
         user_id=user.id,
-        credential_id=credential.id,
+        credential_id=personal_id,
+        admin_credential_id=admin_id,
         quota_profile_id=user.quota_profile_id,
         **values,
     )
     statement = statement.on_conflict_do_update(
-        index_elements=["usage_date", "user_id", "credential_id"],
+        index_elements=["usage_date", "user_id", "credential_id", "admin_credential_id"],
         set_={key: getattr(GoogleSatelliteUsageDaily, key) + value for key, value in values.items()},
     )
     session.execute(statement)
@@ -241,7 +244,7 @@ def _reserve_tile(session: Session, user: User, credential: UserApiCredential) -
 
 @router.get("/status")
 def public_status(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_basemap_api_key(session, user, "google")
+    credential = selected_basemap_api_key(session, user, "google", "satellite_basemap")
     status = _admin_status(session)
     user_blocked, _ = _user_quota_reached(session, user)
     return {"available": bool(status["available"] and credential and not user_blocked), "warning_level": status["warning_level"]}
@@ -285,7 +288,8 @@ class GoogleMapSessionRequest(BaseModel):
 
 @router.post("/session")
 def create_session(data: GoogleMapSessionRequest, response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_basemap_api_key(session, user, "google")
+    capability = "classic_basemap" if data.map_type == "roadmap" else "satellite_basemap"
+    credential = selected_basemap_api_key(session, user, "google", capability)
     _, values = _setting(session)
     usage = _usage(session)
     if values.get("disabled_reason") == "USAGE_THRESHOLD_REACHED" and not _instance_quota_reached(values, usage):
@@ -321,7 +325,7 @@ def create_session(data: GoogleMapSessionRequest, response: Response, session: S
     values["consecutive_errors"] = 0; values["last_success_at"] = now.isoformat(); values["disabled_reason"] = None
     _save_setting(session, values); _record(session, user, credential, {"sessions_started": 1}); session.commit()
     expires_at = _provider_expiry(payload.get("expiry"))
-    opaque_session = encode_google_tiles_session(GoogleTilesSession(user.id, credential.id, str(payload["session"]), expires_at))
+    opaque_session = encode_google_tiles_session(GoogleTilesSession(user.id, credential.id, str(payload["session"]), expires_at, capability))
     response.set_cookie(
         GOOGLE_TILES_SESSION_COOKIE,
         opaque_session,
@@ -347,7 +351,8 @@ def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(ge
         provider_session = decode_google_tiles_session(opaque_session)
     except ProviderSessionError as error:
         raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_SESSION_INVALID", "message": "La session cartographique a expiré."}) from error
-    credential = selected_basemap_api_key(session, user, "google")
+    capability = "classic_basemap" if provider_session.capability == "classic_basemap" else "satellite_basemap"
+    credential = selected_basemap_api_key(session, user, "google", capability)
     if provider_session.user_id != user.id or credential is None or credential.id != provider_session.credential_id:
         raise HTTPException(403, {"code": "GOOGLE_MAP_TILES_SESSION_FORBIDDEN", "message": "Cette session cartographique n’est plus autorisée."})
     try:

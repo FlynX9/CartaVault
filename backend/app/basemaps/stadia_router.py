@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.api_keys import selected_basemap_api_key
 from app.auth.dependencies import get_current_user
-from app.auth.models import User, UserApiCredential
+from app.auth.models import AdminApiCredential, User, UserApiCredential
 from app.database import get_db
 from app.config import email_settings
 from app.trips.routing.base import RoutingError
@@ -45,7 +45,7 @@ def _validate_key(api_key: str) -> None:
         raise HTTPException(503, {"code": "STADIA_MAPS_UNAVAILABLE", "message": "Stadia Maps est momentanément indisponible."}) from error
 
 
-def _decrypt(credential: UserApiCredential) -> str:
+def _decrypt(credential: UserApiCredential | AdminApiCredential) -> str:
     try:
         return CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
     except CredentialEncryptionError as error:
@@ -54,7 +54,7 @@ def _decrypt(credential: UserApiCredential) -> str:
 
 @router.get("/basemaps/stadia/config")
 def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_basemap_api_key(session, user, "stadia")
+    credential = selected_basemap_api_key(session, user, "stadia", "classic_basemap") or selected_basemap_api_key(session, user, "stadia", "satellite_basemap")
     key_optional = credential is None and stadia_unauthenticated_allowed()
     return {
         "personal_key_active": credential is not None,
@@ -79,7 +79,8 @@ def basemap_tile(
     maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
-    credential = selected_basemap_api_key(session, user, "stadia")
+    capability = "satellite_basemap" if style == "alidade_satellite" else "classic_basemap"
+    credential = selected_basemap_api_key(session, user, "stadia", capability)
     if credential is None and not stadia_unauthenticated_allowed():
         raise HTTPException(503, {"code": "STADIA_MAPS_KEY_REQUIRED", "message": "Une clé Stadia Maps est nécessaire hors développement local."})
     try:

@@ -13,7 +13,7 @@ from app.database import Base
 class GoogleSatelliteUsageDaily(Base):
     __tablename__ = "google_satellite_usage_daily"
     __table_args__ = (
-        Index("google_satellite_usage_daily_scope_key", "usage_date", "user_id", "credential_id", unique=True, postgresql_nulls_not_distinct=True),
+        Index("google_satellite_usage_daily_scope_key", "usage_date", "user_id", "credential_id", "admin_credential_id", unique=True, postgresql_nulls_not_distinct=True),
         Index("google_satellite_usage_daily_date_idx", "usage_date"),
     )
 
@@ -21,6 +21,7 @@ class GoogleSatelliteUsageDaily(Base):
     usage_date: Mapped[date] = mapped_column(Date, nullable=False)
     user_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     credential_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("user_api_credentials.id", ondelete="SET NULL"), nullable=True)
+    admin_credential_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("admin_api_credentials.id", ondelete="SET NULL"), nullable=True)
     quota_profile_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), ForeignKey("quota_profiles.id", ondelete="SET NULL"), nullable=True)
     sessions_started: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     tiles_started: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))

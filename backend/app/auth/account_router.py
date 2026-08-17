@@ -100,14 +100,16 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
     if data.places.provider == "google" and selected_api_key(database_session, current.user, "places", "google") is None:
         current.user.preferences = previous_preferences
         raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé Google pour la recherche de lieux."})
-    configured_basemap_providers = {
-        provider for provider in (data.basemaps.classic_provider, data.basemaps.satellite_provider)
-        if provider in {"stadia", "mapbox"} or (provider == "google" and (data.basemaps.classic_provider == "google" or data.basemaps.google_satellite_mode == "map-tiles"))
-    }
-    for basemap_provider in configured_basemap_providers:
+    configured_basemaps = [
+        (data.basemaps.classic_provider, "classic_basemap"),
+        *([(data.basemaps.satellite_provider, "satellite_basemap")] if data.basemaps.satellite_provider != "google" or data.basemaps.google_satellite_mode == "map-tiles" else []),
+    ]
+    for basemap_provider, capability in configured_basemaps:
+        if basemap_provider not in {"stadia", "mapbox", "google"}:
+            continue
         if basemap_provider == "stadia" and stadia_unauthenticated_allowed():
             continue
-        if selected_basemap_api_key(database_session, current.user, basemap_provider) is None:
+        if selected_basemap_api_key(database_session, current.user, basemap_provider, capability) is None:
             current.user.preferences = previous_preferences
             raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": f"Sélectionnez une clé {basemap_provider.title()} pour la cartographie configurée."})
     if data.basemaps.satellite_provider == "google" and data.basemaps.google_satellite_mode == "maps-js" and selected_google_maps_javascript_key(database_session, current.user) is None:

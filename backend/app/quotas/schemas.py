@@ -44,6 +44,7 @@ class QuotaProfileCreate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     is_active: bool = True
     limits: QuotaLimits = Field(default_factory=QuotaLimits)
+    api_key_ids: list[UUID] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -59,6 +60,7 @@ class QuotaProfileUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     is_active: bool | None = None
     limits: QuotaLimits | None = None
+    api_key_ids: list[UUID] | None = None
 
     @model_validator(mode="after")
     def reject_empty_or_null(self):
@@ -82,6 +84,7 @@ class QuotaProfileRead(BaseModel):
     assigned_users_count: int
     created_at: datetime
     updated_at: datetime
+    api_key_ids: list[UUID]
 
 
 class QuotaProfileSummary(BaseModel):

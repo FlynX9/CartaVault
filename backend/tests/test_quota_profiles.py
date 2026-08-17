@@ -3,6 +3,7 @@ from uuid import uuid4
 import pytest
 
 from app.quotas.models import UNLIMITED_PROFILE_ID
+from app.auth.models import AdminApiCredential
 
 
 pytestmark = pytest.mark.integration
@@ -52,6 +53,28 @@ def test_profile_lifecycle_preserves_unlimited_semantics(integration_client) -> 
 
     deleted = integration_client.delete(f"/admin/quota-profiles/{copy['id']}")
     assert deleted.status_code == 204
+
+
+def test_profile_assigns_only_shareable_instance_api_keys(integration_client, database_session) -> None:
+    shared = AdminApiCredential(
+        provider="openrouteservice", name="ORS instance", encrypted_secret="encrypted",
+        encryption_version=1, secret_last4="test", capabilities=["routing"],
+    )
+    resend = AdminApiCredential(
+        provider="resend", name="Resend", encrypted_secret="encrypted",
+        encryption_version=1, secret_last4="test", capabilities=[],
+    )
+    database_session.add_all([shared, resend]); database_session.flush()
+
+    created = _create_profile(integration_client, api_key_ids=[str(shared.id)])
+    assert created.status_code == 201
+    assert created.json()["api_key_ids"] == [str(shared.id)]
+    duplicated = integration_client.post(f"/admin/quota-profiles/{created.json()['id']}/duplicate")
+    assert duplicated.status_code == 201
+    assert duplicated.json()["api_key_ids"] == [str(shared.id)]
+    rejected = _create_profile(integration_client, api_key_ids=[str(resend.id)])
+    assert rejected.status_code == 422
+    assert rejected.json()["detail"]["code"] == "quota.profile.api_key_not_shareable"
 
 
 def test_profile_validation_rejects_negative_and_case_insensitive_duplicate_names(
