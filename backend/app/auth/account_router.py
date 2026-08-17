@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.api_keys import selected_api_key
+from app.auth.api_keys import selected_api_key, selected_basemap_api_key
 from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
@@ -99,9 +99,14 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
     if data.places.provider == "google" and selected_api_key(database_session, current.user, "places", "google") is None:
         current.user.preferences = previous_preferences
         raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé Google pour la recherche de lieux."})
-    if data.preferred_basemap in {"satellite", "google-satellite"} and selected_api_key(database_session, current.user, "basemaps", data.basemaps.satellite_provider) is None:
-        current.user.preferences = previous_preferences
-        raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé pour le fond satellite choisi."})
+    configured_basemap_providers = {
+        provider for provider in (data.basemaps.classic_provider, data.basemaps.satellite_provider)
+        if provider in {"stadia", "google", "mapbox"}
+    }
+    for basemap_provider in configured_basemap_providers:
+        if selected_basemap_api_key(database_session, current.user, basemap_provider) is None:
+            current.user.preferences = previous_preferences
+            raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": f"Sélectionnez une clé {basemap_provider.title()} pour la cartographie configurée."})
     database_session.commit()
     return _preferences(current.user)
 

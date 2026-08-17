@@ -6,64 +6,41 @@ import { BasemapSelector } from './BasemapSelector'
 afterEach(cleanup)
 
 describe('BasemapSelector', () => {
-  it('shows only the active basemap until the control is hovered', () => {
-    render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} />)
+  it('shows only the OSM light choice by default', () => {
+    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={vi.fn()} />)
     const selector = screen.getByRole('group', { name: 'Fond cartographique' })
-    const active = screen.getByRole('button', { name: 'Utiliser le fond CartaVault clair' })
-    expect(active).toHaveAttribute('aria-pressed', 'true')
-    expect(active).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).not.toBeInTheDocument()
-
+    expect(screen.getByRole('button', { name: 'Utiliser le fond OpenStreetMap Standard' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.mouseEnter(selector)
-    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Utiliser le fond Satellite' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Utiliser le fond OpenStreetMap Standard' })).toBeVisible()
-
-    fireEvent.mouseLeave(selector)
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond Satellite' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 
-  it('changes the basemap and collapses after click', () => {
+  it('shows Stadia light and dark, plus the configured satellite provider', () => {
     const onBasemapChange = vi.fn()
-    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={onBasemapChange} />)
+    render(<BasemapSelector activeBasemapId="stadia-light" onBasemapChange={onBasemapChange} classicProvider="stadia" satelliteProvider="mapbox" />)
     fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    const dark = screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })
-    fireEvent.click(dark)
-    expect(onBasemapChange).toHaveBeenCalledWith('cartavault-dark')
-    expect(onBasemapChange).toHaveBeenCalledTimes(1)
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(3)
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia sombre' }))
+    expect(onBasemapChange).toHaveBeenCalledWith('stadia-dark')
   })
 
-  it('opens the choices on touch when the active basemap is tapped', () => {
-    render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault clair' }))
-    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).toBeVisible()
-  })
-
-  it('expands on keyboard focus and supports keyboard selection', () => {
-    const onBasemapChange = vi.fn()
-    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={onBasemapChange} />)
+  it.each([
+    ['stadia', 'Stadia satellite'],
+    ['google', 'Google Satellite'],
+    ['mapbox', 'Mapbox Satellite'],
+  ] as const)('shows the %s satellite choice when configured', (satelliteProvider, label) => {
+    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={vi.fn()} satelliteProvider={satelliteProvider} />)
     fireEvent.focus(screen.getByRole('button', { name: 'Utiliser le fond OpenStreetMap Standard' }))
-    const satellite = screen.getByRole('button', { name: 'Utiliser le fond Satellite' })
-    fireEvent.keyDown(satellite, { key: 'Enter' })
-    expect(onBasemapChange).toHaveBeenCalledWith('satellite')
+    expect(screen.getByRole('button', { name: `Utiliser le fond ${label}` })).toBeVisible()
   })
 
-  it('offers only the satellite provider selected in account preferences', () => {
-    const { rerender } = render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} googleSatelliteAvailable satelliteProvider="stadia" />)
-    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    expect(screen.getByRole('button', { name: 'Utiliser le fond Satellite' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond Google Satellite' })).not.toBeInTheDocument()
-
-    rerender(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} googleSatelliteAvailable satelliteProvider="google" />)
-    expect(screen.getByRole('button', { name: 'Utiliser le fond Google Satellite' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Utiliser le fond Satellite' })).not.toBeInTheDocument()
+  it('shows Google normal as the only classic Google choice', () => {
+    render(<BasemapSelector activeBasemapId="google-roadmap" onBasemapChange={vi.fn()} classicProvider="google" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Google' }))
+    expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 
-  it('keeps the light and dark choices visible while CartaVault generation is unavailable', () => {
-    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={vi.fn()} cartaVaultAvailable={false} />)
-    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault clair' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' })).toBeVisible()
+  it('does not render while CartaVault is active offline', () => {
+    render(<BasemapSelector activeBasemapId="cartavault-light" onBasemapChange={vi.fn()} offline />)
+    expect(screen.queryByRole('group', { name: 'Fond cartographique' })).not.toBeInTheDocument()
   })
 })

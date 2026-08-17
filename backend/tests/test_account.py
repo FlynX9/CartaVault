@@ -66,7 +66,9 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert defaults.status_code == 200
     assert defaults.json()["language"] == "fr"
     assert defaults.json()["default_theme"] == "system"
-    assert defaults.json()["preferred_basemap"] == "cartavault-light"
+    assert defaults.json()["preferred_basemap"] == "osm"
+    assert defaults.json()["basemaps"]["classic_provider"] == "osm"
+    assert defaults.json()["basemaps"]["satellite_provider"] == "none"
     assert defaults.json()["photo_markers_enabled"] is False
     assert defaults.json()["routing"]["provider"] == "osrm"
     assert set(defaults.json()["routing"]) == {"provider", "api_key_id"}

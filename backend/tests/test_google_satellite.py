@@ -35,6 +35,13 @@ def test_google_satellite_session_uses_account_language(monkeypatch) -> None:
     assert json.loads(captured[0].data)["language"] == "en-US"
 
 
+def test_google_roadmap_session_uses_the_classic_map_type(monkeypatch) -> None:
+    captured = []
+    monkeypatch.setattr("app.basemaps.router.urlopen", lambda request, timeout: captured.append(request) or Response())
+    _create_google_session("browser-restricted-key", map_type="roadmap")
+    assert json.loads(captured[0].data)["mapType"] == "roadmap"
+
+
 @pytest.mark.parametrize(("tiles", "expected"), [(4_999, 0), (5_000, 50), (8_000, 80), (9_500, 95)])
 def test_local_usage_warning_levels_are_deterministic(tiles: int, expected: int) -> None:
     values = {**DEFAULTS, "daily_soft_limit": 10_000, "monthly_soft_limit": 100_000}

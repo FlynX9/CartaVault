@@ -15,7 +15,7 @@ export interface TotpRecoveryCodes { recovery_codes: string[] }
 export interface AccountPreferences {
   language: 'fr' | 'en'
   default_theme: 'light' | 'dark' | 'system'
-  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'google-satellite' | 'osm'
+  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'stadia-light' | 'stadia-dark' | 'google-roadmap' | 'osm' | 'satellite' | 'google-satellite' | 'mapbox-satellite'
   density: 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string
@@ -30,13 +30,13 @@ export interface AccountPreferences {
     api_key_id?: string | null
   }
   places: { provider: 'stadia' | 'google'; api_key_id?: string | null }
-  basemaps?: { satellite_provider: 'stadia' | 'google'; api_key_id?: string | null }
+  basemaps?: { classic_provider?: 'osm' | 'stadia' | 'google'; satellite_provider: 'none' | 'stadia' | 'google' | 'mapbox'; api_key_id?: string | null; stadia_api_key_id?: string | null; google_api_key_id?: string | null; mapbox_api_key_id?: string | null }
 }
 
 export interface PersonalApiKey {
   id: string
   name: string
-  provider: 'google' | 'stadia' | 'openrouteservice'
+  provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice'
   last4: string
   verified: boolean
   verified_at: string | null

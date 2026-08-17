@@ -12,7 +12,7 @@ export interface GoogleSatelliteAdminStatus {
 
 const empty = () => new URLSearchParams()
 export const getGoogleSatelliteStatus = (signal?: AbortSignal) => getJson('/basemaps/google-satellite/status', empty(), signal) as Promise<GoogleSatelliteStatus>
-export const createGoogleSatelliteSession = (signal?: AbortSignal) => sendJson('/basemaps/google-satellite/session', 'POST', {}, signal) as Promise<GoogleSatelliteSession>
+export const createGoogleSatelliteSession = (mapType: 'roadmap' | 'satellite' = 'satellite', signal?: AbortSignal) => sendJson('/basemaps/google-satellite/session', 'POST', { map_type: mapType }, signal) as Promise<GoogleSatelliteSession>
 export const getGoogleSatelliteAdminStatus = (signal?: AbortSignal) => getJson('/admin/console/google-satellite', empty(), signal) as Promise<GoogleSatelliteAdminStatus>
 export const saveGoogleSatelliteSettings = (settings: GoogleSatelliteAdminStatus['settings']) => sendJson('/admin/console/google-satellite/settings', 'PUT', settings) as Promise<GoogleSatelliteAdminStatus>
 export const resetGoogleSatelliteErrors = () => sendJson('/admin/console/google-satellite/reset-errors', 'POST', {}) as Promise<GoogleSatelliteAdminStatus>

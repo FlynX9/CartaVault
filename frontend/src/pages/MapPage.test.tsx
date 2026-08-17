@@ -29,7 +29,7 @@ vi.mock('../theme/useTheme', () => ({
 
 vi.mock('../api/account', () => ({
   ACCOUNT_PREFERENCES_UPDATED_EVENT: 'cartavault:preferences-updated',
-  getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'cartavault-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' } }),
+  getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'stadia-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'stadia', satellite_provider: 'stadia' } }),
   updateAccountPreferences: vi.fn().mockImplementation(async (preferences) => preferences),
 }))
 
@@ -110,7 +110,7 @@ describe('MapPage', () => {
     fireEvent.mouseEnter(legend)
     expect(legend).toHaveTextContent('À faire')
     fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Satellite' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia satellite' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'satellite')
     expect(screen.getByTestId('poi-map')).toBe(map)
     const tileError = screen.getByRole('button', { name: "Simuler l'erreur de tuiles" })
@@ -345,16 +345,16 @@ describe('MapPage', () => {
     const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
     fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond CartaVault sombre' }))
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark')
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia sombre' }))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
     expect(themeState.setPreference).not.toHaveBeenCalled()
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark')
-    expect(window.localStorage.getItem('cartavault.basemap')).toBe('cartavault-dark')
-    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'cartavault-dark' })))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
+    expect(window.localStorage.getItem('cartavault.basemap')).toBe('stadia-dark')
+    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-dark' })))
   })
 
-  it('keeps the CartaVault vector basemap synchronized with the visual theme', async () => {
+  it('keeps the configured basemap independent from the visual theme', async () => {
     const props = {
       places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 },
       isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [],
@@ -362,12 +362,12 @@ describe('MapPage', () => {
       onPlaceSelect: vi.fn(),
     }
     const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
-    expect(await screen.findByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-light')
+    expect(await screen.findByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
 
     themeState.resolvedTheme = 'dark'
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
 
-    await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'cartavault-dark'))
+    await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light'))
   })
 
   it('disables the country mask without remounting the map and persists the choice', async () => {

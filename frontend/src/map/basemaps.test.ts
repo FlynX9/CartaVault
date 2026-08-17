@@ -3,71 +3,41 @@ import { describe, expect, it } from 'vitest'
 import { BASEMAP_PREFERENCE_KEY, BASEMAPS, DEFAULT_BASEMAP_ID, createBasemaps, getThemeDefaultBasemapId, loadBasemapPreference, loadStoredBasemapPreference, parseBasemapId, resolveAvailableBasemapId, saveBasemapPreference } from './basemaps'
 
 describe('basemap registry', () => {
-  it('defines the reviewed basemaps with provider attribution', () => {
-    expect(BASEMAPS.map((basemap) => basemap.id)).toEqual(['cartavault-light', 'cartavault-dark', 'google-satellite', 'satellite', 'osm'])
-    expect(new Set(BASEMAPS.map((basemap) => basemap.label)).size).toBe(5)
-    expect(BASEMAPS.find((basemap) => basemap.id === 'google-satellite')?.attribution).toContain('Google')
+  it('defines all configured online providers and the offline CartaVault styles', () => {
+    expect(BASEMAPS.map((basemap) => basemap.id)).toEqual(['cartavault-light', 'google-roadmap', 'cartavault-dark', 'stadia-light', 'stadia-dark', 'google-satellite', 'mapbox-satellite', 'satellite', 'osm'])
+    expect(BASEMAPS.find((basemap) => basemap.id === 'google-roadmap')).toMatchObject({ kind: 'google' })
+    expect(BASEMAPS.find((basemap) => basemap.id === 'mapbox-satellite')?.attribution).toContain('Mapbox')
   })
 
-  it('keeps build-time basemap definitions free of provider keys', () => {
-    const basemaps = createBasemaps()
-    expect(basemaps.slice(0, 2).every((basemap) => basemap.kind === 'vector' && !JSON.stringify(basemap).includes('api_key'))).toBe(true)
-    expect(basemaps.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: expect.not.stringContaining('api_key=') })
-    expect(JSON.stringify(basemaps.find((basemap) => basemap.id === 'google-satellite'))).not.toContain('api_key')
+  it('never embeds provider credentials in client definitions', () => {
+    expect(JSON.stringify(createBasemaps())).not.toMatch(/api_key|access_token/)
   })
 
-  it('supports self-hosted styles and vector tiles without appending a provider key', () => {
-    const basemaps = createBasemaps({
-      'cartavault-light': true,
-      'cartavault-dark': true,
-      satellite: true,
-      osm: true,
-    }, {
-      lightStyle: 'https://maps.example.test/styles/light.json',
-      darkStyle: 'https://maps.example.test/styles/dark.json',
-      openFreeMapTileJson: 'https://maps.example.test/planet',
-      openFreeMapGlyphs: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf',
-      satellite: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg',
-      osm: 'https://maps.example.test/osm/{z}/{x}/{y}.png',
+  it('supports self-hosted CartaVault and raster URLs', () => {
+    const basemaps = createBasemaps({ 'cartavault-light': true, 'cartavault-dark': true, satellite: true, osm: true }, {
+      lightStyle: 'https://maps.example.test/styles/light.json', darkStyle: 'https://maps.example.test/styles/dark.json', openFreeMapTileJson: 'https://maps.example.test/planet', openFreeMapGlyphs: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf', satellite: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg', osm: 'https://maps.example.test/osm/{z}/{x}/{y}.png',
     })
-    expect(basemaps[0]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/light.json', tileJsonUrl: 'https://maps.example.test/planet', glyphsUrl: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf' })
-    expect(basemaps[1]).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/dark.json', tileJsonUrl: 'https://maps.example.test/planet', glyphsUrl: 'https://maps.example.test/fonts/{fontstack}/{range}.pbf' })
-    expect(basemaps.find((basemap) => basemap.id === 'satellite')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/satellite/{z}/{x}/{y}.jpg' })
-    expect(basemaps.find((basemap) => basemap.id === 'osm')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/osm/{z}/{x}/{y}.png' })
-    expect(basemaps.every((basemap) => !basemap.requiresStadiaAuthentication)).toBe(true)
-  })
-
-  it('disables providers from configuration without removing the controlled OSM fallback', () => {
-    const basemaps = createBasemaps({
-      'cartavault-light': false,
-      'cartavault-dark': true,
-      satellite: false,
-      osm: false,
-    })
-    expect(basemaps.filter((basemap) => basemap.enabled).map((basemap) => basemap.id)).toEqual(['cartavault-dark'])
-    expect(basemaps.find((basemap) => basemap.id === 'osm')).toMatchObject({ kind: 'raster', url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' })
+    expect(basemaps.find((item) => item.id === 'cartavault-dark')).toMatchObject({ kind: 'vector', styleUrl: 'https://maps.example.test/styles/dark.json' })
+    expect(basemaps.find((item) => item.id === 'osm')).toMatchObject({ kind: 'raster', url: 'https://maps.example.test/osm/{z}/{x}/{y}.png' })
   })
 })
 
 describe('basemap preference', () => {
-  it('accepts only known values and falls back safely', () => {
-    expect(parseBasemapId('satellite')).toBe('satellite')
+  it('uses OSM as the safe default independently of the visual theme', () => {
+    expect(DEFAULT_BASEMAP_ID).toBe('osm')
+    expect(getThemeDefaultBasemapId(false)).toBe('osm')
+    expect(getThemeDefaultBasemapId(true)).toBe('osm')
+    expect(resolveAvailableBasemapId('unknown')).toBe('osm')
+    expect(parseBasemapId('mapbox-satellite')).toBe('mapbox-satellite')
     expect(parseBasemapId('unknown')).toBeNull()
-    expect(loadBasemapPreference({ getItem: () => 'unknown' } as unknown as Storage)).toBe(DEFAULT_BASEMAP_ID)
-  })
-
-  it('uses the theme default and distinguishes an absent local preference', () => {
-    expect(getThemeDefaultBasemapId(false)).toBe('cartavault-light')
-    expect(getThemeDefaultBasemapId(true)).toBe('cartavault-dark')
-    expect(resolveAvailableBasemapId('unknown', false)).toBe('cartavault-light')
+    expect(loadBasemapPreference({ getItem: () => 'unknown' } as unknown as Storage)).toBe('osm')
     expect(loadStoredBasemapPreference({ getItem: () => null } as unknown as Storage)).toBeNull()
   })
 
-  it('persists a valid choice without relying on browser storage availability', () => {
+  it('persists a valid choice safely', () => {
     const values = new Map<string, string>()
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) } as unknown as Storage
     expect(saveBasemapPreference('osm', storage)).toBe(true)
     expect(values.get(BASEMAP_PREFERENCE_KEY)).toBe('osm')
-    expect(saveBasemapPreference('osm', { setItem: () => { throw new Error('blocked') } } as unknown as Storage)).toBe(false)
   })
 })

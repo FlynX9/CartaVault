@@ -76,7 +76,7 @@ describe('BasemapLayer', () => {
     expect(mapLibreMap.off).not.toHaveBeenCalled()
   })
 
-  it('restores the matching Stadia theme while the country PMTiles is absent', async () => {
+  it('reports an unavailable offline CartaVault archive without using an online fallback', async () => {
     vi.mocked(getCartaVaultVectorConfig).mockResolvedValue({ enabled: true, available: false, country_code: 'FR', country_name: 'France', state: 'generating', phase: 'Génération', error_code: null, error_message: null, archive_url: null, glyphs_url: '', version: 'missing', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' })
     const layer = { addTo: vi.fn(), removeFrom: vi.fn(), getMaplibreMap: vi.fn(() => ({ on: vi.fn(), off: vi.fn() })) }
     vi.mocked(loadCartaVaultStyle).mockResolvedValue({ version: 8, sources: {}, layers: [] })
@@ -84,8 +84,8 @@ describe('BasemapLayer', () => {
     const onTileError = vi.fn()
 
     render(<BasemapLayer basemapId="cartavault-dark" countryCode="FR" onTileError={onTileError} />)
-    await waitFor(() => expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', expect.stringContaining('alidade_smooth_dark')))
-    expect(onTileError).not.toHaveBeenCalled()
+    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('cartavault-dark', true))
+    expect(screen.queryByTestId('tile-layer')).not.toBeInTheDocument()
     expect(loadCartaVaultStyle).not.toHaveBeenCalled()
     expect(layer.addTo).not.toHaveBeenCalled()
   })

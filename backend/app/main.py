@@ -26,6 +26,7 @@ from app.auth.api_key_router import router as api_key_router
 from app.places.stadia_credential_router import router as stadia_places_credential_router
 from app.basemaps.router import admin_router as basemap_admin_router, router as basemap_router
 from app.basemaps.stadia_router import router as stadia_basemap_router
+from app.basemaps.mapbox_router import router as mapbox_basemap_router
 from app.basemaps.vector_router import admin_router as vector_basemap_admin_router, router as vector_basemap_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
@@ -258,6 +259,7 @@ app.include_router(api_key_router, prefix=API_PREFIX)
 app.include_router(google_places_credential_router, prefix=API_PREFIX)
 app.include_router(basemap_router, prefix=API_PREFIX)
 app.include_router(stadia_basemap_router, prefix=API_PREFIX)
+app.include_router(mapbox_basemap_router, prefix=API_PREFIX)
 app.include_router(vector_basemap_router, prefix=API_PREFIX)
 app.include_router(vector_basemap_admin_router, prefix=API_PREFIX)
 app.include_router(stadia_places_credential_router, prefix=API_PREFIX)

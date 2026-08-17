@@ -24,6 +24,20 @@ def selected_api_key(session: Session, user: User, area: str, provider: str) -> 
     return credential if credential is not None and credential.user_id == user.id and credential.provider == provider else None
 
 
+def selected_basemap_api_key(session: Session, user: User, provider: str) -> UserApiCredential | None:
+    root = user.preferences if isinstance(user.preferences, dict) else {}
+    settings = root.get("basemaps") if isinstance(root.get("basemaps"), dict) else {}
+    raw_id = settings.get(f"{provider}_api_key_id")
+    if not isinstance(raw_id, str):
+        return None
+    try:
+        key_id = UUID(raw_id)
+    except ValueError:
+        return None
+    credential = session.get(UserApiCredential, key_id)
+    return credential if credential is not None and credential.user_id == user.id and credential.provider == provider else None
+
+
 def decrypt_api_key(credential: UserApiCredential) -> str:
     try:
         return CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)

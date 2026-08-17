@@ -48,7 +48,7 @@ def _configure_encryption(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_provider_configuration_never_returns_a_persistent_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     secret = "persistent-provider-secret"
     credential = SimpleNamespace(id=uuid4(), encrypted_secret=secret)
-    monkeypatch.setattr(stadia_router, "selected_api_key", lambda *_args: credential)
+    monkeypatch.setattr(stadia_router, "selected_basemap_api_key", lambda *_args: credential)
     monkeypatch.setattr(stadia_credential_router, "selected_api_key", lambda *_args: credential)
 
     maps = stadia_router.basemap_config(SimpleNamespace(), SimpleNamespace(id=uuid4()))
@@ -113,7 +113,7 @@ def test_google_tile_session_cannot_be_reused_by_another_user(monkeypatch: pytes
     )
     attacker = SimpleNamespace(id=uuid4())
     credential = SimpleNamespace(id=credential_id)
-    monkeypatch.setattr(google_tiles, "selected_api_key", lambda *_args: credential)
+    monkeypatch.setattr(google_tiles, "selected_basemap_api_key", lambda *_args: credential)
     request = Request({
         "type": "http",
         "method": "GET",

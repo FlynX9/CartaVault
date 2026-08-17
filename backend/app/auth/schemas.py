@@ -130,8 +130,11 @@ class PlacesPreferences(BaseModel):
 
 
 class BasemapPreferences(BaseModel):
-    satellite_provider: Literal["stadia", "google"] = "stadia"
-    api_key_id: UUID | None = None
+    classic_provider: Literal["osm", "stadia", "google"] = "osm"
+    satellite_provider: Literal["none", "stadia", "google", "mapbox"] = "none"
+    stadia_api_key_id: UUID | None = None
+    google_api_key_id: UUID | None = None
+    mapbox_api_key_id: UUID | None = None
 
 
 class OnboardingPreferences(BaseModel):
@@ -142,7 +145,7 @@ class OnboardingPreferences(BaseModel):
 class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
     default_theme: Literal["light", "dark", "system"] = "system"
-    preferred_basemap: Literal["cartavault-light", "cartavault-dark", "satellite", "google-satellite", "osm"] = "cartavault-light"
+    preferred_basemap: Literal["cartavault-light", "cartavault-dark", "stadia-light", "stadia-dark", "google-roadmap", "osm", "satellite", "google-satellite", "mapbox-satellite"] = "osm"
     density: Literal["compact", "comfortable", "spacious"] = "compact"
     startup_panel: Literal["dashboard", "maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
@@ -162,8 +165,20 @@ class AccountPreferences(BaseModel):
         if "routing" not in migrated and "keep_routes_in_country" in migrated:
             migrated["routing"] = {"provider": "osrm"}
             migrated.pop("keep_routes_in_country", None)
-        if "basemaps" not in migrated:
-            migrated["basemaps"] = {"satellite_provider": "google" if migrated.get("preferred_basemap") == "google-satellite" else "stadia"}
+        legacy = migrated.get("basemaps") if isinstance(migrated.get("basemaps"), dict) else {}
+        if "classic_provider" not in legacy:
+            preferred = migrated.get("preferred_basemap")
+            legacy = {**legacy, "classic_provider": "google" if preferred == "google-roadmap" else "stadia" if preferred in {"stadia-light", "stadia-dark"} else "osm"}
+        if "satellite_provider" not in legacy:
+            preferred = migrated.get("preferred_basemap")
+            legacy = {**legacy, "satellite_provider": "google" if preferred == "google-satellite" else "mapbox" if preferred == "mapbox-satellite" else "stadia" if preferred == "satellite" else "none"}
+        if "api_key_id" in legacy:
+            provider = legacy.get("satellite_provider")
+            key_field = f"{provider}_api_key_id" if provider in {"stadia", "google", "mapbox"} else None
+            if key_field and key_field not in legacy:
+                legacy[key_field] = legacy["api_key_id"]
+            legacy.pop("api_key_id", None)
+        migrated["basemaps"] = legacy
         return migrated
 
 

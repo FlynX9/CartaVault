@@ -1,5 +1,5 @@
 import { useState, type FocusEvent } from 'react'
-import { Map, Moon, Satellite, Sun, type LucideIcon } from 'lucide-react'
+import { Moon, Satellite, Sun, type LucideIcon } from 'lucide-react'
 
 import { AVAILABLE_BASEMAPS, getBasemap, type BasemapId } from '../../map/basemaps'
 
@@ -7,20 +7,26 @@ interface BasemapSelectorProps {
   activeBasemapId: BasemapId
   onBasemapChange: (id: BasemapId) => void
   googleSatelliteAvailable?: boolean
-  satelliteProvider?: 'stadia' | 'google'
-  cartaVaultAvailable?: boolean
+  offline?: boolean
+  classicProvider?: 'osm' | 'stadia' | 'google'
+  satelliteProvider?: 'none' | 'stadia' | 'google' | 'mapbox'
 }
 
 const basemapIcons: Record<BasemapId, LucideIcon> = {
   'cartavault-light': Sun,
   'cartavault-dark': Moon,
+  'stadia-light': Sun,
+  'stadia-dark': Moon,
+  'google-roadmap': Sun,
   satellite: Satellite,
   'google-satellite': Satellite,
-  osm: Map,
+  'mapbox-satellite': Satellite,
+  osm: Sun,
 }
 
-export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatelliteAvailable = false, satelliteProvider = 'stadia' }: BasemapSelectorProps) {
+export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = false, classicProvider = 'osm', satelliteProvider = 'none' }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
+  if (offline) return null
   const activeBasemap = getBasemap(activeBasemapId)
   const selectBasemap = (id: BasemapId) => {
     onBasemapChange(id)
@@ -69,11 +75,8 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, googleSatell
     >
       <legend>Fond</legend>
       {expanded && <div className="basemap-selector-options">{[
-        // Keep the historical light/dark choices visible. When the local
-        // CartaVault archive is not ready, BasemapLayer serves their Stadia
-        // equivalents instead of removing both controls from the map.
-        ...AVAILABLE_BASEMAPS.filter((basemap) => basemap.id !== 'satellite'),
-        ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : googleSatelliteAvailable ? [getBasemap('google-satellite')] : []),
+        ...AVAILABLE_BASEMAPS.filter((basemap) => classicProvider === 'stadia' ? ['stadia-light', 'stadia-dark'].includes(basemap.id) : classicProvider === 'google' ? basemap.id === 'google-roadmap' : basemap.id === 'osm'),
+        ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap('google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
       ].filter((basemap, index, items) => basemap.id !== activeBasemapId && items.findIndex((item) => item.id === basemap.id) === index).map((basemap) => renderBasemapButton(basemap, false))}</div>}
       {renderBasemapButton(activeBasemap, true)}
     </fieldset>

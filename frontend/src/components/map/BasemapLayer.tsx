@@ -22,7 +22,6 @@ interface BasemapLayerProps {
 
 function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const map = useMap()
-  const [stadiaFallbackUrl, setStadiaFallbackUrl] = useState<string | null>(null)
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
 
@@ -32,19 +31,14 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
     let mapLibreErrorHandler: (() => void) | null = null
 
     void (async () => {
-      const configured = await getCartaVaultVectorConfig(controller.signal, true, countryCode ?? undefined, 'online')
+      const configured = await getCartaVaultVectorConfig(controller.signal, true, countryCode ?? undefined, 'offline')
       const offlineVersion = navigator.onLine === false ? await getOfflineBasemapVersion() : null
       const config = offlineVersion ? { ...configured, version: offlineVersion, available: true } : configured
       if (config.available && config.archive_url) {
         configureCartaVaultProtocol(config)
         return loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
       }
-      const style = basemap.id === 'cartavault-dark' ? 'alidade_smooth_dark' : 'alidade_smooth'
-      const stadia = await getStadiaBasemapConfig(controller.signal).catch(() => null)
-      const tilePath = stadia?.tile_path
-        .replace('{style}', style)
-        .replace('{extension}', 'png') ?? null
-      if (!controller.signal.aborted) setStadiaFallbackUrl(tilePath ? `${API_BASE_URL}${tilePath}` : null)
+      if (!controller.signal.aborted) onTileErrorRef.current(basemap.id, true)
       return null
     })().then((style) => {
         if (controller.signal.aborted || style === null) return
@@ -71,44 +65,43 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
     }
   }, [basemap, countryCode, map])
 
-  if (stadiaFallbackUrl) {
-    return <TileLayer
-      key={`stadia-${basemap.id}`}
-      url={stadiaFallbackUrl}
-      attribution={basemap.attribution}
-      maxZoom={20}
-      detectRetina
-      eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }}
-    />
-  }
   return null
 }
 
-function GoogleSatelliteLayer({ onTileError }: { onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite'; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
   useEffect(() => {
     const controller = new AbortController()
-    void createGoogleSatelliteSession(controller.signal).then(setSession).catch(() => { if (!controller.signal.aborted) onTileErrorRef.current('google-satellite', true) })
+    void createGoogleSatelliteSession(basemapId === 'google-roadmap' ? 'roadmap' : 'satellite', controller.signal).then(setSession).catch(() => { if (!controller.signal.aborted) onTileErrorRef.current(basemapId, true) })
     return () => controller.abort()
-  }, [])
+  }, [basemapId])
   if (!session) return null
-  return <TileLayer key="google-satellite" url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current('google-satellite') }} />
+  return <TileLayer key={basemapId} url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemapId) }} />
 }
 
-function StadiaSatelliteLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+const stadiaStyles: Partial<Record<BasemapId, { style: string; extension: 'png' | 'jpg' }>> = {
+  'stadia-light': { style: 'alidade_smooth', extension: 'png' },
+  'stadia-dark': { style: 'alidade_smooth_dark', extension: 'png' },
+  satellite: { style: 'alidade_satellite', extension: 'jpg' },
+}
+
+function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const [url, setUrl] = useState<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
+    const definition = stadiaStyles[basemap.id]
+    if (!definition) return () => controller.abort()
+    setUrl(null)
     void getStadiaBasemapConfig(controller.signal).then((config) => {
       const tilePath = config.tile_path
-        .replace('{style}', 'alidade_satellite')
-        .replace('{extension}', 'jpg')
+        .replace('{style}', definition.style)
+        .replace('{extension}', definition.extension)
       if (!controller.signal.aborted) setUrl(`${API_BASE_URL}${tilePath}`)
     }).catch(() => undefined)
     return () => controller.abort()
-  }, [basemap.url])
+  }, [basemap.id, basemap.url])
   if (!url) return null
   return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
 }
@@ -120,8 +113,9 @@ export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLay
   if (basemap.kind === 'vector') {
     return <VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} />
   }
-  if (basemap.kind === 'google') return <GoogleSatelliteLayer onTileError={onTileError} />
-  if (basemap.id === 'satellite' && basemap.requiresStadiaAuthentication) return <StadiaSatelliteLayer basemap={basemap} onTileError={onTileError} />
+  if (basemap.kind === 'google') return <GoogleBasemapLayer basemapId={basemap.id as 'google-roadmap' | 'google-satellite'} onTileError={onTileError} />
+  if (basemap.id === 'mapbox-satellite') return <TileLayer key={basemap.id} url={`${API_BASE_URL}/basemaps/mapbox-satellite/tiles/{z}/{x}/{y}`} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
+  if (basemap.requiresStadiaAuthentication) return <StadiaBasemapLayer basemap={basemap} onTileError={onTileError} />
 
   return (
     <TileLayer

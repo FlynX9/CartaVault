@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.admin.models import SystemSetting
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
-from app.auth.api_keys import selected_api_key
+from app.auth.api_keys import selected_basemap_api_key
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import User, UserApiCredential
 from app.auth.provider_sessions import GoogleTilesSession, ProviderSessionError, decode_google_tiles_session, encode_google_tiles_session
@@ -123,11 +123,11 @@ def _api_key(credential: UserApiCredential) -> str:
         raise HTTPException(503, {"code": error.code, "message": str(error)}) from error
 
 
-def _create_google_session(api_key: str, language: str = "fr") -> dict[str, object]:
+def _create_google_session(api_key: str, language: str = "fr", map_type: str = "satellite") -> dict[str, object]:
     session_language = "en-US" if language.lower().startswith("en") else "fr-FR"
     request = UrlRequest(
         f"{google_map_tiles_settings.base_url}/v1/createSession?key={quote(api_key)}",
-        data=json.dumps({"mapType": "satellite", "language": session_language}).encode(),
+        data=json.dumps({"mapType": map_type, "language": session_language}).encode(),
         headers={"Content-Type": "application/json", "User-Agent": "CartaVault/1", "Referer": f"{email_settings.frontend_public_url}/"},
         method="POST",
     )
@@ -217,15 +217,19 @@ def _reserve_tile(session: Session, user: User, credential: UserApiCredential) -
 
 @router.get("/status")
 def public_status(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_api_key(session, user, "basemaps", "google")
+    credential = selected_basemap_api_key(session, user, "google")
     status = _admin_status(session)
     user_blocked, _ = _user_quota_reached(session, user)
     return {"available": bool(status["available"] and credential and not user_blocked), "warning_level": status["warning_level"]}
 
 
+class GoogleMapSessionRequest(BaseModel):
+    map_type: str = Field(default="satellite", pattern="^(roadmap|satellite)$")
+
+
 @router.post("/session")
-def create_session(response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_api_key(session, user, "basemaps", "google")
+def create_session(data: GoogleMapSessionRequest, response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
+    credential = selected_basemap_api_key(session, user, "google")
     _, values = _setting(session)
     usage = _usage(session)
     if values.get("disabled_reason") == "USAGE_THRESHOLD_REACHED" and not _instance_quota_reached(values, usage):
@@ -242,7 +246,7 @@ def create_session(response: Response, session: Session = Depends(get_db), user:
         raise HTTPException(429, {"code": "GOOGLE_SATELLITE_USER_QUOTA", "message": "Votre quota Google Satellite est atteint."})
     try:
         language = str((user.preferences or {}).get("language", "fr"))
-        payload = _create_google_session(_api_key(credential), language)
+        payload = _create_google_session(_api_key(credential), language, data.map_type)
     except HTTPException as error:
         credential.last_error_code = str(error.detail.get("code")) if isinstance(error.detail, dict) else "GOOGLE_MAP_TILES_UNAVAILABLE"
         values["consecutive_errors"] = int(values["consecutive_errors"]) + 1
@@ -265,7 +269,7 @@ def create_session(response: Response, session: Session = Depends(get_db), user:
         path="/",
     )
     response.headers["Cache-Control"] = "no-store"
-    return {"tile_path": "/basemaps/google-satellite/tiles/{z}/{x}/{y}", "expires": expires_at.isoformat(), "attribution": "© Google", "max_zoom": 22}
+    return {"tile_path": "/basemaps/google-satellite/tiles/{z}/{x}/{y}", "expires": expires_at.isoformat(), "attribution": "© Google", "max_zoom": 22, "map_type": data.map_type}
 
 
 @router.get("/tiles/{z}/{x}/{y}")
@@ -280,7 +284,7 @@ def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(ge
         provider_session = decode_google_tiles_session(opaque_session)
     except ProviderSessionError as error:
         raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_SESSION_INVALID", "message": "La session cartographique a expiré."}) from error
-    credential = selected_api_key(session, user, "basemaps", "google")
+    credential = selected_basemap_api_key(session, user, "google")
     if provider_session.user_id != user.id or credential is None or credential.id != provider_session.credential_id:
         raise HTTPException(403, {"code": "GOOGLE_MAP_TILES_SESSION_FORBIDDEN", "message": "Cette session cartographique n’est plus autorisée."})
     try:

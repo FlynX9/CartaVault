@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
-from app.auth.api_keys import selected_api_key
+from app.auth.api_keys import selected_basemap_api_key
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserApiCredential
 from app.database import get_db
@@ -45,7 +45,7 @@ def _decrypt(credential: UserApiCredential) -> str:
 
 @router.get("/basemaps/stadia/config")
 def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_api_key(session, user, "basemaps", "stadia")
+    credential = selected_basemap_api_key(session, user, "stadia")
     return {
         "personal_key_active": credential is not None,
         "tile_path": "/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}",
@@ -68,7 +68,7 @@ def basemap_tile(
     maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
-    credential = selected_api_key(session, user, "basemaps", "stadia")
+    credential = selected_basemap_api_key(session, user, "stadia")
     try:
         stadia_tiles_rate_limiter.check(f"stadia-tiles:{user.id}")
     except RoutingError as error:

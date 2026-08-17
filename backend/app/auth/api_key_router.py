@@ -13,6 +13,7 @@ from app.auth.credential_encryption import CredentialEncryptionError, Credential
 from app.auth.dependencies import get_current_session
 from app.auth.models import UserApiCredential, UserSession
 from app.basemaps.stadia_router import _validate_key as validate_stadia_key
+from app.basemaps.mapbox_router import validate_mapbox_key
 from app.config import GoogleRoutesSettings
 from app.database import get_db
 from app.trips.routing.base import RoutingError
@@ -69,8 +70,8 @@ def list_api_keys(session: Session = Depends(get_db), current: UserSession = Dep
 
 @router.post("")
 def create_api_key(data: ApiKeyCreate, session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
-    if data.provider not in {"google", "stadia", "openrouteservice"}:
-        raise HTTPException(422, {"code": "API_KEY_PROVIDER_INVALID", "message": "Le fournisseur doit être Google, Stadia ou OpenRouteService."})
+    if data.provider not in {"google", "stadia", "mapbox", "openrouteservice"}:
+        raise HTTPException(422, {"code": "API_KEY_PROVIDER_INVALID", "message": "Le fournisseur doit être Google, Stadia, Mapbox ou OpenRouteService."})
     try:
         encrypted = CredentialEncryptionService.from_settings().encrypt(_clean(data.api_key, data.provider.title()))
     except CredentialEncryptionError as error:
@@ -113,6 +114,9 @@ def verify_api_key(key_id: UUID, session: Session = Depends(get_db), current: Us
         elif key.provider == "stadia":
             google_routing_rate_limiter.check(f"stadia-api-key-verify:{current.user_id}")
             validate_stadia_key(secret)
+        elif key.provider == "mapbox":
+            google_routing_rate_limiter.check(f"mapbox-api-key-verify:{current.user_id}")
+            validate_mapbox_key(secret)
         else:
             ors_routing_rate_limiter.check(f"ors-api-key-verify:{current.user_id}")
             OpenRouteServiceProvider(secret).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
@@ -138,8 +142,15 @@ def delete_api_key(key_id: UUID, session: Session = Depends(get_db), current: Us
     preferences = dict(current.user.preferences or {})
     for area in ("routing", "places", "basemaps"):
         settings = preferences.get(area)
-        if isinstance(settings, dict) and str(settings.get("api_key_id") or "") == str(key_id):
-            preferences[area] = {**settings, "api_key_id": None}
+        if isinstance(settings, dict):
+            updated = dict(settings)
+            changed = False
+            for field in ("api_key_id", "stadia_api_key_id", "google_api_key_id", "mapbox_api_key_id"):
+                if str(updated.get(field) or "") == str(key_id):
+                    updated[field] = None
+                    changed = True
+            if changed:
+                preferences[area] = updated
     current.user.preferences = preferences
     session.delete(key); session.commit()
     return {"deleted": True}
