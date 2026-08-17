@@ -76,7 +76,13 @@ def selected_basemap_api_key(
     return _accessible_credential(session, user, key_id, provider, capability)
 
 
-def selected_google_maps_javascript_key(session: Session, user: User) -> ApiCredential | None:
+def selected_google_maps_javascript_key(
+    session: Session,
+    user: User,
+    capability: ApiKeyCapability = "satellite_basemap",
+) -> ApiCredential | None:
+    if capability == "classic_basemap":
+        return selected_basemap_api_key(session, user, "google", capability)
     root = user.preferences if isinstance(user.preferences, dict) else {}
     settings = root.get("basemaps") if isinstance(root.get("basemaps"), dict) else {}
     raw_id = settings.get("google_maps_js_api_key_id")

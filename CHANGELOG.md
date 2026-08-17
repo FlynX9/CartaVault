@@ -30,6 +30,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - No documented changes yet.
 
+## [1.0.0-rc.3] - 2026-08-17
+
+Third CartaVault 1.0 release candidate.
+
+### Changed
+
+- Google classic mapping now uses the EEA-compatible Maps JavaScript integration with the independently assigned classic basemap key.
+
+### Fixed
+
+- Removed the application bootstrap inline script blocked by the production Content Security Policy.
+- Allowed the Google Fonts stylesheet required by the Google Maps JavaScript renderer without relaxing other CSP directives.
+
 ## [1.0.0-rc.2] - 2026-08-17
 
 Second CartaVault 1.0 release candidate.
@@ -96,6 +109,7 @@ First CartaVault 1.0 release candidate.
 - Shared instance credentials remain encrypted, masked and read-only for users.
 - Release images run as a non-root user with a read-only filesystem and dropped capabilities.
 
-[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.2...HEAD
+[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.3...HEAD
+[1.0.0-rc.3]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.1

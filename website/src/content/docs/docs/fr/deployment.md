@@ -40,7 +40,7 @@ L’assistant initial se verrouille après la création du premier administrateu
 ## Mise à jour
 
 1. Effectuez une sauvegarde cohérente.
-2. Remplacez `CARTAVAULT_VERSION` par un tag immuable, par exemple `1.0.0-rc.2`.
+2. Remplacez `CARTAVAULT_VERSION` par un tag immuable, par exemple `1.0.0-rc.3`.
 3. Téléchargez l’image et recréez le service.
 4. Surveillez les migrations et `/healthz`.
 5. Vérifiez une connexion, une carte, une photo et un calcul représentatif.

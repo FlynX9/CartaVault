@@ -53,14 +53,14 @@ afterEach(() => {
 describe('GoogleMapsJavaScriptBasemap', () => {
   it('creates one satellite map, synchronizes the Leaflet camera, and reuses it across switches', async () => {
     const onError = vi.fn()
-    const view = render(<GoogleMapsJavaScriptBasemap active onError={onError} />)
+    const view = render(<GoogleMapsJavaScriptBasemap active basemapId="google-satellite" mapType="satellite" onError={onError} />)
 
     await waitFor(() => expect(GoogleMap).toHaveBeenCalledTimes(1))
     expect(GoogleMap).toHaveBeenCalledWith(expect.any(HTMLDivElement), expect.objectContaining({
       center: { lat: 48.8566, lng: 2.3522 }, zoom: 12, mapTypeId: 'satellite', gestureHandling: 'none',
     }))
     expect(recordGoogleMapInstanceCreated).toHaveBeenCalledTimes(1)
-    expect(markGoogleMapsJavaScriptLoaded).toHaveBeenCalledTimes(1)
+    expect(markGoogleMapsJavaScriptLoaded).toHaveBeenCalledWith('satellite')
 
     const syncCamera = mapMock.on.mock.calls.find(([events]) => events === 'move zoom resize')?.[1]
     mapMock.getCenter.mockReturnValue({ lat: 43.2965, lng: 5.3698 })
@@ -68,8 +68,8 @@ describe('GoogleMapsJavaScriptBasemap', () => {
     syncCamera()
     expect(moveCamera).toHaveBeenCalledWith({ center: { lat: 43.2965, lng: 5.3698 }, zoom: 9 })
 
-    view.rerender(<GoogleMapsJavaScriptBasemap active={false} onError={onError} />)
-    view.rerender(<GoogleMapsJavaScriptBasemap active onError={onError} />)
+    view.rerender(<GoogleMapsJavaScriptBasemap active={false} basemapId="google-satellite" mapType="satellite" onError={onError} />)
+    view.rerender(<GoogleMapsJavaScriptBasemap active basemapId="google-satellite" mapType="satellite" onError={onError} />)
     expect(GoogleMap).toHaveBeenCalledTimes(1)
     expect(getGoogleMapsJavaScriptConfig).toHaveBeenCalledTimes(1)
     expect(onError).not.toHaveBeenCalled()
@@ -83,10 +83,23 @@ describe('GoogleMapsJavaScriptBasemap', () => {
     const onError = vi.fn()
     vi.mocked(getGoogleMapsJavaScriptConfig).mockRejectedValueOnce(new ApiError(503, 'Clé navigateur manquante.', {}, 'GOOGLE_MAPS_JS_UNAVAILABLE'))
 
-    render(<GoogleMapsJavaScriptBasemap active onError={onError} />)
+    render(<GoogleMapsJavaScriptBasemap active basemapId="google-satellite" mapType="satellite" onError={onError} />)
 
     await waitFor(() => expect(onError).toHaveBeenCalledWith('google-satellite', true, 'Clé navigateur manquante.', 'GOOGLE_MAPS_JS_UNAVAILABLE'))
     expect(GoogleMap).not.toHaveBeenCalled()
     expect(container.querySelector('.google-maps-js-basemap')).toBeNull()
+  })
+
+  it('requests and renders the Google roadmap integration independently', async () => {
+    vi.mocked(getGoogleMapsJavaScriptConfig).mockResolvedValueOnce({ api_key: 'classic-browser-key', language: 'fr', region: '', map_type: 'roadmap' })
+    const onError = vi.fn()
+
+    render(<GoogleMapsJavaScriptBasemap active basemapId="google-roadmap" mapType="roadmap" onError={onError} />)
+
+    await waitFor(() => expect(GoogleMap).toHaveBeenCalledTimes(1))
+    expect(getGoogleMapsJavaScriptConfig).toHaveBeenCalledWith('roadmap')
+    expect(GoogleMap).toHaveBeenCalledWith(expect.any(HTMLDivElement), expect.objectContaining({ mapTypeId: 'roadmap' }))
+    expect(markGoogleMapsJavaScriptLoaded).toHaveBeenCalledWith('roadmap')
+    expect(onError).not.toHaveBeenCalled()
   })
 })

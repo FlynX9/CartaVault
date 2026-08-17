@@ -2,16 +2,18 @@ import { useEffect, useRef } from 'react'
 import { useMap } from 'react-leaflet'
 
 import { ApiError } from '../../api/client'
-import { getGoogleMapsJavaScriptConfig, markGoogleMapsJavaScriptLoaded } from '../../api/googleSatellite'
+import { getGoogleMapsJavaScriptConfig, markGoogleMapsJavaScriptLoaded, type GoogleMapsJavaScriptMapType } from '../../api/googleSatellite'
 import type { BasemapId } from '../../map/basemaps'
 import { loadGoogleMapsJavaScript, onGoogleMapsAuthenticationFailure, recordGoogleMapInstanceCreated, recordGoogleMapInstanceDestroyed } from '../../map/googleMapsJavaScript'
 
 interface Props {
   active: boolean
+  basemapId: 'google-roadmap' | 'google-satellite'
+  mapType: GoogleMapsJavaScriptMapType
   onError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void
 }
 
-export function GoogleMapsJavaScriptBasemap({ active, onError }: Props) {
+export function GoogleMapsJavaScriptBasemap({ active, basemapId, mapType, onError }: Props) {
   const leafletMap = useMap()
   const hostRef = useRef<HTMLDivElement | null>(null)
   const googleMapRef = useRef<google.maps.Map | null>(null)
@@ -77,11 +79,12 @@ export function GoogleMapsJavaScriptBasemap({ active, onError }: Props) {
       host.remove()
       if (hostRef.current === host) hostRef.current = null
       leafletContainer.classList.remove('has-google-maps-js-basemap')
-      onErrorRef.current('google-satellite', true, reason, errorCode)
+      onErrorRef.current(basemapId, true, reason, errorCode)
     }
-    authenticationFailureCleanupRef.current = onGoogleMapsAuthenticationFailure(() => fail('Google Satellite n’est pas disponible avec la configuration actuelle de votre clé Google. Vérifiez Maps JavaScript API, la facturation et les restrictions de référent HTTP.', 'GOOGLE_MAPS_JS_AUTHENTICATION_FAILED'))
+    const mapLabel = mapType === 'roadmap' ? 'Google classique' : 'Google Satellite'
+    authenticationFailureCleanupRef.current = onGoogleMapsAuthenticationFailure(() => fail(`${mapLabel} n’est pas disponible avec la configuration actuelle de votre clé Google. Vérifiez Maps JavaScript API, la facturation et les restrictions de référent HTTP.`, 'GOOGLE_MAPS_JS_AUTHENTICATION_FAILED'))
 
-    initializationRef.current = getGoogleMapsJavaScriptConfig()
+    initializationRef.current = getGoogleMapsJavaScriptConfig(mapType)
       .then(async (config) => {
         const { Map } = await loadGoogleMapsJavaScript(config.api_key, config.language, config.region)
         if (lifecycleGeneration !== lifecycleGenerationRef.current) return
@@ -98,14 +101,14 @@ export function GoogleMapsJavaScriptBasemap({ active, onError }: Props) {
         })
         googleMapRef.current = googleMap
         recordGoogleMapInstanceCreated()
-        google.maps.event.addListenerOnce(googleMap, 'tilesloaded', () => { void markGoogleMapsJavaScriptLoaded().catch(() => undefined) })
+        google.maps.event.addListenerOnce(googleMap, 'tilesloaded', () => { void markGoogleMapsJavaScriptLoaded(mapType).catch(() => undefined) })
         if (!activeRef.current) host.hidden = true
       })
       .catch((error: unknown) => {
-        const reason = error instanceof Error ? error.message : 'Google Satellite n’est pas disponible avec la configuration actuelle de votre clé Google.'
+        const reason = error instanceof Error ? error.message : `${mapLabel} n’est pas disponible avec la configuration actuelle de votre clé Google.`
         fail(reason, error instanceof ApiError ? error.code ?? 'GOOGLE_MAPS_JS_LOAD_FAILED' : 'GOOGLE_MAPS_JS_LOAD_FAILED')
       })
-  }, [active, leafletMap])
+  }, [active, basemapId, leafletMap, mapType])
 
   return null
 }

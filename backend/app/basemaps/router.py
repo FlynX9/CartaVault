@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
@@ -251,24 +252,39 @@ def public_status(session: Session = Depends(get_db), user: User = Depends(get_c
 
 
 @router.get("/maps-js/config")
-def google_maps_javascript_config(response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_google_maps_javascript_key(session, user)
+def google_maps_javascript_config(
+    response: Response,
+    map_type: Literal["roadmap", "satellite"] = "satellite",
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, object]:
+    capability = "classic_basemap" if map_type == "roadmap" else "satellite_basemap"
+    credential = selected_google_maps_javascript_key(session, user, capability)
     _, values = _setting(session)
     if not values.get("maps_javascript_enabled") or credential is None:
-        raise HTTPException(503, {"code": "GOOGLE_MAPS_JS_UNAVAILABLE", "message": "Google Satellite nécessite une clé navigateur autorisant Maps JavaScript API."})
+        raise HTTPException(503, {"code": "GOOGLE_MAPS_JS_UNAVAILABLE", "message": "Le fond Google nécessite une clé navigateur autorisant Maps JavaScript API."})
     response.headers["Cache-Control"] = "private, no-store"
     language = str((user.preferences or {}).get("language", "fr"))
     return {
         "api_key": _api_key(credential),
         "language": "en" if language.lower().startswith("en") else "fr",
         "region": "",
-        "map_type": "satellite",
+        "map_type": map_type,
     }
 
 
+class GoogleMapsJavaScriptLoaded(BaseModel):
+    map_type: Literal["roadmap", "satellite"] = "satellite"
+
+
 @router.post("/maps-js/loaded")
-def google_maps_javascript_loaded(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, bool]:
-    credential = selected_google_maps_javascript_key(session, user)
+def google_maps_javascript_loaded(
+    data: GoogleMapsJavaScriptLoaded,
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, bool]:
+    capability = "classic_basemap" if data.map_type == "roadmap" else "satellite_basemap"
+    credential = selected_google_maps_javascript_key(session, user, capability)
     if credential is None:
         raise HTTPException(404, {"code": "GOOGLE_MAPS_JS_CREDENTIAL_NOT_FOUND", "message": "Clé Google Maps JavaScript introuvable."})
     now = datetime.now(UTC).replace(tzinfo=None)

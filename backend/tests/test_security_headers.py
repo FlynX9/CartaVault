@@ -40,6 +40,7 @@ def test_security_headers_are_added_to_http_responses() -> None:
     assert "strict-transport-security" not in response.headers
     assert "https://maps.googleapis.com" in response.headers["content-security-policy"]
     assert "https://maps.gstatic.com" in response.headers["content-security-policy"]
+    assert "https://fonts.googleapis.com" in response.headers["content-security-policy"]
     assert "https://fonts.gstatic.com" in response.headers["content-security-policy"]
 
 

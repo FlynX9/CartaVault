@@ -4793,6 +4793,21 @@
         "title": "GoogleMapSessionRequest",
         "type": "object"
       },
+      "GoogleMapsJavaScriptLoaded": {
+        "properties": {
+          "map_type": {
+            "default": "satellite",
+            "enum": [
+              "roadmap",
+              "satellite"
+            ],
+            "title": "Map Type",
+            "type": "string"
+          }
+        },
+        "title": "GoogleMapsJavaScriptLoaded",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -19837,6 +19852,22 @@
     "/basemaps/google-satellite/maps-js/config": {
       "get": {
         "operationId": "google_maps_javascript_config_basemaps_google_satellite_maps_js_config_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "map_type",
+            "required": false,
+            "schema": {
+              "default": "satellite",
+              "enum": [
+                "roadmap",
+                "satellite"
+              ],
+              "title": "Map Type",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -19849,6 +19880,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Google Maps Javascript Config",
@@ -19860,6 +19901,16 @@
     "/basemaps/google-satellite/maps-js/loaded": {
       "post": {
         "operationId": "google_maps_javascript_loaded_basemaps_google_satellite_maps_js_loaded_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleMapsJavaScriptLoaded"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -19874,6 +19925,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Google Maps Javascript Loaded",

@@ -11,6 +11,7 @@ const APP_SHELL = [
   '/offline.html',
   '/cartavault-icon.png',
   '/cartavault-logo.png',
+  '/theme-bootstrap.js',
   '/icons/cartavault-180.png',
   '/icons/cartavault-192.png',
   '/icons/cartavault-512.png',

@@ -70,7 +70,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
   return null
 }
 
-function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite-tiles'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
+function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-satellite-tiles'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
   const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
   const sessionRequestRef = useRef<{ basemapId: typeof basemapId; promise: ReturnType<typeof createGoogleSatelliteSession> } | null>(null)
   const onTileErrorRef = useRef(onTileError)
@@ -80,7 +80,7 @@ function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roa
     const existing = sessionRequestRef.current
     const promise = existing?.basemapId === basemapId
       ? existing.promise
-      : createGoogleSatelliteSession(basemapId === 'google-roadmap' ? 'roadmap' : 'satellite')
+      : createGoogleSatelliteSession('satellite')
     sessionRequestRef.current = { basemapId, promise }
     void promise.then((value) => { if (current) setSession(value) }).catch((error: unknown) => {
       if (current) onTileErrorRef.current(basemapId, true, error instanceof Error ? error.message : undefined, error instanceof ApiError ? error.code ?? undefined : undefined)
@@ -119,16 +119,17 @@ function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
-  const googleSatelliteActive = basemapId === 'google-satellite'
+  const googleMapsBasemapId = basemapId === 'google-roadmap' ? 'google-roadmap' : 'google-satellite'
+  const googleMapsActive = basemapId === 'google-roadmap' || basemapId === 'google-satellite'
 
-  const googleMapsLayer = <GoogleMapsJavaScriptBasemap active={googleSatelliteActive} onError={onTileError} />
+  const googleMapsLayer = <GoogleMapsJavaScriptBasemap key={googleMapsBasemapId} active={googleMapsActive} basemapId={googleMapsBasemapId} mapType={googleMapsBasemapId === 'google-roadmap' ? 'roadmap' : 'satellite'} onError={onTileError} />
 
   if (basemap.kind === 'vector') {
     return <>{googleMapsLayer}<VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} /></>
   }
   if (basemap.id === 'google-satellite') return googleMapsLayer
   if (basemap.id === 'google-satellite-tiles') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-satellite-tiles" onTileError={onTileError} /></>
-  if (basemap.kind === 'google') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-roadmap" onTileError={onTileError} /></>
+  if (basemap.kind === 'google') return googleMapsLayer
   if (basemap.id === 'mapbox-satellite') return <>{googleMapsLayer}<TileLayer key={basemap.id} url={`${API_BASE_URL}/basemaps/mapbox-satellite/tiles/{z}/{x}/{y}`} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} /></>
   if (basemap.requiresStadiaAuthentication) return <>{googleMapsLayer}<StadiaBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 

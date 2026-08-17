@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { BasemapLayer } from './BasemapLayer'
 import { createGoogleSatelliteSession } from '../../api/googleSatellite'
-import { ApiError } from '../../api/client'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 
@@ -29,7 +28,7 @@ vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockRes
 vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ enabled: true, available: true, country_code: 'FR', country_name: 'France', state: 'ready', phase: 'Disponible', error_code: null, error_message: null, archive_url: '/api/basemaps/cartavault/archive/fr.pmtiles', glyphs_url: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf', version: 'test', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' }) }))
 vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
 vi.mock('./GoogleMapsJavaScriptBasemap', () => ({
-  GoogleMapsJavaScriptBasemap: ({ active }: { active: boolean }) => <span data-testid="google-maps-js" data-active={String(active)} />,
+  GoogleMapsJavaScriptBasemap: ({ active, basemapId, mapType }: { active: boolean; basemapId: string; mapType: string }) => <span data-testid="google-maps-js" data-active={String(active)} data-basemap-id={basemapId} data-map-type={mapType} />,
 }))
 
 afterEach(() => {
@@ -65,6 +64,7 @@ describe('BasemapLayer', () => {
     render(<BasemapLayer basemapId="google-satellite" onTileError={vi.fn()} />)
 
     expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-map-type', 'satellite')
     expect(screen.queryByTestId('tile-layer')).not.toBeInTheDocument()
     expect(createGoogleSatelliteSession).not.toHaveBeenCalled()
   })
@@ -77,14 +77,14 @@ describe('BasemapLayer', () => {
     expect(createGoogleSatelliteSession).toHaveBeenCalledWith('satellite')
   })
 
-  it('keeps the legacy Map Tiles session only for Google roadmap', async () => {
-    const onTileError = vi.fn()
-    vi.mocked(createGoogleSatelliteSession).mockRejectedValueOnce(new ApiError(503, 'Google classique est indisponible.', {}, 'GOOGLE_MAP_TILES_UNAVAILABLE'))
+  it('uses the EEA-compatible Maps JavaScript renderer for Google roadmap', () => {
+    render(<BasemapLayer basemapId="google-roadmap" onTileError={vi.fn()} />)
 
-    render(<BasemapLayer basemapId="google-roadmap" onTileError={onTileError} />)
-
-    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('google-roadmap', true, 'Google classique est indisponible.', 'GOOGLE_MAP_TILES_UNAVAILABLE'))
-    expect(createGoogleSatelliteSession).toHaveBeenCalledWith('roadmap')
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-basemap-id', 'google-roadmap')
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-map-type', 'roadmap')
+    expect(screen.queryByTestId('tile-layer')).not.toBeInTheDocument()
+    expect(createGoogleSatelliteSession).not.toHaveBeenCalled()
   })
 
   it('identifies a failing raster source to the fallback controller', () => {

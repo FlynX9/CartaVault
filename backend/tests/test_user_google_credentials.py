@@ -160,8 +160,14 @@ def test_google_satellite_uses_an_explicit_browser_key_and_marks_a_real_map_load
     assert config.headers["cache-control"] == "private, no-store"
     assert config.json() == {"api_key": api_key, "language": "en", "region": "", "map_type": "satellite"}
 
-    loaded = integration_client.post("/basemaps/google-satellite/maps-js/loaded", headers={"X-CSRF-Token": csrf})
+    roadmap = integration_client.get("/basemaps/google-satellite/maps-js/config", params={"map_type": "roadmap"})
+    assert roadmap.status_code == 200
+    assert roadmap.json() == {"api_key": api_key, "language": "en", "region": "", "map_type": "roadmap"}
+
+    loaded = integration_client.post("/basemaps/google-satellite/maps-js/loaded", json={"map_type": "satellite"}, headers={"X-CSRF-Token": csrf})
     assert loaded.status_code == 200 and loaded.json() == {"loaded": True}
+    roadmap_loaded = integration_client.post("/basemaps/google-satellite/maps-js/loaded", json={"map_type": "roadmap"}, headers={"X-CSRF-Token": csrf})
+    assert roadmap_loaded.status_code == 200 and roadmap_loaded.json() == {"loaded": True}
     credential = database_session.get(UserApiCredential, created["id"])
     database_session.refresh(credential)
     assert credential.verified_at is not None and credential.last_used_at is not None
