@@ -8,6 +8,7 @@ import { TileLayer, useMap } from 'react-leaflet'
 import { getBasemap, type BasemapId, type RasterBasemapDefinition, type VectorBasemapDefinition } from '../../map/basemaps'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { createGoogleSatelliteSession } from '../../api/googleSatellite'
+import { ApiError } from '../../api/client'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
@@ -17,7 +18,7 @@ import { API_BASE_URL } from '../../config'
 interface BasemapLayerProps {
   basemapId: BasemapId
   countryCode?: string | null
-  onTileError: (id: BasemapId, fatal?: boolean, reason?: string) => void
+  onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void
 }
 
 function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
@@ -68,7 +69,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
   return null
 }
 
-function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string) => void }) {
+function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
   const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
   const sessionRequestRef = useRef<{ basemapId: typeof basemapId; promise: ReturnType<typeof createGoogleSatelliteSession> } | null>(null)
   const onTileErrorRef = useRef(onTileError)
@@ -80,7 +81,9 @@ function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roa
       ? existing.promise
       : createGoogleSatelliteSession(basemapId === 'google-roadmap' ? 'roadmap' : 'satellite')
     sessionRequestRef.current = { basemapId, promise }
-    void promise.then((value) => { if (current) setSession(value) }).catch((error: unknown) => { if (current) onTileErrorRef.current(basemapId, true, error instanceof Error ? error.message : undefined) })
+    void promise.then((value) => { if (current) setSession(value) }).catch((error: unknown) => {
+      if (current) onTileErrorRef.current(basemapId, true, error instanceof Error ? error.message : undefined, error instanceof ApiError ? error.code ?? undefined : undefined)
+    })
     return () => { current = false }
   }, [basemapId])
   if (!session) return null

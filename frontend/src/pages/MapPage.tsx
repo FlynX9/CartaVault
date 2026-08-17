@@ -666,7 +666,7 @@ export function MapPage({
     }
   }
 
-  const handleBasemapTileError = (sourceId: BasemapId, fatal = false, reason?: string) => {
+  const handleBasemapTileError = (sourceId: BasemapId, fatal = false, reason?: string, errorCode?: string) => {
     if (sourceId !== basemapId || failedBasemapsRef.current.has(sourceId)) return
     const failures = fatal ? TILE_ERROR_FALLBACK_THRESHOLD : (tileFailuresRef.current.get(sourceId) ?? 0) + 1
     tileFailuresRef.current.set(sourceId, failures)
@@ -683,18 +683,29 @@ export function MapPage({
     const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'mapbox-satellite'
       ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
       : 'osm'
+    const googleSatelliteRegionRestricted = sourceId === 'google-satellite' && errorCode === 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE'
     setBasemapId(fallback)
     saveBasemapPreference(fallback)
+    if (googleSatelliteRegionRestricted) {
+      explicitBasemapSelectionRef.current = fallback
+      setConfiguredSatelliteProvider('none')
+    }
     const currentPreferences = accountPreferencesRef.current
-    if (currentPreferences !== null && currentPreferences.preferred_basemap !== fallback) {
-      const updated = { ...currentPreferences, preferred_basemap: fallback }
+    if (currentPreferences !== null && (currentPreferences.preferred_basemap !== fallback || googleSatelliteRegionRestricted)) {
+      const updated = {
+        ...currentPreferences,
+        preferred_basemap: fallback,
+        basemaps: googleSatelliteRegionRestricted
+          ? { ...currentPreferences.basemaps, satellite_provider: 'none' as const }
+          : currentPreferences.basemaps,
+      }
       accountPreferencesRef.current = updated
       void updateAccountPreferences(updated).then((saved) => {
         accountPreferencesRef.current = saved
       }).catch(() => undefined)
     }
     setBasemapNotice(reason
-      ? `${reason} ${getBasemap(fallback).label} a été activé automatiquement.`
+      ? `${reason}${googleSatelliteRegionRestricted ? ' Google Satellite a été désactivé.' : ''} ${getBasemap(fallback).label} a été activé automatiquement.`
       : `Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
   }
   return (

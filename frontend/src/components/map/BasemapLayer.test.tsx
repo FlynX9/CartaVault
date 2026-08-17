@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { BasemapLayer } from './BasemapLayer'
 import { createGoogleSatelliteSession } from '../../api/googleSatellite'
+import { ApiError } from '../../api/client'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 
@@ -66,11 +67,11 @@ describe('BasemapLayer', () => {
 
   it('forwards the Google session failure reason to the fallback controller', async () => {
     const onTileError = vi.fn()
-    vi.mocked(createGoogleSatelliteSession).mockRejectedValueOnce(new Error('Google Satellite est indisponible dans cette région.'))
+    vi.mocked(createGoogleSatelliteSession).mockRejectedValueOnce(new ApiError(503, 'Google Satellite est indisponible dans cette région.', {}, 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE'))
 
     render(<BasemapLayer basemapId="google-satellite" onTileError={onTileError} />)
 
-    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('google-satellite', true, 'Google Satellite est indisponible dans cette région.'))
+    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('google-satellite', true, 'Google Satellite est indisponible dans cette région.', 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE'))
   })
 
   it('identifies a failing raster source to the fallback controller', () => {

@@ -37,9 +37,10 @@ vi.mock('../api/places', () => ({ getPlaceDetails }))
 vi.mock('../api/annotations', () => annotationApi)
 
 vi.mock('../components/map/PoiMap', () => ({
-  PoiMap: ({ layoutKey, basemapId, onBasemapTileError, countryId, countryMaskEnabled, measurementActive, measurementPoints, onMeasurementPointAdd, mapToolMode, onTemporaryExtentChange, onTemporaryCoordinateChange, focusRequest, annotationDrawing, onAnnotationDrawingPointsChange, onAnnotationDrawingComplete }: { layoutKey: string; basemapId: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm'; onBasemapTileError: (id: 'cartavault-light' | 'cartavault-dark' | 'satellite' | 'osm') => void; countryId?: string | null; countryMaskEnabled?: boolean; measurementActive?: boolean; measurementPoints?: Array<{ latitude: number; longitude: number }>; onMeasurementPointAdd?: (point: { latitude: number; longitude: number }) => void; mapToolMode?: string; onTemporaryExtentChange?: (extent: { start: { latitude: number; longitude: number }; end: { latitude: number; longitude: number }; locked: boolean }) => void; onTemporaryCoordinateChange?: (point: { latitude: number; longitude: number }) => void; focusRequest?: { bounds?: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number } } | null; annotationDrawing?: { points: Array<{ latitude: number; longitude: number }> } | null; onAnnotationDrawingPointsChange?: (points: Array<{ latitude: number; longitude: number }>) => void; onAnnotationDrawingComplete?: (points: Array<{ latitude: number; longitude: number }>) => void }) => (
+  PoiMap: ({ layoutKey, basemapId, onBasemapTileError, countryId, countryMaskEnabled, measurementActive, measurementPoints, onMeasurementPointAdd, mapToolMode, onTemporaryExtentChange, onTemporaryCoordinateChange, focusRequest, annotationDrawing, onAnnotationDrawingPointsChange, onAnnotationDrawingComplete }: { layoutKey: string; basemapId: string; onBasemapTileError: (id: string, fatal?: boolean, reason?: string, errorCode?: string) => void; countryId?: string | null; countryMaskEnabled?: boolean; measurementActive?: boolean; measurementPoints?: Array<{ latitude: number; longitude: number }>; onMeasurementPointAdd?: (point: { latitude: number; longitude: number }) => void; mapToolMode?: string; onTemporaryExtentChange?: (extent: { start: { latitude: number; longitude: number }; end: { latitude: number; longitude: number }; locked: boolean }) => void; onTemporaryCoordinateChange?: (point: { latitude: number; longitude: number }) => void; focusRequest?: { bounds?: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number } } | null; annotationDrawing?: { points: Array<{ latitude: number; longitude: number }> } | null; onAnnotationDrawingPointsChange?: (points: Array<{ latitude: number; longitude: number }>) => void; onAnnotationDrawingComplete?: (points: Array<{ latitude: number; longitude: number }>) => void }) => (
     <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId} data-country-id={countryId ?? ''} data-country-mask={String(countryMaskEnabled)} data-measurement-active={String(measurementActive)} data-measurement-points={measurementPoints?.length ?? 0} data-tool-mode={mapToolMode} data-focus-bounds={focusRequest?.bounds ? JSON.stringify(focusRequest.bounds) : ''} data-annotation-points={annotationDrawing?.points.length ?? 0}>
       <button type="button" onClick={() => onBasemapTileError(basemapId)}>Simuler l'erreur de tuiles</button>
+      <button type="button" onClick={() => onBasemapTileError('google-satellite', true, 'Google Satellite est indisponible dans cette région.', 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE')}>Simuler la restriction Google Satellite</button>
       <button type="button" onClick={() => onMeasurementPointAdd?.({ latitude: 48.8566, longitude: 2.3522 })}>Simuler un clic de mesure</button>
       <button type="button" onClick={() => onTemporaryExtentChange?.({ start: { latitude: 47, longitude: 1 }, end: { latitude: 49, longitude: 3 }, locked: true })}>Simuler une emprise</button>
       <button type="button" onClick={() => onTemporaryCoordinateChange?.({ latitude: 48.1234567, longitude: 2.7654321 })}>Simuler des coordonnées</button>
@@ -355,6 +356,27 @@ describe('MapPage', () => {
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
     expect(window.localStorage.getItem('cartavault.basemap')).toBe('stadia-dark')
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-dark' })))
+  })
+
+  it('disables an unusable Google satellite provider after a regional rejection', async () => {
+    const account = await import('../api/account')
+    vi.mocked(account.getAccountPreferences).mockResolvedValueOnce({
+      language: 'fr', default_theme: 'system', preferred_basemap: 'google-satellite', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30,
+      photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' },
+      basemaps: { classic_provider: 'google', satellite_provider: 'google', google_api_key_id: 'google-key' },
+    })
+    const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
+    render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-satellite'))
+    fireEvent.click(screen.getByRole('button', { name: 'Simuler la restriction Google Satellite' }))
+
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-roadmap')
+    expect(screen.getByRole('status')).toHaveTextContent('Google Satellite a été désactivé')
+    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({
+      preferred_basemap: 'google-roadmap',
+      basemaps: expect.objectContaining({ satellite_provider: 'none' }),
+    })))
   })
 
   it('keeps the configured basemap independent from the visual theme', async () => {
