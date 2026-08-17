@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.api_keys import selected_api_key, selected_basemap_api_key
+from app.auth.api_keys import selected_api_key, selected_basemap_api_key, selected_google_maps_javascript_key
 from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
@@ -102,7 +102,7 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
         raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé Google pour la recherche de lieux."})
     configured_basemap_providers = {
         provider for provider in (data.basemaps.classic_provider, data.basemaps.satellite_provider)
-        if provider in {"stadia", "google", "mapbox"}
+        if provider in {"stadia", "mapbox"} or (provider == "google" and (data.basemaps.classic_provider == "google" or data.basemaps.google_satellite_mode == "map-tiles"))
     }
     for basemap_provider in configured_basemap_providers:
         if basemap_provider == "stadia" and stadia_unauthenticated_allowed():
@@ -110,6 +110,9 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
         if selected_basemap_api_key(database_session, current.user, basemap_provider) is None:
             current.user.preferences = previous_preferences
             raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": f"Sélectionnez une clé {basemap_provider.title()} pour la cartographie configurée."})
+    if data.basemaps.satellite_provider == "google" and data.basemaps.google_satellite_mode == "maps-js" and selected_google_maps_javascript_key(database_session, current.user) is None:
+        current.user.preferences = previous_preferences
+        raise HTTPException(409, {"code": "GOOGLE_MAPS_JS_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé navigateur Google Maps JavaScript pour le satellite."})
     database_session.commit()
     return _preferences(current.user)
 

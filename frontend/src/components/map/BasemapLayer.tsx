@@ -14,6 +14,7 @@ import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
 import { getOfflineBasemapVersion } from '../../pwa/offlineData'
 import { API_BASE_URL } from '../../config'
+import { GoogleMapsJavaScriptBasemap } from './GoogleMapsJavaScriptBasemap'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
@@ -69,7 +70,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
   return null
 }
 
-function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
+function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite-tiles'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
   const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
   const sessionRequestRef = useRef<{ basemapId: typeof basemapId; promise: ReturnType<typeof createGoogleSatelliteSession> } | null>(null)
   const onTileErrorRef = useRef(onTileError)
@@ -118,22 +119,27 @@ function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
+  const googleSatelliteActive = basemapId === 'google-satellite'
+
+  const googleMapsLayer = <GoogleMapsJavaScriptBasemap active={googleSatelliteActive} onError={onTileError} />
 
   if (basemap.kind === 'vector') {
-    return <VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} />
+    return <>{googleMapsLayer}<VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} /></>
   }
-  if (basemap.kind === 'google') return <GoogleBasemapLayer basemapId={basemap.id as 'google-roadmap' | 'google-satellite'} onTileError={onTileError} />
-  if (basemap.id === 'mapbox-satellite') return <TileLayer key={basemap.id} url={`${API_BASE_URL}/basemaps/mapbox-satellite/tiles/{z}/{x}/{y}`} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
-  if (basemap.requiresStadiaAuthentication) return <StadiaBasemapLayer basemap={basemap} onTileError={onTileError} />
+  if (basemap.id === 'google-satellite') return googleMapsLayer
+  if (basemap.id === 'google-satellite-tiles') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-satellite-tiles" onTileError={onTileError} /></>
+  if (basemap.kind === 'google') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-roadmap" onTileError={onTileError} /></>
+  if (basemap.id === 'mapbox-satellite') return <>{googleMapsLayer}<TileLayer key={basemap.id} url={`${API_BASE_URL}/basemaps/mapbox-satellite/tiles/{z}/{x}/{y}`} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} /></>
+  if (basemap.requiresStadiaAuthentication) return <>{googleMapsLayer}<StadiaBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 
   return (
-    <TileLayer
+    <>{googleMapsLayer}<TileLayer
       key={basemap.id}
       url={basemap.url}
       attribution={basemap.attribution}
       maxZoom={basemap.maxZoom}
       detectRetina
       eventHandlers={{ tileerror: () => onTileError(basemap.id) }}
-    />
+    /></>
   )
 }

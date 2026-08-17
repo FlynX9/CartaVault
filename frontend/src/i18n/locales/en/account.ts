@@ -257,7 +257,7 @@ export const accountEn = {
   'account.apiCatalog.secretPlaceholder': 'Enter your API key',
   'account.apiCatalog.show': 'Show key',
   'account.apiCatalog.hide': 'Hide key',
-  'account.apiCatalog.security': 'Your API key is stored securely and encrypted. It will never be shared or displayed after it is saved.',
+  'account.apiCatalog.security': 'Your API key is securely stored and encrypted. A key selected for Google Satellite is sent to the browser by the Maps JavaScript API: use a dedicated key restricted to allowed HTTP referrers and this API.',
   'account.apiCatalog.test': 'Test',
   'account.apiCatalog.error': 'Error',
   'account.apiCatalog.verified': 'Verified',

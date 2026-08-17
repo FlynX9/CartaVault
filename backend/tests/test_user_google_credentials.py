@@ -82,6 +82,41 @@ def test_selected_google_key_searches_places_without_exposing_secret(integration
     assert calls[0][0] == api_key and api_key not in response.text
 
 
+def test_google_satellite_uses_an_explicit_browser_key_and_marks_a_real_map_load(integration_client, database_session, auth_user, monkeypatch) -> None:
+    _configure_encryption(monkeypatch)
+    csrf = _login(integration_client, monkeypatch, auth_user)
+    api_key = "fake-browser-restricted-maps-js-key"
+    created = _create_key(integration_client, csrf, name="Google Maps JavaScript", provider="google", secret=api_key).json()
+
+    auth_user.preferences = {
+        "language": "en",
+        "basemaps": {
+            "classic_provider": "google",
+            "satellite_provider": "google",
+            "google_api_key_id": created["id"],
+        },
+    }
+    database_session.commit()
+    legacy_only = integration_client.get("/basemaps/google-satellite/maps-js/config")
+    assert legacy_only.status_code == 503
+    assert legacy_only.json()["detail"]["code"] == "GOOGLE_MAPS_JS_UNAVAILABLE"
+
+    preferences = dict(auth_user.preferences)
+    preferences["basemaps"] = {**preferences["basemaps"], "google_maps_js_api_key_id": created["id"]}
+    auth_user.preferences = preferences
+    database_session.commit()
+    config = integration_client.get("/basemaps/google-satellite/maps-js/config")
+    assert config.status_code == 200
+    assert config.headers["cache-control"] == "private, no-store"
+    assert config.json() == {"api_key": api_key, "language": "en", "region": "", "map_type": "satellite"}
+
+    loaded = integration_client.post("/basemaps/google-satellite/maps-js/loaded", headers={"X-CSRF-Token": csrf})
+    assert loaded.status_code == 200 and loaded.json() == {"loaded": True}
+    credential = database_session.get(UserApiCredential, created["id"])
+    database_session.refresh(credential)
+    assert credential.verified_at is not None and credential.last_used_at is not None
+
+
 def test_account_anonymization_deletes_all_personal_keys(integration_client, database_session, monkeypatch) -> None:
     _configure_encryption(monkeypatch)
     user = User(email=f"delete-credential-{uuid4()}@example.test", display_name="Delete", password_hash="hash", is_admin=False, is_active=True)

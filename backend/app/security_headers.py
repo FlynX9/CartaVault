@@ -9,8 +9,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 SECURITY_HEADERS = {
     "content-security-policy": (
         "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; "
-        "script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; "
-        "font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'"
+        "script-src 'self' 'wasm-unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; "
+        "font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https:; worker-src 'self' blob:; manifest-src 'self'"
     ),
     "permissions-policy": "camera=(), microphone=(), payment=(), usb=()",
     "referrer-policy": "strict-origin-when-cross-origin",

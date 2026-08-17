@@ -231,9 +231,9 @@ Account **API keys** centralizes the routing engine, place-search engine and bas
 |---|---|---|
 | Routing | OSRM | Google Routes |
 | Place search | Stadia public access | Google Places or a personal Stadia key |
-| Satellite tiles | Stadia public access | Google Map Tiles or a personal Stadia key |
+| Satellite map | Disabled | Stadia, Mapbox, or Google Maps JavaScript API |
 
-There is no global Stadia key or build argument. A verified personal Stadia key uses the associated Stadia plan; without one, CartaVault uses public access. Users can choose Google Routes, Google Places or Google Map Tiles with separate personal keys.
+There is no global Stadia key or build argument. A verified personal Stadia key uses the associated Stadia plan; without one, CartaVault uses public access. Google Satellite offers two implementations: Maps JavaScript API for EEA-compatible rendering with a dedicated referrer-restricted browser key, and Map Tiles API for Google projects where satellite tiles remain available with a server key. Google Routes and Google Places remain separate uses. See the [Google Satellite integration and cost model](docs/google-satellite.md).
 
 When personal provider credentials are stored, preserve this encryption key with the database backup:
 

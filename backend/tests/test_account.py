@@ -121,6 +121,27 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert google.status_code == 200
     assert google.json()["routing"]["provider"] == "google"
     assert set(google.json()["routing"]) == {"provider", "api_key_id"}
+    satellite_without_browser_key = integration_client.put(
+        "/account/preferences",
+        json={**updated.json(), "basemaps": {"classic_provider": "google", "satellite_provider": "google", "google_satellite_mode": "maps-js", "google_api_key_id": str(credential.id)}},
+        headers=headers,
+    )
+    assert satellite_without_browser_key.status_code == 409
+    assert satellite_without_browser_key.json()["detail"]["code"] == "GOOGLE_MAPS_JS_CREDENTIAL_REQUIRED"
+    satellite = integration_client.put(
+        "/account/preferences",
+        json={**updated.json(), "basemaps": {"classic_provider": "google", "satellite_provider": "google", "google_api_key_id": str(credential.id), "google_maps_js_api_key_id": str(credential.id)}},
+        headers=headers,
+    )
+    assert satellite.status_code == 200
+    assert satellite.json()["basemaps"]["google_maps_js_api_key_id"] == str(credential.id)
+    satellite_tiles = integration_client.put(
+        "/account/preferences",
+        json={**updated.json(), "preferred_basemap": "google-satellite-tiles", "basemaps": {"classic_provider": "osm", "satellite_provider": "google", "google_satellite_mode": "map-tiles", "google_api_key_id": str(credential.id)}},
+        headers=headers,
+    )
+    assert satellite_tiles.status_code == 200
+    assert satellite_tiles.json()["basemaps"]["google_satellite_mode"] == "map-tiles"
     assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
     reset = integration_client.post("/account/preferences/reset", headers=headers)
     assert reset.status_code == 200 and reset.json()["density"] == "compact"

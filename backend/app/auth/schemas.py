@@ -132,8 +132,10 @@ class PlacesPreferences(BaseModel):
 class BasemapPreferences(BaseModel):
     classic_provider: Literal["osm", "stadia", "google"] = "osm"
     satellite_provider: Literal["none", "stadia", "google", "mapbox"] = "none"
+    google_satellite_mode: Literal["maps-js", "map-tiles"] = "maps-js"
     stadia_api_key_id: UUID | None = None
     google_api_key_id: UUID | None = None
+    google_maps_js_api_key_id: UUID | None = None
     mapbox_api_key_id: UUID | None = None
 
 
@@ -145,7 +147,7 @@ class OnboardingPreferences(BaseModel):
 class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
     default_theme: Literal["light", "dark", "system"] = "system"
-    preferred_basemap: Literal["cartavault-light", "cartavault-dark", "stadia-light", "stadia-dark", "google-roadmap", "osm", "satellite", "google-satellite", "mapbox-satellite"] = "osm"
+    preferred_basemap: Literal["cartavault-light", "cartavault-dark", "stadia-light", "stadia-dark", "google-roadmap", "osm", "satellite", "google-satellite", "google-satellite-tiles", "mapbox-satellite"] = "osm"
     density: Literal["compact", "comfortable", "spacious"] = "compact"
     startup_panel: Literal["dashboard", "maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
@@ -178,6 +180,11 @@ class AccountPreferences(BaseModel):
             if key_field and key_field not in legacy:
                 legacy[key_field] = legacy["api_key_id"]
             legacy.pop("api_key_id", None)
+        if "google_satellite_mode" not in legacy:
+            legacy_google_tiles = legacy.get("satellite_provider") == "google" and legacy.get("google_api_key_id") and not legacy.get("google_maps_js_api_key_id")
+            legacy = {**legacy, "google_satellite_mode": "map-tiles" if legacy_google_tiles else "maps-js"}
+            if legacy_google_tiles and migrated.get("preferred_basemap") == "google-satellite":
+                migrated["preferred_basemap"] = "google-satellite-tiles"
         migrated["basemaps"] = legacy
         return migrated
 

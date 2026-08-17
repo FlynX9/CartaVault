@@ -8,6 +8,7 @@ export const BASEMAP_IDS = [
   "google-roadmap",
   "satellite",
   "google-satellite",
+  "google-satellite-tiles",
   "mapbox-satellite",
   "osm",
 ] as const;
@@ -53,6 +54,7 @@ export interface BasemapAvailability {
   "google-roadmap"?: boolean;
   satellite: boolean;
   "google-satellite"?: boolean;
+  "google-satellite-tiles"?: boolean;
   "mapbox-satellite"?: boolean;
   osm: boolean;
 }
@@ -104,6 +106,7 @@ function configuredAvailability(): BasemapAvailability {
     "google-roadmap": true,
     satellite: enabled(import.meta.env.VITE_BASEMAP_SATELLITE_ENABLED),
     "google-satellite": true,
+    "google-satellite-tiles": true,
     "mapbox-satellite": true,
     osm: enabled(import.meta.env.VITE_BASEMAP_OSM_ENABLED),
   };
@@ -205,11 +208,21 @@ export function createBasemaps(
     {
       kind: "google",
       id: "google-satellite",
-      label: "Google Satellite",
+      label: "Google Satellite (Maps JavaScript)",
       shortLabel: "Google",
       attribution: "&copy; Google",
       maxZoom: 22,
       enabled: availability["google-satellite"] !== false,
+      requiresStadiaAuthentication: false,
+    },
+    {
+      kind: "google",
+      id: "google-satellite-tiles",
+      label: "Google Satellite (Map Tiles)",
+      shortLabel: "Google",
+      attribution: "&copy; Google",
+      maxZoom: 22,
+      enabled: availability["google-satellite-tiles"] !== false,
       requiresStadiaAuthentication: false,
     },
     {

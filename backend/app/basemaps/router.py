@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.admin.models import SystemSetting
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
-from app.auth.api_keys import selected_basemap_api_key
+from app.auth.api_keys import selected_basemap_api_key, selected_google_maps_javascript_key
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import User, UserApiCredential
 from app.auth.provider_sessions import GoogleTilesSession, ProviderSessionError, decode_google_tiles_session, encode_google_tiles_session
@@ -34,6 +34,7 @@ GOOGLE_TILES_SESSION_COOKIE = "cartavault_google_tiles_session"
 google_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
 DEFAULTS: dict[str, object] = {
     "enabled": True,
+    "maps_javascript_enabled": True,
     "daily_soft_limit": google_map_tiles_settings.daily_soft_limit,
     "monthly_soft_limit": google_map_tiles_settings.monthly_soft_limit,
     "auto_disable_percent": 100,
@@ -45,6 +46,7 @@ DEFAULTS: dict[str, object] = {
 
 class SatelliteSettingsUpdate(BaseModel):
     enabled: bool
+    maps_javascript_enabled: bool = True
     daily_soft_limit: int = Field(ge=100, le=100_000_000)
     monthly_soft_limit: int = Field(ge=100, le=1_000_000_000)
     auto_disable_percent: int = Field(default=100, ge=50, le=200)
@@ -243,6 +245,38 @@ def public_status(session: Session = Depends(get_db), user: User = Depends(get_c
     status = _admin_status(session)
     user_blocked, _ = _user_quota_reached(session, user)
     return {"available": bool(status["available"] and credential and not user_blocked), "warning_level": status["warning_level"]}
+
+
+@router.get("/maps-js/config")
+def google_maps_javascript_config(response: Response, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
+    credential = selected_google_maps_javascript_key(session, user)
+    _, values = _setting(session)
+    if not values.get("maps_javascript_enabled") or credential is None:
+        raise HTTPException(503, {"code": "GOOGLE_MAPS_JS_UNAVAILABLE", "message": "Google Satellite nécessite une clé navigateur autorisant Maps JavaScript API."})
+    response.headers["Cache-Control"] = "private, no-store"
+    language = str((user.preferences or {}).get("language", "fr"))
+    return {
+        "api_key": _api_key(credential),
+        "language": "en" if language.lower().startswith("en") else "fr",
+        "region": "",
+        "map_type": "satellite",
+    }
+
+
+@router.post("/maps-js/loaded")
+def google_maps_javascript_loaded(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, bool]:
+    credential = selected_google_maps_javascript_key(session, user)
+    if credential is None:
+        raise HTTPException(404, {"code": "GOOGLE_MAPS_JS_CREDENTIAL_NOT_FOUND", "message": "Clé Google Maps JavaScript introuvable."})
+    now = datetime.now(UTC).replace(tzinfo=None)
+    credential.verified_at = credential.verified_at or now
+    credential.last_used_at = now
+    credential.last_error_code = None
+    credential.last_error_status = None
+    credential.last_error_message = None
+    credential.last_error_at = None
+    session.commit()
+    return {"loaded": True}
 
 
 class GoogleMapSessionRequest(BaseModel):

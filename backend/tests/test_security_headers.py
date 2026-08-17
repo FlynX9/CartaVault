@@ -38,6 +38,9 @@ def test_security_headers_are_added_to_http_responses() -> None:
     for name, value in SECURITY_HEADERS.items():
         assert response.headers[name] == value
     assert "strict-transport-security" not in response.headers
+    assert "https://maps.googleapis.com" in response.headers["content-security-policy"]
+    assert "https://maps.gstatic.com" in response.headers["content-security-policy"]
+    assert "https://fonts.gstatic.com" in response.headers["content-security-policy"]
 
 
 def test_hsts_is_only_added_to_https_responses() -> None:

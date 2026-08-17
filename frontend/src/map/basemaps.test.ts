@@ -4,7 +4,7 @@ import { BASEMAP_PREFERENCE_KEY, BASEMAPS, DEFAULT_BASEMAP_ID, createBasemaps, g
 
 describe('basemap registry', () => {
   it('defines all configured online providers and the offline CartaVault styles', () => {
-    expect(BASEMAPS.map((basemap) => basemap.id)).toEqual(['cartavault-light', 'google-roadmap', 'cartavault-dark', 'stadia-light', 'stadia-dark', 'google-satellite', 'mapbox-satellite', 'satellite', 'osm'])
+    expect(BASEMAPS.map((basemap) => basemap.id)).toEqual(['cartavault-light', 'google-roadmap', 'cartavault-dark', 'stadia-light', 'stadia-dark', 'google-satellite', 'google-satellite-tiles', 'mapbox-satellite', 'satellite', 'osm'])
     expect(BASEMAPS.find((basemap) => basemap.id === 'google-roadmap')).toMatchObject({ kind: 'google' })
     expect(BASEMAPS.find((basemap) => basemap.id === 'mapbox-satellite')?.attribution).toContain('Mapbox')
   })

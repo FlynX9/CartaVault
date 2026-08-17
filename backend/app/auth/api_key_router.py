@@ -145,7 +145,7 @@ def delete_api_key(key_id: UUID, session: Session = Depends(get_db), current: Us
         if isinstance(settings, dict):
             updated = dict(settings)
             changed = False
-            for field in ("api_key_id", "stadia_api_key_id", "google_api_key_id", "mapbox_api_key_id"):
+            for field in ("api_key_id", "stadia_api_key_id", "google_api_key_id", "google_maps_js_api_key_id", "mapbox_api_key_id"):
                 if str(updated.get(field) or "") == str(key_id):
                     updated[field] = None
                     changed = True

@@ -15,7 +15,7 @@ export interface TotpRecoveryCodes { recovery_codes: string[] }
 export interface AccountPreferences {
   language: 'fr' | 'en'
   default_theme: 'light' | 'dark' | 'system'
-  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'stadia-light' | 'stadia-dark' | 'google-roadmap' | 'osm' | 'satellite' | 'google-satellite' | 'mapbox-satellite'
+  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'stadia-light' | 'stadia-dark' | 'google-roadmap' | 'osm' | 'satellite' | 'google-satellite' | 'google-satellite-tiles' | 'mapbox-satellite'
   density: 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string
@@ -30,7 +30,7 @@ export interface AccountPreferences {
     api_key_id?: string | null
   }
   places: { provider: 'stadia' | 'google'; api_key_id?: string | null }
-  basemaps?: { classic_provider?: 'osm' | 'stadia' | 'google'; satellite_provider: 'none' | 'stadia' | 'google' | 'mapbox'; api_key_id?: string | null; stadia_api_key_id?: string | null; google_api_key_id?: string | null; mapbox_api_key_id?: string | null }
+  basemaps?: { classic_provider?: 'osm' | 'stadia' | 'google'; satellite_provider: 'none' | 'stadia' | 'google' | 'mapbox'; google_satellite_mode?: 'maps-js' | 'map-tiles'; api_key_id?: string | null; stadia_api_key_id?: string | null; google_api_key_id?: string | null; google_maps_js_api_key_id?: string | null; mapbox_api_key_id?: string | null }
 }
 
 export interface PersonalApiKey {

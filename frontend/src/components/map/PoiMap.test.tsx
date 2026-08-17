@@ -310,6 +310,12 @@ describe('PoiMap selection lifecycle', () => {
     const selectedStopMarker = [...container.querySelectorAll<SVGPathElement>('.leaflet-overlay-pane path')].find((path) => path.getAttribute('stroke-width') === '5')
     expect(selectedStopMarker).toHaveAttribute('stroke', 'white')
 
+    const leafletMap = container.querySelector('.leaflet-container')
+    rerender(<PoiMap {...commonProps} basemapId="google-satellite" selectedTripStopId="stop-1" hiddenTripDayIds={new Set()} />)
+    expect(container.querySelector('.leaflet-container')).toBe(leafletMap)
+    expect(container.querySelectorAll('.leaflet-overlay-pane path')).toHaveLength(2)
+    expect(container.querySelector('.trip-stop-number--selected')).toBeInTheDocument()
+
     rerender(<PoiMap {...commonProps} hiddenTripDayIds={new Set(['day-1'])} />)
     await waitFor(() => expect(container.querySelectorAll('.leaflet-overlay-pane path')).toHaveLength(0))
     expect(container.querySelector('.trip-stop-number')).not.toBeInTheDocument()

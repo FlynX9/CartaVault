@@ -28,6 +28,9 @@ vi.mock('../../api/googleSatellite', () => ({ createGoogleSatelliteSession: vi.f
 vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, key_optional: false, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' }) }))
 vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ enabled: true, available: true, country_code: 'FR', country_name: 'France', state: 'ready', phase: 'Disponible', error_code: null, error_message: null, archive_url: '/api/basemaps/cartavault/archive/fr.pmtiles', glyphs_url: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf', version: 'test', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' }) }))
 vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
+vi.mock('./GoogleMapsJavaScriptBasemap', () => ({
+  GoogleMapsJavaScriptBasemap: ({ active }: { active: boolean }) => <span data-testid="google-maps-js" data-active={String(active)} />,
+}))
 
 afterEach(() => {
   cleanup()
@@ -58,20 +61,30 @@ describe('BasemapLayer', () => {
     expect(await screen.findByTestId('tile-layer')).toHaveAttribute('data-url', 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png')
   })
 
-  it('creates a Google satellite session without forwarding an incompatible abort signal', async () => {
+  it('uses the native Maps JavaScript renderer for Google Satellite', () => {
     render(<BasemapLayer basemapId="google-satellite" onTileError={vi.fn()} />)
 
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-active', 'true')
+    expect(screen.queryByTestId('tile-layer')).not.toBeInTheDocument()
+    expect(createGoogleSatelliteSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps Google Satellite Map Tiles as an explicit alternative', async () => {
+    render(<BasemapLayer basemapId="google-satellite-tiles" onTileError={vi.fn()} />)
+
     expect(await screen.findByTestId('tile-layer')).toHaveAttribute('data-url', '/api/basemaps/google-satellite/tiles/{z}/{x}/{y}')
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-active', 'false')
     expect(createGoogleSatelliteSession).toHaveBeenCalledWith('satellite')
   })
 
-  it('forwards the Google session failure reason to the fallback controller', async () => {
+  it('keeps the legacy Map Tiles session only for Google roadmap', async () => {
     const onTileError = vi.fn()
-    vi.mocked(createGoogleSatelliteSession).mockRejectedValueOnce(new ApiError(503, 'Google Satellite est indisponible dans cette région.', {}, 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE'))
+    vi.mocked(createGoogleSatelliteSession).mockRejectedValueOnce(new ApiError(503, 'Google classique est indisponible.', {}, 'GOOGLE_MAP_TILES_UNAVAILABLE'))
 
-    render(<BasemapLayer basemapId="google-satellite" onTileError={onTileError} />)
+    render(<BasemapLayer basemapId="google-roadmap" onTileError={onTileError} />)
 
-    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('google-satellite', true, 'Google Satellite est indisponible dans cette région.', 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE'))
+    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('google-roadmap', true, 'Google classique est indisponible.', 'GOOGLE_MAP_TILES_UNAVAILABLE'))
+    expect(createGoogleSatelliteSession).toHaveBeenCalledWith('roadmap')
   })
 
   it('identifies a failing raster source to the fallback controller', () => {

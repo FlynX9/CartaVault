@@ -28,12 +28,18 @@ describe('BasemapSelector', () => {
 
   it.each([
     ['stadia', 'Stadia satellite'],
-    ['google', 'Google Satellite'],
+    ['google', 'Google Satellite (Maps JavaScript)'],
     ['mapbox', 'Mapbox Satellite'],
   ] as const)('shows the %s satellite choice when configured', (satelliteProvider, label) => {
     render(<BasemapSelector activeBasemapId="osm" onBasemapChange={vi.fn()} satelliteProvider={satelliteProvider} />)
     fireEvent.focus(screen.getByRole('button', { name: 'Utiliser le fond OpenStreetMap Standard' }))
     expect(screen.getByRole('button', { name: `Utiliser le fond ${label}` })).toBeVisible()
+  })
+
+  it('shows the Map Tiles variant when it is selected for Google Satellite', () => {
+    render(<BasemapSelector activeBasemapId="osm" onBasemapChange={vi.fn()} satelliteProvider="google" googleSatelliteMode="map-tiles" />)
+    fireEvent.focus(screen.getByRole('button', { name: 'Utiliser le fond OpenStreetMap Standard' }))
+    expect(screen.getByRole('button', { name: 'Utiliser le fond Google Satellite (Map Tiles)' })).toBeVisible()
   })
 
   it('shows Google normal as the only classic Google choice', () => {

@@ -10,6 +10,7 @@ interface BasemapSelectorProps {
   offline?: boolean
   classicProvider?: 'osm' | 'stadia' | 'google'
   satelliteProvider?: 'none' | 'stadia' | 'google' | 'mapbox'
+  googleSatelliteMode?: 'maps-js' | 'map-tiles'
 }
 
 const basemapIcons: Record<BasemapId, LucideIcon> = {
@@ -20,17 +21,18 @@ const basemapIcons: Record<BasemapId, LucideIcon> = {
   'google-roadmap': Sun,
   satellite: Satellite,
   'google-satellite': Satellite,
+  'google-satellite-tiles': Satellite,
   'mapbox-satellite': Satellite,
   osm: Sun,
 }
 
-export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = false, classicProvider = 'osm', satelliteProvider = 'none' }: BasemapSelectorProps) {
+export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = false, classicProvider = 'osm', satelliteProvider = 'none', googleSatelliteMode = 'maps-js' }: BasemapSelectorProps) {
   const [expanded, setExpanded] = useState(false)
   if (offline) return null
   const activeBasemap = getBasemap(activeBasemapId)
   const configuredBasemaps = [
     ...(classicProvider === 'stadia' ? [getBasemap('stadia-light'), getBasemap('stadia-dark')] : classicProvider === 'google' ? [getBasemap('google-roadmap')] : [getBasemap('osm')]),
-    ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap('google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
+    ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap(googleSatelliteMode === 'map-tiles' ? 'google-satellite-tiles' : 'google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
   ].filter((basemap, index, items) => basemap.enabled && items.findIndex((item) => item.id === basemap.id) === index)
   const visibleBasemaps = configuredBasemaps.some((basemap) => basemap.id === activeBasemapId)
     ? configuredBasemaps

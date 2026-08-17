@@ -455,6 +455,25 @@ html[data-theme='dark'] .action-history-error { color: #fecaca; background: #351
   background: #dfe7df;
 }
 
+.google-maps-js-basemap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.poi-map.has-google-maps-js-basemap {
+  background: transparent;
+}
+
+.poi-map.has-google-maps-js-basemap .leaflet-map-pane {
+  z-index: 1;
+}
+
+.poi-map.has-google-maps-js-basemap .leaflet-control-attribution {
+  display: none;
+}
+
 .country-place-panel {
   z-index: 940;
   display: grid;

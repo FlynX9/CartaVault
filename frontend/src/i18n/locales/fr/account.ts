@@ -255,7 +255,7 @@ export const accountFr = {
   'account.apiCatalog.secretPlaceholder': 'Saisissez votre clé API',
   'account.apiCatalog.show': 'Afficher la clé',
   'account.apiCatalog.hide': 'Masquer la clé',
-  'account.apiCatalog.security': 'Votre clé API est stockée de manière sécurisée et chiffrée. Elle ne sera jamais partagée ni visible après l’enregistrement.',
+  'account.apiCatalog.security': 'Votre clé API est stockée de manière sécurisée et chiffrée. Une clé sélectionnée pour Google Satellite est transmise au navigateur par Maps JavaScript API : utilisez une clé dédiée, limitée aux référents HTTP autorisés et à cette API.',
   'account.apiCatalog.test': 'Tester',
   'account.apiCatalog.error': 'Erreur',
   'account.apiCatalog.verified': 'Vérifiée',

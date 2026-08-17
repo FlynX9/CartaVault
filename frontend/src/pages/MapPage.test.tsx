@@ -358,12 +358,12 @@ describe('MapPage', () => {
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-dark' })))
   })
 
-  it('disables an unusable Google satellite provider after a regional rejection', async () => {
+  it('keeps Google Satellite configured when the JavaScript renderer reports a load error', async () => {
     const account = await import('../api/account')
     vi.mocked(account.getAccountPreferences).mockResolvedValueOnce({
       language: 'fr', default_theme: 'system', preferred_basemap: 'google-satellite', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30,
       photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' },
-      basemaps: { classic_provider: 'google', satellite_provider: 'google', google_api_key_id: 'google-key' },
+      basemaps: { classic_provider: 'google', satellite_provider: 'google', google_api_key_id: 'google-key', google_maps_js_api_key_id: 'browser-key' },
     })
     const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
     render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
@@ -372,10 +372,10 @@ describe('MapPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Simuler la restriction Google Satellite' }))
 
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-roadmap')
-    expect(screen.getByRole('status')).toHaveTextContent('Google Satellite a été désactivé')
+    expect(screen.getByRole('status')).toHaveTextContent('Google Satellite est indisponible dans cette région')
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({
       preferred_basemap: 'google-roadmap',
-      basemaps: expect.objectContaining({ satellite_provider: 'none' }),
+      basemaps: expect.objectContaining({ satellite_provider: 'google' }),
     })))
   })
 

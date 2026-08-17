@@ -29,7 +29,6 @@ import { mapPlaceMatchesMarkerFilter } from '../components/map/mapMarkerFilterCo
 import { isTemporaryMapMode, resolveInteractiveMapMode, type InternalMapToolMode } from '../components/map/mapToolMode'
 import { getTripMapBounds } from '../components/trips/tripMapBounds'
 import { getPlaceDetails } from '../api/places'
-import { getGoogleSatelliteStatus } from '../api/googleSatellite'
 import { createPlaceAnnotation, getPlaceAnnotations } from '../api/annotations'
 import type { AnnotationTemplate, PlaceAnnotation } from '../types/annotation'
 import type { AnnotationDrawingState } from '../components/map/AnnotationDrawingLayer'
@@ -52,13 +51,15 @@ const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
 type ClassicBasemapProvider = 'osm' | 'stadia' | 'google'
 type SatelliteBasemapProvider = 'none' | 'stadia' | 'google' | 'mapbox'
+type GoogleSatelliteMode = 'maps-js' | 'map-tiles'
 
-function resolvePreferredBasemap(value: unknown, classicProvider: ClassicBasemapProvider = 'osm', satelliteProvider: SatelliteBasemapProvider = 'none'): BasemapId {
+function resolvePreferredBasemap(value: unknown, classicProvider: ClassicBasemapProvider = 'osm', satelliteProvider: SatelliteBasemapProvider = 'none', googleSatelliteMode: GoogleSatelliteMode = 'maps-js'): BasemapId {
   if (classicProvider === 'stadia' && (value === 'stadia-light' || value === 'stadia-dark')) return value
   if (classicProvider === 'google' && value === 'google-roadmap') return value
   if (classicProvider === 'osm' && value === 'osm') return value
   if (satelliteProvider === 'stadia' && value === 'satellite') return value
-  if (satelliteProvider === 'google' && value === 'google-satellite') return value
+  if (satelliteProvider === 'google' && googleSatelliteMode === 'maps-js' && value === 'google-satellite') return value
+  if (satelliteProvider === 'google' && googleSatelliteMode === 'map-tiles' && value === 'google-satellite-tiles') return value
   if (satelliteProvider === 'mapbox' && value === 'mapbox-satellite') return value
   return classicProvider === 'stadia' ? 'stadia-light' : classicProvider === 'google' ? 'google-roadmap' : 'osm'
 }
@@ -240,6 +241,7 @@ export function MapPage({
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const [classicBasemapProvider, setClassicBasemapProvider] = useState<ClassicBasemapProvider>('osm')
   const [configuredSatelliteProvider, setConfiguredSatelliteProvider] = useState<SatelliteBasemapProvider>('none')
+  const [googleSatelliteMode, setGoogleSatelliteMode] = useState<GoogleSatelliteMode>('maps-js')
   const [offlineBasemapActive, setOfflineBasemapActive] = useState(false)
   const onlineBasemapRef = useRef<BasemapId | null>(null)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
@@ -390,6 +392,7 @@ export function MapPage({
       setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
       setClassicBasemapProvider(preferences.basemaps?.classic_provider ?? 'osm')
       setConfiguredSatelliteProvider(preferences.basemaps?.satellite_provider ?? 'none')
+      setGoogleSatelliteMode(preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
       const explicitSelection = explicitBasemapSelectionRef.current
@@ -402,7 +405,7 @@ export function MapPage({
         return
       }
       if (failedBasemapsRef.current.size > 0) return
-      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none')
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
     }).catch(() => undefined)
@@ -412,9 +415,10 @@ export function MapPage({
       setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
       setClassicBasemapProvider(preferences.basemaps?.classic_provider ?? 'osm')
       setConfiguredSatelliteProvider(preferences.basemaps?.satellite_provider ?? 'none')
+      setGoogleSatelliteMode(preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
-      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none')
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       setBasemapId(preferred)
       saveBasemapPreference(preferred)
       setBasemapNotice(null)
@@ -422,15 +426,6 @@ export function MapPage({
     window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated)
     return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
   }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void getGoogleSatelliteStatus(controller.signal).then((status) => {
-      if (controller.signal.aborted) return
-      if (status.warning_level >= 80) setBasemapNotice(`Google Satellite approche du seuil d’usage configuré (${status.warning_level} %).`)
-    }).catch(() => undefined)
-    return () => controller.abort()
-  }, [configuredSatelliteProvider])
 
   const resetTemporaryTools = (clearMeasurement = true) => {
     setInternalToolMode('navigation')
@@ -649,7 +644,7 @@ export function MapPage({
   }
 
   const selectBasemap = (id: BasemapId) => {
-    const selected = resolvePreferredBasemap(id, classicBasemapProvider, configuredSatelliteProvider)
+    const selected = resolvePreferredBasemap(id, classicBasemapProvider, configuredSatelliteProvider, googleSatelliteMode)
     explicitBasemapSelectionRef.current = selected
     setBasemapId(selected)
     setBasemapNotice(null)
@@ -666,7 +661,7 @@ export function MapPage({
     }
   }
 
-  const handleBasemapTileError = (sourceId: BasemapId, fatal = false, reason?: string, errorCode?: string) => {
+  const handleBasemapTileError = (sourceId: BasemapId, fatal = false, reason?: string, _errorCode?: string) => {
     if (sourceId !== basemapId || failedBasemapsRef.current.has(sourceId)) return
     const failures = fatal ? TILE_ERROR_FALLBACK_THRESHOLD : (tileFailuresRef.current.get(sourceId) ?? 0) + 1
     tileFailuresRef.current.set(sourceId, failures)
@@ -680,24 +675,16 @@ export function MapPage({
       setBasemapNotice('Le fond CartaVault hors ligne est indisponible pour cette carte.')
       return
     }
-    const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'mapbox-satellite'
+    const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'google-satellite-tiles' || sourceId === 'mapbox-satellite'
       ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
       : 'osm'
-    const googleSatelliteRegionRestricted = sourceId === 'google-satellite' && errorCode === 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE'
     setBasemapId(fallback)
     saveBasemapPreference(fallback)
-    if (googleSatelliteRegionRestricted) {
-      explicitBasemapSelectionRef.current = fallback
-      setConfiguredSatelliteProvider('none')
-    }
     const currentPreferences = accountPreferencesRef.current
-    if (currentPreferences !== null && (currentPreferences.preferred_basemap !== fallback || googleSatelliteRegionRestricted)) {
+    if (currentPreferences !== null && currentPreferences.preferred_basemap !== fallback) {
       const updated = {
         ...currentPreferences,
         preferred_basemap: fallback,
-        basemaps: googleSatelliteRegionRestricted
-          ? { ...currentPreferences.basemaps, satellite_provider: 'none' as const }
-          : currentPreferences.basemaps,
       }
       accountPreferencesRef.current = updated
       void updateAccountPreferences(updated).then((saved) => {
@@ -705,7 +692,7 @@ export function MapPage({
       }).catch(() => undefined)
     }
     setBasemapNotice(reason
-      ? `${reason}${googleSatelliteRegionRestricted ? ' Google Satellite a été désactivé.' : ''} ${getBasemap(fallback).label} a été activé automatiquement.`
+      ? `${reason} ${getBasemap(fallback).label} a été activé automatiquement.`
       : `Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
   }
   return (
@@ -860,7 +847,7 @@ export function MapPage({
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
-            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} offline={offlineBasemapActive} classicProvider={classicBasemapProvider} satelliteProvider={configuredSatelliteProvider} />
+            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} offline={offlineBasemapActive} classicProvider={classicBasemapProvider} satelliteProvider={configuredSatelliteProvider} googleSatelliteMode={googleSatelliteMode} />
           </div>
           {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
             <button
