@@ -684,6 +684,15 @@ export function MapPage({
       ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
       : 'osm'
     setBasemapId(fallback)
+    saveBasemapPreference(fallback)
+    const currentPreferences = accountPreferencesRef.current
+    if (currentPreferences !== null && currentPreferences.preferred_basemap !== fallback) {
+      const updated = { ...currentPreferences, preferred_basemap: fallback }
+      accountPreferencesRef.current = updated
+      void updateAccountPreferences(updated).then((saved) => {
+        accountPreferencesRef.current = saved
+      }).catch(() => undefined)
+    }
     setBasemapNotice(reason
       ? `${reason} ${getBasemap(fallback).label} a été activé automatiquement.`
       : `Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)

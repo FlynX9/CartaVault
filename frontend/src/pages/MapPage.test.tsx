@@ -71,6 +71,7 @@ function StatusFilterSetter() {
 
 describe('MapPage', () => {
   it('keeps the map and sidebar in the same responsive workspace and falls back after repeated errors', async () => {
+    const account = await import('../api/account')
     render(
       <MemoryRouter>
         <MapPage
@@ -120,6 +121,8 @@ describe('MapPage', () => {
     fireEvent.click(tileError)
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
     expect(screen.getByRole('status')).toHaveTextContent('Stadia clair a été activé automatiquement')
+    expect(window.localStorage.getItem('cartavault.basemap')).toBe('stadia-light')
+    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-light' })))
   })
 
   it('resizes both workspace panels without remounting the map', async () => {
