@@ -98,7 +98,7 @@ function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
       const tilePath = config.tile_path
         .replace('{style}', definition.style)
         .replace('{extension}', definition.extension)
-      if (!controller.signal.aborted) setUrl(`${API_BASE_URL}${tilePath}`)
+      if (!controller.signal.aborted) setUrl(tilePath.startsWith('http') ? tilePath : `${API_BASE_URL}${tilePath}`)
     }).catch(() => undefined)
     return () => controller.abort()
   }, [basemap.id, basemap.url])

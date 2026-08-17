@@ -51,14 +51,14 @@ function ServiceRow({ icon: Icon, title, description, providerLabel, keyName, pr
   </article>
 }
 
-function ServiceDialog({ kind, initial, keys, onClose, onSave }: { kind: ServiceKind; initial: ServiceDraft; keys: PersonalApiKey[]; onClose: () => void; onSave: (draft: ServiceDraft) => void }) {
+function ServiceDialog({ kind, initial, keys, stadiaKeyOptional, onClose, onSave }: { kind: ServiceKind; initial: ServiceDraft; keys: PersonalApiKey[]; stadiaKeyOptional: boolean; onClose: () => void; onSave: (draft: ServiceDraft) => void }) {
   const { t } = useI18n()
   const [draft, setDraft] = useState(initial)
   const title = kind === 'routing' ? t('account.integrations.configureRouting') : kind === 'places' ? t('account.integrations.configurePlaces') : kind === 'classic-basemap' ? t('account.integrations.configureClassicBasemap') : t('account.integrations.configureSatelliteBasemap')
   const DialogIcon = kind === 'routing' ? Route : kind === 'places' ? MapPin : ImageIcon
   const availableKeys = useMemo(() => compatibleKeys(keys, kind, draft.provider), [draft.provider, keys, kind])
   const keyDisabled = (kind === 'routing' && draft.provider === 'osrm') || (kind === 'classic-basemap' && draft.provider === 'osm') || (kind === 'satellite-basemap' && draft.provider === 'none')
-  const keyOptional = keyDisabled
+  const keyOptional = keyDisabled || (kind.includes('basemap') && draft.provider === 'stadia' && stadiaKeyOptional)
   const changeProvider = (provider: string) => setDraft({ provider, apiKeyId: '' })
 
   return createPortal(<div className="account-integration-dialog-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
@@ -82,6 +82,7 @@ export function IntegrationPreferences({ preferences, setPreferences }: { prefer
   const { t } = useI18n()
   const [keys, setKeys] = useState<PersonalApiKey[]>([])
   const [editing, setEditing] = useState<ServiceKind | null>(null)
+  const stadiaKeyOptional = typeof window !== 'undefined' && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
   useEffect(() => { void getPersonalApiKeys().then(setKeys).catch(() => setKeys([])) }, [])
 
   const basemaps = preferences.basemaps ?? { classic_provider: 'osm' as const, satellite_provider: 'none' as const }
@@ -111,10 +112,10 @@ export function IntegrationPreferences({ preferences, setPreferences }: { prefer
       <div className="account-integration-preferences__list">
         <ServiceRow icon={Route} title={t('account.integrations.routing')} description={t('account.integrations.routingDescription')} providerLabel={providerLabels[preferences.routing.provider]} providerCaption={t('account.integrations.engine')} keyName={preferences.routing.provider === 'osrm' ? t('account.integrations.noKeyRequired') : keyLabel(routingKeys, preferences.routing.api_key_id, t('account.integrations.noKey'))} state={<ServiceState keys={routingKeys} value={preferences.routing.api_key_id} optional={preferences.routing.provider === 'osrm'} />} onEdit={() => setEditing('routing')} />
         <ServiceRow icon={MapPin} title={t('account.integrations.places')} description={t('account.integrations.placesDescription')} providerLabel={preferences.places.provider === 'google' ? 'Google Places' : 'Stadia'} providerCaption={t('account.integrations.engine')} keyName={keyLabel(placesKeys, preferences.places.api_key_id, t('account.integrations.noKey'))} state={<ServiceState keys={placesKeys} value={preferences.places.api_key_id} />} onEdit={() => setEditing('places')} />
-        <ServiceRow icon={ImageIcon} title={t('account.integrations.classicBasemap')} description={t('account.integrations.classicBasemapDescription')} providerLabel={providerLabels[classicProvider]} providerCaption={t('account.integrations.provider')} keyName={classicProvider === 'osm' ? t('account.integrations.noKeyRequired') : keyLabel(classicKeys, providerKey(classicProvider), t('account.integrations.noKey'))} state={<ServiceState keys={classicKeys} value={providerKey(classicProvider)} optional={classicProvider === 'osm'} />} onEdit={() => setEditing('classic-basemap')} />
-        <ServiceRow icon={ImageIcon} title={t('account.integrations.satelliteBasemap')} description={t('account.integrations.satelliteBasemapDescription')} providerLabel={basemaps.satellite_provider === 'none' ? t('account.integrations.disabled') : providerLabels[basemaps.satellite_provider]} providerCaption={t('account.integrations.provider')} keyName={basemaps.satellite_provider === 'none' ? t('account.integrations.noKeyRequired') : keyLabel(satelliteKeys, providerKey(basemaps.satellite_provider), t('account.integrations.noKey'))} state={<ServiceState keys={satelliteKeys} value={providerKey(basemaps.satellite_provider)} optional={basemaps.satellite_provider === 'none'} />} onEdit={() => setEditing('satellite-basemap')} />
+        <ServiceRow icon={ImageIcon} title={t('account.integrations.classicBasemap')} description={t('account.integrations.classicBasemapDescription')} providerLabel={providerLabels[classicProvider]} providerCaption={t('account.integrations.provider')} keyName={classicProvider === 'osm' || (classicProvider === 'stadia' && stadiaKeyOptional && !providerKey('stadia')) ? t('account.integrations.noKeyRequired') : keyLabel(classicKeys, providerKey(classicProvider), t('account.integrations.noKey'))} state={<ServiceState keys={classicKeys} value={providerKey(classicProvider)} optional={classicProvider === 'osm' || (classicProvider === 'stadia' && stadiaKeyOptional)} />} onEdit={() => setEditing('classic-basemap')} />
+        <ServiceRow icon={ImageIcon} title={t('account.integrations.satelliteBasemap')} description={t('account.integrations.satelliteBasemapDescription')} providerLabel={basemaps.satellite_provider === 'none' ? t('account.integrations.disabled') : providerLabels[basemaps.satellite_provider]} providerCaption={t('account.integrations.provider')} keyName={basemaps.satellite_provider === 'none' || (basemaps.satellite_provider === 'stadia' && stadiaKeyOptional && !providerKey('stadia')) ? t('account.integrations.noKeyRequired') : keyLabel(satelliteKeys, providerKey(basemaps.satellite_provider), t('account.integrations.noKey'))} state={<ServiceState keys={satelliteKeys} value={providerKey(basemaps.satellite_provider)} optional={basemaps.satellite_provider === 'none' || (basemaps.satellite_provider === 'stadia' && stadiaKeyOptional)} />} onEdit={() => setEditing('satellite-basemap')} />
       </div>
     </section>
-    {editing && <ServiceDialog key={editing} kind={editing} initial={initialDraft} keys={keys} onClose={() => setEditing(null)} onSave={saveService} />}
+    {editing && <ServiceDialog key={editing} kind={editing} initial={initialDraft} keys={keys} stadiaKeyOptional={stadiaKeyOptional} onClose={() => setEditing(null)} onSave={saveService} />}
   </>
 }

@@ -4,6 +4,7 @@ const empty = () => new URLSearchParams()
 
 export interface StadiaBasemapConfig {
   personal_key_active: boolean
+  key_optional: boolean
   tile_path: string
 }
 

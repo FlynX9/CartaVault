@@ -88,6 +88,14 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert updated.json()["startup_panel"] == "dashboard"
     assert updated.json()["routing"]["provider"] == "osrm"
     assert updated.json()["photo_markers_enabled"] is True
+    monkeypatch.setattr("app.auth.account_router.stadia_unauthenticated_allowed", lambda: True)
+    stadia = integration_client.put(
+        "/account/preferences",
+        json={**updated.json(), "preferred_basemap": "stadia-light", "basemaps": {"classic_provider": "stadia", "satellite_provider": "none"}},
+        headers=headers,
+    )
+    assert stadia.status_code == 200
+    assert stadia.json()["basemaps"]["classic_provider"] == "stadia"
     unavailable = integration_client.put(
         "/account/preferences",
         json={**updated.json(), "routing": {"provider": "google"}},

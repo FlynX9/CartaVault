@@ -22,7 +22,7 @@ vi.mock('react-leaflet', () => ({
   useMap: () => mapMock,
 }))
 vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
-vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' }) }))
+vi.mock('../../api/stadiaMaps', () => ({ getStadiaBasemapConfig: vi.fn().mockResolvedValue({ personal_key_active: false, key_optional: false, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' }) }))
 vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ enabled: true, available: true, country_code: 'FR', country_name: 'France', state: 'ready', phase: 'Disponible', error_code: null, error_message: null, archive_url: '/api/basemaps/cartavault/archive/fr.pmtiles', glyphs_url: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf', version: 'test', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000, attribution: 'OpenStreetMap' }) }))
 vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
 
@@ -43,10 +43,16 @@ describe('BasemapLayer', () => {
   })
 
   it('never puts a personal Stadia key in the browser-visible tile URL', async () => {
-    vi.mocked(getStadiaBasemapConfig).mockResolvedValue({ personal_key_active: true, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' })
+    vi.mocked(getStadiaBasemapConfig).mockResolvedValue({ personal_key_active: true, key_optional: false, tile_path: '/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}' })
     render(<BasemapLayer basemapId="satellite" onTileError={vi.fn()} />)
     await waitFor(() => expect(screen.getByTestId('tile-layer')).toHaveAttribute('data-url', expect.stringContaining('/api/basemaps/stadia/tiles/alidade_satellite/')))
     expect(screen.getByTestId('tile-layer').getAttribute('data-url')).not.toContain('api_key')
+  })
+
+  it('loads Stadia directly without a key during localhost development', async () => {
+    vi.mocked(getStadiaBasemapConfig).mockResolvedValue({ personal_key_active: false, key_optional: true, tile_path: 'https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{r}.{extension}' })
+    render(<BasemapLayer basemapId="stadia-light" onTileError={vi.fn()} />)
+    expect(await screen.findByTestId('tile-layer')).toHaveAttribute('data-url', 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png')
   })
 
   it('identifies a failing raster source to the fallback controller', () => {

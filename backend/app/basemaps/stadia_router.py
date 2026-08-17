@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from urllib.parse import quote
+from urllib.parse import urlparse
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest, urlopen
 
@@ -12,6 +14,7 @@ from app.auth.api_keys import selected_basemap_api_key
 from app.auth.dependencies import get_current_user
 from app.auth.models import User, UserApiCredential
 from app.database import get_db
+from app.config import email_settings
 from app.trips.routing.base import RoutingError
 from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
 
@@ -21,6 +24,12 @@ STADIA_SATELLITE_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}
 VERIFY_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/0/0/0.jpg"
 STADIA_TILE_STYLES = {"alidade_smooth", "alidade_smooth_dark", "alidade_satellite"}
 stadia_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
+
+
+def stadia_unauthenticated_allowed() -> bool:
+    environment = os.getenv("CARTAVAULT_ENVIRONMENT", os.getenv("ENVIRONMENT", "development")).strip().lower()
+    hostname = urlparse(email_settings.frontend_public_url).hostname
+    return environment != "production" and hostname in {"localhost", "127.0.0.1", "::1"}
 
 
 def _validate_key(api_key: str) -> None:
@@ -46,9 +55,11 @@ def _decrypt(credential: UserApiCredential) -> str:
 @router.get("/basemaps/stadia/config")
 def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
     credential = selected_basemap_api_key(session, user, "stadia")
+    key_optional = credential is None and stadia_unauthenticated_allowed()
     return {
         "personal_key_active": credential is not None,
-        "tile_path": "/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}",
+        "key_optional": key_optional,
+        "tile_path": "https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{r}.{extension}" if key_optional else "/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}",
     }
 
 
@@ -69,6 +80,8 @@ def basemap_tile(
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
     credential = selected_basemap_api_key(session, user, "stadia")
+    if credential is None and not stadia_unauthenticated_allowed():
+        raise HTTPException(503, {"code": "STADIA_MAPS_KEY_REQUIRED", "message": "Une clé Stadia Maps est nécessaire hors développement local."})
     try:
         stadia_tiles_rate_limiter.check(f"stadia-tiles:{user.id}")
     except RoutingError as error:

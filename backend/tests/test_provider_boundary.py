@@ -60,6 +60,20 @@ def test_provider_configuration_never_returns_a_persistent_secret(monkeypatch: p
     assert maps["tile_path"].startswith("/basemaps/stadia/tiles/")
 
 
+def test_stadia_uses_direct_keyless_tiles_only_for_local_development(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(stadia_router, "selected_basemap_api_key", lambda *_args: None)
+    monkeypatch.setattr(stadia_router, "email_settings", SimpleNamespace(frontend_public_url="http://localhost:5173"))
+    monkeypatch.setenv("CARTAVAULT_ENVIRONMENT", "development")
+    local = stadia_router.basemap_config(SimpleNamespace(), SimpleNamespace(id=uuid4()))
+    assert local["key_optional"] is True
+    assert local["tile_path"].startswith("https://tiles.stadiamaps.com/")
+
+    monkeypatch.setenv("CARTAVAULT_ENVIRONMENT", "production")
+    production = stadia_router.basemap_config(SimpleNamespace(), SimpleNamespace(id=uuid4()))
+    assert production["key_optional"] is False
+    assert production["tile_path"].startswith("/basemaps/stadia/tiles/")
+
+
 def test_stadia_places_proxy_injects_secret_only_in_server_request(monkeypatch: pytest.MonkeyPatch) -> None:
     secret = "persistent-stadia-secret"
     credential = SimpleNamespace(id=uuid4())

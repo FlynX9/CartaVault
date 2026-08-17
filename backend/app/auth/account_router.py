@@ -22,6 +22,7 @@ from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
 from app.emails.notifications import notify_email_changed, notify_password_changed
 from app.maps.models import MapInvitation, MapMembership, PoiMap
+from app.basemaps.stadia_router import stadia_unauthenticated_allowed
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -104,6 +105,8 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
         if provider in {"stadia", "google", "mapbox"}
     }
     for basemap_provider in configured_basemap_providers:
+        if basemap_provider == "stadia" and stadia_unauthenticated_allowed():
+            continue
         if selected_basemap_api_key(database_session, current.user, basemap_provider) is None:
             current.user.preferences = previous_preferences
             raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": f"Sélectionnez une clé {basemap_provider.title()} pour la cartographie configurée."})
