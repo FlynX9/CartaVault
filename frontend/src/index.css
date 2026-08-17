@@ -11549,14 +11549,15 @@ html[data-theme='dark'] .country-outside-mask {
 }
 
 .map-workspace .map-overlay-controls .basemap-selector--expanded {
-  width: calc((4 * var(--cv-map-overlay-control-size)) + .75rem);
   gap: .25rem;
 }
 
-.map-workspace .map-overlay-control-slot--basemap:has(.basemap-selector--expanded) {
-  width: calc((4 * var(--cv-map-overlay-control-size)) + .75rem);
-  flex-basis: calc((4 * var(--cv-map-overlay-control-size)) + .75rem);
-}
+.map-workspace .map-overlay-controls .basemap-selector--expanded.basemap-selector--count-1 { width: var(--cv-map-overlay-control-size); }
+.map-workspace .map-overlay-controls .basemap-selector--expanded.basemap-selector--count-2 { width: calc((2 * var(--cv-map-overlay-control-size)) + .25rem); }
+.map-workspace .map-overlay-controls .basemap-selector--expanded.basemap-selector--count-3 { width: calc((3 * var(--cv-map-overlay-control-size)) + .5rem); }
+.map-workspace .map-overlay-control-slot--basemap:has(.basemap-selector--expanded.basemap-selector--count-1) { width: var(--cv-map-overlay-control-size); flex-basis: var(--cv-map-overlay-control-size); }
+.map-workspace .map-overlay-control-slot--basemap:has(.basemap-selector--expanded.basemap-selector--count-2) { width: calc((2 * var(--cv-map-overlay-control-size)) + .25rem); flex-basis: calc((2 * var(--cv-map-overlay-control-size)) + .25rem); }
+.map-workspace .map-overlay-control-slot--basemap:has(.basemap-selector--expanded.basemap-selector--count-3) { width: calc((3 * var(--cv-map-overlay-control-size)) + .5rem); flex-basis: calc((3 * var(--cv-map-overlay-control-size)) + .5rem); }
 
 .map-workspace .map-overlay-controls .basemap-selector > button,
 .map-workspace .map-overlay-controls .basemap-selector-options button {

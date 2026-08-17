@@ -118,8 +118,8 @@ describe('MapPage', () => {
     fireEvent.click(tileError)
     expect(screen.queryByText(/activé automatiquement/)).not.toBeInTheDocument()
     fireEvent.click(tileError)
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'osm')
-    expect(screen.getByRole('status')).toHaveTextContent('OpenStreetMap a été activé automatiquement')
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
+    expect(screen.getByRole('status')).toHaveTextContent('Stadia clair a été activé automatiquement')
   })
 
   it('resizes both workspace panels without remounting the map', async () => {

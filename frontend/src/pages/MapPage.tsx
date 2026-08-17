@@ -684,8 +684,11 @@ export function MapPage({
       setBasemapNotice('Le fond CartaVault hors ligne est indisponible pour cette carte.')
       return
     }
-    setBasemapId('osm')
-    setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. OpenStreetMap a été activé automatiquement.`)
+    const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'mapbox-satellite'
+      ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
+      : 'osm'
+    setBasemapId(fallback)
+    setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
   }
   return (
     <section

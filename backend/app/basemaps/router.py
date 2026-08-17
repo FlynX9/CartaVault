@@ -33,7 +33,7 @@ SETTING_KEY = "google_satellite"
 GOOGLE_TILES_SESSION_COOKIE = "cartavault_google_tiles_session"
 google_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
 DEFAULTS: dict[str, object] = {
-    "enabled": False,
+    "enabled": True,
     "daily_soft_limit": google_map_tiles_settings.daily_soft_limit,
     "monthly_soft_limit": google_map_tiles_settings.monthly_soft_limit,
     "auto_disable_percent": 100,

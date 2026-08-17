@@ -1,7 +1,7 @@
 import { useState, type FocusEvent } from 'react'
 import { Moon, Satellite, Sun, type LucideIcon } from 'lucide-react'
 
-import { AVAILABLE_BASEMAPS, getBasemap, type BasemapId } from '../../map/basemaps'
+import { getBasemap, type BasemapId } from '../../map/basemaps'
 
 interface BasemapSelectorProps {
   activeBasemapId: BasemapId
@@ -28,6 +28,13 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = fa
   const [expanded, setExpanded] = useState(false)
   if (offline) return null
   const activeBasemap = getBasemap(activeBasemapId)
+  const configuredBasemaps = [
+    ...(classicProvider === 'stadia' ? [getBasemap('stadia-light'), getBasemap('stadia-dark')] : classicProvider === 'google' ? [getBasemap('google-roadmap')] : [getBasemap('osm')]),
+    ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap('google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
+  ].filter((basemap, index, items) => basemap.enabled && items.findIndex((item) => item.id === basemap.id) === index)
+  const visibleBasemaps = configuredBasemaps.some((basemap) => basemap.id === activeBasemapId)
+    ? configuredBasemaps
+    : [activeBasemap, ...configuredBasemaps].slice(0, Math.max(1, configuredBasemaps.length))
   const selectBasemap = (id: BasemapId) => {
     onBasemapChange(id)
     setExpanded(false)
@@ -66,7 +73,7 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = fa
 
   return (
     <fieldset
-      className={`basemap-selector${expanded ? ' basemap-selector--expanded' : ''}`}
+      className={`basemap-selector basemap-selector--count-${visibleBasemaps.length}${expanded ? ' basemap-selector--expanded' : ''}`}
       aria-label="Fond cartographique"
       onMouseEnter={() => setExpanded(true)}
       onMouseLeave={() => setExpanded(false)}
@@ -74,10 +81,7 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = fa
       onBlur={handleBlur}
     >
       <legend>Fond</legend>
-      {expanded && <div className="basemap-selector-options">{[
-        ...AVAILABLE_BASEMAPS.filter((basemap) => classicProvider === 'stadia' ? ['stadia-light', 'stadia-dark'].includes(basemap.id) : classicProvider === 'google' ? basemap.id === 'google-roadmap' : basemap.id === 'osm'),
-        ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap('google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
-      ].filter((basemap, index, items) => basemap.id !== activeBasemapId && items.findIndex((item) => item.id === basemap.id) === index).map((basemap) => renderBasemapButton(basemap, false))}</div>}
+      {expanded && <div className="basemap-selector-options">{visibleBasemaps.filter((basemap) => basemap.id !== activeBasemapId).map((basemap) => renderBasemapButton(basemap, false))}</div>}
       {renderBasemapButton(activeBasemap, true)}
     </fieldset>
   )

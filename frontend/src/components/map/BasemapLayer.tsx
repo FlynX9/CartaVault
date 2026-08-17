@@ -70,12 +70,18 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
 
 function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-roadmap' | 'google-satellite'; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
+  const sessionRequestRef = useRef<{ basemapId: typeof basemapId; promise: ReturnType<typeof createGoogleSatelliteSession> } | null>(null)
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
   useEffect(() => {
-    const controller = new AbortController()
-    void createGoogleSatelliteSession(basemapId === 'google-roadmap' ? 'roadmap' : 'satellite', controller.signal).then(setSession).catch(() => { if (!controller.signal.aborted) onTileErrorRef.current(basemapId, true) })
-    return () => controller.abort()
+    let current = true
+    const existing = sessionRequestRef.current
+    const promise = existing?.basemapId === basemapId
+      ? existing.promise
+      : createGoogleSatelliteSession(basemapId === 'google-roadmap' ? 'roadmap' : 'satellite')
+    sessionRequestRef.current = { basemapId, promise }
+    void promise.then((value) => { if (current) setSession(value) }).catch(() => { if (current) onTileErrorRef.current(basemapId, true) })
+    return () => { current = false }
   }, [basemapId])
   if (!session) return null
   return <TileLayer key={basemapId} url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemapId) }} />

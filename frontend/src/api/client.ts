@@ -224,6 +224,42 @@ export async function sendJson(
   return completeResponse(response, () => response.json())
 }
 
+export function sendJsonViaXhr(
+  path: string,
+  method: 'POST',
+  body: unknown,
+): Promise<unknown> {
+  const mutation = announceApiMutationStart(method, path)
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    announceApiMutationFailure(mutation)
+    return Promise.reject(new ApiError(0, 'Cette action nécessite une connexion Internet. Les données hors ligne sont en lecture seule.'))
+  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(method, `${API_BASE_URL}${path}`)
+    xhr.withCredentials = true
+    xhr.setRequestHeader('Accept', 'application/json')
+    xhr.setRequestHeader('Content-Type', 'application/json')
+    if (csrfToken !== null) xhr.setRequestHeader('X-CSRF-Token', csrfToken)
+    const fail = (error: ApiError) => { announceApiMutationFailure(mutation); reject(error) }
+    xhr.onerror = () => fail(new ApiError(0, 'La requête API a échoué.'))
+    xhr.onload = () => {
+      let payload: unknown = null
+      try { payload = xhr.responseText ? JSON.parse(xhr.responseText) : null } catch { payload = null }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const parsed = parseApiErrorPayload(payload)
+        reportCredentialRequestFailure(path, parsed.code)
+        if (xhr.status === 401) { setCsrfToken(null); window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT)) }
+        fail(new ApiError(xhr.status, parsed.message ?? `L'API a répondu avec le statut ${xhr.status}.`, parsed.fieldErrors, parsed.code))
+        return
+      }
+      announceApiMutationSuccess(mutation)
+      resolve(payload)
+    }
+    xhr.send(JSON.stringify(body))
+  })
+}
+
 export async function sendWithoutResponse(
   path: string,
   method: 'POST' | 'DELETE',
