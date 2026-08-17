@@ -20,14 +20,15 @@ class Response:
         return False
 
 
-def test_stadia_key_verification_uses_the_satellite_tile_api(monkeypatch) -> None:
+def test_stadia_key_verification_uses_the_standard_tile_api(monkeypatch) -> None:
     captured = []
     monkeypatch.setattr("app.basemaps.stadia_router.urlopen", lambda request, timeout: captured.append((request, timeout)) or Response())
 
     _validate_key("personal stadia key")
 
     request, timeout = captured[0]
-    assert request.full_url == "https://tiles.stadiamaps.com/tiles/alidade_satellite/0/0/0.jpg?api_key=personal%20stadia%20key"
+    assert request.full_url == "https://tiles.stadiamaps.com/tiles/alidade_smooth/0/0/0.png?api_key=personal%20stadia%20key"
+    assert request.get_header("Accept") == "image/*"
     assert timeout == 10
 
 

@@ -21,7 +21,7 @@ from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
 
 router = APIRouter(tags=["basemaps"])
 STADIA_SATELLITE_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg"
-VERIFY_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/0/0/0.jpg"
+VERIFY_URL = "https://tiles.stadiamaps.com/tiles/alidade_smooth/0/0/0.png"
 STADIA_TILE_STYLES = {"alidade_smooth", "alidade_smooth_dark", "alidade_satellite"}
 stadia_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
 
@@ -33,7 +33,7 @@ def stadia_unauthenticated_allowed() -> bool:
 
 
 def _validate_key(api_key: str) -> None:
-    request = UrlRequest(f"{VERIFY_URL}?api_key={quote(api_key)}", headers={"User-Agent": "CartaVault/1"})
+    request = UrlRequest(f"{VERIFY_URL}?api_key={quote(api_key)}", headers={"Accept": "image/*", "User-Agent": "CartaVault/1"})
     try:
         with urlopen(request, timeout=10) as response:
             if int(getattr(response, "status", 200)) >= 400:
