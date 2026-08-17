@@ -223,7 +223,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title="CartaVault API",
     description="API for managing geographic points of interest",
-    version="0.1.0",
+    version=os.getenv("CARTAVAULT_VERSION", "development"),
     root_path=os.getenv("CARTAVAULT_API_ROOT_PATH", "").strip().rstrip("/"),
     docs_url=f"{API_PREFIX}/docs",
     openapi_url=f"{API_PREFIX}/openapi.json",

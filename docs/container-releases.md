@@ -11,7 +11,7 @@ Registry     ghcr.io
 Repository   flynx9/cartavault
 Platform     linux/amd64
 Version      semantic version without the leading v
-Example      ghcr.io/flynx9/cartavault:0.9.0-beta.1
+Example      ghcr.io/flynx9/cartavault:1.0.0-rc.1
 ```
 
 Every immutable version tag identifies one released Git commit. Pre-releases
@@ -42,15 +42,15 @@ repository `GITHUB_TOKEN`; no long-lived registry password is required.
 ## Maintainer release procedure
 
 Start only from a clean `master` revision whose push CI completed
-successfully. For the first public beta:
+successfully. For the first 1.0 release candidate:
 
 ```powershell
 git switch master
 git pull --ff-only
 git status --short
-git tag -a v0.9.0-beta.1 -m "CartaVault 0.9.0 beta 1"
-git push origin v0.9.0-beta.1
-gh release create v0.9.0-beta.1 --prerelease --generate-notes --verify-tag
+git tag -a v1.0.0-rc.1 -m "CartaVault 1.0.0 release candidate 1"
+git push origin v1.0.0-rc.1
+gh release create v1.0.0-rc.1 --prerelease --generate-notes --verify-tag
 ```
 
 Publishing the release starts the container workflow. If it fails, fix the
@@ -60,10 +60,10 @@ tag that users may already have pulled.
 ## Verify a published release
 
 ```powershell
-docker pull ghcr.io/flynx9/cartavault:0.9.0-beta.1
-docker buildx imagetools inspect ghcr.io/flynx9/cartavault:0.9.0-beta.1
+docker pull ghcr.io/flynx9/cartavault:1.0.0-rc.1
+docker buildx imagetools inspect ghcr.io/flynx9/cartavault:1.0.0-rc.1
 gh attestation verify `
-  oci://ghcr.io/flynx9/cartavault:0.9.0-beta.1 `
+  oci://ghcr.io/flynx9/cartavault:1.0.0-rc.1 `
   --repo FlynX9/CartaVault
 ```
 
@@ -77,7 +77,7 @@ Use `docker/compose.portainer.yml` and define at least:
 
 ```env
 CARTAVAULT_IMAGE=ghcr.io/flynx9/cartavault
-CARTAVAULT_VERSION=0.9.0-beta.1
+CARTAVAULT_VERSION=1.0.0-rc.1
 ```
 
 The package is public, so Portainer does not need registry credentials. Before

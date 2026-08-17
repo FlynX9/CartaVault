@@ -24,7 +24,7 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` | sensitive value | `backend/app/config.py` |
 | `CARTAVAULT_CSRF_COOKIE_NAME` | `cartavault_csrf` | `backend/app/config.py` |
 | `CARTAVAULT_DEPLOYMENT_MODE` | `local` | `backend/app/instance_status/service.py` |
-| `CARTAVAULT_ENVIRONMENT` | dynamic | `backend/app/instance_status/service.py` |
+| `CARTAVAULT_ENVIRONMENT` | dynamic | `backend/app/basemaps/stadia_router.py` |
 | `CARTAVAULT_ENV_FILE` | `/config/.env` | `backend/app/setup_cli.py` |
 | `CARTAVAULT_FORWARDED_ALLOW_IPS` | required / empty | `backend/app/container_entrypoint.py` |
 | `CARTAVAULT_FRONTEND_DIST` | — | `backend/app/main.py` |
@@ -45,9 +45,10 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `CARTAVAULT_SETUP_TOKEN` | sensitive value | `backend/app/setup/service.py` |
 | `CARTAVAULT_TASK_MODE` | `sync` | `backend/app/config.py` |
 | `CARTAVAULT_TASK_QUEUE` | `cartavault` | `backend/app/config.py` |
+| `CARTAVAULT_UVICORN_WORKERS` | `1` | `backend/app/container_entrypoint.py` |
 | `CARTAVAULT_VECTOR_MAP_DIR` | `/data/maps` | `backend/app/config.py` |
 | `CARTAVAULT_VECTOR_MAP_FONTS_PATH` | `/app/vector-assets/fonts` | `backend/app/config.py` |
-| `CARTAVAULT_VERSION` | `0.1.0` | `backend/app/instance_status/service.py` |
+| `CARTAVAULT_VERSION` | `development` | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_WORKERS` | — | `backend/app/instance_status/service.py` |
 | `CORS_ALLOWED_ORIGINS` | — | `backend/app/main.py` |
 | `DATABASE_URL` | — | `backend/app/database.py` |
@@ -59,15 +60,24 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `EMAIL_SMTP_PASSWORD` | sensitive value | `backend/app/config.py` |
 | `EMAIL_SMTP_SECURITY` | `starttls` | `backend/app/config.py` |
 | `EMAIL_SMTP_USERNAME` | required / empty | `backend/app/config.py` |
-| `ENVIRONMENT` | `development` | `backend/app/instance_status/service.py` |
+| `ENVIRONMENT` | `development` | `backend/app/basemaps/stadia_router.py` |
 | `EXPORT_STORAGE_PATH` | dynamic | `backend/app/exports/temporary_exports.py` |
 | `FRONTEND_PUBLIC_URL` | `http://localhost:5173` | `backend/app/config.py` |
 | `GOOGLE_MAPS_ROUTES_API_KEY` | sensitive value | `backend/app/config.py` |
 | `GOOGLE_MAPS_ROUTES_BASE_URL` | `https://routes.googleapis.com` | `backend/app/config.py` |
 | `IMPORT_STORAGE_PATH` | dynamic | `backend/app/imports/service.py` |
+| `MEDIA_STORAGE` | `local` | `backend/app/photos/object_storage.py` |
 | `OSRM_BASE_URL` | `https://router.project-osrm.org` | `backend/app/config.py` |
 | `OSRM_PROFILE` | `driving` | `backend/app/config.py` |
-| `PHOTO_STORAGE_PATH` | dynamic | `backend/app/photos/storage.py` |
 | `PYTEST_CURRENT_TEST` | — | `backend/app/basemaps/vector_service.py` |
 | `REDIS_URL` | `redis://localhost:6379/0` | `backend/app/config.py` |
+| `S3_ACCESS_KEY` | sensitive value | `backend/app/photos/object_storage.py` |
+| `S3_BUCKET` | required / empty | `backend/app/photos/object_storage.py` |
+| `S3_ENDPOINT` | required / empty | `backend/app/photos/object_storage.py` |
+| `S3_FORCE_PATH_STYLE` | required / empty | `backend/app/photos/object_storage.py` |
+| `S3_PREFIX` | required / empty | `backend/app/photos/object_storage.py` |
+| `S3_REGION` | required / empty | `backend/app/photos/object_storage.py` |
+| `S3_SECRET_KEY` | sensitive value | `backend/app/photos/object_storage.py` |
+| `S3_USE_SSL` | required / empty | `backend/app/photos/object_storage.py` |
+| `S3_VERIFY_TLS` | required / empty | `backend/app/photos/object_storage.py` |
 | `WEB_CONCURRENCY` | — | `backend/app/instance_status/service.py` |

@@ -40,7 +40,7 @@ The setup wizard locks after the first administrator is created.
 ## Update
 
 1. Create a consistent backup.
-2. Set `CARTAVAULT_VERSION` to an immutable tag such as `0.9.0-beta.1`.
+2. Set `CARTAVAULT_VERSION` to an immutable tag such as `1.0.0-rc.1`.
 3. Pull the image and recreate the service.
 4. Watch migrations and `/healthz`.
 5. Verify sign-in, one map, one photo, and a representative calculation.

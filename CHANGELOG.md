@@ -2,16 +2,7 @@
 
 All notable CartaVault changes are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/) from the `0.x` releases onward.
-
-## Versioning convention
-
-Until CartaVault reaches `1.0.0`:
-
-- `0.MINOR.0` may introduce a significant feature, architecture evolution, or breaking change;
-- `0.MINOR.PATCH` primarily contains bug fixes, compatible improvements, documentation, or maintenance;
-- every breaking change must be explicitly called out in the release notes;
-- database migrations must be documented in the relevant release section.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
@@ -39,9 +30,9 @@ Until CartaVault reaches `1.0.0`:
 
 - No documented changes yet.
 
-## [0.1.0] - To be released
+## [1.0.0-rc.1] - 2026-08-17
 
-First public development release of CartaVault.
+First CartaVault 1.0 release candidate.
 
 ### Added
 
@@ -63,11 +54,28 @@ First public development release of CartaVault.
 - GitHub issue and pull request templates.
 - Contribution guide.
 - Manual pre-release test checklist.
+- Offline vector basemaps generated and managed by CartaVault.
+- Separate classic and satellite map provider configuration.
+- Google Maps JavaScript API satellite integration for EEA accounts.
+- Google, Stadia, Mapbox and OpenRouteService API credential management.
+- Instance API keys shared with users through quota profiles.
+- Administrative instance diagnostics, quotas and API key management.
 
 ### Changed
 
 - The project is presented under the CartaVault name.
 - The interface has progressively been aligned with the CartaVault visual identity.
+- Map selection now exposes only the modes available for the configured providers.
+- Administrative and account secondary dialogs share a consistent responsive backdrop and layout.
+- The standard NAS topology uses one hardened application container and one digest-pinned PostGIS container.
+
+### Fixed
+
+- Restored Stadia light and dark maps and reliable map-provider fallback behavior.
+- Added reliable Google satellite support for both Map Tiles and Maps JavaScript integrations.
+- Corrected quota, user, diagnostics and offline-data administration views.
+- Corrected modal focus retention, desktop sizing, dark-theme colors and action layouts.
+- Allowed failed offline basemap installations to be removed.
 
 ### Security
 
@@ -76,6 +84,8 @@ First public development release of CartaVault.
 - Credentials are removed when an account is anonymized or deleted.
 - Permissions are enforced for map- and user-owned data.
 - `.env` files, private keys, and secrets are excluded from the repository.
+- Shared instance credentials remain encrypted, masked and read-only for users.
+- Release images run as a non-root user with a read-only filesystem and dropped capabilities.
 
-[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/FlynX9/CartaVault/releases/tag/v0.1.0
+[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.1...HEAD
+[1.0.0-rc.1]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.1

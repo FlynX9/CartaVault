@@ -95,6 +95,7 @@
     "account:privacy",
     "account:profile",
     "account:security",
+    "dialog:account-basemap-label",
     "dialog:account-density-label",
     "dialog:account-language-label",
     "dialog:account-startup-label",
@@ -134,7 +135,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "2e39a385e7cb4b87"
+      "source_hash": "234aac80054ff27b"
     },
     {
       "id": "concepts.permissions",
@@ -346,7 +347,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "6241cf554ece9c66"
+      "source_hash": "b5d14024fd81987b"
     },
     {
       "id": "trips.routing",
@@ -407,7 +408,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "2565e3875b808b4e"
+      "source_hash": "d35843e24ce46fc9"
     },
     {
       "id": "media.library",
@@ -468,7 +469,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "4fb964eb5617974a"
+      "source_hash": "bc4e52c571336a05"
     },
     {
       "id": "offline.pwa-shell",
@@ -498,7 +499,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "a49b18c30ae03936"
+      "source_hash": "4987df05eee1372c"
     },
     {
       "id": "account.preferences",
@@ -513,7 +514,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "e24ba2aeca6d4066"
+      "source_hash": "6f3782eeaa8f3051"
     },
     {
       "id": "account.security",
@@ -528,7 +529,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "a49b18c30ae03936"
+      "source_hash": "c48a3ec1a2a3a82d"
     },
     {
       "id": "account.email",
@@ -543,7 +544,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "a49b18c30ae03936"
+      "source_hash": "c48a3ec1a2a3a82d"
     },
     {
       "id": "account.password",
@@ -560,7 +561,7 @@
         "backend/app/auth/password_policy.py"
       ],
       "potentially_stale": false,
-      "source_hash": "8586d9852942ac41"
+      "source_hash": "4749b26532359bde"
     },
     {
       "id": "account.totp",
@@ -575,7 +576,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "8d439f13377b056b"
+      "source_hash": "cf5eca15bc05c624"
     },
     {
       "id": "account.email-mfa",
@@ -590,7 +591,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "50c63cd0ba1c2895"
+      "source_hash": "382aaeedba6ddf40"
     },
     {
       "id": "account.recovery-codes",
@@ -605,7 +606,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "3f9614a95f38d36a"
+      "source_hash": "49b592a090bbbfad"
     },
     {
       "id": "account.sessions",
@@ -620,7 +621,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "a49b18c30ae03936"
+      "source_hash": "c48a3ec1a2a3a82d"
     },
     {
       "id": "account.api-keys",
@@ -636,7 +637,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "d8f6644bbbdbff50"
+      "source_hash": "1a1e472a7d05ef86"
     },
     {
       "id": "account.privacy",
@@ -666,7 +667,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "c15800cce1adc146"
+      "source_hash": "53c5cd8ce6a4dd0f"
     },
     {
       "id": "account.delete",
@@ -681,7 +682,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "a49b18c30ae03936"
+      "source_hash": "c48a3ec1a2a3a82d"
     },
     {
       "id": "admin.general",
@@ -696,7 +697,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "b2f81599b9642356"
+      "source_hash": "fdbc2b4c30168a13"
     },
     {
       "id": "admin.registration",
@@ -711,7 +712,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "133ea3c8df118724"
+      "source_hash": "0163564892524505"
     },
     {
       "id": "admin.users",
@@ -727,7 +728,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "64e3d2838b7e39ce"
+      "source_hash": "8b22bb649356ed73"
     },
     {
       "id": "admin.quotas",
@@ -743,7 +744,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "19b40181418c98cc"
+      "source_hash": "ab093d885221914f"
     },
     {
       "id": "admin.api-keys",
@@ -758,7 +759,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "1f3dd2737f56b3d9"
+      "source_hash": "fc682069743bbc92"
     },
     {
       "id": "admin.vector-basemaps",
@@ -773,7 +774,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "8527e79ff268a331"
+      "source_hash": "5c26187d1f809ebd"
     },
     {
       "id": "admin.privacy",
@@ -788,7 +789,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "455ac0e0f44d5148"
+      "source_hash": "57bb1f42eb560779"
     },
     {
       "id": "admin.media-logs",
@@ -803,7 +804,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "0364c6ec1ae2dd0c"
+      "source_hash": "2b977e58191a9191"
     },
     {
       "id": "admin.instance",
@@ -818,7 +819,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "f30aca07daab2e45"
+      "source_hash": "e84f9a6baac6b710"
     },
     {
       "id": "deployment.install",
@@ -833,7 +834,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "b7e59db9bd2b0f34"
+      "source_hash": "d5c9cf4c6e5a60a4"
     },
     {
       "id": "deployment.email",
@@ -850,7 +851,7 @@
         "backend/app/email"
       ],
       "potentially_stale": false,
-      "source_hash": "255b71bb64f17973"
+      "source_hash": "cf9cf0d0b471fead"
     }
   ]
 }

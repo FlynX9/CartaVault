@@ -145,7 +145,7 @@ def _runtime_resources(checked_at: datetime) -> RuntimeResourcesDiagnostic:
 
 
 def _application(request: FastAPIRequest, checked_at: datetime) -> ApplicationDiagnostic:
-    version = os.getenv("CARTAVAULT_VERSION", "0.1.0")
+    version = os.getenv("CARTAVAULT_VERSION", "development")
     environment = os.getenv("CARTAVAULT_ENVIRONMENT", os.getenv("ENVIRONMENT", "development")).lower()
     debug = _env_bool("CARTAVAULT_DEBUG")
     configured_url = os.getenv("CARTAVAULT_PUBLIC_URL") or email_settings.frontend_public_url or None

@@ -14,6 +14,8 @@ backend/storage
 docker-exports
 demo/output
 demo/runtime
+demo/node_modules
+demo/.venv
 frontend/dist
 frontend/node_modules
 website/.astro

@@ -27,13 +27,13 @@ public-beta application replica.
 The external reverse proxy owns HTTPS and forwards one HTTP port to
 CartaVault. PostgreSQL has no published port.
 
-## Public beta image
+## Public release candidate image
 
-The official public-beta image is published from a GitHub Release to GitHub
+The official release-candidate image is published from a GitHub Release to GitHub
 Container Registry:
 
 ```text
-ghcr.io/flynx9/cartavault:0.9.0-beta.1
+ghcr.io/flynx9/cartavault:1.0.0-rc.1
 ```
 
 Use immutable version tags in every deployment. The mutable `beta` tag is only
@@ -41,8 +41,8 @@ a discovery alias and must not be the sole rollback reference. The first
 public beta supports `linux/amd64`.
 
 ```sh
-docker pull ghcr.io/flynx9/cartavault:0.9.0-beta.1
-docker image inspect ghcr.io/flynx9/cartavault:0.9.0-beta.1
+docker pull ghcr.io/flynx9/cartavault:1.0.0-rc.1
+docker image inspect ghcr.io/flynx9/cartavault:1.0.0-rc.1
 ```
 
 Published images include OCI source/version/license metadata, an SBOM and
@@ -55,16 +55,16 @@ release, verification and rollback procedure.
 Build the versioned application image and pull the pinned PostGIS companion:
 
 ```powershell
-.\docker\build.ps1 -Version "0.9.0-beta.1"
+.\docker\build.ps1 -Version "1.0.0-rc.1"
 ```
 
 Export the two standard images for an offline NAS or Portainer installation:
 
 ```powershell
-.\docker\export-images.ps1 -Version "0.9.0-beta.1" -OutputDirectory "D:\docker-exports"
+.\docker\export-images.ps1 -Version "1.0.0-rc.1" -OutputDirectory "D:\docker-exports"
 ```
 
-The archive contains `cartavault:0.9.0-beta.1` and the digest-pinned
+The archive contains `cartavault:1.0.0-rc.1` and the digest-pinned
 `postgis/postgis:16-3.5` image. Use immutable version tags for upgrades and
 rollback; do not deploy `latest` as the only rollback reference.
 
