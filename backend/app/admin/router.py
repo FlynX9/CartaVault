@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app.admin.schemas import (
-    AdminApiKeyCreate, AdminApiKeyUpdate, AdminUserActivityRead, AdminUserDetails, AdminUserPage, AdminUserRead, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
+    AdminApiKeyCreate, AdminApiKeyUpdate, AdminUserActivityRead, AdminUserDetails, AdminUserPage, AdminUserRead, AdminUserSummary, AdminUserUpdate, CredentialStatus, CredentialValue, InstanceLogRetentionSettings, MediaUploadSettings,
 )
 from app.auth.activity import record_user_activity
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
@@ -206,12 +206,19 @@ def list_users(
         select(User).options(joinedload(User.quota_profile)).where(*filters).order_by(func.lower(User.email), User.id).offset((page - 1) * page_size).limit(page_size)
     ).all()
     counts = _user_counts(session, [item.id for item in users])
+    summary = AdminUserSummary(
+        active_users=session.scalar(select(func.count()).select_from(User).where(User.is_active.is_(True), User.deleted_at.is_(None))) or 0,
+        administrators=session.scalar(select(func.count()).select_from(User).where(User.is_admin.is_(True), User.is_active.is_(True), User.deleted_at.is_(None))) or 0,
+        maps=session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.deleted_at.is_(None))) or 0,
+        places=session.scalar(select(func.count()).select_from(Place).where(Place.deleted_at.is_(None))) or 0,
+    )
     return AdminUserPage(
         items=[_user_read(session, item, counts[item.id]) for item in users],
         total=total,
         page=page,
         page_size=page_size,
         pages=max(1, ceil(total / page_size)),
+        summary=summary,
     )
 
 

@@ -130,6 +130,34 @@ function packageId(userId: string, kind: OfflinePackageKind, sourceId: string) {
 function sizeOf(value: unknown) { return new Blob([JSON.stringify(value)]).size }
 function isNetworkFailure(error: unknown) { return error instanceof TypeError || (error instanceof Error && /network|fetch|offline|failed to fetch/i.test(error.message)) }
 
+function normalizeOfflinePackage(item: OfflinePackage): OfflinePackage | null {
+  if (!item || !item.snapshot?.map || !item.id || !item.userId || !item.sourceId) return null
+  const snapshot = item.snapshot
+  const included = { ...(item.kind === 'trip' ? defaultTripOfflineOptions : defaultMapOfflineOptions), ...item.included }
+  return {
+    ...item,
+    title: item.title || snapshot.map.name,
+    included,
+    createdAt: item.createdAt || item.updatedAt || item.lastSyncedAt || now(),
+    updatedAt: item.updatedAt || item.lastSyncedAt || item.createdAt || now(),
+    lastSyncedAt: item.lastSyncedAt || item.updatedAt || item.createdAt || now(),
+    estimatedBytes: Number.isFinite(item.estimatedBytes) ? item.estimatedBytes : 0,
+    actualBytes: Number.isFinite(item.actualBytes) ? item.actualBytes : Number.isFinite(item.estimatedBytes) ? item.estimatedBytes : 0,
+    snapshot: {
+      ...snapshot,
+      places: Array.isArray(snapshot.places) ? snapshot.places : [],
+      categories: Array.isArray(snapshot.categories) ? snapshot.categories : [],
+      tags: Array.isArray(snapshot.tags) ? snapshot.tags : [],
+      statuses: Array.isArray(snapshot.statuses) ? snapshot.statuses : [],
+      trip: snapshot.trip ?? null,
+      photos: snapshot.photos ?? {},
+      thumbnails: snapshot.thumbnails ?? {},
+      annotations: snapshot.annotations ?? {},
+    },
+    basemap: item.basemap ? { ...item.basemap, tileKeys: Array.isArray(item.basemap.tileKeys) ? item.basemap.tileKeys : [], tileBytes: Number.isFinite(item.basemap.tileBytes) ? item.basemap.tileBytes : 0 } : undefined,
+  }
+}
+
 export function setOfflineIdentity(identity: OfflineIdentity | null): void {
   if (identity === null) { window.localStorage.removeItem(ACTIVE_USER_KEY); return }
   window.localStorage.setItem(ACTIVE_USER_KEY, identity.id)
@@ -141,11 +169,15 @@ export async function getOfflineIdentity(): Promise<OfflineIdentity | null> {
 }
 export async function listOfflinePackages(userId: string): Promise<OfflinePackage[]> {
   const items = await transaction<OfflinePackage[]>(PACKAGE_STORE, 'readonly', (store) => store.index('by-user').getAll(userId))
-  return items.filter((item) => item.schemaVersion === SCHEMA_VERSION && (item.status ?? 'ready') === 'ready').sort((left, right) => right.lastSyncedAt.localeCompare(left.lastSyncedAt))
+  return items
+    .filter((item) => item.schemaVersion === SCHEMA_VERSION && (item.status ?? 'ready') === 'ready')
+    .map(normalizeOfflinePackage)
+    .filter((item): item is OfflinePackage => item !== null)
+    .sort((left, right) => right.lastSyncedAt.localeCompare(left.lastSyncedAt))
 }
 export async function getOfflinePackage(userId: string, kind: OfflinePackageKind, sourceId: string): Promise<OfflinePackage | null> {
   const result = await transaction<OfflinePackage | undefined>(PACKAGE_STORE, 'readonly', (store) => store.index('by-source').get([userId, kind, sourceId]))
-  return result?.schemaVersion === SCHEMA_VERSION ? result : null
+  return result?.schemaVersion === SCHEMA_VERSION ? normalizeOfflinePackage(result) : null
 }
 export async function saveOfflineDownloadJob(job: OfflineDownloadJob): Promise<void> {
   await transaction(DOWNLOAD_JOB_STORE, 'readwrite', (store) => store.put(job))

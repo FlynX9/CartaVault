@@ -295,13 +295,18 @@ def _authentication(session: Session, checked_at: datetime) -> AuthenticationDia
     now = _naive_now()
     active = session.scalar(select(func.count()).select_from(UserSession).where(UserSession.revoked_at.is_(None), UserSession.expires_at > now)) or 0
     expired = session.scalar(select(func.count()).select_from(UserSession).where(UserSession.expires_at <= now)) or 0
+    mfa_enabled = session.scalar(select(func.count()).select_from(User).where(
+        User.deleted_at.is_(None),
+        User.is_active.is_(True),
+        (User.totp_enabled.is_(True) | User.email_mfa_enabled.is_(True)),
+    )) or 0
     return AuthenticationDiagnostic(
         status="operational", checked_at=checked_at, password_hash_algorithm="argon2id",
         active_sessions=active, expired_sessions_pending_cleanup=expired,
         session_ttl_seconds=security_settings.session_days * 86400, cookie_secure=security_settings.cookie_secure,
         cookie_http_only=True, cookie_same_site="lax", csrf_enabled=True, rate_limiting_enabled=None,
-        failed_logins_24h=None, temporarily_limited_accounts=None, mfa_available=False,
-        mfa_enabled_users=0, mfa_required_for_admins=False, mfa_required_globally=False,
+        failed_logins_24h=None, temporarily_limited_accounts=None, mfa_available=True,
+        mfa_enabled_users=mfa_enabled, mfa_required_for_admins=False, mfa_required_globally=False,
     )
 
 
@@ -403,8 +408,12 @@ def _backups(checked_at: datetime) -> BackupDiagnostic:
     )
 
 
-def _security(application: ApplicationDiagnostic, https: HttpsDiagnostic, email: EmailDiagnostic, backups: BackupDiagnostic, checked_at: datetime) -> SecurityDiagnostic:
+def _security(session: Session, application: ApplicationDiagnostic, https: HttpsDiagnostic, email: EmailDiagnostic, backups: BackupDiagnostic, checked_at: datetime) -> SecurityDiagnostic:
     production = application.environment == "production"
+    administrators = session.execute(select(User.totp_enabled, User.email_mfa_enabled).where(
+        User.is_admin.is_(True), User.is_active.is_(True), User.deleted_at.is_(None),
+    )).all()
+    administrators_have_mfa = bool(administrators) and all(totp_enabled or email_mfa_enabled for totp_enabled, email_mfa_enabled in administrators)
     checks = [
         SecurityCheck(code="security.https_enabled", severity="high" if production else "info", passed=https.https_detected if production else None, message_key="admin.instanceStatus.security.https", action="Configure HTTPS at the trusted reverse proxy."),
         SecurityCheck(code="security.secure_cookie", severity="high" if production else "info", passed=security_settings.cookie_secure, message_key="admin.instanceStatus.security.secureCookie", action="Enable secure cookies in production."),
@@ -413,7 +422,7 @@ def _security(application: ApplicationDiagnostic, https: HttpsDiagnostic, email:
         SecurityCheck(code="security.credential_encryption", severity="high", passed=bool(credential_settings.encryption_key), message_key="admin.instanceStatus.security.encryption", action="Configure the credential encryption key."),
         SecurityCheck(code="security.email_configured", severity="warning", passed=email.configured, message_key="admin.instanceStatus.security.email", action="Configure a transactional email provider."),
         SecurityCheck(code="security.backup_known", severity="high", passed=True if backups.known else None, message_key="admin.instanceStatus.security.backup", action="Document backups and test a restore."),
-        SecurityCheck(code="security.mfa_admins", severity="warning", passed=False, message_key="admin.instanceStatus.security.mfaAdmins", action="MFA is not available in this version."),
+        SecurityCheck(code="security.mfa_admins", severity="high", passed=administrators_have_mfa, message_key="admin.instanceStatus.security.mfaAdmins"),
         SecurityCheck(code="security.public_registration", severity="info", passed=None, message_key="admin.instanceStatus.security.registration"),
     ]
     failed_high = any(item.passed is False and item.severity in {"high", "critical"} for item in checks)
@@ -583,7 +592,7 @@ def collect_instance_status(session: Session, request: FastAPIRequest) -> Instan
     except Exception:
         _rollback(session); maintenance = _unknown_maintenance(checked_at, "INSTANCE_MAINTENANCE_CHECK_FAILED")
     backups = _backups(checked_at)
-    security = _security(application, https, email, backups, checked_at)
+    security = _security(session, application, https, email, backups, checked_at)
     components = InstanceComponents(application=application, resources=resources, database=database, storage=storage, usage=usage, authentication=authentication, https=https, email=email, mapping=mapping, routing=routing, maintenance=maintenance, backups=backups, security=security)
     global_status = _aggregate(components)
     warnings = [item.code for item in security.checks if item.passed is not True]

@@ -66,6 +66,28 @@ describe('offline data packages', () => {
     window.removeEventListener(OFFLINE_PACKAGES_CHANGED_EVENT, onChange)
   })
 
+  it('normalizes legacy packages whose optional collections are missing', async () => {
+    const saved = await downloadMapOfflinePackage('user-a', map, { ...defaultMapOfflineOptions, basemap: false })
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('cartavault-offline', 3)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction('packages', 'readwrite')
+      transaction.objectStore('packages').put({ ...saved, actualBytes: undefined, included: undefined, snapshot: { map } })
+      transaction.oncomplete = () => resolve()
+      transaction.onerror = () => reject(transaction.error)
+    })
+    db.close()
+
+    const [legacy] = await listOfflinePackages('user-a')
+    expect(legacy.actualBytes).toBe(saved.estimatedBytes)
+    expect(legacy.included).toEqual(defaultMapOfflineOptions)
+    expect(legacy.snapshot.places).toEqual([])
+    expect(legacy.snapshot.annotations).toEqual({})
+  })
+
   it('deletes one package and clears all private data on logout', async () => {
     setOfflineIdentity({ id: 'user-a', email: 'a@example.test', display_name: 'A', is_admin: false })
     const saved = await downloadMapOfflinePackage('user-a', map, defaultMapOfflineOptions)

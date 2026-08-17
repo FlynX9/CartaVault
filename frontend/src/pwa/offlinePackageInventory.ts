@@ -17,16 +17,16 @@ export interface OfflinePackageInventory {
 export function getOfflinePackageInventory(item: OfflinePackage): OfflinePackageInventory {
   const trip = item.snapshot.trip
   return {
-    places: item.snapshot.places.length,
-    categories: item.snapshot.categories.length,
-    tags: item.snapshot.tags.length,
-    statuses: item.snapshot.statuses.length,
-    thumbnails: Object.keys(item.snapshot.thumbnails).length,
-    annotations: Object.values(item.snapshot.annotations).flat().length,
-    days: trip?.days.length ?? 0,
-    stops: trip?.days.reduce((total, day) => total + day.stops.length, 0) ?? 0,
-    nights: trip?.nights.length ?? 0,
-    routes: trip?.days.filter((day) => day.route_geometry !== null).length ?? 0,
-    tiles: item.basemap?.tileKeys.length ?? 0,
+    places: item.snapshot.places?.length ?? 0,
+    categories: item.snapshot.categories?.length ?? 0,
+    tags: item.snapshot.tags?.length ?? 0,
+    statuses: item.snapshot.statuses?.length ?? 0,
+    thumbnails: Object.keys(item.snapshot.thumbnails ?? {}).length,
+    annotations: Object.values(item.snapshot.annotations ?? {}).flat().length,
+    days: trip?.days?.length ?? 0,
+    stops: trip?.days?.reduce((total, day) => total + (day.stops?.length ?? 0), 0) ?? 0,
+    nights: trip?.nights?.length ?? 0,
+    routes: trip?.days?.filter((day) => day.route_geometry !== null).length ?? 0,
+    tiles: item.basemap?.tileKeys?.length ?? 0,
   }
 }

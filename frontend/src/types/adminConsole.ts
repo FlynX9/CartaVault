@@ -8,7 +8,8 @@ export interface AdminUser {
   owned_map_count: number; shared_map_count: number; place_count: number
   quota_profile_id: string; quota_profile_name: string
 }
-export interface AdminUserPage { items: AdminUser[]; total: number; page: number; page_size: number; pages: number }
+export interface AdminUserSummary { active_users: number; administrators: number; maps: number; places: number }
+export interface AdminUserPage { items: AdminUser[]; total: number; page: number; page_size: number; pages: number; summary?: AdminUserSummary }
 export interface AdminUserDetails extends AdminUser {
   trip_count: number; active_session_count: number; email_verified: boolean; mfa_enabled: boolean
 }

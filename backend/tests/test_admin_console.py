@@ -48,6 +48,8 @@ def test_admin_users_are_paginated_searchable_and_self_protected(integration_cli
     assert page.json()["total"] == 1
     assert page.json()["items"][0]["email"] == matching.email
     assert page.json()["items"][0]["place_count"] == 0
+    assert page.json()["summary"]["active_users"] >= 2
+    assert page.json()["summary"]["administrators"] >= 1
     assert self_demotion.status_code == 409
     assert self_demotion.json()["detail"]["code"] == "ADMIN_SELF_PROTECTION"
     assert activation.status_code == 200
@@ -213,6 +215,27 @@ def test_instance_diagnostics_reject_standard_user(integration_client, database_
     response = integration_client.get("/admin/console/instance")
 
     assert response.status_code == 403
+
+
+def test_instance_diagnostics_require_mfa_for_every_active_administrator(integration_client, database_session, auth_user) -> None:
+    from app.instance_status.service import clear_instance_status_cache
+
+    auth_user.totp_enabled = True
+    second_admin = _user(database_session, "Second Admin", admin=True)
+    database_session.flush()
+    clear_instance_status_cache()
+
+    first = integration_client.get("/admin/console/instance")
+    first_check = next(item for item in first.json()["components"]["security"]["checks"] if item["code"] == "security.mfa_admins")
+    assert first_check["passed"] is False
+    assert first_check["severity"] == "high"
+
+    second_admin.email_mfa_enabled = True
+    database_session.flush()
+    clear_instance_status_cache()
+    second = integration_client.get("/admin/console/instance")
+    second_check = next(item for item in second.json()["components"]["security"]["checks"] if item["code"] == "security.mfa_admins")
+    assert second_check["passed"] is True
 
 
 def test_instance_diagnostics_requires_authentication(integration_client, auth_user) -> None:

@@ -7685,7 +7685,7 @@ body.cv-panel-resizing {
 .quota-profile .admin-console__actions button svg,
 .admin-console__refresh svg { width: var(--cv-button-icon-size); height: var(--cv-button-icon-size); }
 .quota-profile__actions { flex-wrap: nowrap; justify-content: flex-start; }
-.quota-profiles__toolbar { display: inline-flex; gap: .15rem; margin: .25rem 0 .8rem; padding: .18rem; border: 1px solid var(--admin-border); border-radius: .58rem; background: var(--cv-color-surface, #fff); }
+.quota-profiles__toolbar { display: inline-flex; gap: .15rem; margin: .25rem 0 .8rem; padding: .18rem; border: 1px solid var(--admin-border); border-radius: .58rem; background: var(--cv-surface); }
 .quota-profiles__toolbar button { display: inline-flex; align-items: center; gap: .35rem; min-height: 1.9rem; padding: .28rem .55rem; border: 0; border-radius: .42rem; color: var(--cv-color-slate); background: transparent; font-size: .68rem; font-weight: 700; cursor: pointer; }
 .quota-profiles__toolbar button.is-active { color: #fff; background: var(--cv-color-teal); }
 .quota-profiles__toolbar button:focus-visible, .quota-carousel__arrow:focus-visible, .quota-carousel__pagination button:focus-visible, .quota-profile:focus-visible { outline: 2px solid var(--cv-color-teal); outline-offset: 2px; }
@@ -7701,7 +7701,7 @@ body.cv-panel-resizing {
 .quota-carousel__slide:not(.is-current) .quota-profile { pointer-events: none; }
 .quota-carousel .quota-profile { min-height: 13.25rem; cursor: pointer; }
 .quota-profile.is-selected { border-color: color-mix(in srgb, var(--cv-color-teal) 60%, var(--admin-border)); box-shadow: 0 .55rem 1.25rem rgb(15 166 138 / 12%); }
-.quota-carousel__arrow { position: absolute; z-index: 4; top: 50%; display: inline-grid; width: 2.15rem; height: 2.15rem; transform: translateY(-50%); place-items: center; border: 1px solid var(--admin-border); border-radius: .55rem; color: var(--cv-color-slate); background: var(--cv-color-surface, #fff); box-shadow: var(--cv-shadow-sm); cursor: pointer; }
+.quota-carousel__arrow { position: absolute; z-index: 4; top: 50%; display: inline-grid; width: 2.15rem; height: 2.15rem; transform: translateY(-50%); place-items: center; border: 1px solid var(--admin-border); border-radius: .55rem; color: var(--cv-color-slate); background: var(--cv-surface); box-shadow: var(--cv-shadow-sm); cursor: pointer; }
 .quota-carousel__arrow--previous { left: .35rem; }
 .quota-carousel__arrow--next { right: .35rem; }
 .quota-carousel__arrow:disabled { opacity: .38; cursor: default; }

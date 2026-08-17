@@ -16,7 +16,7 @@ type InstanceView = 'overview' | 'resources' | 'logs' | 'diagnostics'
 const text = {
   fr: {
     eyebrow: 'Supervision', title: 'État de l’instance', subtitle: 'Santé, ressources, journaux et diagnostics opérationnels de CartaVault.',
-    refresh: 'Actualiser', loading: 'Diagnostic en cours…', overview: 'Vue d’ensemble', resources: 'Ressources', logs: 'Journaux', diagnostics: 'Diagnostics',
+    refresh: 'Actualiser', loading: 'Diagnostic en cours…', overview: 'Vue d’ensemble', resources: 'Ressources', logs: 'Journaux', diagnostics: 'Diagnostiques',
     global: 'État global', version: 'Version', uptime: 'Disponibilité', storage: 'Stockage média', sinceStart: 'depuis le dernier démarrage', free: 'libres',
     services: 'Services', servicesHint: 'Contrôles légers et bornés, mis en cache.', usage: 'Usage', usageHint: 'Volumes agrégés, sans donnée personnelle.',
     alerts: 'Alertes opérationnelles', noAlerts: 'Aucune alerte opérationnelle.', runtime: 'Runtime CartaVault', cpu: 'Processeur', memory: 'Mémoire', workers: 'Workers', unavailable: 'Indisponible',

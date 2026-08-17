@@ -29,12 +29,20 @@ class AdminUserRead(BaseModel):
     quota_profile_name: str
 
 
+class AdminUserSummary(BaseModel):
+    active_users: int
+    administrators: int
+    maps: int
+    places: int
+
+
 class AdminUserPage(BaseModel):
     items: list[AdminUserRead]
     total: int
     page: int
     page_size: int
     pages: int
+    summary: AdminUserSummary
 
 
 class AdminUserUpdate(BaseModel):

@@ -21,7 +21,7 @@ vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
 
 beforeEach(() => {
-  vi.mocked(getAdminUsers).mockResolvedValue({ items: [], total: 0, page: 1, page_size: 25, pages: 1 })
+  vi.mocked(getAdminUsers).mockResolvedValue({ items: [], total: 0, page: 1, page_size: 25, pages: 1, summary: { active_users: 4, administrators: 2, maps: 7, places: 42 } })
   vi.mocked(getAdminApiKeys).mockResolvedValue([])
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
@@ -52,6 +52,12 @@ describe('AdminConsole', () => {
     expect(within(navigation).getAllByRole('link').slice(0, 2).map((link) => link.textContent)).toEqual(['Général', 'Utilisateurs'])
     expect(screen.getByRole('link', { name: 'Utilisateurs' })).toHaveClass('active')
     expect(await screen.findByText('Aucun utilisateur trouvé.')).toBeVisible()
+    const summary = screen.getByRole('region', { name: 'Utilisateurs' })
+    expect(within(summary).getByText('Comptes actifs')).toBeVisible()
+    expect(within(summary).getByText('Administrateurs')).toBeVisible()
+    expect(within(summary).getByText('Cartes')).toBeVisible()
+    expect(within(summary).getByText('Lieux')).toBeVisible()
+    expect(within(summary).queryByText('Sessions actives')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Inscriptions publiques' })).not.toBeInTheDocument()
     expect(getPublicRegistrationSettings).not.toHaveBeenCalled()
   })
@@ -84,6 +90,17 @@ describe('AdminConsole', () => {
     const progress = await screen.findByRole('progressbar', { name: 'Génération du fond de Belgique' })
     expect(progress).toHaveAttribute('aria-valuenow', '42')
     expect(screen.getByText('Génération du fond · 42 %')).toBeVisible()
+  })
+
+  it('allows an errored vector basemap to be deleted', async () => {
+    vi.mocked(getVectorBasemapLibrary).mockResolvedValue({
+      settings: { enabled: true, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
+      items: [{ country_code: 'FR', country_name: 'France', state: 'error', phase: 'Erreur', progress: null, version: null, file_size: null, source_size: null, installed_at: null, source_date: null, min_zoom: null, max_zoom: null, schema: null, error_code: 'GENERATION_FAILED', error_message: 'Échec', task_id: null, map_count: 1, supported: true }],
+    })
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+
+    expect(await screen.findByRole('button', { name: 'Supprimer' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeVisible()
   })
 
   it('only reveals privacy inputs after enabling the section and saves its selected mode from the header', async () => {
@@ -286,7 +303,7 @@ describe('AdminConsole', () => {
 
     expect(await screen.findByRole('heading', { name: 'État de l’instance' })).toBeVisible()
     expect(await screen.findByText('PostgreSQL / PostGIS')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Diagnostics' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Diagnostiques' }))
     expect(await screen.findByText('Sauvegardes')).toBeVisible()
     expect(screen.getAllByText('Inconnu').length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: 'Actualiser' }))
