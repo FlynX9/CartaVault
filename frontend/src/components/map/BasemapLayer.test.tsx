@@ -64,6 +64,15 @@ describe('BasemapLayer', () => {
     expect(createGoogleSatelliteSession).toHaveBeenCalledWith('satellite')
   })
 
+  it('forwards the Google session failure reason to the fallback controller', async () => {
+    const onTileError = vi.fn()
+    vi.mocked(createGoogleSatelliteSession).mockRejectedValueOnce(new Error('Google Satellite est indisponible dans cette région.'))
+
+    render(<BasemapLayer basemapId="google-satellite" onTileError={onTileError} />)
+
+    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('google-satellite', true, 'Google Satellite est indisponible dans cette région.'))
+  })
+
   it('identifies a failing raster source to the fallback controller', () => {
     const onTileError = vi.fn()
     render(<BasemapLayer basemapId="osm" onTileError={onTileError} />)

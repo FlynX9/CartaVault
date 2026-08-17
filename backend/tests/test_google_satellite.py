@@ -1,6 +1,9 @@
 import json
+from io import BytesIO
+from urllib.error import HTTPError
 
 import pytest
+from fastapi import HTTPException
 
 from app.basemaps.router import DEFAULTS, _create_google_session, _usage_percent, _warning_level
 
@@ -40,6 +43,22 @@ def test_google_roadmap_session_uses_the_classic_map_type(monkeypatch) -> None:
     monkeypatch.setattr("app.basemaps.router.urlopen", lambda request, timeout: captured.append(request) or Response())
     _create_google_session("browser-restricted-key", map_type="roadmap")
     assert json.loads(captured[0].data)["mapType"] == "roadmap"
+
+
+def test_google_satellite_session_reports_an_eea_region_restriction(monkeypatch) -> None:
+    provider_error = json.dumps({"error": {"message": "Satellite tiles are not available for your account and region."}}).encode()
+
+    def reject(request, timeout):
+        raise HTTPError(request.full_url, 403, "Forbidden", {}, BytesIO(provider_error))
+
+    monkeypatch.setattr("app.basemaps.router.urlopen", reject)
+
+    with pytest.raises(HTTPException) as raised:
+        _create_google_session("region-restricted-key", map_type="satellite")
+
+    assert raised.value.status_code == 503
+    assert raised.value.detail["code"] == "GOOGLE_MAP_TILES_REGION_UNAVAILABLE"
+    assert "région de facturation" in raised.value.detail["message"]
 
 
 @pytest.mark.parametrize(("tiles", "expected"), [(4_999, 0), (5_000, 50), (8_000, 80), (9_500, 95)])

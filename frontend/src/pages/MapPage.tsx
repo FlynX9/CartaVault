@@ -427,10 +427,6 @@ export function MapPage({
     const controller = new AbortController()
     void getGoogleSatelliteStatus(controller.signal).then((status) => {
       if (controller.signal.aborted) return
-      const preferred = accountPreferencesRef.current?.preferred_basemap
-      if (status.available && preferred === 'google-satellite' && configuredSatelliteProvider === 'google' && explicitBasemapSelectionRef.current === null) {
-        setBasemapId('google-satellite'); saveBasemapPreference('google-satellite')
-      }
       if (status.warning_level >= 80) setBasemapNotice(`Google Satellite approche du seuil d’usage configuré (${status.warning_level} %).`)
     }).catch(() => undefined)
     return () => controller.abort()
@@ -670,7 +666,7 @@ export function MapPage({
     }
   }
 
-  const handleBasemapTileError = (sourceId: BasemapId, fatal = false) => {
+  const handleBasemapTileError = (sourceId: BasemapId, fatal = false, reason?: string) => {
     if (sourceId !== basemapId || failedBasemapsRef.current.has(sourceId)) return
     const failures = fatal ? TILE_ERROR_FALLBACK_THRESHOLD : (tileFailuresRef.current.get(sourceId) ?? 0) + 1
     tileFailuresRef.current.set(sourceId, failures)
@@ -688,7 +684,9 @@ export function MapPage({
       ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
       : 'osm'
     setBasemapId(fallback)
-    setBasemapNotice(`Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
+    setBasemapNotice(reason
+      ? `${reason} ${getBasemap(fallback).label} a été activé automatiquement.`
+      : `Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
   }
   return (
     <section

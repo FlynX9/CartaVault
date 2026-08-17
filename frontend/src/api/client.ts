@@ -29,7 +29,7 @@ const trackedMutations = new WeakMap<Response, ApiMutationEventDetail>()
 export const SESSION_EXPIRED_EVENT = 'cartavault:session-expired'
 
 function reportCredentialRequestFailure(path: string, code: string | null) {
-  if (path.includes('/verify') || code === null) return
+  if (path.includes('/verify') || code === null || code === 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE') return
   const provider = code.startsWith('GOOGLE_ROUTES_') ? 'google_routes'
     : code.startsWith('GOOGLE_PLACES_') ? 'google_places'
       : code.startsWith('OPENROUTESERVICE_') || code.startsWith('ORS_') ? 'openrouteservice'

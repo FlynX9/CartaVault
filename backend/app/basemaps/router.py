@@ -135,8 +135,30 @@ def _create_google_session(api_key: str, language: str = "fr", map_type: str = "
         with urlopen(request, timeout=google_map_tiles_settings.timeout_seconds) as response:
             payload = json.loads(response.read(256 * 1024))
     except HTTPError as error:
-        code = "GOOGLE_MAP_TILES_QUOTA" if error.code == 429 else "GOOGLE_MAP_TILES_AUTH" if error.code in {401, 403} else "GOOGLE_MAP_TILES_UNAVAILABLE"
-        raise HTTPException(503, {"code": code, "message": "Google Map Tiles est indisponible."}) from error
+        provider_message = ""
+        try:
+            provider_payload = json.loads(error.read(64 * 1024))
+            provider_error = provider_payload.get("error") if isinstance(provider_payload, dict) else None
+            provider_message = str(provider_error.get("message", "")) if isinstance(provider_error, dict) else ""
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass
+        region_restricted = (
+            map_type == "satellite"
+            and error.code == 403
+            and "not available for your account and region" in provider_message.lower()
+        )
+        code = (
+            "GOOGLE_MAP_TILES_REGION_UNAVAILABLE" if region_restricted
+            else "GOOGLE_MAP_TILES_QUOTA" if error.code == 429
+            else "GOOGLE_MAP_TILES_AUTH" if error.code in {401, 403}
+            else "GOOGLE_MAP_TILES_UNAVAILABLE"
+        )
+        message = (
+            "Google Satellite n’est pas disponible pour la région de facturation de ce compte Google. Choisissez Stadia ou Mapbox pour le satellite."
+            if region_restricted
+            else "Google Map Tiles est indisponible."
+        )
+        raise HTTPException(503, {"code": code, "message": message}) from error
     except (URLError, TimeoutError, OSError, json.JSONDecodeError) as error:
         raise HTTPException(503, {"code": "GOOGLE_MAP_TILES_UNAVAILABLE", "message": "Google Map Tiles est indisponible."}) from error
     if not isinstance(payload, dict) or not isinstance(payload.get("session"), str):
@@ -248,10 +270,17 @@ def create_session(data: GoogleMapSessionRequest, response: Response, session: S
         language = str((user.preferences or {}).get("language", "fr"))
         payload = _create_google_session(_api_key(credential), language, data.map_type)
     except HTTPException as error:
-        credential.last_error_code = str(error.detail.get("code")) if isinstance(error.detail, dict) else "GOOGLE_MAP_TILES_UNAVAILABLE"
-        values["consecutive_errors"] = int(values["consecutive_errors"]) + 1
-        if int(values["consecutive_errors"]) >= int(values["repeated_error_limit"]):
-            values["enabled"] = False; values["disabled_reason"] = "REPEATED_PROVIDER_ERRORS"
+        error_code = str(error.detail.get("code")) if isinstance(error.detail, dict) else "GOOGLE_MAP_TILES_UNAVAILABLE"
+        credential.last_error_code = error_code
+        if error_code == "GOOGLE_MAP_TILES_REGION_UNAVAILABLE":
+            values["consecutive_errors"] = 0
+            if values.get("disabled_reason") == "REPEATED_PROVIDER_ERRORS":
+                values["enabled"] = True
+                values["disabled_reason"] = None
+        else:
+            values["consecutive_errors"] = int(values["consecutive_errors"]) + 1
+            if int(values["consecutive_errors"]) >= int(values["repeated_error_limit"]):
+                values["enabled"] = False; values["disabled_reason"] = "REPEATED_PROVIDER_ERRORS"
         _save_setting(session, values); session.commit(); raise
     now = datetime.now(UTC).replace(tzinfo=None)
     credential.last_used_at = now; credential.last_error_code = None

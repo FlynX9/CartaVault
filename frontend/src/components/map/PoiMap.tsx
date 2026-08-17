@@ -44,7 +44,7 @@ interface PoiMapProps {
   layoutKey: string
   onPopupClose: () => void
   basemapId: BasemapId
-  onBasemapTileError: (id: BasemapId, fatal?: boolean) => void
+  onBasemapTileError: (id: BasemapId, fatal?: boolean, reason?: string) => void
   temporarySearchResult?: GeocodingResult | null
   onMapContextMenuOpen?: (state: MapContextMenuState) => void
   onMapContextMenuClose?: () => void
