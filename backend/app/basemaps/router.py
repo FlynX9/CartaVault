@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -18,14 +19,16 @@ from app.auth.credential_encryption import CredentialEncryptionError, Credential
 from app.auth.api_keys import selected_basemap_api_key, selected_google_maps_javascript_key
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import AdminApiCredential, User, UserApiCredential
+from app.auth.sessions import load_active_session, persist_session_activity
 from app.auth.provider_sessions import GoogleTilesSession, ProviderSessionError, decode_google_tiles_session, encode_google_tiles_session
 from app.basemaps.models import GoogleSatelliteUsageDaily
 from app.config import email_settings, google_map_tiles_settings, security_settings
-from app.database import get_db
+from app.database import SessionLocal, get_db
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.trips.routing.base import RoutingError
 from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
+from app.basemaps.http_client import BasemapUpstreamStatusError, BasemapUpstreamUnavailable, fetch_basemap_tile
 
 
 router = APIRouter(prefix="/basemaps/google-satellite", tags=["basemaps"])
@@ -33,6 +36,10 @@ admin_router = APIRouter(prefix="/admin/console/google-satellite", tags=["admin-
 SETTING_KEY = "google_satellite"
 GOOGLE_TILES_SESSION_COOKIE = "cartavault_google_tiles_session"
 google_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
+# A map view can request dozens of images at once. Database authorization and
+# quota accounting are deliberately kept below the SQLAlchemy pool capacity so
+# ordinary API calls always retain available connections.
+google_tile_database_slots = asyncio.Semaphore(2)
 DEFAULTS: dict[str, object] = {
     "enabled": True,
     "maps_javascript_enabled": True,
@@ -119,7 +126,7 @@ def _admin_status(session: Session) -> dict[str, object]:
     }
 
 
-def _api_key(credential: UserApiCredential) -> str:
+def _api_key(credential: UserApiCredential | AdminApiCredential) -> str:
     try:
         return CredentialEncryptionService.from_settings().decrypt(credential.encrypted_secret, credential.encryption_version)
     except CredentialEncryptionError as error:
@@ -221,7 +228,7 @@ def _user_quota_reached(session: Session, user: User, increment: int = 0) -> tup
     return False, None
 
 
-def _reserve_tile(session: Session, user: User, credential: UserApiCredential) -> None:
+def _reserve_tile(session: Session, user: User, credential: UserApiCredential | AdminApiCredential) -> None:
     """Atomically reserve one provider request across workers and future replicas."""
 
     session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:name))"), {"name": "cartavault:provider:google-satellite"})
@@ -241,6 +248,43 @@ def _reserve_tile(session: Session, user: User, credential: UserApiCredential) -
         _save_setting(session, values)
     _record(session, user, credential, {"tiles_started": 1})
     session.commit()
+
+
+def _authorize_and_reserve_tile(raw_session_token: str, provider_session: GoogleTilesSession) -> str:
+    """Authorize and reserve a Google tile in one short database checkout."""
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    with SessionLocal() as session:
+        user_session = load_active_session(session, raw_session_token, now, load_user=True)
+        if user_session is None or not user_session.user.is_active:
+            raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_AUTH_REQUIRED", "message": "La session CartaVault a expiré."})
+        user = user_session.user
+        capability = "classic_basemap" if provider_session.capability == "classic_basemap" else "satellite_basemap"
+        credential = selected_basemap_api_key(session, user, "google", capability)
+        if provider_session.user_id != user.id or credential is None or credential.id != provider_session.credential_id:
+            raise HTTPException(403, {"code": "GOOGLE_MAP_TILES_SESSION_FORBIDDEN", "message": "Cette session cartographique n’est plus autorisée."})
+        persist_session_activity(session, user_session, now)
+        _reserve_tile(session, user, credential)
+        return _api_key(credential)
+
+
+def _record_tile_result(provider_session: GoogleTilesSession, values: dict[str, int]) -> None:
+    """Record a provider result without retaining a connection during I/O."""
+
+    with SessionLocal() as session:
+        user = session.get(User, provider_session.user_id)
+        credential = session.get(UserApiCredential, provider_session.credential_id)
+        if credential is None:
+            credential = session.get(AdminApiCredential, provider_session.credential_id)
+        if user is None or credential is None:
+            return
+        _record(session, user, credential, values)
+        session.commit()
+
+
+async def _run_google_tile_database(operation, *args):
+    async with google_tile_database_slots:
+        return await asyncio.to_thread(operation, *args)
 
 
 @router.get("/status")
@@ -356,7 +400,7 @@ def create_session(data: GoogleMapSessionRequest, response: Response, session: S
 
 
 @router.get("/tiles/{z}/{x}/{y}")
-def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> Response:
+async def tile(z: int, x: int, y: int, request: Request) -> Response:
     maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
@@ -367,31 +411,28 @@ def tile(z: int, x: int, y: int, request: Request, session: Session = Depends(ge
         provider_session = decode_google_tiles_session(opaque_session)
     except ProviderSessionError as error:
         raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_SESSION_INVALID", "message": "La session cartographique a expiré."}) from error
-    capability = "classic_basemap" if provider_session.capability == "classic_basemap" else "satellite_basemap"
-    credential = selected_basemap_api_key(session, user, "google", capability)
-    if provider_session.user_id != user.id or credential is None or credential.id != provider_session.credential_id:
-        raise HTTPException(403, {"code": "GOOGLE_MAP_TILES_SESSION_FORBIDDEN", "message": "Cette session cartographique n’est plus autorisée."})
+    raw_session_token = request.cookies.get(security_settings.session_cookie_name)
+    if not raw_session_token:
+        raise HTTPException(401, {"code": "GOOGLE_MAP_TILES_AUTH_REQUIRED", "message": "La session CartaVault a expiré."})
     try:
-        google_tiles_rate_limiter.check(f"google-tiles:{user.id}")
+        google_tiles_rate_limiter.check(f"google-tiles:{provider_session.user_id}")
     except RoutingError as error:
         raise HTTPException(429, {"code": "GOOGLE_MAP_TILES_RATE_LIMITED", "message": str(error)}) from error
-    _reserve_tile(session, user, credential)
-    upstream_request = UrlRequest(
-        f"{google_map_tiles_settings.base_url}/v1/2dtiles/{z}/{x}/{y}?session={quote(provider_session.provider_session)}&key={quote(_api_key(credential))}",
-        headers={"Accept": "image/*", "User-Agent": "CartaVault/1", "Referer": f"{email_settings.frontend_public_url}/"},
-    )
+    api_key = await _run_google_tile_database(_authorize_and_reserve_tile, raw_session_token, provider_session)
+    tile_url = f"{google_map_tiles_settings.base_url}/v1/2dtiles/{z}/{x}/{y}?session={quote(provider_session.provider_session)}&key={quote(api_key)}"
     try:
-        with urlopen(upstream_request, timeout=google_map_tiles_settings.timeout_seconds) as upstream:
-            content = upstream.read(8 * 1024 * 1024)
-            content_type = upstream.headers.get_content_type()
-    except HTTPError as error:
-        _record(session, user, credential, {"tiles_failed": 1}); session.commit()
-        raise HTTPException(502, {"code": "GOOGLE_MAP_TILES_UPSTREAM_ERROR", "message": "Google Map Tiles est indisponible.", "provider_status": error.code}) from error
-    except (URLError, TimeoutError, OSError) as error:
-        _record(session, user, credential, {"tiles_failed": 1}); session.commit()
+        content, content_type = await fetch_basemap_tile(
+            tile_url,
+            headers={"Accept": "image/*", "User-Agent": "CartaVault/1", "Referer": f"{email_settings.frontend_public_url}/"},
+            timeout=google_map_tiles_settings.timeout_seconds,
+        )
+    except BasemapUpstreamStatusError as error:
+        await _run_google_tile_database(_record_tile_result, provider_session, {"tiles_failed": 1})
+        raise HTTPException(502, {"code": "GOOGLE_MAP_TILES_UPSTREAM_ERROR", "message": "Google Map Tiles est indisponible.", "provider_status": error.status_code}) from error
+    except BasemapUpstreamUnavailable as error:
+        await _run_google_tile_database(_record_tile_result, provider_session, {"tiles_failed": 1})
         raise HTTPException(503, {"code": "GOOGLE_MAP_TILES_UNAVAILABLE", "message": "Google Map Tiles est indisponible."}) from error
-    _record(session, user, credential, {"tiles_completed": 1})
-    session.commit()
+    await _run_google_tile_database(_record_tile_result, provider_session, {"tiles_completed": 1})
     return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 

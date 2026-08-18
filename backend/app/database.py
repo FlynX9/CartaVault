@@ -1,5 +1,5 @@
 import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -43,8 +43,13 @@ SessionLocal = sessionmaker(
 )
 
 
-def get_db() -> Generator[Session, None, None]:
-    """Provide one database session per API request."""
+async def get_db() -> AsyncGenerator[Session, None]:
+    """Provide one database session per API request.
+
+    The async dependency guarantees that cleanup does not need a free AnyIO
+    worker thread. This avoids the classic deadlock where every worker waits
+    for a pooled connection while session finalizers are queued behind them.
+    """
 
     database_session = SessionLocal()
 

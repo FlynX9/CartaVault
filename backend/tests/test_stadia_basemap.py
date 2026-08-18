@@ -4,9 +4,13 @@ from urllib.error import HTTPError
 
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 from app.basemaps import stadia_router
 from app.basemaps.stadia_router import _validate_key
+from app.auth.provider_sessions import BasemapTileSession, encode_basemap_tile_session
 from app.main import healthz
 from app.places.stadia_credential_router import _validate_key as validate_stadia_places_key
 
@@ -60,12 +64,31 @@ def test_stadia_places_key_verification_uses_the_geocoding_api(monkeypatch) -> N
     assert timeout == 10
 
 
-def test_stadia_tile_releases_database_before_waiting_for_provider(monkeypatch) -> None:
+def _tile_request(monkeypatch, *, capability: str = "classic_basemap") -> Request:
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setattr(
+        "app.auth.credential_encryption.credential_settings",
+        SimpleNamespace(encryption_key=Fernet.generate_key().decode()),
+    )
+    token = encode_basemap_tile_session(BasemapTileSession(
+        provider="stadia",
+        user_id=uuid4(),
+        credential_id=uuid4(),
+        api_key="stadia key",
+        capability=capability,
+        expires_at=datetime.now(UTC) + timedelta(minutes=5),
+    ))
+    return Request({
+        "type": "http",
+        "method": "GET",
+        "path": "/",
+        "headers": [(b"cookie", f"{stadia_router.STADIA_TILE_SESSION_COOKIE}={token}".encode())],
+    })
+
+
+def test_stadia_tile_does_not_checkout_database_while_waiting_for_provider(monkeypatch) -> None:
     events: list[str] = []
-    credential = SimpleNamespace(id="key")
-    session = SimpleNamespace(close=lambda: events.append("database-closed"))
-    monkeypatch.setattr(stadia_router, "selected_basemap_api_key", lambda *_args: credential)
-    monkeypatch.setattr(stadia_router, "_decrypt", lambda _credential: "stadia key")
     monkeypatch.setattr(stadia_router.stadia_tiles_rate_limiter, "check", lambda _key: None)
 
     async def fetch_tile(url, *, headers, timeout):
@@ -77,10 +100,10 @@ def test_stadia_tile_releases_database_before_waiting_for_provider(monkeypatch) 
 
     monkeypatch.setattr(stadia_router, "fetch_basemap_tile", fetch_tile)
     response = asyncio.run(stadia_router.basemap_tile(
-        "alidade_smooth", 0, 0, 0, "png", "", session, SimpleNamespace(id="user")
+        "alidade_smooth", 0, 0, 0, "png", _tile_request(monkeypatch), ""
     ))
 
-    assert events == ["database-closed", "provider-started"]
+    assert events == ["provider-started"]
     assert response.body == b"png"
     assert response.headers["cache-control"] == "private, max-age=86400"
 
@@ -89,11 +112,8 @@ def test_slow_stadia_tiles_do_not_block_liveness(monkeypatch) -> None:
     started = 0
     all_started = asyncio.Event()
     release_provider = asyncio.Event()
-    closed_sessions: list[int] = []
-    credential = SimpleNamespace(id="key")
-    monkeypatch.setattr(stadia_router, "selected_basemap_api_key", lambda *_args: credential)
-    monkeypatch.setattr(stadia_router, "_decrypt", lambda _credential: "stadia key")
     monkeypatch.setattr(stadia_router.stadia_tiles_rate_limiter, "check", lambda _key: None)
+    request = _tile_request(monkeypatch)
 
     async def slow_fetch(*_args, **_kwargs):
         nonlocal started
@@ -107,9 +127,7 @@ def test_slow_stadia_tiles_do_not_block_liveness(monkeypatch) -> None:
 
     async def scenario() -> None:
         tasks = [asyncio.create_task(stadia_router.basemap_tile(
-            "alidade_smooth", 6, index % 64, index // 64, "png", "",
-            SimpleNamespace(close=lambda index=index: closed_sessions.append(index)),
-            SimpleNamespace(id="user"),
+            "alidade_smooth", 6, index % 64, index // 64, "png", request, "",
         )) for index in range(48)]
         await asyncio.wait_for(all_started.wait(), timeout=1)
         assert await asyncio.wait_for(healthz(), timeout=0.1) == {"status": "ok"}
@@ -117,4 +135,3 @@ def test_slow_stadia_tiles_do_not_block_liveness(monkeypatch) -> None:
         await asyncio.gather(*tasks)
 
     asyncio.run(scenario())
-    assert len(closed_sessions) == 48

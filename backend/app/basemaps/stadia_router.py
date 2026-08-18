@@ -1,20 +1,28 @@
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime, timedelta
+from typing import Literal
 from urllib.parse import quote
 from urllib.parse import urlparse
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest, urlopen
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.auth.credential_encryption import CredentialEncryptionError, CredentialEncryptionService
 from app.auth.api_keys import selected_basemap_api_key
 from app.auth.dependencies import get_current_user
 from app.auth.models import AdminApiCredential, User, UserApiCredential
+from app.auth.provider_sessions import (
+    BasemapTileSession,
+    ProviderSessionError,
+    decode_basemap_tile_session,
+    encode_basemap_tile_session,
+)
 from app.database import get_db
-from app.config import email_settings
+from app.config import email_settings, security_settings
 from app.trips.routing.base import RoutingError
 from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
 from app.basemaps.http_client import BasemapUpstreamStatusError, BasemapUpstreamUnavailable, fetch_basemap_tile
@@ -24,6 +32,8 @@ router = APIRouter(tags=["basemaps"])
 STADIA_SATELLITE_URL = "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg"
 VERIFY_URL = "https://tiles.stadiamaps.com/tiles/alidade_smooth/0/0/0.png"
 STADIA_TILE_STYLES = {"alidade_smooth", "alidade_smooth_dark", "alidade_satellite"}
+STADIA_TILE_SESSION_COOKIE = "cartavault_stadia_tiles_session"
+STADIA_TILE_SESSION_LIFETIME = timedelta(minutes=15)
 stadia_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
 
 
@@ -54,13 +64,40 @@ def _decrypt(credential: UserApiCredential | AdminApiCredential) -> str:
 
 
 @router.get("/basemaps/stadia/config")
-def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict[str, object]:
-    credential = selected_basemap_api_key(session, user, "stadia", "classic_basemap") or selected_basemap_api_key(session, user, "stadia", "satellite_basemap")
+def basemap_config(
+    response: Response,
+    capability: Literal["classic_basemap", "satellite_basemap"] = Query(default="classic_basemap"),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, object]:
+    credential = selected_basemap_api_key(session, user, "stadia", capability)
     key_optional = credential is None and stadia_unauthenticated_allowed()
+    expires_at: datetime | None = None
+    if credential is not None:
+        expires_at = datetime.now(UTC) + STADIA_TILE_SESSION_LIFETIME
+        token = encode_basemap_tile_session(BasemapTileSession(
+            provider="stadia",
+            user_id=user.id,
+            credential_id=credential.id,
+            api_key=_decrypt(credential),
+            capability=capability,
+            expires_at=expires_at,
+        ))
+        response.set_cookie(
+            STADIA_TILE_SESSION_COOKIE,
+            token,
+            max_age=int(STADIA_TILE_SESSION_LIFETIME.total_seconds()),
+            httponly=True,
+            secure=security_settings.cookie_secure,
+            samesite="lax",
+            path="/",
+        )
+        response.headers["Cache-Control"] = "private, no-store"
     return {
         "personal_key_active": credential is not None,
         "key_optional": key_optional,
         "tile_path": "https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{r}.{extension}" if key_optional else "/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}?retina={r}",
+        "expires": expires_at.isoformat() if expires_at is not None else None,
     }
 
 
@@ -71,9 +108,8 @@ async def basemap_tile(
     x: int,
     y: int,
     extension: str,
+    request: Request,
     retina: str = Query(default=""),
-    session: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> Response:
     if style not in STADIA_TILE_STYLES or extension not in {"png", "jpg"} or retina not in {"", "@2x"}:
         raise HTTPException(404, "Tile not found")
@@ -81,17 +117,21 @@ async def basemap_tile(
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
     capability = "satellite_basemap" if style == "alidade_satellite" else "classic_basemap"
-    credential = selected_basemap_api_key(session, user, "stadia", capability)
-    if credential is None and not stadia_unauthenticated_allowed():
-        raise HTTPException(503, {"code": "STADIA_MAPS_KEY_REQUIRED", "message": "Une clé Stadia Maps est nécessaire hors développement local."})
+    token = request.cookies.get(STADIA_TILE_SESSION_COOKIE)
+    if not token:
+        raise HTTPException(401, {"code": "STADIA_TILE_SESSION_REQUIRED", "message": "La session cartographique Stadia a expiré."})
     try:
-        stadia_tiles_rate_limiter.check(f"stadia-tiles:{user.id}")
+        tile_session = decode_basemap_tile_session(token, provider="stadia")
+    except ProviderSessionError as error:
+        raise HTTPException(401, {"code": "STADIA_TILE_SESSION_INVALID", "message": "La session cartographique Stadia a expiré."}) from error
+    if tile_session.capability != capability:
+        raise HTTPException(403, {"code": "STADIA_TILE_SESSION_FORBIDDEN", "message": "Cette session Stadia ne permet pas ce fond de carte."})
+    try:
+        stadia_tiles_rate_limiter.check(f"stadia-tiles:{tile_session.user_id}")
     except RoutingError as error:
         raise HTTPException(429, {"code": "STADIA_MAPS_RATE_LIMITED", "message": str(error)}) from error
-    query = f"?api_key={quote(_decrypt(credential))}" if credential is not None else ""
+    query = f"?api_key={quote(tile_session.api_key)}"
     tile_url = f"https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{retina}.{extension}{query}"
-    # Do not retain a PostgreSQL connection while waiting for a remote tile.
-    session.close()
     try:
         content, content_type = await fetch_basemap_tile(
             tile_url,

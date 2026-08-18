@@ -12,7 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- No documented changes yet.
+- Raster provider secrets are now issued through encrypted, automatically renewed tile sessions.
+- Google Map Tiles database accounting is bounded below the SQLAlchemy pool capacity.
 
 ### Deprecated
 
@@ -24,7 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- No documented changes yet.
+- Prevented concurrent Stadia, Mapbox, and Google tile bursts from exhausting the PostgreSQL connection pool and blocking the rest of the application.
+- Ensured request database sessions are finalized without waiting for a free AnyIO worker thread.
 
 ### Security
 

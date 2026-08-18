@@ -10,6 +10,7 @@ import { loadCartaVaultStyle } from '../../map/maplibreStyle'
 import { createGoogleSatelliteSession } from '../../api/googleSatellite'
 import { ApiError } from '../../api/client'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
+import { createMapboxTileSession } from '../../api/mapboxMaps'
 import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
 import { getOfflineBasemapVersion } from '../../pwa/offlineData'
@@ -99,24 +100,59 @@ const stadiaStyles: Partial<Record<BasemapId, { style: string; extension: 'png' 
 
 function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const [url, setUrl] = useState<string | null>(null)
+  const [sessionGeneration, setSessionGeneration] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
     const definition = stadiaStyles[basemap.id]
     if (!definition) return () => controller.abort()
     setUrl(null)
-    void getStadiaBasemapConfig(controller.signal).then((config) => {
+    const capability = basemap.id === 'satellite' ? 'satellite_basemap' : 'classic_basemap'
+    void getStadiaBasemapConfig(capability, controller.signal).then((config) => {
       const tilePath = config.tile_path
         .replace('{style}', definition.style)
         .replace('{extension}', definition.extension)
       if (!controller.signal.aborted) setUrl(tilePath.startsWith('http') ? tilePath : `${API_BASE_URL}${tilePath}`)
+      if (config.expires && !controller.signal.aborted) {
+        const refreshIn = Math.max(30_000, Date.parse(config.expires) - Date.now() - 60_000)
+        refreshTimer = setTimeout(() => setSessionGeneration((value) => value + 1), refreshIn)
+      }
     }).catch(() => undefined)
-    return () => controller.abort()
-  }, [basemap.id, basemap.url])
+    return () => {
+      controller.abort()
+      if (refreshTimer !== null) clearTimeout(refreshTimer)
+    }
+  }, [basemap.id, basemap.url, sessionGeneration])
   if (!url) return null
   // Stadia's {r} URL token already requests a native @2x tile. Enabling
   // Leaflet's detectRetina at the same time halves the logical tile size and
   // downloads four times as many @2x images for the same viewport.
   return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
+}
+
+function MapboxBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+  const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
+  const [sessionGeneration, setSessionGeneration] = useState(0)
+  const onTileErrorRef = useRef(onTileError)
+  onTileErrorRef.current = onTileError
+  useEffect(() => {
+    let current = true
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
+    void createMapboxTileSession()
+      .then((value) => {
+        if (!current) return
+        setSession(value)
+        const refreshIn = Math.max(30_000, Date.parse(value.expires) - Date.now() - 60_000)
+        refreshTimer = setTimeout(() => setSessionGeneration((generation) => generation + 1), refreshIn)
+      })
+      .catch(() => { if (current) onTileErrorRef.current(basemap.id, true) })
+    return () => {
+      current = false
+      if (refreshTimer !== null) clearTimeout(refreshTimer)
+    }
+  }, [basemap.id, sessionGeneration])
+  if (!session) return null
+  return <TileLayer key={basemap.id} url={`${API_BASE_URL}${session.tile_path}`} attribution={basemap.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }} />
 }
 
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
@@ -133,7 +169,7 @@ export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLay
   if (basemap.id === 'google-satellite') return googleMapsLayer
   if (basemap.id === 'google-satellite-tiles') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-satellite-tiles" onTileError={onTileError} /></>
   if (basemap.kind === 'google') return googleMapsLayer
-  if (basemap.id === 'mapbox-satellite') return <>{googleMapsLayer}<TileLayer key={basemap.id} url={`${API_BASE_URL}/basemaps/mapbox-satellite/tiles/{z}/{x}/{y}`} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} /></>
+  if (basemap.id === 'mapbox-satellite') return <>{googleMapsLayer}<MapboxBasemapLayer basemap={basemap} onTileError={onTileError} /></>
   if (basemap.requiresStadiaAuthentication) return <>{googleMapsLayer}<StadiaBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 
   return (
