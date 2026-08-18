@@ -17,6 +17,7 @@ from app.database import get_db
 from app.config import email_settings
 from app.trips.routing.base import RoutingError
 from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
+from app.basemaps.http_client import BasemapUpstreamStatusError, BasemapUpstreamUnavailable, fetch_basemap_tile
 
 
 router = APIRouter(tags=["basemaps"])
@@ -64,7 +65,7 @@ def basemap_config(session: Session = Depends(get_db), user: User = Depends(get_
 
 
 @router.get("/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}")
-def basemap_tile(
+async def basemap_tile(
     style: str,
     z: int,
     x: int,
@@ -88,16 +89,17 @@ def basemap_tile(
     except RoutingError as error:
         raise HTTPException(429, {"code": "STADIA_MAPS_RATE_LIMITED", "message": str(error)}) from error
     query = f"?api_key={quote(_decrypt(credential))}" if credential is not None else ""
-    request = UrlRequest(
-        f"https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{retina}.{extension}{query}",
-        headers={"Accept": "image/*", "User-Agent": "CartaVault/1"},
-    )
+    tile_url = f"https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{retina}.{extension}{query}"
+    # Do not retain a PostgreSQL connection while waiting for a remote tile.
+    session.close()
     try:
-        with urlopen(request, timeout=10) as upstream:
-            content = upstream.read(8 * 1024 * 1024)
-            content_type = upstream.headers.get_content_type()
-    except HTTPError as error:
-        raise HTTPException(502, {"code": "STADIA_MAPS_UPSTREAM_ERROR", "message": "Stadia Maps est momentanément indisponible.", "provider_status": error.code}) from error
-    except (TimeoutError, URLError, OSError) as error:
+        content, content_type = await fetch_basemap_tile(
+            tile_url,
+            headers={"Accept": "image/*", "User-Agent": "CartaVault/1"},
+            timeout=10,
+        )
+    except BasemapUpstreamStatusError as error:
+        raise HTTPException(502, {"code": "STADIA_MAPS_UPSTREAM_ERROR", "message": "Stadia Maps est momentanément indisponible.", "provider_status": error.status_code}) from error
+    except BasemapUpstreamUnavailable as error:
         raise HTTPException(503, {"code": "STADIA_MAPS_UNAVAILABLE", "message": "Stadia Maps est momentanément indisponible."}) from error
-    return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"})

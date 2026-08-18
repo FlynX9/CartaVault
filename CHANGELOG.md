@@ -30,6 +30,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - No documented changes yet.
 
+## [1.0.0-rc.4] - 2026-08-18
+
+Fourth CartaVault 1.0 release candidate.
+
+### Changed
+
+- Deduplicated concurrent account-preference requests during application startup.
+- Added a bounded shared asynchronous HTTP client for proxied basemap tiles.
+
+### Fixed
+
+- Prevented Stadia and Mapbox tile requests from retaining PostgreSQL connections while waiting for remote providers.
+- Kept the health endpoint responsive while many basemap tiles are loading.
+- Removed duplicate Retina scaling that caused Stadia to download four times too many high-resolution tiles.
+- Added effective browser caching for proxied Stadia and Mapbox tiles.
+
 ## [1.0.0-rc.3] - 2026-08-17
 
 Third CartaVault 1.0 release candidate.
@@ -109,7 +125,8 @@ First CartaVault 1.0 release candidate.
 - Shared instance credentials remain encrypted, masked and read-only for users.
 - Release images run as a non-root user with a read-only filesystem and dropped capabilities.
 
-[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.3...HEAD
+[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.4...HEAD
+[1.0.0-rc.4]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.1

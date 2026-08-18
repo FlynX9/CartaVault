@@ -113,7 +113,10 @@ function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
     return () => controller.abort()
   }, [basemap.id, basemap.url])
   if (!url) return null
-  return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
+  // Stadia's {r} URL token already requests a native @2x tile. Enabling
+  // Leaflet's detectRetina at the same time halves the logical tile size and
+  // downloads four times as many @2x images for the same viewport.
+  return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
 }
 
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */

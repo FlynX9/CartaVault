@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request as UrlRequest, urlopen
@@ -9,15 +10,33 @@ from sqlalchemy.orm import Session
 
 from app.auth.api_keys import decrypt_api_key, mark_api_key_error, mark_api_key_used, selected_basemap_api_key
 from app.auth.dependencies import get_current_user
-from app.auth.models import User
-from app.database import get_db
+from app.auth.models import AdminApiCredential, User, UserApiCredential
+from app.database import SessionLocal, get_db
 from app.trips.routing.base import RoutingError
 from app.trips.routing.registry import GoogleRoutingRateLimiter, _routing_redis
+from app.basemaps.http_client import BasemapUpstreamStatusError, BasemapUpstreamUnavailable, fetch_basemap_tile
 
 
 router = APIRouter(prefix="/basemaps/mapbox-satellite", tags=["basemaps"])
 MAPBOX_TILE_URL = "https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg90"
 mapbox_tiles_rate_limiter = GoogleRoutingRateLimiter(limit=1_200, redis_client=_routing_redis())
+
+
+def _record_api_key_result(
+    credential_type: type[UserApiCredential] | type[AdminApiCredential],
+    credential_id: object,
+    error_code: str | None = None,
+) -> None:
+    """Update key diagnostics in a short, independent database transaction."""
+
+    with SessionLocal() as session:
+        credential = session.get(credential_type, credential_id)
+        if credential is None:
+            return
+        if error_code is None:
+            mark_api_key_used(session, credential)
+        else:
+            mark_api_key_error(session, credential, error_code)
 
 
 def _mapbox_request(token: str, z: int, x: int, y: int) -> UrlRequest:
@@ -45,7 +64,7 @@ def status(session: Session = Depends(get_db), user: User = Depends(get_current_
 
 
 @router.get("/tiles/{z}/{x}/{y}")
-def tile(z: int, x: int, y: int, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> Response:
+async def tile(z: int, x: int, y: int, session: Session = Depends(get_db), user: User = Depends(get_current_user)) -> Response:
     maximum = (1 << z) - 1 if 0 <= z <= 22 else -1
     if x < 0 or y < 0 or x > maximum or y > maximum:
         raise HTTPException(404, "Tile not found")
@@ -56,15 +75,24 @@ def tile(z: int, x: int, y: int, session: Session = Depends(get_db), user: User 
         mapbox_tiles_rate_limiter.check(f"mapbox-tiles:{user.id}")
     except RoutingError as error:
         raise HTTPException(429, {"code": "MAPBOX_RATE_LIMITED", "message": str(error)}) from error
+    tile_url = _mapbox_request(decrypt_api_key(credential), z, x, y).full_url
+    credential_type = type(credential) if isinstance(credential, (UserApiCredential, AdminApiCredential)) else None
+    credential_id = credential.id
+    session.close()
     try:
-        with urlopen(_mapbox_request(decrypt_api_key(credential), z, x, y), timeout=10) as upstream:
-            content = upstream.read(8 * 1024 * 1024)
-            content_type = upstream.headers.get_content_type()
-    except HTTPError as error:
-        mark_api_key_error(session, credential, "MAPBOX_UPSTREAM_ERROR")
-        raise HTTPException(502, {"code": "MAPBOX_UPSTREAM_ERROR", "message": "Mapbox est momentanément indisponible.", "provider_status": error.code}) from error
-    except (TimeoutError, URLError, OSError) as error:
-        mark_api_key_error(session, credential, "MAPBOX_UNAVAILABLE")
+        content, content_type = await fetch_basemap_tile(
+            tile_url,
+            headers={"Accept": "image/*", "User-Agent": "CartaVault/1"},
+            timeout=10,
+        )
+    except BasemapUpstreamStatusError as error:
+        if credential_type is not None:
+            await asyncio.to_thread(_record_api_key_result, credential_type, credential_id, "MAPBOX_UPSTREAM_ERROR")
+        raise HTTPException(502, {"code": "MAPBOX_UPSTREAM_ERROR", "message": "Mapbox est momentanément indisponible.", "provider_status": error.status_code}) from error
+    except BasemapUpstreamUnavailable as error:
+        if credential_type is not None:
+            await asyncio.to_thread(_record_api_key_result, credential_type, credential_id, "MAPBOX_UNAVAILABLE")
         raise HTTPException(503, {"code": "MAPBOX_UNAVAILABLE", "message": "Mapbox est momentanément indisponible."}) from error
-    mark_api_key_used(session, credential)
-    return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    if credential_type is not None:
+        await asyncio.to_thread(_record_api_key_result, credential_type, credential_id)
+    return Response(content=content, media_type=content_type, headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"})

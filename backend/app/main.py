@@ -73,6 +73,7 @@ from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
 from app.static_frontend import install_frontend, normalize_api_prefix
 from app.basemaps.vector_service import recover_vector_basemap_jobs, schedule_due_updates, start_pending_vector_basemap_jobs
+from app.basemaps.http_client import close_basemap_http_client, start_basemap_http_client
 
 
 logger = logging.getLogger(__name__)
@@ -185,6 +186,7 @@ async def lifespan(_: FastAPI):
     purge_task: asyncio.Task[None] | None = None
     vector_maintenance_task: asyncio.Task[None] | None = None
     maintenance_connection = None
+    await start_basemap_http_client()
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
@@ -219,6 +221,7 @@ async def lifespan(_: FastAPI):
                 await vector_maintenance_task
         if maintenance_connection is not None:
             release_maintenance_leadership(maintenance_connection)
+        await close_basemap_http_client()
 
 app = FastAPI(
     title="CartaVault API",
@@ -305,7 +308,7 @@ def root() -> dict[str, str]:
 
 
 @app.get("/healthz", include_in_schema=False)
-def healthz() -> dict[str, str]:
+async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 

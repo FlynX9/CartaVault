@@ -19,7 +19,7 @@ const { mapMock } = vi.hoisted(() => ({
 }))
 
 vi.mock('react-leaflet', () => ({
-  TileLayer: ({ url, attribution, maxZoom, eventHandlers }: { url: string; attribution: string; maxZoom: number; eventHandlers: { tileerror: () => void } }) => <button type="button" data-testid="tile-layer" data-url={url} data-attribution={attribution} data-max-zoom={maxZoom} onClick={eventHandlers.tileerror} />,
+  TileLayer: ({ url, attribution, maxZoom, detectRetina, eventHandlers }: { url: string; attribution: string; maxZoom: number; detectRetina?: boolean; eventHandlers: { tileerror: () => void } }) => <button type="button" data-testid="tile-layer" data-url={url} data-attribution={attribution} data-max-zoom={maxZoom} data-detect-retina={String(detectRetina)} onClick={eventHandlers.tileerror} />,
   useMap: () => mapMock,
 }))
 vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
@@ -44,6 +44,7 @@ describe('BasemapLayer', () => {
     expect(layer).toHaveAttribute('data-url', expect.stringContaining('alidade_satellite'))
     expect(layer.getAttribute('data-url')).toMatch(/^\/api\/basemaps\/stadia\//)
     expect(layer).toHaveAttribute('data-max-zoom', '20')
+    expect(layer).toHaveAttribute('data-detect-retina', 'false')
     expect(layer.getAttribute('data-attribution')).toContain('CNES')
   })
 

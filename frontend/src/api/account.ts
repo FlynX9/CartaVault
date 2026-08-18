@@ -3,6 +3,29 @@ import { getJson, sendBodyWithoutResponse, sendFormData, sendJson, sendWithoutRe
 import type { AccountPreferences, AccountProfile, AccountSession, PersonalApiKey, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../types/account'
 
 export const ACCOUNT_PREFERENCES_UPDATED_EVENT = 'cartavault:preferences-updated'
+const PREFERENCES_CACHE_MS = 5_000
+let preferencesRequest: Promise<AccountPreferences> | null = null
+let cachedPreferences: { value: AccountPreferences; validUntil: number } | null = null
+
+function observeWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(new DOMException('The operation was aborted.', 'AbortError'))
+  return new Promise<T>((resolve, reject) => {
+    const aborted = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
+    signal.addEventListener('abort', aborted, { once: true })
+    void promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', aborted))
+  })
+}
+
+function rememberPreferences(value: AccountPreferences): AccountPreferences {
+  cachedPreferences = { value, validUntil: Date.now() + PREFERENCES_CACHE_MS }
+  return value
+}
+
+export function clearAccountPreferencesCache(): void {
+  cachedPreferences = null
+  preferencesRequest = null
+}
 
 export const accountAvatarUrl = (url: string | null) => url ? `${API_BASE_URL}${url}` : null
 export async function getAccountProfile(signal?: AbortSignal): Promise<AccountProfile> { return getJson('/account/profile', new URLSearchParams(), signal) as Promise<AccountProfile> }
@@ -32,9 +55,19 @@ export async function disableTotp(current_password: string, code: string): Promi
 export async function uploadAccountAvatar(file: File): Promise<{ avatar_url: string }> { const data = new FormData(); data.append('file', file); return sendFormData('/account/avatar', 'POST', data) as Promise<{ avatar_url: string }> }
 export async function deleteAccountAvatar(): Promise<void> { await sendWithoutResponse('/account/avatar', 'DELETE') }
 export async function deleteOwnAccount(current_password: string, confirmation: string, acknowledged: boolean): Promise<void> { await sendBodyWithoutResponse('/account', 'DELETE', { current_password, confirmation, acknowledged }) }
-export async function getAccountPreferences(signal?: AbortSignal): Promise<AccountPreferences> { return getJson('/account/preferences', new URLSearchParams(), signal) as Promise<AccountPreferences> }
-export async function updateAccountPreferences(preferences: AccountPreferences): Promise<AccountPreferences> { return sendJson('/account/preferences', 'PUT', preferences) as Promise<AccountPreferences> }
-export async function resetAccountPreferences(): Promise<AccountPreferences> { return sendJson('/account/preferences/reset', 'POST', {}) as Promise<AccountPreferences> }
+export function getAccountPreferences(signal?: AbortSignal): Promise<AccountPreferences> {
+  if (cachedPreferences && cachedPreferences.validUntil > Date.now()) {
+    return observeWithAbort(Promise.resolve(cachedPreferences.value), signal)
+  }
+  if (!preferencesRequest) {
+    preferencesRequest = (getJson('/account/preferences', new URLSearchParams()) as Promise<AccountPreferences>)
+      .then(rememberPreferences)
+      .finally(() => { preferencesRequest = null })
+  }
+  return observeWithAbort(preferencesRequest, signal)
+}
+export async function updateAccountPreferences(preferences: AccountPreferences): Promise<AccountPreferences> { return rememberPreferences(await sendJson('/account/preferences', 'PUT', preferences) as AccountPreferences) }
+export async function resetAccountPreferences(): Promise<AccountPreferences> { return rememberPreferences(await sendJson('/account/preferences/reset', 'POST', {}) as AccountPreferences) }
 export async function getPersonalApiKeys(signal?: AbortSignal): Promise<PersonalApiKey[]> { return getJson('/account/api-keys', new URLSearchParams(), signal) as Promise<PersonalApiKey[]> }
 export async function createPersonalApiKey(data: { name: string; provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice'; api_key: string }): Promise<PersonalApiKey> { return sendJson('/account/api-keys', 'POST', data) as Promise<PersonalApiKey> }
 export async function updatePersonalApiKey(id: string, data: { name?: string; api_key?: string }): Promise<PersonalApiKey> { return sendJson(`/account/api-keys/${encodeURIComponent(id)}`, 'PATCH', data) as Promise<PersonalApiKey> }

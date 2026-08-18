@@ -160,13 +160,13 @@ CartaVault/
 Docker is the recommended way to run a public-beta instance. The published application image is available from GitHub Container Registry:
 
 ```text
-ghcr.io/flynx9/cartavault:1.0.0-rc.3
+ghcr.io/flynx9/cartavault:1.0.0-rc.4
 ```
 
 For a source build, create a versioned application image and pull the pinned PostGIS companion:
 
 ```powershell
-.\docker\build.ps1 -Version "1.0.0-rc.3"
+.\docker\build.ps1 -Version "1.0.0-rc.4"
 ```
 
 1. Copy and review the environment file.

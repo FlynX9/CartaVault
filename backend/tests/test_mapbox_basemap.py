@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -29,8 +30,15 @@ def test_mapbox_tile_proxy_returns_provider_image(monkeypatch) -> None:
     monkeypatch.setattr(mapbox_router, "selected_basemap_api_key", lambda *_args: credential)
     monkeypatch.setattr(mapbox_router, "decrypt_api_key", lambda _credential: "pk.test-token")
     monkeypatch.setattr(mapbox_router.mapbox_tiles_rate_limiter, "check", lambda _key: None)
-    monkeypatch.setattr(mapbox_router, "mark_api_key_used", lambda *_args: None)
-    monkeypatch.setattr(mapbox_router, "urlopen", lambda request, timeout: TileResponse())
-    response = mapbox_router.tile(0, 0, 0, SimpleNamespace(), SimpleNamespace(id="user"))
+    async def fetch_tile(url, *, headers, timeout):
+        assert "access_token=pk.test-token" in url
+        assert headers["Accept"] == "image/*"
+        assert timeout == 10
+        return b"jpeg", "image/jpeg"
+
+    session = SimpleNamespace(close=lambda: None)
+    monkeypatch.setattr(mapbox_router, "fetch_basemap_tile", fetch_tile)
+    response = asyncio.run(mapbox_router.tile(0, 0, 0, session, SimpleNamespace(id="user")))
     assert response.media_type == "image/jpeg"
     assert response.body == b"jpeg"
+    assert response.headers["cache-control"] == "private, max-age=86400"
