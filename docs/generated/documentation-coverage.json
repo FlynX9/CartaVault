@@ -1,12 +1,12 @@
 {
   "summary": {
-    "detected": 50,
-    "detected_surfaces": 76,
+    "detected": 52,
+    "detected_surfaces": 78,
     "manifested": 49,
     "documented": 49,
     "scenarios": 49,
     "captures_ready": 49,
-    "coverage_percent": 98.0
+    "coverage_percent": 94.2
   },
   "sections": [
     {
@@ -92,6 +92,16 @@
       "id": "dialog:registration-requests-title",
       "kind": "dialog",
       "source": "frontend/src/pages/admin/AdminUsersSection.tsx"
+    },
+    {
+      "id": "dialog:release-notes-details",
+      "kind": "dialog",
+      "source": "frontend/src/pages/ReleaseNotesPage.tsx"
+    },
+    {
+      "id": "dialog:release-notes-title",
+      "kind": "dialog",
+      "source": "frontend/src/pages/ReleaseNotesPage.tsx"
     }
   ],
   "unknown_manifest_surfaces": [
@@ -585,7 +595,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "11155fe11ebc8a54"
+      "source_hash": "63ef0172c52ac13a"
     },
     {
       "id": "account.profile",

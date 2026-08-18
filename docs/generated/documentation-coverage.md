@@ -2,13 +2,13 @@
 
 | Indicateur | Valeur |
 | --- | ---: |
-| Fonctions détectées | 50 |
-| Surfaces UI détectées | 76 |
+| Fonctions détectées | 52 |
+| Surfaces UI détectées | 78 |
 | Fonctions manifestées | 49 |
 | Fonctions documentées | 49 |
 | Scénarios UI | 49 |
 | Captures disponibles | 49 |
-| Couverture documentaire | 98.0 % |
+| Couverture documentaire | 94.2 % |
 
 | Section | Fonctions | Documentées | Scénarios | Captures |
 | --- | ---: | ---: | ---: | ---: |
@@ -27,3 +27,5 @@
 ## Trous et vérifications
 
 - ⚠ `dialog:registration-requests-title` — surface détectée mais non référencée (frontend/src/pages/admin/AdminUsersSection.tsx)
+- ⚠ `dialog:release-notes-details` — surface détectée mais non référencée (frontend/src/pages/ReleaseNotesPage.tsx)
+- ⚠ `dialog:release-notes-title` — surface détectée mais non référencée (frontend/src/pages/ReleaseNotesPage.tsx)

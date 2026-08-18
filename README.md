@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Python-3.14-blue" alt="Python 3.14">
   <img src="https://img.shields.io/badge/React-TypeScript-61dafb" alt="React and TypeScript">
   <img src="https://img.shields.io/badge/PostgreSQL-PostGIS-336791" alt="PostgreSQL and PostGIS">
-  <img src="https://img.shields.io/badge/status-public%20beta-orange" alt="Status: public beta">
+  <img src="https://img.shields.io/badge/status-1.0%20stable-blue" alt="Status: 1.0 stable">
 </p>
 
 > **Your private library of places — organized, mapped and ready for the road.**
@@ -15,14 +15,15 @@ CartaVault is an open-source, self-hosted workspace for collecting places on pri
 
 It combines rich POI records, route-aware trip planning and portable exports in a FastAPI, PostgreSQL/PostGIS and React application—so your maps, media and provider credentials remain under your control.
 
-[Website](https://cartavault.fr) · [Documentation](https://cartavault.fr/docs/en/) · [Docker guide](docker/README.md) · [Issues](https://github.com/FlynX9/CartaVault/issues)
+[Website](https://cartavault.fr) · [Documentation FR](https://cartavault.fr/docs/fr/) · [Documentation EN](https://cartavault.fr/docs/en/) · [Docker guide](docker/README.md) · [Issues](https://github.com/FlynX9/CartaVault/issues)
 
 <p align="center">
   <img src="docs/screenshots/app-places-en.webp" alt="CartaVault place list displayed next to the map" width="100%">
 </p>
 
 > [!IMPORTANT]
-> CartaVault is currently in public beta. APIs, migrations and deployment contracts may still evolve. Back up your database and media before every upgrade.
+> CartaVault 1.0.0 is the first stable release. Use immutable image tags and
+> back up your database, media and credential-encryption key before every upgrade.
 
 ## Why CartaVault?
 
@@ -109,7 +110,10 @@ The screenshots use deterministic synthetic demo data and original generated art
 - multiple JPEG, PNG and WebP images, paste support and keyboard-accessible galleries;
 - server-side sessions, CSRF protection, password reset and configurable registration safeguards;
 - invitations, ownership transfer, French and English interfaces and transactional emails;
-- responsive light/dark interface and installable PWA shell with safe update prompts.
+- administrator-managed users, registration review, quotas, shared provider keys,
+  diagnostics and instance-log retention;
+- responsive light/dark interface, installable PWA shell with safe update prompts,
+  and CartaVault-managed offline vector basemaps.
 
 ## Architecture
 
@@ -123,7 +127,7 @@ Browser
           └── PostgreSQL + PostGIS
 ```
 
-The supported public-beta topology contains exactly two standard services:
+The supported deployment topology contains exactly two standard services:
 
 | Service | Responsibility |
 |---|---|
@@ -157,16 +161,16 @@ CartaVault/
 
 ### Docker
 
-Docker is the recommended way to run a public-beta instance. The published application image is available from GitHub Container Registry:
+Docker is the recommended way to run CartaVault. The published application image is available from GitHub Container Registry:
 
 ```text
-ghcr.io/flynx9/cartavault:1.0.0-rc.5
+ghcr.io/flynx9/cartavault:1.0.0
 ```
 
 For a source build, create a versioned application image and pull the pinned PostGIS companion:
 
 ```powershell
-.\docker\build.ps1 -Version "1.0.0-rc.5"
+.\docker\build.ps1 -Version "1.0.0"
 ```
 
 1. Copy and review the environment file.
@@ -264,9 +268,10 @@ See the [demo guide](demo/README.md) for reset rules, accounts, scenario coverag
 
 ## Documentation
 
-- [Fond vectoriel CartaVault online et offline](docs/vector-basemap.md)
+- [Current changelog](CHANGELOG.md) and [draft 1.0.0 release notes](docs/release-notes-v1.0.0.md)
+- [CartaVault Vector basemaps, online and offline](docs/vector-basemap.md)
 
-The bilingual user and administrator guide is published at [cartavault.fr/docs/en](https://cartavault.fr/docs/en/). It is built with the marketing site and includes searchable, generated API, environment, CLI and feature references.
+The bilingual user and administrator guide is published at [cartavault.fr/docs/fr](https://cartavault.fr/docs/fr/) and [cartavault.fr/docs/en](https://cartavault.fr/docs/en/). It is built with the marketing site and includes searchable, generated API, environment, CLI and feature references.
 
 - [Docker, Portainer and Synology](docker/README.md)
 - [Container releases and GHCR](docs/container-releases.md)
@@ -292,7 +297,8 @@ Before publishing or deploying CartaVault:
 
 ## Project status and contributing
 
-CartaVault is actively developed. Issues and pull requests are welcome on [GitHub](https://github.com/FlynX9/CartaVault/issues). Please discuss major changes in an issue before implementation so they remain consistent with the permission model, deployment contract and interface.
+CartaVault is actively developed and is in final validation for its first stable
+release. Issues and pull requests are welcome on [GitHub](https://github.com/FlynX9/CartaVault/issues). Please discuss major changes in an issue before implementation so they remain consistent with the permission model, deployment contract and interface.
 
 ## License
 

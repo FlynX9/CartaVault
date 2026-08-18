@@ -30,6 +30,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - No documented changes yet.
 
+## [1.0.0] - 2026-08-18
+
+First stable CartaVault release, consolidating `0.9.0-beta.1` and the five
+1.0 release candidates. The complete user-facing release notes are maintained
+in [`docs/release-notes-v1.0.0.md`](docs/release-notes-v1.0.0.md).
+
+### Added
+
+- Offline CartaVault Vector basemaps, an installable mobile PWA, persistent
+  place annotations, optional S3 media storage, multi-factor authentication,
+  OpenRouteService, quota profiles, shared instance API keys and diagnostics.
+
+### Changed
+
+- Classic and satellite basemaps are independently configurable, with Google,
+  Stadia and Mapbox integrations, resilient fallback and provider metering.
+- The administration, privacy, registration, media and bilingual documentation
+  experiences were rebuilt for desktop and mobile use.
+
+### Fixed
+
+- Provider traffic, tile caching and database-session handling no longer allow
+  concurrent tile bursts to starve normal application requests.
+- Upgrades reliably refresh the PWA entry point and preserve the required
+  registration-review administration workflow.
+
+### Security
+
+- Provider secrets remain encrypted and server-side; release images are
+  non-root, read-only and published with SBOM, provenance and attestations.
+
 ## [1.0.0-rc.5] - 2026-08-18
 
 Fifth CartaVault 1.0 release candidate.
@@ -140,7 +171,8 @@ First CartaVault 1.0 release candidate.
 - Shared instance credentials remain encrypted, masked and read-only for users.
 - Release images run as a non-root user with a read-only filesystem and dropped capabilities.
 
-[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.5...HEAD
+[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0
 [1.0.0-rc.5]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.3

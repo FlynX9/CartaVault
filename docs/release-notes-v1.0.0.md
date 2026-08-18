@@ -11,12 +11,17 @@ maps, places and trip planning. It consolidates the public beta and the five
 - Create and organize private maps, places, categories, tags, statuses,
   annotations, photos and audit history.
 - Plan multi-day trips, calculate routes with OSRM, and optionally use Google
-  Routes with user-managed credentials.
+  Routes or OpenRouteService with user-managed credentials; review the proposal
+  before applying an optimization.
+- Create persistent plans and annotations on places, use starter map profiles,
+  track activity and restore deleted maps, places and trips from the trash.
 - Use independently configured classic and satellite basemaps, including
   Google Maps JavaScript for EEA-compatible classic maps and resilient
   fallbacks for Google, Stadia and Mapbox providers.
 - Generate and manage CartaVault offline vector basemaps, with an installable
   touch-first PWA experience for mobile use.
+- Use distance measurement, responsive mobile trip controls, and a cached
+  application shell that does not retain a stale entry point after an upgrade.
 
 ### Administration and collaboration
 
@@ -25,14 +30,17 @@ maps, places and trip planning. It consolidates the public beta and the five
 - Configure Google, Stadia, Mapbox and OpenRouteService credentials, with
   encrypted storage and quota-profile sharing where applicable.
 - Use improved diagnostics, configurable instance-log retention, privacy
-  controls and public-registration settings.
+  controls, public-registration settings, contact handling and authoritative
+  provider metering.
 
 ### Media and interface
 
 - Import KML/KMZ data, create places from geolocated uploads, recover photo
-  GPS metadata, and configure photo compression and upload limits.
+  GPS metadata, store media in optional private S3-compatible storage, and
+  configure photo compression and upload limits.
 - Benefit from a responsive dark/light interface, refined mobile workflows,
-  improved dialogs and accessible navigation.
+  improved dialogs, bilingual navigation, and email or TOTP multi-factor
+  authentication.
 
 ### Security and operations
 
@@ -43,8 +51,12 @@ maps, places and trip planning. It consolidates the public beta and the five
   attestation.
 - Improved connection-pool safety and bounded provider tile traffic prevent
   basemap requests from starving application traffic.
+- Encrypted, automatically renewed provider tile sessions avoid exposing raster
+  secrets to browsers; browser caching and bounded HTTP clients make provider
+  traffic more resilient.
 - Production website builds are indexable, with canonical URLs, hreflang,
-  `robots.txt` and XML sitemaps verified during the build.
+  `robots.txt` and XML sitemaps verified during the build, and the embedded
+  bilingual documentation remains available with the application.
 
 ## Upgrade notes
 
