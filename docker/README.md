@@ -33,7 +33,7 @@ The official release-candidate image is published from a GitHub Release to GitHu
 Container Registry:
 
 ```text
-ghcr.io/flynx9/cartavault:1.0.0-rc.4
+ghcr.io/flynx9/cartavault:1.0.0-rc.5
 ```
 
 Use immutable version tags in every deployment. The mutable `beta` tag is only
@@ -41,8 +41,8 @@ a discovery alias and must not be the sole rollback reference. The first
 public beta supports `linux/amd64`.
 
 ```sh
-docker pull ghcr.io/flynx9/cartavault:1.0.0-rc.4
-docker image inspect ghcr.io/flynx9/cartavault:1.0.0-rc.4
+docker pull ghcr.io/flynx9/cartavault:1.0.0-rc.5
+docker image inspect ghcr.io/flynx9/cartavault:1.0.0-rc.5
 ```
 
 Published images include OCI source/version/license metadata, an SBOM and
@@ -55,16 +55,16 @@ release, verification and rollback procedure.
 Build the versioned application image and pull the pinned PostGIS companion:
 
 ```powershell
-.\docker\build.ps1 -Version "1.0.0-rc.4"
+.\docker\build.ps1 -Version "1.0.0-rc.5"
 ```
 
 Export the two standard images for an offline NAS or Portainer installation:
 
 ```powershell
-.\docker\export-images.ps1 -Version "1.0.0-rc.4" -OutputDirectory "D:\docker-exports"
+.\docker\export-images.ps1 -Version "1.0.0-rc.5" -OutputDirectory "D:\docker-exports"
 ```
 
-The archive contains `cartavault:1.0.0-rc.4` and the digest-pinned
+The archive contains `cartavault:1.0.0-rc.5` and the digest-pinned
 `postgis/postgis:16-3.5` image. Use immutable version tags for upgrades and
 rollback; do not deploy `latest` as the only rollback reference.
 

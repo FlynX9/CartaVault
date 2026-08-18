@@ -12,8 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
-- Raster provider secrets are now issued through encrypted, automatically renewed tile sessions.
-- Google Map Tiles database accounting is bounded below the SQLAlchemy pool capacity.
+- No documented changes yet.
 
 ### Deprecated
 
@@ -25,12 +24,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
-- Prevented concurrent Stadia, Mapbox, and Google tile bursts from exhausting the PostgreSQL connection pool and blocking the rest of the application.
-- Ensured request database sessions are finalized without waiting for a free AnyIO worker thread.
+- No documented changes yet.
 
 ### Security
 
 - No documented changes yet.
+
+## [1.0.0-rc.5] - 2026-08-18
+
+Fifth CartaVault 1.0 release candidate.
+
+### Changed
+
+- Raster provider secrets are now issued through encrypted, automatically renewed tile sessions.
+- Google Map Tiles database accounting is bounded below the SQLAlchemy pool capacity.
+
+### Fixed
+
+- Prevented concurrent Stadia, Mapbox, and Google tile bursts from exhausting the PostgreSQL connection pool and blocking the rest of the application.
+- Ensured request database sessions are finalized without waiting for a free AnyIO worker thread.
+- Restored pending registration review, rejection, and quota assignment in the redesigned administration user screen.
 
 ## [1.0.0-rc.4] - 2026-08-18
 
@@ -127,7 +140,8 @@ First CartaVault 1.0 release candidate.
 - Shared instance credentials remain encrypted, masked and read-only for users.
 - Release images run as a non-root user with a read-only filesystem and dropped capabilities.
 
-[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.4...HEAD
+[Unreleased]: https://github.com/FlynX9/CartaVault/compare/v1.0.0-rc.5...HEAD
+[1.0.0-rc.5]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/FlynX9/CartaVault/releases/tag/v1.0.0-rc.2
