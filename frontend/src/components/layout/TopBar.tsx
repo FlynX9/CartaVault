@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Braces, ChevronDown, ExternalLink, LogOut, Mail, Moon, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from "lucide-react";
+import { BookOpen, Braces, ChevronDown, ExternalLink, FileText, LogOut, Mail, Moon, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { accountAvatarUrl } from "../../api/account";
@@ -14,6 +14,8 @@ import { NotificationCenter } from "../notifications/NotificationCenter";
 import { ActionHistoryControls } from "./ActionHistoryControls";
 import { clearActionHistory } from "../../ui/actionHistory";
 import { OfflineDownloadManager } from "../pwa/OfflineDownloadManager";
+import { CARTAVAULT_VERSION } from "../../releaseNotes";
+import { ReleaseNotesModal } from "../../pages/ReleaseNotesPage";
 
 interface TopBarProps {
   isMapWorkspace: boolean;
@@ -27,7 +29,6 @@ interface TopBarProps {
 
 const API_DOCUMENTATION_URL = /^https?:\/\//.test(API_BASE_URL) ? `${API_BASE_URL}/docs` : new URL(`${API_BASE_URL}/docs`, window.location.origin).toString();
 const USER_DOCUMENTATION_URL = new URL("/docs/", window.location.origin).toString();
-const CARTAVAULT_VERSION = import.meta.env.VITE_CARTAVAULT_VERSION?.trim() || "development";
 
 export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth();
@@ -38,6 +39,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const [saasEnabled, setSaasEnabled] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -212,6 +214,18 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
                         {t("app.administration")}
                       </button>
                     )}
+                    <button
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setAccountOpen(false);
+                        setReleaseNotesOpen(true);
+                      }}
+                    >
+                      <FileText size={17} aria-hidden="true" />
+                      {t("topbar.releaseNotes")}
+                    </button>
                     <a className="user-account-menu__api-link" role="menuitem" href={API_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
                       <Braces size={17} aria-hidden="true" />
                       {t("topbar.api")}
@@ -236,6 +250,7 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
       </nav>
       {accountOpen && <AccountModal trigger={trigger.current} onClose={() => setAccountOpen(false)} />}
       {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
+      {releaseNotesOpen && <ReleaseNotesModal onClose={() => setReleaseNotesOpen(false)} />}
     </header>
   );
 }

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -98,6 +98,18 @@ describe("TopBar account entry", () => {
     expect(screen.getByRole("dialog", { name: "Espace compte" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Fermer" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("opens the current release notes in an about dialog from the user menu", () => {
+    renderTopBar();
+
+    fireEvent.click(screen.getByRole("button", { name: /Admin$/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "À propos" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Notes de version" });
+    expect(dialog).toBeVisible();
+    expect(within(dialog).getByText("Cinquième release candidate de CartaVault 1.0.")).toBeVisible();
+    expect(within(dialog).getByText("v1.0.0-rc.5")).toBeVisible();
   });
 
   it("logs out directly from the user menu and returns to the login page", async () => {

@@ -73,6 +73,7 @@ export const commonFr = {
   'topbar.options': 'Options',
   'topbar.api': 'API',
   'topbar.documentation': 'Documentation',
+  'topbar.releaseNotes': 'À propos',
   'topbar.restorePersonalLayout': 'Rétablir la disposition personnelle des panneaux',
   'topbar.enableDefaultLayout': 'Activer la disposition par défaut verrouillée',
   'topbar.defaultLayoutLocked': 'Disposition par défaut verrouillée · cliquer pour restaurer votre disposition',

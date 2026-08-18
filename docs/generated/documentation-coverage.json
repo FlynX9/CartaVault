@@ -843,7 +843,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "fdbc2b4c30168a13"
+      "source_hash": "b04f8c317f9ce7e8"
     },
     {
       "id": "admin.registration",
@@ -941,7 +941,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "5c26187d1f809ebd"
+      "source_hash": "4d68913cbc25b3e1"
     },
     {
       "id": "admin.privacy",
@@ -959,7 +959,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "57bb1f42eb560779"
+      "source_hash": "7c1d093ad9d72df0"
     },
     {
       "id": "admin.media-logs",
@@ -977,7 +977,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "2b977e58191a9191"
+      "source_hash": "0a9ebf38ae824123"
     },
     {
       "id": "admin.instance",

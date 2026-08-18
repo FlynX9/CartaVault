@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import { readFileSync } from 'node:fs';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
 import { functionalSidebar } from './src/generated/functionalSidebar.mjs';
@@ -8,6 +9,7 @@ const canonicalRedirects = new Set([
   'https://cartavault.fr/',
   'https://cartavault.fr/docs/',
 ]);
+const { version: documentationVersion } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 export default defineConfig({
   site: 'https://cartavault.fr',
@@ -17,7 +19,7 @@ export default defineConfig({
   integrations: [
     sitemap({ filter: (page) => !canonicalRedirects.has(page) }),
     starlight({
-      title: 'CartaVault Docs',
+      title: `CartaVault Docs · v${documentationVersion}`,
       description: 'Guides utilisateur, administration et références techniques CartaVault.',
       favicon: '/favicon.ico',
       logo: {
@@ -29,6 +31,9 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/FlynX9/CartaVault' },
       ],
       customCss: ['./src/styles/starlight.css'],
+      components: {
+        Header: './src/components/docs/DocumentationHeader.astro',
+      },
       lastUpdated: true,
       disable404Route: true,
       routeMiddleware: './src/starlightRouteData.ts',

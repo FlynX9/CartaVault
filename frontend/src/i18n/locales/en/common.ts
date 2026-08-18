@@ -75,6 +75,7 @@ export const commonEn = {
   'topbar.options': 'Options',
   'topbar.api': 'API',
   'topbar.documentation': 'Documentation',
+  'topbar.releaseNotes': 'About',
   'topbar.restorePersonalLayout': 'Restore your personal panel layout',
   'topbar.enableDefaultLayout': 'Enable the locked default layout',
   'topbar.defaultLayoutLocked': 'Default layout locked · click to restore your layout',

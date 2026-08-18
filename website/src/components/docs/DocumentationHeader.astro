@@ -1,0 +1,61 @@
+---
+import config from 'virtual:starlight/user-config';
+import Search from '@astrojs/starlight/components/Search.astro';
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
+import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
+
+const shouldRenderSearch =
+  config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+const isFrench = Astro.url.pathname.startsWith('/docs/fr/');
+const preferencesLabel = isFrench ? 'Préférences d’affichage' : 'Display preferences';
+const languageLabel = isFrench ? 'Langue de la documentation' : 'Documentation language';
+const languagePath = (language: 'fr' | 'en') => Astro.url.pathname.replace(/^\/docs\/(?:fr|en)\//, `/docs/${language}/`);
+---
+
+<div class="header">
+  <div class="title-wrapper sl-flex"><SiteTitle /></div>
+  <div class="sl-flex print:hidden">{shouldRenderSearch && <Search />}</div>
+  <div class="sl-hidden md:sl-flex print:hidden right-group">
+    <div class="sl-flex social-icons"><SocialIcons /></div>
+    <ThemeSelect />
+    <starlight-docs-language-select><label><span>{languageLabel}</span><select aria-label={languageLabel}><option value={languagePath('fr')} selected={isFrench}>Français</option><option value={languagePath('en')} selected={!isFrench}>English</option></select></label></starlight-docs-language-select>
+  </div>
+  <details class="mobile-preferences md:sl-hidden print:hidden">
+    <summary aria-label={preferencesLabel}>{preferencesLabel}</summary>
+    <div><ThemeSelect /><starlight-docs-language-select><label><span>{languageLabel}</span><select aria-label={languageLabel}><option value={languagePath('fr')} selected={isFrench}>Français</option><option value={languagePath('en')} selected={!isFrench}>English</option></select></label></starlight-docs-language-select></div>
+  </details>
+</div>
+
+<script>
+  class StarlightDocsLanguageSelect extends HTMLElement {
+    constructor() {
+      super();
+      this.querySelector('select')?.addEventListener('change', (event) => {
+        if (event.currentTarget instanceof HTMLSelectElement) window.location.pathname = event.currentTarget.value;
+      });
+    }
+  }
+  customElements.define('starlight-docs-language-select', StarlightDocsLanguageSelect);
+</script>
+
+<style>
+  @layer starlight.core {
+    .header { display: flex; gap: var(--sl-nav-gap); justify-content: space-between; align-items: center; height: 100%; }
+    .title-wrapper { overflow: clip; padding: .25rem; margin: -.25rem; min-width: 0; }
+    .right-group, .social-icons { gap: 1rem; align-items: center; }
+    .social-icons::after { content: ''; height: 2rem; border-inline-end: 1px solid var(--sl-color-gray-5); }
+    .mobile-preferences { position: relative; margin-inline-start: auto; }
+    .mobile-preferences summary { cursor: pointer; list-style: none; color: var(--sl-color-text-accent); font-size: var(--sl-text-sm); font-weight: 600; }
+    .mobile-preferences summary::-webkit-details-marker { display: none; }
+    .mobile-preferences > div { position: absolute; inset-inline-end: 0; top: calc(100% + .65rem); display: grid; gap: .5rem; min-width: 12rem; padding: .7rem; border: 1px solid var(--sl-color-gray-5); border-radius: .5rem; background: var(--sl-color-bg-nav); box-shadow: var(--sl-shadow-lg); }
+    starlight-docs-language-select label { display: flex; align-items: center; gap: .45rem; }
+    starlight-docs-language-select label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    starlight-docs-language-select select { width: 7em; border: 1px solid var(--sl-color-gray-5); border-radius: .3rem; padding: .35rem; background: var(--sl-color-black); color: var(--sl-color-white); font: inherit; }
+    @media (min-width: 50rem) {
+      :global(:root[data-has-sidebar]) { --__sidebar-pad: calc(2 * var(--sl-nav-pad-x)); }
+      :global(:root:not([data-has-toc])) { --__toc-width: 0rem; }
+      .header { --__sidebar-width: max(0rem, var(--sl-content-inline-start, 0rem) - var(--sl-nav-pad-x)); --__main-column-fr: calc((100% + var(--__sidebar-pad, 0rem) - var(--__toc-width, var(--sl-sidebar-width)) - (2 * var(--__toc-width, var(--sl-nav-pad-x))) - var(--sl-content-inline-start, 0rem) - var(--sl-content-width)) / 2); display: grid; grid-template-columns: minmax(calc(var(--__sidebar-width) + max(0rem, var(--__main-column-fr) - var(--sl-nav-gap))), auto) 1fr auto; align-content: center; }
+    }
+  }
+</style>

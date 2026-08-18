@@ -1,7 +1,7 @@
 export const languages = ['fr', 'en'] as const;
 export type Language = (typeof languages)[number];
 
-export const pageSlugs = ['features', 'self-hosting', 'documentation', 'roadmap', 'about', 'contact', 'legal', 'privacy'] as const;
+export const pageSlugs = ['features', 'self-hosting', 'documentation', 'roadmap', 'about', 'contact', 'legal', 'privacy', 'cookies'] as const;
 export type PageSlug = (typeof pageSlugs)[number];
 
 type Section = { title: string; body: string; bullets?: string[] };
@@ -21,7 +21,7 @@ export const copy: Record<Language, {
   openApp: string;
   beta: { eyebrow: string; title: string; body: string; cancel: string; accept: string };
   nav: Record<'features' | 'self-hosting' | 'documentation' | 'roadmap', string>;
-  footer: string; legal: string; privacy: string; contact: string;
+  footer: string; legal: string; privacy: string; cookies: string; contact: string;
   featuresShowcase: {
     primary: string; secondary: string; links: string[]; benefitsTitle: string;
     benefits: Benefit[];
@@ -46,7 +46,7 @@ export const copy: Record<Language, {
       accept: 'J’accepte, ouvrir l’application',
     },
     nav: { features: 'Fonctionnalités', 'self-hosting': 'Auto-hébergement', documentation: 'Documentation', roadmap: 'Feuille de route' },
-    footer: 'Cartographiez vos découvertes. Gardez le contrôle de vos données.', legal: 'Mentions légales', privacy: 'Confidentialité', contact: 'Contact',
+    footer: 'Cartographiez vos découvertes. Gardez le contrôle de vos données.', legal: 'Mentions légales', privacy: 'Confidentialité', cookies: 'Politique de cookies', contact: 'Contact',
     featuresShowcase: {
       primary: 'Essayer CartaVault', secondary: 'Voir la démonstration',
       links: ['Découvrir les cartes', 'Explorer les voyages', 'Comprendre le partage'],
@@ -106,11 +106,21 @@ export const copy: Record<Language, {
         { title: 'Propriété intellectuelle', body: 'Le logiciel CartaVault est distribué sous licence MIT. Les marques, textes et éléments graphiques restent protégés par les droits de leurs titulaires.' },
         { title: 'Responsabilité', body: 'Les informations sont fournies à titre indicatif. Les fonctions et procédures peuvent évoluer pendant la phase bêta.' },
       ] },
-      privacy: { title: 'Politique de confidentialité', description: 'Données traitées par le site marketing CartaVault.', eyebrow: 'Vie privée', sections: [
-        { title: 'Un site statique et sobre', body: 'Ce site n’utilise aucun compte, formulaire, cookie publicitaire, outil de mesure d’audience ni traceur tiers.' },
-        { title: 'Contact par e-mail', body: 'Le lien de contact ouvre votre logiciel de messagerie. Les données envoyées sont alors traitées uniquement pour répondre à votre demande et selon les règles de votre fournisseur de messagerie.' },
-        { title: 'Journaux techniques', body: 'L’hébergeur peut conserver des journaux techniques nécessaires à la sécurité et au fonctionnement du service, selon ses obligations et durées propres.' },
-        { title: 'Vos droits', body: 'Pour toute question ou demande relative à vos données : contact@cartavault.fr.' },
+      privacy: { title: 'Politique de confidentialité', description: 'Comment le site marketing CartaVault traite les données personnelles.', eyebrow: 'Vie privée', sections: [
+        { title: 'Champ d’application', body: 'Cette politique concerne uniquement le site cartavault.fr. L’application app.cartavault.fr et chaque instance auto-hébergée disposent de leurs propres paramètres, responsables de traitement et politiques applicables.' },
+        { title: 'Responsable et contact', body: 'Le site est édité par FlynX9. Pour toute question relative à la confidentialité ou pour exercer vos droits, écrivez à contact@cartavault.fr.' },
+        { title: 'Données traitées', body: 'Le site ne propose ni compte ni formulaire. Lorsque vous choisissez de nous contacter par e-mail, votre adresse, le contenu du message et les informations que vous fournissez sont traités uniquement pour répondre à votre demande.' },
+        { title: 'Finalité et base légale', body: 'Les échanges par e-mail sont utilisés pour traiter les demandes, assurer le support et protéger le service. Le traitement repose sur notre intérêt légitime à répondre aux messages reçus et, selon le cas, sur les mesures précontractuelles demandées par la personne concernée.' },
+        { title: 'Destinataires et conservation', body: 'Les messages sont accessibles uniquement aux personnes habilitées à répondre. Ils sont conservés pendant le temps nécessaire au suivi de la demande puis archivés ou supprimés selon les obligations applicables. Ils ne sont ni vendus ni utilisés à des fins publicitaires.' },
+        { title: 'Journaux techniques', body: 'L’hébergeur peut traiter des données techniques telles que l’adresse IP, la date, la requête et les informations de sécurité afin de fournir, sécuriser et diagnostiquer le service. Ces journaux sont gérés selon les obligations et durées de conservation de l’hébergeur.' },
+        { title: 'Vos droits', body: 'Vous pouvez demander l’accès, la rectification, l’effacement, la limitation ou l’opposition au traitement des données vous concernant. Contactez-nous à contact@cartavault.fr. Vous pouvez également saisir l’autorité de contrôle compétente, notamment la CNIL en France.' },
+      ] },
+      cookies: { title: 'Politique de cookies', description: 'Informations sur les cookies et traceurs du site cartavault.fr.', eyebrow: 'Cookies', sections: [
+        { title: 'Aucun cookie non essentiel', body: 'Le site marketing CartaVault n’utilise pas de cookie publicitaire, de mesure d’audience, de personnalisation ni de traceur tiers. Il n’affiche donc pas de bannière de consentement pour ces finalités.' },
+        { title: 'Cookies strictement nécessaires', body: 'À la date de cette politique, le site ne dépose pas de cookie fonctionnel propre. L’hébergeur ou les mécanismes de sécurité réseau peuvent toutefois traiter des données techniques nécessaires à la livraison et à la protection du site ; ils ne servent pas à vous suivre à des fins commerciales.' },
+        { title: 'Liens externes et application', body: 'Les liens vers GitHub, l’application CartaVault et les autres services externes ouvrent leurs propres sites. Ces services appliquent leurs propres politiques de cookies. L’application app.cartavault.fr peut notamment utiliser des cookies de session et de sécurité nécessaires à son fonctionnement.' },
+        { title: 'Gérer les cookies', body: 'Vous pouvez consulter, supprimer ou bloquer les cookies dans les paramètres de votre navigateur. Bloquer certains cookies nécessaires peut affecter le fonctionnement des services externes ou de l’application, mais pas la consultation normale de ce site marketing.' },
+        { title: 'Mise à jour', body: 'Cette politique sera mise à jour avant l’ajout d’un outil de mesure, d’un service optionnel ou de tout traceur nécessitant une information ou un consentement.' },
       ] },
     },
   },
@@ -124,7 +134,7 @@ export const copy: Record<Language, {
       accept: 'I accept, open the application',
     },
     nav: { features: 'Features', 'self-hosting': 'Self-hosting', documentation: 'Documentation', roadmap: 'Roadmap' },
-    footer: 'Map your discoveries. Keep control of your data.', legal: 'Legal notice', privacy: 'Privacy', contact: 'Contact',
+    footer: 'Map your discoveries. Keep control of your data.', legal: 'Legal notice', privacy: 'Privacy', cookies: 'Cookie policy', contact: 'Contact',
     featuresShowcase: {
       primary: 'Try CartaVault', secondary: 'View the demo',
       links: ['Discover maps', 'Explore trips', 'Understand sharing'],
@@ -174,11 +184,21 @@ export const copy: Record<Language, {
         { title: 'Intellectual property', body: 'CartaVault software is distributed under the MIT license. Trademarks, text and visual material remain protected by their respective owners.' },
         { title: 'Liability', body: 'Information is provided for guidance. Features and procedures may change during the beta period.' },
       ] },
-      privacy: { title: 'Privacy policy', description: 'Data processing on the CartaVault marketing site.', eyebrow: 'Privacy', sections: [
-        { title: 'A minimal static website', body: 'This site uses no account, form, advertising cookie, audience analytics or third-party tracker.' },
-        { title: 'Email contact', body: 'The contact link opens your mail application. Sent data is processed only to answer your request and under your email provider’s rules.' },
-        { title: 'Technical logs', body: 'The host may retain technical logs needed for service security and operation according to its own legal obligations and retention periods.' },
-        { title: 'Your rights', body: 'For any question or data request: contact@cartavault.fr.' },
+      privacy: { title: 'Privacy policy', description: 'How the CartaVault marketing website processes personal data.', eyebrow: 'Privacy', sections: [
+        { title: 'Scope', body: 'This policy applies only to cartavault.fr. The app.cartavault.fr application and each self-hosted instance have their own settings, controllers and applicable policies.' },
+        { title: 'Controller and contact', body: 'This website is published by FlynX9. For privacy questions or to exercise your rights, email contact@cartavault.fr.' },
+        { title: 'Data processed', body: 'The website provides no account or form. If you contact us by email, your address, message content and information you choose to provide are processed only to answer your request.' },
+        { title: 'Purpose and legal basis', body: 'Email exchanges are used to handle requests, provide support and protect the service. Processing is based on our legitimate interest in answering received messages and, where applicable, steps requested before entering into a contract.' },
+        { title: 'Recipients and retention', body: 'Messages are accessible only to people authorized to answer them. They are retained for the time needed to follow up on the request, then archived or deleted in accordance with applicable obligations. They are not sold or used for advertising.' },
+        { title: 'Technical logs', body: 'The host may process technical data such as IP address, date, request and security information to deliver, secure and diagnose the service. These logs are handled under the host’s own legal obligations and retention periods.' },
+        { title: 'Your rights', body: 'You may request access, correction, erasure, restriction or object to processing of your personal data. Contact us at contact@cartavault.fr. You may also lodge a complaint with the relevant supervisory authority.' },
+      ] },
+      cookies: { title: 'Cookie policy', description: 'Information about cookies and trackers on cartavault.fr.', eyebrow: 'Cookies', sections: [
+        { title: 'No non-essential cookies', body: 'The CartaVault marketing website uses no advertising, analytics, personalization or third-party tracking cookie. It therefore does not display a consent banner for these purposes.' },
+        { title: 'Strictly necessary technologies', body: 'At the date of this policy, the website does not set its own functional cookie. The host or network-security mechanisms may nevertheless process technical data needed to deliver and protect the website; it is not used for commercial tracking.' },
+        { title: 'External links and application', body: 'Links to GitHub, the CartaVault application and other external services open their own websites. Those services apply their own cookie policies. app.cartavault.fr may in particular use session and security cookies required for its operation.' },
+        { title: 'Managing cookies', body: 'You can inspect, delete or block cookies in your browser settings. Blocking necessary cookies may affect external services or the application, but not normal access to this marketing website.' },
+        { title: 'Updates', body: 'This policy will be updated before adding analytics, an optional service or any tracker that requires notice or consent.' },
       ] },
     },
   },

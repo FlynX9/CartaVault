@@ -12,9 +12,9 @@ const text = copy[lang];
       <div class="footer-language" aria-label={lang === 'fr' ? 'Langue' : 'Language'}><a class:list={{ active: lang === 'fr' }} href={href('fr')}>FR</a><a class:list={{ active: lang === 'en' }} href={href('en')}>EN</a></div>
     </div>
     <nav class="footer-columns" aria-label={lang === 'fr' ? 'Navigation de pied de page' : 'Footer navigation'}>
-      <div><h2>{lang === 'fr' ? 'Produit' : 'Product'}</h2><a href={href(lang, 'features')}>{text.nav.features}</a><a href={href(lang, 'self-hosting')}>{text.nav['self-hosting']}</a><a href={external.app}>{text.openApp}<ArrowUpRight size={13} aria-hidden="true" /></a></div>
+      <div><h2>{lang === 'fr' ? 'Produit' : 'Product'}</h2><a href={href(lang, 'features')}>{text.nav.features}</a><a href={href(lang, 'self-hosting')}>{text.nav['self-hosting']}</a><a href={external.app} target="_blank" rel="noopener noreferrer">{text.openApp}<ArrowUpRight size={13} aria-hidden="true" /></a></div>
       <div><h2>{lang === 'fr' ? 'Ressources' : 'Resources'}</h2><a href={href(lang, 'documentation')}>{text.nav.documentation}</a><a href={href(lang, 'roadmap')}>{text.nav.roadmap}</a><a href={href(lang, 'contact')}>{text.contact}</a></div>
-      <div><h2>{lang === 'fr' ? 'Projet' : 'Project'}</h2><a href={href(lang, 'about')}>{lang === 'fr' ? 'À propos' : 'About'}</a><a href={href(lang, 'legal')}>{text.legal}</a><a href={href(lang, 'privacy')}>{text.privacy}</a></div>
+      <div><h2>{lang === 'fr' ? 'Projet' : 'Project'}</h2><a href={href(lang, 'about')}>{lang === 'fr' ? 'À propos' : 'About'}</a><a href={href(lang, 'legal')}>{text.legal}</a><a href={href(lang, 'privacy')}>{text.privacy}</a><a href={href(lang, 'cookies')}>{text.cookies}</a></div>
     </nav>
     <aside class="footer-open-source">
       <span aria-hidden="true"><Server size={20} /></span>

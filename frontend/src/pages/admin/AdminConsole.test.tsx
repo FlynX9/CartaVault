@@ -114,6 +114,24 @@ describe('AdminConsole', () => {
     expect(screen.getByText('Génération du fond · 42 %')).toBeVisible()
   })
 
+  it('hides CartaVault basemap controls while the feature is disabled', async () => {
+    vi.mocked(getVectorBasemapLibrary).mockResolvedValue({
+      settings: { enabled: false, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
+      items: [],
+    })
+    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+
+    const toggle = await screen.findByRole('switch', { name: 'Activer le fond CartaVault' })
+    expect(toggle).not.toBeChecked()
+    expect(screen.queryByText('Préparation automatique')).not.toBeInTheDocument()
+    expect(screen.queryByText('Fonds installés')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ajouter un fond')).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+    expect(screen.getByText('Préparation automatique')).toBeVisible()
+    expect(screen.getByText('Fonds installés')).toBeVisible()
+  })
+
   it('allows an errored vector basemap to be deleted', async () => {
     vi.mocked(getVectorBasemapLibrary).mockResolvedValue({
       settings: { enabled: true, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
