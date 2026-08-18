@@ -23,13 +23,13 @@ Le mode Sorties transforme des lieux déjà documentés en programme de voyage s
 Suivez ce chemin dans l’interface : **Sorties**.
 
 
-![Créer et organiser une sortie](/docs/screenshots/trip-france-fr-light.png)
+![Créer et organiser une sortie — écran desktop](/docs/screenshots/trip-france-fr-light.png)
 
-*Créer et organiser une sortie*
+*Créer et organiser une sortie — écran desktop*
 
-![Créer et organiser une sortie](/docs/screenshots/trip-france-fr-mobile.png)
+![Créer et organiser une sortie — écran mobile](/docs/screenshots/trip-france-fr-mobile.png)
 
-*Créer et organiser une sortie*
+*Créer et organiser une sortie — écran mobile*
 
 ## Comment l’utiliser ?
 

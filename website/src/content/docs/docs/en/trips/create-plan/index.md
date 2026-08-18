@@ -23,13 +23,13 @@ Trips turn documented places into a travel program without duplicating their rec
 Follow this path in the interface : **Trips**.
 
 
-![Create and organize a trip](/docs/screenshots/trip-france-fr-light.png)
+![Create and organize a trip — desktop screen](/docs/screenshots/trip-france-en-light.png)
 
-*Create and organize a trip*
+*Create and organize a trip — desktop screen*
 
-![Create and organize a trip](/docs/screenshots/trip-france-fr-mobile.png)
+![Create and organize a trip — mobile screen](/docs/screenshots/trip-france-en-mobile.png)
 
-*Create and organize a trip*
+*Create and organize a trip — mobile screen*
 
 ## How do I use it?
 

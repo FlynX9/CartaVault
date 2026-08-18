@@ -23,9 +23,13 @@ L’adresse sert à la connexion, à la récupération et aux notifications impo
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Adresse e-mail → Modifier**.
 
 
-![Changer l’adresse e-mail](/docs/screenshots/account-email-change-fr-light.png)
+![Changer l’adresse e-mail — écran desktop](/docs/screenshots/account-email-change-fr-light.png)
 
-*Changer l’adresse e-mail*
+*Changer l’adresse e-mail — écran desktop*
+
+![Changer l’adresse e-mail — écran mobile](/docs/screenshots/account-email-change-fr-mobile.png)
+
+*Changer l’adresse e-mail — écran mobile*
 
 ## Comment l’utiliser ?
 

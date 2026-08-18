@@ -23,9 +23,29 @@ Categories describe the primary nature, tags add cross-cutting themes and status
 Follow this path in the interface : **Organization → Categories, Tags or Statuses**.
 
 
-![Organize with categories, tags and statuses](/docs/screenshots/categories-fr-light.png)
+![Organize with categories, tags and statuses — desktop screen](/docs/screenshots/categories-en-light.png)
 
-*Organize with categories, tags and statuses*
+*Organize with categories, tags and statuses — desktop screen*
+
+![Organize with categories, tags and statuses — mobile screen](/docs/screenshots/categories-en-mobile.png)
+
+*Organize with categories, tags and statuses — mobile screen*
+
+![Organize with categories, tags and statuses — desktop screen](/docs/screenshots/tags-en-light.png)
+
+*Organize with categories, tags and statuses — desktop screen*
+
+![Organize with categories, tags and statuses — mobile screen](/docs/screenshots/tags-en-mobile.png)
+
+*Organize with categories, tags and statuses — mobile screen*
+
+![Organize with categories, tags and statuses — desktop screen](/docs/screenshots/statuses-en-light.png)
+
+*Organize with categories, tags and statuses — desktop screen*
+
+![Organize with categories, tags and statuses — mobile screen](/docs/screenshots/statuses-en-mobile.png)
+
+*Organize with categories, tags and statuses — mobile screen*
 
 ## How do I use it?
 

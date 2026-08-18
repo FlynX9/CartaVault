@@ -23,9 +23,13 @@ The unified image limits the standard deployment to CartaVault and PostgreSQL/Po
 Follow this path in the interface : **Docker server → official Compose → setup wizard**.
 
 
-![Install and update CartaVault](/docs/screenshots/login-fr-light.png)
+![Install and update CartaVault — desktop screen](/docs/screenshots/login-en-light.png)
 
-*Install and update CartaVault*
+*Install and update CartaVault — desktop screen*
+
+![Install and update CartaVault — mobile screen](/docs/screenshots/login-en-mobile.png)
+
+*Install and update CartaVault — mobile screen*
 
 ## How do I use it?
 

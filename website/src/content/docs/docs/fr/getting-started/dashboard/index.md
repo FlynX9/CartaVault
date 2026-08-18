@@ -23,9 +23,13 @@ Le tableau de bord donne une vue transversale des cartes accessibles sans ouvrir
 Suivez ce chemin dans l’interface : **Accueil**.
 
 
-![Utiliser le tableau de bord](/docs/screenshots/dashboard-fr-light.png)
+![Utiliser le tableau de bord — écran desktop](/docs/screenshots/dashboard-fr-light.png)
 
-*Utiliser le tableau de bord*
+*Utiliser le tableau de bord — écran desktop*
+
+![Utiliser le tableau de bord — écran mobile](/docs/screenshots/dashboard-fr-mobile.png)
+
+*Utiliser le tableau de bord — écran mobile*
 
 ## Comment l’utiliser ?
 

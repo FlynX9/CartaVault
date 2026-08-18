@@ -23,13 +23,13 @@ La chronologie rend un itinéraire complexe plus lisible pendant la préparation
 Suivez ce chemin dans l’interface : **Sorties → recliquer sur Sorties / Chronologie**.
 
 
-![Parcourir la chronologie d’une sortie](/docs/screenshots/timeline-france-fr-light.png)
+![Parcourir la chronologie d’une sortie — écran desktop](/docs/screenshots/timeline-france-fr-light.png)
 
-*Parcourir la chronologie d’une sortie*
+*Parcourir la chronologie d’une sortie — écran desktop*
 
-![Parcourir la chronologie d’une sortie](/docs/screenshots/timeline-france-fr-mobile.png)
+![Parcourir la chronologie d’une sortie — écran mobile](/docs/screenshots/timeline-france-fr-mobile.png)
 
-*Parcourir la chronologie d’une sortie*
+*Parcourir la chronologie d’une sortie — écran mobile*
 
 ## Comment l’utiliser ?
 

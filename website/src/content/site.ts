@@ -19,6 +19,7 @@ export const external = {
 export const copy: Record<Language, {
   skip: string; navLabel: string; menu: string; close: string; language: string;
   openApp: string;
+  beta: { eyebrow: string; title: string; body: string; cancel: string; accept: string };
   nav: Record<'features' | 'self-hosting' | 'documentation' | 'roadmap', string>;
   footer: string; legal: string; privacy: string; contact: string;
   featuresShowcase: {
@@ -36,7 +37,14 @@ export const copy: Record<Language, {
   pages: Record<PageSlug, Page>;
 }> = {
   fr: {
-    skip: 'Aller au contenu', navLabel: 'Navigation principale', menu: 'Ouvrir le menu', close: 'Fermer le menu', language: 'EN', openApp: 'Ouvrir l’application',
+    skip: 'Aller au contenu', navLabel: 'Navigation principale', menu: 'Ouvrir le menu', close: 'Fermer le menu', language: 'EN', openApp: 'Application Beta',
+    beta: {
+      eyebrow: 'Version de démonstration',
+      title: 'CartaVault est actuellement en bêta',
+      body: 'Cette instance permet de découvrir CartaVault, mais elle reste expérimentale. Les données de démonstration ne sont ni sécurisées ni garanties et peuvent être modifiées, réinitialisées ou supprimées sans préavis : ne l’utilisez pas pour stocker des informations importantes ou sensibles.',
+      cancel: 'Revenir au site',
+      accept: 'J’accepte, ouvrir l’application',
+    },
     nav: { features: 'Fonctionnalités', 'self-hosting': 'Auto-hébergement', documentation: 'Documentation', roadmap: 'Feuille de route' },
     footer: 'Cartographiez vos découvertes. Gardez le contrôle de vos données.', legal: 'Mentions légales', privacy: 'Confidentialité', contact: 'Contact',
     featuresShowcase: {
@@ -107,7 +115,14 @@ export const copy: Record<Language, {
     },
   },
   en: {
-    skip: 'Skip to content', navLabel: 'Main navigation', menu: 'Open menu', close: 'Close menu', language: 'FR', openApp: 'Open the app',
+    skip: 'Skip to content', navLabel: 'Main navigation', menu: 'Open menu', close: 'Close menu', language: 'FR', openApp: 'Beta Application',
+    beta: {
+      eyebrow: 'Demonstration release',
+      title: 'CartaVault is currently in beta',
+      body: 'This instance lets you explore CartaVault, but it remains experimental. Demo data is neither secured nor guaranteed and may be changed, reset or deleted without notice, so do not use it for important or sensitive information.',
+      cancel: 'Return to the website',
+      accept: 'I accept, open the application',
+    },
     nav: { features: 'Features', 'self-hosting': 'Self-hosting', documentation: 'Documentation', roadmap: 'Roadmap' },
     footer: 'Map your discoveries. Keep control of your data.', legal: 'Legal notice', privacy: 'Privacy', contact: 'Contact',
     featuresShowcase: {

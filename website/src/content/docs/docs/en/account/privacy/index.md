@@ -23,9 +23,13 @@ The panel explains instance processing and provides direct access to available r
 Follow this path in the interface : **My account → Privacy**.
 
 
-![Manage privacy and personal export](/docs/screenshots/account-privacy-fr-light.png)
+![Manage privacy and personal export — desktop screen](/docs/screenshots/account-privacy-en-light.png)
 
-*Manage privacy and personal export*
+*Manage privacy and personal export — desktop screen*
+
+![Manage privacy and personal export — mobile screen](/docs/screenshots/account-privacy-en-mobile.png)
+
+*Manage privacy and personal export — mobile screen*
 
 ## How do I use it?
 

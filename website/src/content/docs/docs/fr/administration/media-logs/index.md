@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Général → Médiathèque et Journaux d’instance**.
 
 
-![Régler la médiathèque et les journaux](/docs/screenshots/admin-media-logs-fr-light.png)
+![Régler la médiathèque et les journaux — écran desktop](/docs/screenshots/admin-media-logs-fr-light.png)
 
-*Régler la médiathèque et les journaux*
+*Régler la médiathèque et les journaux — écran desktop*
+
+![Régler la médiathèque et les journaux — écran mobile](/docs/screenshots/admin-media-logs-fr-mobile.png)
+
+*Régler la médiathèque et les journaux — écran mobile*
 
 ## Comment l’utiliser ?
 

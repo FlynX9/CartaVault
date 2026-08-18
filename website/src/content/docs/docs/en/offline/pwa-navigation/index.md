@@ -23,9 +23,13 @@ Application precaching reopens the interface and menus, while private packages s
 Follow this path in the interface : **Installed application or HTTPS-served instance**.
 
 
-![Use CartaVault without a network](/docs/screenshots/places-france-fr-mobile.png)
+![Use CartaVault without a network — desktop screen](/docs/screenshots/places-france-en-light.png)
 
-*Use CartaVault without a network*
+*Use CartaVault without a network — desktop screen*
+
+![Use CartaVault without a network — mobile screen](/docs/screenshots/places-france-en-mobile.png)
+
+*Use CartaVault without a network — mobile screen*
 
 ## How do I use it?
 

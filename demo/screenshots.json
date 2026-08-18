@@ -1,66 +1,1877 @@
 [
-  {"id":"login-fr-light","route":"/login","theme":"light","language":"fr"},
-  {"id":"dashboard-fr-light","user":"owner","route":"/dashboard","theme":"light","language":"fr"},
-  {"id":"places-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr"},
-  {"id":"place-popup-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"place-popup"},
-  {"id":"places-france-fr-dark","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"dark","language":"fr"},
-  {"id":"places-italy-en-light","user":"editor","route":"/?map=a66e3a70-91a9-5fe1-af13-e34976ecd055","theme":"light","language":"en"},
-  {"id":"viewer-readonly-fr-light","user":"viewer","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr"},
-  {"id":"trip-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trip"},
-  {"id":"timeline-france-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"timeline"},
-  {"id":"media-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"media"},
-  {"id":"account-profile-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account"},
-  {"id":"account-preferences-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-preferences"},
-  {"id":"account-security-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-security"},
-  {"id":"account-email-change-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-email"},
-  {"id":"account-password-change-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-password"},
-  {"id":"account-totp-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-totp"},
-  {"id":"account-email-mfa-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-email-mfa"},
-  {"id":"account-sessions-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-sessions"},
-  {"id":"account-api-keys-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-api-keys"},
-  {"id":"account-privacy-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-privacy"},
-  {"id":"account-offline-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-offline"},
-  {"id":"admin-users-fr-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"},
-  {"id":"admin-general-fr-light","user":"owner","route":"/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"},
-  {"id":"admin-api-keys-fr-light","user":"owner","route":"/admin/credentials?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"},
-  {"id":"admin-quotas-fr-light","user":"owner","route":"/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"},
-  {"id":"admin-instance-fr-light","user":"owner","route":"/admin/instance?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin"},
-  {"id":"maps-catalog-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"maps"},
-  {"id":"create-map-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"create-map"},
-  {"id":"map-fields-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"map-fields"},
-  {"id":"map-members-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"map-members"},
-  {"id":"kmz-export-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"map-export"},
-  {"id":"map-offline-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"map-offline"},
-  {"id":"trash-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trash"},
-  {"id":"place-editor-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"place-editor"},
-  {"id":"place-media-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"place-media"},
-  {"id":"place-annotations-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"place-annotations"},
-  {"id":"categories-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"categories"},
-  {"id":"profile-import-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"profile-import"},
-  {"id":"annotation-templates-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"annotation-templates"},
-  {"id":"trip-routing-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trip-routing"},
-  {"id":"trip-pdf-export-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trip-export"},
-  {"id":"trip-offline-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"trip-offline"},
-  {"id":"media-upload-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"media-upload"},
-  {"id":"kmz-import-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"kmz-import"},
-  {"id":"account-api-key-dialog-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-api-key-dialog"},
-  {"id":"account-delete-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-delete"},
-  {"id":"admin-registration-fr-light","user":"owner","route":"/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin-registration"},
-  {"id":"admin-user-details-fr-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin-user-details"},
-  {"id":"admin-quota-edit-fr-light","user":"owner","route":"/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin-quota-edit"},
-  {"id":"admin-vector-fr-light","user":"owner","route":"/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin-vector"},
-  {"id":"admin-privacy-fr-light","user":"owner","route":"/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin-privacy"},
-  {"id":"admin-media-logs-fr-light","user":"owner","route":"/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"admin-media-logs"},
-  {"id":"places-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en"},
-  {"id":"place-popup-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"place-popup"},
-  {"id":"trip-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"trip"},
-  {"id":"timeline-france-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"timeline"},
-  {"id":"media-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"media"},
-  {"id":"account-profile-en-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"account"},
-  {"id":"admin-users-en-light","user":"owner","route":"/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","view":"admin"}
-  ,{"id":"places-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","mobile":true}
-  ,{"id":"trip-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","mobile":true,"view":"trip"}
-  ,{"id":"timeline-france-fr-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","mobile":true,"view":"timeline"}
-  ,{"id":"places-france-en-mobile","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"en","mobile":true}
-  ,{"id":"account-recovery-codes-fr-light","user":"owner","route":"/?map=76ba751c-b132-520d-857d-a96d6663819c","theme":"light","language":"fr","view":"account-recovery-codes"}
+  {
+    "id": "login-fr-light",
+    "route": "/login",
+    "theme": "light",
+    "language": "fr"
+  },
+  {
+    "id": "login-fr-mobile",
+    "route": "/login",
+    "theme": "light",
+    "language": "fr",
+    "mobile": true
+  },
+  {
+    "id": "login-en-light",
+    "route": "/login",
+    "theme": "light",
+    "language": "en"
+  },
+  {
+    "id": "login-en-mobile",
+    "route": "/login",
+    "theme": "light",
+    "language": "en",
+    "mobile": true
+  },
+  {
+    "id": "dashboard-fr-light",
+    "user": "owner",
+    "route": "/dashboard",
+    "theme": "light",
+    "language": "fr"
+  },
+  {
+    "id": "dashboard-fr-mobile",
+    "user": "owner",
+    "route": "/dashboard",
+    "theme": "light",
+    "language": "fr",
+    "mobile": true
+  },
+  {
+    "id": "dashboard-en-light",
+    "user": "owner",
+    "route": "/dashboard",
+    "theme": "light",
+    "language": "en"
+  },
+  {
+    "id": "dashboard-en-mobile",
+    "user": "owner",
+    "route": "/dashboard",
+    "theme": "light",
+    "language": "en",
+    "mobile": true
+  },
+  {
+    "id": "places-france-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr"
+  },
+  {
+    "id": "places-france-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "mobile": true
+  },
+  {
+    "id": "places-france-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en"
+  },
+  {
+    "id": "places-france-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "mobile": true
+  },
+  {
+    "id": "place-popup-france-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-popup"
+  },
+  {
+    "id": "place-popup-france-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-popup",
+    "mobile": true
+  },
+  {
+    "id": "place-popup-france-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-popup"
+  },
+  {
+    "id": "place-popup-france-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-popup",
+    "mobile": true
+  },
+  {
+    "id": "trip-france-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip"
+  },
+  {
+    "id": "trip-france-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip",
+    "mobile": true
+  },
+  {
+    "id": "trip-france-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip"
+  },
+  {
+    "id": "trip-france-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip",
+    "mobile": true
+  },
+  {
+    "id": "timeline-france-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "timeline"
+  },
+  {
+    "id": "timeline-france-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "timeline",
+    "mobile": true
+  },
+  {
+    "id": "timeline-france-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "timeline"
+  },
+  {
+    "id": "timeline-france-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "timeline",
+    "mobile": true
+  },
+  {
+    "id": "media-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "media"
+  },
+  {
+    "id": "media-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "media",
+    "mobile": true
+  },
+  {
+    "id": "media-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "media"
+  },
+  {
+    "id": "media-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "media",
+    "mobile": true
+  },
+  {
+    "id": "account-profile-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account"
+  },
+  {
+    "id": "account-profile-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account",
+    "mobile": true
+  },
+  {
+    "id": "account-profile-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account"
+  },
+  {
+    "id": "account-profile-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account",
+    "mobile": true
+  },
+  {
+    "id": "account-preferences-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-preferences"
+  },
+  {
+    "id": "account-preferences-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-preferences",
+    "mobile": true
+  },
+  {
+    "id": "account-preferences-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-preferences"
+  },
+  {
+    "id": "account-preferences-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-preferences",
+    "mobile": true
+  },
+  {
+    "id": "account-security-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-security"
+  },
+  {
+    "id": "account-security-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-security",
+    "mobile": true
+  },
+  {
+    "id": "account-security-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-security"
+  },
+  {
+    "id": "account-security-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-security",
+    "mobile": true
+  },
+  {
+    "id": "account-email-change-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-email"
+  },
+  {
+    "id": "account-email-change-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-email",
+    "mobile": true
+  },
+  {
+    "id": "account-email-change-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-email"
+  },
+  {
+    "id": "account-email-change-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-email",
+    "mobile": true
+  },
+  {
+    "id": "account-password-change-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-password"
+  },
+  {
+    "id": "account-password-change-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-password",
+    "mobile": true
+  },
+  {
+    "id": "account-password-change-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-password"
+  },
+  {
+    "id": "account-password-change-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-password",
+    "mobile": true
+  },
+  {
+    "id": "account-totp-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-totp"
+  },
+  {
+    "id": "account-totp-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-totp",
+    "mobile": true
+  },
+  {
+    "id": "account-totp-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-totp"
+  },
+  {
+    "id": "account-totp-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-totp",
+    "mobile": true
+  },
+  {
+    "id": "account-email-mfa-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-email-mfa"
+  },
+  {
+    "id": "account-email-mfa-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-email-mfa",
+    "mobile": true
+  },
+  {
+    "id": "account-email-mfa-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-email-mfa"
+  },
+  {
+    "id": "account-email-mfa-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-email-mfa",
+    "mobile": true
+  },
+  {
+    "id": "account-sessions-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-sessions"
+  },
+  {
+    "id": "account-sessions-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-sessions",
+    "mobile": true
+  },
+  {
+    "id": "account-sessions-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-sessions"
+  },
+  {
+    "id": "account-sessions-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-sessions",
+    "mobile": true
+  },
+  {
+    "id": "account-api-keys-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-api-keys"
+  },
+  {
+    "id": "account-api-keys-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-api-keys",
+    "mobile": true
+  },
+  {
+    "id": "account-api-keys-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-api-keys"
+  },
+  {
+    "id": "account-api-keys-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-api-keys",
+    "mobile": true
+  },
+  {
+    "id": "account-privacy-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-privacy"
+  },
+  {
+    "id": "account-privacy-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-privacy",
+    "mobile": true
+  },
+  {
+    "id": "account-privacy-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-privacy"
+  },
+  {
+    "id": "account-privacy-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-privacy",
+    "mobile": true
+  },
+  {
+    "id": "account-offline-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-offline"
+  },
+  {
+    "id": "account-offline-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-offline",
+    "mobile": true
+  },
+  {
+    "id": "account-offline-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-offline"
+  },
+  {
+    "id": "account-offline-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-offline",
+    "mobile": true
+  },
+  {
+    "id": "admin-users-fr-light",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin"
+  },
+  {
+    "id": "admin-users-fr-mobile",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-users-en-light",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin"
+  },
+  {
+    "id": "admin-users-en-mobile",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-general-fr-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin"
+  },
+  {
+    "id": "admin-general-fr-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-general-en-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin"
+  },
+  {
+    "id": "admin-general-en-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-api-keys-fr-light",
+    "user": "owner",
+    "route": "/admin/credentials?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin"
+  },
+  {
+    "id": "admin-api-keys-fr-mobile",
+    "user": "owner",
+    "route": "/admin/credentials?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-api-keys-en-light",
+    "user": "owner",
+    "route": "/admin/credentials?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin"
+  },
+  {
+    "id": "admin-api-keys-en-mobile",
+    "user": "owner",
+    "route": "/admin/credentials?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-quotas-fr-light",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin"
+  },
+  {
+    "id": "admin-quotas-fr-mobile",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-quotas-en-light",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin"
+  },
+  {
+    "id": "admin-quotas-en-mobile",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-instance-fr-light",
+    "user": "owner",
+    "route": "/admin/instance?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin"
+  },
+  {
+    "id": "admin-instance-fr-mobile",
+    "user": "owner",
+    "route": "/admin/instance?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "admin-instance-en-light",
+    "user": "owner",
+    "route": "/admin/instance?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin"
+  },
+  {
+    "id": "admin-instance-en-mobile",
+    "user": "owner",
+    "route": "/admin/instance?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin",
+    "mobile": true
+  },
+  {
+    "id": "maps-catalog-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "maps"
+  },
+  {
+    "id": "maps-catalog-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "maps",
+    "mobile": true
+  },
+  {
+    "id": "maps-catalog-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "maps"
+  },
+  {
+    "id": "maps-catalog-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "maps",
+    "mobile": true
+  },
+  {
+    "id": "create-map-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "create-map"
+  },
+  {
+    "id": "create-map-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "create-map",
+    "mobile": true
+  },
+  {
+    "id": "create-map-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "create-map"
+  },
+  {
+    "id": "create-map-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "create-map",
+    "mobile": true
+  },
+  {
+    "id": "map-fields-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-fields"
+  },
+  {
+    "id": "map-fields-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-fields",
+    "mobile": true
+  },
+  {
+    "id": "map-fields-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-fields"
+  },
+  {
+    "id": "map-fields-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-fields",
+    "mobile": true
+  },
+  {
+    "id": "map-members-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-members"
+  },
+  {
+    "id": "map-members-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-members",
+    "mobile": true
+  },
+  {
+    "id": "map-members-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-members"
+  },
+  {
+    "id": "map-members-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-members",
+    "mobile": true
+  },
+  {
+    "id": "kmz-export-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-export"
+  },
+  {
+    "id": "kmz-export-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-export",
+    "mobile": true
+  },
+  {
+    "id": "kmz-export-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-export"
+  },
+  {
+    "id": "kmz-export-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-export",
+    "mobile": true
+  },
+  {
+    "id": "map-offline-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-offline"
+  },
+  {
+    "id": "map-offline-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-offline",
+    "mobile": true
+  },
+  {
+    "id": "map-offline-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-offline"
+  },
+  {
+    "id": "map-offline-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "map-offline",
+    "mobile": true
+  },
+  {
+    "id": "trash-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trash"
+  },
+  {
+    "id": "trash-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trash",
+    "mobile": true
+  },
+  {
+    "id": "trash-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trash"
+  },
+  {
+    "id": "trash-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trash",
+    "mobile": true
+  },
+  {
+    "id": "place-editor-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-editor"
+  },
+  {
+    "id": "place-editor-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-editor",
+    "mobile": true
+  },
+  {
+    "id": "place-editor-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-editor"
+  },
+  {
+    "id": "place-editor-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-editor",
+    "mobile": true
+  },
+  {
+    "id": "place-media-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-media"
+  },
+  {
+    "id": "place-media-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-media",
+    "mobile": true
+  },
+  {
+    "id": "place-media-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-media"
+  },
+  {
+    "id": "place-media-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-media",
+    "mobile": true
+  },
+  {
+    "id": "place-annotations-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-annotations"
+  },
+  {
+    "id": "place-annotations-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "place-annotations",
+    "mobile": true
+  },
+  {
+    "id": "place-annotations-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-annotations"
+  },
+  {
+    "id": "place-annotations-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "place-annotations",
+    "mobile": true
+  },
+  {
+    "id": "categories-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "categories"
+  },
+  {
+    "id": "categories-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "categories",
+    "mobile": true
+  },
+  {
+    "id": "categories-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "categories"
+  },
+  {
+    "id": "categories-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "categories",
+    "mobile": true
+  },
+  {
+    "id": "tags-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "tags"
+  },
+  {
+    "id": "tags-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "tags",
+    "mobile": true
+  },
+  {
+    "id": "tags-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "tags"
+  },
+  {
+    "id": "tags-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "tags",
+    "mobile": true
+  },
+  {
+    "id": "statuses-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "statuses"
+  },
+  {
+    "id": "statuses-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "statuses",
+    "mobile": true
+  },
+  {
+    "id": "statuses-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "statuses"
+  },
+  {
+    "id": "statuses-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "statuses",
+    "mobile": true
+  },
+  {
+    "id": "profile-import-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "profile-import"
+  },
+  {
+    "id": "profile-import-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "profile-import",
+    "mobile": true
+  },
+  {
+    "id": "profile-import-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "profile-import"
+  },
+  {
+    "id": "profile-import-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "profile-import",
+    "mobile": true
+  },
+  {
+    "id": "tag-profile-import-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "tag-profile-import"
+  },
+  {
+    "id": "tag-profile-import-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "tag-profile-import",
+    "mobile": true
+  },
+  {
+    "id": "tag-profile-import-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "tag-profile-import"
+  },
+  {
+    "id": "tag-profile-import-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "tag-profile-import",
+    "mobile": true
+  },
+  {
+    "id": "status-profile-import-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "status-profile-import"
+  },
+  {
+    "id": "status-profile-import-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "status-profile-import",
+    "mobile": true
+  },
+  {
+    "id": "status-profile-import-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "status-profile-import"
+  },
+  {
+    "id": "status-profile-import-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "status-profile-import",
+    "mobile": true
+  },
+  {
+    "id": "annotation-templates-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "annotation-templates"
+  },
+  {
+    "id": "annotation-templates-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "annotation-templates",
+    "mobile": true
+  },
+  {
+    "id": "annotation-templates-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "annotation-templates"
+  },
+  {
+    "id": "annotation-templates-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "annotation-templates",
+    "mobile": true
+  },
+  {
+    "id": "trip-routing-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip-routing"
+  },
+  {
+    "id": "trip-routing-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip-routing",
+    "mobile": true
+  },
+  {
+    "id": "trip-routing-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip-routing"
+  },
+  {
+    "id": "trip-routing-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip-routing",
+    "mobile": true
+  },
+  {
+    "id": "trip-pdf-export-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip-export"
+  },
+  {
+    "id": "trip-pdf-export-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip-export",
+    "mobile": true
+  },
+  {
+    "id": "trip-pdf-export-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip-export"
+  },
+  {
+    "id": "trip-pdf-export-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip-export",
+    "mobile": true
+  },
+  {
+    "id": "trip-offline-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip-offline"
+  },
+  {
+    "id": "trip-offline-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "trip-offline",
+    "mobile": true
+  },
+  {
+    "id": "trip-offline-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip-offline"
+  },
+  {
+    "id": "trip-offline-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "trip-offline",
+    "mobile": true
+  },
+  {
+    "id": "media-upload-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "media-upload"
+  },
+  {
+    "id": "media-upload-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "media-upload",
+    "mobile": true
+  },
+  {
+    "id": "media-upload-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "media-upload"
+  },
+  {
+    "id": "media-upload-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "media-upload",
+    "mobile": true
+  },
+  {
+    "id": "media-gps-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "media-gps"
+  },
+  {
+    "id": "media-gps-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "media-gps",
+    "mobile": true
+  },
+  {
+    "id": "media-gps-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "media-gps"
+  },
+  {
+    "id": "media-gps-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "media-gps",
+    "mobile": true
+  },
+  {
+    "id": "kmz-import-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "kmz-import"
+  },
+  {
+    "id": "kmz-import-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "kmz-import",
+    "mobile": true
+  },
+  {
+    "id": "kmz-import-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "kmz-import"
+  },
+  {
+    "id": "kmz-import-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "kmz-import",
+    "mobile": true
+  },
+  {
+    "id": "account-api-key-dialog-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-api-key-dialog"
+  },
+  {
+    "id": "account-api-key-dialog-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-api-key-dialog",
+    "mobile": true
+  },
+  {
+    "id": "account-api-key-dialog-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-api-key-dialog"
+  },
+  {
+    "id": "account-api-key-dialog-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-api-key-dialog",
+    "mobile": true
+  },
+  {
+    "id": "account-delete-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-delete"
+  },
+  {
+    "id": "account-delete-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-delete",
+    "mobile": true
+  },
+  {
+    "id": "account-delete-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-delete"
+  },
+  {
+    "id": "account-delete-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-delete",
+    "mobile": true
+  },
+  {
+    "id": "admin-registration-fr-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-registration"
+  },
+  {
+    "id": "admin-registration-fr-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-registration",
+    "mobile": true
+  },
+  {
+    "id": "admin-registration-en-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-registration"
+  },
+  {
+    "id": "admin-registration-en-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-registration",
+    "mobile": true
+  },
+  {
+    "id": "admin-user-details-fr-light",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-user-details"
+  },
+  {
+    "id": "admin-user-details-fr-mobile",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-user-details",
+    "mobile": true
+  },
+  {
+    "id": "admin-user-details-en-light",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-user-details"
+  },
+  {
+    "id": "admin-user-details-en-mobile",
+    "user": "owner",
+    "route": "/admin/users?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-user-details",
+    "mobile": true
+  },
+  {
+    "id": "admin-quota-edit-fr-light",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-quota-edit"
+  },
+  {
+    "id": "admin-quota-edit-fr-mobile",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-quota-edit",
+    "mobile": true
+  },
+  {
+    "id": "admin-quota-edit-en-light",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-quota-edit"
+  },
+  {
+    "id": "admin-quota-edit-en-mobile",
+    "user": "owner",
+    "route": "/admin/quotas?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-quota-edit",
+    "mobile": true
+  },
+  {
+    "id": "admin-vector-fr-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-vector"
+  },
+  {
+    "id": "admin-vector-fr-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-vector",
+    "mobile": true
+  },
+  {
+    "id": "admin-vector-en-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-vector"
+  },
+  {
+    "id": "admin-vector-en-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-vector",
+    "mobile": true
+  },
+  {
+    "id": "admin-privacy-fr-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-privacy"
+  },
+  {
+    "id": "admin-privacy-fr-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-privacy",
+    "mobile": true
+  },
+  {
+    "id": "admin-privacy-en-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-privacy"
+  },
+  {
+    "id": "admin-privacy-en-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-privacy",
+    "mobile": true
+  },
+  {
+    "id": "admin-media-logs-fr-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-media-logs"
+  },
+  {
+    "id": "admin-media-logs-fr-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "admin-media-logs",
+    "mobile": true
+  },
+  {
+    "id": "admin-media-logs-en-light",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-media-logs"
+  },
+  {
+    "id": "admin-media-logs-en-mobile",
+    "user": "owner",
+    "route": "/admin/general?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "admin-media-logs",
+    "mobile": true
+  },
+  {
+    "id": "account-recovery-codes-fr-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-recovery-codes"
+  },
+  {
+    "id": "account-recovery-codes-fr-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "account-recovery-codes",
+    "mobile": true
+  },
+  {
+    "id": "account-recovery-codes-en-light",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-recovery-codes"
+  },
+  {
+    "id": "account-recovery-codes-en-mobile",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "en",
+    "view": "account-recovery-codes",
+    "mobile": true
+  },
+  {
+    "id": "places-france-fr-dark",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "dark",
+    "language": "fr"
+  },
+  {
+    "id": "places-italy-en-light",
+    "user": "editor",
+    "route": "/?map=a66e3a70-91a9-5fe1-af13-e34976ecd055",
+    "theme": "light",
+    "language": "en"
+  },
+  {
+    "id": "viewer-readonly-fr-light",
+    "user": "viewer",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr"
+  }
 ]

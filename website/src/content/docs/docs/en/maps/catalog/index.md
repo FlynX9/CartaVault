@@ -23,9 +23,13 @@ The vault centralizes owned and shared maps so users can quickly open the right 
 Follow this path in the interface : **Vault**.
 
 
-![Browse the map vault](/docs/screenshots/maps-catalog-fr-light.png)
+![Browse the map vault — desktop screen](/docs/screenshots/maps-catalog-en-light.png)
 
-*Browse the map vault*
+*Browse the map vault — desktop screen*
+
+![Browse the map vault — mobile screen](/docs/screenshots/maps-catalog-en-mobile.png)
+
+*Browse the map vault — mobile screen*
 
 ## How do I use it?
 

@@ -23,9 +23,13 @@ La médiathèque offre une vue transversale des photos sans ouvrir chaque fiche 
 Suivez ce chemin dans l’interface : **Médias**.
 
 
-![Utiliser la médiathèque](/docs/screenshots/media-fr-light.png)
+![Utiliser la médiathèque — écran desktop](/docs/screenshots/media-fr-light.png)
 
-*Utiliser la médiathèque*
+*Utiliser la médiathèque — écran desktop*
+
+![Utiliser la médiathèque — écran mobile](/docs/screenshots/media-fr-mobile.png)
+
+*Utiliser la médiathèque — écran mobile*
 
 ## Comment l’utiliser ?
 

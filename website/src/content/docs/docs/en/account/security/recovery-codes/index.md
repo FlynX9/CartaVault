@@ -23,9 +23,13 @@ Recovery codes prevent a lost or broken phone from permanently locking the accou
 Follow this path in the interface : **My account → Security → TOTP application → Recovery codes**.
 
 
-![Store recovery codes](/docs/screenshots/account-recovery-codes-fr-light.png)
+![Store recovery codes — desktop screen](/docs/screenshots/account-recovery-codes-en-light.png)
 
-*Store recovery codes*
+*Store recovery codes — desktop screen*
+
+![Store recovery codes — mobile screen](/docs/screenshots/account-recovery-codes-en-mobile.png)
+
+*Store recovery codes — mobile screen*
 
 ## How do I use it?
 

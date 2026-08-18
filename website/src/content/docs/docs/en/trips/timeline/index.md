@@ -23,13 +23,13 @@ Timeline makes a complex itinerary easier to understand during planning and in t
 Follow this path in the interface : **Trips → select Trips again / Timeline**.
 
 
-![Browse a trip timeline](/docs/screenshots/timeline-france-fr-light.png)
+![Browse a trip timeline — desktop screen](/docs/screenshots/timeline-france-en-light.png)
 
-*Browse a trip timeline*
+*Browse a trip timeline — desktop screen*
 
-![Browse a trip timeline](/docs/screenshots/timeline-france-fr-mobile.png)
+![Browse a trip timeline — mobile screen](/docs/screenshots/timeline-france-en-mobile.png)
 
-*Browse a trip timeline*
+*Browse a trip timeline — mobile screen*
 
 ## How do I use it?
 

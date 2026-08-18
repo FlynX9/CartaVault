@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Général → Confidentialité et conformité**.
 
 
-![Configurer confidentialité et conformité](/docs/screenshots/admin-privacy-fr-light.png)
+![Configurer confidentialité et conformité — écran desktop](/docs/screenshots/admin-privacy-fr-light.png)
 
-*Configurer confidentialité et conformité*
+*Configurer confidentialité et conformité — écran desktop*
+
+![Configurer confidentialité et conformité — écran mobile](/docs/screenshots/admin-privacy-fr-mobile.png)
+
+*Configurer confidentialité et conformité — écran mobile*
 
 ## Comment l’utiliser ?
 

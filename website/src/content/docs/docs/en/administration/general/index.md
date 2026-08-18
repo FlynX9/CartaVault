@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **User menu → Administration → General**.
 
 
-![Configure the instance](/docs/screenshots/admin-general-fr-light.png)
+![Configure the instance — desktop screen](/docs/screenshots/admin-general-en-light.png)
 
-*Configure the instance*
+*Configure the instance — desktop screen*
+
+![Configure the instance — mobile screen](/docs/screenshots/admin-general-en-mobile.png)
+
+*Configure the instance — mobile screen*
 
 ## How do I use it?
 

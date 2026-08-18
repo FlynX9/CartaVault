@@ -23,9 +23,13 @@ Les exports rendent le voyage utilisable hors de CartaVault, imprimable ou trans
 Suivez ce chemin dans l’interface : **Sorties → actions d’export**.
 
 
-![Exporter une sortie](/docs/screenshots/trip-pdf-export-fr-light.png)
+![Exporter une sortie — écran desktop](/docs/screenshots/trip-pdf-export-fr-light.png)
 
-*Exporter une sortie*
+*Exporter une sortie — écran desktop*
+
+![Exporter une sortie — écran mobile](/docs/screenshots/trip-pdf-export-fr-mobile.png)
+
+*Exporter une sortie — écran mobile*
 
 ## Comment l’utiliser ?
 

@@ -23,9 +23,13 @@ A trip must remain readable when mobile connectivity is absent or unreliable.
 Follow this path in the interface : **Trips → Make available offline**.
 
 
-![Prepare a trip offline](/docs/screenshots/trip-offline-fr-light.png)
+![Prepare a trip offline — desktop screen](/docs/screenshots/trip-offline-en-light.png)
 
-*Prepare a trip offline*
+*Prepare a trip offline — desktop screen*
+
+![Prepare a trip offline — mobile screen](/docs/screenshots/trip-offline-en-mobile.png)
+
+*Prepare a trip offline — mobile screen*
 
 ## How do I use it?
 

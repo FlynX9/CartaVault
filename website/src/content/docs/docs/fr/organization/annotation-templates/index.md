@@ -23,9 +23,13 @@ Un modèle garantit une représentation cohérente des parkings, accès, dangers
 Suivez ce chemin dans l’interface : **Organisation → Annotations**.
 
 
-![Configurer les modèles d’annotation](/docs/screenshots/annotation-templates-fr-light.png)
+![Configurer les modèles d’annotation — écran desktop](/docs/screenshots/annotation-templates-fr-light.png)
 
-*Configurer les modèles d’annotation*
+*Configurer les modèles d’annotation — écran desktop*
+
+![Configurer les modèles d’annotation — écran mobile](/docs/screenshots/annotation-templates-fr-mobile.png)
+
+*Configurer les modèles d’annotation — écran mobile*
 
 ## Comment l’utiliser ?
 

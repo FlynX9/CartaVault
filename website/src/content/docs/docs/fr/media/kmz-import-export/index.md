@@ -23,17 +23,25 @@ Le KMZ facilite la migration et l’échange de données géographiques sans res
 Suivez ce chemin dans l’interface : **Lieux → Importer un KMZ ; Coffre → menu d’une carte → Exporter**.
 
 
-![Importer et exporter une carte KMZ](/docs/screenshots/kmz-import-fr-light.png)
+![Importer et exporter une carte KMZ — écran desktop](/docs/screenshots/kmz-import-fr-light.png)
 
-*Importer et exporter une carte KMZ*
+*Importer et exporter une carte KMZ — écran desktop*
 
-![Importer et exporter une carte KMZ](/docs/screenshots/kmz-export-fr-light.png)
+![Importer et exporter une carte KMZ — écran mobile](/docs/screenshots/kmz-import-fr-mobile.png)
 
-*Importer et exporter une carte KMZ*
+*Importer et exporter une carte KMZ — écran mobile*
+
+![Importer et exporter une carte KMZ — écran desktop](/docs/screenshots/kmz-export-fr-light.png)
+
+*Importer et exporter une carte KMZ — écran desktop*
+
+![Importer et exporter une carte KMZ — écran mobile](/docs/screenshots/kmz-export-fr-mobile.png)
+
+*Importer et exporter une carte KMZ — écran mobile*
 
 ## Comment l’utiliser ?
 
-1. Choisissez le fichier ou les options d’export.
+1. Sur desktop, choisissez le fichier ou les options d’export.
 2. Contrôlez le rapport, les correspondances et avertissements.
 3. Confirmez l’import ou téléchargez l’archive générée.
 
@@ -50,6 +58,7 @@ L’import détecte les conventions courantes et signale les doublons.
 ## À savoir
 
 :::note
+- L’action d’import KMZ n’est pas proposée sur l’interface mobile : ouvrez CartaVault sur desktop pour démarrer l’import.
 - Vérifiez les droits et licences des images avant de les échanger.
 :::
 

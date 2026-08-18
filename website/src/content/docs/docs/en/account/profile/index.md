@@ -23,9 +23,13 @@ Profile controls the identity shown in collaboration while keeping avatars separ
 Follow this path in the interface : **User menu → Options → Profile**.
 
 
-![Manage your profile](/docs/screenshots/account-profile-fr-light.png)
+![Manage your profile — desktop screen](/docs/screenshots/account-profile-en-light.png)
 
-*Manage your profile*
+*Manage your profile — desktop screen*
+
+![Manage your profile — mobile screen](/docs/screenshots/account-profile-en-mobile.png)
+
+*Manage your profile — mobile screen*
 
 ## How do I use it?
 

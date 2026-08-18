@@ -23,9 +23,13 @@ Trash protects against accidental deletion while preserving an explicit path to 
 Follow this path in the interface : **Organization → Trash**.
 
 
-![Restore items from trash](/docs/screenshots/trash-fr-light.png)
+![Restore items from trash — desktop screen](/docs/screenshots/trash-en-light.png)
 
-*Restore items from trash*
+*Restore items from trash — desktop screen*
+
+![Restore items from trash — mobile screen](/docs/screenshots/trash-en-mobile.png)
+
+*Restore items from trash — mobile screen*
 
 ## How do I use it?
 

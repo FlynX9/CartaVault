@@ -23,9 +23,13 @@ A template keeps parking, access, hazard and landmark representations consistent
 Follow this path in the interface : **Organization → Annotations**.
 
 
-![Configure annotation templates](/docs/screenshots/annotation-templates-fr-light.png)
+![Configure annotation templates — desktop screen](/docs/screenshots/annotation-templates-en-light.png)
 
-*Configure annotation templates*
+*Configure annotation templates — desktop screen*
+
+![Configure annotation templates — mobile screen](/docs/screenshots/annotation-templates-en-mobile.png)
+
+*Configure annotation templates — mobile screen*
 
 ## How do I use it?
 

@@ -23,9 +23,13 @@ A unique password limits the impact of a breach on another service and protects 
 Follow this path in the interface : **My account → Security → Password → Change**.
 
 
-![Change your password](/docs/screenshots/account-password-change-fr-light.png)
+![Change your password — desktop screen](/docs/screenshots/account-password-change-en-light.png)
 
-*Change your password*
+*Change your password — desktop screen*
+
+![Change your password — mobile screen](/docs/screenshots/account-password-change-en-mobile.png)
+
+*Change your password — mobile screen*
 
 ## How do I use it?
 

@@ -23,9 +23,13 @@ La liste des sessions aide à repérer un appareil inattendu et à couper son ac
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Gérer les sessions**.
 
 
-![Gérer les sessions et appareils](/docs/screenshots/account-sessions-fr-light.png)
+![Gérer les sessions et appareils — écran desktop](/docs/screenshots/account-sessions-fr-light.png)
 
-*Gérer les sessions et appareils*
+*Gérer les sessions et appareils — écran desktop*
+
+![Gérer les sessions et appareils — écran mobile](/docs/screenshots/account-sessions-fr-mobile.png)
+
+*Gérer les sessions et appareils — écran mobile*
 
 ## Comment l’utiliser ?
 

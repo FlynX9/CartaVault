@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → Instance status**.
 
 
-![Monitor instance status](/docs/screenshots/admin-instance-fr-light.png)
+![Monitor instance status — desktop screen](/docs/screenshots/admin-instance-en-light.png)
 
-*Monitor instance status*
+*Monitor instance status — desktop screen*
+
+![Monitor instance status — mobile screen](/docs/screenshots/admin-instance-en-mobile.png)
+
+*Monitor instance status — mobile screen*
 
 ## How do I use it?
 

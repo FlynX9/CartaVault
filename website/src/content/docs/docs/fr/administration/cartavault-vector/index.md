@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Général → Fond de carte CartaVault**.
 
 
-![Préparer les fonds CartaVault Vector](/docs/screenshots/admin-vector-fr-light.png)
+![Préparer les fonds CartaVault Vector — écran desktop](/docs/screenshots/admin-vector-fr-light.png)
 
-*Préparer les fonds CartaVault Vector*
+*Préparer les fonds CartaVault Vector — écran desktop*
+
+![Préparer les fonds CartaVault Vector — écran mobile](/docs/screenshots/admin-vector-fr-mobile.png)
+
+*Préparer les fonds CartaVault Vector — écran mobile*
 
 ## Comment l’utiliser ?
 

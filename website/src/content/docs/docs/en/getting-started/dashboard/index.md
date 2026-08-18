@@ -23,9 +23,13 @@ The dashboard summarizes every map the account can access so users do not have t
 Follow this path in the interface : **Home**.
 
 
-![Use the dashboard](/docs/screenshots/dashboard-fr-light.png)
+![Use the dashboard — desktop screen](/docs/screenshots/dashboard-en-light.png)
 
-*Use the dashboard*
+*Use the dashboard — desktop screen*
+
+![Use the dashboard — mobile screen](/docs/screenshots/dashboard-en-mobile.png)
+
+*Use the dashboard — mobile screen*
 
 ## How do I use it?
 

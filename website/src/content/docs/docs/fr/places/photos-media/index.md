@@ -23,9 +23,13 @@ Les images documentent l’état et l’accès d’un lieu. CartaVault les ratta
 Suivez ce chemin dans l’interface : **Fiche d’un lieu → Médias**.
 
 
-![Gérer les photos d’un lieu](/docs/screenshots/place-media-fr-light.png)
+![Gérer les photos d’un lieu — écran desktop](/docs/screenshots/place-media-fr-light.png)
 
-*Gérer les photos d’un lieu*
+*Gérer les photos d’un lieu — écran desktop*
+
+![Gérer les photos d’un lieu — écran mobile](/docs/screenshots/place-media-fr-mobile.png)
+
+*Gérer les photos d’un lieu — écran mobile*
 
 ## Comment l’utiliser ?
 

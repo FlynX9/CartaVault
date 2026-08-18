@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → API keys**.
 
 
-![Manage instance providers and keys](/docs/screenshots/admin-api-keys-fr-light.png)
+![Manage instance providers and keys — desktop screen](/docs/screenshots/admin-api-keys-en-light.png)
 
-*Manage instance providers and keys*
+*Manage instance providers and keys — desktop screen*
+
+![Manage instance providers and keys — mobile screen](/docs/screenshots/admin-api-keys-en-mobile.png)
+
+*Manage instance providers and keys — mobile screen*
 
 ## How do I use it?
 

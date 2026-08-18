@@ -23,9 +23,13 @@ Les parcours de sécurité et collaboration doivent prévenir l’utilisateur et
 Suivez ce chemin dans l’interface : **Variables de déploiement pour SMTP, ou Administration → Clés API pour Resend**.
 
 
-![Configurer les e-mails transactionnels](/docs/screenshots/admin-api-keys-fr-light.png)
+![Configurer les e-mails transactionnels — écran desktop](/docs/screenshots/admin-api-keys-fr-light.png)
 
-*Configurer les e-mails transactionnels*
+*Configurer les e-mails transactionnels — écran desktop*
+
+![Configurer les e-mails transactionnels — écran mobile](/docs/screenshots/admin-api-keys-fr-mobile.png)
+
+*Configurer les e-mails transactionnels — écran mobile*
 
 ## Comment l’utiliser ?
 

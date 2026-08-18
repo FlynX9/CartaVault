@@ -23,9 +23,13 @@ Le code par e-mail fournit une protection supplémentaire accessible aux comptes
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Code par e-mail**.
 
 
-![Activer le code MFA par e-mail](/docs/screenshots/account-email-mfa-fr-light.png)
+![Activer le code MFA par e-mail — écran desktop](/docs/screenshots/account-email-mfa-fr-light.png)
 
-*Activer le code MFA par e-mail*
+*Activer le code MFA par e-mail — écran desktop*
+
+![Activer le code MFA par e-mail — écran mobile](/docs/screenshots/account-email-mfa-fr-mobile.png)
+
+*Activer le code MFA par e-mail — écran mobile*
 
 ## Comment l’utiliser ?
 

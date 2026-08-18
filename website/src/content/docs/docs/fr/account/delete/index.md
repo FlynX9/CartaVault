@@ -23,9 +23,13 @@ La suppression répond au droit de quitter l’instance tout en préservant l’
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Zone sensible**.
 
 
-![Supprimer son compte](/docs/screenshots/account-delete-fr-light.png)
+![Supprimer son compte — écran desktop](/docs/screenshots/account-delete-fr-light.png)
 
-*Supprimer son compte*
+*Supprimer son compte — écran desktop*
+
+![Supprimer son compte — écran mobile](/docs/screenshots/account-delete-fr-mobile.png)
+
+*Supprimer son compte — écran mobile*
 
 ## Comment l’utiliser ?
 

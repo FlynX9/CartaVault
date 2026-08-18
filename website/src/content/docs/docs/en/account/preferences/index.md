@@ -23,9 +23,13 @@ Preferences adapt CartaVault to the working context and follow the account acros
 Follow this path in the interface : **User menu → Options → Preferences**.
 
 
-![Configure preferences](/docs/screenshots/account-preferences-fr-light.png)
+![Configure preferences — desktop screen](/docs/screenshots/account-preferences-en-light.png)
 
-*Configure preferences*
+*Configure preferences — desktop screen*
+
+![Configure preferences — mobile screen](/docs/screenshots/account-preferences-en-mobile.png)
+
+*Configure preferences — mobile screen*
 
 ## How do I use it?
 

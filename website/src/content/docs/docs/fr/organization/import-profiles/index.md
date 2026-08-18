@@ -23,9 +23,29 @@ Les profils accélèrent la préparation d’une nouvelle carte tout en évitant
 Suivez ce chemin dans l’interface : **Organisation → action Importer**.
 
 
-![Importer un profil d’organisation](/docs/screenshots/profile-import-fr-light.png)
+![Importer un profil d’organisation — écran desktop](/docs/screenshots/profile-import-fr-light.png)
 
-*Importer un profil d’organisation*
+*Importer un profil d’organisation — écran desktop*
+
+![Importer un profil d’organisation — écran mobile](/docs/screenshots/profile-import-fr-mobile.png)
+
+*Importer un profil d’organisation — écran mobile*
+
+![Importer un profil d’organisation — écran desktop](/docs/screenshots/tag-profile-import-fr-light.png)
+
+*Importer un profil d’organisation — écran desktop*
+
+![Importer un profil d’organisation — écran mobile](/docs/screenshots/tag-profile-import-fr-mobile.png)
+
+*Importer un profil d’organisation — écran mobile*
+
+![Importer un profil d’organisation — écran desktop](/docs/screenshots/status-profile-import-fr-light.png)
+
+*Importer un profil d’organisation — écran desktop*
+
+![Importer un profil d’organisation — écran mobile](/docs/screenshots/status-profile-import-fr-mobile.png)
+
+*Importer un profil d’organisation — écran mobile*
 
 ## Comment l’utiliser ?
 
@@ -46,6 +66,7 @@ Les noms déjà présents sont ignorés pour éviter les doublons.
 
 :::note
 - L’import complète la carte et ne remplace pas son organisation existante.
+- Les valeurs importées ne sont pas associées automatiquement aux POI existants ; utilisez l’édition d’un lieu ou les actions groupées pour les affecter.
 :::
 
 ## Voir aussi

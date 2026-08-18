@@ -23,9 +23,29 @@ Profiles speed up preparation of a new map and avoid manually recreating the sam
 Follow this path in the interface : **Organization → Import action**.
 
 
-![Import an organization profile](/docs/screenshots/profile-import-fr-light.png)
+![Import an organization profile — desktop screen](/docs/screenshots/profile-import-en-light.png)
 
-*Import an organization profile*
+*Import an organization profile — desktop screen*
+
+![Import an organization profile — mobile screen](/docs/screenshots/profile-import-en-mobile.png)
+
+*Import an organization profile — mobile screen*
+
+![Import an organization profile — desktop screen](/docs/screenshots/tag-profile-import-en-light.png)
+
+*Import an organization profile — desktop screen*
+
+![Import an organization profile — mobile screen](/docs/screenshots/tag-profile-import-en-mobile.png)
+
+*Import an organization profile — mobile screen*
+
+![Import an organization profile — desktop screen](/docs/screenshots/status-profile-import-en-light.png)
+
+*Import an organization profile — desktop screen*
+
+![Import an organization profile — mobile screen](/docs/screenshots/status-profile-import-en-mobile.png)
+
+*Import an organization profile — mobile screen*
 
 ## How do I use it?
 
@@ -46,6 +66,7 @@ Names already present are ignored to prevent duplicates.
 
 :::note
 - Import complements the map and does not replace existing organization.
+- Imported values are not automatically assigned to existing POIs; use place editing or bulk actions to apply them.
 :::
 
 ## See also

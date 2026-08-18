@@ -23,9 +23,13 @@ La corbeille protège contre les suppressions accidentelles tout en laissant une
 Suivez ce chemin dans l’interface : **Organisation → Corbeille**.
 
 
-![Restaurer depuis la corbeille](/docs/screenshots/trash-fr-light.png)
+![Restaurer depuis la corbeille — écran desktop](/docs/screenshots/trash-fr-light.png)
 
-*Restaurer depuis la corbeille*
+*Restaurer depuis la corbeille — écran desktop*
+
+![Restaurer depuis la corbeille — écran mobile](/docs/screenshots/trash-fr-mobile.png)
+
+*Restaurer depuis la corbeille — écran mobile*
 
 ## Comment l’utiliser ?
 

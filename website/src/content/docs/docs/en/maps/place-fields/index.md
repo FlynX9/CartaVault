@@ -23,9 +23,13 @@ Not every map requires the same level of detail. Hiding fields simplifies forms 
 Follow this path in the interface : **Vault → map menu → POI fields**.
 
 
-![Choose place fields](/docs/screenshots/map-fields-fr-light.png)
+![Choose place fields — desktop screen](/docs/screenshots/map-fields-en-light.png)
 
-*Choose place fields*
+*Choose place fields — desktop screen*
+
+![Choose place fields — mobile screen](/docs/screenshots/map-fields-en-mobile.png)
+
+*Choose place fields — mobile screen*
 
 ## How do I use it?
 

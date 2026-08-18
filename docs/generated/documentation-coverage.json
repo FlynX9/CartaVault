@@ -1,12 +1,12 @@
 {
   "summary": {
-    "detected": 49,
-    "detected_surfaces": 75,
+    "detected": 50,
+    "detected_surfaces": 76,
     "manifested": 49,
     "documented": 49,
     "scenarios": 49,
     "captures_ready": 49,
-    "coverage_percent": 100.0
+    "coverage_percent": 98.0
   },
   "sections": [
     {
@@ -87,7 +87,13 @@
       "captures_ready": 4
     }
   ],
-  "unmanifested_surfaces": [],
+  "unmanifested_surfaces": [
+    {
+      "id": "dialog:registration-requests-title",
+      "kind": "dialog",
+      "source": "frontend/src/pages/admin/AdminUsersSection.tsx"
+    }
+  ],
   "unknown_manifest_surfaces": [
     "account:api-keys",
     "account:offline",
@@ -114,7 +120,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "dashboard-fr-light"
+        "dashboard-fr-light",
+        "dashboard-fr-mobile",
+        "dashboard-en-light",
+        "dashboard-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -129,7 +138,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "trip-france-fr-light"
+        "trip-france-fr-light",
+        "trip-france-fr-mobile",
+        "trip-france-en-light",
+        "trip-france-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -144,7 +156,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "map-members-fr-light"
+        "map-members-fr-light",
+        "map-members-fr-mobile",
+        "map-members-en-light",
+        "map-members-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -159,7 +174,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "maps-catalog-fr-light"
+        "maps-catalog-fr-light",
+        "maps-catalog-fr-mobile",
+        "maps-catalog-en-light",
+        "maps-catalog-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -174,7 +192,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "create-map-fr-light"
+        "create-map-fr-light",
+        "create-map-fr-mobile",
+        "create-map-en-light",
+        "create-map-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -189,7 +210,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "map-fields-fr-light"
+        "map-fields-fr-light",
+        "map-fields-fr-mobile",
+        "map-fields-en-light",
+        "map-fields-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -204,7 +228,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "map-members-fr-light"
+        "map-members-fr-light",
+        "map-members-fr-mobile",
+        "map-members-en-light",
+        "map-members-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -219,7 +246,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "trash-fr-light"
+        "trash-fr-light",
+        "trash-fr-mobile",
+        "trash-en-light",
+        "trash-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -235,7 +265,9 @@
       "scenario": true,
       "captures": [
         "places-france-fr-light",
-        "places-france-fr-mobile"
+        "places-france-fr-mobile",
+        "places-france-en-light",
+        "places-france-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -250,7 +282,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "place-editor-fr-light"
+        "place-editor-fr-light",
+        "place-editor-fr-mobile",
+        "place-editor-en-light",
+        "place-editor-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -265,7 +300,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "place-media-fr-light"
+        "place-media-fr-light",
+        "place-media-fr-mobile",
+        "place-media-en-light",
+        "place-media-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -280,7 +318,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "place-annotations-fr-light"
+        "place-annotations-fr-light",
+        "place-annotations-fr-mobile",
+        "place-annotations-en-light",
+        "place-annotations-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -295,7 +336,18 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "categories-fr-light"
+        "categories-fr-light",
+        "categories-fr-mobile",
+        "categories-en-light",
+        "categories-en-mobile",
+        "tags-fr-light",
+        "tags-fr-mobile",
+        "tags-en-light",
+        "tags-en-mobile",
+        "statuses-fr-light",
+        "statuses-fr-mobile",
+        "statuses-en-light",
+        "statuses-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -310,7 +362,18 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "profile-import-fr-light"
+        "profile-import-fr-light",
+        "profile-import-fr-mobile",
+        "profile-import-en-light",
+        "profile-import-en-mobile",
+        "tag-profile-import-fr-light",
+        "tag-profile-import-fr-mobile",
+        "tag-profile-import-en-light",
+        "tag-profile-import-en-mobile",
+        "status-profile-import-fr-light",
+        "status-profile-import-fr-mobile",
+        "status-profile-import-en-light",
+        "status-profile-import-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -325,7 +388,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "annotation-templates-fr-light"
+        "annotation-templates-fr-light",
+        "annotation-templates-fr-mobile",
+        "annotation-templates-en-light",
+        "annotation-templates-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -341,7 +407,9 @@
       "scenario": true,
       "captures": [
         "trip-france-fr-light",
-        "trip-france-fr-mobile"
+        "trip-france-fr-mobile",
+        "trip-france-en-light",
+        "trip-france-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -356,7 +424,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "trip-routing-fr-light"
+        "trip-routing-fr-light",
+        "trip-routing-fr-mobile",
+        "trip-routing-en-light",
+        "trip-routing-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -372,7 +443,9 @@
       "scenario": true,
       "captures": [
         "timeline-france-fr-light",
-        "timeline-france-fr-mobile"
+        "timeline-france-fr-mobile",
+        "timeline-france-en-light",
+        "timeline-france-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -387,7 +460,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "trip-pdf-export-fr-light"
+        "trip-pdf-export-fr-light",
+        "trip-pdf-export-fr-mobile",
+        "trip-pdf-export-en-light",
+        "trip-pdf-export-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -402,7 +478,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "trip-offline-fr-light"
+        "trip-offline-fr-light",
+        "trip-offline-fr-mobile",
+        "trip-offline-en-light",
+        "trip-offline-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -417,7 +496,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "media-fr-light"
+        "media-fr-light",
+        "media-fr-mobile",
+        "media-en-light",
+        "media-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -432,7 +514,14 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "media-upload-fr-light"
+        "media-upload-fr-light",
+        "media-upload-fr-mobile",
+        "media-upload-en-light",
+        "media-upload-en-mobile",
+        "media-gps-fr-light",
+        "media-gps-fr-mobile",
+        "media-gps-en-light",
+        "media-gps-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -448,7 +537,13 @@
       "scenario": true,
       "captures": [
         "kmz-import-fr-light",
-        "kmz-export-fr-light"
+        "kmz-import-fr-mobile",
+        "kmz-import-en-light",
+        "kmz-import-en-mobile",
+        "kmz-export-fr-light",
+        "kmz-export-fr-mobile",
+        "kmz-export-en-light",
+        "kmz-export-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -463,7 +558,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "map-offline-fr-light"
+        "map-offline-fr-light",
+        "map-offline-fr-mobile",
+        "map-offline-en-light",
+        "map-offline-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -478,7 +576,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "places-france-fr-mobile"
+        "places-france-fr-light",
+        "places-france-fr-mobile",
+        "places-france-en-light",
+        "places-france-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -493,7 +594,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-profile-fr-light"
+        "account-profile-fr-light",
+        "account-profile-fr-mobile",
+        "account-profile-en-light",
+        "account-profile-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -508,7 +612,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-preferences-fr-light"
+        "account-preferences-fr-light",
+        "account-preferences-fr-mobile",
+        "account-preferences-en-light",
+        "account-preferences-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -523,7 +630,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-security-fr-light"
+        "account-security-fr-light",
+        "account-security-fr-mobile",
+        "account-security-en-light",
+        "account-security-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -538,7 +648,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-email-change-fr-light"
+        "account-email-change-fr-light",
+        "account-email-change-fr-mobile",
+        "account-email-change-en-light",
+        "account-email-change-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -553,7 +666,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-password-change-fr-light"
+        "account-password-change-fr-light",
+        "account-password-change-fr-mobile",
+        "account-password-change-en-light",
+        "account-password-change-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -570,7 +686,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-totp-fr-light"
+        "account-totp-fr-light",
+        "account-totp-fr-mobile",
+        "account-totp-en-light",
+        "account-totp-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -585,7 +704,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-email-mfa-fr-light"
+        "account-email-mfa-fr-light",
+        "account-email-mfa-fr-mobile",
+        "account-email-mfa-en-light",
+        "account-email-mfa-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -600,7 +722,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-recovery-codes-fr-light"
+        "account-recovery-codes-fr-light",
+        "account-recovery-codes-fr-mobile",
+        "account-recovery-codes-en-light",
+        "account-recovery-codes-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -615,7 +740,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-sessions-fr-light"
+        "account-sessions-fr-light",
+        "account-sessions-fr-mobile",
+        "account-sessions-en-light",
+        "account-sessions-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -631,7 +759,13 @@
       "scenario": true,
       "captures": [
         "account-api-keys-fr-light",
-        "account-api-key-dialog-fr-light"
+        "account-api-keys-fr-mobile",
+        "account-api-keys-en-light",
+        "account-api-keys-en-mobile",
+        "account-api-key-dialog-fr-light",
+        "account-api-key-dialog-fr-mobile",
+        "account-api-key-dialog-en-light",
+        "account-api-key-dialog-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -646,7 +780,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-privacy-fr-light"
+        "account-privacy-fr-light",
+        "account-privacy-fr-mobile",
+        "account-privacy-en-light",
+        "account-privacy-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -661,7 +798,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-offline-fr-light"
+        "account-offline-fr-light",
+        "account-offline-fr-mobile",
+        "account-offline-en-light",
+        "account-offline-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -676,7 +816,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "account-delete-fr-light"
+        "account-delete-fr-light",
+        "account-delete-fr-mobile",
+        "account-delete-en-light",
+        "account-delete-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -691,7 +834,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-general-fr-light"
+        "admin-general-fr-light",
+        "admin-general-fr-mobile",
+        "admin-general-en-light",
+        "admin-general-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -706,7 +852,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-registration-fr-light"
+        "admin-registration-fr-light",
+        "admin-registration-fr-mobile",
+        "admin-registration-en-light",
+        "admin-registration-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -722,13 +871,19 @@
       "scenario": true,
       "captures": [
         "admin-users-fr-light",
-        "admin-user-details-fr-light"
+        "admin-users-fr-mobile",
+        "admin-users-en-light",
+        "admin-users-en-mobile",
+        "admin-user-details-fr-light",
+        "admin-user-details-fr-mobile",
+        "admin-user-details-en-light",
+        "admin-user-details-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "8b22bb649356ed73"
+      "source_hash": "64b5bd43ac6ec34e"
     },
     {
       "id": "admin.quotas",
@@ -738,7 +893,13 @@
       "scenario": true,
       "captures": [
         "admin-quotas-fr-light",
-        "admin-quota-edit-fr-light"
+        "admin-quotas-fr-mobile",
+        "admin-quotas-en-light",
+        "admin-quotas-en-mobile",
+        "admin-quota-edit-fr-light",
+        "admin-quota-edit-fr-mobile",
+        "admin-quota-edit-en-light",
+        "admin-quota-edit-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -753,7 +914,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-api-keys-fr-light"
+        "admin-api-keys-fr-light",
+        "admin-api-keys-fr-mobile",
+        "admin-api-keys-en-light",
+        "admin-api-keys-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -768,7 +932,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-vector-fr-light"
+        "admin-vector-fr-light",
+        "admin-vector-fr-mobile",
+        "admin-vector-en-light",
+        "admin-vector-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -783,7 +950,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-privacy-fr-light"
+        "admin-privacy-fr-light",
+        "admin-privacy-fr-mobile",
+        "admin-privacy-en-light",
+        "admin-privacy-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -798,7 +968,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-media-logs-fr-light"
+        "admin-media-logs-fr-light",
+        "admin-media-logs-fr-mobile",
+        "admin-media-logs-en-light",
+        "admin-media-logs-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -813,7 +986,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-instance-fr-light"
+        "admin-instance-fr-light",
+        "admin-instance-fr-mobile",
+        "admin-instance-en-light",
+        "admin-instance-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -828,7 +1004,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "login-fr-light"
+        "login-fr-light",
+        "login-fr-mobile",
+        "login-en-light",
+        "login-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],
@@ -843,7 +1022,10 @@
       "documented": true,
       "scenario": true,
       "captures": [
-        "admin-api-keys-fr-light"
+        "admin-api-keys-fr-light",
+        "admin-api-keys-fr-mobile",
+        "admin-api-keys-en-light",
+        "admin-api-keys-en-mobile"
       ],
       "missing_scenarios": [],
       "missing_captures": [],

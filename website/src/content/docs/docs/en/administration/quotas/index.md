@@ -27,13 +27,21 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → Quotas**.
 
 
-![Configure quota profiles](/docs/screenshots/admin-quotas-fr-light.png)
+![Configure quota profiles — desktop screen](/docs/screenshots/admin-quotas-en-light.png)
 
-*Configure quota profiles*
+*Configure quota profiles — desktop screen*
 
-![Configure quota profiles](/docs/screenshots/admin-quota-edit-fr-light.png)
+![Configure quota profiles — mobile screen](/docs/screenshots/admin-quotas-en-mobile.png)
 
-*Configure quota profiles*
+*Configure quota profiles — mobile screen*
+
+![Configure quota profiles — desktop screen](/docs/screenshots/admin-quota-edit-en-light.png)
+
+*Configure quota profiles — desktop screen*
+
+![Configure quota profiles — mobile screen](/docs/screenshots/admin-quota-edit-en-mobile.png)
+
+*Configure quota profiles — mobile screen*
 
 ## How do I use it?
 

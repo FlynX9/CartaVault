@@ -23,9 +23,13 @@ Email codes provide an additional protection layer for accounts that do not yet 
 Follow this path in the interface : **My account → Security → Email code**.
 
 
-![Enable email MFA codes](/docs/screenshots/account-email-mfa-fr-light.png)
+![Enable email MFA codes — desktop screen](/docs/screenshots/account-email-mfa-en-light.png)
 
-*Enable email MFA codes*
+*Enable email MFA codes — desktop screen*
+
+![Enable email MFA codes — mobile screen](/docs/screenshots/account-email-mfa-en-mobile.png)
+
+*Enable email MFA codes — mobile screen*
 
 ## How do I use it?
 

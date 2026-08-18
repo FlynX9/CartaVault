@@ -23,9 +23,13 @@ La fiche concentre les informations durables nécessaires pour retrouver, visite
 Suivez ce chemin dans l’interface : **Lieux → Nouveau lieu, ou fiche d’un lieu → Modifier**.
 
 
-![Créer ou modifier un lieu](/docs/screenshots/place-editor-fr-light.png)
+![Créer ou modifier un lieu — écran desktop](/docs/screenshots/place-editor-fr-light.png)
 
-*Créer ou modifier un lieu*
+*Créer ou modifier un lieu — écran desktop*
+
+![Créer ou modifier un lieu — écran mobile](/docs/screenshots/place-editor-fr-mobile.png)
+
+*Créer ou modifier un lieu — écran mobile*
 
 ## Comment l’utiliser ?
 

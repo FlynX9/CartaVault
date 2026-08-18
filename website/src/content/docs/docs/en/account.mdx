@@ -1,0 +1,41 @@
+---
+title: User panel
+description: Manage your profile, preferences, services, security, and data.
+sidebar:
+  order: 9
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import accountDesktop from '../../../../assets/screenshots/app-account-en.png';
+import accountMobile from '../../../../assets/screenshots/app-account-mobile-en.png';
+
+## Open the panel
+
+Open the menu attached to your avatar, then choose **Options**. The user panel contains settings for your own account and remains separate from instance-wide administration.
+
+## Available sections
+
+- **Profile**: display name, avatar, and account information.
+- **Preferences**: language, theme, density, start screen, time zone, and trash retention.
+- **Services and API keys**: search, routing, classic basemap, and satellite providers using personal or quota-shared instance keys.
+- **Security**: email, password, TOTP or email MFA, recovery codes, and active sessions.
+- **Privacy**: personal export and data-processing information.
+- **Offline data**: maps and trips stored in this browser.
+
+Instance keys are selectable when an administrator shares them with your quota profile. Their secrets remain hidden and users cannot edit them.
+
+<ProductScreenshot src={accountDesktop} alt="CartaVault user panel on desktop" caption="On desktop, every section remains available in the panel navigation." />
+
+<ProductScreenshot src={accountMobile} alt="CartaVault user panel on mobile" caption="On mobile, the same panel uses the available screen while retaining the same settings." />
+
+## Save changes safely
+
+The **Save** button applies panel changes. When closing with unsaved changes, CartaVault offers to continue editing, discard the changes, or save them.
+
+## Go further
+
+- [Manage your profile](/docs/en/account/profile/)
+- [Configure preferences](/docs/en/account/preferences/)
+- [Understand account security](/docs/en/account/security/overview/)
+- [Manage personal and shared API keys](/docs/en/account/api-keys/)
+- [Control offline data](/docs/en/account/offline-data/)

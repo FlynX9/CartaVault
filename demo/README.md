@@ -33,7 +33,7 @@ Le reset refuse de s’exécuter sauf si les trois conditions suivantes sont ré
 - nom exact de la base : `cartavault_demo` ;
 - hôte présent dans `CARTAVAULT_DEMO_DATABASE_HOSTS`.
 
-Le jeu de données de référence contient trois utilisateurs, deux cartes (France et Italie), 60 POI, six régions et trois sorties couvrant les états planifié et brouillon. Les 30 POI français possèdent chacun une illustration originale légère dédiée aux captures.
+Le jeu de données de référence contient trois utilisateurs, deux cartes (France et Italie), 60 POI, six régions et trois sorties couvrant les états planifié et brouillon. Les 30 POI français possèdent chacun une illustration originale légère dédiée aux captures. Une image supplémentaire, non rattachée et géolocalisée, documente le parcours de création d’un POI depuis les coordonnées GPS d’un média.
 
 Les illustrations sources résident dans `assets/places/` et sont immuables pour le reset. La commande vérifie leur présence avant toute remise à zéro de la base, puis copie ces fichiers dans le volume photo d’exécution. Un `reset`, même répété, ne supprime donc jamais les images sources.
 
@@ -60,8 +60,8 @@ La stack utilise son propre réseau et ses propres volumes ; elle ne partage rie
 
 ## Portainer sans registre d’images
 
-1. Construire puis exporter l’image : `docker compose build demo-reset` puis `docker save --output runtime/cartavault-demo.tar cartavault:demo`.
-2. Dans **Images → Import**, importer le tar avec le tag `cartavault:demo`.
+1. Construire puis exporter l’image : `docker compose build demo-reset` puis `docker save --output runtime/cartavault-demo.tar cartavault:1.0.0-rc.5-demo`.
+2. Dans **Images → Import**, importer le tar avec le tag `cartavault:1.0.0-rc.5-demo`.
 3. Créer une stack `cartavault-demo` à partir de `compose.portainer.yml`.
 4. Adapter `DEMO_PUBLIC_URL`, `DEMO_HTTP_PORT` et `DEMO_POSTGRES_PASSWORD` si nécessaire.
 

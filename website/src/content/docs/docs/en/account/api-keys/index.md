@@ -23,13 +23,21 @@ Personal keys use a provider subscription without exposing the secret in maps or
 Follow this path in the interface : **My account → API keys**.
 
 
-![Manage personal API keys](/docs/screenshots/account-api-keys-fr-light.png)
+![Manage personal API keys — desktop screen](/docs/screenshots/account-api-keys-en-light.png)
 
-*Manage personal API keys*
+*Manage personal API keys — desktop screen*
 
-![Manage personal API keys](/docs/screenshots/account-api-key-dialog-fr-light.png)
+![Manage personal API keys — mobile screen](/docs/screenshots/account-api-keys-en-mobile.png)
 
-*Manage personal API keys*
+*Manage personal API keys — mobile screen*
+
+![Manage personal API keys — desktop screen](/docs/screenshots/account-api-key-dialog-en-light.png)
+
+*Manage personal API keys — desktop screen*
+
+![Manage personal API keys — mobile screen](/docs/screenshots/account-api-key-dialog-en-mobile.png)
+
+*Manage personal API keys — mobile screen*
 
 ## How do I use it?
 

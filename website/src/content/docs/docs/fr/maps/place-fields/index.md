@@ -23,9 +23,13 @@ Toutes les cartes n’ont pas besoin du même niveau de détail. Masquer des cha
 Suivez ce chemin dans l’interface : **Coffre → menu d’une carte → Champs des POI**.
 
 
-![Choisir les champs des lieux](/docs/screenshots/map-fields-fr-light.png)
+![Choisir les champs des lieux — écran desktop](/docs/screenshots/map-fields-fr-light.png)
 
-*Choisir les champs des lieux*
+*Choisir les champs des lieux — écran desktop*
+
+![Choisir les champs des lieux — écran mobile](/docs/screenshots/map-fields-fr-mobile.png)
+
+*Choisir les champs des lieux — écran mobile*
 
 ## Comment l’utiliser ?
 

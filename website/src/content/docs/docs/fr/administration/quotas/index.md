@@ -27,13 +27,21 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Quotas**.
 
 
-![Configurer les profils de quotas](/docs/screenshots/admin-quotas-fr-light.png)
+![Configurer les profils de quotas — écran desktop](/docs/screenshots/admin-quotas-fr-light.png)
 
-*Configurer les profils de quotas*
+*Configurer les profils de quotas — écran desktop*
 
-![Configurer les profils de quotas](/docs/screenshots/admin-quota-edit-fr-light.png)
+![Configurer les profils de quotas — écran mobile](/docs/screenshots/admin-quotas-fr-mobile.png)
 
-*Configurer les profils de quotas*
+*Configurer les profils de quotas — écran mobile*
+
+![Configurer les profils de quotas — écran desktop](/docs/screenshots/admin-quota-edit-fr-light.png)
+
+*Configurer les profils de quotas — écran desktop*
+
+![Configurer les profils de quotas — écran mobile](/docs/screenshots/admin-quota-edit-fr-mobile.png)
+
+*Configurer les profils de quotas — écran mobile*
 
 ## Comment l’utiliser ?
 

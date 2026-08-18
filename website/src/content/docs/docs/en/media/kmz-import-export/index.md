@@ -23,17 +23,25 @@ KMZ supports migration and geographic data exchange without manual re-entry.
 Follow this path in the interface : **Places → Import KMZ; Vault → map menu → Export**.
 
 
-![Import and export a KMZ map](/docs/screenshots/kmz-import-fr-light.png)
+![Import and export a KMZ map — desktop screen](/docs/screenshots/kmz-import-en-light.png)
 
-*Import and export a KMZ map*
+*Import and export a KMZ map — desktop screen*
 
-![Import and export a KMZ map](/docs/screenshots/kmz-export-fr-light.png)
+![Import and export a KMZ map — mobile screen](/docs/screenshots/kmz-import-en-mobile.png)
 
-*Import and export a KMZ map*
+*Import and export a KMZ map — mobile screen*
+
+![Import and export a KMZ map — desktop screen](/docs/screenshots/kmz-export-en-light.png)
+
+*Import and export a KMZ map — desktop screen*
+
+![Import and export a KMZ map — mobile screen](/docs/screenshots/kmz-export-en-mobile.png)
+
+*Import and export a KMZ map — mobile screen*
 
 ## How do I use it?
 
-1. Choose the file or export options.
+1. On desktop, choose the file or export options.
 2. Review the report, matches and warnings.
 3. Confirm import or download the generated archive.
 
@@ -50,6 +58,7 @@ Import detects common conventions and reports duplicates.
 ## Good to know
 
 :::note
+- The KMZ import action is not offered in the mobile interface; open CartaVault on desktop to start an import.
 - Check image rights and licenses before exchanging them.
 :::
 

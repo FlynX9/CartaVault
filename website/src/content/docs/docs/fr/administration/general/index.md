@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Menu utilisateur → Administration → Général**.
 
 
-![Configurer l’instance](/docs/screenshots/admin-general-fr-light.png)
+![Configurer l’instance — écran desktop](/docs/screenshots/admin-general-fr-light.png)
 
-*Configurer l’instance*
+*Configurer l’instance — écran desktop*
+
+![Configurer l’instance — écran mobile](/docs/screenshots/admin-general-fr-mobile.png)
+
+*Configurer l’instance — écran mobile*
 
 ## Comment l’utiliser ?
 

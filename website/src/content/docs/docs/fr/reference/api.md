@@ -7,6 +7,6 @@ sidebar:
 
 <!-- GENERATED FILE — DO NOT EDIT DIRECTLY -->
 
-Le schéma contient **224 chemins** et **290 opérations**. Sur une instance en cours d'exécution, utilisez `/api/docs` pour l'interface interactive et `/api/openapi.json` pour le document JSON.
+Le schéma contient **225 chemins** et **291 opérations**. Sur une instance en cours d'exécution, utilisez `/api/docs` pour l'interface interactive et `/api/openapi.json` pour le document JSON.
 
 Le document versionné est disponible dans [`/docs/openapi.json`](/docs/openapi.json).

@@ -20,9 +20,13 @@ Permissions support collaboration on private maps without granting more access t
 ## Illustration
 
 
-![Understand sharing and permissions](/docs/screenshots/map-members-fr-light.png)
+![Understand sharing and permissions — desktop screen](/docs/screenshots/map-members-en-light.png)
 
-*Understand sharing and permissions*
+*Understand sharing and permissions — desktop screen*
+
+![Understand sharing and permissions — mobile screen](/docs/screenshots/map-members-en-mobile.png)
+
+*Understand sharing and permissions — mobile screen*
 
 ## How do I use it?
 

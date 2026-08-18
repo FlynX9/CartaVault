@@ -23,9 +23,21 @@ Les photographes peuvent reconstruire plus vite leurs repérages lorsque les pho
 Suivez ce chemin dans l’interface : **Médias → Importer**.
 
 
-![Importer des photos et utiliser les données GPS](/docs/screenshots/media-upload-fr-light.png)
+![Importer des photos et utiliser les données GPS — écran desktop](/docs/screenshots/media-upload-fr-light.png)
 
-*Importer des photos et utiliser les données GPS*
+*Importer des photos et utiliser les données GPS — écran desktop*
+
+![Importer des photos et utiliser les données GPS — écran mobile](/docs/screenshots/media-upload-fr-mobile.png)
+
+*Importer des photos et utiliser les données GPS — écran mobile*
+
+![Importer des photos et utiliser les données GPS — écran desktop](/docs/screenshots/media-gps-fr-light.png)
+
+*Importer des photos et utiliser les données GPS — écran desktop*
+
+![Importer des photos et utiliser les données GPS — écran mobile](/docs/screenshots/media-gps-fr-mobile.png)
+
+*Importer des photos et utiliser les données GPS — écran mobile*
 
 ## Comment l’utiliser ?
 

@@ -23,9 +23,13 @@ Une carte rassemble les lieux, sorties, règles d’organisation et droits d’a
 Suivez ce chemin dans l’interface : **Coffre → Nouvelle carte**.
 
 
-![Créer une carte](/docs/screenshots/create-map-fr-light.png)
+![Créer une carte — écran desktop](/docs/screenshots/create-map-fr-light.png)
 
-*Créer une carte*
+*Créer une carte — écran desktop*
+
+![Créer une carte — écran mobile](/docs/screenshots/create-map-fr-mobile.png)
+
+*Créer une carte — écran mobile*
 
 ## Comment l’utiliser ?
 

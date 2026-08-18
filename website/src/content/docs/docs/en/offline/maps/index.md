@@ -23,9 +23,13 @@ Offline preparation keeps essential map information in the browser for areas wit
 Follow this path in the interface : **Vault → map menu → Make available offline**.
 
 
-![Prepare a map offline](/docs/screenshots/map-offline-fr-light.png)
+![Prepare a map offline — desktop screen](/docs/screenshots/map-offline-en-light.png)
 
-*Prepare a map offline*
+*Prepare a map offline — desktop screen*
+
+![Prepare a map offline — mobile screen](/docs/screenshots/map-offline-en-mobile.png)
+
+*Prepare a map offline — mobile screen*
 
 ## How do I use it?
 

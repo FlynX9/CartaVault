@@ -23,9 +23,13 @@ Le calcul rend visibles distance, durée et heure d’arrivée ; l’optimisatio
 Suivez ce chemin dans l’interface : **Sorties → journée → Itinéraire ou Optimiser**.
 
 
-![Calculer et optimiser les itinéraires](/docs/screenshots/trip-routing-fr-light.png)
+![Calculer et optimiser les itinéraires — écran desktop](/docs/screenshots/trip-routing-fr-light.png)
 
-*Calculer et optimiser les itinéraires*
+*Calculer et optimiser les itinéraires — écran desktop*
+
+![Calculer et optimiser les itinéraires — écran mobile](/docs/screenshots/trip-routing-fr-mobile.png)
+
+*Calculer et optimiser les itinéraires — écran mobile*
 
 ## Comment l’utiliser ?
 

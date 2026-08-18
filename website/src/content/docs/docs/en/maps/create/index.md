@@ -23,9 +23,13 @@ A map groups the places, trips, organization rules and access rights of a geogra
 Follow this path in the interface : **Vault → New map**.
 
 
-![Create a map](/docs/screenshots/create-map-fr-light.png)
+![Create a map — desktop screen](/docs/screenshots/create-map-en-light.png)
 
-*Create a map*
+*Create a map — desktop screen*
+
+![Create a map — mobile screen](/docs/screenshots/create-map-en-mobile.png)
+
+*Create a map — mobile screen*
 
 ## How do I use it?
 

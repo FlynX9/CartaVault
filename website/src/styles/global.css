@@ -73,6 +73,17 @@ p { color: var(--cv-muted); }
 .language { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.45rem 0.55rem; color: var(--cv-slate-700); font-size: 0.78rem; font-weight: 750; border-radius: 8px; }
 .language:hover { color: var(--cv-teal-700); background: var(--cv-teal-50); }
 .mobile-menu { display: none; }
+.app-button { font: inherit; cursor: pointer; }
+.beta-app-dialog { width: min(92vw, 560px); max-width: none; padding: 0; color: var(--cv-navy-900); background: transparent; border: 0; border-radius: var(--cv-radius-lg); }
+.beta-app-dialog::backdrop { background: rgb(10 25 41 / 62%); backdrop-filter: blur(5px); }
+.beta-app-dialog__panel { position: relative; padding: clamp(26px, 5vw, 42px); background: var(--cv-surface); border: 1px solid var(--cv-border); border-radius: var(--cv-radius-lg); box-shadow: var(--cv-shadow-md); }
+.beta-app-dialog__panel h2 { margin: 8px 42px 12px 0; font-size: clamp(1.45rem, 4vw, 2rem); line-height: 1.15; }
+.beta-app-dialog__panel > p:not(.eyebrow) { margin: 0; color: var(--cv-slate-700); line-height: 1.65; }
+.beta-app-dialog__icon { display: grid; width: 48px; height: 48px; margin-bottom: 20px; color: var(--cv-teal-700); background: var(--cv-teal-50); border-radius: 14px; place-items: center; }
+.beta-app-dialog__close { position: absolute; top: 18px; right: 18px; display: grid; width: 40px; height: 40px; color: var(--cv-slate-700); cursor: pointer; background: var(--cv-surface); border: 1px solid var(--cv-border); border-radius: var(--cv-radius-sm); place-items: center; }
+.beta-app-dialog__close:hover, .beta-app-dialog__close:focus-visible { color: var(--cv-teal-700); border-color: var(--cv-teal-500); }
+.beta-app-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 28px; }
+.beta-app-dialog__actions .button { font: inherit; }
 .mobile-menu summary { list-style: none; }
 .mobile-menu summary::-webkit-details-marker { display: none; }
 

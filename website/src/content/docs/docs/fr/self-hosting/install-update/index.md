@@ -23,9 +23,13 @@ L’image unifiée limite le déploiement standard à CartaVault et PostgreSQL/P
 Suivez ce chemin dans l’interface : **Serveur Docker → compose officiel → assistant de configuration**.
 
 
-![Installer et mettre à jour CartaVault](/docs/screenshots/login-fr-light.png)
+![Installer et mettre à jour CartaVault — écran desktop](/docs/screenshots/login-fr-light.png)
 
-*Installer et mettre à jour CartaVault*
+*Installer et mettre à jour CartaVault — écran desktop*
+
+![Installer et mettre à jour CartaVault — écran mobile](/docs/screenshots/login-fr-mobile.png)
+
+*Installer et mettre à jour CartaVault — écran mobile*
 
 ## Comment l’utiliser ?
 

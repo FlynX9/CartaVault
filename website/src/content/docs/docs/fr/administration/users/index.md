@@ -27,13 +27,21 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Utilisateurs**.
 
 
-![Administrer les utilisateurs](/docs/screenshots/admin-users-fr-light.png)
+![Administrer les utilisateurs — écran desktop](/docs/screenshots/admin-users-fr-light.png)
 
-*Administrer les utilisateurs*
+*Administrer les utilisateurs — écran desktop*
 
-![Administrer les utilisateurs](/docs/screenshots/admin-user-details-fr-light.png)
+![Administrer les utilisateurs — écran mobile](/docs/screenshots/admin-users-fr-mobile.png)
 
-*Administrer les utilisateurs*
+*Administrer les utilisateurs — écran mobile*
+
+![Administrer les utilisateurs — écran desktop](/docs/screenshots/admin-user-details-fr-light.png)
+
+*Administrer les utilisateurs — écran desktop*
+
+![Administrer les utilisateurs — écran mobile](/docs/screenshots/admin-user-details-fr-mobile.png)
+
+*Administrer les utilisateurs — écran mobile*
 
 ## Comment l’utiliser ?
 

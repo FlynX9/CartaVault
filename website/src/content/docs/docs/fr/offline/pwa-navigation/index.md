@@ -23,9 +23,13 @@ Le précache de l’application permet de rouvrir l’interface et les menus, ta
 Suivez ce chemin dans l’interface : **Application installée ou instance servie en HTTPS**.
 
 
-![Utiliser CartaVault sans réseau](/docs/screenshots/places-france-fr-mobile.png)
+![Utiliser CartaVault sans réseau — écran desktop](/docs/screenshots/places-france-fr-light.png)
 
-*Utiliser CartaVault sans réseau*
+*Utiliser CartaVault sans réseau — écran desktop*
+
+![Utiliser CartaVault sans réseau — écran mobile](/docs/screenshots/places-france-fr-mobile.png)
+
+*Utiliser CartaVault sans réseau — écran mobile*
 
 ## Comment l’utiliser ?
 

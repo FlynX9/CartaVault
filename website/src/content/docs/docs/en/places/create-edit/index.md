@@ -23,9 +23,13 @@ The record centralizes durable information needed to find, visit, document and r
 Follow this path in the interface : **Places → New place, or a place record → Edit**.
 
 
-![Create or edit a place](/docs/screenshots/place-editor-fr-light.png)
+![Create or edit a place — desktop screen](/docs/screenshots/place-editor-en-light.png)
 
-*Create or edit a place*
+*Create or edit a place — desktop screen*
+
+![Create or edit a place — mobile screen](/docs/screenshots/place-editor-en-mobile.png)
+
+*Create or edit a place — mobile screen*
 
 ## How do I use it?
 

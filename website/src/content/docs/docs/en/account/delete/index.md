@@ -23,9 +23,13 @@ Deletion supports the right to leave an instance while preserving integrity of s
 Follow this path in the interface : **My account → Security → Sensitive area**.
 
 
-![Delete your account](/docs/screenshots/account-delete-fr-light.png)
+![Delete your account — desktop screen](/docs/screenshots/account-delete-en-light.png)
 
-*Delete your account*
+*Delete your account — desktop screen*
+
+![Delete your account — mobile screen](/docs/screenshots/account-delete-en-mobile.png)
+
+*Delete your account — mobile screen*
 
 ## How do I use it?
 

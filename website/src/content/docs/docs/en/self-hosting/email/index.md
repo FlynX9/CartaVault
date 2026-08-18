@@ -23,9 +23,13 @@ Security and collaboration workflows need to notify users and verify addresses w
 Follow this path in the interface : **Deployment variables for SMTP, or Administration → API keys for Resend**.
 
 
-![Configure transactional email](/docs/screenshots/admin-api-keys-fr-light.png)
+![Configure transactional email — desktop screen](/docs/screenshots/admin-api-keys-en-light.png)
 
-*Configure transactional email*
+*Configure transactional email — desktop screen*
+
+![Configure transactional email — mobile screen](/docs/screenshots/admin-api-keys-en-mobile.png)
+
+*Configure transactional email — mobile screen*
 
 ## How do I use it?
 

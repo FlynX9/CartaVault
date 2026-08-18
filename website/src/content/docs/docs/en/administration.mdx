@@ -6,7 +6,8 @@ sidebar:
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
-import admin from '../../../../assets/screenshots/app-admin-en.webp';
+import admin from '../../../../assets/screenshots/app-admin-en.png';
+import adminMobile from '../../../../assets/screenshots/app-admin-mobile-en.png';
 
 ## Administration access
 
@@ -26,7 +27,7 @@ Pending requests appear in notifications and the console. Review name, address, 
 
 ## Quota profiles
 
-A profile limits maps, places, members, single-photo size, and photo storage. Unlimited values are distinct from zero: zero blocks new writes, while unlimited sets no cap.
+A profile limits maps, places, members, single-photo size, and photo storage. It can also share instance keys for specific purposes such as search, routing, or basemaps. Unlimited values are distinct from zero: zero blocks new writes, while unlimited sets no cap.
 
 Create, duplicate, edit, set as default, or archive profiles. A profile assigned to users cannot be deleted without reassignment. The system unlimited profile is protected.
 
@@ -56,6 +57,8 @@ Refresh reruns short-timeout checks. One unavailable external service does not h
 New registration requests and invitations appear in the notification center. Detailed POI changes are available from each record's history. Important security events are recorded server-side without passwords, tokens, or API keys.
 
 <ProductScreenshot src={admin} alt="CartaVault user administration panel" caption="The console centralizes accounts, requests, quota profiles, and diagnostics." />
+
+<ProductScreenshot src={adminMobile} alt="CartaVault administration panel on mobile" caption="On mobile, navigation and administrative actions remain available in adapted panels." />
 
 ## Safeguards
 

@@ -95,6 +95,32 @@ def _public_screenshot(capture_id: str) -> str | None:
     return None
 
 
+CAPTURE_VARIANT_RE = re.compile(r"-(fr|en)-(light|mobile)$")
+
+
+def _capture_family(capture_id: str) -> str:
+    return CAPTURE_VARIANT_RE.sub("", capture_id)
+
+
+def _localized_capture_ids(feature: dict[str, Any], language: str) -> list[tuple[str, str]]:
+    families = list(dict.fromkeys(_capture_family(item) for item in feature.get("captures", [])))
+    return [
+        (f"{family}-{language}-{suffix}", viewport)
+        for family in families
+        for suffix, viewport in (("light", "desktop"), ("mobile", "mobile"))
+    ]
+
+
+def _matrix_capture_ids(feature: dict[str, Any]) -> list[str]:
+    families = list(dict.fromkeys(_capture_family(item) for item in feature.get("captures", [])))
+    return [
+        f"{family}-{language}-{variant}"
+        for family in families
+        for language in ("fr", "en")
+        for variant in ("light", "mobile")
+    ]
+
+
 def _content_hash(paths: Iterable[str]) -> str:
     digest = hashlib.sha256()
     for value in sorted(set(paths)):
@@ -138,7 +164,7 @@ def build_coverage(manifest: dict[str, Any], expected_hashes: dict[str, str] | N
     scenarios = {item["id"] for item in json.loads(SCENARIOS_PATH.read_text(encoding="utf-8"))}
     features = []
     for feature in manifest["features"]:
-        capture_ids = feature.get("captures", [])
+        capture_ids = _matrix_capture_ids(feature)
         missing_scenarios = [item for item in capture_ids if item not in scenarios]
         missing_captures = [item for item in capture_ids if not _screenshot_exists(item)]
         missing_code = [item for item in feature["codeRefs"] if not (ROOT / item).exists()]
@@ -217,10 +243,15 @@ def render_page(feature: dict[str, Any], language: str, version: str) -> str:
     route_sentence = "Suivez ce chemin dans l’interface" if language == "fr" else "Follow this path in the interface"
     is_concept = feature["section"] == "concepts"
     screenshots = []
-    for capture_id in feature.get("captures", []):
+    for capture_id, viewport in _localized_capture_ids(feature, language):
         screenshot = _public_screenshot(capture_id)
         if screenshot:
-            caption = text.get("captureCaptions", {}).get(capture_id, text["title"])
+            source_caption = next(
+                (caption for key, caption in text.get("captureCaptions", {}).items() if _capture_family(key) == _capture_family(capture_id)),
+                text["title"],
+            )
+            viewport_label = ("écran desktop" if viewport == "desktop" else "écran mobile") if language == "fr" else ("desktop screen" if viewport == "desktop" else "mobile screen")
+            caption = f"{source_caption} — {viewport_label}"
             screenshots.append(f"![{caption}]({screenshot})\n\n*{caption}*")
     screenshot_block = "\n\n".join(screenshots)
     if screenshot_block:

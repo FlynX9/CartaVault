@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → General → Public registration**.
 
 
-![Manage public registration](/docs/screenshots/admin-registration-fr-light.png)
+![Manage public registration — desktop screen](/docs/screenshots/admin-registration-en-light.png)
 
-*Manage public registration*
+*Manage public registration — desktop screen*
+
+![Manage public registration — mobile screen](/docs/screenshots/admin-registration-en-mobile.png)
+
+*Manage public registration — mobile screen*
 
 ## How do I use it?
 

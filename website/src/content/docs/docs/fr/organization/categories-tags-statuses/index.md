@@ -23,9 +23,29 @@ Les catégories décrivent la nature principale, les tags ajoutent des thèmes t
 Suivez ce chemin dans l’interface : **Organisation → Catégories, Tags ou Statuts**.
 
 
-![Organiser avec catégories, tags et statuts](/docs/screenshots/categories-fr-light.png)
+![Organiser avec catégories, tags et statuts — écran desktop](/docs/screenshots/categories-fr-light.png)
 
-*Organiser avec catégories, tags et statuts*
+*Organiser avec catégories, tags et statuts — écran desktop*
+
+![Organiser avec catégories, tags et statuts — écran mobile](/docs/screenshots/categories-fr-mobile.png)
+
+*Organiser avec catégories, tags et statuts — écran mobile*
+
+![Organiser avec catégories, tags et statuts — écran desktop](/docs/screenshots/tags-fr-light.png)
+
+*Organiser avec catégories, tags et statuts — écran desktop*
+
+![Organiser avec catégories, tags et statuts — écran mobile](/docs/screenshots/tags-fr-mobile.png)
+
+*Organiser avec catégories, tags et statuts — écran mobile*
+
+![Organiser avec catégories, tags et statuts — écran desktop](/docs/screenshots/statuses-fr-light.png)
+
+*Organiser avec catégories, tags et statuts — écran desktop*
+
+![Organiser avec catégories, tags et statuts — écran mobile](/docs/screenshots/statuses-fr-mobile.png)
+
+*Organiser avec catégories, tags et statuts — écran mobile*
 
 ## Comment l’utiliser ?
 

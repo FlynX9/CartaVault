@@ -1,0 +1,41 @@
+---
+title: Panneau utilisateur
+description: Gérer son profil, ses préférences, ses services, sa sécurité et ses données.
+sidebar:
+  order: 9
+---
+
+import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
+import accountDesktop from '../../../../assets/screenshots/app-account-fr.png';
+import accountMobile from '../../../../assets/screenshots/app-account-mobile-fr.png';
+
+## Ouvrir le panneau
+
+Ouvrez le menu associé à votre avatar, puis choisissez **Options**. Le panneau utilisateur regroupe uniquement les réglages de votre compte ; il est distinct de l’administration globale de l’instance.
+
+## Rubriques disponibles
+
+- **Profil** : nom d’affichage, avatar et informations du compte.
+- **Préférences** : langue, thème, densité, écran d’accueil, fuseau horaire et conservation de la corbeille.
+- **Services et clés API** : recherche, routage, fond classique et satellite, avec clés personnelles ou clés d’instance partagées par quota.
+- **Sécurité** : e-mail, mot de passe, MFA TOTP ou e-mail, codes de récupération et sessions actives.
+- **Confidentialité** : export personnel et informations sur le traitement des données.
+- **Données hors ligne** : cartes et sorties stockées dans ce navigateur.
+
+Les clés d’instance sont sélectionnables lorsqu’un administrateur les partage avec votre profil de quota. Leur secret reste invisible et elles ne peuvent pas être modifiées depuis le compte utilisateur.
+
+<ProductScreenshot src={accountDesktop} alt="Panneau utilisateur CartaVault sur ordinateur" caption="Sur ordinateur, les rubriques restent accessibles dans la navigation latérale du panneau." />
+
+<ProductScreenshot src={accountMobile} alt="Panneau utilisateur CartaVault sur mobile" caption="Sur mobile, le même panneau occupe l’espace disponible et conserve les mêmes réglages." />
+
+## Enregistrer sans perdre ses modifications
+
+Le bouton **Enregistrer** applique les changements du panneau. Si vous tentez de fermer avec des modifications en attente, CartaVault propose de continuer l’édition, d’annuler les changements ou de les enregistrer.
+
+## Aller plus loin
+
+- [Gérer le profil](/docs/fr/account/profile/)
+- [Configurer les préférences](/docs/fr/account/preferences/)
+- [Comprendre la sécurité du compte](/docs/fr/account/security/overview/)
+- [Gérer les clés API personnelles et partagées](/docs/fr/account/api-keys/)
+- [Contrôler les données hors ligne](/docs/fr/account/offline-data/)

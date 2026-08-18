@@ -23,9 +23,13 @@ Un mot de passe unique limite l’impact d’une fuite sur un autre service et p
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Mot de passe → Modifier**.
 
 
-![Changer le mot de passe](/docs/screenshots/account-password-change-fr-light.png)
+![Changer le mot de passe — écran desktop](/docs/screenshots/account-password-change-fr-light.png)
 
-*Changer le mot de passe*
+*Changer le mot de passe — écran desktop*
+
+![Changer le mot de passe — écran mobile](/docs/screenshots/account-password-change-fr-mobile.png)
+
+*Changer le mot de passe — écran mobile*
 
 ## Comment l’utiliser ?
 

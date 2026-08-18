@@ -23,9 +23,13 @@ TOTP ajoute un code temporaire généré sur un appareil séparé et résiste mi
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Application d’authentification (TOTP)**.
 
 
-![Configurer l’authentification TOTP](/docs/screenshots/account-totp-fr-light.png)
+![Configurer l’authentification TOTP — écran desktop](/docs/screenshots/account-totp-fr-light.png)
 
-*Configurer l’authentification TOTP*
+*Configurer l’authentification TOTP — écran desktop*
+
+![Configurer l’authentification TOTP — écran mobile](/docs/screenshots/account-totp-fr-mobile.png)
+
+*Configurer l’authentification TOTP — écran mobile*
 
 ## Comment l’utiliser ?
 

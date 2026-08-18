@@ -13,6 +13,7 @@ From `website/`, the durable workflow is:
 
 ```powershell
 npm run docs:discover   # refresh inventory, functional pages, navigation and coverage
+npm run docs:matrix     # expand each product view to FR/EN desktop and mobile scenarios
 npm run docs:capture    # reset the isolated demo, capture the real UI and synchronize images
 npm run docs:generate   # regenerate every derived page and report
 npm run docs:build      # build and index the static documentation

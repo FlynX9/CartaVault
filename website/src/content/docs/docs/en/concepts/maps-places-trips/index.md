@@ -20,9 +20,13 @@ CartaVault separates the durable workspace that organizes data, the place record
 ## Illustration
 
 
-![Places from a map are reused as stops in a trip.](/docs/screenshots/trip-france-fr-light.png)
+![Places from a map are reused as stops in a trip. — desktop screen](/docs/screenshots/trip-france-en-light.png)
 
-*Places from a map are reused as stops in a trip.*
+*Places from a map are reused as stops in a trip. — desktop screen*
+
+![Places from a map are reused as stops in a trip. — mobile screen](/docs/screenshots/trip-france-en-mobile.png)
+
+*Places from a map are reused as stops in a trip. — mobile screen*
 
 ## How do I use it?
 

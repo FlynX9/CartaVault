@@ -23,9 +23,13 @@ A coordinate alone does not always describe a complex site. Annotations preserve
 Follow this path in the interface : **Place record → Place plan**.
 
 
-![Draw a place plan](/docs/screenshots/place-annotations-fr-light.png)
+![Draw a place plan — desktop screen](/docs/screenshots/place-annotations-en-light.png)
 
-*Draw a place plan*
+*Draw a place plan — desktop screen*
+
+![Draw a place plan — mobile screen](/docs/screenshots/place-annotations-en-mobile.png)
+
+*Draw a place plan — mobile screen*
 
 ## How do I use it?
 

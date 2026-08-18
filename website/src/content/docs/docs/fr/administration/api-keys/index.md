@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Clés API**.
 
 
-![Gérer les fournisseurs et clés d’instance](/docs/screenshots/admin-api-keys-fr-light.png)
+![Gérer les fournisseurs et clés d’instance — écran desktop](/docs/screenshots/admin-api-keys-fr-light.png)
 
-*Gérer les fournisseurs et clés d’instance*
+*Gérer les fournisseurs et clés d’instance — écran desktop*
+
+![Gérer les fournisseurs et clés d’instance — écran mobile](/docs/screenshots/admin-api-keys-fr-mobile.png)
+
+*Gérer les fournisseurs et clés d’instance — écran mobile*
 
 ## Comment l’utiliser ?
 

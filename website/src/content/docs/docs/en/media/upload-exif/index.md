@@ -23,9 +23,21 @@ Photographers can rebuild field notes faster when images contain EXIF coordinate
 Follow this path in the interface : **Media → Upload**.
 
 
-![Upload photos and use GPS metadata](/docs/screenshots/media-upload-fr-light.png)
+![Upload photos and use GPS metadata — desktop screen](/docs/screenshots/media-upload-en-light.png)
 
-*Upload photos and use GPS metadata*
+*Upload photos and use GPS metadata — desktop screen*
+
+![Upload photos and use GPS metadata — mobile screen](/docs/screenshots/media-upload-en-mobile.png)
+
+*Upload photos and use GPS metadata — mobile screen*
+
+![Upload photos and use GPS metadata — desktop screen](/docs/screenshots/media-gps-en-light.png)
+
+*Upload photos and use GPS metadata — desktop screen*
+
+![Upload photos and use GPS metadata — mobile screen](/docs/screenshots/media-gps-en-mobile.png)
+
+*Upload photos and use GPS metadata — mobile screen*
 
 ## How do I use it?
 

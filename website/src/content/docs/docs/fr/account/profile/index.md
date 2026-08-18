@@ -23,9 +23,13 @@ Le profil contrôle l’identité visible lors des partages tout en séparant l�
 Suivez ce chemin dans l’interface : **Menu utilisateur → Options → Profil**.
 
 
-![Gérer son profil](/docs/screenshots/account-profile-fr-light.png)
+![Gérer son profil — écran desktop](/docs/screenshots/account-profile-fr-light.png)
 
-*Gérer son profil*
+*Gérer son profil — écran desktop*
+
+![Gérer son profil — écran mobile](/docs/screenshots/account-profile-fr-mobile.png)
+
+*Gérer son profil — écran mobile*
 
 ## Comment l’utiliser ?
 

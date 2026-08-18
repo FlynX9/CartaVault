@@ -23,9 +23,13 @@ The panel groups protections and active devices to reveal weak configuration or 
 Follow this path in the interface : **User menu → Options → Security**.
 
 
-![Understand account security](/docs/screenshots/account-security-fr-light.png)
+![Understand account security — desktop screen](/docs/screenshots/account-security-en-light.png)
 
-*Understand account security*
+*Understand account security — desktop screen*
+
+![Understand account security — mobile screen](/docs/screenshots/account-security-en-mobile.png)
+
+*Understand account security — mobile screen*
 
 ## How do I use it?
 

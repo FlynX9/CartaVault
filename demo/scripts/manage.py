@@ -166,6 +166,24 @@ def create_project_media(session, places_by_map: dict[str, list], uploader_id: U
             created_at=FIXED_NOW + timedelta(seconds=index), updated_at=FIXED_NOW + timedelta(seconds=index),
         ))
 
+    # Keep one unattached, geolocated image in the library. It documents the
+    # real "Create POI" workflow exposed after GPS metadata has been read.
+    gps_photo_id = stable_id("photo", "unattached-gps-demo")
+    gps_scope_id = stable_id("photo-scope", "unattached-gps-demo")
+    gps_directory = storage_root / str(gps_scope_id)
+    gps_directory.mkdir(parents=True, exist_ok=True)
+    gps_filename = f"{gps_photo_id}.webp"
+    gps_path = gps_directory / gps_filename
+    shutil.copyfile(assets_by_fixture_id["france-01"], gps_path)
+    session.add(Photo(
+        id=gps_photo_id, place_id=None, map_id=places_by_map["france"][0].map_id, storage_scope_id=gps_scope_id,
+        latitude=48.85837, longitude=2.294481, filename=gps_filename, original_name="belvedere-paris-gps.webp",
+        path=f"{gps_scope_id}/{gps_filename}", description="Photo de démonstration avec coordonnées GPS, prête à créer un POI.",
+        sort_order=0, is_primary=False, mime_type="image/webp", file_size_bytes=gps_path.stat().st_size,
+        width=480, height=320, uploaded_by_user_id=uploader_id,
+        created_at=FIXED_NOW + timedelta(hours=1), updated_at=FIXED_NOW + timedelta(hours=1),
+    ))
+
 
 def seed(session) -> dict[str, object]:
     import app.models  # noqa: F401 - register all mappings
@@ -538,7 +556,7 @@ def validate(session) -> dict[str, object]:
         "user_api_keys": session.scalar(select(func.count()).select_from(UserApiCredential)),
         "admin_api_keys": session.scalar(select(func.count()).select_from(AdminApiCredential)),
     }
-    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 30, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5, "annotation_templates": 8, "annotations": 8, "seed_sessions": 3, "user_api_keys": 2, "admin_api_keys": 2}
+    expected = {"users": 3, "maps": 2, "memberships": 6, "places": 60, "photos": 31, "trips": 3, "trip_days": 8, "trip_stops": 40, "trip_nights": 5, "annotation_templates": 8, "annotations": 8, "seed_sessions": 3, "user_api_keys": 2, "admin_api_keys": 2}
     errors = [f"{key}: expected {expected[key]}, got {counts[key]}" for key in expected if counts[key] != expected[key]]
     region_counts = dict(session.execute(select(Place.region, func.count()).group_by(Place.region)).all())
     if len(region_counts) != 6 or any(value != 10 for value in region_counts.values()):

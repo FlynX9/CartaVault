@@ -20,9 +20,13 @@ CartaVault sépare l’espace durable qui classe les données, la fiche d’un l
 ## Illustration
 
 
-![Les lieux d’une carte sont réutilisés comme étapes d’une sortie.](/docs/screenshots/trip-france-fr-light.png)
+![Les lieux d’une carte sont réutilisés comme étapes d’une sortie. — écran desktop](/docs/screenshots/trip-france-fr-light.png)
 
-*Les lieux d’une carte sont réutilisés comme étapes d’une sortie.*
+*Les lieux d’une carte sont réutilisés comme étapes d’une sortie. — écran desktop*
+
+![Les lieux d’une carte sont réutilisés comme étapes d’une sortie. — écran mobile](/docs/screenshots/trip-france-fr-mobile.png)
+
+*Les lieux d’une carte sont réutilisés comme étapes d’une sortie. — écran mobile*
 
 ## Comment l’utiliser ?
 

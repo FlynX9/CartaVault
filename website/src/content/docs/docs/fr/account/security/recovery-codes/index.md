@@ -23,9 +23,13 @@ Les codes de récupération évitent qu’une perte ou panne du téléphone bloq
 Suivez ce chemin dans l’interface : **Mon compte → Sécurité → Application TOTP → Codes de récupération**.
 
 
-![Conserver les codes de récupération](/docs/screenshots/account-recovery-codes-fr-light.png)
+![Conserver les codes de récupération — écran desktop](/docs/screenshots/account-recovery-codes-fr-light.png)
 
-*Conserver les codes de récupération*
+*Conserver les codes de récupération — écran desktop*
+
+![Conserver les codes de récupération — écran mobile](/docs/screenshots/account-recovery-codes-fr-mobile.png)
+
+*Conserver les codes de récupération — écran mobile*
 
 ## Comment l’utiliser ?
 

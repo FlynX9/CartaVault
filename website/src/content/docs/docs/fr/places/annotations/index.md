@@ -23,9 +23,13 @@ Une simple coordonnée ne décrit pas toujours un site complexe. Les annotations
 Suivez ce chemin dans l’interface : **Fiche d’un lieu → Plan du lieu**.
 
 
-![Dessiner le plan d’un lieu](/docs/screenshots/place-annotations-fr-light.png)
+![Dessiner le plan d’un lieu — écran desktop](/docs/screenshots/place-annotations-fr-light.png)
 
-*Dessiner le plan d’un lieu*
+*Dessiner le plan d’un lieu — écran desktop*
+
+![Dessiner le plan d’un lieu — écran mobile](/docs/screenshots/place-annotations-fr-mobile.png)
+
+*Dessiner le plan d’un lieu — écran mobile*
 
 ## Comment l’utiliser ?
 

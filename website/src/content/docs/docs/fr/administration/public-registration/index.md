@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → Général → Inscriptions publiques**.
 
 
-![Gérer les inscriptions publiques](/docs/screenshots/admin-registration-fr-light.png)
+![Gérer les inscriptions publiques — écran desktop](/docs/screenshots/admin-registration-fr-light.png)
 
-*Gérer les inscriptions publiques*
+*Gérer les inscriptions publiques — écran desktop*
+
+![Gérer les inscriptions publiques — écran mobile](/docs/screenshots/admin-registration-fr-mobile.png)
+
+*Gérer les inscriptions publiques — écran mobile*
 
 ## Comment l’utiliser ?
 

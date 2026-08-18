@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → General → Media library and Instance logs**.
 
 
-![Configure media and instance logs](/docs/screenshots/admin-media-logs-fr-light.png)
+![Configure media and instance logs — desktop screen](/docs/screenshots/admin-media-logs-en-light.png)
 
-*Configure media and instance logs*
+*Configure media and instance logs — desktop screen*
+
+![Configure media and instance logs — mobile screen](/docs/screenshots/admin-media-logs-en-mobile.png)
+
+*Configure media and instance logs — mobile screen*
 
 ## How do I use it?
 

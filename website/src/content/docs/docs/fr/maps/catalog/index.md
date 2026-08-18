@@ -23,9 +23,13 @@ Le coffre centralise les cartes possédées et partagées afin d’ouvrir rapide
 Suivez ce chemin dans l’interface : **Coffre**.
 
 
-![Parcourir le coffre de cartes](/docs/screenshots/maps-catalog-fr-light.png)
+![Parcourir le coffre de cartes — écran desktop](/docs/screenshots/maps-catalog-fr-light.png)
 
-*Parcourir le coffre de cartes*
+*Parcourir le coffre de cartes — écran desktop*
+
+![Parcourir le coffre de cartes — écran mobile](/docs/screenshots/maps-catalog-fr-mobile.png)
+
+*Parcourir le coffre de cartes — écran mobile*
 
 ## Comment l’utiliser ?
 

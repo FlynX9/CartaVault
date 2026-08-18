@@ -4,7 +4,7 @@ x-demo-environment: &demo-environment
   DATABASE_URL: postgresql+psycopg://cartavault_demo:${DEMO_POSTGRES_PASSWORD:-cartavault-demo-only}@postgis-demo:5432/cartavault_demo
   CARTAVAULT_DEMO_MODE: "true"
   CARTAVAULT_ENVIRONMENT: demo
-  CARTAVAULT_VERSION: demo
+  CARTAVAULT_VERSION: 1.0.0-rc.5
   CARTAVAULT_API_PREFIX: /api
   CARTAVAULT_FRONTEND_DIST: /app/frontend
   CARTAVAULT_PUBLIC_URL: http://localhost:${DEMO_HTTP_PORT:-8099}
@@ -53,9 +53,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       args:
-        CARTAVAULT_VERSION: demo
+        CARTAVAULT_VERSION: 1.0.0-rc.5
         VITE_API_BASE_URL: /api
-    image: cartavault:demo
+    image: cartavault:1.0.0-rc.5-demo
     restart: "no"
     entrypoint: ["python", "/demo/scripts/manage.py"]
     command: ["reset"]
@@ -73,7 +73,7 @@ services:
     networks: [demo_private]
 
   cartavault-demo:
-    image: cartavault:demo
+    image: cartavault:1.0.0-rc.5-demo
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

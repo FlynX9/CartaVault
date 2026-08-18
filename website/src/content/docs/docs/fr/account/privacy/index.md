@@ -23,9 +23,13 @@ Le panneau explique les traitements de l’instance et fournit un accès direct 
 Suivez ce chemin dans l’interface : **Mon compte → Confidentialité**.
 
 
-![Gérer confidentialité et export personnel](/docs/screenshots/account-privacy-fr-light.png)
+![Gérer confidentialité et export personnel — écran desktop](/docs/screenshots/account-privacy-fr-light.png)
 
-*Gérer confidentialité et export personnel*
+*Gérer confidentialité et export personnel — écran desktop*
+
+![Gérer confidentialité et export personnel — écran mobile](/docs/screenshots/account-privacy-fr-mobile.png)
+
+*Gérer confidentialité et export personnel — écran mobile*
 
 ## Comment l’utiliser ?
 

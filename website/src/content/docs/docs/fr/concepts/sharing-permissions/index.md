@@ -20,9 +20,13 @@ Les permissions permettent de collaborer sur une carte privée sans donner plus 
 ## Illustration
 
 
-![Comprendre le partage et les permissions](/docs/screenshots/map-members-fr-light.png)
+![Comprendre le partage et les permissions — écran desktop](/docs/screenshots/map-members-fr-light.png)
 
-*Comprendre le partage et les permissions*
+*Comprendre le partage et les permissions — écran desktop*
+
+![Comprendre le partage et les permissions — écran mobile](/docs/screenshots/map-members-fr-mobile.png)
+
+*Comprendre le partage et les permissions — écran mobile*
 
 ## Comment l’utiliser ?
 

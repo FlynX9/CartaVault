@@ -23,9 +23,13 @@ The panel reveals what actually occupies browser storage and avoids blindly down
 Follow this path in the interface : **My account → Offline data**.
 
 
-![Manage offline data](/docs/screenshots/account-offline-fr-light.png)
+![Manage offline data — desktop screen](/docs/screenshots/account-offline-en-light.png)
 
-*Manage offline data*
+*Manage offline data — desktop screen*
+
+![Manage offline data — mobile screen](/docs/screenshots/account-offline-en-mobile.png)
+
+*Manage offline data — mobile screen*
 
 ## How do I use it?
 

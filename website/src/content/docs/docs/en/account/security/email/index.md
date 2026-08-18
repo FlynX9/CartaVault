@@ -23,9 +23,13 @@ Email is used for sign-in, recovery and important notifications, so changing it 
 Follow this path in the interface : **My account → Security → Email address → Change**.
 
 
-![Change your email address](/docs/screenshots/account-email-change-fr-light.png)
+![Change your email address — desktop screen](/docs/screenshots/account-email-change-en-light.png)
 
-*Change your email address*
+*Change your email address — desktop screen*
+
+![Change your email address — mobile screen](/docs/screenshots/account-email-change-en-mobile.png)
+
+*Change your email address — mobile screen*
 
 ## How do I use it?
 

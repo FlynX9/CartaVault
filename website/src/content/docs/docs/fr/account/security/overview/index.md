@@ -23,9 +23,13 @@ Le panneau rassemble les protections et appareils actifs pour détecter une conf
 Suivez ce chemin dans l’interface : **Menu utilisateur → Options → Sécurité**.
 
 
-![Comprendre la sécurité du compte](/docs/screenshots/account-security-fr-light.png)
+![Comprendre la sécurité du compte — écran desktop](/docs/screenshots/account-security-fr-light.png)
 
-*Comprendre la sécurité du compte*
+*Comprendre la sécurité du compte — écran desktop*
+
+![Comprendre la sécurité du compte — écran mobile](/docs/screenshots/account-security-fr-mobile.png)
+
+*Comprendre la sécurité du compte — écran mobile*
 
 ## Comment l’utiliser ?
 

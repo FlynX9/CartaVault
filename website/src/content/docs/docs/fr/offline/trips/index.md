@@ -23,9 +23,13 @@ Une sortie doit rester consultable lorsque la connexion mobile est absente ou in
 Suivez ce chemin dans l’interface : **Sorties → action Rendre disponible hors ligne**.
 
 
-![Préparer une sortie hors ligne](/docs/screenshots/trip-offline-fr-light.png)
+![Préparer une sortie hors ligne — écran desktop](/docs/screenshots/trip-offline-fr-light.png)
 
-*Préparer une sortie hors ligne*
+*Préparer une sortie hors ligne — écran desktop*
+
+![Préparer une sortie hors ligne — écran mobile](/docs/screenshots/trip-offline-fr-mobile.png)
+
+*Préparer une sortie hors ligne — écran mobile*
 
 ## Comment l’utiliser ?
 

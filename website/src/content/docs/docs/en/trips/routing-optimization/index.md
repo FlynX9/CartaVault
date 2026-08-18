@@ -23,9 +23,13 @@ Calculation exposes distance, duration and arrival time; optimization proposes a
 Follow this path in the interface : **Trips → day → Route or Optimize**.
 
 
-![Calculate and optimize routes](/docs/screenshots/trip-routing-fr-light.png)
+![Calculate and optimize routes — desktop screen](/docs/screenshots/trip-routing-en-light.png)
 
-*Calculate and optimize routes*
+*Calculate and optimize routes — desktop screen*
+
+![Calculate and optimize routes — mobile screen](/docs/screenshots/trip-routing-en-mobile.png)
+
+*Calculate and optimize routes — mobile screen*
 
 ## How do I use it?
 

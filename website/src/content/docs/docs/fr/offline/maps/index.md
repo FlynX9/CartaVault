@@ -23,9 +23,13 @@ La préparation hors ligne conserve les informations essentielles d’une carte 
 Suivez ce chemin dans l’interface : **Coffre → menu d’une carte → Rendre disponible hors ligne**.
 
 
-![Préparer une carte hors ligne](/docs/screenshots/map-offline-fr-light.png)
+![Préparer une carte hors ligne — écran desktop](/docs/screenshots/map-offline-fr-light.png)
 
-*Préparer une carte hors ligne*
+*Préparer une carte hors ligne — écran desktop*
+
+![Préparer une carte hors ligne — écran mobile](/docs/screenshots/map-offline-fr-mobile.png)
+
+*Préparer une carte hors ligne — écran mobile*
 
 ## Comment l’utiliser ?
 

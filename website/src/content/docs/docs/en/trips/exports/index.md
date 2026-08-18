@@ -23,9 +23,13 @@ Exports make the journey usable outside CartaVault, printable, or transferable t
 Follow this path in the interface : **Trips → export actions**.
 
 
-![Export a trip](/docs/screenshots/trip-pdf-export-fr-light.png)
+![Export a trip — desktop screen](/docs/screenshots/trip-pdf-export-en-light.png)
 
-*Export a trip*
+*Export a trip — desktop screen*
+
+![Export a trip — mobile screen](/docs/screenshots/trip-pdf-export-en-mobile.png)
+
+*Export a trip — mobile screen*
 
 ## How do I use it?
 

@@ -23,9 +23,13 @@ Le panneau rend visible ce qui occupe réellement le stockage du navigateur et �
 Suivez ce chemin dans l’interface : **Mon compte → Données hors ligne**.
 
 
-![Gérer les données hors ligne](/docs/screenshots/account-offline-fr-light.png)
+![Gérer les données hors ligne — écran desktop](/docs/screenshots/account-offline-fr-light.png)
 
-*Gérer les données hors ligne*
+*Gérer les données hors ligne — écran desktop*
+
+![Gérer les données hors ligne — écran mobile](/docs/screenshots/account-offline-fr-mobile.png)
+
+*Gérer les données hors ligne — écran mobile*
 
 ## Comment l’utiliser ?
 

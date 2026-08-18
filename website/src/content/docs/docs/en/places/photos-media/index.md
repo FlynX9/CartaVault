@@ -23,9 +23,13 @@ Images document a place's condition and access. CartaVault links them to the rec
 Follow this path in the interface : **Place record → Media**.
 
 
-![Manage place photos](/docs/screenshots/place-media-fr-light.png)
+![Manage place photos — desktop screen](/docs/screenshots/place-media-en-light.png)
 
-*Manage place photos*
+*Manage place photos — desktop screen*
+
+![Manage place photos — mobile screen](/docs/screenshots/place-media-en-mobile.png)
+
+*Manage place photos — mobile screen*
 
 ## How do I use it?
 

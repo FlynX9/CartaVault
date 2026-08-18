@@ -27,9 +27,13 @@ Cette page concerne l’administration de l’instance. Elle n’est accessible 
 Suivez ce chemin dans l’interface : **Administration → État de l’instance**.
 
 
-![Superviser l’état de l’instance](/docs/screenshots/admin-instance-fr-light.png)
+![Superviser l’état de l’instance — écran desktop](/docs/screenshots/admin-instance-fr-light.png)
 
-*Superviser l’état de l’instance*
+*Superviser l’état de l’instance — écran desktop*
+
+![Superviser l’état de l’instance — écran mobile](/docs/screenshots/admin-instance-fr-mobile.png)
+
+*Superviser l’état de l’instance — écran mobile*
 
 ## Comment l’utiliser ?
 

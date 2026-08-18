@@ -23,9 +23,13 @@ Les préférences adaptent CartaVault au contexte de travail et suivent le compt
 Suivez ce chemin dans l’interface : **Menu utilisateur → Options → Préférences**.
 
 
-![Configurer ses préférences](/docs/screenshots/account-preferences-fr-light.png)
+![Configurer ses préférences — écran desktop](/docs/screenshots/account-preferences-fr-light.png)
 
-*Configurer ses préférences*
+*Configurer ses préférences — écran desktop*
+
+![Configurer ses préférences — écran mobile](/docs/screenshots/account-preferences-fr-mobile.png)
+
+*Configurer ses préférences — écran mobile*
 
 ## Comment l’utiliser ?
 

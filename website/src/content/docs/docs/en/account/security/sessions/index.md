@@ -23,9 +23,13 @@ The session list helps detect an unexpected device and cut access without immedi
 Follow this path in the interface : **My account → Security → Manage sessions**.
 
 
-![Manage sessions and devices](/docs/screenshots/account-sessions-fr-light.png)
+![Manage sessions and devices — desktop screen](/docs/screenshots/account-sessions-en-light.png)
 
-*Manage sessions and devices*
+*Manage sessions and devices — desktop screen*
+
+![Manage sessions and devices — mobile screen](/docs/screenshots/account-sessions-en-mobile.png)
+
+*Manage sessions and devices — mobile screen*
 
 ## How do I use it?
 

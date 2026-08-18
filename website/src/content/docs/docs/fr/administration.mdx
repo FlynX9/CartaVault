@@ -6,7 +6,8 @@ sidebar:
 ---
 
 import ProductScreenshot from '../../../../components/docs/ProductScreenshot.astro';
-import admin from '../../../../assets/screenshots/app-admin-fr.webp';
+import admin from '../../../../assets/screenshots/app-admin-fr.png';
+import adminMobile from '../../../../assets/screenshots/app-admin-mobile-fr.png';
 
 ## Accès à l’administration
 
@@ -26,7 +27,7 @@ Les demandes en attente apparaissent dans les notifications et dans la console. 
 
 ## Profils de quotas
 
-Un profil définit les limites de cartes, lieux, membres, taille d’une photo et stockage photo. Les valeurs illimitées restent distinctes de zéro : zéro bloque une nouvelle création, tandis qu’illimité n’applique pas de plafond.
+Un profil définit les limites de cartes, lieux, membres, taille d’une photo et stockage photo. Il peut aussi partager des clés d’instance pour des usages précis comme la recherche, le routage ou les fonds cartographiques. Les valeurs illimitées restent distinctes de zéro : zéro bloque une nouvelle création, tandis qu’illimité n’applique pas de plafond.
 
 Vous pouvez créer, dupliquer, modifier, définir par défaut et archiver un profil. Un profil affecté à des utilisateurs ne peut pas être supprimé sans réaffectation. Le profil système illimité est protégé.
 
@@ -56,6 +57,8 @@ Le bouton d’actualisation relance les contrôles à délai court. Un service e
 Les nouvelles inscriptions et invitations apparaissent dans le centre de notifications. Les modifications détaillées des POI sont visibles depuis leur historique. Les événements de sécurité importants sont enregistrés côté serveur sans exposer mots de passe, jetons ou clés API.
 
 <ProductScreenshot src={admin} alt="Panneau d’administration des utilisateurs CartaVault" caption="La console centralise les comptes, demandes, profils de quotas et diagnostics." />
+
+<ProductScreenshot src={adminMobile} alt="Panneau d’administration CartaVault sur mobile" caption="Sur mobile, la navigation et les actions administratives restent accessibles dans des panneaux adaptés." />
 
 ## Garde-fous
 

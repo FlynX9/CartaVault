@@ -23,9 +23,13 @@ The media library provides a cross-map view of photos without opening every plac
 Follow this path in the interface : **Media**.
 
 
-![Use the media library](/docs/screenshots/media-fr-light.png)
+![Use the media library — desktop screen](/docs/screenshots/media-en-light.png)
 
-*Use the media library*
+*Use the media library — desktop screen*
+
+![Use the media library — mobile screen](/docs/screenshots/media-en-mobile.png)
+
+*Use the media library — mobile screen*
 
 ## How do I use it?
 

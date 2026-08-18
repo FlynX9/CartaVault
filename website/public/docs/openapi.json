@@ -20067,6 +20067,29 @@
         ]
       }
     },
+    "/basemaps/mapbox-satellite/session": {
+      "post": {
+        "operationId": "create_tile_session_basemaps_mapbox_satellite_session_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Tile Session Basemaps Mapbox Satellite Session Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Tile Session",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
     "/basemaps/mapbox-satellite/status": {
       "get": {
         "operationId": "status_basemaps_mapbox_satellite_status_get",
@@ -20153,6 +20176,22 @@
     "/basemaps/stadia/config": {
       "get": {
         "operationId": "basemap_config_basemaps_stadia_config_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "capability",
+            "required": false,
+            "schema": {
+              "default": "classic_basemap",
+              "enum": [
+                "classic_basemap",
+                "satellite_basemap"
+              ],
+              "title": "Capability",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -20165,6 +20204,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Basemap Config",

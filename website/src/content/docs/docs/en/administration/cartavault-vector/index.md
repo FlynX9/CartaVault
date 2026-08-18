@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → General → CartaVault basemap**.
 
 
-![Prepare CartaVault Vector basemaps](/docs/screenshots/admin-vector-fr-light.png)
+![Prepare CartaVault Vector basemaps — desktop screen](/docs/screenshots/admin-vector-en-light.png)
 
-*Prepare CartaVault Vector basemaps*
+*Prepare CartaVault Vector basemaps — desktop screen*
+
+![Prepare CartaVault Vector basemaps — mobile screen](/docs/screenshots/admin-vector-en-mobile.png)
+
+*Prepare CartaVault Vector basemaps — mobile screen*
 
 ## How do I use it?
 

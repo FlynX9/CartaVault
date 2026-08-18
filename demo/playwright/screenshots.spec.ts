@@ -10,7 +10,7 @@ type Scenario = {
   user?: 'owner' | 'editor' | 'viewer'
   theme?: 'light' | 'dark'
   language?: 'fr' | 'en'
-  view?: 'place-popup' | 'place-editor' | 'place-media' | 'place-annotations' | 'trip' | 'timeline' | 'trip-routing' | 'trip-export' | 'trip-offline' | 'media' | 'media-upload' | 'kmz-import' | 'maps' | 'create-map' | 'map-fields' | 'map-members' | 'map-export' | 'map-offline' | 'categories' | 'profile-import' | 'annotation-templates' | 'trash' | 'account' | 'account-preferences' | 'account-security' | 'account-email' | 'account-password' | 'account-totp' | 'account-recovery-codes' | 'account-email-mfa' | 'account-sessions' | 'account-api-keys' | 'account-api-key-dialog' | 'account-privacy' | 'account-offline' | 'account-delete' | 'admin' | 'admin-registration' | 'admin-user-details' | 'admin-quota-edit' | 'admin-vector' | 'admin-privacy' | 'admin-media-logs'
+  view?: 'place-popup' | 'place-editor' | 'place-media' | 'place-annotations' | 'trip' | 'timeline' | 'trip-routing' | 'trip-export' | 'trip-offline' | 'media' | 'media-upload' | 'media-gps' | 'kmz-import' | 'maps' | 'create-map' | 'map-fields' | 'map-members' | 'map-export' | 'map-offline' | 'categories' | 'tags' | 'statuses' | 'profile-import' | 'tag-profile-import' | 'status-profile-import' | 'annotation-templates' | 'trash' | 'account' | 'account-preferences' | 'account-security' | 'account-email' | 'account-password' | 'account-totp' | 'account-recovery-codes' | 'account-email-mfa' | 'account-sessions' | 'account-api-keys' | 'account-api-key-dialog' | 'account-privacy' | 'account-offline' | 'account-delete' | 'admin' | 'admin-registration' | 'admin-user-details' | 'admin-quota-edit' | 'admin-vector' | 'admin-privacy' | 'admin-media-logs'
   mobile?: boolean
 }
 
@@ -92,10 +92,15 @@ async function waitForScenarioShell(page: Page, scenario: Scenario) {
     return
   }
 
-  const placesPanel = page.getByRole('complementary', { name: isFrench ? 'Lieux' : 'Places' })
-  await expect(placesPanel).toBeVisible({ timeout: 20_000 })
-  await expect(placesPanel.locator('.places-place-card, .place-list-item, .places-gallery-card').first()).toBeVisible({ timeout: 20_000 })
   await expect(page.locator('.leaflet-container, .maplibregl-map').first()).toBeVisible({ timeout: 20_000 })
+  const startsFromPlaces = !scenario.view
+  if (startsFromPlaces) {
+    const placesPanel = page.getByRole('complementary', { name: isFrench ? 'Lieux' : 'Places' })
+    await expect(placesPanel).toBeVisible({ timeout: 20_000 })
+    await expect(placesPanel.locator('.places-place-card, .place-list-item, .places-gallery-card').first()).toBeVisible({ timeout: 20_000 })
+  } else {
+    await expect(page.getByRole('navigation', { name: /Navigation CartaVault|CartaVault navigation/ })).toBeVisible({ timeout: 20_000 })
+  }
 }
 
 async function enableTotpForDocumentation(page: Page) {
@@ -143,20 +148,20 @@ async function prepareScenario(page: Page, scenario: Scenario) {
   const isFrench = scenario.language !== 'en'
   if (scenario.view === 'place-popup' || scenario.view === 'place-editor' || scenario.view === 'place-media' || scenario.view === 'place-annotations') {
     const placeName = scenario.view === 'place-annotations' ? 'Passage des Verrières' : 'Atelier des Ocres'
-    const placesPanel = page.getByRole('complementary', { name: isFrench ? 'Lieux' : 'Places' })
-    if (scenario.view === 'place-annotations') {
-      await placesPanel.locator('input[type="search"]').first().fill(placeName)
-    }
-    const placeCard = placesPanel.getByRole('button', { name: placeName, exact: true })
-    await expect(placeCard).toBeVisible()
-    await placeCard.click()
+    const placeId = scenario.view === 'place-annotations'
+      ? '08001ad9-91bf-5182-a295-d4eaefb913fe'
+      : '07503ba8-417f-53fb-9fbb-f685d9df2ec3'
+    await page.goto(`/places/${placeId}${new URL(page.url()).search}`)
+    await expect(page).toHaveURL(/\/places\/[^/]+/)
     const popup = page.locator('.place-map-popup')
     await expect(popup).toBeVisible()
     await expect(popup.getByRole('heading', { name: placeName })).toBeVisible()
     if (scenario.view === 'place-editor' || scenario.view === 'place-media') {
-      await popup.getByRole('button', { name: 'Modifier le POI' }).click()
+      const editButton = popup.getByRole('button', { name: /Modifier le POI|Edit POI/ })
+      if (scenario.mobile) await editButton.dispatchEvent('click')
+      else await editButton.click()
       await expect(page).toHaveURL(/\/places\/[^/]+\/edit/)
-      await expect(page.getByRole('heading', { name: /Modifier/ })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Modifier|Edit/ })).toBeVisible()
       if (scenario.view === 'place-media') {
         const manager = page.locator('.photo-manager')
         await expect(manager.getByRole('heading', { name: 'Photos', exact: true })).toBeVisible()
@@ -166,7 +171,9 @@ async function prepareScenario(page: Page, scenario: Scenario) {
         await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true)
       }
     } else if (scenario.view === 'place-annotations') {
-      await popup.getByRole('button', { name: /Plan \/ annotations/ }).click()
+      const annotationsButton = popup.getByRole('button', { name: /Plan \/ annotations/ })
+      if (scenario.mobile) await annotationsButton.dispatchEvent('click')
+      else await annotationsButton.click()
       await expect(popup.locator('.popup-annotations__body')).toBeVisible()
       await expect(popup.getByText(/Parking — démonstration/)).toBeVisible()
     }
@@ -181,13 +188,13 @@ async function prepareScenario(page: Page, scenario: Scenario) {
       await panel.getByRole('button', { name: /Créer une carte|Create a map/ }).click()
       await expect(page.getByRole('dialog', { name: /Créer une carte|Create a map/ })).toBeVisible()
     } else if (scenario.view === 'map-fields') {
-      await panel.getByRole('button', { name: /Configurer les champs.*Carnet de France/ }).click()
+      await panel.getByRole('button', { name: /Configurer les champs.*Carnet de France|Configure fields for Carnet de France/ }).click()
       await expect(page.getByRole('dialog', { name: /Champs des POI|Place fields/ })).toBeVisible()
     } else if (scenario.view === 'map-members') {
-      await panel.getByRole('button', { name: /Gérer les membres.*Carnet de France/ }).click()
+      await panel.getByRole('button', { name: /Gérer les membres.*Carnet de France|Manage members of Carnet de France/ }).click()
       await expect(page.getByRole('dialog', { name: /Accès à|Access to/ })).toBeVisible()
     } else if (scenario.view === 'map-export') {
-      await panel.getByRole('button', { name: /Exporter Carnet de France/ }).click()
+      await panel.getByRole('button', { name: /Exporter Carnet de France|Export Carnet de France/ }).click()
       await expect(page.getByRole('dialog', { name: /Exporter|Export/ })).toBeVisible()
     } else if (scenario.view === 'map-offline') {
       await panel.getByRole('button', { name: /Rendre Carnet de France disponible hors ligne/ }).click()
@@ -196,13 +203,24 @@ async function prepareScenario(page: Page, scenario: Scenario) {
     return
   }
 
-  if (scenario.view === 'categories' || scenario.view === 'profile-import' || scenario.view === 'annotation-templates' || scenario.view === 'trash') {
-    const label = scenario.view === 'annotation-templates' ? 'Annotations' : scenario.view === 'trash' ? 'Corbeille' : 'Catégories'
-    await page.getByRole('button', { name: label, exact: true }).click()
-    await expect(page.getByRole('heading', { name: label, exact: true }).first()).toBeVisible()
-    if (scenario.view === 'profile-import') {
-      await page.getByRole('button', { name: /Importer une catégorie depuis un profil/ }).click()
-      await expect(page.getByRole('dialog', { name: /Importer des catégories/ })).toBeVisible()
+  if (scenario.view === 'categories' || scenario.view === 'tags' || scenario.view === 'statuses' || scenario.view === 'profile-import' || scenario.view === 'tag-profile-import' || scenario.view === 'status-profile-import' || scenario.view === 'annotation-templates' || scenario.view === 'trash') {
+    const label = scenario.view === 'annotation-templates' ? 'Annotations' : scenario.view === 'trash' ? (isFrench ? 'Corbeille' : 'Trash') : scenario.view === 'tags' || scenario.view === 'tag-profile-import' ? 'Tags' : scenario.view === 'statuses' || scenario.view === 'status-profile-import' ? (isFrench ? 'Statuts' : 'Statuses') : (isFrench ? 'Catégories' : 'Categories')
+    if (scenario.mobile) {
+      await page.getByRole('button', { name: 'Organisation', exact: true }).click()
+      await page.getByRole('menuitem', { name: label, exact: true }).click()
+    } else {
+      await page.getByRole('button', { name: label, exact: true }).click()
+    }
+    const panelHeading = scenario.view === 'statuses' || scenario.view === 'status-profile-import'
+      ? 'Statuts'
+      : scenario.view === 'categories' || scenario.view === 'profile-import'
+        ? 'Catégories'
+        : label
+    await expect(page.getByRole('heading', { name: panelHeading, exact: true }).first()).toBeVisible()
+    if (scenario.view === 'profile-import' || scenario.view === 'tag-profile-import' || scenario.view === 'status-profile-import') {
+      const importLabel = scenario.view === 'tag-profile-import' ? /Importer un tag depuis un profil/ : scenario.view === 'status-profile-import' ? /Importer des statuts depuis un profil/ : /Importer une catégorie depuis un profil/
+      await page.getByRole('button', { name: importLabel }).click()
+      await expect(page.getByRole('dialog', { name: /Importer des catégories|Importer des tags|Importer des statuts/ })).toBeVisible()
     }
     return
   }
@@ -215,15 +233,18 @@ async function prepareScenario(page: Page, scenario: Scenario) {
       if (scenario.view === 'timeline') {
         await page.getByRole('button', { name: isFrench ? 'Sorties' : 'Trips', exact: true }).click()
         await expect(panel.getByRole('heading', { name: isFrench ? 'Chronologie' : 'Timeline' })).toBeVisible()
+        return
       }
-      return
+      if (scenario.view === 'trip') return
     }
-    const tripSelector = panel.getByRole('combobox', { name: isFrench ? 'Choisir un voyage' : 'Choose a trip' })
-    await expect(tripSelector).toBeVisible()
-    await tripSelector.selectOption({ label: 'Escapade culturelle' })
-    await expect(panel.getByText('Escapade culturelle', { exact: true }).first()).toBeVisible()
+    if (!scenario.mobile) {
+      const tripSelector = panel.getByRole('combobox', { name: isFrench ? 'Choisir un voyage' : 'Choose a trip' })
+      await expect(tripSelector).toBeVisible()
+      await tripSelector.selectOption({ label: 'Escapade culturelle' })
+      await expect(panel.getByText('Escapade culturelle', { exact: true }).first()).toBeVisible()
+    }
     if (scenario.view === 'timeline') {
-      await panel.getByRole('button', { name: 'Activer la chronologie du voyage' }).click()
+      await panel.getByRole('button', { name: /Activer la chronologie du voyage|Enable trip timeline/ }).click()
       await expect(panel.getByRole('heading', { name: isFrench ? 'Chronologie' : 'Timeline' })).toBeVisible()
       if (isFrench) {
         await expect(panel.getByRole('button', { name: 'Jour 1' })).toBeVisible()
@@ -233,33 +254,68 @@ async function prepareScenario(page: Page, scenario: Scenario) {
         await expect(firstStop).toHaveAttribute('aria-current', 'step')
       }
     } else if (scenario.view === 'trip-routing') {
-      await panel.locator('button[title="Paramètres de la sortie"]').first().click()
-      await expect(panel.getByText('Paramètres de la sortie', { exact: true }).last()).toBeVisible()
+      if (scenario.mobile) {
+        await panel.getByRole('button', { name: 'Plus d’actions pour la sortie' }).click()
+        await panel.getByRole('menuitem', { name: 'Paramètres de la sortie' }).click()
+      } else {
+        await panel.locator('button[title="Paramètres de la sortie"], button[title="Trip settings"]').first().click()
+      }
+      await expect(panel.getByText(/Paramètres de la sortie|Trip settings/, { exact: true }).last()).toBeVisible()
     } else if (scenario.view === 'trip-export') {
-      await panel.locator('summary[aria-label="Exporter la sortie"]').click()
-      await expect(panel.getByText('Exporter en PDF', { exact: true })).toBeVisible()
+      if (scenario.mobile) {
+        await panel.getByRole('button', { name: 'Plus d’actions pour la sortie' }).click()
+        await panel.getByRole('menuitem', { name: 'Exporter la sortie' }).click()
+      } else {
+        await panel.locator('summary[aria-label="Exporter la sortie"], summary[aria-label="Export trip"]').click()
+      }
+      if (scenario.mobile) await expect(page.getByRole('dialog', { name: 'Options d’export' })).toBeVisible()
+      else await expect(panel.getByText(/Exporter en PDF|Export as PDF/, { exact: true })).toBeVisible()
     } else if (scenario.view === 'trip-offline') {
-      await panel.getByRole('button', { name: 'Rendre cette sortie disponible hors ligne' }).click()
-      await expect(page.getByRole('dialog', { name: /Rendre disponible hors ligne/ })).toBeVisible()
+      if (scenario.mobile) {
+        await panel.getByRole('button', { name: 'Plus d’actions pour la sortie' }).click()
+        await panel.getByRole('menuitem', { name: 'Mettre hors-ligne' }).click()
+      } else {
+        await panel.getByRole('button', { name: /Rendre cette sortie disponible hors ligne|Make this trip available offline/ }).click()
+      }
+      await expect(page.getByRole('dialog', { name: /Rendre disponible hors ligne|Make available offline/ })).toBeVisible()
     }
     return
   }
 
-  if (scenario.view === 'media' || scenario.view === 'media-upload') {
+  if (scenario.view === 'media' || scenario.view === 'media-upload' || scenario.view === 'media-gps') {
     await page.getByRole('button', { name: isFrench ? 'Médias' : 'Media', exact: true }).click()
-    const panel = page.getByRole('complementary', { name: 'Médiathèque' })
+    const panel = page.getByRole('complementary', { name: /Médiathèque|Media library/ })
     await expect(panel).toBeVisible()
     await expect(panel.locator('.media-card')).toHaveCount(18)
     if (scenario.view === 'media-upload') {
-      await panel.getByRole('button', { name: 'Importer des photos' }).click()
+      await panel.getByRole('button', { name: /Importer des photos|Import photos/ }).click()
       await expect(page.getByRole('dialog')).toBeVisible()
+    } else if (scenario.view === 'media-gps') {
+      const gpsMedia = panel.locator('.media-card').filter({ hasText: 'belvedere-paris-gps.webp' })
+      await expect(gpsMedia).toBeVisible()
+      await expect(gpsMedia.getByRole('button', { name: /Créer un POI|Create a POI/ })).toBeVisible()
+      await gpsMedia.getByRole('button', { name: /Ouvrir belvedere-paris-gps.webp|Open belvedere-paris-gps.webp/ }).click()
+      await expect(page.getByRole('dialog').getByRole('button', { name: /Créer un POI|Create a POI/ })).toBeVisible()
     }
     return
   }
 
   if (scenario.view === 'kmz-import') {
-    const panel = page.getByRole('complementary', { name: 'Lieux' })
-    await panel.getByRole('button', { name: 'Importer un fichier KMZ' }).click()
+    const panel = page.getByRole('complementary', { name: isFrench ? 'Lieux' : 'Places' })
+    const importButton = panel.locator('.places-import-kmz')
+    if (scenario.mobile) {
+      await expect(importButton).toBeHidden()
+      await expect(panel.getByRole('link', { name: /Nouveau lieu|New place/ })).toBeVisible()
+      return
+    }
+    for (let attempt = 0; attempt < 2 && !await importButton.isVisible().catch(() => false); attempt += 1) {
+      const expandPanel = panel.getByRole('button', { name: /Déployer le panneau Lieux|Expand Places panel/ })
+      if (await expandPanel.isVisible().catch(() => false)) await expandPanel.click()
+      else await page.getByRole('button', { name: isFrench ? /^(Lieux|Carte)$/ : /^(Places|Map)$/ }).click()
+      await page.waitForTimeout(350)
+    }
+    await expect(importButton).toBeVisible({ timeout: 20_000 })
+    await importButton.click()
     await expect(page.getByRole('dialog', { name: /Importer/ })).toBeVisible()
     return
   }
@@ -299,7 +355,7 @@ async function prepareScenario(page: Page, scenario: Scenario) {
       await account.locator('.account-security-action-card__body').filter({ hasText: isFrench ? 'Mot de passe' : 'Password' }).locator('..').getByRole('button').click()
       await expect(page.getByRole('dialog', { name: isFrench ? 'Changer le mot de passe' : 'Change password' })).toBeVisible()
     } else if (scenario.view === 'account-totp') {
-      await account.locator('.account-security-action-list article').filter({ hasText: 'Application' }).getByRole('button').click()
+      await account.locator('.account-security-action-list article').filter({ hasText: /Application|Authenticator/ }).getByRole('button').click()
       await expect(page.getByRole('dialog', { name: /Application.*authentification|Authenticator app/ })).toBeVisible()
     } else if (scenario.view === 'account-recovery-codes') {
       await account.locator('.account-security-action-list article').filter({ hasText: /Codes de récupération|Recovery codes/ }).getByRole('button').click()
@@ -332,32 +388,32 @@ async function prepareScenario(page: Page, scenario: Scenario) {
     }
     await expect(page.getByRole('heading', { name: sectionHeadings[section] }).first()).toBeVisible()
     if (scenario.view === 'admin-registration') {
-      await expect(page.getByRole('heading', { name: 'Inscriptions publiques' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Inscriptions publiques|Public registration/ })).toBeVisible()
     } else if (scenario.view === 'admin-user-details') {
-      await page.getByRole('button', { name: /Actions pour/ }).first().click()
-      await page.getByRole('button', { name: /Voir les détails/ }).first().click()
+      await page.getByRole('button', { name: /Actions pour|Actions for/ }).first().click()
+      await page.getByRole('button', { name: /Voir les détails|View details/ }).first().click()
       await expect(page.locator('.admin-user-modal[role="dialog"]')).toBeVisible()
     } else if (scenario.view === 'admin-quota-edit') {
-      await page.getByRole('button', { name: /Afficher Voyageur/ }).click()
+      await page.getByRole('button', { name: /Afficher Voyageur|Show Voyageur/ }).click()
       const quotaCard = page.locator('.quota-profile').filter({ has: page.getByRole('heading', { name: 'Voyageur' }) })
-      await quotaCard.locator('button').filter({ hasText: 'Modifier' }).click()
-      const quotaDialog = page.getByRole('dialog', { name: /Modifier Voyageur|Nouveau profil de quotas/ })
+      await quotaCard.locator('button').filter({ hasText: /Modifier|Edit/ }).click()
+      const quotaDialog = page.getByRole('dialog', { name: /Modifier Voyageur|Edit Voyageur|Nouveau profil de quotas|New quota profile/ })
       await expect(quotaDialog).toBeVisible()
-      await quotaDialog.getByRole('tab', { name: 'Cartes & POI', exact: true }).click()
+      await quotaDialog.getByRole('tab', { name: /Cartes & POI|Maps & POIs/, exact: true }).click()
       await expect(quotaDialog.locator('.quota-limit-list')).toBeVisible()
     } else if (scenario.view === 'admin-vector') {
       await expect(page.locator('#vector-basemap-title')).toBeVisible()
       await page.locator('#vector-basemap-title').scrollIntoViewIfNeeded()
     } else if (scenario.view === 'admin-privacy') {
       await expect(page.locator('#privacy-settings-title')).toBeVisible()
-      const privacyToggle = page.getByRole('switch', { name: 'Activer la confidentialité et la conformité' })
+      const privacyToggle = page.getByRole('switch', { name: /Activer la confidentialité et la conformité|Enable privacy and compliance/ })
       await expect(privacyToggle).toBeEnabled()
       if (!await privacyToggle.isChecked()) await privacyToggle.check({ force: true })
-      await expect(page.getByRole('heading', { name: 'Gestion du consentement' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Gestion du consentement|Consent management/ })).toBeVisible()
       await page.locator('#privacy-settings-title').scrollIntoViewIfNeeded()
     } else if (scenario.view === 'admin-media-logs') {
-      await expect(page.getByRole('heading', { name: 'Médiathèque' })).toBeVisible()
-      await page.getByRole('heading', { name: 'Médiathèque' }).scrollIntoViewIfNeeded()
+      await expect(page.getByRole('heading', { name: /Médiathèque|Media library/ })).toBeVisible()
+      await page.getByRole('heading', { name: /Médiathèque|Media library/ }).scrollIntoViewIfNeeded()
     }
   }
 }

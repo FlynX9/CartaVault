@@ -23,13 +23,13 @@ Une carte peut contenir des centaines de lieux. La recherche, les vues et les fi
 Suivez ce chemin dans l’interface : **Lieux**.
 
 
-![Parcourir et rechercher les lieux](/docs/screenshots/places-france-fr-light.png)
+![Parcourir et rechercher les lieux — écran desktop](/docs/screenshots/places-france-fr-light.png)
 
-*Parcourir et rechercher les lieux*
+*Parcourir et rechercher les lieux — écran desktop*
 
-![Parcourir et rechercher les lieux](/docs/screenshots/places-france-fr-mobile.png)
+![Parcourir et rechercher les lieux — écran mobile](/docs/screenshots/places-france-fr-mobile.png)
 
-*Parcourir et rechercher les lieux*
+*Parcourir et rechercher les lieux — écran mobile*
 
 ## Comment l’utiliser ?
 

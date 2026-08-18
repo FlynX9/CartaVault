@@ -27,9 +27,13 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → General → Privacy and compliance**.
 
 
-![Configure privacy and compliance](/docs/screenshots/admin-privacy-fr-light.png)
+![Configure privacy and compliance — desktop screen](/docs/screenshots/admin-privacy-en-light.png)
 
-*Configure privacy and compliance*
+*Configure privacy and compliance — desktop screen*
+
+![Configure privacy and compliance — mobile screen](/docs/screenshots/admin-privacy-en-mobile.png)
+
+*Configure privacy and compliance — mobile screen*
 
 ## How do I use it?
 

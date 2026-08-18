@@ -23,9 +23,13 @@ La gestion des membres permet de partager un projet sans rendre son contenu publ
 Suivez ce chemin dans l’interface : **Coffre → menu d’une carte → Membres**.
 
 
-![Gérer les membres d’une carte](/docs/screenshots/map-members-fr-light.png)
+![Gérer les membres d’une carte — écran desktop](/docs/screenshots/map-members-fr-light.png)
 
-*Gérer les membres d’une carte*
+*Gérer les membres d’une carte — écran desktop*
+
+![Gérer les membres d’une carte — écran mobile](/docs/screenshots/map-members-fr-mobile.png)
+
+*Gérer les membres d’une carte — écran mobile*
 
 ## Comment l’utiliser ?
 

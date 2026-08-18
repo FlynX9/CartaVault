@@ -23,9 +23,13 @@ Member management shares a project without making its content public.
 Follow this path in the interface : **Vault → map menu → Members**.
 
 
-![Manage map members](/docs/screenshots/map-members-fr-light.png)
+![Manage map members — desktop screen](/docs/screenshots/map-members-en-light.png)
 
-*Manage map members*
+*Manage map members — desktop screen*
+
+![Manage map members — mobile screen](/docs/screenshots/map-members-en-mobile.png)
+
+*Manage map members — mobile screen*
 
 ## How do I use it?
 

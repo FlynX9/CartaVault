@@ -23,13 +23,13 @@ A map may contain hundreds of places. Search, views and filters reduce the list 
 Follow this path in the interface : **Places**.
 
 
-![Browse and search places](/docs/screenshots/places-france-fr-light.png)
+![Browse and search places — desktop screen](/docs/screenshots/places-france-en-light.png)
 
-*Browse and search places*
+*Browse and search places — desktop screen*
 
-![Browse and search places](/docs/screenshots/places-france-fr-mobile.png)
+![Browse and search places — mobile screen](/docs/screenshots/places-france-en-mobile.png)
 
-*Browse and search places*
+*Browse and search places — mobile screen*
 
 ## How do I use it?
 

@@ -27,13 +27,21 @@ This page covers instance administration and is only available to administrators
 Follow this path in the interface : **Administration → Users**.
 
 
-![Administer users](/docs/screenshots/admin-users-fr-light.png)
+![Administer users — desktop screen](/docs/screenshots/admin-users-en-light.png)
 
-*Administer users*
+*Administer users — desktop screen*
 
-![Administer users](/docs/screenshots/admin-user-details-fr-light.png)
+![Administer users — mobile screen](/docs/screenshots/admin-users-en-mobile.png)
 
-*Administer users*
+*Administer users — mobile screen*
+
+![Administer users — desktop screen](/docs/screenshots/admin-user-details-en-light.png)
+
+*Administer users — desktop screen*
+
+![Administer users — mobile screen](/docs/screenshots/admin-user-details-en-mobile.png)
+
+*Administer users — mobile screen*
 
 ## How do I use it?
 

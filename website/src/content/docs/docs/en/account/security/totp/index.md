@@ -23,9 +23,13 @@ TOTP adds a temporary code generated on a separate device and is stronger than a
 Follow this path in the interface : **My account → Security → Authenticator application (TOTP)**.
 
 
-![Configure TOTP authentication](/docs/screenshots/account-totp-fr-light.png)
+![Configure TOTP authentication — desktop screen](/docs/screenshots/account-totp-en-light.png)
 
-*Configure TOTP authentication*
+*Configure TOTP authentication — desktop screen*
+
+![Configure TOTP authentication — mobile screen](/docs/screenshots/account-totp-en-mobile.png)
+
+*Configure TOTP authentication — mobile screen*
 
 ## How do I use it?
 

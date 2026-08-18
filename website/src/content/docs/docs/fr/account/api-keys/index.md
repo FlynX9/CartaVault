@@ -23,13 +23,21 @@ Les clés personnelles permettent d’utiliser un abonnement fournisseur sans ex
 Suivez ce chemin dans l’interface : **Mon compte → Clés API**.
 
 
-![Gérer ses clés API personnelles](/docs/screenshots/account-api-keys-fr-light.png)
+![Gérer ses clés API personnelles — écran desktop](/docs/screenshots/account-api-keys-fr-light.png)
 
-*Gérer ses clés API personnelles*
+*Gérer ses clés API personnelles — écran desktop*
 
-![Gérer ses clés API personnelles](/docs/screenshots/account-api-key-dialog-fr-light.png)
+![Gérer ses clés API personnelles — écran mobile](/docs/screenshots/account-api-keys-fr-mobile.png)
 
-*Gérer ses clés API personnelles*
+*Gérer ses clés API personnelles — écran mobile*
+
+![Gérer ses clés API personnelles — écran desktop](/docs/screenshots/account-api-key-dialog-fr-light.png)
+
+*Gérer ses clés API personnelles — écran desktop*
+
+![Gérer ses clés API personnelles — écran mobile](/docs/screenshots/account-api-key-dialog-fr-mobile.png)
+
+*Gérer ses clés API personnelles — écran mobile*
 
 ## Comment l’utiliser ?
 
