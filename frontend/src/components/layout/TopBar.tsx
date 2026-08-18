@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { BookOpen, Braces, ChevronDown, ExternalLink, FileText, LogOut, Mail, Moon, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -14,8 +14,7 @@ import { NotificationCenter } from "../notifications/NotificationCenter";
 import { ActionHistoryControls } from "./ActionHistoryControls";
 import { clearActionHistory } from "../../ui/actionHistory";
 import { OfflineDownloadManager } from "../pwa/OfflineDownloadManager";
-import { CARTAVAULT_VERSION } from "../../releaseNotes";
-import { ReleaseNotesModal } from "../../pages/ReleaseNotesPage";
+import { CARTAVAULT_VERSION } from "../../version";
 
 interface TopBarProps {
   isMapWorkspace: boolean;
@@ -29,6 +28,9 @@ interface TopBarProps {
 
 const API_DOCUMENTATION_URL = /^https?:\/\//.test(API_BASE_URL) ? `${API_BASE_URL}/docs` : new URL(`${API_BASE_URL}/docs`, window.location.origin).toString();
 const USER_DOCUMENTATION_URL = new URL("/docs/", window.location.origin).toString();
+const ReleaseNotesModal = lazy(async () => ({
+  default: (await import("../../pages/ReleaseNotesPage")).ReleaseNotesModal,
+}));
 
 export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth();
@@ -250,7 +252,11 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
       </nav>
       {accountOpen && <AccountModal trigger={trigger.current} onClose={() => setAccountOpen(false)} />}
       {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
-      {releaseNotesOpen && <ReleaseNotesModal onClose={() => setReleaseNotesOpen(false)} />}
+      {releaseNotesOpen && (
+        <Suspense fallback={null}>
+          <ReleaseNotesModal onClose={() => setReleaseNotesOpen(false)} />
+        </Suspense>
+      )}
     </header>
   );
 }

@@ -1,9 +1,6 @@
-// Release builds inject VITE_CARTAVAULT_VERSION. The fallback keeps local,
-// offline development builds on the release notes bundled with this frontend.
-const BUNDLED_RELEASE_VERSION = "1.0.0";
+import { CARTAVAULT_VERSION } from "./version";
 
-export const CARTAVAULT_VERSION =
-  import.meta.env.VITE_CARTAVAULT_VERSION?.trim() || BUNDLED_RELEASE_VERSION;
+export { CARTAVAULT_VERSION } from "./version";
 
 type LocalizedText = {
   en: string;

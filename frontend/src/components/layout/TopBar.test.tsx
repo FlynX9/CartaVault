@@ -100,13 +100,13 @@ describe("TopBar account entry", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("opens the current release notes in an about dialog from the user menu", () => {
+  it("opens the current release notes in an about dialog from the user menu", async () => {
     renderTopBar();
 
     fireEvent.click(screen.getByRole("button", { name: /Admin$/ }));
     fireEvent.click(screen.getByRole("menuitem", { name: "À propos" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Notes de version" });
+    const dialog = await screen.findByRole("dialog", { name: "Notes de version" });
     expect(dialog).toBeVisible();
     expect(within(dialog).getByText("Première version stable de CartaVault, consolidant la beta publique et les cinq release candidates 1.0.")).toBeVisible();
     expect(within(dialog).getByText("v1.0.0")).toBeVisible();
