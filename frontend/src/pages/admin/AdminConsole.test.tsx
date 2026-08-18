@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 import { AdminConsole } from './AdminConsole'
 import { assignUserQuotaProfile, createQuotaProfile, getAdminApiKeys, getAdminUsers, getInstanceHealth, getInstanceLogRetention, getInstanceLogs, getMediaUploadSettings, getQuotaProfiles, getQuotaRegistry, getSaasSettings, getVectorBasemapLibrary, refreshInstanceHealth, saveInstanceLogRetention, saveMediaUploadSettings, saveSaasSettings, saveVectorBasemapSettings, updateAdminUser, updateQuotaProfile, verifyAdminApiKey } from '../../api/adminConsole'
-import { getPublicRegistrationSettings, updatePublicRegistrationSettings } from '../../api/registration'
+import { getPublicRegistrationSettings, getRegistrationRequests, reviewRegistration, updatePublicRegistrationSettings } from '../../api/registration'
 import { getAdminPrivacySettings, saveAdminPrivacySettings } from '../../api/privacy'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 import type { QuotaRegistryItem } from '../../types/adminConsole'
@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.mocked(getAdminApiKeys).mockResolvedValue([])
   vi.mocked(getQuotaProfiles).mockResolvedValue([unlimitedProfile])
   vi.mocked(getPublicRegistrationSettings).mockResolvedValue({ enabled: false, approval_required: true })
+  vi.mocked(getRegistrationRequests).mockResolvedValue([])
   vi.mocked(updatePublicRegistrationSettings).mockImplementation(async (settings) => settings)
   vi.mocked(getAdminPrivacySettings).mockResolvedValue(privacySettings)
   vi.mocked(saveAdminPrivacySettings).mockImplementation(async (settings) => ({ ...settings, consent_required: settings.analytics_mode === 'consent_required', consent_version: '1' }))
@@ -60,6 +61,27 @@ describe('AdminConsole', () => {
     expect(within(summary).queryByText('Sessions actives')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Inscriptions publiques' })).not.toBeInTheDocument()
     expect(getPublicRegistrationSettings).not.toHaveBeenCalled()
+  })
+
+  it('reviews a pending registration with the default quota profile', async () => {
+    const pending = {
+      id: '33333333-3333-4333-8333-333333333333', email: 'candidate@example.test', display_name: 'Candidate',
+      status: 'pending' as const, created_at: '2026-08-18T09:00:00Z', reviewed_at: null,
+      notification_sent_at: null, notification_error_code: null, email_verified_at: '2026-08-18T09:05:00Z', verification_expires_at: null,
+    }
+    vi.mocked(getRegistrationRequests).mockResolvedValueOnce([pending]).mockResolvedValue([])
+    vi.mocked(reviewRegistration).mockResolvedValue({ ...pending, status: 'approved' })
+
+    render(<MemoryRouter initialEntries={['/admin/users?admin_notification=registration-requests']}><AdminConsole /></MemoryRouter>)
+
+    expect(await screen.findByRole('heading', { name: 'Demandes d’inscription' })).toBeVisible()
+    expect(screen.getByText('candidate@example.test')).toBeVisible()
+    expect(screen.getByLabelText('Profil de quota pour candidate@example.test')).toHaveValue(unlimitedProfile.id)
+    fireEvent.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(() => expect(reviewRegistration).toHaveBeenCalledWith(pending.id, 'approve', unlimitedProfile.id))
+    expect(await screen.findByText('Le compte de Candidate a été validé et activé.')).toBeVisible()
+    await waitFor(() => expect(screen.queryByText('candidate@example.test')).not.toBeInTheDocument())
   })
 
   it('shows public registration settings in General', async () => {
