@@ -188,14 +188,14 @@ export function NotificationCenter({ userId, isAdmin = false, onAccessChanged, o
 
   const notificationContent = (notification: NotificationItem, isToast = false) => {
     if (notification.kind === 'mfa-disabled') {
-      return <><ShieldAlert className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>Authentification à deux facteurs désactivée.</strong></p><small>Activez-la dans Options utilisateur → Sécurité pour mieux protéger votre compte.</small></div></>
+      return <><ShieldAlert className="notification-toast__icon notification-toast__icon--warning" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>Authentification à deux facteurs désactivée.</strong></p><small>Activez-la dans Options utilisateur → Sécurité pour mieux protéger votre compte.</small></div></>
     }
     if (notification.kind === 'registration') {
       const request = notification.item
       return <><UserRoundPlus className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><button type="button" className="notification-center__registration-link" onClick={() => openRegistrationRequests(request)}><p><strong>{request.display_name}</strong> demande à créer un compte avec <strong>{request.email}</strong>.</p><span className="secondary-button notification-center__review">Examiner la demande</span></button></div></>
     }
     if (notification.kind === 'credential') {
-      return <><CircleAlert className="notification-toast__icon" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>Clé API à vérifier.</strong></p><small>{notification.item.message}</small></div></>
+      return <><CircleAlert className="notification-toast__icon notification-toast__icon--error" size={isToast ? 20 : 18} aria-hidden="true" /><div><p><strong>Clé API à vérifier.</strong></p><small>{notification.item.message}</small></div></>
     }
     const invitation = notification.item
     const ownershipTransfer = invitation.role === 'owner'

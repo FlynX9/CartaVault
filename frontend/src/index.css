@@ -4856,6 +4856,10 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .notification-center__panel li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.65rem; padding: 0.75rem; border-radius: 0.55rem; }
 .notification-center__panel li + li { border-top: 1px solid rgb(43 62 89 / 8%); }
 .notification-center__panel li > svg { margin-top: 0.15rem; color: var(--cv-color-teal); }
+.notification-center__panel li > .notification-toast__icon--warning,
+.notification-toast__icon--warning { color: #b7791f; }
+.notification-center__panel li > .notification-toast__icon--error,
+.notification-toast__icon--error { color: #b42318; }
 .notification-center__panel li p { color: var(--cv-color-slate); font-size: 0.8rem; line-height: 1.4; }
 .notification-center__panel li small { display: block; margin-top: 0.2rem; color: var(--cv-color-gray); font-size: 0.7rem; }
 .notification-center__registration-link { width: 100%; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }

@@ -89,7 +89,9 @@ describe('NotificationCenter', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Notifications, 1 en attente' })).toBeVisible())
     fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
-    expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('Authentification à deux facteurs désactivée')
+    const panel = screen.getByLabelText('Centre de notifications')
+    expect(panel).toHaveTextContent('Authentification à deux facteurs désactivée')
+    expect(panel.querySelector('.notification-toast__icon--warning')).toBeInTheDocument()
   })
 
   it('shows the latest transient messages in a separate history section', async () => {
@@ -130,7 +132,9 @@ describe('NotificationCenter', () => {
     render(<NotificationCenter userId="user-1" onAccessChanged={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Notifications, 1 en attente' }))
-    expect(screen.getByLabelText('Centre de notifications')).toHaveTextContent('La clé API Google Routes ne fonctionne plus')
+    const panel = screen.getByLabelText('Centre de notifications')
+    expect(panel).toHaveTextContent('La clé API Google Routes ne fonctionne plus')
+    expect(panel.querySelector('svg.lucide-circle-alert.notification-toast__icon--error')).toBeInTheDocument()
   })
 
   it('shows offline progress between important notifications and history', async () => {
