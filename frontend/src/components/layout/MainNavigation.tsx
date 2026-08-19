@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconMap2, IconTimelineEvent, IconVault, IconWorldMap } from '@tabler/icons-react'
-import { ChevronLeft, ChevronRight, CircleDot, Images, LayoutDashboard, Route, Shapes, Tag, Trash2, Spline } from 'lucide-react'
+import { CircleDot, Images, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Route, Shapes, Tag, Trash2, Spline } from 'lucide-react'
 import { useI18n } from '../../i18n/useI18n'
 
 export type WorkspacePanel = 'maps' | 'places' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates' | null
@@ -87,9 +87,12 @@ export function MainNavigation({ activePanel, onPanelChange, onWorkspacePanelTog
 
   return <nav className={`main-navigation cv-main-navigation${collapsed ? ' is-collapsed' : ''}${isMobileViewport ? ' is-mobile' : ''}`} aria-label={t('nav.main')}>
     <Link className="main-navigation-brand" to="/dashboard" aria-label="CartaVault" onClick={onOpenDashboard ? (event) => { event.preventDefault(); onOpenDashboard() } : undefined}><img src="/cartavault-logo.png" alt="CartaVault" /></Link>
-    {!isMobileViewport && <button type="button" className="cv-main-navigation__collapse-toggle" aria-label={navigationCollapseLabel} title={navigationCollapseLabel} aria-pressed={collapsed} onClick={() => onCollapsedChange(!collapsed)}>
-      {collapsed ? <ChevronRight size={20} aria-hidden="true" /> : <ChevronLeft size={20} aria-hidden="true" />}
-    </button>}
+    {!isMobileViewport && <div className="cv-main-navigation__collapse-control">
+      <button type="button" className="cv-main-navigation__collapse-toggle" aria-label={navigationCollapseLabel} title={navigationCollapseLabel} aria-pressed={collapsed} onClick={() => onCollapsedChange(!collapsed)}>
+        {collapsed ? <PanelLeftOpen size={20} aria-hidden="true" /> : <PanelLeftClose size={20} aria-hidden="true" />}
+        <span aria-hidden="true">Réduire le panneau</span>
+      </button>
+    </div>}
     <div className="main-navigation-links cv-main-navigation__items">
       <div className="cv-main-navigation__group">
         <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={() => { closeMobileModalLayers(); onOpenDashboard?.() }}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>

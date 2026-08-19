@@ -78,6 +78,11 @@ export const commonFr = {
   'topbar.userMenu': 'Menu utilisateur',
   'topbar.darkTheme': 'Thème sombre',
   'topbar.options': 'Options',
+  'topbar.accountSection': 'COMPTE',
+  'topbar.cartavaultSection': 'CARTAVAULT',
+  'topbar.developersSection': 'DÉVELOPPEURS',
+  'topbar.account': 'Mon compte',
+  'topbar.preferences': 'Préférences',
   'topbar.api': 'API',
   'topbar.documentation': 'Documentation',
   'topbar.releaseNotes': 'À propos',
@@ -103,4 +108,4 @@ export const commonFr = {
   'pwa.update.description': 'Rechargez CartaVault pour appliquer la nouvelle version.',
   'pwa.update.action': 'Mettre Ã  jour',
   'topbar.logout': 'Déconnexion',
-} as const
+} as const satisfies Record<string, string>

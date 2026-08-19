@@ -139,6 +139,8 @@ export default defineConfig({
         // CARTAVAULT_DEV_API_URL remains available for an explicit override.
         target: process.env.CARTAVAULT_DEV_API_URL ?? 'http://127.0.0.1:8000',
         changeOrigin: true,
+        // The local FastAPI server is mounted at its internal root. Strip the
+        // browser-facing `/api` prefix while forwarding requests in development.
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },

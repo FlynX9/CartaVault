@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -228,7 +229,7 @@ app = FastAPI(
     description="API for managing geographic points of interest",
     version=os.getenv("CARTAVAULT_VERSION", "development"),
     root_path=os.getenv("CARTAVAULT_API_ROOT_PATH", "").strip().rstrip("/"),
-    docs_url=f"{API_PREFIX}/docs",
+    docs_url=None,
     openapi_url=f"{API_PREFIX}/openapi.json",
     redoc_url=f"{API_PREFIX}/redoc",
     swagger_ui_oauth2_redirect_url=f"{API_PREFIX}/docs/oauth2-redirect",
@@ -251,6 +252,17 @@ app.add_middleware(
     expose_headers=["Accept-Ranges", "Content-Length", "Content-Range", "ETag"],
 )
 app.add_middleware(SecurityHeadersMiddleware)
+
+
+@app.get("/docs", include_in_schema=False)
+async def swagger_ui() -> Response:
+    """Serve Swagger with the browser-facing API prefix preserved."""
+
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title=f"{app.title} - Swagger UI",
+        oauth2_redirect_url="/api/docs/oauth2-redirect",
+    )
 
 app.include_router(setup_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)

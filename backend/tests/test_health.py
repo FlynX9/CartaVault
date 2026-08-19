@@ -28,6 +28,15 @@ def test_docs_use_the_proxy_root_path_for_the_openapi_schema(
     assert "/api/openapi.json" in response.text
 
 
+def test_docs_at_the_internal_path_keep_the_internal_openapi_schema_url(
+    api_client: TestClient,
+) -> None:
+    response = api_client.get("/docs")
+
+    assert response.status_code == 200
+    assert "/api/openapi.json" in response.text
+
+
 def test_invalid_uuid_is_rejected_without_database(
     api_client: TestClient,
 ) -> None:

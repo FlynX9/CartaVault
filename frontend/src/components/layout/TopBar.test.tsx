@@ -69,19 +69,24 @@ describe("TopBar account entry", () => {
     expect(container.querySelector(".desktop-panel-layout-reset")).not.toBeInTheDocument();
   });
 
-  it("places notifications before the user menu and opens account options explicitly", () => {
+  it("places notifications before the user menu and opens the account entry explicitly", () => {
     renderTopBar(2);
     const notifications = screen.getByRole("button", { name: "Notifications" });
     const account = screen.getByRole("button", { name: /Admin$/ });
     expect(notifications.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(account);
-    const options = screen.getByRole("menuitem", { name: "Options" });
+    const accountEntry = screen.getByRole("menuitem", { name: "Mon compte" });
+    const preferences = screen.getByRole("menuitem", { name: "Préférences" });
     const administration = screen.getByRole("menuitem", {
       name: "Administration",
     });
     const api = screen.getByRole("menuitem", { name: "API" });
     const documentation = screen.getByRole("menuitem", { name: "Documentation" });
-    expect(options).toBeVisible();
+    expect(screen.getByText("COMPTE")).toBeVisible();
+    expect(screen.getByText("CARTAVAULT")).toBeVisible();
+    expect(screen.getByText("DÉVELOPPEURS")).toBeVisible();
+    expect(accountEntry).toBeVisible();
+    expect(preferences).toBeVisible();
     expect(administration).toBeVisible();
     expect(api).toHaveAttribute("href", `${window.location.origin}/api/docs`);
     expect(api).toHaveAttribute("target", "_blank");
@@ -91,10 +96,10 @@ describe("TopBar account entry", () => {
     expect(documentation).toHaveAttribute("rel", "noopener noreferrer");
     expect(documentation).toHaveClass("user-account-menu__documentation-link");
     expect(documentation).not.toHaveClass("user-account-menu__api-link");
-    expect(options.compareDocumentPosition(api) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(accountEntry.compareDocumentPosition(api) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: /connexion$/i })).toBeVisible();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    fireEvent.click(options);
+    fireEvent.click(accountEntry);
     expect(screen.getByRole("dialog", { name: "Espace compte" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Fermer" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

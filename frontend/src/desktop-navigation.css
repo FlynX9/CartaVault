@@ -1,8 +1,5 @@
-/* Desktop rail toggle: a compact edge tab that remains reachable in both
-   expanded and collapsed states. Mobile never renders this control. */
+/* Desktop rail toggle: an integrated sidebar action. Mobile never renders it. */
 .main-navigation:not(.is-mobile) {
-  position: relative;
-  overflow: visible;
   transition: width 180ms ease, min-width 180ms ease, max-width 180ms ease;
 }
 
@@ -22,49 +19,87 @@
 }
 
 .main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle {
-  position: absolute;
-  z-index: calc(var(--cv-z-topbar, 30) + 1);
-  top: 5.15rem;
-  right: -1.05rem;
-  display: grid;
-  width: 2.15rem;
-  height: 3.15rem;
+  display: flex;
+  width: 100%;
+  min-height: 3.15rem;
+  align-items: center;
+  gap: .7rem;
+  justify-content: flex-start;
   margin: 0;
-  padding: 0;
-  color: rgb(235 244 249 / 92%);
-  background: rgb(9 29 46 / 92%);
-  border: 1px solid rgb(15 166 138 / 68%);
-  border-radius: .9rem;
-  box-shadow: 0 7px 17px rgb(5 18 31 / 24%), inset 0 0 0 1px rgb(255 255 255 / 4%);
-  backdrop-filter: blur(7px);
-  place-items: center;
-  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  padding: .55rem .7rem;
+  color: rgb(220 228 235 / 84%);
+  background: transparent;
+  border: 0;
+  border-radius: .55rem;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
 }
 
 .main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle:hover {
-  color: #fff;
-  background: rgb(12 39 59 / 97%);
-  border-color: rgb(15 166 138 / 92%);
-  box-shadow: 0 8px 20px rgb(5 18 31 / 30%), 0 0 0 3px rgb(15 166 138 / 10%);
-  transform: translateX(1px);
+  color: var(--cv-color-teal);
+  background: rgb(15 166 138 / 10%);
 }
 
 .main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle:focus-visible {
-  color: #fff;
-  background: rgb(12 39 59 / 97%);
-  border-color: var(--cv-color-teal);
-  box-shadow: 0 7px 17px rgb(5 18 31 / 26%), 0 0 0 3px rgb(15 166 138 / 22%);
-  outline: none;
+  color: var(--cv-color-teal);
+  background: rgb(15 166 138 / 10%);
+  outline: 2px solid rgb(15 166 138 / 45%);
+  outline-offset: 2px;
 }
 
 .main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 28%));
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle:hover {
-  transform: translateX(1px);
+.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-control {
+  display: flex;
+  width: 100%;
+  min-height: auto;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: .2rem 0 .35rem;
+  border-bottom: 1px solid rgb(198 213 222 / 18%);
+}
+
+.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle span {
+  font-size: .8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-control {
+  width: 100%;
+  justify-content: center;
+}
+
+.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle {
+  justify-content: center;
+  padding-inline: .45rem;
+}
+
+.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle span {
+  display: none;
+}
+
+.main-navigation.is-collapsed:not(.is-mobile) {
+  gap: .5rem;
+}
+
+.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-control {
+  padding-bottom: .5rem;
+}
+
+.main-navigation.is-collapsed:not(.is-mobile) .main-navigation-links {
+  margin-top: 0;
+}
+
+/* The visual offset in the compact rail is created by the inherited toggle
+   margin. Neutralise it only once the control lives in its dedicated row. */
+.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle {
+  margin-bottom: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

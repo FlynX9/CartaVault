@@ -177,66 +177,89 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
               {menuOpen && (
                 <div className="user-account-menu__dropdown user-account-menu__dropdown--compact" role="menu" aria-label={t("topbar.userMenu")}>
                   <div className="user-account-menu__links">
-                    <button
-                      role="menuitem"
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        closeAdminForAccount();
-                        setAccountOpen(true);
-                      }}
-                    >
-                      <Settings2 size={17} aria-hidden="true" />
-                      {t("topbar.options")}
-                    </button>
-                    {saasEnabled && (
+                    <section className="user-account-menu__group" aria-labelledby="user-menu-account">
+                      <p className="user-account-menu__section-label" id="user-menu-account">{t("topbar.accountSection")}</p>
                       <button
                         role="menuitem"
                         type="button"
                         onClick={() => {
                           setMenuOpen(false);
-                          setContactOpen(true);
+                          closeAdminForAccount();
+                          setAccountOpen(true);
                         }}
                       >
-                        <Mail size={17} aria-hidden="true" />
-                        {t("contact.menu")}
+                        <UserRound size={17} aria-hidden="true" />
+                        {t("topbar.account")}
                       </button>
-                    )}
-                    {user.is_admin && (
+                      <button
+                        role="menuitem"
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          closeAdminForAccount();
+                          setAccountOpen(true);
+                        }}
+                      >
+                        <Settings2 size={17} aria-hidden="true" />
+                        {t("topbar.preferences")}
+                      </button>
+                      {saasEnabled && (
+                        <button
+                          role="menuitem"
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setContactOpen(true);
+                          }}
+                        >
+                          <Mail size={17} aria-hidden="true" />
+                          {t("contact.menu")}
+                        </button>
+                      )}
+                    </section>
+                    <div className="user-account-menu__separator" role="separator" />
+                    <section className="user-account-menu__group" aria-labelledby="user-menu-cartavault">
+                      <p className="user-account-menu__section-label" id="user-menu-cartavault">{t("topbar.cartavaultSection")}</p>
+                      {user.is_admin && (
+                        <button
+                          role="menuitem"
+                          type="button"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            setAccountOpen(false);
+                            onOpenAdmin();
+                          }}
+                        >
+                          <ShieldCheck size={17} aria-hidden="true" />
+                          {t("app.administration")}
+                        </button>
+                      )}
+                      <a className="user-account-menu__documentation-link" role="menuitem" href={USER_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
+                        <BookOpen size={17} aria-hidden="true" />
+                        <span>{t("topbar.documentation")}</span>
+                        <ExternalLink size={13} aria-hidden="true" />
+                      </a>
                       <button
                         role="menuitem"
                         type="button"
                         onClick={() => {
                           setMenuOpen(false);
                           setAccountOpen(false);
-                          onOpenAdmin();
+                          setReleaseNotesOpen(true);
                         }}
                       >
-                        <ShieldCheck size={17} aria-hidden="true" />
-                        {t("app.administration")}
+                        <FileText size={17} aria-hidden="true" />
+                        {t("topbar.releaseNotes")}
                       </button>
-                    )}
-                    <button
-                      role="menuitem"
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setAccountOpen(false);
-                        setReleaseNotesOpen(true);
-                      }}
-                    >
-                      <FileText size={17} aria-hidden="true" />
-                      {t("topbar.releaseNotes")}
-                    </button>
-                    <a className="user-account-menu__api-link" role="menuitem" href={API_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
-                      <Braces size={17} aria-hidden="true" />
-                      {t("topbar.api")}
-                    </a>
-                    <a className="user-account-menu__documentation-link" role="menuitem" href={USER_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
-                      <BookOpen size={17} aria-hidden="true" />
-                      <span>{t("topbar.documentation")}</span>
-                      <ExternalLink size={13} aria-hidden="true" />
-                    </a>
+                    </section>
+                    <div className="user-account-menu__separator" role="separator" />
+                    <section className="user-account-menu__group" aria-labelledby="user-menu-developers">
+                      <p className="user-account-menu__section-label" id="user-menu-developers">{t("topbar.developersSection")}</p>
+                      <a className="user-account-menu__api-link" role="menuitem" href={API_DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
+                        <Braces size={17} aria-hidden="true" />
+                        {t("topbar.api")}
+                      </a>
+                    </section>
                   </div>
                   <footer>
                     <button role="menuitem" type="button" onClick={() => void handleLogout()}>
