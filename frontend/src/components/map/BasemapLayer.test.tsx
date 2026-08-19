@@ -81,6 +81,16 @@ describe('BasemapLayer', () => {
     expect(createGoogleSatelliteSession).not.toHaveBeenCalled()
   })
 
+  it('remounts the Google Maps overlay when switching away from it', () => {
+    const { rerender } = render(<BasemapLayer basemapId="google-satellite" onTileError={vi.fn()} />)
+    const googleLayer = screen.getByTestId('google-maps-js')
+
+    rerender(<BasemapLayer basemapId="osm" onTileError={vi.fn()} />)
+
+    expect(screen.getByTestId('google-maps-js')).not.toBe(googleLayer)
+    expect(screen.getByTestId('google-maps-js')).toHaveAttribute('data-active', 'false')
+  })
+
   it('keeps Google Satellite Map Tiles as an explicit alternative', async () => {
     render(<BasemapLayer basemapId="google-satellite-tiles" onTileError={vi.fn()} />)
 

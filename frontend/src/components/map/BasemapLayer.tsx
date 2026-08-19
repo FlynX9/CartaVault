@@ -101,6 +101,8 @@ const stadiaStyles: Partial<Record<BasemapId, { style: string; extension: 'png' 
 function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
   const [url, setUrl] = useState<string | null>(null)
   const [sessionGeneration, setSessionGeneration] = useState(0)
+  const onTileErrorRef = useRef(onTileError)
+  onTileErrorRef.current = onTileError
   useEffect(() => {
     const controller = new AbortController()
     let refreshTimer: ReturnType<typeof setTimeout> | null = null
@@ -117,7 +119,9 @@ function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
         const refreshIn = Math.max(30_000, Date.parse(config.expires) - Date.now() - 60_000)
         refreshTimer = setTimeout(() => setSessionGeneration((value) => value + 1), refreshIn)
       }
-    }).catch(() => undefined)
+    }).catch(() => {
+      if (!controller.signal.aborted) onTileErrorRef.current(basemap.id, true)
+    })
     return () => {
       controller.abort()
       if (refreshTimer !== null) clearTimeout(refreshTimer)
@@ -155,13 +159,29 @@ function MapboxBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
   return <TileLayer key={basemap.id} url={`${API_BASE_URL}${session.tile_path}`} attribution={basemap.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }} />
 }
 
+function RasterBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+  const onTileErrorRef = useRef(onTileError)
+  onTileErrorRef.current = onTileError
+  return <TileLayer
+    key={basemap.id}
+    url={basemap.url}
+    attribution={basemap.attribution}
+    maxZoom={basemap.maxZoom}
+    detectRetina
+    eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }}
+  />
+}
+
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
   const googleMapsBasemapId = basemapId === 'google-roadmap' ? 'google-roadmap' : 'google-satellite'
   const googleMapsActive = basemapId === 'google-roadmap' || basemapId === 'google-satellite'
 
-  const googleMapsLayer = <GoogleMapsJavaScriptBasemap key={googleMapsBasemapId} active={googleMapsActive} basemapId={googleMapsBasemapId} mapType={googleMapsBasemapId === 'google-roadmap' ? 'roadmap' : 'satellite'} onError={onTileError} />
+  // Key the Google overlay by its active state as well as its type. Otherwise React
+  // keeps the same Google Maps instance mounted while a non-Google basemap is
+  // selected, which can leave its DOM layer above the newly selected Leaflet layer.
+  const googleMapsLayer = <GoogleMapsJavaScriptBasemap key={`${googleMapsBasemapId}:${googleMapsActive}`} active={googleMapsActive} basemapId={googleMapsBasemapId} mapType={googleMapsBasemapId === 'google-roadmap' ? 'roadmap' : 'satellite'} onError={onTileError} />
 
   if (basemap.kind === 'vector') {
     return <>{googleMapsLayer}<VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} /></>
@@ -172,14 +192,5 @@ export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLay
   if (basemap.id === 'mapbox-satellite') return <>{googleMapsLayer}<MapboxBasemapLayer basemap={basemap} onTileError={onTileError} /></>
   if (basemap.requiresStadiaAuthentication) return <>{googleMapsLayer}<StadiaBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 
-  return (
-    <>{googleMapsLayer}<TileLayer
-      key={basemap.id}
-      url={basemap.url}
-      attribution={basemap.attribution}
-      maxZoom={basemap.maxZoom}
-      detectRetina
-      eventHandlers={{ tileerror: () => onTileError(basemap.id) }}
-    /></>
-  )
+  return <>{googleMapsLayer}<RasterBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 }
