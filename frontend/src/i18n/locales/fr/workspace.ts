@@ -158,7 +158,7 @@ export const workspaceFr = {
   'places.displayMode': 'Mode d’affichage',
   'places.compactView': 'Affichage compact',
   'places.expandedView': 'Affichage enrichi',
-  'places.search': 'Rechercher un lieu, une adresse…',
+  'places.search': 'Rechercher dans mes lieux...',
   'places.loading': 'Chargement…',
   'places.loadingMore': 'Chargement de lieux supplémentaires…',
   'places.empty': 'Aucun lieu ne correspond aux filtres.',

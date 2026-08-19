@@ -111,7 +111,7 @@ describe('map URL workspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
     expect(await screen.findByRole('button', { name: 'Réduire le panneau Lieux' })).toBeVisible()
-    expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+    expect(screen.getByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
   })
 
   it('opens administration as a routed modal over the persistent map', async () => {
@@ -138,7 +138,7 @@ describe('map URL workspace', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: 'Marqueur POI' }))
     expect(await screen.findByRole('dialog')).toHaveAttribute('data-management-actions', 'false')
@@ -149,12 +149,12 @@ describe('map URL workspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Marqueur POI' }))
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
-    expect(screen.queryByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Coffre' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    expect(await screen.findByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
   })
 
   it('keeps the active trip when returning from another workspace', async () => {
@@ -212,7 +212,7 @@ describe('map URL workspace', () => {
 
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('searchbox', { name: 'Rechercher un lieu, une adresse…' })).toBeVisible()
+    expect(screen.getByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
   })
 
   it('keeps the trip workspace open when unsaved settings cancel main navigation', async () => {
