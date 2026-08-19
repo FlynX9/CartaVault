@@ -1,0 +1,139 @@
+/* This stylesheet is imported after index.css deliberately. The component adds
+   .is-mobile from JavaScript, so the dock stays correct even when an embedded
+   browser reports desktop CSS dimensions on a phone. */
+#root:has(.main-navigation.is-mobile) {
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+.app-shell:has(.main-navigation.is-mobile) {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: minmax(0, 1fr) var(--cv-mobile-nav-height, 4.15rem) !important;
+}
+
+.app-shell:has(.main-navigation.is-mobile) .app-body {
+  grid-row: 1 !important;
+  grid-template-rows: 3.9rem minmax(0, 1fr) !important;
+}
+
+.main-navigation.is-mobile,
+html[data-theme='dark'] .main-navigation.is-mobile,
+html[data-theme='dark'] .cv-main-navigation.is-mobile {
+  grid-row: 2 !important;
+  width: 100% !important;
+  height: var(--cv-mobile-nav-height, 4.15rem) !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  background-color: var(--cv-brand-navy) !important;
+  background-image: linear-gradient(rgb(5 18 31 / 8%), rgb(5 18 31 / 8%)), url('/topography-dark.svg') !important;
+  background-repeat: repeat !important;
+  background-position: center !important;
+  background-size: auto, 790px 790px !important;
+}
+
+.main-navigation.is-mobile .main-navigation-brand,
+.main-navigation.is-mobile .cv-main-navigation__collapse-toggle,
+.main-navigation.is-mobile .main-navigation-disabled,
+.main-navigation.is-mobile .cv-main-navigation__separator,
+.main-navigation.is-mobile .cv-main-navigation__organization-desktop {
+  display: none !important;
+}
+
+.main-navigation.is-mobile .main-navigation-links.cv-main-navigation__items {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-auto-flow: column !important;
+  width: 100% !important;
+  height: 100% !important;
+  gap: 0 !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__group:not(.cv-main-navigation__organization-desktop) {
+  display: contents !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__organization-mobile {
+  display: grid !important;
+  min-width: 0 !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__item,
+.main-navigation.is-mobile .cv-main-navigation__organization-mobile > button {
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  grid-template-rows: 23px 1.1rem .35rem !important;
+  align-content: start !important;
+  justify-items: center !important;
+  gap: .12rem !important;
+  padding: .5rem 0 .12rem !important;
+  text-align: center !important;
+  overflow: visible !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__icon-slot {
+  display: grid !important;
+  width: 23px !important;
+  height: 23px !important;
+  min-width: 23px !important;
+  place-items: center !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__label-slot,
+.main-navigation.is-mobile .cv-main-navigation__mobile-label,
+.main-navigation.is-mobile .cv-main-navigation__item > span:not(.cv-main-navigation__icon-slot),
+.main-navigation.is-mobile .cv-main-navigation__item > svg + span {
+  display: grid !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 1.2rem !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  font-size: .68rem !important;
+  line-height: 1.2rem !important;
+  text-align: center !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__item > .cv-main-navigation__mobile-label {
+  position: static !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 1.1rem !important;
+  overflow: visible !important;
+  font-size: .68rem !important;
+  line-height: 1.1rem !important;
+  opacity: 1 !important;
+  transform: none !important;
+  text-align: center !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__label-slot > span.is-visible {
+  display: grid !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 1.2rem !important;
+  font-size: .68rem !important;
+  line-height: 1.2rem !important;
+  text-align: center !important;
+}
+
+/* The dots have their own visual row: they never eat into the text baseline. */
+.main-navigation.is-mobile .cv-main-navigation__mode-dots {
+  position: static !important;
+  align-self: start !important;
+  justify-self: center !important;
+  margin: 0 !important;
+  transform: none !important;
+  opacity: 0 !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__item.active .cv-main-navigation__mode-dots {
+  opacity: 1 !important;
+}

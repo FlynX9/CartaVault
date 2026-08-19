@@ -1,0 +1,14 @@
+.app-loading-screen { position:fixed; z-index:2400; inset:0; display:grid; overflow:hidden; color:#0d1b2a; background:#f7f9fa; place-items:center; opacity:1; animation:app-loading-enter 180ms ease-out; isolation:isolate; }
+.app-loading-screen__topography { position:absolute; z-index:-1; inset:-10%; opacity:.72; background-color:#f7f9fa; background-image:url("/topography-light.svg"); background-repeat:repeat; background-size:1254px 1254px; }
+html[data-theme='dark'] .app-loading-screen { color:#f2f5f8; background:#0d1b2a; }
+html[data-theme='dark'] .app-loading-screen__topography { opacity:.9; background-color:#0d1b2a; background-image:url("/topography-dark.svg"); }
+.app-loading-screen__content { display:grid; justify-items:center; gap:1.2rem; padding:calc(1.5rem + env(safe-area-inset-top)) 1.5rem calc(1.5rem + env(safe-area-inset-bottom)); text-align:center; }
+.app-loading-screen__mark { position:relative; display:grid; width:clamp(72px, 9vw, 128px); aspect-ratio:1; place-items:center; }
+.app-loading-screen__mark img { position:relative; width:78%; aspect-ratio:1; object-fit:contain; filter:drop-shadow(0 9px 18px rgb(13 27 42 / 12%)); animation:app-loading-mark 2.8s ease-in-out infinite; }
+.app-loading-screen__ring { position:absolute; border:1.5px solid rgb(15 166 138 / 46%); border-radius:50%; animation:app-loading-ring 2.4s ease-out infinite; }
+.app-loading-screen__ring--one { inset:11%; }.app-loading-screen__ring--two { inset:2%; animation-delay:.75s; }.app-loading-screen__ring--three { inset:-8%; animation-delay:1.5s; }
+.app-loading-screen__copy { display:grid; gap:.35rem; max-width:20rem; }.app-loading-screen__copy strong { font-size:clamp(1rem, 2.4vw, 1.3rem); letter-spacing:-.015em; }.app-loading-screen__copy span { color:color-mix(in srgb,currentColor 62%,transparent); font-size:clamp(.78rem, 1.8vw, .92rem); }
+.app-loading-screen__progress { width:min(12rem,70vw); height:3px; overflow:hidden; background:rgb(15 166 138 / 14%); border-radius:99px; }.app-loading-screen__progress i { display:block; height:100%; background:#0fa68a; border-radius:inherit; transition:width 180ms ease-out; }
+@keyframes app-loading-enter { from { opacity:0; } to { opacity:1; } } @keyframes app-loading-mark { 50% { transform:scale(1.035); } } @keyframes app-loading-ring { 0% { opacity:.58; transform:scale(.76); } 72%,100% { opacity:0; transform:scale(1.18); } }
+@media (prefers-reduced-motion:reduce) { .app-loading-screen, .app-loading-screen__mark img, .app-loading-screen__ring { animation:none; } .app-loading-screen__ring { opacity:.25; } }
+@media (max-width:480px) { .app-loading-screen__content { gap:1rem; }.app-loading-screen__mark { width:clamp(68px,24vw,92px); } }

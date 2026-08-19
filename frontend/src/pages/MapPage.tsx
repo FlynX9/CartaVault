@@ -35,6 +35,7 @@ import type { AnnotationDrawingState } from '../components/map/AnnotationDrawing
 import { distanceBetweenPoints } from '../components/map/measurement'
 import { publishGlobalFeedback } from '../components/common/globalFeedback'
 import { getOfflineBasemapVersion } from '../pwa/offlineData'
+import { AppLoadingScreen } from '../components/loading/AppLoadingScreen'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -126,6 +127,7 @@ interface MapPageProps {
   selectedPlaceId: string | null
   initialView: MapView
   isLoading: boolean
+  mapOpening?: boolean
   errorMessage: string | null
   mapNotice?: string | null
   sidebarOpen: boolean
@@ -183,6 +185,7 @@ export function MapPage({
   selectedPlaceId,
   initialView,
   isLoading: _isLoading,
+  mapOpening = false,
   errorMessage,
   mapNotice = null,
   sidebarOpen,
@@ -701,6 +704,7 @@ export function MapPage({
       className={`map-workspace${placeListOpen || tripPlanningActive ? ' desktop-floating-panels' : ''}${placeListOpen ? ' place-list-open' : ''}${sidebarOpen ? ' sidebar-open' : ''}${tripPlanningActive ? ' trip-planning-open' : ''}${tripPlannerCollapsed ? ' trip-planner-collapsed' : ''}${mobilePlaceDetailOpen ? ' mobile-place-detail-open' : ''}`}
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
+      {mapOpening && <AppLoadingScreen mode="map" />}
       {placeListOpen ? <FloatingPanelWindow key={workspaceWindowKey} kind="workspace" label="Panneau de navigation" storageKey={workspaceWindowKey} initialGeometry={placesWindowInitialGeometry} minWidth={320} maxWidth={workspacePanelCanFillWidth || workspacePanelId === 'places' ? Number.POSITIVE_INFINITY : 720} collapsed={workspacePanelCollapsed} locked={workspaceLayoutLocked} resetVersion={workspacePanelResetVersion} active={activeFloatingPanel === 'workspace'} onActivate={() => setActiveFloatingPanel('workspace')} onGeometryCommit={(next) => { setLeftPanelWidth(next.width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, next.width) }}>
         <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
       </FloatingPanelWindow> : <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>}

@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, deleteTripArrival, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
-import { getPlaceDetails } from '../../api/places'
+import { getPlaceDetails, getPlaces } from '../../api/places'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
@@ -11,7 +11,7 @@ vi.mock('../../api/trips', async () => {
   const actual = await vi.importActual<typeof import('../../api/trips')>('../../api/trips')
   return { ...actual, listTrips: vi.fn(), getTrip: vi.fn(), getTripSummary: vi.fn(), getTripDaySummary: vi.fn(), addTripArrival: vi.fn(), addTripDay: vi.fn(), addTripDeparture: vi.fn(), addTripNight: vi.fn(), updateTrip: vi.fn(), updateTripArrival: vi.fn(), updateTripDay: vi.fn(), updateTripDeparture: vi.fn(), updateTripNight: vi.fn(), addTripStop: vi.fn(), deleteTripArrival: vi.fn(), deleteTripDeparture: vi.fn(), deleteTripNight: vi.fn(), deleteTripStop: vi.fn(), moveTripStop: vi.fn(), reorderTripDays: vi.fn(), archiveTrip: vi.fn(), unarchiveTrip: vi.fn(), calculateTripDayRoute: vi.fn(), optimizeTrip: vi.fn(), optimizeTripDay: vi.fn(), confirmTripOptimization: vi.fn(), confirmTripOptimizations: vi.fn(), exportTripGpx: vi.fn(), exportTripPdf: vi.fn(), downloadTripExport: vi.fn() }
 })
-vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn() }))
+vi.mock('../../api/places', () => ({ getPlaceDetails: vi.fn(), getPlaces: vi.fn() }))
 
 const trip: Trip = {
   id: 'trip-1', map_id: 'map-1', created_by_user_id: 'user-1', name: 'Voyage test', description: null,
@@ -42,6 +42,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTrip).mockResolvedValue(trip)
     vi.mocked(getTripSummary).mockResolvedValue(emptySummary)
     vi.mocked(getTripDaySummary).mockImplementation(async (id) => ({ ...emptyDaySummary, day_id: id }))
+    vi.mocked(getPlaces).mockResolvedValue([])
     vi.mocked(updateTrip).mockResolvedValue(trip)
     vi.mocked(addTripStop).mockResolvedValue({} as never)
     vi.mocked(addTripDeparture).mockResolvedValue({} as never)
@@ -1488,6 +1489,56 @@ describe('TripPlannerPanel', () => {
     fireEvent.pointerUp(nightSurface, { pointerId: 41, pointerType: 'touch', clientX: 100, clientY: 92 })
     expect(await screen.findByText('Jour 2', { selector: '.trip-mobile-step-commands > header strong' })).toBeVisible()
 
+  })
+
+  it('searches the current map in a modal before adding a mobile trip stop', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const foundPlace = {
+      id: 'place-found',
+      name: 'Musée des cartes',
+      latitude: 48.86,
+      longitude: 2.35,
+      region: 'Île-de-France',
+      categories: [],
+    } as never
+    vi.mocked(getPlaces).mockResolvedValue([foundPlace])
+    const onActiveDayChange = vi.fn()
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'France', country: { iso_alpha2: 'FR' }, effective_center_latitude: 46.6, effective_center_longitude: 2.2, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ajouter un lieu au jour 1' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ajouter une étape' })
+    expect(within(dialog).getByRole('tab', { name: 'POI de la carte' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(dialog).getByRole('tab', { name: 'Adresse ou GPS' })).toBeVisible()
+
+    fireEvent.change(within(dialog).getByRole('searchbox', { name: 'Rechercher un POI dans la carte' }), { target: { value: 'musée' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Rechercher' }))
+    expect(await within(dialog).findByText('Musée des cartes')).toBeVisible()
+    expect(getPlaces).toHaveBeenCalledWith({ mapId: 'map-1', q: 'musée', limit: 50, offset: 0 }, expect.any(AbortSignal))
+
+    fireEvent.click(within(dialog).getByRole('listitem'))
+    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', { place_id: 'place-found', stop_type: 'place' }))
+    expect(onActiveDayChange).toHaveBeenCalledWith('day-1')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ajouter une étape' })).not.toBeInTheDocument())
+  })
+
+  it('uses the geographic search engine to add GPS coordinates from the mobile modal', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'France', country: { iso_alpha2: 'FR' }, effective_center_latitude: 46.6, effective_center_longitude: 2.2, can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ajouter un lieu au jour 1' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ajouter une étape' })
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Adresse ou GPS' }))
+    fireEvent.change(within(dialog).getByRole('searchbox', { name: 'Rechercher une adresse ou des coordonnées' }), { target: { value: '48.8566, 2.3522' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Lancer la recherche géographique' }))
+    fireEvent.click(await within(dialog).findByRole('option'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ajouter à la journée' }))
+
+    await waitFor(() => expect(addTripStop).toHaveBeenCalledWith('day-1', expect.objectContaining({
+      stop_type: 'free_location',
+      latitude: 48.8566,
+      longitude: 2.3522,
+    })))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ajouter une étape' })).not.toBeInTheDocument())
   })
 
   it('opens the trip picker from the mobile folder action', async () => {

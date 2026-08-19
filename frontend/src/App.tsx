@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -81,6 +82,10 @@ import { useConfirmDialog } from "./components/common/useConfirmDialog";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { useI18n } from "./i18n/useI18n";
 import { PrivacyConsentBanner } from "./components/privacy/PrivacyConsentBanner";
+import {
+  AppLoadingScreen,
+  useDelayedLoadingScreen,
+} from "./components/loading/AppLoadingScreen";
 
 const MapsWorkspacePanel = lazy(async () => ({
   default: (await import("./components/maps/MapsWorkspacePanel"))
@@ -211,14 +216,58 @@ function WorkspaceApp() {
   );
   const [workspacePanel, setWorkspacePanel] =
     useState<WorkspacePanel>("places");
+  const [navigationCollapsed, setNavigationCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem("cartavault:navigation-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [placesPanelCollapsed, setPlacesPanelCollapsed] = useState(false);
   const [collapsedWorkspacePanel, setCollapsedWorkspacePanel] =
     useState<Exclude<WorkspacePanel, "places" | null> | null>(null);
   const restorePlacesPanelAfterEditor = useRef(false);
   const [removedPlaceId, setRemovedPlaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mapOpening, setMapOpening] = useState(false);
+  const [tripWorkspaceOpening, setTripWorkspaceOpening] = useState(false);
+  const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
+  const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false);
+  const openingMapIdRef = useRef<string | null>(null);
+  const openingMapRequestStartedRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
+  useLayoutEffect(() => {
+    if (!isMapWorkspace || activeMapId === null) {
+      openingMapIdRef.current = null;
+      openingMapRequestStartedRef.current = false;
+      setMapOpening(false);
+      return;
+    }
+    if (openingMapIdRef.current !== activeMapId) {
+      openingMapIdRef.current = activeMapId;
+      openingMapRequestStartedRef.current = false;
+      setMapOpening(true);
+    }
+  }, [activeMapId, isMapWorkspace]);
+  useEffect(() => {
+    if (!mapOpening) return;
+    if (isLoading) {
+      openingMapRequestStartedRef.current = true;
+      return;
+    }
+    if (openingMapRequestStartedRef.current) setMapOpening(false);
+  }, [isLoading, mapOpening]);
+  useEffect(() => {
+    if (!tripPlannerOpen) setTripWorkspaceOpening(false);
+  }, [tripPlannerOpen]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("cartavault:navigation-collapsed", String(navigationCollapsed));
+    } catch {
+      // The preference is optional when storage is unavailable.
+    }
+  }, [navigationCollapsed]);
   useEffect(() => {
     const openMediaUpload = () => window.dispatchEvent(new CustomEvent("cartavault:show-media-upload", { detail: { maps } }));
     window.addEventListener("cartavault:open-media-upload", openMediaUpload);
@@ -266,8 +315,6 @@ function WorkspaceApp() {
   }, [activeStatusId, maps, navigate]);
   const [exportMap, setExportMap] = useState<PoiMap | null>(null);
   const [membersMap, setMembersMap] = useState<PoiMap | null>(null);
-  const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
-  const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false);
   const activePanelLayoutScope = tripPlannerOpen ? "trips" : (workspacePanel ?? "map");
   useEffect(() => {
     const toggleDefaultPanelLayout = () => {
@@ -1424,11 +1471,7 @@ function WorkspaceApp() {
           onUnsavedChangesGuardChange={(guard) => {
             unsavedTripSettingsGuard.current = guard;
           }}
-          onMobilePlacesOpen={() => {
-            setWorkspacePanel("places");
-            setPlacesPanelCollapsed(false);
-            setTripPlannerCollapsed(true);
-          }}
+          onInitialLoadComplete={() => setTripWorkspaceOpening(false)}
           onClose={() => {
             setTripPlannerOpen(false);
             setTripPlannerCollapsed(false);
@@ -1516,6 +1559,7 @@ function WorkspaceApp() {
     setPlacesPanelCollapsed(false);
     navigate(withMap("/", activeMapId, activeStatusId));
     setWorkspacePanel("places");
+    if (!tripPlannerOpen) setTripWorkspaceOpening(true);
     setTripPlannerOpen(true);
     if (create) setCreateTripRequest((value) => value + 1);
   };
@@ -1546,7 +1590,7 @@ function WorkspaceApp() {
   };
 
   return (
-    <main className={`app-shell${dashboardOpen ? " dashboard-shell" : ""}`}>
+    <main className={`app-shell${dashboardOpen ? " dashboard-shell" : ""}${navigationCollapsed ? " navigation-collapsed" : ""}`}>
       <MainNavigation
         activePanel={dashboardOpen ? null : workspacePanel}
         dashboardActive={dashboardOpen}
@@ -1562,6 +1606,8 @@ function WorkspaceApp() {
         onOpenTrips={toggleTripsFromNavigation}
         isAdmin={user?.is_admin === true}
         hasMaps={maps.length > 0}
+        collapsed={navigationCollapsed}
+        onCollapsedChange={setNavigationCollapsed}
       />
       <div className="app-body">
         <TopBar
@@ -1658,9 +1704,7 @@ function WorkspaceApp() {
             element={
               <Suspense
                 fallback={
-                  <main className="auth-loading" role="status">
-                    Chargement de l’espace de travail…
-                  </main>
+                  <AppLoadingScreen mode="map" />
                 }
               >
                 <MapPage
@@ -1670,6 +1714,7 @@ function WorkspaceApp() {
                   selectedPlaceId={selectedPlaceId}
                   initialView={mapView}
                   isLoading={isLoading}
+                  mapOpening={mapOpening || tripWorkspaceOpening}
                   errorMessage={errorMessage}
                   sidebarOpen={editorOpen || tripPlannerOpen}
                   sidebarResizable={tripPlannerOpen && !tripPlannerCollapsed}
@@ -1866,13 +1911,12 @@ function AppContent() {
     return () => controller.abort();
   }, []);
 
-  if (setupStatus === null) {
-    return (
-      <main className="auth-loading" aria-live="polite">
-        {setupError ?? "Chargement de CartaVault…"}
-      </main>
-    );
-  }
+  const initializationPending = setupStatus === null || loading;
+  const showInitializationSplash = useDelayedLoadingScreen(initializationPending);
+
+  if (initializationPending)
+    return showInitializationSplash ? <AppLoadingScreen message={setupError ?? undefined} /> : null;
+  if (showInitializationSplash) return <AppLoadingScreen />;
   if (setupStatus.required) {
     return (
       <SetupPage
@@ -1885,12 +1929,6 @@ function AppContent() {
     );
   }
 
-  if (loading)
-    return (
-      <main className="auth-loading" aria-live="polite">
-        Chargement de CartaVault…
-      </main>
-    );
   if (location.pathname.startsWith("/invitations/"))
     return (
       <Routes>

@@ -1358,6 +1358,330 @@ html[data-theme='dark'] .action-history-error { color: #fecaca; background: #351
   }
 }
 
+/* Must remain last: ``is-mobile`` is set by MainNavigation, independently of
+   CSS viewport calculations (which may be distorted by embedded webviews). */
+.app-shell:has(.main-navigation.is-mobile) {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: minmax(0, 1fr) var(--cv-mobile-nav-height, 4.15rem) !important;
+}
+
+.app-shell:has(.main-navigation.is-mobile) .app-body {
+  grid-row: 1 !important;
+  grid-template-rows: 3.9rem minmax(0, 1fr) !important;
+}
+
+.main-navigation.is-mobile,
+html[data-theme='dark'] .main-navigation.is-mobile,
+html[data-theme='dark'] .cv-main-navigation.is-mobile {
+  grid-row: 2 !important;
+  width: 100% !important;
+  height: var(--cv-mobile-nav-height, 4.15rem) !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  background-color: var(--cv-brand-navy) !important;
+  background-image: none !important;
+}
+
+.main-navigation.is-mobile .main-navigation-links.cv-main-navigation__items {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-auto-flow: column !important;
+  width: 100% !important;
+  height: 100% !important;
+  gap: 0 !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__item,
+.main-navigation.is-mobile .cv-main-navigation__organization-mobile > button {
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  grid-template-rows: 23px 1.15rem !important;
+  align-content: center !important;
+  justify-items: center !important;
+  gap: .2rem !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__label-slot,
+.main-navigation.is-mobile .cv-main-navigation__item > span:not(.cv-main-navigation__icon-slot),
+.main-navigation.is-mobile .cv-main-navigation__item > svg + span {
+  display: grid !important;
+  width: 100% !important;
+  height: 1.15rem !important;
+  margin: 0 !important;
+  font-size: .62rem !important;
+  line-height: 1.15rem !important;
+  text-align: center !important;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__label-slot > span.is-visible {
+  display: grid !important;
+  width: 100% !important;
+  height: 1.15rem !important;
+  font-size: .62rem !important;
+  line-height: 1.15rem !important;
+  text-align: center !important;
+}
+
+/* CartaVault uses one typeface across application surfaces and portals. */
+#root,
+#root * {
+  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@media (min-width: 761px) {
+  .main-navigation .cv-main-navigation__places-toggle,
+  .main-navigation .cv-main-navigation__trips-toggle {
+    display: grid;
+    grid-template-columns: 23px minmax(0, 1fr);
+    justify-content: initial;
+  }
+
+  .main-navigation .cv-main-navigation__places-toggle .cv-main-navigation__label-slot,
+  .main-navigation .cv-main-navigation__trips-toggle .cv-main-navigation__label-slot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .main-navigation .cv-main-navigation__places-toggle .cv-main-navigation__label-slot > span.is-visible,
+  .main-navigation .cv-main-navigation__trips-toggle .cv-main-navigation__label-slot > span.is-visible {
+    position: static;
+    width: auto;
+    text-align: left;
+  }
+
+  .main-navigation .cv-main-navigation__item > span:not(.cv-main-navigation__icon-slot),
+  .main-navigation .cv-main-navigation__item > svg + span,
+  .main-navigation .cv-main-navigation__label-slot > span {
+    font-size: .82rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+.app-header .user-account-menu__trigger {
+  background: rgb(255 255 255 / 68%);
+  border: 1px solid rgb(43 62 89 / 8%);
+}
+
+.app-header .user-account-menu__trigger:hover,
+.app-header .user-account-menu__trigger[aria-expanded='true'] {
+  background: rgb(43 62 89 / 7%);
+}
+
+/* Compact view must remain the original bottom navigation even when device
+   pixel density makes a phone report a viewport slightly above 760px. */
+@media (max-width: 900px), (max-device-width: 900px), (pointer: coarse), (max-aspect-ratio: 3 / 4) {
+  :root {
+    --cv-topbar-height: 3.9rem;
+    --cv-mobile-nav-height: 4.15rem;
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+    transform: none;
+  }
+
+  .app-shell,
+  .app-shell.navigation-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) calc(var(--cv-mobile-nav-height) + env(safe-area-inset-bottom));
+  }
+
+  .app-body {
+    grid-row: 1;
+    grid-template-rows: var(--cv-topbar-height) minmax(0, 1fr);
+  }
+
+  .app-header,
+  html[data-theme='dark'] .app-header {
+    min-height: var(--cv-topbar-height);
+    background-color: var(--cv-color-off-white);
+    background-image: none;
+  }
+
+  .main-navigation,
+  html[data-theme='dark'] .main-navigation,
+  html[data-theme='dark'] .cv-main-navigation {
+    grid-row: 2;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: .3rem;
+    background-color: var(--cv-brand-navy);
+    background-image: none;
+  }
+
+  .main-navigation-brand,
+  .cv-main-navigation__collapse-toggle,
+  .main-navigation-disabled {
+    display: none;
+  }
+
+  .main-navigation-links.cv-main-navigation__items {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    align-self: stretch;
+    flex: 1 1 100%;
+    flex-flow: row nowrap;
+    align-items: stretch;
+    gap: .18rem;
+  }
+
+  .cv-main-navigation__group:not(.cv-main-navigation__organization-desktop) {
+    display: contents;
+  }
+
+  .cv-main-navigation__group.cv-main-navigation__organization-desktop,
+  .cv-main-navigation__separator {
+    display: none;
+  }
+
+  .cv-main-navigation__organization-mobile {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .main-navigation .cv-main-navigation__item,
+  .main-navigation .cv-main-navigation__organization-mobile > button {
+    display: grid;
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: 23px 1.25rem;
+    align-content: center;
+    justify-content: center;
+    gap: .24rem;
+    padding: .25rem;
+    text-align: center;
+  }
+
+  .main-navigation .cv-main-navigation__item > span:not(.cv-main-navigation__icon-slot),
+  .main-navigation .cv-main-navigation__item > svg + span,
+  .main-navigation .cv-main-navigation__label-slot,
+  .main-navigation .cv-main-navigation__label-slot > span {
+    display: grid;
+    width: 100%;
+    height: 1.25rem;
+    place-items: center;
+    font-size: clamp(.54rem, 2.25vw, .64rem);
+    text-align: center;
+  }
+
+  .main-navigation .cv-main-navigation__label-slot > span {
+    position: absolute;
+  }
+
+  .main-navigation .cv-main-navigation__label-slot > span.is-visible {
+    display: grid;
+  }
+}
+
+/* The navigation component owns the compact-mode decision. Keeping these
+   rules class-driven prevents browser zoom or display density from selecting
+   the desktop rail on a phone. */
+#root:has(.main-navigation.is-mobile) {
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+.app-shell:has(.main-navigation.is-mobile) {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) var(--cv-mobile-nav-height, 4.15rem);
+}
+
+.app-shell:has(.main-navigation.is-mobile) .app-body {
+  grid-row: 1;
+  grid-template-rows: 3.9rem minmax(0, 1fr);
+}
+
+.main-navigation.is-mobile {
+  box-sizing: border-box;
+  grid-row: 2;
+  width: 100%;
+  height: var(--cv-mobile-nav-height, 4.15rem);
+  min-height: 0;
+  padding: 0;
+  background: var(--cv-brand-navy);
+  background-image: none;
+}
+
+.main-navigation.is-mobile .main-navigation-brand,
+.main-navigation.is-mobile .cv-main-navigation__collapse-toggle,
+.main-navigation.is-mobile .main-navigation-disabled,
+.main-navigation.is-mobile .cv-main-navigation__separator,
+.main-navigation.is-mobile .cv-main-navigation__organization-desktop {
+  display: none;
+}
+
+.main-navigation.is-mobile .main-navigation-links.cv-main-navigation__items {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-flow: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__group:not(.cv-main-navigation__organization-desktop) {
+  display: contents;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__organization-mobile {
+  display: grid;
+  min-width: 0;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__item,
+.main-navigation.is-mobile .cv-main-navigation__organization-mobile > button {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: 23px 1.15rem;
+  align-content: center;
+  justify-items: center;
+  gap: .2rem;
+  padding: 0;
+  text-align: center;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__label-slot,
+.main-navigation.is-mobile .cv-main-navigation__label-slot > span,
+.main-navigation.is-mobile .cv-main-navigation__item > svg + span {
+  width: 100%;
+  height: 1.15rem;
+  margin: 0;
+  font-size: .62rem;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__label-slot > span {
+  position: absolute;
+}
+
 @media (max-width: 760px) and (hover: none) {
   .main-navigation .cv-main-navigation__item:not(.active):hover {
     color: #c6d0d9;
@@ -18341,3 +18665,153 @@ html[data-theme='dark'] :is(.account-api-key-card__logo.is-mapbox, .admin-api-ke
 .quota-profile-api-keys__empty { margin: 0; padding: 1rem; color: var(--cv-color-gray); background: var(--cv-surface); border: 1px dashed var(--cv-border-strong); border-radius: .65rem; font-size: .7rem; }
 html[data-theme='dark'] .quota-profile-api-keys__provider.is-mapbox img { filter: invert(1); }
 .account-api-key-card__instance-note { display: flex; align-items: center; gap: .35rem; color: var(--cv-color-teal); font-size: .72rem; font-weight: 700; }
+
+/* Primary navigation: a spacious labelled rail that can collapse to icons. */
+:root {
+  --cv-nav-width: 14.5rem;
+  --cv-nav-collapsed-width: 3.75rem;
+  --cv-topbar-height: 5.6rem;
+}
+
+.app-shell.navigation-collapsed {
+  grid-template-columns: var(--cv-nav-collapsed-width) minmax(0, 1fr);
+}
+
+.app-header,
+html[data-theme='dark'] .app-header {
+  color: var(--cv-color-navy);
+  background-color: #fafaf8;
+  background-image: url("/topography-light.svg");
+  background-repeat: repeat;
+  background-size: 1254px 1254px;
+  border-bottom-color: rgb(43 62 89 / 10%);
+  box-shadow: 0 2px 12px rgb(13 27 42 / 8%);
+}
+
+.main-navigation,
+html[data-theme='dark'] .main-navigation,
+html[data-theme='dark'] .cv-main-navigation {
+  align-items: stretch;
+  padding: 0 .7rem .85rem;
+  background-color: #0d1b2a;
+  background-image: linear-gradient(rgb(5 18 31 / 8%), rgb(5 18 31 / 8%)), url("/topography-dark.svg");
+  background-repeat: repeat;
+  background-size: auto, 1254px 1254px;
+  background-position: center;
+}
+
+.main-navigation-brand {
+  justify-content: center;
+  padding-left: 0;
+}
+
+.cv-main-navigation__collapse-toggle {
+  display: flex;
+  width: 2.45rem;
+  height: 2.45rem;
+  align-items: center;
+  align-self: flex-end;
+  justify-content: center;
+  margin: -2.95rem .15rem .45rem 0;
+  color: #dce6ef;
+  background: rgb(255 255 255 / 8%);
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: .6rem;
+  cursor: pointer;
+}
+
+.cv-main-navigation__collapse-toggle:hover,
+.cv-main-navigation__collapse-toggle:focus-visible {
+  color: #fff;
+  background: rgb(255 255 255 / 16%);
+  outline: 2px solid rgb(15 166 138 / 45%);
+  outline-offset: 2px;
+}
+
+@media (min-width: 761px) {
+  .main-navigation a,
+  .main-navigation button:not(.cv-main-navigation__collapse-toggle),
+  .main-navigation-disabled {
+    display: flex;
+    min-height: 3.15rem;
+    align-items: center;
+    justify-content: flex-start;
+    gap: .7rem;
+    padding: .55rem .7rem;
+    text-align: left;
+  }
+
+  .main-navigation .cv-main-navigation__item > span:not(.cv-main-navigation__icon-slot),
+  .main-navigation .cv-main-navigation__item > svg + span {
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .main-navigation .cv-main-navigation__icon-slot {
+    flex: 0 0 23px;
+  }
+
+  .main-navigation .cv-main-navigation__label-slot {
+    display: block;
+    width: auto;
+    height: 1.1rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .main-navigation .cv-main-navigation__label-slot > span {
+    position: static;
+    display: none;
+    width: auto;
+    opacity: 1;
+    transform: none;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .main-navigation .cv-main-navigation__label-slot > span.is-visible {
+    display: block;
+  }
+
+  .main-navigation.is-collapsed {
+    padding-inline: .35rem;
+  }
+
+  .main-navigation.is-collapsed .main-navigation-brand {
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .main-navigation.is-collapsed .main-navigation-brand img {
+    width: 40px;
+  }
+
+  .main-navigation.is-collapsed .cv-main-navigation__collapse-toggle {
+    align-self: center;
+    margin-right: 0;
+  }
+
+  .main-navigation.is-collapsed .cv-main-navigation__item {
+    justify-content: center;
+    padding-inline: .3rem;
+  }
+
+  .main-navigation.is-collapsed .cv-main-navigation__item > span:not(.cv-main-navigation__icon-slot),
+  .main-navigation.is-collapsed .cv-main-navigation__item > svg + span,
+  .main-navigation.is-collapsed .cv-main-navigation__separator {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell.navigation-collapsed { grid-template-columns: 1fr; }
+  .app-header { min-height: 3.9rem; }
+  .cv-main-navigation__collapse-toggle { display: none; }
+  .main-navigation,
+  html[data-theme='dark'] .main-navigation,
+  html[data-theme='dark'] .cv-main-navigation {
+    background-size: auto, 790px 790px;
+  }
+}

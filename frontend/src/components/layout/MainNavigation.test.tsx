@@ -38,6 +38,17 @@ describe('MainNavigation', () => {
     expect(onPanelChange).toHaveBeenCalledWith(null)
   })
 
+  it('delegates the desktop navigation collapse control', () => {
+    const onCollapsedChange = vi.fn()
+    const { rerender } = render(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={vi.fn()} onCollapsedChange={onCollapsedChange} /></MemoryRouter>)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire le menu' }))
+    expect(onCollapsedChange).toHaveBeenCalledWith(true)
+
+    rerender(<MemoryRouter><MainNavigation activePanel={null} onPanelChange={vi.fn()} collapsed onCollapsedChange={onCollapsedChange} /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'Développer le menu' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('uses workspace buttons for content and statuses without duplicating administration', () => {
     const onPanelChange = vi.fn()
     const onOpenTrips = vi.fn()
@@ -108,6 +119,16 @@ describe('MainNavigation', () => {
 
     rerender(<MemoryRouter><MainNavigation activePanel="media" placesPanelCollapsed={false} onPanelChange={vi.fn()} /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'Lieux' }).querySelector('.cv-main-navigation__places-default-icon')).toHaveClass('is-visible')
+  })
+
+  it('does not render the desktop collapse control in mobile navigation', () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
+    render(<MemoryRouter><MainNavigation activePanel="places" onPanelChange={vi.fn()} /></MemoryRouter>)
+
+    expect(screen.getByRole('navigation', { name: 'Navigation CartaVault' })).toHaveClass('is-mobile')
+    expect(screen.queryByRole('button', { name: 'Réduire le menu' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Lieux' }).querySelector('.cv-main-navigation__mobile-label')).toHaveTextContent('Lieux')
+    expect(screen.getByRole('button', { name: 'Sorties' }).querySelector('.cv-main-navigation__mobile-label')).toHaveTextContent('Sorties')
   })
 
   it('delegates repeated workspace entries to the shared collapse toggle', () => {

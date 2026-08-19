@@ -5,7 +5,9 @@ import { IconTimelineEvent } from "@tabler/icons-react";
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from "../../api/trips";
 import type { PoiMap } from "../../types/map";
+import type { PlaceDetails } from "../../types/place";
 import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripOptimizationProposal, TripStop, TripSummary } from "../../types/trip";
+import type { GeocodingResult } from "../../geocoding/types";
 import { CreateTripDialog } from "./CreateTripDialog";
 import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } from "./tripMetrics";
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from "./TripTimePlanning";
@@ -20,6 +22,7 @@ import { OfflinePackageDialog } from "../pwa/OfflinePackageDialog";
 import { useI18n } from "../../i18n/useI18n";
 import { publishGlobalFeedback } from "../common/globalFeedback";
 import { PanelLayoutLockButton } from "../layout/PanelLayoutLockButton";
+import { MobileTripStopSearchDialog } from "./MobileTripStopSearchDialog";
 
 export type UnsavedTripSettingsGuard = () => Promise<boolean>;
 
@@ -47,7 +50,7 @@ interface Props {
   onPreviewStopSelect?: (stopId: string | null) => void;
   onPreviewSelectionChange?: (key: string | null) => void;
   onUnsavedChangesGuardChange?: (guard: UnsavedTripSettingsGuard | null) => void;
-  onMobilePlacesOpen?: () => void;
+  onInitialLoadComplete?: () => void;
   onClose: () => void;
 }
 
@@ -89,7 +92,7 @@ const tripPanelMetricsCache = new globalThis.Map<
   }
 >();
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onMobilePlacesOpen = () => undefined }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined }: Props) {
   const { confirm, confirmationDialog } = useConfirmDialog();
   const { t } = useI18n();
   const canEdit = poiMap.can_edit === true;
@@ -135,6 +138,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const [loadingTripId, setLoadingTripId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileTripPickerOpen, setMobileTripPickerOpen] = useState(false);
+  const [mobileStopSearchDayId, setMobileStopSearchDayId] = useState<string | null>(null);
   const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false);
   const [savingUnsavedChanges, setSavingUnsavedChanges] = useState(false);
   const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set());
@@ -167,6 +171,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const onActiveDayChangeRef = useRef(onActiveDayChange);
   const onActiveNightTargetChangeRef = useRef(onActiveNightTargetChange);
   const onActiveAnchorTargetChangeRef = useRef(onActiveAnchorTargetChange);
+  const onInitialLoadCompleteRef = useRef(onInitialLoadComplete);
   const loadControllerRef = useRef<AbortController | null>(null);
   const selectionVersionRef = useRef(0);
   const mobileMapSyncTimerRef = useRef<number | null>(null);
@@ -175,6 +180,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   onActiveDayChangeRef.current = onActiveDayChange;
   onActiveNightTargetChangeRef.current = onActiveNightTargetChange;
   onActiveAnchorTargetChangeRef.current = onActiveAnchorTargetChange;
+  onInitialLoadCompleteRef.current = onInitialLoadComplete;
 
   useEffect(() => {
     activeDayIdRef.current = activeDayId;
@@ -210,6 +216,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     setOpenDaySettingsIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))));
   }, [trip]);
   useEffect(() => setPreviewSelectionKey(null), [trip?.id]);
+  useEffect(() => {
+    if (mobileStopSearchDayId && !trip?.days.some((day) => day.id === mobileStopSearchDayId)) setMobileStopSearchDayId(null);
+  }, [mobileStopSearchDayId, trip]);
   useEffect(() => {
     if (!tripViewOnly || !trip?.days[0]) return;
     setPreviewSelectionKey("departure");
@@ -348,6 +357,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       })
       .catch((caught: unknown) => {
         if (active) setError(caught instanceof Error ? caught.message : "Chargement impossible.");
+      })
+      .finally(() => {
+        if (active) onInitialLoadCompleteRef.current();
       });
     return () => {
       active = false;
@@ -392,6 +404,44 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       undo: () => restore(before),
       redo: () => restore(after),
     });
+  };
+  const addMobilePlaceStop = async (place: PlaceDetails) => {
+    const dayId = mobileStopSearchDayId;
+    if (!trip || !dayId || place.latitude === null || place.longitude === null) return false;
+    const added = await run(() =>
+      runUndoable("ajout de l’étape", async () => {
+        await addTripStop(dayId, { place_id: place.id, stop_type: "place" });
+        await refreshTripSilently(trip.id);
+      }),
+    );
+    if (added) {
+      setMobileStopSearchDayId(null);
+      onActiveDayChange(dayId);
+      publishGlobalFeedback("success", `« ${place.name} » ajouté à la journée.`);
+    }
+    return added;
+  };
+  const addMobileGeographicStop = async (result: GeocodingResult) => {
+    const dayId = mobileStopSearchDayId;
+    if (!trip || !dayId) return false;
+    const added = await run(() =>
+      runUndoable("ajout de l’étape", async () => {
+        await addTripStop(dayId, {
+          stop_type: "free_location",
+          name: result.name,
+          latitude: result.latitude,
+          longitude: result.longitude,
+          address: result.formattedAddress,
+        });
+        await refreshTripSilently(trip.id);
+      }),
+    );
+    if (added) {
+      setMobileStopSearchDayId(null);
+      onActiveDayChange(dayId);
+      publishGlobalFeedback("success", `« ${result.name} » ajouté à la journée.`);
+    }
+    return added;
   };
   const savedLoadSettings = useMemo(() => (trip ? readLoadSettings(trip) : null), [trip]);
   const activeLoadSettings = loadSettingsDraft ?? savedLoadSettings;
@@ -1083,7 +1133,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                             nights={mobileNightDestinations}
                             busy={busy}
                             pendingAction={pendingAction}
-                            onAddPlaces={onMobilePlacesOpen}
+                            onAddPlaces={() => setMobileStopSearchDayId(mobileDay.id)}
                             onOpenStop={(stop) => {
                               onStopFocus?.(stop.latitude, stop.longitude);
                               onPreviewStopSelect(stop.id);
@@ -1783,6 +1833,19 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                   }}
                 />
               )}
+              {isMobile && mobileStopSearchDayId && trip && (() => {
+                const targetDay = trip.days.find((day) => day.id === mobileStopSearchDayId);
+                if (!targetDay) return null;
+                return <MobileTripStopSearchDialog
+                  poiMap={poiMap}
+                  dayLabel={targetDay.title || `Jour ${targetDay.day_number}`}
+                  existingPlaceIds={new Set(targetDay.stops.flatMap((stop) => stop.place_id ? [stop.place_id] : []))}
+                  busy={busy}
+                  onClose={() => setMobileStopSearchDayId(null)}
+                  onAddPlace={addMobilePlaceStop}
+                  onAddGeographic={addMobileGeographicStop}
+                />;
+              })()}
               {isMobile && optimization && trip && (
                 <MobileDayOptimizationDialog
                   day={trip.days.find((day) => day.id === optimization.dayId) ?? null}
