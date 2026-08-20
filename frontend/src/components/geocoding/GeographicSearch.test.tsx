@@ -10,6 +10,12 @@ afterEach(cleanup)
 beforeEach(() => { vi.mocked(placeSearchService.search).mockReset(); vi.mocked(placeSearchService.search).mockResolvedValue([]) })
 
 describe('GeographicSearch', () => {
+  it('renders the visible map-search trigger label', () => {
+    render(<GeographicSearch focus={[48, 2]} selected={null} onSelect={vi.fn()} onClear={vi.fn()} onCreate={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Lancer la recherche géographique' })).toHaveTextContent('Rechercher')
+  })
+
   it('starts compact, expands on focus, and collapses after an outside pointer action', () => {
     const { container } = render(<GeographicSearch focus={[48, 2]} selected={null} onSelect={vi.fn()} onClear={vi.fn()} onCreate={vi.fn()} />)
     const search = container.querySelector('.geographic-search')

@@ -89,13 +89,35 @@ def _stream(path: Path, start: int, end: int) -> Iterator[bytes]:
 def _config_payload(policy: VectorBasemapPolicy, row: VectorBasemap | None) -> dict[str, object]:
     path = archive_path(row) if row else None
     code = row.country_code if row else None
+    available = policy.enabled and path is not None
+    if available:
+        error_code = None
+        error_message = None
+    elif not policy.enabled:
+        error_code = "VECTOR_DISABLED"
+        error_message = "CartaVault Vector est désactivé dans les paramètres de l’instance."
+    elif row is None or (code is not None and vector_country_source(code) is None):
+        error_code = "COUNTRY_NOT_SUPPORTED"
+        error_message = "Fond automatique non disponible pour ce pays."
+    elif row.file_path:
+        error_code = "PMTILES_MISSING"
+        error_message = "L’archive PMTiles enregistrée est absente du stockage de l’instance."
+    elif row.state in {"downloading", "generating", "validating", "deleting"}:
+        error_code = "BASEMAP_PREPARING"
+        error_message = row.phase or "Le fond CartaVault est en cours de préparation."
+    elif row.state == "error":
+        error_code = row.last_error_code or "BASEMAP_PREPARATION_FAILED"
+        error_message = row.last_error_message or "La préparation du fond CartaVault a échoué."
+    else:
+        error_code = "BASEMAP_NOT_INSTALLED"
+        error_message = "Le fond CartaVault n’est pas installé pour ce pays."
     return {
-        "enabled": policy.enabled, "available": path is not None,
+        "enabled": policy.enabled, "available": available,
         "country_code": code, "country_name": row.country_name if row else None,
         "state": row.state if row else "unsupported", "phase": row.phase if row else None,
-        "error_code": row.last_error_code if row else "UNSUPPORTED_COUNTRY",
-        "error_message": row.last_error_message if row else "Fond automatique non disponible pour ce pays.",
-        "archive_url": f"/basemaps/cartavault/archive/{code.lower()}.pmtiles" if path and code else None,
+        "error_code": error_code,
+        "error_message": error_message,
+        "archive_url": f"/basemaps/cartavault/archive/{code.lower()}.pmtiles" if available and code else None,
         "glyphs_url": "/basemaps/cartavault/fonts/{fontstack}/{range}.pbf",
         "version": row.version if row and row.version else "not-installed",
         "min_zoom": row.min_zoom if row and row.min_zoom is not None else policy.min_zoom,
@@ -112,7 +134,12 @@ def config(country_code: str | None = Query(default=None, min_length=2, max_leng
     if country_code is None:
         return _config_payload(policy, None)
     code = country_code.upper()
-    row = maybe_prepare_for_policy(session, code, current.id, "offline_use" if purpose == "offline" else "cartavault_use") if purpose != "status" else session.get(VectorBasemap, code)
+    if purpose != "status":
+        row = maybe_prepare_for_policy(session, code, current.id, "offline_use" if purpose == "offline" else "cartavault_use")
+    else:
+        ensure_catalog_rows(session)
+        row = session.get(VectorBasemap, code)
+        session.commit()
     return _config_payload(policy, row)
 
 

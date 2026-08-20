@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, LocateFixed, RotateCcw, SquareDashed, X } from 'lucide-react'
+import { Check, RotateCcw, SquareDashed, X } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
@@ -10,7 +10,7 @@ import type { MapContextMenuState } from '../components/map/mapContextMenuUtils'
 import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { EMPTY_MAP_MARKER_FILTER, MapMarkerFilterContext, type MapMarkerFilter } from '../components/map/mapMarkerFilterContext'
-import { getBasemap, getThemeDefaultBasemapId, loadStoredBasemapPreference, saveBasemapPreference, type BasemapId } from '../map/basemaps'
+import { getBasemap, type BasemapId } from '../map/basemaps'
 import { applyDisplayDensity, saveDisplayDensity } from '../theme/displayDensity'
 import type { AccountPreferences } from '../types/account'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
@@ -50,11 +50,13 @@ const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
 const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
-type ClassicBasemapProvider = 'osm' | 'stadia' | 'google'
+type ClassicBasemapProvider = 'cartavault' | 'osm' | 'stadia' | 'google'
 type SatelliteBasemapProvider = 'none' | 'stadia' | 'google' | 'mapbox'
 type GoogleSatelliteMode = 'maps-js' | 'map-tiles'
+type MapTheme = 'light' | 'dark'
 
 function resolvePreferredBasemap(value: unknown, classicProvider: ClassicBasemapProvider = 'osm', satelliteProvider: SatelliteBasemapProvider = 'none', googleSatelliteMode: GoogleSatelliteMode = 'maps-js'): BasemapId {
+  if (classicProvider === 'cartavault' && (value === 'cartavault-light' || value === 'cartavault-dark')) return value
   if (classicProvider === 'stadia' && (value === 'stadia-light' || value === 'stadia-dark')) return value
   if (classicProvider === 'google' && value === 'google-roadmap') return value
   if (classicProvider === 'osm' && value === 'osm') return value
@@ -62,7 +64,11 @@ function resolvePreferredBasemap(value: unknown, classicProvider: ClassicBasemap
   if (satelliteProvider === 'google' && googleSatelliteMode === 'maps-js' && value === 'google-satellite') return value
   if (satelliteProvider === 'google' && googleSatelliteMode === 'map-tiles' && value === 'google-satellite-tiles') return value
   if (satelliteProvider === 'mapbox' && value === 'mapbox-satellite') return value
-  return classicProvider === 'stadia' ? 'stadia-light' : classicProvider === 'google' ? 'google-roadmap' : 'osm'
+  return classicProvider === 'cartavault' ? 'cartavault-light' : classicProvider === 'stadia' ? 'stadia-light' : classicProvider === 'google' ? 'google-roadmap' : 'osm'
+}
+
+function mapThemeFromBasemap(id: BasemapId): MapTheme {
+  return id === 'cartavault-dark' || id === 'stadia-dark' ? 'dark' : 'light'
 }
 
 function loadPanelWidth(key: string, fallback: number, min = 320, max = 720): number {
@@ -238,8 +244,12 @@ export function MapPage({
 }: MapPageProps) {
   const { resolvedTheme } = useTheme()
   const { locale, t } = useI18n()
-  const initialBasemapRef = useRef(resolvePreferredBasemap(loadStoredBasemapPreference() ?? getThemeDefaultBasemapId()))
+  // Account preferences are the persistent source of truth. Starting from the
+  // keyless OSM renderer avoids a stale browser-local preference racing the
+  // authenticated preference request and triggering a false fallback.
+  const initialBasemapRef = useRef<BasemapId>('osm')
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
+  const mapTheme = mapThemeFromBasemap(basemapId)
   const [photoMarkersEnabled, setPhotoMarkersEnabled] = useState(false)
   const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const [classicBasemapProvider, setClassicBasemapProvider] = useState<ClassicBasemapProvider>('osm')
@@ -249,6 +259,8 @@ export function MapPage({
   const onlineBasemapRef = useRef<BasemapId | null>(null)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
   const explicitBasemapSelectionRef = useRef<BasemapId | null>(null)
+  const basemapPreferenceSaveRef = useRef<Promise<void>>(Promise.resolve())
+  const basemapSelectionVersionRef = useRef(0)
   const tileFailuresRef = useRef(new Map<BasemapId, number>())
   const failedBasemapsRef = useRef(new Set<BasemapId>())
   const [localSearchResult, setLocalSearchResult] = useState<GeocodingResult | null>(null)
@@ -256,6 +268,7 @@ export function MapPage({
   const [contextNotice, setContextNotice] = useState<string | null>(null)
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
   const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
+  const [openMapPanel, setOpenMapPanel] = useState<'tools' | 'legend' | 'search' | 'basemap' | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
   const [floatingPanelResetVersion, setFloatingPanelResetVersion] = useState(0)
@@ -403,14 +416,17 @@ export function MapPage({
         if (preferences.preferred_basemap !== explicitSelection) {
           const updated = { ...preferences, preferred_basemap: explicitSelection }
           accountPreferencesRef.current = updated
-          void updateAccountPreferences(updated).then((saved) => { accountPreferencesRef.current = saved }).catch(() => undefined)
+          void updateAccountPreferences(updated).then((saved) => {
+            accountPreferencesRef.current = saved
+            explicitBasemapSelectionRef.current = null
+          }).catch(() => { explicitBasemapSelectionRef.current = null })
+        } else {
+          explicitBasemapSelectionRef.current = null
         }
         return
       }
-      if (failedBasemapsRef.current.size > 0) return
       const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       setBasemapId(preferred)
-      saveBasemapPreference(preferred)
     }).catch(() => undefined)
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
@@ -421,14 +437,33 @@ export function MapPage({
       setGoogleSatelliteMode(preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
-      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
-      setBasemapId(preferred)
-      saveBasemapPreference(preferred)
+      // A map-theme click updates basemapId synchronously and persists in the
+      // background. Do not let an unrelated preferences event race that click
+      // and overwrite the selected renderer/icon with a stale server value.
+      if (explicitBasemapSelectionRef.current === null) {
+        const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
+        setBasemapId(preferred)
+      }
       setBasemapNotice(null)
     }
     window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated)
     return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
   }, [])
+
+  useEffect(() => {
+    tileFailuresRef.current.clear()
+    failedBasemapsRef.current.clear()
+    if (navigator.onLine === false) return
+    const preferences = accountPreferencesRef.current
+    if (preferences === null) return
+    explicitBasemapSelectionRef.current = null
+    setBasemapId(resolvePreferredBasemap(
+      preferences.preferred_basemap,
+      preferences.basemaps?.classic_provider ?? 'osm',
+      preferences.basemaps?.satellite_provider ?? 'none',
+      preferences.basemaps?.google_satellite_mode ?? 'maps-js',
+    ))
+  }, [activeCountryCode])
 
   const resetTemporaryTools = (clearMeasurement = true) => {
     setInternalToolMode('navigation')
@@ -551,6 +586,11 @@ export function MapPage({
 
   useEffect(() => {
     const cancelTemporaryMode = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && openMapPanel !== null) {
+        event.preventDefault()
+        setOpenMapPanel(null)
+        return
+      }
       if (event.key !== 'Escape' || !isTemporaryMapMode(effectiveMode)) return
       if (document.fullscreenElement === mapLayoutRef.current) return
       event.preventDefault()
@@ -558,7 +598,16 @@ export function MapPage({
     }
     window.addEventListener('keydown', cancelTemporaryMode)
     return () => window.removeEventListener('keydown', cancelTemporaryMode)
-  }, [effectiveMode])
+  }, [effectiveMode, openMapPanel])
+
+  useEffect(() => {
+    const closeMapPanelFromOutside = (event: PointerEvent) => {
+      if ((event.target as HTMLElement | null)?.closest('.map-overlay-controls')) return
+      setOpenMapPanel(null)
+    }
+    document.addEventListener('pointerdown', closeMapPanelFromOutside)
+    return () => document.removeEventListener('pointerdown', closeMapPanelFromOutside)
+  }, [])
 
   useEffect(() => {
     const updateFullscreenState = () => {
@@ -647,20 +696,33 @@ export function MapPage({
   }
 
   const selectBasemap = (id: BasemapId) => {
-    const selected = resolvePreferredBasemap(id, classicBasemapProvider, configuredSatelliteProvider, googleSatelliteMode)
-    explicitBasemapSelectionRef.current = selected
-    setBasemapId(selected)
+    // The selector only exposes configured choices, so keep the clicked ID
+    // verbatim. Normalising it against provider state that is still loading
+    // would otherwise turn a satellite choice back into the initial OSM map.
+    explicitBasemapSelectionRef.current = id
+    setBasemapId(id)
     setBasemapNotice(null)
     tileFailuresRef.current.clear()
     failedBasemapsRef.current.clear()
-    saveBasemapPreference(selected)
     const currentPreferences = accountPreferencesRef.current
-    if (currentPreferences !== null && currentPreferences.preferred_basemap !== selected) {
-      const updated = { ...currentPreferences, preferred_basemap: selected }
+    if (currentPreferences !== null && currentPreferences.preferred_basemap !== id) {
+      const updated = { ...currentPreferences, preferred_basemap: id }
+      const selectionVersion = ++basemapSelectionVersionRef.current
       accountPreferencesRef.current = updated
-      void updateAccountPreferences(updated).then((saved) => {
-        accountPreferencesRef.current = saved
-      }).catch(() => undefined)
+      // Keep preference writes ordered. Rapid Light/Dark clicks previously sent
+      // concurrent PUT requests, allowing an older response to win on the
+      // server and making a reload restore the wrong theme.
+      basemapPreferenceSaveRef.current = basemapPreferenceSaveRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          const saved = await updateAccountPreferences(updated)
+          if (basemapSelectionVersionRef.current !== selectionVersion) return
+          accountPreferencesRef.current = saved
+          explicitBasemapSelectionRef.current = null
+        })
+        .catch(() => {
+          if (basemapSelectionVersionRef.current === selectionVersion) explicitBasemapSelectionRef.current = null
+        })
     }
   }
 
@@ -681,19 +743,15 @@ export function MapPage({
     const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'google-satellite-tiles' || sourceId === 'mapbox-satellite'
       ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
       : 'osm'
+    console.warn('[Basemap] fallback', {
+      requested: sourceId,
+      country: activeCountryCode,
+      reason: reason ?? 'renderer_unavailable',
+      errorCode: _errorCode ?? 'BASEMAP_UNAVAILABLE',
+      fallback,
+    })
+    explicitBasemapSelectionRef.current = null
     setBasemapId(fallback)
-    saveBasemapPreference(fallback)
-    const currentPreferences = accountPreferencesRef.current
-    if (currentPreferences !== null && currentPreferences.preferred_basemap !== fallback) {
-      const updated = {
-        ...currentPreferences,
-        preferred_basemap: fallback,
-      }
-      accountPreferencesRef.current = updated
-      void updateAccountPreferences(updated).then((saved) => {
-        accountPreferencesRef.current = saved
-      }).catch(() => undefined)
-    }
     setBasemapNotice(reason
       ? `${reason} ${getBasemap(fallback).label} a été activé automatiquement.`
       : `Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
@@ -776,22 +834,10 @@ export function MapPage({
           <button type="button" className="secondary-button" onClick={() => setAnnotationDrawing(null)}><X size={14} />Annuler</button>
           {annotationDrawingComplete && <button type="button" className="primary-button" onClick={() => void finishAnnotationDrawing()}><Check size={14} />Valider</button>}
         </div>}
-        <div className="map-overlay-controls">
-          <div className="map-overlay-control-slot map-overlay-control-slot--mobile-geolocation">
-            <button
-              className={`mobile-map-geolocation${internalToolMode === 'geolocation' ? ' active' : ''}${geolocationLoading ? ' is-loading' : ''}`}
-              type="button"
-              aria-label={geolocationLoading ? t('map.tools.geolocation.loading') : t('map.tools.mode.geolocation')}
-              aria-pressed={internalToolMode === 'geolocation'}
-              title={geolocationLoading ? t('map.tools.geolocation.loading') : t('map.tools.mode.geolocation')}
-              disabled={tripPlanningActive || placeCreationActive || draftPosition !== null || geolocationLoading}
-              onClick={requestGeolocation}
-            >
-              <LocateFixed className={geolocationLoading ? 'is-spinning' : ''} size={19} aria-hidden="true" />
-            </button>
-            {mapToolsNotice && <p className="mobile-map-geolocation__notice" role="status">{mapToolsNotice}</p>}
-          </div>
+        <div className="map-overlay-controls" aria-label="Contrôles de la carte">
           <MapToolsControl
+            expanded={openMapPanel === 'tools'}
+            onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'tools' : null)}
             mode={effectiveMode}
             internalMode={internalToolMode}
             measurementPoints={measurementPoints}
@@ -843,23 +889,23 @@ export function MapPage({
             }}
           />
           <div className="map-overlay-control-slot map-overlay-control-slot--legend">
-            <StatusLegend statuses={statuses} />
+            <StatusLegend statuses={statuses} expanded={openMapPanel === 'legend'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'legend' : null)} />
           </div>
           {!tripViewOnly && (
             <div className="map-overlay-control-slot map-overlay-control-slot--search">
-              <GeographicSearch focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
+              <GeographicSearch expanded={openMapPanel === 'search'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'search' : null)} focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
-            <BasemapSelector activeBasemapId={basemapId} onBasemapChange={selectBasemap} offline={offlineBasemapActive} classicProvider={classicBasemapProvider} satelliteProvider={configuredSatelliteProvider} googleSatelliteMode={googleSatelliteMode} />
+            <BasemapSelector expanded={openMapPanel === 'basemap'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'basemap' : null)} activeBasemapId={basemapId} mapTheme={mapTheme} onBasemapChange={selectBasemap} offline={offlineBasemapActive} classicProvider={classicBasemapProvider} satelliteProvider={configuredSatelliteProvider} googleSatelliteMode={googleSatelliteMode} />
           </div>
           {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
             <button
               className={`country-mask-toggle${countryMaskEnabled ? ' active' : ''}`}
               type="button"
-              aria-label={countryMaskEnabled ? 'Désactiver le masque hors pays' : 'Activer le masque hors pays'}
+              aria-label={countryMaskEnabled ? 'Filtre de pays activé' : 'Filtre de pays désactivé'}
               aria-pressed={countryMaskEnabled}
-              title={countryMaskEnabled ? 'Masque hors pays activé' : 'Masque hors pays désactivé'}
+              title={countryMaskEnabled ? 'Filtre de pays activé' : 'Filtre de pays désactivé'}
               onClick={() => setCountryMaskEnabled((current) => {
                 const next = !current
                 saveCountryMaskPreference(next)

@@ -30,6 +30,7 @@ const providerLabels: Record<string, string> = {
   google: "Google Routes",
   openrouteservice: "OpenRouteService",
   stadia: "Stadia Maps",
+  cartavault: "CartaVault Vector",
   osm: "OpenStreetMap",
   mapbox: "Mapbox",
 };
@@ -192,7 +193,7 @@ function ServiceDialog({
   );
   const keyDisabled =
     (kind === "routing" && draft.provider === "osrm") ||
-    (kind === "classic-basemap" && draft.provider === "osm") ||
+    (kind === "classic-basemap" && ["cartavault", "osm"].includes(draft.provider)) ||
     (kind === "satellite-basemap" && draft.provider === "none");
   const keyOptional =
     keyDisabled ||
@@ -256,6 +257,7 @@ function ServiceDialog({
                 </>
               ) : kind === "classic-basemap" ? (
                 <>
+                  <option value="cartavault">CartaVault Vector clair / sombre</option>
                   <option value="osm">OpenStreetMap standard</option>
                   <option value="stadia">Stadia light / dark</option>
                   <option value="google">Google normal</option>
@@ -460,7 +462,9 @@ export function IntegrationPreferences({
       setPreferences({
         ...preferences,
         preferred_basemap:
-          provider === "stadia"
+          provider === "cartavault"
+            ? "cartavault-light"
+            : provider === "stadia"
             ? "stadia-light"
             : provider === "google"
               ? "google-roadmap"
@@ -468,7 +472,7 @@ export function IntegrationPreferences({
         basemaps: {
           ...basemaps,
           classic_provider: provider,
-          classic_api_key_id: provider === "osm" ? null : draft.apiKeyId || null,
+          classic_api_key_id: provider === "cartavault" || provider === "osm" ? null : draft.apiKeyId || null,
           ...(provider === "stadia"
             ? { stadia_api_key_id: draft.apiKeyId || null }
             : provider === "google"
@@ -576,7 +580,7 @@ export function IntegrationPreferences({
             providerLabel={providerLabels[classicProvider]}
             providerCaption={t("account.integrations.provider")}
             keyName={
-              classicProvider === "osm" ||
+              ["cartavault", "osm"].includes(classicProvider) ||
               (classicProvider === "stadia" &&
                 stadiaKeyOptional &&
                 !providerKey("stadia", "classic-basemap"))
@@ -592,7 +596,7 @@ export function IntegrationPreferences({
                 keys={classicKeys}
                 value={providerKey(classicProvider, "classic-basemap")}
                 optional={
-                  classicProvider === "osm" ||
+                  ["cartavault", "osm"].includes(classicProvider) ||
                   (classicProvider === "stadia" && stadiaKeyOptional)
                 }
               />

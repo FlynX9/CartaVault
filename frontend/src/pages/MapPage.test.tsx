@@ -108,10 +108,10 @@ describe('MapPage', () => {
     const editorWindow = screen.getByLabelText('Éditeur du lieu')
     expect(editorWindow).toContainElement(screen.getByLabelText('Volet de test'))
     await waitFor(() => expect(editorWindow).toHaveClass('is-active'))
-    const legend = screen.getByRole('complementary', { name: 'Légende des statuts' })
-    fireEvent.mouseEnter(legend)
+    const legend = screen.getByRole('region', { name: 'Légende des statuts' })
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher la légende des statuts' }))
     expect(legend).toHaveTextContent('À faire')
-    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia satellite' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'satellite')
     expect(screen.getByTestId('poi-map')).toBe(map)
@@ -122,8 +122,8 @@ describe('MapPage', () => {
     fireEvent.click(tileError)
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
     expect(screen.getByRole('status')).toHaveTextContent('Stadia clair a été activé automatiquement')
-    expect(window.localStorage.getItem('cartavault.basemap')).toBe('stadia-light')
-    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-light' })))
+    expect(window.localStorage.getItem('cartavault.basemap')).toBeNull()
+    expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-light' }))
   })
 
   it('resizes both workspace panels without remounting the map', async () => {
@@ -343,18 +343,18 @@ describe('MapPage', () => {
     expect(screen.queryByLabelText('Recherche géographique')).not.toBeInTheDocument()
   })
 
-  it('persists an explicit selection locally and in account preferences', async () => {
+  it('persists an explicit selection in account preferences', async () => {
     const account = await import('../api/account')
     const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
     const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
-    fireEvent.mouseEnter(screen.getByRole('group', { name: 'Fond cartographique' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia sombre' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
     expect(themeState.setPreference).not.toHaveBeenCalled()
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
-    expect(window.localStorage.getItem('cartavault.basemap')).toBe('stadia-dark')
+    expect(window.localStorage.getItem('cartavault.basemap')).toBeNull()
     await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-dark' })))
   })
 
@@ -373,10 +373,9 @@ describe('MapPage', () => {
 
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-roadmap')
     expect(screen.getByRole('status')).toHaveTextContent('Google Satellite est indisponible dans cette région')
-    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({
+    expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({
       preferred_basemap: 'google-roadmap',
-      basemaps: expect.objectContaining({ satellite_provider: 'google' }),
-    })))
+    }))
   })
 
   it('keeps the configured basemap independent from the visual theme', async () => {
@@ -406,12 +405,12 @@ describe('MapPage', () => {
     const map = await screen.findByTestId('poi-map')
     expect(map).toHaveAttribute('data-country-mask', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Désactiver le masque hors pays' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Filtre de pays activé' }))
 
     expect(screen.getByTestId('poi-map')).toBe(map)
     expect(map).toHaveAttribute('data-country-mask', 'false')
     expect(window.localStorage.getItem('cartavault:country-mask-enabled')).toBe('false')
-    expect(screen.getByRole('button', { name: 'Activer le masque hors pays' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Filtre de pays désactivé' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('measures a multi-point path locally and supports undo and reset', async () => {
@@ -498,15 +497,15 @@ describe('MapPage', () => {
     expect(getCurrentPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 })
   })
 
-  it('offers direct geolocation from the mobile map control', async () => {
+  it('offers geolocation from the map tools on mobile', async () => {
     const getCurrentPosition = vi.fn()
     Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition } })
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
 
-    const locateButton = screen.getAllByRole('button', { name: 'Me localiser' }).find((button) => button.classList.contains('mobile-map-geolocation'))
-    expect(locateButton).toBeDefined()
-    fireEvent.click(locateButton!)
+    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
+    const locateButton = within(screen.getByRole('region', { name: 'Outils cartographiques' })).getByRole('button', { name: 'Me localiser' })
+    fireEvent.click(locateButton)
 
     expect(getCurrentPosition).toHaveBeenCalledOnce()
     expect(locateButton).toHaveAttribute('aria-pressed', 'true')
@@ -521,8 +520,9 @@ describe('MapPage', () => {
     try {
       render(<><MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter><GlobalFeedbackToasts /></>)
       await screen.findByTestId('poi-map')
-      const locateButton = screen.getAllByRole('button', { name: 'Me localiser' }).find((button) => button.classList.contains('mobile-map-geolocation'))
-      fireEvent.click(locateButton!)
+      fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
+      const locateButton = within(screen.getByRole('region', { name: 'Outils cartographiques' })).getByRole('button', { name: 'Me localiser' })
+      fireEvent.click(locateButton)
 
       expect(getCurrentPosition).not.toHaveBeenCalled()
       expect(screen.getByRole('alert')).toHaveTextContent(/nécessite une connexion HTTPS/i)
@@ -569,6 +569,7 @@ describe('MapPage', () => {
       type: 'Polygon',
       coordinates: [[[1, 47], [3, 47], [3, 49], [1, 49], [1, 47]]],
     })
+    fireEvent.keyDown(window, { key: 'Escape' })
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(map).toHaveAttribute('data-tool-mode', 'navigation')
     expect(screen.queryByText('Mesure géométrique temporaire')).not.toBeInTheDocument()

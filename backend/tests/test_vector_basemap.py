@@ -64,6 +64,9 @@ def test_controlled_geofabrik_catalog_maps_iso_codes() -> None:
     assert len(VECTOR_COUNTRY_CATALOG) == len(load_country_catalog()) == 250
     assert vector_country_source("JP").geofabrik_path == "asia/japan-latest.osm.pbf"
     assert vector_country_source("BR").geofabrik_path == "south-america/brazil-latest.osm.pbf"
+    assert vector_country_source("AX").source_url == "https://download.geofabrik.de/europe/finland-latest.osm.pbf"
+    assert vector_country_source("AX").filename == "aland.pmtiles"
+    assert vector_country_source("AX").bounds == (19.0, 59.65, 21.2, 60.75)
     assert VECTOR_COUNTRY_CATALOG["AW"].supported is False
 
 
@@ -73,6 +76,26 @@ def test_vector_basemap_config_selects_country_archive(integration_client: TestC
     assert response.json()["available"] is True
     assert response.json()["version"] == "fr-2026-08-15-omt-3.16"
     assert response.json()["archive_url"] == "/basemaps/cartavault/archive/fr.pmtiles"
+    assert response.json()["error_code"] is None
+
+
+def test_vector_basemap_config_explains_missing_pmtiles(integration_client: TestClient, france_basemap: VectorBasemap, vector_root: Path) -> None:
+    (vector_root / "france.pmtiles").unlink()
+
+    response = integration_client.get("/basemaps/cartavault/config", params={"country_code": "FR", "purpose": "online"})
+
+    assert response.status_code == 200
+    assert response.json()["available"] is False
+    assert response.json()["error_code"] == "PMTILES_MISSING"
+    assert response.json()["archive_url"] is None
+
+
+def test_vector_basemap_config_explains_not_installed_archive(integration_client: TestClient) -> None:
+    response = integration_client.get("/basemaps/cartavault/config", params={"country_code": "MC", "purpose": "status"})
+
+    assert response.status_code == 200
+    assert response.json()["available"] is False
+    assert response.json()["error_code"] == "BASEMAP_NOT_INSTALLED"
 
 
 def test_vector_archive_supports_http_byte_ranges(integration_client: TestClient, france_basemap: VectorBasemap, vector_root: Path) -> None:
@@ -118,7 +141,7 @@ def test_generation_activates_atomically_and_removes_pbf(monkeypatch: pytest.Mon
     monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
     monkeypatch.setattr(vector_generation, "_download", lambda _url, _part, final, _size, _progress: final.write_bytes(b"pbf"))
     planetiler_work: list[Path] = []
-    monkeypatch.setattr(vector_generation, "_run_planetiler", lambda _pbf, output, work, _policy, _task_id=None, _progress=None: planetiler_work.append(work) or _pmtiles(output))
+    monkeypatch.setattr(vector_generation, "_run_planetiler", lambda _pbf, output, work, _policy, _task_id=None, _progress=None, _bounds=None: planetiler_work.append(work) or _pmtiles(output))
     result = generate_vector_basemap(database_session, task, lambda *_args: None)
     database_session.refresh(row)
     assert result["country_code"] == "MC"
@@ -237,6 +260,38 @@ def test_planetiler_uses_executable_workdir_for_native_libraries(
     assert f"-Dorg.sqlite.tmpdir={native_tmp}" in calls[0]
     assert f"-Djava.io.tmpdir={native_tmp}" in calls[0]
     assert calls[0].index(f"-Dorg.sqlite.tmpdir={native_tmp}") < calls[0].index("-jar")
+
+
+def test_planetiler_limits_alias_extract_to_country_bounds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+
+    class CompletedProcess:
+        returncode = 0
+
+        @staticmethod
+        def poll() -> int:
+            return 0
+
+    monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
+    monkeypatch.setattr(
+        vector_generation.subprocess,
+        "Popen",
+        lambda arguments, **_kwargs: calls.append(arguments) or CompletedProcess(),
+    )
+    work = tmp_path / "work"
+    work.mkdir()
+    vector_generation._run_planetiler(
+        tmp_path / "finland.osm.pbf",
+        work / "aland.tmp.pmtiles",
+        work,
+        SimpleNamespace(max_zoom=14),
+        bounds=(19.0, 59.65, 21.2, 60.75),
+    )
+
+    assert "--bounds=19.0,59.65,21.2,60.75" in calls[0]
 
 
 def test_planetiler_log_progress_tracks_generation_stages_monotonically() -> None:

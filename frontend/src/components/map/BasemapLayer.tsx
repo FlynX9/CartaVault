@@ -11,7 +11,7 @@ import { createGoogleSatelliteSession } from '../../api/googleSatellite'
 import { ApiError } from '../../api/client'
 import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
 import { createMapboxTileSession } from '../../api/mapboxMaps'
-import { getCartaVaultVectorConfig } from '../../api/vectorBasemap'
+import { getCartaVaultVectorConfig, type CartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
 import { getOfflineBasemapVersion } from '../../pwa/offlineData'
 import { API_BASE_URL } from '../../config'
@@ -23,50 +23,128 @@ interface BasemapLayerProps {
   onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void
 }
 
-function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
+function vectorRendererErrorCode(message: string): string {
+  const normalized = message.toLowerCase()
+  if (normalized.includes('glyph') || normalized.includes('/fonts/') || normalized.includes('.pbf')) return 'GLYPHS_MISSING'
+  if (normalized.includes('pmtiles') || normalized.includes('range') || normalized.includes('archive')) return 'PMTILES_UNREACHABLE'
+  return 'MAPLIBRE_RENDER_ERROR'
+}
+
+function styleErrorCode(message: string): string {
+  return message.includes('Invalid MapLibre style') || message.includes('must define the openmaptiles') ? 'STYLE_INVALID' : 'STYLE_MISSING'
+}
+
+function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
   const map = useMap()
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
+  const basemapRef = useRef(basemap)
+  basemapRef.current = basemap
+  const layerRef = useRef<L.MaplibreGLLayer | null>(null)
+  const configRef = useRef<CartaVaultVectorConfig | null>(null)
+  const appliedStyleRef = useRef<BasemapId | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
-    let layer: L.MaplibreGLLayer | null = null
-    let mapLibreErrorHandler: (() => void) | null = null
+    let mapLibreErrorHandler: ((event: unknown) => void) | null = null
 
     void (async () => {
-      const configured = await getCartaVaultVectorConfig(controller.signal, true, countryCode ?? undefined, 'offline')
+      const purpose = navigator.onLine === false ? 'offline' : 'online'
+      let configured: CartaVaultVectorConfig
+      try {
+        configured = await getCartaVaultVectorConfig(controller.signal, true, countryCode ?? undefined, purpose)
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const reason = error instanceof Error ? error.message : 'La configuration CartaVault Vector est inaccessible.'
+          console.error('[Basemap] CartaVault Vector configuration failed', { country: countryCode, purpose, reason })
+          onTileErrorRef.current(basemapRef.current.id, true, reason, 'VECTOR_CONFIG_UNREACHABLE')
+        }
+        return null
+      }
       const offlineVersion = navigator.onLine === false ? await getOfflineBasemapVersion() : null
       const config = offlineVersion ? { ...configured, version: offlineVersion, available: true } : configured
-      if (config.available && config.archive_url) {
-        configureCartaVaultProtocol(config)
-        return loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
-      }
-      if (!controller.signal.aborted) onTileErrorRef.current(basemap.id, true)
-      return null
-    })().then((style) => {
-        if (controller.signal.aborted || style === null) return
-        layer = L.maplibreGL({ style, interactive: false, attributionControl: false })
-        layer.addTo(map)
-        map.attributionControl?.addAttribution(basemap.attribution)
-        mapLibreErrorHandler = () => onTileErrorRef.current(basemap.id)
-        layer.getMaplibreMap().on('error', mapLibreErrorHandler)
+      console.info('[Basemap] CartaVault Vector availability', {
+        requested: basemapRef.current.id,
+        country: countryCode,
+        purpose,
+        available: config.available,
+        state: config.state,
+        reason: config.error_code,
       })
-      .catch((error: unknown) => {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) onTileErrorRef.current(basemap.id, true)
+      if (!config.available || !config.archive_url) {
+        if (!controller.signal.aborted) {
+          const reason = config.error_message ?? `Le fond CartaVault n'est pas disponible pour ${countryCode ?? 'ce pays'}.`
+          onTileErrorRef.current(basemapRef.current.id, true, reason, config.error_code ?? 'BASEMAP_NOT_INSTALLED')
+        }
+        return null
+      }
+      configRef.current = config
+      configureCartaVaultProtocol(config)
+      const selected = basemapRef.current
+      try {
+        const style = await loadCartaVaultStyle(selected.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || selected.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
+        return { style, selected }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          const reason = error instanceof Error ? error.message : 'Le style CartaVault est inaccessible.'
+          console.error('[Basemap] CartaVault style failed', { style: selected.styleUrl, reason })
+          onTileErrorRef.current(selected.id, true, reason, styleErrorCode(reason))
+        }
+        return null
+      }
+    })().then((result) => {
+        if (controller.signal.aborted || result === null) return
+        const layer = L.maplibreGL({ style: result.style, interactive: false, attributionControl: false })
+        layerRef.current = layer
+        appliedStyleRef.current = result.selected.id
+        layer.addTo(map)
+        map.attributionControl?.addAttribution(result.selected.attribution)
+        mapLibreErrorHandler = (event: unknown) => {
+          const reason = (event as { error?: Error }).error?.message ?? 'Erreur du moteur MapLibre.'
+          const selectedId = basemapRef.current.id
+          console.error('[Basemap] MapLibre renderer failed', { requested: selectedId, country: countryCode, reason })
+          onTileErrorRef.current(selectedId, false, reason, vectorRendererErrorCode(reason))
+        }
+        layer.getMaplibreMap().on('error', mapLibreErrorHandler)
       })
 
     return () => {
       controller.abort()
+      const layer = layerRef.current
       if (layer !== null) {
         const mapLibreMap = layer.getMaplibreMap()
         if (mapLibreErrorHandler !== null && mapLibreMap !== null) {
           mapLibreMap.off('error', mapLibreErrorHandler)
         }
         if (map.hasLayer(layer)) layer.removeFrom(map)
-        map.attributionControl?.removeAttribution(basemap.attribution)
+        map.attributionControl?.removeAttribution(basemapRef.current.attribution)
       }
+      layerRef.current = null
+      configRef.current = null
+      appliedStyleRef.current = null
     }
-  }, [basemap, countryCode, map])
+  }, [countryCode, map])
+
+  useEffect(() => {
+    const layer = layerRef.current
+    const config = configRef.current
+    if (layer === null || config === null || appliedStyleRef.current === basemap.id) return
+    const controller = new AbortController()
+    void loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
+      .then((style) => {
+        if (controller.signal.aborted || layerRef.current !== layer) return
+        layer.getMaplibreMap().setStyle(style)
+        appliedStyleRef.current = basemap.id
+        console.info('[Basemap] CartaVault theme applied', { theme: basemap.id, style: basemap.styleUrl, country: countryCode })
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        const reason = error instanceof Error ? error.message : 'Le style CartaVault est inaccessible.'
+        console.error('[Basemap] CartaVault theme switch failed', { theme: basemap.id, style: basemap.styleUrl, reason })
+        onTileErrorRef.current(basemap.id, true, reason, styleErrorCode(reason))
+      })
+    return () => controller.abort()
+  }, [basemap, countryCode])
 
   return null
 }
@@ -168,6 +246,7 @@ function RasterBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
     attribution={basemap.attribution}
     maxZoom={basemap.maxZoom}
     detectRetina
+    zIndex={0}
     eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }}
   />
 }
@@ -184,7 +263,10 @@ export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLay
   const googleMapsLayer = <GoogleMapsJavaScriptBasemap key={`${googleMapsBasemapId}:${googleMapsActive}`} active={googleMapsActive} basemapId={googleMapsBasemapId} mapType={googleMapsBasemapId === 'google-roadmap' ? 'roadmap' : 'satellite'} onError={onTileError} />
 
   if (basemap.kind === 'vector') {
-    return <>{googleMapsLayer}<VectorBasemapLayer key={`${basemap.id}:${countryCode ?? ''}`} basemap={basemap} countryCode={countryCode} onTileError={onTileError} /></>
+    // MapLibre layers are imperative Leaflet layers. Their React key must include
+    // the selected style, otherwise switching light ↔ dark can leave the previous
+    // layer instance attached while the new style is loading.
+    return <>{googleMapsLayer}<VectorBasemapLayer basemap={basemap} countryCode={countryCode} onTileError={onTileError} /></>
   }
   if (basemap.id === 'google-satellite') return googleMapsLayer
   if (basemap.id === 'google-satellite-tiles') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-satellite-tiles" onTileError={onTileError} /></>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Copy, Crosshair, LocateFixed, Map as MapIcon, Maximize2, Minimize2, MousePointer2, PenTool, RotateCcw, Ruler, Scan, Undo2 } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n'
@@ -9,6 +8,8 @@ import type { MeasurementPoint } from './measurement'
 import { formatMeasurementDistance, measurementTotal } from './measurement'
 
 interface MapToolsControlProps {
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
   mode: InteractiveMapMode
   internalMode: InternalMapToolMode
   measurementPoints: readonly MeasurementPoint[]
@@ -51,18 +52,17 @@ const modeIcons: Record<Exclude<InternalMapToolMode, 'navigation' | 'geolocation
 
 export function MapToolsControl(props: MapToolsControlProps) {
   const { locale, t } = useI18n()
-  const [expanded, setExpanded] = useState(false)
   const activeInternal = props.canUseInternalTools && props.internalMode !== 'navigation'
   const toggleMode = (mode: Exclude<InternalMapToolMode, 'navigation' | 'geolocation'>) => props.onModeChange(props.internalMode === mode ? 'navigation' : mode)
   const externalMode = props.mode === 'place-creation' || props.mode === 'trip-planning' || props.mode === 'point-selection' ? props.mode : null
 
   return <>
-    <div className={`map-overlay-control-slot map-overlay-control-slot--tools${expanded ? ' is-expanded' : ''}`}>
-      <section className={`map-tools-control${expanded ? ' is-expanded' : ''}`} aria-label={t('map.tools.title')}>
-        <button className={activeInternal ? 'active' : ''} type="button" aria-expanded={expanded} aria-label={t('map.tools.title')} title={t('map.tools.title')} onClick={() => setExpanded((current) => !current)}>
+    <div className={`map-overlay-control-slot map-overlay-control-slot--tools${props.expanded ? ' is-expanded' : ''}`}>
+      <section className={`map-tools-control${props.expanded ? ' is-expanded' : ''}`} aria-label={t('map.tools.title')}>
+        <button className={activeInternal ? 'active' : ''} type="button" aria-expanded={props.expanded} aria-label={t('map.tools.title')} title={t('map.tools.title')} onClick={() => props.onExpandedChange(!props.expanded)}>
           <MapIcon size={18} aria-hidden="true" />
         </button>
-        {expanded && <div className="map-tools-control__menu">
+        {props.expanded && <div className="map-tools-control__menu">
           <div className="map-tools-control__heading"><strong>{t('map.tools.title')}</strong><button type="button" aria-label={t('map.tools.reset')} title={t('map.tools.reset')} onClick={props.onReset}><RotateCcw size={16} aria-hidden="true" /></button></div>
           <div className="map-tools-control__grid" aria-label={t('map.tools.interactions')}>
             {(Object.keys(modeIcons) as Array<keyof typeof modeIcons>).map((mode) => {

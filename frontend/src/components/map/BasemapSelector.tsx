@@ -1,14 +1,17 @@
-import { useState, type FocusEvent } from 'react'
+import { useState } from 'react'
 import { Moon, Satellite, Sun, type LucideIcon } from 'lucide-react'
 
 import { getBasemap, type BasemapId } from '../../map/basemaps'
 
 interface BasemapSelectorProps {
   activeBasemapId: BasemapId
+  mapTheme: 'light' | 'dark'
   onBasemapChange: (id: BasemapId) => void
+  expanded?: boolean
+  onExpandedChange?: (expanded: boolean) => void
   googleSatelliteAvailable?: boolean
   offline?: boolean
-  classicProvider?: 'osm' | 'stadia' | 'google'
+  classicProvider?: 'cartavault' | 'osm' | 'stadia' | 'google'
   satelliteProvider?: 'none' | 'stadia' | 'google' | 'mapbox'
   googleSatelliteMode?: 'maps-js' | 'map-tiles'
 }
@@ -26,24 +29,30 @@ const basemapIcons: Record<BasemapId, LucideIcon> = {
   osm: Sun,
 }
 
-export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = false, classicProvider = 'osm', satelliteProvider = 'none', googleSatelliteMode = 'maps-js' }: BasemapSelectorProps) {
-  const [expanded, setExpanded] = useState(false)
+export function BasemapSelector({ activeBasemapId, mapTheme, onBasemapChange, expanded: controlledExpanded, onExpandedChange, offline = false, classicProvider = 'osm', satelliteProvider = 'none', googleSatelliteMode = 'maps-js' }: BasemapSelectorProps) {
+  const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false)
+  const expanded = controlledExpanded ?? uncontrolledExpanded
+  const setExpanded = onExpandedChange ?? setUncontrolledExpanded
   if (offline) return null
   const activeBasemap = getBasemap(activeBasemapId)
   const configuredBasemaps = [
-    ...(classicProvider === 'stadia' ? [getBasemap('stadia-light'), getBasemap('stadia-dark')] : classicProvider === 'google' ? [getBasemap('google-roadmap')] : [getBasemap('osm')]),
+    ...(classicProvider === 'cartavault'
+      ? [getBasemap('cartavault-light'), getBasemap('cartavault-dark')]
+      : classicProvider === 'stadia'
+      ? [getBasemap('stadia-light'), getBasemap('stadia-dark')]
+      : classicProvider === 'google'
+        ? [getBasemap('google-roadmap')]
+        : [getBasemap('osm')]),
     ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap(googleSatelliteMode === 'map-tiles' ? 'google-satellite-tiles' : 'google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
   ].filter((basemap, index, items) => basemap.enabled && items.findIndex((item) => item.id === basemap.id) === index)
-  const visibleBasemaps = configuredBasemaps.some((basemap) => basemap.id === activeBasemapId)
-    ? configuredBasemaps
-    : [activeBasemap, ...configuredBasemaps].slice(0, Math.max(1, configuredBasemaps.length))
+  const visibleBasemaps = configuredBasemaps
   const selectBasemap = (id: BasemapId) => {
     onBasemapChange(id)
     setExpanded(false)
   }
-  const handleBlur = (event: FocusEvent<HTMLFieldSetElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExpanded(false)
-  }
+  const ActiveIcon = activeBasemap.id === 'satellite' || activeBasemap.id === 'google-satellite' || activeBasemap.id === 'google-satellite-tiles' || activeBasemap.id === 'mapbox-satellite'
+    ? Satellite
+    : mapTheme === 'dark' ? Moon : Sun
   const renderBasemapButton = (basemap: typeof activeBasemap, active: boolean) => {
     const Icon = basemapIcons[basemap.id]
     return <button
@@ -54,18 +63,18 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = fa
       aria-expanded={active ? expanded : undefined}
       aria-label={`Utiliser le fond ${basemap.label}`}
       title={basemap.label}
-      onClick={() => {
-        // A tap focuses the fieldset before dispatching click on mobile.
-        // Always opening here avoids the former focus/click toggle race that
-        // required a second tap before the choices became visible.
-        if (active) setExpanded(true)
-        else selectBasemap(basemap.id)
+      onPointerDown={(event) => {
+        // The toolbar closes popovers from a document-level pointerdown
+        // listener. Apply the choice before that listener can unmount the
+        // option and swallow the subsequent click.
+        event.stopPropagation()
+        selectBasemap(basemap.id)
       }}
+      onClick={() => selectBasemap(basemap.id)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
-          if (active) setExpanded(true)
-          else selectBasemap(basemap.id)
+          selectBasemap(basemap.id)
         }
       }}
     >
@@ -74,17 +83,23 @@ export function BasemapSelector({ activeBasemapId, onBasemapChange, offline = fa
   }
 
   return (
-    <fieldset
+    <section
       className={`basemap-selector basemap-selector--count-${visibleBasemaps.length}${expanded ? ' basemap-selector--expanded' : ''}`}
       aria-label="Fond cartographique"
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
-      onFocus={() => setExpanded(true)}
-      onBlur={handleBlur}
+      onMouseEnter={() => { if (controlledExpanded === undefined) setUncontrolledExpanded(true) }}
+      onFocus={() => { if (controlledExpanded === undefined) setUncontrolledExpanded(true) }}
     >
-      <legend>Fond</legend>
-      {expanded && <div className="basemap-selector-options">{visibleBasemaps.filter((basemap) => basemap.id !== activeBasemapId).map((basemap) => renderBasemapButton(basemap, false))}</div>}
-      {renderBasemapButton(activeBasemap, true)}
-    </fieldset>
+      <button
+        type="button"
+        className="basemap-selector__toggle"
+        aria-expanded={expanded}
+        aria-label="Thème de carte"
+        title="Thème de carte"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <ActiveIcon size={18} aria-hidden="true" />
+      </button>
+      {expanded && <div className="basemap-selector-options">{visibleBasemaps.map((basemap) => renderBasemapButton(basemap, basemap.id === activeBasemapId))}</div>}
+    </section>
   )
 }

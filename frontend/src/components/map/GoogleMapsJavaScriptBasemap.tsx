@@ -58,7 +58,11 @@ export function GoogleMapsJavaScriptBasemap({ active, basemapId, mapType, onErro
 
     leafletContainer.classList.add('has-google-maps-js-basemap')
     if (hostRef.current) hostRef.current.hidden = false
-    if (googleMapRef.current || initializationRef.current) return
+    if (googleMapRef.current) {
+      googleMapRef.current.setMapTypeId(mapType)
+      return
+    }
+    if (initializationRef.current) return
 
     const host = document.createElement('div')
     host.className = 'google-maps-js-basemap'

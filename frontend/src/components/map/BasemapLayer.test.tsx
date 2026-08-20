@@ -116,6 +116,27 @@ describe('BasemapLayer', () => {
     expect(onTileError).toHaveBeenCalledWith('osm')
   })
 
+  it('keeps one MapLibre layer and applies the distinct CartaVault dark style with setStyle', async () => {
+    const mapLibreMap = { on: vi.fn(), off: vi.fn(), setStyle: vi.fn() }
+    const layer = { addTo: vi.fn(), removeFrom: vi.fn(), getMaplibreMap: vi.fn(() => mapLibreMap) }
+    vi.mocked(loadCartaVaultStyle)
+      .mockResolvedValueOnce({ version: 8, name: 'CartaVault Light', sources: {}, layers: [] })
+      .mockResolvedValueOnce({ version: 8, name: 'CartaVault Dark', sources: {}, layers: [] })
+    vi.spyOn(L, 'maplibreGL').mockReturnValue(layer as unknown as L.MaplibreGLLayer)
+
+    const { rerender } = render(<BasemapLayer basemapId="cartavault-light" onTileError={vi.fn()} />)
+    await waitFor(() => expect(layer.addTo).toHaveBeenCalledWith(mapMock))
+    expect(getCartaVaultVectorConfig).toHaveBeenCalledWith(expect.any(AbortSignal), true, undefined, 'online')
+
+    rerender(<BasemapLayer basemapId="cartavault-dark" onTileError={vi.fn()} />)
+    await waitFor(() => expect(mapLibreMap.setStyle).toHaveBeenCalledWith(expect.objectContaining({ name: 'CartaVault Dark' })))
+
+    expect(loadCartaVaultStyle).toHaveBeenNthCalledWith(1, '/map-styles/cartavault-light.json', expect.any(String), expect.any(String), expect.any(AbortSignal), expect.any(Object))
+    expect(loadCartaVaultStyle).toHaveBeenNthCalledWith(2, '/map-styles/cartavault-dark.json', expect.any(String), expect.any(String), expect.any(AbortSignal), expect.any(Object))
+    expect(L.maplibreGL).toHaveBeenCalledTimes(1)
+    expect(layer.removeFrom).not.toHaveBeenCalled()
+  })
+
   it('safely unmounts a vector layer after MapLibre has already released its map', async () => {
     const mapLibreMap = { on: vi.fn(), off: vi.fn() }
     const layer = {
@@ -144,7 +165,7 @@ describe('BasemapLayer', () => {
     const onTileError = vi.fn()
 
     render(<BasemapLayer basemapId="cartavault-dark" countryCode="FR" onTileError={onTileError} />)
-    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('cartavault-dark', true))
+    await waitFor(() => expect(onTileError).toHaveBeenCalledWith('cartavault-dark', true, expect.stringContaining("n'est pas disponible"), 'BASEMAP_NOT_INSTALLED'))
     expect(screen.queryByTestId('tile-layer')).not.toBeInTheDocument()
     expect(loadCartaVaultStyle).not.toHaveBeenCalled()
     expect(layer.addTo).not.toHaveBeenCalled()

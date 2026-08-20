@@ -184,6 +184,7 @@ def _run_planetiler(
     policy,
     task_id: UUID | None = None,
     progress: ProgressCallback | None = None,
+    bounds: tuple[float, float, float, float] | None = None,
 ) -> None:
     _check_planetiler_runtime()
     jar = vector_basemap_settings.planetiler_jar
@@ -204,6 +205,8 @@ def _run_planetiler(
         f"--download-dir={work_path.parent / 'sources'}",
         f"--maxzoom={policy.max_zoom}", "--tile-format=mvt", "--download", "--force",
     ]
+    if bounds is not None:
+        arguments.append(f"--bounds={','.join(str(value) for value in bounds)}")
     log_path = work_path / "planetiler.log"
     parser = _PlanetilerProgressParser()
     log_offset = 0
@@ -351,7 +354,7 @@ def _generate_vector_basemap_locked(session: Session, task: BackgroundTask, prog
 
         _set_state(session, country_code, "generating", "Génération du fond")
         progress(0, 1, "Génération du fond")
-        _run_planetiler(pbf, output_tmp, work, policy, task.id, progress)
+        _run_planetiler(pbf, output_tmp, work, policy, task.id, progress, source.bounds)
 
         _set_state(session, country_code, "validating", "Validation du fond")
         progress(0, 1, "Validation du fond")

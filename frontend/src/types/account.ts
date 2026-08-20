@@ -30,7 +30,7 @@ export interface AccountPreferences {
     api_key_id?: string | null
   }
   places: { provider: 'stadia' | 'google'; api_key_id?: string | null }
-  basemaps?: { classic_provider?: 'osm' | 'stadia' | 'google'; satellite_provider: 'none' | 'stadia' | 'google' | 'mapbox'; google_satellite_mode?: 'maps-js' | 'map-tiles'; api_key_id?: string | null; stadia_api_key_id?: string | null; google_api_key_id?: string | null; google_maps_js_api_key_id?: string | null; mapbox_api_key_id?: string | null; classic_api_key_id?: string | null; satellite_api_key_id?: string | null }
+  basemaps?: { classic_provider?: 'cartavault' | 'osm' | 'stadia' | 'google'; satellite_provider: 'none' | 'stadia' | 'google' | 'mapbox'; google_satellite_mode?: 'maps-js' | 'map-tiles'; api_key_id?: string | null; stadia_api_key_id?: string | null; google_api_key_id?: string | null; google_maps_js_api_key_id?: string | null; mapbox_api_key_id?: string | null; classic_api_key_id?: string | null; satellite_api_key_id?: string | null }
 }
 
 export type ApiKeyCapability = 'routing' | 'places_search' | 'classic_basemap' | 'satellite_basemap'

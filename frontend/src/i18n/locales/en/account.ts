@@ -194,7 +194,7 @@ export const accountEn = {
   'account.integrations.places': 'Place search',
   'account.integrations.placesDescription': 'Choose the engine used to search for places.',
   'account.integrations.classicBasemap': 'Classic mapping',
-  'account.integrations.classicBasemapDescription': 'OSM standard, Stadia light/dark, or Google normal.',
+  'account.integrations.classicBasemapDescription': 'OSM standard, CartaVault Vector light/dark, Stadia light/dark, or Google normal.',
   'account.integrations.satelliteBasemap': 'Satellite mapping',
   'account.integrations.satelliteBasemapDescription': 'Independent satellite provider, disabled by default.',
   'account.integrations.disabled': 'Disabled',

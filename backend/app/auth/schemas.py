@@ -130,7 +130,7 @@ class PlacesPreferences(BaseModel):
 
 
 class BasemapPreferences(BaseModel):
-    classic_provider: Literal["osm", "stadia", "google"] = "osm"
+    classic_provider: Literal["cartavault", "osm", "stadia", "google"] = "osm"
     satellite_provider: Literal["none", "stadia", "google", "mapbox"] = "none"
     google_satellite_mode: Literal["maps-js", "map-tiles"] = "maps-js"
     stadia_api_key_id: UUID | None = None
@@ -172,7 +172,12 @@ class AccountPreferences(BaseModel):
         legacy = migrated.get("basemaps") if isinstance(migrated.get("basemaps"), dict) else {}
         if "classic_provider" not in legacy:
             preferred = migrated.get("preferred_basemap")
-            legacy = {**legacy, "classic_provider": "google" if preferred == "google-roadmap" else "stadia" if preferred in {"stadia-light", "stadia-dark"} else "osm"}
+            legacy = {**legacy, "classic_provider": "cartavault" if preferred in {"cartavault-light", "cartavault-dark"} else "google" if preferred == "google-roadmap" else "stadia" if preferred in {"stadia-light", "stadia-dark"} else "osm"}
+        elif migrated.get("preferred_basemap") in {"cartavault-light", "cartavault-dark"} and legacy.get("classic_provider") == "osm":
+            # A short-lived frontend version encoded CartaVault as the OSM
+            # provider. Normalize those persisted preferences back to the
+            # explicit provider without changing genuine OSM selections.
+            legacy = {**legacy, "classic_provider": "cartavault"}
         if "satellite_provider" not in legacy:
             preferred = migrated.get("preferred_basemap")
             legacy = {**legacy, "satellite_provider": "google" if preferred == "google-satellite" else "mapbox" if preferred == "mapbox-satellite" else "stadia" if preferred == "satellite" else "none"}
