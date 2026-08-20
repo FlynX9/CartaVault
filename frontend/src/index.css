@@ -11734,31 +11734,92 @@ html[data-theme='dark'] .status-marker.selected {
 .map-workspace .map-overlay-controls .status-legend--collapsed ul { display: none; }
 .map-workspace .map-overlay-controls .status-legend li { display: flex; min-height: 2rem; align-items: center; gap: .65rem; padding: .35rem .2rem; border-bottom: 1px solid var(--cv-border-subtle); }
 .map-workspace .map-overlay-controls .status-legend li:last-child { border-bottom: 0; }
-.map-workspace .geographic-search__panel { position: absolute; z-index: 2; top: calc(var(--cv-map-overlay-control-size) + .45rem); left: 0; width: min(25rem, calc(100vw - 1.6rem)); padding: .7rem; color: var(--cv-color-navy); background: var(--cv-surface); border: 1px solid var(--cv-border-subtle); border-radius: .75rem; box-shadow: var(--cv-shadow-md); }
-.map-workspace .geographic-search__panel form { display: block; overflow: hidden; border: 1px solid var(--cv-border-strong); border-radius: .55rem; }
-.map-workspace .geographic-search__panel label { flex: 1; }
-.map-workspace .geographic-search__panel input { width: 100%; min-height: 2.5rem; padding: .45rem .6rem; color: var(--cv-color-navy); background: transparent; border: 0; font: inherit; }
-.map-workspace .geographic-search__examples { display: grid; gap: .35rem; margin-top: .7rem; color: var(--cv-color-slate); font-size: .72rem; line-height: 1.35; }
-.map-workspace .geographic-search__examples strong { color: var(--cv-color-navy); font-size: .76rem; }
-.map-workspace .geographic-search__examples p { margin: 0; }
-.map-workspace .geographic-search__examples small { margin-top: .25rem; color: var(--cv-color-gray); }
-
-@media (max-width: 760px) {
-  .map-workspace .map-overlay-controls { top: .7rem; right: .7rem; }
-  .map-tools-control__menu { right: -14.1rem; width: min(21rem, calc(100vw - 1.4rem)); max-height: calc(100vh - 6.5rem); }
-  .map-tools-control__grid button { min-height: 2.7rem; }
-  .map-workspace .geographic-search__panel { left: auto; right: 0; width: min(21rem, calc(100vw - 1.4rem)); }
+.map-workspace .map-overlay-control-slot--search {
+  width: auto;
+  min-width: 0;
+  transition: width 200ms ease;
 }
 
-/* CartaVault geocoding surfaces. These rules intentionally live after the
-   historical map styles so results keep the same contrast in both themes. */
+.map-workspace .map-overlay-control-slot--search:has(.geographic-search.is-pinned-open) {
+  width: clamp(23.75rem, 30vw, 28rem);
+}
+
+.map-workspace .map-overlay-controls .geographic-search--toolbar,
+.map-workspace .geographic-search__inline-form {
+  width: 100%;
+}
+
+.map-workspace .map-overlay-control-slot--search > .geographic-search--toolbar {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  flex: 1 1 auto;
+}
+
+.map-workspace .geographic-search__inline-form {
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  height: var(--cv-map-overlay-control-size);
+  align-items: center;
+  overflow: hidden;
+  color: var(--cv-color-slate);
+  background: color-mix(in srgb, var(--cv-surface) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cv-color-teal) 76%, var(--cv-border-strong));
+  border-radius: .58rem;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 8%, transparent);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.map-workspace .geographic-search__inline-form:focus-within {
+  border-color: var(--cv-color-teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cv-color-teal) 15%, transparent);
+}
+
+.map-workspace .geographic-search__inline-form label { min-width: 0; flex: 1; }
+.map-workspace .geographic-search__input-icon { flex: 0 0 auto; margin-left: .72rem; color: var(--cv-color-teal); }
+.map-workspace .geographic-search__inline-form input {
+  width: 100%;
+  height: calc(var(--cv-map-overlay-control-size) - 2px);
+  min-height: 0;
+  padding: 0 .55rem;
+  color: var(--cv-color-navy);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+  font-size: .82rem;
+}
+.map-workspace .geographic-search__inline-form input::-webkit-search-cancel-button { display: none; }
+.map-workspace .geographic-search__inline-form input::placeholder { color: var(--cv-text-muted); opacity: .88; }
+.map-workspace .map-overlay-controls .geographic-search__close {
+  display: grid;
+  width: 2.35rem;
+  min-width: 2.35rem;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  color: var(--cv-color-slate);
+  background: transparent;
+  border: 0;
+  border-radius: .45rem;
+  cursor: pointer;
+  place-items: center;
+}
+.map-workspace .map-overlay-controls .geographic-search__close:is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 8%, transparent);
+  outline: 0;
+}
+
+.map-workspace .geographic-search__popover,
 .map-workspace .map-overlay-control-slot--search .geocoding-results,
 .map-workspace .map-overlay-control-slot--search .geocoding-selection {
   position: absolute;
   z-index: 4;
-  top: calc(var(--cv-map-overlay-control-size) + .4rem);
+  top: calc(var(--cv-map-overlay-control-size) + .45rem);
   right: 0;
-  width: min(24rem, calc(100vw - 10rem));
+  width: 100%;
   box-sizing: border-box;
   margin: 0;
   color: var(--cv-color-navy);
@@ -11768,6 +11829,46 @@ html[data-theme='dark'] .status-marker.selected {
   box-shadow: var(--cv-shadow-float);
 }
 
+.map-workspace .geographic-search__examples { display: grid; overflow: hidden; }
+.map-workspace .geographic-search__popover-title {
+  padding: .48rem .7rem .42rem;
+  color: var(--cv-text-muted);
+  border-bottom: 1px solid var(--cv-border-subtle);
+  font-size: .7rem;
+}
+.map-workspace .map-overlay-controls .geographic-search__examples button {
+  display: flex;
+  min-height: 2.45rem;
+  align-items: center;
+  gap: .65rem;
+  padding: .48rem .7rem;
+  color: var(--cv-color-slate);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--cv-border-subtle);
+  cursor: pointer;
+  font: inherit;
+  font-size: .76rem;
+  text-align: left;
+}
+.map-workspace .map-overlay-controls .geographic-search__examples button:last-child { border-bottom: 0; }
+.map-workspace .map-overlay-controls .geographic-search__examples button > svg { flex: 0 0 auto; color: var(--cv-color-teal); }
+.map-workspace .map-overlay-controls .geographic-search__examples button:is(:hover, :focus-visible) {
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 8%, var(--cv-surface));
+  outline: 0;
+}
+.map-workspace .geographic-search__popover.geocoding-status { padding: .65rem .75rem; font-size: .75rem; }
+
+@media (max-width: 760px) {
+  .map-workspace .map-overlay-controls { top: .7rem; right: .7rem; }
+  .map-tools-control__menu { right: -14.1rem; width: min(21rem, calc(100vw - 1.4rem)); max-height: calc(100vh - 6.5rem); }
+  .map-tools-control__grid button { min-height: 2.7rem; }
+  .map-workspace .map-overlay-control-slot--search:has(.geographic-search.is-pinned-open) { width: calc(100vw - 5.9rem); }
+}
+
+/* CartaVault geocoding surfaces. These rules intentionally live after the
+   historical map styles so results keep the same contrast in both themes. */
 .map-workspace .map-overlay-control-slot--search .geocoding-results {
   max-height: min(18rem, calc(100dvh - 8rem));
   gap: .2rem;
@@ -11931,7 +12032,7 @@ html[data-theme='dark'] .geocoding-marker {
 @media (max-width: 760px) {
   .map-workspace .map-overlay-control-slot--search .geocoding-results,
   .map-workspace .map-overlay-control-slot--search .geocoding-selection {
-    width: min(21rem, calc(100vw - 9rem));
+    width: 100%;
   }
 }
 

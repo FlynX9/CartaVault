@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { placeSearchService } from '../../geocoding/placeSearchService'
@@ -10,6 +11,47 @@ afterEach(cleanup)
 beforeEach(() => { vi.mocked(placeSearchService.search).mockReset(); vi.mocked(placeSearchService.search).mockResolvedValue([]) })
 
 describe('GeographicSearch', () => {
+  function ControlledSearch() {
+    const [expanded, setExpanded] = useState(false)
+    return <GeographicSearch expanded={expanded} onExpandedChange={setExpanded} focus={[48, 2]} selected={null} onSelect={vi.fn()} onClear={vi.fn()} onCreate={vi.fn()} />
+  }
+
+  it('replaces the toolbar trigger with an autofocused inline search field', async () => {
+    render(<ControlledSearch />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recherche cartographique' }))
+
+    const input = screen.getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' })
+    await waitFor(() => expect(input).toHaveFocus())
+    expect(input).toHaveAttribute('placeholder', 'Adresse, lieu ou coordonnées…')
+    expect(screen.queryByRole('button', { name: 'Recherche cartographique' })).not.toBeInTheDocument()
+    expect(screen.getByText('Exemples')).toBeInTheDocument()
+  })
+
+  it('runs example searches through the existing geocoding service', async () => {
+    render(<ControlledSearch />)
+    fireEvent.click(screen.getByRole('button', { name: 'Recherche cartographique' }))
+
+    fireEvent.click(screen.getByRole('button', { name: /Place de la Concorde, Paris/ }))
+
+    expect(screen.getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' })).toHaveValue('Place de la Concorde, Paris')
+    await waitFor(() => expect(placeSearchService.search).toHaveBeenCalledWith('Place de la Concorde, Paris', expect.objectContaining({ focus: [48, 2], limit: 8 })))
+    expect(screen.queryByText('Exemples')).not.toBeInTheDocument()
+  })
+
+  it('clears transient state and restores the trigger with close and Escape', () => {
+    render(<ControlledSearch />)
+    fireEvent.click(screen.getByRole('button', { name: 'Recherche cartographique' }))
+    const input = screen.getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' })
+    fireEvent.change(input, { target: { value: 'Paris' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la recherche cartographique' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recherche cartographique' }))
+    expect(screen.getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' })).toHaveValue('')
+    fireEvent.keyDown(screen.getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' }), { key: 'Escape' })
+    expect(screen.getByRole('button', { name: 'Recherche cartographique' })).toBeInTheDocument()
+  })
+
   it('renders the visible map-search trigger label', () => {
     render(<GeographicSearch focus={[48, 2]} selected={null} onSelect={vi.fn()} onClear={vi.fn()} onCreate={vi.fn()} />)
 
