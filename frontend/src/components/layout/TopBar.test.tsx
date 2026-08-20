@@ -32,11 +32,11 @@ vi.mock("../account/AccountModal", () => ({
   ),
 }));
 
-function renderTopBar(markerCount = 0, initialEntry = "/workspace", panelLayoutScope = "map") {
+function renderTopBar(_markerCount = 0, initialEntry = "/workspace", panelLayoutScope = "map") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <ThemeProvider>
-        <TopBar isMapWorkspace markerCount={markerCount} panelLayoutScope={panelLayoutScope} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
+        <TopBar isMapWorkspace panelLayoutScope={panelLayoutScope} onMapAccessChanged={vi.fn()} onOpenAdmin={vi.fn()} onOpenRegistrationRequests={vi.fn()} />
         <CurrentPath />
       </ThemeProvider>
     </MemoryRouter>,
@@ -64,6 +64,12 @@ afterEach(() => {
 });
 
 describe("TopBar account entry", () => {
+  it("does not display the marker counter in the global header", () => {
+    renderTopBar(526);
+    expect(screen.queryByText("526")).not.toBeInTheDocument();
+    expect(screen.queryByText(/marqueurs?/i)).not.toBeInTheDocument();
+  });
+
   it("does not expose panel locking from the global header", () => {
     const { container } = renderTopBar();
     expect(container.querySelector(".desktop-panel-layout-reset")).not.toBeInTheDocument();

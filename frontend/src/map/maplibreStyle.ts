@@ -1,4 +1,29 @@
-import type { StyleSpecification, VectorSourceSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, StyleSpecification, VectorSourceSpecification } from 'maplibre-gl'
+
+export type MapLabelLanguage = 'fr' | 'en'
+
+const containsCountry = (value: unknown): boolean => value === 'country' || (Array.isArray(value) && value.some(containsCountry))
+
+function localizedCountryField(language: MapLabelLanguage): ExpressionSpecification {
+  return ['coalesce', ['get', `name:${language}`], ['get', 'name:latin'], ['get', 'name']]
+}
+
+/** Localizes country labels while leaving every other map label unchanged. */
+export function localizeCountryNames(style: StyleSpecification, language: MapLabelLanguage): StyleSpecification {
+  for (const layer of style.layers) {
+    if (layer.type !== 'symbol') continue
+    const candidate = layer as typeof layer & { id: string; filter?: unknown; 'source-layer'?: string; layout?: Record<string, unknown> }
+    const countryLayer = candidate.id.toLowerCase().includes('country') || containsCountry(candidate.filter)
+    if (!countryLayer) continue
+    const layout = (candidate.layout ?? (candidate.layout = {})) as Record<string, unknown>
+    const localized = localizedCountryField(language)
+    const mixedPlaceLayer = candidate['source-layer'] === 'place' && containsCountry(candidate.filter) && !candidate.id.toLowerCase().includes('country')
+    layout['text-field'] = mixedPlaceLayer && layout['text-field']
+      ? ['case', ['==', ['get', 'class'], 'country'], localized, layout['text-field']]
+      : localized
+  }
+  return style
+}
 
 function isStyleSpecification(value: unknown): value is StyleSpecification {
   if (typeof value !== 'object' || value === null) return false
@@ -16,6 +41,7 @@ export async function loadCartaVaultStyle(
   glyphsUrl: string,
   signal?: AbortSignal,
   zooms?: { min: number; max: number },
+  language: MapLabelLanguage = 'fr',
 ): Promise<StyleSpecification> {
   const response = await fetch(styleUrl, { signal })
   if (!response.ok) throw new Error(`Unable to load basemap style (${response.status})`)
@@ -38,5 +64,5 @@ export async function loadCartaVaultStyle(
     vectorSource.url = tileUrl
   }
   style.glyphs = glyphsUrl
-  return style
+  return localizeCountryNames(style, language)
 }

@@ -67,12 +67,6 @@ interface Props {
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   onImported?: () => void;
-  tripPlanningActive?: boolean;
-  tripPlaceIds?: Set<string>;
-  tripAddTargetLabel?: string | null;
-  activeTripId?: string | null;
-  activeTripDayId?: string | null;
-  onTripPlaceAdd?: (place: PreviewPlace) => void;
   onBulkChanged?: () => void;
   onBulkTripChanged?: (tripId: string) => void;
   importRequest?: number;
@@ -95,7 +89,7 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1);
 };
 
-export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), tripAddTargetLabel = null, activeTripId = null, activeTripDayId = null, onTripPlaceAdd = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { confirm, confirmationDialog } = useConfirmDialog();
@@ -130,7 +124,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const [importing, setImporting] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches);
   const effectiveCollapsed = isMobileViewport ? collapsed : panelWindow ? panelWindow.mode === "collapsed" : collapsed;
-  const [displayMode, setDisplayMode] = useState<"compact" | "expanded" | "gallery">("expanded");
+  const [displayMode, setDisplayMode] = useState<"expanded" | "gallery">("expanded");
   const mobileSwipeStart = useRef<{
     placeId: string;
     pointerId: number;
@@ -159,7 +153,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const selectionRequest = useRef(0);
   const selectionController = useRef<AbortController | null>(null);
   const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext);
-  const canImportKmz = poiMap?.can_import !== false && !tripPlanningActive && !isMobileViewport;
+  const canImportKmz = poiMap?.can_import !== false && !isMobileViewport;
   const selectionMode = controlledSelectionMode ?? internalSelectionMode;
   const selectedIds = controlledSelectedIds ?? internalSelectedIds;
   const replaceSelectedIds = useCallback(
@@ -192,18 +186,11 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return () => mediaQuery.removeEventListener("change", updateViewport);
   }, []);
   useEffect(() => {
-    if (tripPlanningActive || isMobileViewport) setImporting(false);
-  }, [isMobileViewport, tripPlanningActive]);
-  // Selection stays anchored to the shared active day in Trip mode.  The
-  // existing selectors remain available for a deliberate alternate target.
+    if (isMobileViewport) setImporting(false);
+  }, [isMobileViewport]);
   useEffect(() => {
-    if (!tripPlanningActive || !activeTripId || !activeTripDayId) return;
-    setTripId(activeTripId);
-    setDayId(activeTripDayId);
-  }, [activeTripDayId, activeTripId, tripPlanningActive]);
-  useEffect(() => {
-    if (importRequest > 0 && poiMap?.can_import !== false && !tripPlanningActive && !isMobileViewport) setImporting(true);
-  }, [importRequest, isMobileViewport, poiMap, tripPlanningActive]);
+    if (importRequest > 0 && poiMap?.can_import !== false && !isMobileViewport) setImporting(true);
+  }, [importRequest, isMobileViewport, poiMap]);
   useEffect(() => {
     selectionController.current?.abort();
     selectionRequest.current += 1;
@@ -344,7 +331,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return () => window.clearTimeout(timeout);
   }, [filters.query, queryInput, update]);
   const selectedPlaceIndex = selectedPlaceId === null ? -1 : visible.findIndex((place) => place.id === selectedPlaceId);
-  const placeRowsVersion = [displayMode, selectedPlaceId ?? "", isMobileViewport ? "mobile" : "desktop", selectionMode ? "selection" : "", [...selectedIds].sort().join(","), [...tripPlaceIds].sort().join(","), tripPlanningActive ? "planning" : "", tripAddTargetLabel ?? "", poiMap?.can_edit === false ? "readonly" : "editable", mobilePlaceSwipe ? `${mobilePlaceSwipe.placeId}:${mobilePlaceSwipe.offset}` : "", mobilePlaceSwipeOpen ? `${mobilePlaceSwipeOpen.placeId}:${mobilePlaceSwipeOpen.direction}` : ""].join("|");
+  const placeRowsVersion = [displayMode, selectedPlaceId ?? "", isMobileViewport ? "mobile" : "desktop", selectionMode ? "selection" : "", [...selectedIds].sort().join(","), poiMap?.can_edit === false ? "readonly" : "editable", mobilePlaceSwipe ? `${mobilePlaceSwipe.placeId}:${mobilePlaceSwipe.offset}` : "", mobilePlaceSwipeOpen ? `${mobilePlaceSwipeOpen.placeId}:${mobilePlaceSwipeOpen.direction}` : ""].join("|");
   useEffect(() => {
     selectionController.current?.abort();
     selectionRequest.current += 1;
@@ -658,7 +645,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   }
 
   return (
-    <aside className={`country-place-panel cv-workspace-panel places-redesign-panel${effectiveCollapsed ? " is-collapsed" : ""}${tripPlanningActive ? " is-trip-planning" : ""}`} id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
+    <aside className={`country-place-panel cv-workspace-panel places-redesign-panel${effectiveCollapsed ? " is-collapsed" : ""}`} id="map-place-list" tabIndex={-1} aria-labelledby="map-place-list-title">
       <header
         className="places-redesign-header"
         onPointerDown={beginMobilePanelSwipe}
@@ -705,9 +692,10 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                 </button>
               )}
             </label>
-            {!tripPlanningActive && poiMap.can_edit !== false && (
+            {poiMap.can_edit !== false && (
               <Link className="primary-button places-search-create" to={withMap("/places/new", poiMap.id)} aria-label={t("places.add")} title={t("places.add")}>
                 <Plus size={18} aria-hidden="true" />
+                <span>{t("places.add")}</span>
               </Link>
             )}
           </div>
@@ -759,9 +747,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
           {!selectionMode && (
             <div className="places-redesign-toolbar">
               <div className="places-view-switcher" role="group" aria-label={t("places.displayMode")}>
-                <button type="button" className={displayMode === "compact" ? "active" : ""} aria-pressed={displayMode === "compact"} aria-label={t("places.compactView")} title={t("places.compactView")} onClick={() => setDisplayMode("compact")}>
-                  <List size={18} />
-                </button>
                 <button type="button" className={displayMode === "expanded" ? "active" : ""} aria-pressed={displayMode === "expanded"} aria-label={t("places.expandedView")} title={t("places.expandedView")} onClick={() => setDisplayMode("expanded")}>
                   <LayoutList size={18} />
                 </button>
@@ -1110,7 +1095,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
             </button>
           </p>
         )}
-        {visible.length > 0 && displayMode === "gallery" && <PlaceGallery places={visible} selectedPlaceId={selectedPlaceId} selectedIds={selectedIds} selectionMode={selectionMode} tripPlaceIds={tripPlaceIds} tripPlanningActive={tripPlanningActive} onPlaceSelect={onPlaceSelect} onToggleSelected={toggleSelected} />}
+        {visible.length > 0 && displayMode === "gallery" && <PlaceGallery places={visible} selectedPlaceId={selectedPlaceId} selectedIds={selectedIds} selectionMode={selectionMode} onPlaceSelect={onPlaceSelect} onToggleSelected={toggleSelected} />}
         {visible.length > 0 && displayMode !== "gallery" && (
           <VirtualPlaceRows
             items={visible}
@@ -1122,17 +1107,15 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
             renderVersion={placeRowsVersion}
             renderRow={(place) => {
               const primary = place.categories.find((item) => item.is_primary) ?? place.categories[0];
-              const inTrip = tripPlaceIds.has(place.id);
               const isSelected = place.id === selectedPlaceId;
-              const inlineExpanded = isSelected && !isMobileViewport && !tripPlanningActive;
+              const inlineExpanded = isSelected && !isMobileViewport;
               const rating = formatRating(place);
-              const canAddToTripTarget = tripAddTargetLabel !== null;
               const swipeOffset = mobilePlaceSwipe?.placeId === place.id ? mobilePlaceSwipe.offset : mobilePlaceSwipeOpen?.placeId === place.id ? (mobilePlaceSwipeOpen.direction === "delete" ? 92 : -116) : 0;
               const deleteRevealWidth = Math.max(0, swipeOffset);
               const moreRevealWidth = Math.max(0, -swipeOffset);
               return (
                 <article
-                  className={`places-place-card${isSelected ? " selected" : ""}${inlineExpanded ? " has-inline-details" : ""}${inTrip ? " trip-included" : ""}${selectionMode ? " has-selection" : ""}`}
+                  className={`places-place-card${isSelected ? " selected" : ""}${inlineExpanded ? " has-inline-details" : ""}${selectionMode ? " has-selection" : ""}`}
                   onPointerDown={(event) => beginMobilePlaceSwipe(event, place.id)}
                   onPointerMove={moveMobilePlaceSwipe}
                   onPointerUp={finishMobilePlaceSwipe}
@@ -1170,16 +1153,8 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                       type="button"
                       data-place-row-focus
                       aria-expanded={inlineExpanded}
-                      aria-label={`${place.name}${inTrip ? " — déjà présent dans la sortie" : ""}`}
-                      draggable={tripPlanningActive}
+                      aria-label={place.name}
                       className="places-place-main"
-                      onDragStart={(event) => {
-                        if (tripPlanningActive) {
-                          event.dataTransfer.effectAllowed = "copy";
-                          event.dataTransfer.setData("application/x-cartavault-place", place.id);
-                          event.dataTransfer.setData("text/plain", `place:${place.id}`);
-                        }
-                      }}
                       onClick={() => {
                         if (mobileSwipeMoved.current) {
                           mobileSwipeMoved.current = false;
@@ -1189,75 +1164,43 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         else onPlaceSelect(place);
                       }}
                     >
-                      {displayMode === "expanded" && !inlineExpanded && (
+                      {!inlineExpanded && (
                         <span className="places-place-photo">
-                          {inTrip && (
-                            <span className="places-place-trip-check" aria-hidden="true" title="Déjà présent dans la sortie">
-                              <Check size={12} aria-hidden="true" />
-                            </span>
-                          )}
                           <PlaceListThumbnail photoId={place.primary_photo_id} statusColor={place.status.color} categoryIcon={primary?.icon} />
-                        </span>
-                      )}
-                      {displayMode === "compact" && !inlineExpanded && (
-                        <span
-                          className="place-list-category-bubble"
-                          style={{
-                            backgroundColor: place.status.color,
-                            borderColor: place.status.color,
-                          }}
-                        >
-                          <CategoryIconPreview iconId={primary?.icon} size={18} showLabel={false} />
                         </span>
                       )}
                       <span className="places-place-copy">
                         <span className="places-place-title-row">
                           <strong title={place.name}>{place.name}</strong>
                         </span>
-                        {displayMode === "expanded" ? (
-                          <>
-                            <span className="places-place-location">{formatLocation(place)}</span>
-                            <span className="places-place-category">
-                              {primary && (
-                                <>
-                                  <CategoryIconPreview iconId={primary.icon} size={14} showLabel={false} />
-                                  <span className="places-place-category-name">{primary.name}</span>
-                                  <i aria-hidden="true">–</i>
-                                </>
-                              )}
-                              <b className="places-place-status" style={{ color: place.status.color }}>
-                                {place.status.name}
-                              </b>
-                              {place.tags.length > 0 && (
-                                <>
-                                  <i aria-hidden="true">–</i>
-                                  <span className="places-place-tags">
-                                    {place.tags.map((tag) => (
-                                      <span className="place-list-tag" key={tag.id} style={getTagColorStyle(tag.color)}>
-                                        {tag.name}
-                                      </span>
-                                    ))}
+                        <span className="places-place-location">{formatLocation(place)}</span>
+                        <span className="places-place-category">
+                          {primary && (
+                            <>
+                              <CategoryIconPreview iconId={primary.icon} size={14} showLabel={false} />
+                              <span className="places-place-category-name">{primary.name}</span>
+                              <i aria-hidden="true">–</i>
+                            </>
+                          )}
+                          <b className="places-place-status" style={{ color: place.status.color }}>
+                            {place.status.name}
+                          </b>
+                          {place.tags.length > 0 && (
+                            <>
+                              <i aria-hidden="true">–</i>
+                              <span className="places-place-tags">
+                                {place.tags.map((tag) => (
+                                  <span className="place-list-tag" key={tag.id} style={getTagColorStyle(tag.color)}>
+                                    {tag.name}
                                   </span>
-                                </>
-                              )}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="place-list-item-meta">
-                            {primary && (
-                              <>
-                                <span>{primary.name}</span>
-                                <span aria-hidden="true">–</span>
-                              </>
-                            )}
-                            <b className="places-place-status" style={{ color: place.status.color }}>
-                              {place.status.name}
-                            </b>
-                          </span>
-                        )}
+                                ))}
+                              </span>
+                            </>
+                          )}
+                        </span>
                       </span>
                     </button>
-                    {displayMode === "expanded" && !inlineExpanded && (
+                    {!inlineExpanded && (
                       <aside className="places-place-actions" aria-label={`Actions pour ${place.name}`}>
                         <span className="places-place-rating" style={{ color: place.status.color }} aria-label={rating == null ? "Aucune note" : `Note ${rating}`}>
                           ★ {rating ?? "—"}
@@ -1265,24 +1208,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         <button className={place.is_favorite ? "favorite active" : "favorite"} type="button" aria-label={place.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"} onClick={() => void toggleFavorite(place)}>
                           <Heart size={20} fill={place.is_favorite ? "currentColor" : "none"} />
                         </button>
-                        {canAddToTripTarget && <div className="places-place-secondary-actions places-place-secondary-actions--trip">
-                          <span className="places-map-actions">
-                            <span className="places-trip-add-slot">
-                              <button
-                                className="places-trip-add-button"
-                                type="button"
-                                aria-label={tripAddTargetLabel}
-                                title={tripAddTargetLabel}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  onTripPlaceAdd(place);
-                                }}
-                              >
-                                <Plus size={16} aria-hidden="true" />
-                              </button>
-                            </span>
-                          </span>
-                        </div>}
                       </aside>
                     )}
                   </div>
@@ -1295,8 +1220,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         canEdit={poiMap?.can_edit !== false}
                         allowPhotoPaste={false}
                         showManagementActions
-                        tripAddTargetLabel={tripAddTargetLabel}
-                        onAddToTrip={(updatedPlace) => onTripPlaceAdd(updatedPlace)}
                         onUpdated={(updatedPlace) => {
                           setPlaces((current) => current.map((item) => item.id === updatedPlace.id ? updatedPlace : item));
                           setPinnedSelectedPlace((current) => current?.id === updatedPlace.id ? updatedPlace : current);

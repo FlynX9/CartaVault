@@ -10,7 +10,11 @@ describe('BasemapSelector', () => {
     render(<BasemapSelector activeBasemapId="openfreemap-light" mapTheme="light" onBasemapChange={vi.fn()} satelliteProvider="none" />)
     const selector = screen.getByRole('region', { name: 'Fond cartographique' })
     expect(selector).toHaveClass('basemap-selector--count-2')
-    fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
+    const toggle = screen.getByRole('button', { name: 'Thème de carte' })
+    expect(toggle.querySelector('svg')).toHaveClass('lucide-layers')
+    expect(toggle).toHaveTextContent('Thème de carte')
+    expect(toggle.querySelector('.basemap-selector__chevron')).toHaveClass('lucide-chevron-down')
+    fireEvent.click(toggle)
     expect(screen.getByRole('button', { name: 'Utiliser le fond OpenFreeMap clair' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Utiliser le fond OpenFreeMap sombre' })).toBeVisible()
     expect(screen.queryByRole('button', { name: /OpenStreetMap/ })).not.toBeInTheDocument()
@@ -32,6 +36,14 @@ describe('BasemapSelector', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Utiliser le fond OpenFreeMap sombre' }))
     expect(onBasemapChange).toHaveBeenCalledWith('openfreemap-dark')
+  })
+
+  it('closes when clicking outside the selector', () => {
+    render(<><BasemapSelector activeBasemapId="openfreemap-light" mapTheme="light" onBasemapChange={vi.fn()} /><button type="button">Extérieur</button></>)
+    fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
+    expect(screen.getByRole('button', { name: 'Utiliser le fond OpenFreeMap clair' })).toBeInTheDocument()
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Extérieur' }))
+    expect(screen.queryByRole('button', { name: 'Utiliser le fond OpenFreeMap clair' })).not.toBeInTheDocument()
   })
 
   it('does not render in offline mode', () => {

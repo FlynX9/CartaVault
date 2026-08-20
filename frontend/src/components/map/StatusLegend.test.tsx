@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { StatusLegend } from './StatusLegend'
 
@@ -29,5 +29,18 @@ describe('StatusLegend', () => {
     expect(legend).toHaveClass('status-legend--collapsed')
     fireEvent.focus(screen.getByRole('button', { name: 'Afficher la légende des statuts' }))
     expect(legend).toHaveClass('status-legend--expanded')
+  })
+
+  it('renders as a permanently open panel', () => {
+    const onClose = vi.fn()
+    render(<StatusLegend panel statuses={statuses} onClose={onClose} />)
+
+    const legend = screen.getByRole('region', { name: 'Légende des statuts' })
+    expect(legend).toHaveClass('status-legend--panel')
+    expect(screen.queryByRole('button', { name: 'Afficher la légende des statuts' })).not.toBeInTheDocument()
+    expect(legend).toHaveTextContent('À faire')
+    expect(legend).toHaveTextContent('Fait')
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la légende' }))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

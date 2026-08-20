@@ -1,8 +1,8 @@
+import { IconMagnet, IconMagnetOff } from "@tabler/icons-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useContext } from "react";
 
 import { FloatingPanelWindowContext } from "./FloatingPanelWindow";
-import { PanelAttachmentIcon } from "./PanelAttachmentIcon";
 
 export function PanelWindowControls() {
   const panel = useContext(FloatingPanelWindowContext);
@@ -15,7 +15,9 @@ export function PanelWindowControls() {
     <div className="panel-window-controls" data-panel-no-drag>
       {!collapsed && (
         <button className="panel-icon-button panel-window-mode-toggle" type="button" aria-label={attachmentLabel} title={attachmentLabel} onClick={floating ? panel.dock : panel.detach}>
-          <PanelAttachmentIcon mode={floating ? "attach" : "detach"} />
+          {floating
+            ? <IconMagnet size={18} aria-hidden="true" data-panel-attachment-icon="attach" />
+            : <IconMagnetOff size={18} aria-hidden="true" data-panel-attachment-icon="detach" />}
         </button>
       )}
       <button className="panel-icon-button panel-window-collapse-toggle" type="button" aria-label={collapsed ? "Déployer le panneau" : "Réduire le panneau"} title={collapsed ? "Déployer le panneau" : "Réduire le panneau"} aria-expanded={!collapsed} onClick={collapsed ? panel.expand : panel.collapse}>

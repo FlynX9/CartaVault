@@ -813,7 +813,6 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     }));
   };
 
-  const tripName = trip?.name ?? "Préparation";
   const activeDay = trip?.days.find((day) => day.id === activeDayId) ?? trip?.days[0] ?? null;
   const activeDaySummary = activeDay ? daySummaries[activeDay.id] : undefined;
   const mobileDay = mobileTimelineTarget?.kind === "day" ? (trip?.days.find((day) => day.id === mobileTimelineTarget.dayId) ?? activeDay) : mobileTimelineTarget?.kind === "night" || mobileTimelineTarget === null ? activeDay : null;
@@ -954,20 +953,28 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       >
         <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? " trip-planner-panel--trip-view" : ""}${isArchivedTrip ? " trip-planner-panel--read-only" : ""}${panelCollapsed ? " is-collapsed" : ""}`} aria-label={t("trips.title")}>
           {panelCollapsed ? (
-            <header className="trip-panel-header trip-panel-header--collapsed cv-workspace-panel__header">
-              <div className="cv-workspace-panel__heading">
-                <h2 className="cv-workspace-panel__title">{t("trips.title")}</h2>
-                <span className="trip-panel-collapsed-name" title={tripName}>
-                  {tripName}
-                </span>
-              </div>
-              <div className="cv-workspace-panel__header-actions">
-                <PanelWindowControls />
-                <button className="panel-icon-button trip-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={t("trips.expandPanel")} aria-expanded="false" onClick={() => onCollapsedChange(false)}>
-                  <IconMaximize size={18} aria-hidden="true" />
-                </button>
-              </div>
-            </header>
+            <>
+              <header className="trip-panel-header trip-panel-header--collapsed cv-workspace-panel__header">
+                <div className="cv-workspace-panel__header-actions">
+                  <PanelWindowControls />
+                  <button className="panel-icon-button trip-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={t("trips.expandPanel")} aria-expanded="false" onClick={() => onCollapsedChange(false)}>
+                    <IconMaximize size={18} aria-hidden="true" />
+                  </button>
+                </div>
+              </header>
+              {trip && <nav className="trip-panel-collapsed-timeline" aria-label="Chronologie compacte de la sortie">
+                <button type="button" className={`trip-panel-collapsed-timeline__anchor${activeAnchorTarget === "departure" ? " is-active" : ""}`} aria-label="Départ" title="Départ" onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveDayChange(null); onActiveAnchorTargetChange("departure"); onAnchorPopupChange("departure") }}><Play size={16} aria-hidden="true" /></button>
+                {trip.days.map((day) => <Fragment key={day.id}>
+                  <button type="button" className={`trip-panel-collapsed-timeline__day${activeDayId === day.id && activeNightTarget === null ? " is-active" : ""}`} style={{ "--collapsed-trip-day-color": day.color ?? "#0FA68A" } as CSSProperties} aria-label={`Jour ${day.day_number}`} title={day.title || `Jour ${day.day_number}`} onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveAnchorTargetChange(null); onActiveDayChange(day.id) }}><Sun size={15} aria-hidden="true" /><span>J{day.day_number}</span></button>
+                  {trip.nights.filter((night) => night.previous_day_id === day.id).map((night) => {
+                    const target = { nightId: night.id, previousDayId: night.previous_day_id, nextDayId: night.next_day_id }
+                    const selected = activeNightTarget?.nightId === night.id
+                    return <button key={night.id} type="button" className={`trip-panel-collapsed-timeline__night${selected ? " is-active" : ""}`} aria-label={`Nuit ${day.day_number}`} title={night.name || `Nuit ${day.day_number}`} onClick={() => { setActiveNightTarget(target); onActiveAnchorTargetChange(null); onActiveDayChange(night.next_day_id); onActiveNightTargetChange(target, true) }}><Moon size={14} aria-hidden="true" /><span>N{day.day_number}</span></button>
+                  })}
+                </Fragment>)}
+                <button type="button" className={`trip-panel-collapsed-timeline__anchor trip-panel-collapsed-timeline__anchor--arrival${activeAnchorTarget === "arrival" ? " is-active" : ""}`} aria-label="Arrivée" title="Arrivée" onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveDayChange(null); onActiveAnchorTargetChange("arrival"); onAnchorPopupChange("arrival") }}><Flag size={16} aria-hidden="true" /></button>
+              </nav>}
+            </>
           ) : (
             <>
               <header className="trip-panel-header places-redesign-header">
@@ -1000,9 +1007,6 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                 </div>
                 {tripViewOnly && summary && <TripSummaryMetrics summary={summary} preview />}
                 <div className="trip-panel-header-actions places-redesign-header-actions">
-                  <button className={`panel-icon-button trip-view-button${tripViewOnly ? " active" : ""}${tripViewOnly && isMobile ? " trip-view-button--mobile-close" : ""}`} type="button" aria-label={tripViewOnly ? "Quitter la chronologie du voyage" : "Activer la chronologie du voyage"} aria-pressed={tripViewOnly} title={tripViewOnly ? "Afficher la préparation complète" : "Chronologie du voyage"} onClick={() => onTripViewOnlyChange(!tripViewOnly)}>
-                    {tripViewOnly && isMobile ? <X size={17} aria-hidden="true" /> : <IconTimelineEvent size={16} stroke={2} aria-hidden="true" />}
-                  </button>
                   {!tripViewOnly && (
                     <>
                       <PanelWindowControls />

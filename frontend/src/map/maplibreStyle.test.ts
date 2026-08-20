@@ -33,6 +33,29 @@ describe('loadCartaVaultStyle', () => {
     expect('url' in style.sources.openmaptiles).toBe(false)
   })
 
+  it('localizes country names without changing the other settlement labels', async () => {
+    const stylePayload = {
+      version: 8,
+      sources: { openmaptiles: { type: 'vector', url: 'about:blank' } },
+      layers: [{
+        id: 'settlements', type: 'symbol', source: 'openmaptiles', 'source-layer': 'place',
+        filter: ['in', ['get', 'class'], ['literal', ['country', 'city']]],
+        layout: { 'text-field': ['get', 'name'] },
+      }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => (
+      new Response(JSON.stringify(stylePayload), { status: 200 })
+    )))
+
+    const french = await loadCartaVaultStyle('/style.json', 'tiles', 'glyphs', undefined, undefined, 'fr')
+    const english = await loadCartaVaultStyle('/style.json', 'tiles', 'glyphs', undefined, undefined, 'en')
+    const frenchField = (french.layers[0] as { layout?: Record<string, unknown> }).layout?.['text-field']
+    const englishField = (english.layers[0] as { layout?: Record<string, unknown> }).layout?.['text-field']
+    expect(JSON.stringify(frenchField)).toContain('name:fr')
+    expect(JSON.stringify(englishField)).toContain('name:en')
+    expect(frenchField).toEqual(expect.arrayContaining(['case']))
+  })
+
   it('rejects malformed or unavailable local styles', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })))
     await expect(loadCartaVaultStyle('/invalid.json', 'tiles', 'glyphs')).rejects.toThrow('Invalid MapLibre style document')

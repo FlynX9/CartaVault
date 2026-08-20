@@ -1,4 +1,4 @@
-import { Copy, Crosshair, LocateFixed, Map as MapIcon, Maximize2, Minimize2, MousePointer2, PenTool, RotateCcw, Ruler, Scan, Undo2 } from 'lucide-react'
+import { Copy, Crosshair, LocateFixed, Map as MapIcon, Maximize2, Minimize2, MousePointer2, PenTool, RotateCcw, Ruler, Scan, Undo2, X } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n'
 import type { MapExtent } from './mapExtent'
@@ -8,6 +8,8 @@ import type { MeasurementPoint } from './measurement'
 import { formatMeasurementDistance, measurementTotal } from './measurement'
 
 interface MapToolsControlProps {
+  panel?: boolean
+  onClose?: () => void
   expanded: boolean
   onExpandedChange: (expanded: boolean) => void
   mode: InteractiveMapMode
@@ -57,13 +59,13 @@ export function MapToolsControl(props: MapToolsControlProps) {
   const externalMode = props.mode === 'place-creation' || props.mode === 'trip-planning' || props.mode === 'point-selection' ? props.mode : null
 
   return <>
-    <div className={`map-overlay-control-slot map-overlay-control-slot--tools${props.expanded ? ' is-expanded' : ''}`}>
-      <section className={`map-tools-control${props.expanded ? ' is-expanded' : ''}`} aria-label={t('map.tools.title')}>
+    <div className={`map-overlay-control-slot map-overlay-control-slot--tools${props.expanded ? ' is-expanded' : ''}${props.panel ? ' map-tools-panel' : ''}`}>
+      <section className={`map-tools-control${props.expanded ? ' is-expanded' : ''}${props.panel ? ' map-tools-control--panel' : ''}`} aria-label={t('map.tools.title')}>
         <button className={activeInternal ? 'active' : ''} type="button" aria-expanded={props.expanded} aria-label={t('map.tools.title')} title={t('map.tools.title')} onClick={() => props.onExpandedChange(!props.expanded)}>
           <MapIcon size={18} aria-hidden="true" />
         </button>
         {props.expanded && <div className="map-tools-control__menu">
-          <div className="map-tools-control__heading"><strong>{t('map.tools.title')}</strong><button type="button" aria-label={t('map.tools.reset')} title={t('map.tools.reset')} onClick={props.onReset}><RotateCcw size={16} aria-hidden="true" /></button></div>
+          <div className={`map-tools-control__heading${props.panel ? ' cv-workspace-panel__header' : ''}`}><span className="map-tools-control__heading-title"><MapIcon size={17} aria-hidden="true" /><strong>{t('map.tools.title')}</strong></span><div className="map-tools-control__heading-actions"><button type="button" aria-label={t('map.tools.reset')} title={t('map.tools.reset')} onClick={props.onReset}><RotateCcw size={16} aria-hidden="true" /></button>{props.panel && props.onClose && <button className="map-panel-close-button" type="button" aria-label="Fermer les outils cartographiques" title="Fermer" onClick={props.onClose}><X size={17} aria-hidden="true" /></button>}</div></div>
           <div className="map-tools-control__grid" aria-label={t('map.tools.interactions')}>
             {(Object.keys(modeIcons) as Array<keyof typeof modeIcons>).map((mode) => {
               const Icon = modeIcons[mode]

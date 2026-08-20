@@ -153,6 +153,30 @@ describe('map URL workspace', () => {
     expect(tripsNavigation).toHaveAttribute('aria-pressed', 'false')
   })
 
+  it('restores Places without opening Sorties after leaving the timeline', async () => {
+    vi.mocked(getMaps).mockResolvedValue([{ ...MAP, trip_count: 1 }])
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
+
+    const placesNavigation = await screen.findByRole('button', { name: 'Lieux' })
+    const tripsNavigation = screen.getByRole('button', { name: 'Sorties' })
+    const timelineNavigation = screen.getByRole('button', { name: 'Chronologie' })
+    expect(placesNavigation).toHaveAttribute('aria-pressed', 'true')
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(timelineNavigation)
+    expect(timelineNavigation).toHaveAttribute('aria-pressed', 'true')
+    expect(placesNavigation).toBeDisabled()
+    expect(tripsNavigation).toBeDisabled()
+
+    fireEvent.click(timelineNavigation)
+    expect(timelineNavigation).toHaveAttribute('aria-pressed', 'false')
+    expect(placesNavigation).toHaveAttribute('aria-pressed', 'true')
+    expect(placesNavigation).not.toBeDisabled()
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'false')
+    expect(tripsNavigation).not.toBeDisabled()
+    expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument()
+  })
+
   it('keeps the active trip when returning from another workspace', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
 

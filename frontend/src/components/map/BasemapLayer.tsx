@@ -6,13 +6,14 @@ import { useEffect, useRef, useState } from 'react'
 import { TileLayer, useMap } from 'react-leaflet'
 
 import { getBasemap, type BasemapId, type RasterBasemapDefinition, type VectorBasemapDefinition } from '../../map/basemaps'
-import { loadCartaVaultStyle } from '../../map/maplibreStyle'
+import { loadCartaVaultStyle, localizeCountryNames, type MapLabelLanguage } from '../../map/maplibreStyle'
 import { ApiError } from '../../api/client'
 import { createArcGISBasemapSession } from '../../api/arcgisMaps'
 import { getCartaVaultVectorConfig, type CartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
 import { getOfflineBasemapVersion } from '../../pwa/offlineData'
 import { GoogleMapsJavaScriptBasemap } from './GoogleMapsJavaScriptBasemap'
+import { useI18n } from '../../i18n/useI18n'
 
 interface BasemapLayerProps {
   basemapId: BasemapId
@@ -31,7 +32,7 @@ function styleErrorCode(message: string): string {
   return message.includes('Invalid MapLibre style') || message.includes('must define the openmaptiles') ? 'STYLE_INVALID' : 'STYLE_MISSING'
 }
 
-function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
+function VectorBasemapLayer({ basemap, countryCode, language, onTileError }: { basemap: VectorBasemapDefinition; countryCode?: string | null; language: MapLabelLanguage; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
   const map = useMap()
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
@@ -79,7 +80,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
       configureCartaVaultProtocol(config)
       const selected = basemapRef.current
       try {
-        const style = await loadCartaVaultStyle(selected.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || selected.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
+        const style = await loadCartaVaultStyle(selected.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || selected.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom }, language)
         return { style, selected }
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -120,14 +121,14 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
       configRef.current = null
       appliedStyleRef.current = null
     }
-  }, [countryCode, map])
+  }, [countryCode, language, map])
 
   useEffect(() => {
     const layer = layerRef.current
     const config = configRef.current
     if (layer === null || config === null || appliedStyleRef.current === basemap.id) return
     const controller = new AbortController()
-    void loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom })
+    void loadCartaVaultStyle(basemap.styleUrl, cartaVaultTileTemplate(config), config.glyphs_url || basemap.glyphsUrl, controller.signal, { min: config.min_zoom, max: config.max_zoom }, language)
       .then((style) => {
         if (controller.signal.aborted || layerRef.current !== layer) return
         layer.getMaplibreMap().setStyle(style)
@@ -141,12 +142,12 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
         onTileErrorRef.current(basemap.id, true, reason, styleErrorCode(reason))
       })
     return () => controller.abort()
-  }, [basemap, countryCode])
+  }, [basemap, countryCode, language])
 
   return null
 }
 
-function OpenFreeMapBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDefinition; onTileError: BasemapLayerProps['onTileError'] }) {
+function OpenFreeMapBasemapLayer({ basemap, language, onTileError }: { basemap: VectorBasemapDefinition; language: MapLabelLanguage; onTileError: BasemapLayerProps['onTileError'] }) {
   const map = useMap()
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
@@ -157,14 +158,26 @@ function OpenFreeMapBasemapLayer({ basemap, onTileError }: { basemap: VectorBase
     // it before addTo() returns undefined and crashes the complete React tree.
     layer.addTo(map)
     const renderer = layer.getMaplibreMap()
+    const applyLanguage = () => {
+      const style = renderer.getStyle()
+      localizeCountryNames(style, language)
+      for (const styleLayer of style.layers) {
+        if (styleLayer.type !== 'symbol') continue
+        const textField = styleLayer.layout?.['text-field']
+        if (textField !== undefined) renderer.setLayoutProperty(styleLayer.id, 'text-field', textField)
+      }
+    }
+    if (renderer.isStyleLoaded()) applyLanguage()
+    else renderer.once('style.load', applyLanguage)
     renderer.on('error', handleError)
     map.attributionControl?.addAttribution(basemap.attribution)
     return () => {
       renderer.off('error', handleError)
+      renderer.off('style.load', applyLanguage)
       if (map.hasLayer(layer)) layer.removeFrom(map)
       map.attributionControl?.removeAttribution(basemap.attribution)
     }
-  }, [basemap, map])
+  }, [basemap, language, map])
   return null
 }
 
@@ -206,6 +219,8 @@ function RasterBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
 
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLayerProps) {
+  const { locale } = useI18n()
+  const language: MapLabelLanguage = locale.toLowerCase().startsWith('fr') ? 'fr' : 'en'
   const basemap = getBasemap(basemapId)
   const googleMapsBasemapId = 'google-satellite'
   const googleMapsActive = basemapId === 'google-satellite'
@@ -219,7 +234,7 @@ export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLay
     // MapLibre layers are imperative Leaflet layers. Their React key must include
     // the selected style, otherwise switching light ↔ dark can leave the previous
     // layer instance attached while the new style is loading.
-    return <>{googleMapsLayer}{basemap.source === 'remote-style' ? <OpenFreeMapBasemapLayer basemap={basemap} onTileError={onTileError} /> : <VectorBasemapLayer basemap={basemap} countryCode={countryCode} onTileError={onTileError} />}</>
+    return <>{googleMapsLayer}{basemap.source === 'remote-style' ? <OpenFreeMapBasemapLayer basemap={basemap} language={language} onTileError={onTileError} /> : <VectorBasemapLayer basemap={basemap} countryCode={countryCode} language={language} onTileError={onTileError} />}</>
   }
   if (basemap.id === 'google-satellite') return googleMapsLayer
   if (basemap.kind === 'google') return googleMapsLayer

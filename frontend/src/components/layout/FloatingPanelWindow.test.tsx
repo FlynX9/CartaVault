@@ -39,19 +39,21 @@ describe("FloatingPanelWindow", () => {
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
     expect(dockedResizeHandle("test:panel", "e").querySelector("[data-resize-visibility='persistent']")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const detachButton = screen.getByRole("button", { name: "Détacher le panneau" });
+    expect(detachButton.querySelector("[data-panel-attachment-icon='detach']")).toHaveClass("tabler-icon-magnet-off");
+    fireEvent.click(detachButton);
     expect(panel).toHaveAttribute("data-panel-mode", "floating");
     expect(panel.querySelectorAll(".cv-floating-panel-window__resize-indicator")).toHaveLength(4);
     const attachButton = screen.getByRole("button", { name: "Attacher le panneau" });
     expect(attachButton).toHaveAttribute("title", "Attacher le panneau");
-    expect(attachButton.querySelector("[data-panel-attachment-icon='attach']")).toBeInTheDocument();
+    expect(attachButton.querySelector("[data-panel-attachment-icon='attach']")).toHaveClass("tabler-icon-magnet");
     expect(screen.getAllByRole("separator", { name: "Redimensionner Navigation" })).toHaveLength(8);
 
     fireEvent.click(attachButton);
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
-    const detachButton = screen.getByRole("button", { name: "Détacher le panneau" });
-    expect(detachButton).toHaveAttribute("title", "Détacher le panneau");
-    expect(detachButton.querySelector("[data-panel-attachment-icon='detach']")).toBeInTheDocument();
+    const redockedDetachButton = screen.getByRole("button", { name: "Détacher le panneau" });
+    expect(redockedDetachButton).toHaveAttribute("title", "Détacher le panneau");
+    expect(redockedDetachButton.querySelector("[data-panel-attachment-icon='detach']")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Réduire le panneau" }));
     expect(panel).toHaveAttribute("data-panel-mode", "collapsed");
@@ -74,6 +76,55 @@ describe("FloatingPanelWindow", () => {
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
     fireEvent.pointerMove(panel, { pointerId: 1, clientX: 118, clientY: 26 });
     expect(panel).toHaveAttribute("data-panel-mode", "floating");
+  });
+
+  it("locks the timeline layout without move or resize affordances", () => {
+    const view = (layoutLocked: boolean) => (
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="timeline" label="Chronologie" storageKey="test:timeline" initialGeometry={geometry} minWidth={320} defaultMode="floating" layoutLocked={layoutLocked} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Chronologie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>
+    );
+    const { rerender } = render(view(false));
+    const panel = screen.getByLabelText("Chronologie");
+    const initialStyle = panel.getAttribute("style");
+    rerender(view(true));
+    expect(panel).toHaveClass("cv-floating-panel-window--timeline", "is-layout-locked");
+    expect(screen.queryByRole("separator", { name: "Redimensionner Chronologie" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Attacher le panneau" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Détacher le panneau" })).not.toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByText("Chronologie", { selector: "header" }), { button: 0, pointerId: 91, clientX: 100, clientY: 20 });
+    fireEvent.pointerMove(panel, { pointerId: 91, clientX: 220, clientY: 120 });
+    fireEvent.pointerUp(panel, { pointerId: 91, clientX: 220, clientY: 120 });
+    expect(panel).toHaveAttribute("style", initialStyle);
+    rerender(view(false));
+    expect(panel).not.toHaveClass("is-layout-locked");
+    expect(panel).toHaveAttribute("style", initialStyle);
+  });
+
+  it("hides a docked panel resize portal without changing its geometry", () => {
+    const view = (hidden: boolean) => (
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:hidden-panel" initialGeometry={geometry} minWidth={320} hidden={hidden} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation</header></aside>
+        </FloatingPanelWindow>
+      </section>
+    );
+    const { rerender } = render(view(false));
+    const panel = screen.getByLabelText("Navigation");
+    const initialStyle = panel.getAttribute("style");
+    expect(document.querySelector("[data-panel-resize-owner='test:hidden-panel']")).toBeInTheDocument();
+
+    rerender(view(true));
+    expect(panel).toHaveClass("is-hidden");
+    expect(document.querySelector("[data-panel-resize-owner='test:hidden-panel']")).not.toBeInTheDocument();
+
+    rerender(view(false));
+    expect(panel).not.toHaveClass("is-hidden");
+    expect(panel).toHaveAttribute("style", initialStyle);
+    expect(document.querySelector("[data-panel-resize-owner='test:hidden-panel']")).toBeInTheDocument();
   });
 
   it("does not start a panel drag from an attachment button", () => {
@@ -464,7 +515,7 @@ describe("FloatingPanelWindow", () => {
     const workspace = setWorkspaceDimensions(top);
     vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800, toJSON: () => ({}) });
     const separator = await screen.findByRole("separator", { name: "Redimensionner la séparation des panneaux" });
-    expect(document.querySelector(".cv-floating-panel-window__dock-split-grip-complement")).toBeInTheDocument();
+    expect(separator.querySelector(".cv-floating-panel-window__resize-indicator")).toBeInTheDocument();
 
     fireEvent.pointerDown(separator, { button: 0, pointerId: 52, clientY: 400 });
     fireEvent.pointerMove(separator, { pointerId: 52, clientY: 520 });

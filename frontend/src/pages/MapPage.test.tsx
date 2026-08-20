@@ -108,7 +108,6 @@ describe('MapPage', () => {
     expect(editorWindow).toContainElement(screen.getByLabelText('Volet de test'))
     await waitFor(() => expect(editorWindow).toHaveClass('is-active'))
     const legend = screen.getByRole('region', { name: 'Légende des statuts' })
-    fireEvent.click(screen.getByRole('button', { name: 'Afficher la légende des statuts' }))
     expect(legend).toHaveTextContent('À faire')
     fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond ArcGIS World Imagery' }))
@@ -246,6 +245,33 @@ describe('MapPage', () => {
     expect(screen.queryByLabelText('Recherche géographique')).not.toBeInTheDocument()
   })
 
+  it('uses distinct Sorties and Chronologie panels without changing the Sorties geometry', () => {
+    const props = {
+      places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false,
+      errorMessage: null, sidebarOpen: true, tripPlanningActive: true, placeListOpen: false, statuses: [],
+      sidebar: <aside>Contenu Sorties</aside>, timelineSidebar: <aside>Contenu Chronologie</aside>, placeList: null,
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...props} tripViewOnly={false} /></MemoryRouter>)
+    const tripsPanel = screen.getByLabelText('Panneau Sortie')
+    const tripsGeometry = tripsPanel.getAttribute('style')
+    expect(tripsPanel).not.toHaveClass('is-hidden')
+    expect(screen.queryByLabelText('Panneau Chronologie')).not.toBeInTheDocument()
+
+    rerender(<MemoryRouter><MapPage {...props} tripViewOnly /></MemoryRouter>)
+    expect(screen.getByLabelText('Panneau Sortie')).toBe(tripsPanel)
+    expect(tripsPanel).toHaveClass('is-hidden')
+    const timelinePanel = screen.getByLabelText('Panneau Chronologie')
+    expect(timelinePanel).toHaveClass('cv-floating-panel-window--timeline', 'is-layout-locked')
+    expect(within(timelinePanel).queryByRole('separator')).not.toBeInTheDocument()
+
+    rerender(<MemoryRouter><MapPage {...props} tripViewOnly={false} /></MemoryRouter>)
+    expect(screen.getByLabelText('Panneau Sortie')).toBe(tripsPanel)
+    expect(tripsPanel).not.toHaveClass('is-hidden')
+    expect(tripsPanel).toHaveAttribute('style', tripsGeometry)
+    expect(screen.queryByLabelText('Panneau Chronologie')).not.toBeInTheDocument()
+  })
+
   it('persists an explicit selection in account preferences', async () => {
     const account = await import('../api/account')
     const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
@@ -300,23 +326,33 @@ describe('MapPage', () => {
     await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-light'))
   })
 
-  it('disables the country mask without remounting the map and persists the choice', async () => {
+  it('updates the controlled country mask without remounting the map', async () => {
     const props = {
       places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 },
       isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [],
       sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(),
       onPlaceSelect: vi.fn(), activeCountryId: '11111111-1111-4111-8111-111111111111',
     }
-    render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+    const { rerender } = render(<MemoryRouter><MapPage {...props} countryMaskEnabled /></MemoryRouter>)
     const map = await screen.findByTestId('poi-map')
     expect(map).toHaveAttribute('data-country-mask', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Filtre de pays activé' }))
+    rerender(<MemoryRouter><MapPage {...props} countryMaskEnabled={false} /></MemoryRouter>)
 
     expect(screen.getByTestId('poi-map')).toBe(map)
     expect(map).toHaveAttribute('data-country-mask', 'false')
-    expect(window.localStorage.getItem('cartavault:country-mask-enabled')).toBe('false')
-    expect(screen.getByRole('button', { name: 'Filtre de pays désactivé' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('closes tools and legend panels through the same controlled state callbacks', async () => {
+    const onMapToolsPanelClose = vi.fn()
+    const onLegendPanelClose = vi.fn()
+    render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[{ id: 'todo', map_id: 'map-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} mapToolsPanelOpen legendPanelOpen onMapToolsPanelClose={onMapToolsPanelClose} onLegendPanelClose={onLegendPanelClose} /></MemoryRouter>)
+
+    await screen.findByTestId('poi-map')
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer les outils cartographiques' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la légende' }))
+    expect(onMapToolsPanelClose).toHaveBeenCalledOnce()
+    expect(onLegendPanelClose).toHaveBeenCalledOnce()
   })
 
   it('measures a multi-point path locally and supports undo and reset', async () => {
@@ -329,7 +365,6 @@ describe('MapPage', () => {
     render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     const map = await screen.findByTestId('poi-map')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(screen.getByRole('button', { name: 'Mesurer' }))
     expect(map).toHaveAttribute('data-measurement-active', 'true')
     expect(screen.getByText('Distance totale').parentElement).toHaveTextContent('0 m')
@@ -350,7 +385,6 @@ describe('MapPage', () => {
   it('closes point selection before enabling an incompatible map tool', async () => {
     render(<InteractiveModeHarness />)
     const map = await screen.findByTestId('poi-map')
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     expect(screen.getByText('La sélection multiple est active.')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Mesurer' }))
     await waitFor(() => expect(map).toHaveAttribute('data-tool-mode', 'measurement'))
@@ -368,7 +402,6 @@ describe('MapPage', () => {
     const map = await screen.findByTestId('poi-map')
     fireEvent.click(screen.getByRole('button', { name: 'Activer le filtre de test' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner une zone' }))
     expect(map).toHaveAttribute('data-tool-mode', 'area-selection')
     fireEvent.click(screen.getByRole('button', { name: 'Simuler une emprise' }))
@@ -385,7 +418,6 @@ describe('MapPage', () => {
   it('fits selected POIs even when their marker is outside the currently loaded bounds', async () => {
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} selectedPlaceIds={new Set(['remote-selected'])} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     const map = await screen.findByTestId('poi-map')
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sélection' }))
     await waitFor(() => expect(map.getAttribute('data-focus-bounds')).toContain('"minLatitude":45'))
     expect(getPlaceDetails).toHaveBeenCalledWith('remote-selected', expect.any(AbortSignal))
@@ -397,7 +429,6 @@ describe('MapPage', () => {
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
     expect(getCurrentPosition).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(within(screen.getByRole('region', { name: 'Outils cartographiques' })).getByRole('button', { name: 'Me localiser' }))
     expect(getCurrentPosition).toHaveBeenCalledOnce()
     expect(getCurrentPosition.mock.calls[0][2]).toEqual({ enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 })
@@ -409,7 +440,6 @@ describe('MapPage', () => {
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     const locateButton = within(screen.getByRole('region', { name: 'Outils cartographiques' })).getByRole('button', { name: 'Me localiser' })
     fireEvent.click(locateButton)
 
@@ -426,7 +456,6 @@ describe('MapPage', () => {
     try {
       render(<><MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter><GlobalFeedbackToasts /></>)
       await screen.findByTestId('poi-map')
-      fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
       const locateButton = within(screen.getByRole('region', { name: 'Outils cartographiques' })).getByRole('button', { name: 'Me localiser' })
       fireEvent.click(locateButton)
 
@@ -447,7 +476,6 @@ describe('MapPage', () => {
     const create = vi.fn()
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} onCreateFromCoordinates={create} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(screen.getByRole('button', { name: 'Coordonnées' }))
     fireEvent.click(screen.getByRole('button', { name: 'Simuler des coordonnées' }))
     expect(screen.getByText('48.123457, 2.765432')).toBeVisible()
@@ -462,7 +490,6 @@ describe('MapPage', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     render(<MemoryRouter><MapPage places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 8 }} isLoading={false} errorMessage={null} sidebarOpen={false} placeListOpen={false} statuses={[]} sidebar={null} placeList={null} focusRequest={null} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     const map = await screen.findByTestId('poi-map')
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(screen.getByRole('button', { name: 'Dessiner une emprise' }))
     fireEvent.click(screen.getByRole('button', { name: 'Simuler une emprise' }))
     expect(map).toHaveAttribute('data-tool-mode', 'extent-drawing')
@@ -487,7 +514,6 @@ describe('MapPage', () => {
     const mapArea = screen.getByLabelText("Carte des points d'intérêt")
     const requestFullscreen = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(mapArea, 'requestFullscreen', { configurable: true, value: requestFullscreen })
-    fireEvent.click(screen.getByRole('button', { name: 'Outils cartographiques' }))
     fireEvent.click(screen.getByRole('button', { name: 'Afficher la carte en plein écran' }))
     expect(requestFullscreen).toHaveBeenCalledOnce()
     const previousLayoutKey = map.getAttribute('data-layout-key')

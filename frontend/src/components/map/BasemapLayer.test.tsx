@@ -21,7 +21,7 @@ vi.mock('react-leaflet', () => ({
 vi.mock('../../api/arcgisMaps', () => ({ createArcGISBasemapSession: vi.fn().mockResolvedValue({ tile_url: 'https://services.arcgisonline.com/World_Imagery/tile/{z}/{y}/{x}?token=short', expires: new Date(Date.now() + 600_000).toISOString(), attribution: 'Tiles © Esri', max_zoom: 23 }) }))
 vi.mock('../../api/vectorBasemap', () => ({ getCartaVaultVectorConfig: vi.fn().mockResolvedValue({ enabled: true, available: true, country_code: 'FR', state: 'ready', archive_url: '/api/basemaps/cartavault/archive/fr.pmtiles', glyphs_url: '/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf', version: 'test', min_zoom: 0, max_zoom: 14 }) }))
 vi.mock('../../pwa/offlineData', () => ({ getOfflineBasemapVersion: vi.fn().mockResolvedValue('offline-v1') }))
-vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn() }))
+vi.mock('../../map/maplibreStyle', () => ({ loadCartaVaultStyle: vi.fn(), localizeCountryNames: vi.fn((style) => style) }))
 vi.mock('../../map/vectorBasemapProtocol', () => ({ configureCartaVaultProtocol: vi.fn(), cartaVaultTileTemplate: vi.fn(() => 'cartavault://test/{z}/{x}/{y}') }))
 vi.mock('./GoogleMapsJavaScriptBasemap', () => ({
   GoogleMapsJavaScriptBasemap: ({ active, basemapId }: { active: boolean; basemapId: string }) => <span data-testid="google-maps-js" data-active={String(active)} data-basemap-id={basemapId} />,
@@ -31,7 +31,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.clearAllMocks() })
 
 describe('BasemapLayer', () => {
   it('loads OpenFreeMap directly as a MapLibre Leaflet layer', () => {
-    const renderer = { on: vi.fn(), off: vi.fn() }
+    const renderer = { on: vi.fn(), once: vi.fn(), off: vi.fn(), isStyleLoaded: vi.fn(() => false), getStyle: vi.fn(), setLayoutProperty: vi.fn() }
     const layer = {
       addTo: vi.fn(),
       removeFrom: vi.fn(),

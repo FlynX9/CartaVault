@@ -100,12 +100,15 @@ describe('TripPlannerPanel', () => {
     expect(within(header as HTMLElement).getByText('2 jours')).toBeVisible()
   })
 
-  it('renders only the compact header when the panel is collapsed', () => {
+  it('renders a title-free compact timeline when the panel is collapsed', () => {
     const onCollapsedChange = vi.fn()
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" collapsed onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
     expect(screen.getByRole('complementary', { name: 'Sortie' })).toHaveClass('is-collapsed')
     expect(screen.queryByRole('region', { name: 'Contenu de la sortie' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Sortie' })).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Chronologie compacte de la sortie' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jour 1' })).toHaveTextContent('J1')
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir le panneau Sortie' }))
     expect(onCollapsedChange).toHaveBeenCalledWith(false)
   })
@@ -440,26 +443,20 @@ describe('TripPlannerPanel', () => {
     click.mockRestore()
   })
 
-  it('switches from the full planner to the compact trip summary from the header', async () => {
-    const onTripViewOnlyChange = vi.fn()
-    const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly={false} onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+  it('leaves timeline activation to the white navigation bar', async () => {
+    const { container, rerender } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly={false} onTripViewOnlyChange={vi.fn()} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const viewButton = await screen.findByRole('button', { name: 'Activer la chronologie du voyage' })
-    expect(viewButton).toHaveAttribute('title', 'Chronologie du voyage')
-    expect(viewButton.querySelector('.tabler-icon-timeline-event')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Activer la chronologie du voyage' })).not.toBeInTheDocument()
     const collapseButton = screen.getByRole('button', { name: 'Réduire le panneau Sortie' })
     expect(collapseButton.querySelector('.lucide-minus')).toBeInTheDocument()
-    expect(viewButton.compareDocumentPosition(collapseButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    fireEvent.click(viewButton)
-    expect(onTripViewOnlyChange).toHaveBeenCalledWith(true)
 
-    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripViewOnlyChange={onTripViewOnlyChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripViewOnlyChange={vi.fn()} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(container.querySelector('.trip-planner-panel')).toHaveClass('trip-planner-panel--trip-view')
     expect(screen.getByRole('heading', { name: 'Chronologie' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Réduire le panneau Sortie' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Quitter la chronologie du voyage' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: 'Quitter la chronologie du voyage' })).not.toBeInTheDocument()
     expect(screen.queryByText('Afficher plus d’infos')).not.toBeInTheDocument()
-    expect(screen.getByText('Distance totale')).toBeVisible()
+    expect(await screen.findByText('Distance totale')).toBeVisible()
     expect(screen.getByText('Temps de trajet')).toBeVisible()
     expect(screen.getByText('Temps total')).toBeVisible()
     expect(screen.getByText('Temps de visite')).toBeVisible()
@@ -708,8 +705,9 @@ describe('TripPlannerPanel', () => {
 
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" collapsed onCollapsedChange={onCollapsedChange} onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('complementary', { name: 'Sortie' })).toHaveClass('is-collapsed')
-    expect(screen.getByText('Sortie')).toBeVisible()
-    expect(screen.getByText('Voyage test')).toBeVisible()
+    expect(screen.queryByText('Sortie')).not.toBeInTheDocument()
+    expect(screen.queryByText('Voyage test')).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Chronologie compacte de la sortie' })).toBeVisible()
     expect(screen.queryByLabelText('Choisir un voyage')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir le panneau Sortie' }))
@@ -1571,8 +1569,7 @@ describe('TripPlannerPanel', () => {
 
     rerender(<TripPlannerPanel poiMap={{ id: 'map-1', name: 'France', country: { name: 'France', iso_alpha2: 'FR' }, can_edit: true } as never} trip={trip} activeDayId="day-1" tripViewOnly onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Chronologie' })).toBeVisible()
-    const closeTimeline = screen.getByRole('button', { name: 'Quitter la chronologie du voyage' })
-    expect(closeTimeline.querySelector('.lucide-x')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Quitter la chronologie du voyage' })).not.toBeInTheDocument()
   })
 
   it('offers trip creation without the desktop hint in the mobile empty state', async () => {

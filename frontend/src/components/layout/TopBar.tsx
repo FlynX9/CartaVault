@@ -20,7 +20,6 @@ interface TopBarProps {
   isMapWorkspace: boolean;
   panelLayoutScope?: string;
   contextLabel?: string;
-  markerCount: number;
   onMapAccessChanged: () => void;
   onOpenAdmin: () => void;
   onOpenRegistrationRequests: () => void;
@@ -32,7 +31,7 @@ const ReleaseNotesModal = lazy(async () => ({
   default: (await import("../../pages/ReleaseNotesPage")).ReleaseNotesModal,
 }));
 
-export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
+export function TopBar({ isMapWorkspace, contextLabel, onMapAccessChanged, onOpenAdmin, onOpenRegistrationRequests }: TopBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -131,12 +130,6 @@ export function TopBar({ isMapWorkspace, contextLabel, markerCount, onMapAccessC
             <WifiOff size={15} aria-hidden="true" />
             <span>{t("offline.status")}</span>
           </span>
-        )}
-        {isMapWorkspace && (
-          <div className="marker-count" aria-live="polite">
-            <strong>{markerCount}</strong>
-            <span>{t("topbar.marker", { count: markerCount })}</span>
-          </div>
         )}
         {isMapWorkspace && <ActionHistoryControls />}
         {user && <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />}

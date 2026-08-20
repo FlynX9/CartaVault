@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, RotateCcw, SquareDashed, X } from 'lucide-react'
+import { Check, RotateCcw, X } from 'lucide-react'
 
 import { BasemapSelector } from '../components/map/BasemapSelector'
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, getAccountPreferences, updateAccountPreferences } from '../api/account'
@@ -45,12 +45,14 @@ const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
 const PLACES_WINDOW_KEY = 'cartavault:desktop-places-window'
 const TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window'
+const TRIP_TIMELINE_WINDOW_KEY = 'cartavault:desktop-trip-timeline-window'
 const PLACE_DETAIL_WINDOW_KEY = 'cartavault:desktop-place-detail-window-v2'
 const PLACE_EDITOR_WINDOW_KEY = 'cartavault:desktop-place-editor-window'
+const MAP_TOOLS_WINDOW_KEY = 'cartavault:desktop-map-tools-window'
+const MAP_LEGEND_WINDOW_KEY = 'cartavault:desktop-map-legend-window'
 const TRIP_PANEL_MIN_WIDTH = 640
 const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
-const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
 type SatelliteBasemapProvider = 'none' | 'arcgis' | 'google'
 type MapTheme = 'light' | 'dark'
@@ -110,14 +112,6 @@ function defaultPlaceEditorGeometry(width: number, height: number) {
   return { x: Math.max(margin, width - panelWidth - margin), y: margin, width: panelWidth, height: Math.max(360, height - margin * 2) }
 }
 
-function loadCountryMaskPreference(): boolean {
-  try { return window.localStorage.getItem(COUNTRY_MASK_PREFERENCE_KEY) !== 'false' } catch { return true }
-}
-
-function saveCountryMaskPreference(enabled: boolean): void {
-  try { window.localStorage.setItem(COUNTRY_MASK_PREFERENCE_KEY, String(enabled)) } catch { /* Storage may be unavailable. */ }
-}
-
 interface MapPageProps {
   activeMapId?: string | null
   places: MapPlace[]
@@ -130,6 +124,11 @@ interface MapPageProps {
   sidebarOpen: boolean
   sidebarResizable?: boolean
   tripPlanningActive?: boolean
+  mapToolsPanelOpen?: boolean
+  legendPanelOpen?: boolean
+  countryMaskEnabled?: boolean
+  onMapToolsPanelClose?: () => void
+  onLegendPanelClose?: () => void
   tripPlannerCollapsed?: boolean
   placesPanelCollapsed?: boolean
   workspacePanelCollapsed?: boolean
@@ -140,6 +139,7 @@ interface MapPageProps {
   statuses: PlaceStatusSummary[]
   canEdit?: boolean
   sidebar: ReactNode
+  timelineSidebar?: ReactNode
   popupContent?: ReactNode
   mobilePlaceDetailOpen?: boolean
   desktopPlaceDetailInline?: boolean
@@ -189,6 +189,11 @@ export function MapPage({
   sidebarOpen,
   sidebarResizable = false,
   tripPlanningActive = false,
+  mapToolsPanelOpen,
+  legendPanelOpen,
+  countryMaskEnabled = true,
+  onMapToolsPanelClose = () => undefined,
+  onLegendPanelClose = () => undefined,
   tripPlannerCollapsed = false,
   workspacePanelCanFillWidth = false,
   workspacePanelId = 'places',
@@ -197,6 +202,7 @@ export function MapPage({
   statuses,
   canEdit = true,
   sidebar,
+  timelineSidebar = null,
   popupContent = null,
   mobilePlaceDetailOpen = false,
   desktopPlaceDetailInline = false,
@@ -255,7 +261,6 @@ export function MapPage({
   const [contextMenu, setContextMenu] = useState<MapContextMenuState | null>(null)
   const [contextNotice, setContextNotice] = useState<string | null>(null)
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
-  const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
   const [openMapPanel, setOpenMapPanel] = useState<'tools' | 'legend' | 'basemap' | null>(null)
   const [mapToolbarHost, setMapToolbarHost] = useState<HTMLElement | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
@@ -263,7 +268,7 @@ export function MapPage({
   const floatingPanelResetVersion = 0
   const workspacePanelResetVersion = 0
   const tripsPanelResetVersion = 0
-  const [activeFloatingPanel, setActiveFloatingPanel] = useState<'workspace' | 'trips' | 'detail' | 'editor'>(() => tripPlanningActive ? 'trips' : 'workspace')
+  const [activeFloatingPanel, setActiveFloatingPanel] = useState<'workspace' | 'trips' | 'timeline' | 'detail' | 'editor' | 'tools' | 'legend'>(() => tripPlanningActive ? 'trips' : 'workspace')
   const [measurementActive, setMeasurementActive] = useState(false)
   const [measurementPoints, setMeasurementPoints] = useState<MeasurementPoint[]>([])
   const [internalToolMode, setInternalToolMode] = useState<InternalMapToolMode>('navigation')
@@ -272,6 +277,8 @@ export function MapPage({
   const [geolocationFix, setGeolocationFix] = useState<(MeasurementPoint & { accuracy: number }) | null>(null)
   const [geolocationLoading, setGeolocationLoading] = useState(false)
   const [mapToolsNotice, setMapToolsNotice] = useState<string | null>(null)
+  const showMapToolsPanel = mapToolsPanelOpen ?? true
+  const showLegendPanel = legendPanelOpen ?? true
   const [selectionStrategy, setSelectionStrategy] = useState<'replace' | 'add'>('replace')
   const [toolFocusRequest, setToolFocusRequest] = useState<MapFocusRequest | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
@@ -300,10 +307,16 @@ export function MapPage({
   const initialFloatingLayoutRef = useRef(defaultFloatingPanelLayout(window.innerWidth - 76, window.innerHeight - 76))
   const initialDetailGeometryRef = useRef(defaultPlaceDetailGeometry(window.innerWidth - 76, window.innerHeight - 76))
   const initialEditorGeometryRef = useRef(defaultPlaceEditorGeometry(window.innerWidth - 76, window.innerHeight - 76))
+  const initialMapToolsGeometryRef = useRef({ x: Math.max(12, window.innerWidth - 472), y: 72, width: 360, height: Math.min(610, Math.max(420, window.innerHeight - 180)) })
+  const initialMapLegendGeometryRef = useRef({ x: Math.max(12, window.innerWidth - 352), y: Math.max(96, window.innerHeight - 430), width: 240, height: 320 })
+  const initialTripTimelineGeometryRef = useRef({ x: 80, y: Math.max(12, window.innerHeight - 368), width: Math.max(640, window.innerWidth - 160), height: 336 })
   const placesWindowInitialGeometry = initialFloatingLayoutRef.current.places
   const tripsWindowInitialGeometry = initialFloatingLayoutRef.current.trips
   const detailWindowInitialGeometry = initialDetailGeometryRef.current
   const editorWindowInitialGeometry = initialEditorGeometryRef.current
+  const mapToolsWindowInitialGeometry = initialMapToolsGeometryRef.current
+  const mapLegendWindowInitialGeometry = initialMapLegendGeometryRef.current
+  const tripTimelineWindowInitialGeometry = initialTripTimelineGeometryRef.current
   const workspaceRef = useRef<HTMLElement>(null)
   const workspaceWindowKey = workspacePanelId === 'places'
     ? PLACES_WINDOW_KEY
@@ -672,7 +685,7 @@ export function MapPage({
       style={{ '--cv-left-panel-width': `${leftPanelWidth}px`, '--cv-right-panel-width': `${rightPanelWidth}px` } as CSSProperties}
     >
       {mapOpening && <AppLoadingScreen mode="map" />}
-      {placeListOpen ? <FloatingPanelWindow key={workspaceWindowKey} kind="workspace" label="Panneau de navigation" storageKey={workspaceWindowKey} initialGeometry={placesWindowInitialGeometry} minWidth={320} maxWidth={workspacePanelCanFillWidth || workspacePanelId === 'places' ? Number.POSITIVE_INFINITY : 720} defaultMode="docked" resetVersion={workspacePanelResetVersion} active={activeFloatingPanel === 'workspace'} onActivate={() => setActiveFloatingPanel('workspace')} onDockedWidthChange={(width) => { setLeftPanelWidth(width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, width) }} onGeometryCommit={(next) => { setLeftPanelWidth(next.width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, next.width) }}>
+      {placeListOpen ? <FloatingPanelWindow key={workspaceWindowKey} kind="workspace" label="Panneau de navigation" storageKey={workspaceWindowKey} initialGeometry={placesWindowInitialGeometry} minWidth={320} maxWidth={workspacePanelCanFillWidth || workspacePanelId === 'places' ? Number.POSITIVE_INFINITY : 720} defaultMode="docked" resetVersion={workspacePanelResetVersion} active={activeFloatingPanel === 'workspace'} hidden={tripViewOnly} onActivate={() => setActiveFloatingPanel('workspace')} onDockedWidthChange={(width) => { setLeftPanelWidth(width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, width) }} onGeometryCommit={(next) => { setLeftPanelWidth(next.width); savePanelWidth(LEFT_PANEL_WIDTH_KEY, next.width) }}>
         <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>
       </FloatingPanelWindow> : <MapMarkerFilterContext.Provider value={{ filter: markerFilter, setFilter: setMarkerFilter }}>{placeList}</MapMarkerFilterContext.Provider>}
       <div ref={mapLayoutRef} className="map-layout" aria-label="Carte des points d'intérêt">
@@ -725,7 +738,7 @@ export function MapPage({
           photoMarkersEnabled={photoMarkersEnabled}
         />
         {popupContent && !mobilePlaceDetailOpen && !desktopPlaceDetailInline && (
-          <FloatingPanelWindow key={PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={PLACE_DETAIL_WINDOW_KEY} initialGeometry={detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector=".place-map-popup" fitContentMaxHeight={720} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} onActivate={() => setActiveFloatingPanel('detail')}>
+          <FloatingPanelWindow key={PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={PLACE_DETAIL_WINDOW_KEY} initialGeometry={detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector=".place-map-popup" fitContentMaxHeight={720} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} hidden={tripViewOnly} onActivate={() => setActiveFloatingPanel('detail')}>
             <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
               {popupContent}
             </aside>
@@ -746,10 +759,12 @@ export function MapPage({
             <GeographicSearch persistent focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
           </div>
         )}
-        <MapToolbarPortal target={mapToolbarHost}><div className="map-overlay-controls" aria-label="Contrôles de la carte">
+        {showMapToolsPanel && <FloatingPanelWindow kind="tools" label={t('map.tools.title')} storageKey={MAP_TOOLS_WINDOW_KEY} initialGeometry={mapToolsWindowInitialGeometry} minWidth={320} minHeight={360} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'tools'} hidden={tripViewOnly} onActivate={() => setActiveFloatingPanel('tools')}>
           <MapToolsControl
-            expanded={openMapPanel === 'tools'}
-            onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'tools' : null)}
+            panel
+            expanded
+            onClose={onMapToolsPanelClose}
+            onExpandedChange={() => undefined}
             mode={effectiveMode}
             internalMode={internalToolMode}
             measurementPoints={measurementPoints}
@@ -800,28 +815,14 @@ export function MapPage({
               resetTemporaryTools()
             }}
           />
-          <div className="map-overlay-control-slot map-overlay-control-slot--legend">
-            <StatusLegend statuses={statuses} expanded={openMapPanel === 'legend'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'legend' : null)} />
-          </div>
+        </FloatingPanelWindow>}
+        {showLegendPanel && statuses.length > 0 && <FloatingPanelWindow kind="legend" label={t('map.legend.title')} storageKey={MAP_LEGEND_WINDOW_KEY} initialGeometry={mapLegendWindowInitialGeometry} minWidth={220} minHeight={220} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'legend'} hidden={tripViewOnly} onActivate={() => setActiveFloatingPanel('legend')}>
+          <StatusLegend panel statuses={statuses} onClose={onLegendPanelClose} />
+        </FloatingPanelWindow>}
+        <MapToolbarPortal target={mapToolbarHost}><div className="map-overlay-controls" aria-label="Contrôles de la carte">
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
             <BasemapSelector expanded={openMapPanel === 'basemap'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'basemap' : null)} activeBasemapId={basemapId} mapTheme={mapTheme} onBasemapChange={selectBasemap} offline={offlineBasemapActive} satelliteProvider={configuredSatelliteProvider} />
           </div>
-          {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
-            <button
-              className={`country-mask-toggle${countryMaskEnabled ? ' active' : ''}`}
-              type="button"
-              aria-label={countryMaskEnabled ? 'Filtre de pays activé' : 'Filtre de pays désactivé'}
-              aria-pressed={countryMaskEnabled}
-              title={countryMaskEnabled ? 'Filtre de pays activé' : 'Filtre de pays désactivé'}
-              onClick={() => setCountryMaskEnabled((current) => {
-                const next = !current
-                saveCountryMaskPreference(next)
-                return next
-              })}
-            >
-              <SquareDashed size={18} aria-hidden="true" />
-            </button>
-          </div>}
         </div></MapToolbarPortal>
         {errorMessage !== null && (
           <div className="status-banner error-status" role="alert">
@@ -831,9 +832,10 @@ export function MapPage({
         )}
 
       </div>
-      {tripPlanningActive ? <FloatingPanelWindow kind="trips" label="Panneau Sortie" storageKey={TRIPS_WINDOW_KEY} initialGeometry={tripsWindowInitialGeometry} minWidth={420} defaultMode="floating" resetVersion={tripsPanelResetVersion} active={activeFloatingPanel === 'trips'} hidden={!sidebarOpen} onActivate={() => setActiveFloatingPanel('trips')} onGeometryCommit={(next) => { setRightPanelWidth(next.width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, next.width) }}>{sidebar}</FloatingPanelWindow> : sidebarOpen ? <FloatingPanelWindow kind="editor" label="Éditeur du lieu" storageKey={PLACE_EDITOR_WINDOW_KEY} initialGeometry={editorWindowInitialGeometry} minWidth={380} minHeight={360} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'editor'} onActivate={() => setActiveFloatingPanel('editor')}>{sidebar}</FloatingPanelWindow> : sidebar}
+      {tripPlanningActive ? <FloatingPanelWindow kind="trips" label="Panneau Sortie" storageKey={TRIPS_WINDOW_KEY} initialGeometry={tripsWindowInitialGeometry} minWidth={420} defaultMode="floating" resetVersion={tripsPanelResetVersion} active={activeFloatingPanel === 'trips'} hidden={!sidebarOpen || tripViewOnly} onActivate={() => setActiveFloatingPanel('trips')} onGeometryCommit={(next) => { setRightPanelWidth(next.width); savePanelWidth(RIGHT_PANEL_WIDTH_KEY, next.width) }}>{sidebar}</FloatingPanelWindow> : sidebarOpen ? <FloatingPanelWindow kind="editor" label="Éditeur du lieu" storageKey={PLACE_EDITOR_WINDOW_KEY} initialGeometry={editorWindowInitialGeometry} minWidth={380} minHeight={360} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'editor'} onActivate={() => setActiveFloatingPanel('editor')}>{sidebar}</FloatingPanelWindow> : sidebar}
+      {tripPlanningActive && tripViewOnly && timelineSidebar && <FloatingPanelWindow kind="timeline" label="Panneau Chronologie" storageKey={TRIP_TIMELINE_WINDOW_KEY} initialGeometry={tripTimelineWindowInitialGeometry} minWidth={640} minHeight={260} dockable={false} defaultMode="floating" layoutLocked resetVersion={tripsPanelResetVersion} active={activeFloatingPanel === 'timeline'} onActivate={() => setActiveFloatingPanel('timeline')}>{timelineSidebar}</FloatingPanelWindow>}
       {sidebarOpen && sidebarResizable && !tripPlanningActive && !tripViewOnly && <PanelResizeHandle side="right" width={rightPanelWidth} onResize={setRightPanelWidth} onResizeCommit={(width) => savePanelWidth(RIGHT_PANEL_WIDTH_KEY, width)} />}
-      {popupContent && mobilePlaceDetailOpen && typeof document !== 'undefined' && createPortal(
+      {popupContent && mobilePlaceDetailOpen && !tripViewOnly && typeof document !== 'undefined' && createPortal(
         <div className="mobile-place-detail-layer">
           <aside className="map-place-detail-overlay map-place-detail-overlay--mobile" aria-label="Détails du lieu sélectionné">
             {popupContent}

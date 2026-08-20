@@ -1,4 +1,4 @@
-import { Check, MapPin, Star } from 'lucide-react'
+import { MapPin, Star } from 'lucide-react'
 import { useState } from 'react'
 
 import { getPhotoFileUrl } from '../../api/photos'
@@ -11,8 +11,6 @@ interface Props {
   selectedPlaceId: string | null
   selectedIds: ReadonlySet<string>
   selectionMode: boolean
-  tripPlaceIds: Set<string>
-  tripPlanningActive: boolean
   onPlaceSelect: (place: PlaceDetails) => void
   onToggleSelected: (placeId: string) => void
 }
@@ -27,32 +25,23 @@ function GalleryThumbnail({ place, iconId }: { place: PlaceDetails; iconId?: str
   return <span className="places-gallery-card__placeholder" style={{ backgroundColor: place.status.color }}><CategoryIconPreview iconId={iconId} size={42} showLabel={false} /></span>
 }
 
-export function PlaceGallery({ places, selectedPlaceId, selectedIds, selectionMode, tripPlaceIds, tripPlanningActive, onPlaceSelect, onToggleSelected }: Props) {
+export function PlaceGallery({ places, selectedPlaceId, selectedIds, selectionMode, onPlaceSelect, onToggleSelected }: Props) {
   return (
     <ul className="places-gallery" aria-label={`Galerie des lieux, ${places.length} éléments`}>
       {places.map((place) => {
         const primary = place.categories.find((category) => category.is_primary) ?? place.categories[0]
-        const inTrip = tripPlaceIds.has(place.id)
         const rating = place.interest_rating == null ? null : place.interest_rating.toFixed(1)
         return (
-          <li key={place.id} className={`${place.id === selectedPlaceId ? 'selected' : ''}${inTrip ? ' trip-included' : ''}`}>
+          <li key={place.id} className={place.id === selectedPlaceId ? 'selected' : ''}>
             <article className="places-gallery-card">
               <button
                 className="places-gallery-card__main"
                 type="button"
-                draggable={tripPlanningActive}
                 aria-label={place.name}
-                onDragStart={(event) => {
-                  if (!tripPlanningActive) return
-                  event.dataTransfer.effectAllowed = 'copy'
-                  event.dataTransfer.setData('application/x-cartavault-place', place.id)
-                  event.dataTransfer.setData('text/plain', `place:${place.id}`)
-                }}
                 onClick={() => onPlaceSelect(place)}
               >
                 <span className="places-gallery-card__visual">
                   <GalleryThumbnail place={place} iconId={primary?.icon} />
-                  {inTrip && <i className="places-gallery-card__trip-check" title="Déjà présent dans la sortie"><Check size={13} aria-hidden="true" /></i>}
                   {place.is_favorite && <i className="places-gallery-card__favorite"><Star size={14} fill="currentColor" aria-hidden="true" /></i>}
                 </span>
                 <span className="places-gallery-card__body">

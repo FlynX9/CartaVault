@@ -160,11 +160,12 @@ describe('MapPlaceList', () => {
     }
   })
 
-  it('hides the new-place action while trip planning is active', async () => {
-    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive onPlaceSelect={vi.fn()} /></MemoryRouter>)
+  it('always shows the labeled new-place action', async () => {
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     await screen.findByRole('button', { name: /Tous42/ })
-    expect(screen.queryByRole('link', { name: 'Ajouter un lieu' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ajouter un lieu' })).toHaveTextContent('Ajouter un lieu')
+    expect(screen.queryByRole('button', { name: 'Vue compacte' })).not.toBeInTheDocument()
   })
 
   it('filters by the selected map UUID without repeating map identity in the header', async () => {
@@ -292,40 +293,24 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.places-place-secondary-actions')).not.toBeInTheDocument()
   })
 
-  it('keeps POIs draggable during trip planning and marks reused places without muting them', async () => {
+  it('keeps the place rows independent from trip planning affordances', async () => {
     const place = { id: 'place-id', name: 'Étape', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockResolvedValue([place])
-    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive tripPlaceIds={new Set(['place-id'])} onPlaceSelect={vi.fn()} /></MemoryRouter>)
-    const reusedPlace = await screen.findByRole('button', { name: 'Étape — déjà présent dans la sortie' })
-    expect(reusedPlace).toHaveAttribute('draggable', 'true')
-    expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).not.toBeInTheDocument()
-    expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-trip-planning')
-    expect(container.querySelector('.places-place-card')).not.toHaveClass('trip-added')
-    expect(container.querySelector('.places-place-trip-check')).toHaveAttribute('title', 'Déjà présent dans la sortie')
-    const reusedSetData = vi.fn()
-    fireEvent.dragStart(reusedPlace, { dataTransfer: { effectAllowed: 'none', setData: reusedSetData } })
-    expect(reusedSetData).toHaveBeenCalledWith('application/x-cartavault-place', 'place-id')
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    const placeRow = await screen.findByRole('button', { name: 'Étape' })
+    expect(placeRow).not.toHaveAttribute('draggable')
+    expect(container.querySelector('.places-redesign-panel')).not.toHaveClass('is-trip-planning')
+    expect(container.querySelector('.places-place-trip-check')).not.toBeInTheDocument()
   })
 
-  it('keeps the trip add shortcut without restoring row hover actions', async () => {
+  it('does not add an active-day shortcut to place rows', async () => {
     const place = { id: 'place-id', name: 'Étape ciblée', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
-    const onTripPlaceAdd = vi.fn()
     vi.mocked(getPlaces).mockResolvedValue([place])
-    const props = { poiMap: { id: 'map-id', name: 'France', can_edit: false } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, tripPlanningActive: true, tripAddTargetLabel: 'Ajouter au jour 2', onTripPlaceAdd, onPlaceSelect: vi.fn() }
-    const { container } = render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: false } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
-    const addButton = await screen.findByRole('button', { name: 'Ajouter au jour 2' })
-    expect(addButton).toHaveAttribute('title', 'Ajouter au jour 2')
-    expect(addButton).not.toHaveTextContent('Ajouter au jour 2')
-    const hoverActions = container.querySelector('.places-place-secondary-actions')
-    expect(hoverActions?.querySelector('a[aria-label^="Ouvrir"]')).not.toBeInTheDocument()
-    expect(hoverActions?.querySelector('a[aria-label^="Éditer"]')).not.toBeInTheDocument()
-    expect(hoverActions?.querySelector('button[aria-label^="Supprimer"]')).not.toBeInTheDocument()
-    fireEvent.click(addButton)
-    expect(onTripPlaceAdd).toHaveBeenCalledWith(place)
-
-    expect(screen.getByRole('button', { name: 'Ajouter au jour 2' })).toBeVisible()
-    expect(document.querySelector('.places-place-trip-check')).toHaveAttribute('title', 'Déjà présent dans la sortie')
+    await screen.findByRole('button', { name: 'Étape ciblée' })
+    expect(screen.queryByRole('button', { name: /Ajouter au jour/ })).not.toBeInTheDocument()
+    expect(document.querySelector('.places-place-secondary-actions--trip')).not.toBeInTheDocument()
   })
 
   it('keeps the rich card layout when multi-selection is enabled', async () => {
