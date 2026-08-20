@@ -1517,6 +1517,29 @@ function WorkspaceApp() {
     void guard().then((canLeave) => { if (canLeave) applyWorkspacePanelChange(panel); });
   };
 
+  const applyContextMapChange = (mapId: string) => {
+    if (mapId === activeMapId) return;
+    setSelectedPlace(null);
+    setCoordinatePrefill(null);
+    setDraftPosition(null);
+    setTripPlannerOpen(false);
+    setTripPlannerCollapsed(false);
+    setTripViewOnly(false);
+    setPlacesPanelCollapsed(false);
+    setCollapsedWorkspacePanel(null);
+    setWorkspacePanel("places");
+    navigate(withMap("/", mapId, null));
+  };
+
+  const handleContextMapChange = (mapId: string) => {
+    const guard = unsavedTripSettingsGuard.current;
+    if (!guard) {
+      applyContextMapChange(mapId);
+      return;
+    }
+    void guard().then((canLeave) => { if (canLeave) applyContextMapChange(mapId); });
+  };
+
   const openTrips = (create = false) => {
     if (!activeMap) {
       setMapsError("Sélectionnez une carte avant de préparer une sortie.");
@@ -1581,9 +1604,11 @@ function WorkspaceApp() {
         />
         {!dashboardOpen && activeMap && workspacePanel !== 'maps' && workspacePanel !== 'media' && workspacePanel !== 'trash' && <MapContextNavigation
           poiMap={activeMap}
+          maps={maps}
           activePanel={workspacePanel}
           tripPlanningActive={tripPlannerOpen}
           onBackToMaps={() => handleWorkspacePanelChange('maps')}
+          onMapChange={handleContextMapChange}
           onPanelChange={handleWorkspacePanelChange}
           onOpenTrips={toggleTripsFromNavigation}
           onImport={() => {

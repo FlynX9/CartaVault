@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronLeft, CircleDot, Download, Ellipsis, FileUp, Map, MapPin, Route, Settings2, Shapes, Spline, Tag, Users } from 'lucide-react'
+import { ChevronDown, ChevronLeft, CircleDot, Download, Ellipsis, FileUp, MapPin, Route, Settings2, Shapes, Spline, Tag, Users } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n'
+import { CountryFlag } from '../maps/CountryFlag'
 import type { PoiMap } from '../../types/map'
 import type { WorkspacePanel } from './MainNavigation'
 
 interface Props {
   poiMap: PoiMap
+  maps: PoiMap[]
   activePanel: WorkspacePanel
   tripPlanningActive: boolean
   onBackToMaps: () => void
+  onMapChange: (mapId: string) => void
   onPanelChange: (panel: WorkspacePanel) => void
   onOpenTrips: () => void
   onImport: () => void
@@ -22,9 +25,9 @@ function tabClass(active: boolean): string {
   return `map-context-navigation__tab${active ? ' is-active' : ''}`
 }
 
-export function MapContextNavigation({ poiMap, activePanel, tripPlanningActive, onBackToMaps, onPanelChange, onOpenTrips, onImport, onExport, onSettings, onMembers }: Props) {
+export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningActive, onBackToMaps, onMapChange, onPanelChange, onOpenTrips, onImport, onExport, onSettings, onMembers }: Props) {
   const { t } = useI18n()
-  const [openMenu, setOpenMenu] = useState<'organization' | 'more' | null>(null)
+  const [openMenu, setOpenMenu] = useState<'maps' | 'organization' | 'more' | null>(null)
   const navigationRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -54,8 +57,19 @@ export function MapContextNavigation({ poiMap, activePanel, tripPlanningActive, 
     <div className="map-context-navigation__identity">
       <button type="button" className="map-context-navigation__back" onClick={onBackToMaps} aria-label={t('nav.backToMaps')} title={t('nav.backToMaps')}><ChevronLeft size={18} /><span>{t('nav.maps')}</span></button>
       <span className="map-context-navigation__identity-separator" aria-hidden="true" />
-      <Map size={19} aria-hidden="true" />
-      <span className="map-context-navigation__map-copy"><strong>{poiMap.name}</strong><small>{poiMap.country.name}</small></span>
+      <div className="map-context-navigation__menu-host map-context-navigation__map-switcher">
+        <button type="button" className="map-context-navigation__map-trigger" aria-label={t('nav.chooseMap')} aria-haspopup="listbox" aria-expanded={openMenu === 'maps'} onClick={() => setOpenMenu((current) => current === 'maps' ? null : 'maps')}>
+          <CountryFlag countryCode={poiMap.country.iso_alpha2} className="map-context-navigation__map-flag" fallbackSize={18} />
+          <span className="map-context-navigation__map-copy"><strong>{poiMap.name}</strong><small>{poiMap.country.name}</small></span>
+          <ChevronDown size={14} aria-hidden="true" />
+        </button>
+        {openMenu === 'maps' && <div className="map-context-navigation__menu map-context-navigation__map-menu" role="listbox" aria-label={t('nav.chooseMap')}>
+          {maps.map((map) => <button type="button" role="option" aria-selected={map.id === poiMap.id} key={map.id} onClick={() => { setOpenMenu(null); if (map.id !== poiMap.id) onMapChange(map.id) }}>
+            <CountryFlag countryCode={map.country.iso_alpha2} className="map-context-navigation__map-flag" fallbackSize={18} />
+            <span className="map-context-navigation__map-copy"><strong>{map.name}</strong><small>{map.country.name}</small></span>
+          </button>)}
+        </div>}
+      </div>
     </div>
     <div className="map-context-navigation__tabs">
       <button type="button" className={tabClass(activePanel === 'places' && !tripPlanningActive)} aria-pressed={activePanel === 'places' && !tripPlanningActive} onClick={() => selectPanel('places')}><MapPin size={17} /><span>{t('nav.places')}</span></button>

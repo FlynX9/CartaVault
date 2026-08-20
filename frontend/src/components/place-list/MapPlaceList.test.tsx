@@ -208,10 +208,12 @@ describe('MapPlaceList', () => {
     expect(screen.getByText('1 lieu')).toBeVisible()
     expect(container.querySelector('input[type="search"]')).toBeVisible()
     expect(container.querySelector('.places-advanced-filter')).toBeVisible()
-    expect(container.querySelector('.places-place-category')).toHaveTextContent('Église–À faire')
+    expect(container.querySelector('.places-place-category')).toHaveTextContent('Église–À faire–Patrimoine')
     expect(container.querySelector('.places-place-status')).toHaveStyle({ color: '#2563EB' })
     expect(container.querySelector('.place-list-tag')).toHaveTextContent('Patrimoine')
     expect(container.querySelector('.place-list-tag')).toHaveStyle({ backgroundColor: '#336699', color: '#FFFFFF' })
+    expect(container.querySelector('.place-list-tag')?.parentElement).toHaveClass('places-place-tags')
+    expect(container.querySelector('.places-place-bottom')).not.toBeInTheDocument()
     expect(container.querySelector('.place-list-category-bubble')).toHaveStyle({ backgroundColor: '#2563EB', borderColor: '#2563EB' })
     expect(container.querySelector('.place-list-category-bubble [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
     expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).not.toBeInTheDocument()
@@ -242,8 +244,13 @@ describe('MapPlaceList', () => {
 
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
-    expect(await screen.findByLabelText('Note 4.5')).toHaveStyle({ color: '#16A34A' })
-    expect(screen.getByLabelText('Note 3.5')).toHaveStyle({ color: '#2563EB' })
+    const visitedRating = await screen.findByLabelText('Note 4.5')
+    const plannedRating = screen.getByLabelText('Note 3.5')
+    expect(visitedRating).toHaveStyle({ color: '#16A34A' })
+    expect(plannedRating).toHaveStyle({ color: '#2563EB' })
+    expect(visitedRating.parentElement).toHaveClass('places-place-actions')
+    expect(visitedRating.nextElementSibling).toHaveClass('favorite')
+    expect(plannedRating.parentElement).toHaveClass('places-place-actions')
   })
 
   it('keeps POIs draggable during trip planning and marks reused places without muting them', async () => {

@@ -33,6 +33,7 @@ export const commonFr = {
   'nav.main': 'Navigation CartaVault',
   'nav.mapContext': 'Navigation de la carte',
   'nav.backToMaps': 'Retour aux cartes',
+  'nav.chooseMap': 'Choisir une carte',
   'nav.mapActions': 'Actions de la carte',
   'nav.collapse': 'Réduire le menu',
   'nav.expand': 'Développer le menu',

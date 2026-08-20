@@ -10,6 +10,13 @@ const poiMap: PoiMap = {
   effective_default_zoom: 6, min_latitude: null, max_latitude: null, min_longitude: null, max_longitude: null,
   created_at: '', updated_at: '', place_count: 3, trip_count: 1, can_edit: true, can_export: true, can_import: true, can_manage_members: true,
 }
+const belgiumMap: PoiMap = {
+  ...poiMap,
+  id: 'map-2',
+  name: 'Escapade belge',
+  country_id: 'be',
+  country: { id: 'be', iso_alpha2: 'BE', iso_alpha3: 'BEL', name: 'Belgique' },
+}
 
 describe('MapContextNavigation', () => {
   afterEach(cleanup)
@@ -17,9 +24,15 @@ describe('MapContextNavigation', () => {
   it('identifies the map and switches contextual modules', () => {
     const onPanelChange = vi.fn()
     const onOpenTrips = vi.fn()
-    render(<MapContextNavigation poiMap={poiMap} activePanel="places" tripPlanningActive={false} onBackToMaps={vi.fn()} onPanelChange={onPanelChange} onOpenTrips={onOpenTrips} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
+    const onMapChange = vi.fn()
+    render(<MapContextNavigation poiMap={poiMap} maps={[poiMap, belgiumMap]} activePanel="places" tripPlanningActive={false} onBackToMaps={vi.fn()} onMapChange={onMapChange} onPanelChange={onPanelChange} onOpenTrips={onOpenTrips} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
     expect(screen.getByText('Carnet de France')).toBeInTheDocument()
     expect(screen.getByText('France')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Choisir une carte' }))
+    const belgiumOption = screen.getByRole('option', { name: /Escapade belge/ })
+    expect(belgiumOption.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/be.svg')
+    fireEvent.click(belgiumOption)
+    expect(onMapChange).toHaveBeenCalledWith('map-2')
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
     expect(onOpenTrips).toHaveBeenCalledOnce()
@@ -34,7 +47,7 @@ describe('MapContextNavigation', () => {
     const onExport = vi.fn()
     const onSettings = vi.fn()
     const onMembers = vi.fn()
-    render(<MapContextNavigation poiMap={poiMap} activePanel="places" tripPlanningActive={false} onBackToMaps={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={onImport} onExport={onExport} onSettings={onSettings} onMembers={onMembers} />)
+    render(<MapContextNavigation poiMap={poiMap} maps={[poiMap]} activePanel="places" tripPlanningActive={false} onBackToMaps={vi.fn()} onMapChange={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={onImport} onExport={onExport} onSettings={onSettings} onMembers={onMembers} />)
     fireEvent.click(screen.getByRole('button', { name: 'Actions de la carte' }))
     expect(screen.getByRole('menuitem', { name: 'Champs des POI' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Membres' })).toBeInTheDocument()
@@ -44,7 +57,7 @@ describe('MapContextNavigation', () => {
   })
 
   it('hides management actions from a read-only map', () => {
-    render(<MapContextNavigation poiMap={{ ...poiMap, can_edit: false, can_export: false, can_import: false, can_manage_members: false }} activePanel="places" tripPlanningActive={false} onBackToMaps={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
+    render(<MapContextNavigation poiMap={{ ...poiMap, can_edit: false, can_export: false, can_import: false, can_manage_members: false }} maps={[poiMap]} activePanel="places" tripPlanningActive={false} onBackToMaps={vi.fn()} onMapChange={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
     expect(screen.queryByRole('button', { name: 'Actions de la carte' })).not.toBeInTheDocument()
   })
 })

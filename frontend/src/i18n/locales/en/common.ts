@@ -35,6 +35,7 @@ export const commonEn = {
   'nav.main': 'CartaVault navigation',
   'nav.mapContext': 'Map navigation',
   'nav.backToMaps': 'Back to maps',
+  'nav.chooseMap': 'Choose a map',
   'nav.mapActions': 'Map actions',
   'nav.collapse': 'Collapse menu',
   'nav.expand': 'Expand menu',

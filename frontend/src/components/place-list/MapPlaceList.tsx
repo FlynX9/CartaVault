@@ -1217,7 +1217,9 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         </span>
                       )}
                       <span className="places-place-copy">
-                        <strong title={place.name}>{place.name}</strong>
+                        <span className="places-place-title-row">
+                          <strong title={place.name}>{place.name}</strong>
+                        </span>
                         {displayMode === "expanded" ? (
                           <>
                             <span className="places-place-location">{formatLocation(place)}</span>
@@ -1225,23 +1227,25 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                               {primary && (
                                 <>
                                   <CategoryIconPreview iconId={primary.icon} size={14} showLabel={false} />
-                                  {primary.name}
+                                  <span className="places-place-category-name">{primary.name}</span>
                                   <i aria-hidden="true">–</i>
                                 </>
                               )}
                               <b className="places-place-status" style={{ color: place.status.color }}>
                                 {place.status.name}
                               </b>
-                            </span>
-                            <span className="places-place-bottom">
-                              {place.tags.map((tag) => (
-                                <span className="place-list-tag" key={tag.id} style={getTagColorStyle(tag.color)}>
-                                  {tag.name}
-                                </span>
-                              ))}
-                              <span className="places-place-rating" style={{ color: place.status.color }} aria-label={rating == null ? "Aucune note" : `Note ${rating}`}>
-                                ★ {rating ?? "—"}
-                              </span>
+                              {place.tags.length > 0 && (
+                                <>
+                                  <i aria-hidden="true">–</i>
+                                  <span className="places-place-tags">
+                                    {place.tags.map((tag) => (
+                                      <span className="place-list-tag" key={tag.id} style={getTagColorStyle(tag.color)}>
+                                        {tag.name}
+                                      </span>
+                                    ))}
+                                  </span>
+                                </>
+                              )}
                             </span>
                           </>
                         ) : (
@@ -1261,10 +1265,13 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                     </button>
                     {displayMode === "expanded" && (
                       <aside className="places-place-actions" aria-label={`Actions pour ${place.name}`}>
+                        <span className="places-place-rating" style={{ color: place.status.color }} aria-label={rating == null ? "Aucune note" : `Note ${rating}`}>
+                          ★ {rating ?? "—"}
+                        </span>
                         <button className={place.is_favorite ? "favorite active" : "favorite"} type="button" aria-label={place.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"} onClick={() => void toggleFavorite(place)}>
                           <Heart size={20} fill={place.is_favorite ? "currentColor" : "none"} />
                         </button>
-                        <div>
+                        <div className="places-place-secondary-actions">
                           <span className="places-map-actions">
                             {canAddToTripTarget && (
                               <span className="places-trip-add-slot">
