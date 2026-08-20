@@ -9,6 +9,7 @@ interface Props {
   focus: [number, number]
   expanded?: boolean
   onExpandedChange?: (expanded: boolean) => void
+  persistent?: boolean
   countryCode?: string
   selected: GeocodingResult | null
   canCreate?: boolean
@@ -25,9 +26,9 @@ const SEARCH_EXAMPLES = [
   '48.8566, 2.3522',
 ]
 
-export function GeographicSearch({ focus, expanded: controlledExpanded, onExpandedChange, countryCode, selected, canCreate = true, tripAddTargetLabel = null, onSelect, onClear, onCreate, onAddToTrip }: Props) {
+export function GeographicSearch({ focus, expanded: controlledExpanded, onExpandedChange, persistent = false, countryCode, selected, canCreate = true, tripAddTargetLabel = null, onSelect, onClear, onCreate, onAddToTrip }: Props) {
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false)
-  const expanded = controlledExpanded ?? uncontrolledExpanded
+  const expanded = persistent || (controlledExpanded ?? uncontrolledExpanded)
   const setExpanded = onExpandedChange ?? setUncontrolledExpanded
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodingResult[]>([])
@@ -38,7 +39,7 @@ export function GeographicSearch({ focus, expanded: controlledExpanded, onExpand
   const controller = useRef<AbortController | null>(null)
   const section = useRef<HTMLElement>(null)
   const input = useRef<HTMLInputElement>(null)
-  const legacyMode = controlledExpanded === undefined
+  const legacyMode = controlledExpanded === undefined && !persistent
 
   const resetSearch = () => {
     controller.current?.abort()
@@ -52,25 +53,26 @@ export function GeographicSearch({ focus, expanded: controlledExpanded, onExpand
   }
 
   const closeSearch = () => {
-    if (!legacyMode) {
+    if (!legacyMode || persistent) {
       resetSearch()
       if (selected) onClear()
     } else setOpen(false)
-    setExpanded(false)
+    if (!persistent) setExpanded(false)
   }
 
   useEffect(() => () => controller.current?.abort(), [])
 
   useEffect(() => {
-    if (!expanded || legacyMode) return
+    if (!expanded || legacyMode || persistent) return
     setOpen(true)
     const frame = requestAnimationFrame(() => input.current?.focus())
     return () => cancelAnimationFrame(frame)
-  }, [expanded, legacyMode])
+  }, [expanded, legacyMode, persistent])
 
   useEffect(() => {
     const closeFromOutside = (event: PointerEvent) => {
       if (section.current?.contains(event.target as Node)) return
+      if (persistent) { setOpen(false); return }
       closeSearch()
     }
     document.addEventListener('pointerdown', closeFromOutside)
@@ -169,7 +171,7 @@ export function GeographicSearch({ focus, expanded: controlledExpanded, onExpand
     {selection}
   </section>
 
-  return <section ref={section} className={`geographic-search geographic-search--toolbar${expanded ? ' is-pinned-open' : ''}`} aria-label="Recherche géographique">
+  return <section ref={section} className={`geographic-search geographic-search--toolbar${persistent ? ' geographic-search--persistent' : ''}${expanded ? ' is-pinned-open' : ''}`} aria-label="Recherche géographique">
     {!expanded ? <button type="button" className="geographic-search__toggle" aria-expanded="false" aria-label="Recherche cartographique" onClick={() => setExpanded(true)}>
       <Search size={18} aria-hidden="true" />
       <span>Recherche</span>
@@ -191,7 +193,7 @@ export function GeographicSearch({ focus, expanded: controlledExpanded, onExpand
             onKeyDown={handleKeyDown}
           />
         </label>
-        <button type="button" className="geographic-search__close" aria-label="Fermer la recherche cartographique" onClick={closeSearch}><X size={18} aria-hidden="true" /></button>
+        <button type="button" className="geographic-search__close" aria-label={persistent ? "Effacer la recherche cartographique" : "Fermer la recherche cartographique"} onClick={closeSearch}><X size={18} aria-hidden="true" /></button>
       </form>
       {open && !query.trim() && !loading && <div className="geographic-search__popover geographic-search__examples" id="geocoding-results">
         <span className="geographic-search__popover-title">Exemples</span>

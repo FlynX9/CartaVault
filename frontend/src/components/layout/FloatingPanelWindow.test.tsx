@@ -18,6 +18,13 @@ function renderPanel(maxWidth?: number) {
   );
 }
 
+function setWorkspaceDimensions(panel: HTMLElement, width = 1000, height = 800) {
+  const workspace = panel.closest<HTMLElement>(".map-workspace")!;
+  Object.defineProperty(workspace, "clientWidth", { configurable: true, value: width });
+  Object.defineProperty(workspace, "clientHeight", { configurable: true, value: height });
+  return workspace;
+}
+
 describe("FloatingPanelWindow", () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(cleanup);
@@ -80,6 +87,7 @@ describe("FloatingPanelWindow", () => {
   it("attaches a floating panel when it is dragged to the left edge", () => {
     renderPanel();
     const panel = screen.getByLabelText("Navigation");
+    setWorkspaceDimensions(panel);
     fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
     const header = screen.getByText("Navigation", { selector: "header" });
 
@@ -88,7 +96,204 @@ describe("FloatingPanelWindow", () => {
     fireEvent.pointerUp(panel, { pointerId: 3, clientX: 20, clientY: 30 });
 
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
+    expect(panel).toHaveAttribute("data-dock-slot", "top");
     expect(screen.getByRole("button", { name: "Détacher le panneau" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["top", 40, "Moitié haute · gauche"],
+    ["full", 400, "Toute la hauteur · gauche"],
+    ["bottom", 760, "Moitié basse · gauche"],
+  ] as const)("previews and persists the %s dock zone from the pointer height", (slot, clientY, previewLabel) => {
+    renderPanel();
+    const panel = screen.getByLabelText("Navigation");
+    setWorkspaceDimensions(panel);
+    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const header = screen.getByText("Navigation", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 31, clientX: 120, clientY: 200 });
+    fireEvent.pointerMove(panel, { pointerId: 31, clientX: 20, clientY });
+    expect(screen.getByText(previewLabel)).toBeInTheDocument();
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", slot);
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveStyle({ height: slot === "full" ? "800px" : "400px" });
+    fireEvent.pointerUp(panel, { pointerId: 31, clientX: 20, clientY });
+
+    expect(panel).toHaveAttribute("data-panel-mode", "docked");
+    expect(panel).toHaveAttribute("data-dock-side", "left");
+    expect(panel).toHaveAttribute("data-dock-column", "0");
+    expect(panel).toHaveAttribute("data-dock-slot", slot);
+    expect(panel).toHaveStyle({ height: "100%" });
+    expect(JSON.parse(window.localStorage.getItem(panelStateStorageKey("test:panel")) ?? "{}").dockPlacement).toEqual({ side: "left", column: 0, slot });
+  });
+
+  it("keeps the upper dock target within the top fifth on both sides", () => {
+    renderPanel();
+    const panel = screen.getByLabelText("Navigation");
+    setWorkspaceDimensions(panel);
+    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const header = screen.getByText("Navigation", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 36, clientX: 120, clientY: 200 });
+    fireEvent.pointerMove(panel, { pointerId: 36, clientX: 20, clientY: 161 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "left");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "full");
+
+    fireEvent.pointerMove(panel, { pointerId: 36, clientX: 980, clientY: 161 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "full");
+    fireEvent.pointerUp(panel, { pointerId: 36, clientX: 980, clientY: 161 });
+  });
+
+  it("starts the lower dock target within the bottom two fifths on both sides", () => {
+    renderPanel();
+    const panel = screen.getByLabelText("Navigation");
+    setWorkspaceDimensions(panel);
+    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const header = screen.getByText("Navigation", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 37, clientX: 120, clientY: 200 });
+    fireEvent.pointerMove(panel, { pointerId: 37, clientX: 20, clientY: 481 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "left");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "bottom");
+
+    fireEvent.pointerMove(panel, { pointerId: 37, clientX: 980, clientY: 481 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "bottom");
+    fireEvent.pointerUp(panel, { pointerId: 37, clientX: 980, clientY: 481 });
+  });
+
+  it("keeps half-height previews at an exact visual 50/50 split", () => {
+    renderPanel();
+    const panel = screen.getByLabelText("Navigation");
+    const workspace = setWorkspaceDimensions(panel);
+    vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue({
+      x: 200,
+      y: 100,
+      left: 200,
+      top: 100,
+      right: 1000,
+      bottom: 700,
+      width: 800,
+      height: 600,
+      toJSON: () => ({}),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const header = screen.getByText("Navigation", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 38, clientX: 320, clientY: 300 });
+    fireEvent.pointerMove(panel, { pointerId: 38, clientX: 990, clientY: 581 });
+
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "bottom");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveStyle({
+      left: "664px",
+      top: "400px",
+      width: "336px",
+      height: "300px",
+    });
+    fireEvent.pointerUp(panel, { pointerId: 38, clientX: 990, clientY: 581 });
+  });
+
+  it("docks a second full-height panel in the column next to an occupied dock", () => {
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:first" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:second" initialGeometry={geometry} minWidth={320} defaultMode="floating" resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const first = screen.getByLabelText("Navigation");
+    const second = screen.getByLabelText("Sortie");
+    setWorkspaceDimensions(first);
+    Object.defineProperty(first, "offsetWidth", { configurable: true, value: geometry.width });
+    const header = screen.getByText("Sortie", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 32, clientX: 650, clientY: 200 });
+    fireEvent.pointerMove(second, { pointerId: 32, clientX: geometry.width + 20, clientY: 400 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-column", "1");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "full");
+    fireEvent.pointerUp(second, { pointerId: 32, clientX: geometry.width + 20, clientY: 400 });
+
+    expect(first).toHaveAttribute("data-dock-column", "0");
+    expect(second).toHaveAttribute("data-panel-mode", "docked");
+    expect(second).toHaveAttribute("data-dock-side", "left");
+    expect(second).toHaveAttribute("data-dock-column", "1");
+    expect(second).toHaveAttribute("data-dock-slot", "full");
+  });
+
+  it("stacks top and bottom docked panels in the same column", () => {
+    window.localStorage.setItem(panelStateStorageKey("test:first-half"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "left", column: 0, slot: "top" } }));
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:first-half" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:second-half" initialGeometry={geometry} minWidth={320} defaultMode="floating" resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const first = screen.getByLabelText("Navigation");
+    const second = screen.getByLabelText("Sortie");
+    setWorkspaceDimensions(first);
+    const header = screen.getByText("Sortie", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 33, clientX: 650, clientY: 200 });
+    fireEvent.pointerMove(second, { pointerId: 33, clientX: 20, clientY: 760 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-column", "0");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "bottom");
+    fireEvent.pointerUp(second, { pointerId: 33, clientX: 20, clientY: 760 });
+
+    expect(first).toHaveAttribute("data-dock-slot", "top");
+    expect(second).toHaveAttribute("data-dock-column", "0");
+    expect(second).toHaveAttribute("data-dock-slot", "bottom");
+  });
+
+  it.each([
+    ["top", 40],
+    ["full", 400],
+    ["bottom", 760],
+  ] as const)("docks a panel in the %s zone on the right edge", (slot, clientY) => {
+    renderPanel();
+    const panel = screen.getByLabelText("Navigation");
+    setWorkspaceDimensions(panel);
+    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const header = screen.getByText("Navigation", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 34, clientX: 120, clientY: 200 });
+    fireEvent.pointerMove(panel, { pointerId: 34, clientX: 980, clientY });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", slot);
+    fireEvent.pointerUp(panel, { pointerId: 34, clientX: 980, clientY });
+
+    expect(panel).toHaveAttribute("data-panel-mode", "docked");
+    expect(panel).toHaveAttribute("data-dock-side", "right");
+    expect(panel).toHaveAttribute("data-dock-column", "0");
+    expect(panel).toHaveAttribute("data-dock-slot", slot);
+    expect(panel.querySelector("[data-resize-edge='w'] [data-resize-visibility='persistent']")).toBeInTheDocument();
+  });
+
+  it("docks on the right when the panel edge reaches the workspace before the pointer", () => {
+    renderPanel();
+    const panel = screen.getByLabelText("Navigation");
+    setWorkspaceDimensions(panel);
+    fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
+    const header = screen.getByText("Navigation", { selector: "header" });
+
+    fireEvent.pointerDown(header, { button: 0, pointerId: 35, clientX: 120, clientY: 200 });
+    fireEvent.pointerMove(panel, { pointerId: 35, clientX: 700, clientY: 400 });
+
+    expect(panel).toHaveStyle({ left: "568px" });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveStyle({ left: "580px", top: "0px" });
+    fireEvent.pointerUp(panel, { pointerId: 35, clientX: 700, clientY: 400 });
+
+    expect(panel).toHaveAttribute("data-panel-mode", "docked");
+    expect(panel).toHaveAttribute("data-dock-side", "right");
+    expect(panel).toHaveAttribute("data-dock-slot", "full");
   });
 
   it("reveals cardinal handles and keeps the active edge visible during resize", () => {

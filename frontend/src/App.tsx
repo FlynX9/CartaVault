@@ -1556,7 +1556,7 @@ function WorkspaceApp() {
     setTripViewOnly(false);
     setTripPlannerCollapsed(false);
     setPlacesPanelCollapsed(false);
-    navigate(withMap("/", activeMapId, activeStatusId));
+    if (location.pathname !== "/") navigate(withMap("/", activeMapId, activeStatusId));
     setWorkspacePanel("places");
     if (!tripPlannerOpen) setTripWorkspaceOpening(true);
     setTripPlannerOpen(true);
@@ -1564,8 +1564,8 @@ function WorkspaceApp() {
   };
 
   const toggleTripsFromNavigation = () => {
-    if (window.matchMedia?.('(max-width: 760px)').matches === true && tripPlannerOpen) {
-      changeTripViewOnly(!tripViewOnly);
+    if (tripPlannerOpen) {
+      handleWorkspacePanelChange(null);
       return;
     }
     openTrips();
@@ -1612,7 +1612,6 @@ function WorkspaceApp() {
           maps={maps}
           activePanel={workspacePanel}
           tripPlanningActive={tripPlannerOpen}
-          onBackToMaps={() => handleWorkspacePanelChange('maps')}
           onMapChange={handleContextMapChange}
           onPanelChange={handleWorkspacePanelChange}
           onOpenTrips={toggleTripsFromNavigation}

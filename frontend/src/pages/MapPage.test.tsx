@@ -186,7 +186,13 @@ describe('MapPage', () => {
       trip: { id: 'trip-1', days: [] } as never,
     }
     const { rerender } = render(<MemoryRouter><MapPage {...props} tripViewOnly={false} /></MemoryRouter>)
-    expect(screen.getByLabelText('Recherche géographique')).toBeVisible()
+    const search = screen.getByLabelText('Recherche géographique')
+    expect(search).toBeVisible()
+    expect(search).toHaveClass('geographic-search--persistent', 'is-pinned-open')
+    expect(search.closest('.map-geographic-search-control')).toBeInTheDocument()
+    expect(search.closest('.map-overlay-controls')).not.toBeInTheDocument()
+    expect(within(search).getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' })).toBeVisible()
+    expect(within(screen.getByLabelText('Contrôles de la carte')).queryByText('Recherche')).not.toBeInTheDocument()
 
     rerender(<MemoryRouter><MapPage {...props} tripViewOnly /></MemoryRouter>)
     expect(screen.queryByLabelText('Recherche géographique')).not.toBeInTheDocument()

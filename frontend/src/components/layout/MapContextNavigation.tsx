@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronLeft, CircleDot, Download, Ellipsis, FileUp, MapPin, Route, Settings2, Shapes, Spline, Tag, Users } from 'lucide-react'
+import { ChevronDown, CircleDot, Download, Ellipsis, FileUp, MapPin, Route, Settings2, Shapes, Spline, Tag, Users } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n'
 import { CountryFlag } from '../maps/CountryFlag'
@@ -11,7 +11,6 @@ interface Props {
   maps: PoiMap[]
   activePanel: WorkspacePanel
   tripPlanningActive: boolean
-  onBackToMaps: () => void
   onMapChange: (mapId: string) => void
   onPanelChange: (panel: WorkspacePanel) => void
   onOpenTrips: () => void
@@ -25,7 +24,7 @@ function tabClass(active: boolean): string {
   return `map-context-navigation__tab${active ? ' is-active' : ''}`
 }
 
-export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningActive, onBackToMaps, onMapChange, onPanelChange, onOpenTrips, onImport, onExport, onSettings, onMembers }: Props) {
+export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningActive, onMapChange, onPanelChange, onOpenTrips, onImport, onExport, onSettings, onMembers }: Props) {
   const { t } = useI18n()
   const [openMenu, setOpenMenu] = useState<'maps' | 'organization' | 'more' | null>(null)
   const navigationRef = useRef<HTMLElement>(null)
@@ -50,13 +49,12 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
     setOpenMenu(null)
     onPanelChange(panel)
   }
+  const placesActive = activePanel === 'places' && !tripPlanningActive
   const organizationActive = activePanel === 'categories' || activePanel === 'tags' || activePanel === 'statuses' || activePanel === 'annotation-templates'
   const hasMoreActions = poiMap.can_edit === true || poiMap.can_export !== false || poiMap.can_manage_members === true
 
   return <nav ref={navigationRef} className="map-context-navigation" aria-label={t('nav.mapContext')}>
     <div className="map-context-navigation__identity">
-      <button type="button" className="map-context-navigation__back" onClick={onBackToMaps} aria-label={t('nav.backToMaps')} title={t('nav.backToMaps')}><ChevronLeft size={18} /><span>{t('nav.maps')}</span></button>
-      <span className="map-context-navigation__identity-separator" aria-hidden="true" />
       <div className="map-context-navigation__menu-host map-context-navigation__map-switcher">
         <button type="button" className="map-context-navigation__map-trigger" aria-label={t('nav.chooseMap')} aria-haspopup="listbox" aria-expanded={openMenu === 'maps'} onClick={() => setOpenMenu((current) => current === 'maps' ? null : 'maps')}>
           <CountryFlag countryCode={poiMap.country.iso_alpha2} className="map-context-navigation__map-flag" fallbackSize={18} />
@@ -72,7 +70,7 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
       </div>
     </div>
     <div className="map-context-navigation__tabs">
-      <button type="button" className={tabClass(activePanel === 'places' && !tripPlanningActive)} aria-pressed={activePanel === 'places' && !tripPlanningActive} onClick={() => selectPanel('places')}><MapPin size={17} /><span>{t('nav.places')}</span></button>
+      <button type="button" className={tabClass(placesActive)} aria-pressed={placesActive} onClick={() => selectPanel(placesActive ? null : 'places')}><MapPin size={17} /><span>{t('nav.places')}</span></button>
       <button type="button" className={tabClass(tripPlanningActive)} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={17} /><span>{t('nav.trips')}</span></button>
       <div className="map-context-navigation__menu-host">
         <button type="button" className={tabClass(organizationActive)} aria-expanded={openMenu === 'organization'} onClick={() => setOpenMenu((current) => current === 'organization' ? null : 'organization')}><Shapes size={17} /><span>{t('nav.organization')}</span><ChevronDown size={14} /></button>
@@ -93,5 +91,6 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
         </div>}
       </div>}
     </div>
+    <div id="map-context-toolbar-slot" className="map-context-navigation__toolbar-slot map-workspace map-workspace-toolbar-scope" />
   </nav>
 }

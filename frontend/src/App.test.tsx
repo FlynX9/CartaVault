@@ -90,6 +90,7 @@ describe('map URL workspace', () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
     expect(screen.queryByRole('combobox', { name: 'Carte' })).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('workspace')).toHaveAttribute('data-focus', '1'))
+    expect(document.getElementById('map-context-toolbar-slot')?.closest('nav')).toHaveAccessibleName('Navigation de la carte')
   })
 
   it('opens the maps panel and starts creation from its dedicated button', async () => {
@@ -169,19 +170,22 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
   })
 
-  it('opens the timeline when the active Sorties navigation is tapped again on mobile', async () => {
+  it('toggles the Sorties panel when its navigation button is tapped on mobile', async () => {
     vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === '(max-width: 760px)', media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
 
     const tripsNavigation = await screen.findByRole('button', { name: 'Sorties' })
     fireEvent.click(tripsNavigation)
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.click(tripsNavigation)
-    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
+    expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument()
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'false')
 
     fireEvent.click(tripsNavigation)
-    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('opens linked and free stop cards from the trip timeline without changing its fitted map view', async () => {
@@ -213,6 +217,23 @@ describe('map URL workspace', () => {
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
+  })
+
+  it('toggles the Places panel without navigating away from the map', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+
+    const placesNavigation = await screen.findByRole('button', { name: 'Lieux' })
+    expect(placesNavigation).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
+
+    fireEvent.click(placesNavigation)
+    expect(placesNavigation).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
+
+    fireEvent.click(placesNavigation)
+    expect(placesNavigation).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
   })
 
   it('keeps the trip workspace open when unsaved settings cancel main navigation', async () => {

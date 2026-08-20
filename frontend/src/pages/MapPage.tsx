@@ -28,6 +28,10 @@ import { mapExtentGeoJson, pointIsInsideExtent } from '../components/map/mapExte
 import { mapPlaceMatchesMarkerFilter } from '../components/map/mapMarkerFilterContext'
 import { isTemporaryMapMode, resolveInteractiveMapMode, type InternalMapToolMode } from '../components/map/mapToolMode'
 import { getTripMapBounds } from '../components/trips/tripMapBounds'
+
+function MapToolbarPortal({ target, children }: { target: HTMLElement | null; children: ReactNode }) {
+  return target ? createPortal(children, target) : children
+}
 import { getPlaceDetails } from '../api/places'
 import { createPlaceAnnotation, getPlaceAnnotations } from '../api/annotations'
 import type { AnnotationTemplate, PlaceAnnotation } from '../types/annotation'
@@ -253,7 +257,8 @@ export function MapPage({
   const [contextNotice, setContextNotice] = useState<string | null>(null)
   const [markerFilter, setMarkerFilter] = useState<MapMarkerFilter>(EMPTY_MAP_MARKER_FILTER)
   const [countryMaskEnabled, setCountryMaskEnabled] = useState(loadCountryMaskPreference)
-  const [openMapPanel, setOpenMapPanel] = useState<'tools' | 'legend' | 'search' | 'basemap' | null>(null)
+  const [openMapPanel, setOpenMapPanel] = useState<'tools' | 'legend' | 'basemap' | null>(null)
+  const [mapToolbarHost, setMapToolbarHost] = useState<HTMLElement | null>(null)
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => loadPanelWidth(LEFT_PANEL_WIDTH_KEY, 430))
   const [rightPanelWidth, setRightPanelWidth] = useState(() => loadPanelWidth(RIGHT_PANEL_WIDTH_KEY, 640, TRIP_PANEL_MIN_WIDTH, TRIP_PANEL_MAX_WIDTH))
   const floatingPanelResetVersion = 0
@@ -304,6 +309,10 @@ export function MapPage({
   const workspaceWindowKey = workspacePanelId === 'places'
     ? tripPlanningActive ? TRIPS_PLACES_WINDOW_KEY : PLACES_WINDOW_KEY
     : `cartavault:desktop-workspace-window:${workspacePanelId}`
+
+  useEffect(() => {
+    setMapToolbarHost(document.getElementById('map-context-toolbar-slot'))
+  }, [])
 
   useEffect(() => {
     if (sidebarOpen && !tripPlanningActive) setActiveFloatingPanel('editor')
@@ -733,7 +742,12 @@ export function MapPage({
           <button type="button" className="secondary-button" onClick={() => setAnnotationDrawing(null)}><X size={14} />Annuler</button>
           {annotationDrawingComplete && <button type="button" className="primary-button" onClick={() => void finishAnnotationDrawing()}><Check size={14} />Valider</button>}
         </div>}
-        <div className="map-overlay-controls" aria-label="Contrôles de la carte">
+        {!tripViewOnly && (
+          <div className="map-geographic-search-control">
+            <GeographicSearch persistent focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
+          </div>
+        )}
+        <MapToolbarPortal target={mapToolbarHost}><div className="map-overlay-controls" aria-label="Contrôles de la carte">
           <MapToolsControl
             expanded={openMapPanel === 'tools'}
             onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'tools' : null)}
@@ -790,11 +804,6 @@ export function MapPage({
           <div className="map-overlay-control-slot map-overlay-control-slot--legend">
             <StatusLegend statuses={statuses} expanded={openMapPanel === 'legend'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'legend' : null)} />
           </div>
-          {!tripViewOnly && (
-            <div className="map-overlay-control-slot map-overlay-control-slot--search">
-              <GeographicSearch expanded={openMapPanel === 'search'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'search' : null)} focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
-            </div>
-          )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
             <BasemapSelector expanded={openMapPanel === 'basemap'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'basemap' : null)} activeBasemapId={basemapId} mapTheme={mapTheme} onBasemapChange={selectBasemap} offline={offlineBasemapActive} satelliteProvider={configuredSatelliteProvider} />
           </div>
@@ -814,7 +823,7 @@ export function MapPage({
               <SquareDashed size={18} aria-hidden="true" />
             </button>
           </div>}
-        </div>
+        </div></MapToolbarPortal>
         {errorMessage !== null && (
           <div className="status-banner error-status" role="alert">
             <strong>Impossible de charger la carte.</strong>

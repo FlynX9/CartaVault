@@ -28,6 +28,21 @@ describe('GeographicSearch', () => {
     expect(screen.getByText('Exemples')).toBeInTheDocument()
   })
 
+  it('keeps the map-centered search field expanded without collapsing outside', () => {
+    const { container } = render(<GeographicSearch persistent focus={[48, 2]} selected={null} onSelect={vi.fn()} onClear={vi.fn()} onCreate={vi.fn()} />)
+
+    const input = screen.getByRole('searchbox', { name: 'Adresse, lieu ou coordonnées' })
+    expect(container.querySelector('.geographic-search')).toHaveClass('geographic-search--persistent', 'is-pinned-open')
+    expect(screen.queryByRole('button', { name: 'Recherche cartographique' })).not.toBeInTheDocument()
+    fireEvent.change(input, { target: { value: 'Paris' } })
+    fireEvent.pointerDown(document.body)
+    expect(input).toHaveValue('Paris')
+    expect(container.querySelector('.geographic-search')).toHaveClass('is-pinned-open')
+    fireEvent.click(screen.getByRole('button', { name: 'Effacer la recherche cartographique' }))
+    expect(input).toHaveValue('')
+    expect(input).toBeVisible()
+  })
+
   it('runs example searches through the existing geocoding service', async () => {
     render(<ControlledSearch />)
     fireEvent.click(screen.getByRole('button', { name: 'Recherche cartographique' }))
