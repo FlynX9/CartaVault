@@ -1,4 +1,4 @@
-export type GlobalFeedbackKind = 'error' | 'success'
+export type GlobalFeedbackKind = 'error' | 'success' | 'information'
 
 export interface GlobalFeedbackDetail {
   kind: GlobalFeedbackKind

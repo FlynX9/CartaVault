@@ -1,5 +1,35 @@
 [
   {
+    "id": "01-global-dashboard",
+    "user": "owner",
+    "route": "/dashboard?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr"
+  },
+  {
+    "id": "02-maps-library",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "maps"
+  },
+  {
+    "id": "03-map-context-places",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr"
+  },
+  {
+    "id": "04-map-context-organisation",
+    "user": "owner",
+    "route": "/?map=76ba751c-b132-520d-857d-a96d6663819c",
+    "theme": "light",
+    "language": "fr",
+    "view": "map-organisation"
+  },
+  {
     "id": "login-fr-light",
     "route": "/login",
     "theme": "light",

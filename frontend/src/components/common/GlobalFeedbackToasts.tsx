@@ -1,10 +1,10 @@
-import { CircleAlert, CircleCheck, X } from 'lucide-react'
+import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { addNotificationHistory } from '../notifications/history'
 import { GLOBAL_FEEDBACK_EVENT, type GlobalFeedbackDetail } from './globalFeedback'
 
-type FeedbackKind = 'error' | 'success'
+type FeedbackKind = 'error' | 'success' | 'information'
 
 interface FeedbackMessage {
   id: number
@@ -115,7 +115,7 @@ export function GlobalFeedbackToasts() {
   }, [])
 
   if (!feedback) return null
-  const Icon = feedback.kind === 'success' ? CircleCheck : CircleAlert
+  const Icon = feedback.kind === 'success' ? CircleCheck : feedback.kind === 'information' ? Info : CircleAlert
   return <aside key={feedback.id} className={`cv-global-feedback is-${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'} aria-live={feedback.kind === 'error' ? 'assertive' : 'polite'} data-cv-global-feedback="true">
     <Icon className="cv-global-feedback__icon" size={20} aria-hidden="true" />
     <p>{feedback.message}</p>

@@ -251,7 +251,6 @@ export function MapPage({
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
   const mapTheme = mapThemeFromBasemap(basemapId)
   const [photoMarkersEnabled, setPhotoMarkersEnabled] = useState(false)
-  const [basemapNotice, setBasemapNotice] = useState<string | null>(null)
   const [classicBasemapProvider, setClassicBasemapProvider] = useState<ClassicBasemapProvider>('osm')
   const [configuredSatelliteProvider, setConfiguredSatelliteProvider] = useState<SatelliteBasemapProvider>('none')
   const [googleSatelliteMode, setGoogleSatelliteMode] = useState<GoogleSatelliteMode>('maps-js')
@@ -444,7 +443,6 @@ export function MapPage({
         const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
         setBasemapId(preferred)
       }
-      setBasemapNotice(null)
     }
     window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated)
     return () => { current = false; window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, onPreferencesUpdated) }
@@ -521,14 +519,13 @@ export function MapPage({
         if (navigator.onLine === false) {
           onlineBasemapRef.current ??= basemapId
           setBasemapId(resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light')
-          setBasemapNotice(offlineReady
+          publishGlobalFeedback('information', offlineReady
             ? 'Fond CartaVault hors ligne activé temporairement. Votre préférence sera restaurée au retour de la connexion.'
             : 'Le mode hors ligne utilise uniquement un fond CartaVault téléchargé pour cette carte.')
         } else if (navigator.onLine && onlineBasemapRef.current) {
           const preferred = onlineBasemapRef.current
           onlineBasemapRef.current = null
           setBasemapId(preferred)
-          setBasemapNotice(null)
         }
       } catch {
         // A transient status failure must not rewrite the user's preference.
@@ -701,7 +698,6 @@ export function MapPage({
     // would otherwise turn a satellite choice back into the initial OSM map.
     explicitBasemapSelectionRef.current = id
     setBasemapId(id)
-    setBasemapNotice(null)
     tileFailuresRef.current.clear()
     failedBasemapsRef.current.clear()
     const currentPreferences = accountPreferencesRef.current
@@ -733,11 +729,11 @@ export function MapPage({
     if (failures < TILE_ERROR_FALLBACK_THRESHOLD) return
     failedBasemapsRef.current.add(sourceId)
     if (sourceId === 'osm') {
-      setBasemapNotice('OpenStreetMap est temporairement indisponible. La carte sera réessayée automatiquement.')
+      publishGlobalFeedback('information', 'OpenStreetMap est temporairement indisponible. La carte sera réessayée automatiquement.')
       return
     }
     if (navigator.onLine === false) {
-      setBasemapNotice('Le fond CartaVault hors ligne est indisponible pour cette carte.')
+      publishGlobalFeedback('information', 'Le fond CartaVault hors ligne est indisponible pour cette carte.')
       return
     }
     const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'google-satellite-tiles' || sourceId === 'mapbox-satellite'
@@ -752,7 +748,7 @@ export function MapPage({
     })
     explicitBasemapSelectionRef.current = null
     setBasemapId(fallback)
-    setBasemapNotice(reason
+    publishGlobalFeedback('information', reason
       ? `${reason} ${getBasemap(fallback).label} a été activé automatiquement.`
       : `Le fond ${getBasemap(sourceId).label} est indisponible. ${getBasemap(fallback).label} a été activé automatiquement.`)
   }
@@ -916,8 +912,6 @@ export function MapPage({
             </button>
           </div>}
         </div>
-        {basemapNotice && <div className="basemap-error" role="status">{basemapNotice}</div>}
-
         {errorMessage !== null && (
           <div className="status-banner error-status" role="alert">
             <strong>Impossible de charger la carte.</strong>

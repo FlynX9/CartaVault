@@ -17,7 +17,7 @@ describe('StatusLegend', () => {
     const legend = screen.getByLabelText('Légende des statuts')
     expect(legend).toHaveClass('status-legend--collapsed')
     expect(screen.getByRole('button', { name: 'Afficher la légende des statuts' })).toHaveTextContent('Légende')
-    expect(screen.getByRole('list', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
 
     fireEvent.mouseEnter(legend)
     expect(legend).toHaveClass('status-legend--expanded')

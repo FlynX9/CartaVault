@@ -1,4 +1,4 @@
-import { Check, Download, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings2, Share2, Trash2, Users, X } from "lucide-react";
+import { Check, Clock3, Download, ExternalLink, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings2, Share2, Trash2, Users, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from "../../api/maps";
@@ -35,8 +35,19 @@ const normalize = (value: string) =>
     .replace(/\p{Diacritic}/gu, "")
     .toLocaleLowerCase();
 
+function previewTileUrl(poiMap: PoiMap): string {
+  const zoom = Math.max(2, Math.min(6, Math.round(poiMap.effective_default_zoom || 5)))
+  const scale = 2 ** zoom
+  const longitude = Math.max(-180, Math.min(180, poiMap.effective_center_longitude))
+  const latitude = Math.max(-85.0511, Math.min(85.0511, poiMap.effective_center_latitude))
+  const x = Math.floor(((longitude + 180) / 360) * scale)
+  const radians = latitude * Math.PI / 180
+  const y = Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * scale)
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
+}
+
 export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose, createRequest = 0 }: MapsWorkspacePanelProps) {
-  const { t } = useI18n();
+  const { t, formatDate } = useI18n();
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState("");
   const [invitations, setInvitations] = useState<PendingMapInvitation[]>([]);
@@ -44,6 +55,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   const [busyInvitationId, setBusyInvitationId] = useState<string | null>(null);
   const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null);
   const [offlineMap, setOfflineMap] = useState<PoiMap | null>(null);
+  const [optionsMapId, setOptionsMapId] = useState<string | null>(null);
   const createButton = useRef<HTMLButtonElement>(null);
   const invitationController = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -58,6 +70,21 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
     window.addEventListener("cartavault:close-mobile-modal-layers", closeDialogs);
     return () => window.removeEventListener("cartavault:close-mobile-modal-layers", closeDialogs);
   }, []);
+  useEffect(() => {
+    if (optionsMapId === null) return
+    const closeOutside = (event: PointerEvent) => {
+      if (!(event.target as HTMLElement | null)?.closest('.maps-catalog__options-host')) setOptionsMapId(null)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOptionsMapId(null)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [optionsMapId]);
 
   const loadInvitations = useCallback(() => {
     invitationController.current?.abort();
@@ -199,7 +226,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
             </li>
           ))}
           {filteredMaps.map((poiMap) => (
-            <li className={poiMap.id === activeMapId ? "active" : ""} key={poiMap.id}>
+            <li className={`maps-catalog__card${poiMap.id === activeMapId ? " active" : ""}`} key={poiMap.id}>
               <div className="maps-catalog__summary">
                 <div
                   className="maps-catalog__preview"
@@ -209,70 +236,40 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
                   })}
                   role="img"
                 >
-                  <CountryFlag countryCode={poiMap.country.iso_alpha2} className="maps-catalog__flag" />
+                  <img className="maps-catalog__preview-tile" src={previewTileUrl(poiMap)} alt="" loading="lazy" referrerPolicy="no-referrer" />
                 </div>
                 <div className="maps-catalog__details">
                   <span className={`maps-catalog__privacy${poiMap.is_shared ? " shared" : ""}`} aria-label={poiMap.is_shared ? t("maps.shared") : t("maps.private")} title={poiMap.is_shared ? t("maps.shared") : t("maps.private")}>
                     {poiMap.is_shared ? <Share2 size={15} /> : <LockKeyhole size={15} />}
                   </span>
-                  <strong>{poiMap.name}</strong>
-                  <span>{poiMap.country.name}</span>
+                  <div className="maps-catalog__title"><CountryFlag countryCode={poiMap.country.iso_alpha2} className="maps-catalog__flag" /><span className="maps-catalog__title-copy"><strong>{poiMap.name}</strong><small>{poiMap.country.name}</small></span></div>
+                  <span>{t('maps.createdOn', { date: poiMap.created_at ? formatDate(poiMap.created_at, { dateStyle: 'medium' }) : t('common.notAvailable') })} · {t(`maps.role.${poiMap.current_user_role === "owner" || poiMap.current_user_role === "editor" || poiMap.current_user_role === "viewer" ? poiMap.current_user_role : "admin"}`)}</span>
                   <div className="maps-catalog__metrics">
                     <span>
-                      <MapPin size={13} aria-hidden="true" />
+                      <MapPin size={16} aria-hidden="true" />
                       {t("maps.placeCount", { count: poiMap.place_count })}
                     </span>
                     <span>
-                      <Route size={13} aria-hidden="true" />
+                      <Route size={16} aria-hidden="true" />
                       {t("maps.tripCount", { count: poiMap.trip_count })}
                     </span>
+                    <span><Clock3 size={16} aria-hidden="true" />{t('maps.updatedOn', { date: poiMap.updated_at ? formatDate(poiMap.updated_at, { dateStyle: 'medium' }) : t('common.notAvailable') })}</span>
                   </div>
-                  <em>
-                    {t(`maps.role.${poiMap.current_user_role === "owner" || poiMap.current_user_role === "editor" || poiMap.current_user_role === "viewer" ? poiMap.current_user_role : "admin"}`)}
-                    {(poiMap.current_user_role === "editor" || poiMap.current_user_role === "viewer") && poiMap.owner_email && (
-                      <span className="maps-catalog__owner">
-                        {" "}
-                        — {poiMap.owner_email} [{poiMap.owner_display_name || poiMap.owner_email}]
-                      </span>
-                    )}
-                  </em>
+                  {(poiMap.current_user_role === "editor" || poiMap.current_user_role === "viewer") && poiMap.owner_email && <em className="maps-catalog__owner">{poiMap.owner_display_name || poiMap.owner_email}</em>}
+                  <div className="maps-catalog__actions">
+                    <button type="button" className="secondary-button maps-catalog__open" aria-label={t("maps.openNamed", { name: poiMap.name })} onClick={() => onOpen(poiMap.id)}>{t("maps.open")}<ExternalLink size={15} /></button>
+                    {poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={t("maps.export", { name: poiMap.name })} title={t("maps.export", { name: poiMap.name })} onClick={() => onExport(poiMap)}><Download size={17} /></button>}
+                    <div className="maps-catalog__options-host">
+                      <button type="button" className="panel-icon-button" aria-label={t('maps.optionsNamed', { name: poiMap.name })} title={t('maps.options')} aria-expanded={optionsMapId === poiMap.id} onClick={() => setOptionsMapId((current) => current === poiMap.id ? null : poiMap.id)}><Settings2 size={17} /></button>
+                      {optionsMapId === poiMap.id && <div className="maps-catalog__options-menu" role="menu" aria-label={t('maps.optionsNamed', { name: poiMap.name })}>
+                        <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setOfflineMap(poiMap) }}><HardDriveDownload size={16} /><span>{t('maps.offline')}</span></button>
+                        {poiMap.can_edit && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setSettingsMap(poiMap) }}><Settings2 size={16} /><span>{t("maps.fields")}</span></button>}
+                        {poiMap.can_manage_members && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); onMembers(poiMap) }}><Users size={16} /><span>{t("maps.members")}</span></button>}
+                        {poiMap.can_delete !== false && <button type="button" role="menuitem" className="danger" onClick={() => { setOptionsMapId(null); onDelete(poiMap) }}><Trash2 size={16} /><span>{t("maps.deleteNamed", { name: poiMap.name })}</span></button>}
+                      </div>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="maps-catalog__actions">
-                <button type="button" className="secondary-button" aria-label={t(poiMap.id === activeMapId ? "maps.openedNamed" : "maps.openNamed", { name: poiMap.name })} disabled={poiMap.id === activeMapId} onClick={() => onOpen(poiMap.id)}>
-                  {t(poiMap.id === activeMapId ? "maps.opened" : "maps.open")}
-                </button>
-                <button type="button" className="panel-icon-button" aria-label={`Rendre ${poiMap.name} disponible hors ligne`} title="Disponible hors ligne" onClick={() => setOfflineMap(poiMap)}>
-                  <HardDriveDownload size={16} />
-                </button>
-                {poiMap.can_edit && (
-                  <button
-                    type="button"
-                    className="panel-icon-button"
-                    aria-label={t("maps.configureFields", {
-                      name: poiMap.name,
-                    })}
-                    title={t("maps.fields")}
-                    onClick={() => setSettingsMap(poiMap)}
-                  >
-                    <Settings2 size={16} />
-                  </button>
-                )}
-                {poiMap.can_export !== false && (
-                  <button type="button" className="panel-icon-button" aria-label={t("maps.export", { name: poiMap.name })} title={t("maps.export", { name: poiMap.name })} onClick={() => onExport(poiMap)}>
-                    <Download size={16} />
-                  </button>
-                )}
-                {poiMap.can_manage_members && (
-                  <button type="button" className="panel-icon-button" aria-label={t("maps.manageMembers", { name: poiMap.name })} title={t("maps.members")} onClick={() => onMembers(poiMap)}>
-                    <Users size={16} />
-                  </button>
-                )}
-                {poiMap.can_delete !== false && (
-                  <button type="button" className="panel-icon-button danger" aria-label={t("maps.deleteNamed", { name: poiMap.name })} title={t("maps.deleteNamed", { name: poiMap.name })} onClick={() => onDelete(poiMap)}>
-                    <Trash2 size={16} />
-                  </button>
-                )}
               </div>
             </li>
           ))}
@@ -303,7 +300,7 @@ const FIELD_LABELS: Record<string, string> = {
   favorite: "Favori",
 };
 
-function PlaceFieldSettingsDialog({ poiMap, onClose, onSaved }: { poiMap: PoiMap; onClose: () => void; onSaved: () => void }) {
+export function PlaceFieldSettingsDialog({ poiMap, onClose, onSaved }: { poiMap: PoiMap; onClose: () => void; onSaved: () => void }) {
   const [fields, setFields] = useState<Record<string, boolean>>(() => Object.fromEntries(Object.keys(FIELD_LABELS).map((key) => [key, poiMap.place_field_config?.[key] !== false])));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

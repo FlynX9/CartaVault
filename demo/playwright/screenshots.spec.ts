@@ -10,7 +10,7 @@ type Scenario = {
   user?: 'owner' | 'editor' | 'viewer'
   theme?: 'light' | 'dark'
   language?: 'fr' | 'en'
-  view?: 'place-popup' | 'place-editor' | 'place-media' | 'place-annotations' | 'trip' | 'timeline' | 'trip-routing' | 'trip-export' | 'trip-offline' | 'media' | 'media-upload' | 'media-gps' | 'kmz-import' | 'maps' | 'create-map' | 'map-fields' | 'map-members' | 'map-export' | 'map-offline' | 'categories' | 'tags' | 'statuses' | 'profile-import' | 'tag-profile-import' | 'status-profile-import' | 'annotation-templates' | 'trash' | 'account' | 'account-preferences' | 'account-security' | 'account-email' | 'account-password' | 'account-totp' | 'account-recovery-codes' | 'account-email-mfa' | 'account-sessions' | 'account-api-keys' | 'account-api-key-dialog' | 'account-privacy' | 'account-offline' | 'account-delete' | 'admin' | 'admin-registration' | 'admin-user-details' | 'admin-quota-edit' | 'admin-vector' | 'admin-privacy' | 'admin-media-logs'
+  view?: 'place-popup' | 'place-editor' | 'place-media' | 'place-annotations' | 'trip' | 'timeline' | 'trip-routing' | 'trip-export' | 'trip-offline' | 'media' | 'media-upload' | 'media-gps' | 'kmz-import' | 'maps' | 'map-organisation' | 'create-map' | 'map-fields' | 'map-members' | 'map-export' | 'map-offline' | 'categories' | 'tags' | 'statuses' | 'profile-import' | 'tag-profile-import' | 'status-profile-import' | 'annotation-templates' | 'trash' | 'account' | 'account-preferences' | 'account-security' | 'account-email' | 'account-password' | 'account-totp' | 'account-recovery-codes' | 'account-email-mfa' | 'account-sessions' | 'account-api-keys' | 'account-api-key-dialog' | 'account-privacy' | 'account-offline' | 'account-delete' | 'admin' | 'admin-registration' | 'admin-user-details' | 'admin-quota-edit' | 'admin-vector' | 'admin-privacy' | 'admin-media-logs'
   mobile?: boolean
 }
 
@@ -181,35 +181,44 @@ async function prepareScenario(page: Page, scenario: Scenario) {
   }
 
   if (scenario.view === 'maps' || scenario.view === 'create-map' || scenario.view === 'map-fields' || scenario.view === 'map-members' || scenario.view === 'map-export' || scenario.view === 'map-offline') {
-    await page.getByRole('button', { name: isFrench ? 'Coffre' : 'Vault', exact: true }).click()
-    const panel = page.getByRole('complementary', { name: /Cartes|Maps/ })
+    await page.getByRole('button', { name: isFrench ? 'Cartes' : 'Maps', exact: true }).click()
+    const panel = page.getByRole('complementary', { name: /cartes|maps/i })
     await expect(panel).toBeVisible()
     if (scenario.view === 'create-map') {
       await panel.getByRole('button', { name: /Créer une carte|Create a map/ }).click()
       await expect(page.getByRole('dialog', { name: /Créer une carte|Create a map/ })).toBeVisible()
     } else if (scenario.view === 'map-fields') {
-      await panel.getByRole('button', { name: /Configurer les champs.*Carnet de France|Configure fields for Carnet de France/ }).click()
+      await panel.getByRole('button', { name: /Options de Carnet de France|Carnet de France options/ }).click()
+      await panel.getByRole('menuitem', { name: /Champs des POI|Place fields/ }).click()
       await expect(page.getByRole('dialog', { name: /Champs des POI|Place fields/ })).toBeVisible()
     } else if (scenario.view === 'map-members') {
-      await panel.getByRole('button', { name: /Gérer les membres.*Carnet de France|Manage members of Carnet de France/ }).click()
+      await panel.getByRole('button', { name: /Options de Carnet de France|Carnet de France options/ }).click()
+      await panel.getByRole('menuitem', { name: /Membres|Members/ }).click()
       await expect(page.getByRole('dialog', { name: /Accès à|Access to/ })).toBeVisible()
     } else if (scenario.view === 'map-export') {
       await panel.getByRole('button', { name: /Exporter Carnet de France|Export Carnet de France/ }).click()
       await expect(page.getByRole('dialog', { name: /Exporter|Export/ })).toBeVisible()
     } else if (scenario.view === 'map-offline') {
-      await panel.getByRole('button', { name: /Rendre Carnet de France disponible hors ligne/ }).click()
+      await panel.getByRole('button', { name: /Options de Carnet de France|Carnet de France options/ }).click()
+      await panel.getByRole('menuitem', { name: /Disponible hors ligne|Available offline/ }).click()
       await expect(page.getByRole('dialog', { name: /Rendre disponible hors ligne|Make available offline/ })).toBeVisible()
     }
     return
   }
 
+  if (scenario.view === 'map-organisation') {
+    await page.getByRole('navigation', { name: isFrench ? 'Navigation de la carte' : 'Map navigation' }).getByRole('button', { name: isFrench ? 'Organisation' : 'Organisation', exact: true }).click()
+    await expect(page.getByRole('menu', { name: isFrench ? 'Organisation' : 'Organisation' })).toBeVisible()
+    return
+  }
+
   if (scenario.view === 'categories' || scenario.view === 'tags' || scenario.view === 'statuses' || scenario.view === 'profile-import' || scenario.view === 'tag-profile-import' || scenario.view === 'status-profile-import' || scenario.view === 'annotation-templates' || scenario.view === 'trash') {
     const label = scenario.view === 'annotation-templates' ? 'Annotations' : scenario.view === 'trash' ? (isFrench ? 'Corbeille' : 'Trash') : scenario.view === 'tags' || scenario.view === 'tag-profile-import' ? 'Tags' : scenario.view === 'statuses' || scenario.view === 'status-profile-import' ? (isFrench ? 'Statuts' : 'Statuses') : (isFrench ? 'Catégories' : 'Categories')
-    if (scenario.mobile) {
+    if (scenario.view === 'trash') {
+      await page.getByRole('button', { name: label, exact: true }).click()
+    } else {
       await page.getByRole('button', { name: 'Organisation', exact: true }).click()
       await page.getByRole('menuitem', { name: label, exact: true }).click()
-    } else {
-      await page.getByRole('button', { name: label, exact: true }).click()
     }
     const panelHeading = scenario.view === 'statuses' || scenario.view === 'status-profile-import'
       ? 'Statuts'

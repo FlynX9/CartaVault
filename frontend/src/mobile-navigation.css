@@ -42,7 +42,7 @@ html[data-theme='dark'] .cv-main-navigation.is-mobile {
 
 .main-navigation.is-mobile .main-navigation-links.cv-main-navigation__items {
   display: grid !important;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   grid-auto-flow: column !important;
   width: 100% !important;
   height: 100% !important;

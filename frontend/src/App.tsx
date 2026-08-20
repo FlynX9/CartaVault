@@ -30,6 +30,7 @@ import {
   MainNavigation,
   type WorkspacePanel,
 } from "./components/layout/MainNavigation";
+import { MapContextNavigation } from "./components/layout/MapContextNavigation";
 import {
   buildMapOpeningFocusRequest,
   getMapOpeningConfigurationKey,
@@ -122,6 +123,10 @@ const StatusesWorkspacePanel = lazy(async () => ({
   default: (await import("./components/layout/WorkspaceManagementPanels"))
     .StatusesWorkspacePanel,
 }));
+const PlaceFieldSettingsDialog = lazy(async () => ({
+  default: (await import("./components/maps/MapsWorkspacePanel"))
+    .PlaceFieldSettingsDialog,
+}));
 const AnnotationTemplatesWorkspacePanel = lazy(async () => ({ default: (await import('./components/layout/AnnotationTemplatesWorkspacePanel')).AnnotationTemplatesWorkspacePanel }));
 const TrashWorkspacePanel = lazy(async () => ({
   default: (await import("./components/trash/TrashWorkspacePanel"))
@@ -163,7 +168,6 @@ const mapAccessFingerprint = (maps: PoiMap[]) =>
 
 function WorkspaceApp() {
   const { confirm, confirmationDialog } = useConfirmDialog();
-  const { user } = useAuth();
   const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
@@ -216,6 +220,8 @@ function WorkspaceApp() {
   );
   const [workspacePanel, setWorkspacePanel] =
     useState<WorkspacePanel>("places");
+  const globalWorkspaceOpen = workspacePanel === "maps" || workspacePanel === "media" || workspacePanel === "trash";
+  const mapCanvasActive = isMapWorkspace && !globalWorkspaceOpen;
   const [navigationCollapsed, setNavigationCollapsed] = useState(() => {
     try {
       return window.localStorage.getItem("cartavault:navigation-collapsed") === "true";
@@ -238,7 +244,7 @@ function WorkspaceApp() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshVersion, setRefreshVersion] = useState(0);
   useLayoutEffect(() => {
-    if (!isMapWorkspace || activeMapId === null) {
+    if (!mapCanvasActive || activeMapId === null) {
       openingMapIdRef.current = null;
       openingMapRequestStartedRef.current = false;
       setMapOpening(false);
@@ -249,7 +255,7 @@ function WorkspaceApp() {
       openingMapRequestStartedRef.current = false;
       setMapOpening(true);
     }
-  }, [activeMapId, isMapWorkspace]);
+  }, [activeMapId, mapCanvasActive]);
   useEffect(() => {
     if (!mapOpening) return;
     if (isLoading) {
@@ -315,6 +321,7 @@ function WorkspaceApp() {
   }, [activeStatusId, maps, navigate]);
   const [exportMap, setExportMap] = useState<PoiMap | null>(null);
   const [membersMap, setMembersMap] = useState<PoiMap | null>(null);
+  const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null);
   const activePanelLayoutScope = tripPlannerOpen ? "trips" : (workspacePanel ?? "map");
   useEffect(() => {
     const toggleDefaultPanelLayout = () => {
@@ -460,7 +467,7 @@ function WorkspaceApp() {
   }, [loadMaps, isMapWorkspace, refreshVersion]);
 
   useEffect(() => {
-    if (!isMapWorkspace || !activeMapId) {
+    if (!mapCanvasActive || !activeMapId) {
       setStatuses([]);
       return;
     }
@@ -476,7 +483,7 @@ function WorkspaceApp() {
           );
       });
     return () => controller.abort();
-  }, [activeMapId, isMapWorkspace, refreshVersion]);
+  }, [activeMapId, mapCanvasActive, refreshVersion]);
 
   useEffect(() => {
     const configKey =
@@ -497,7 +504,7 @@ function WorkspaceApp() {
   }, [activeMapId, activeMap]);
 
   useEffect(() => {
-    if (!isMapWorkspace || bounds === null || activeMapId === null) return;
+    if (!mapCanvasActive || bounds === null || activeMapId === null) return;
     const controller = new AbortController();
     const sequence = ++requestSequence.current;
     const timeout = window.setTimeout(async () => {
@@ -547,7 +554,7 @@ function WorkspaceApp() {
   }, [
     activeMapId,
     bounds,
-    isMapWorkspace,
+    mapCanvasActive,
     loadMaps,
     placeFilters,
     refreshVersion,
@@ -1532,20 +1539,6 @@ function WorkspaceApp() {
     void guard().then((canLeave) => { if (canLeave) applyWorkspacePanelChange(panel); });
   };
 
-  const toggleWorkspacePanelCollapsed = (
-    panel: Exclude<WorkspacePanel, null>,
-  ) => {
-    if (panel === "places") {
-      setPlacesPanelCollapsed((collapsed) => !collapsed);
-      return;
-    }
-    if (workspacePanel === panel)
-      setCollapsedWorkspacePanel((current) =>
-        current === panel ? null : panel,
-      );
-    else void handleWorkspacePanelChange(panel);
-  };
-
   const openTrips = (create = false) => {
     if (!activeMap) {
       setMapsError("Sélectionnez une carte avant de préparer une sortie.");
@@ -1594,24 +1587,14 @@ function WorkspaceApp() {
       <MainNavigation
         activePanel={dashboardOpen ? null : workspacePanel}
         dashboardActive={dashboardOpen}
-        tripPlanningActive={!dashboardOpen && tripPlannerOpen}
-        tripTimelineShortcutActive={!dashboardOpen && tripPlannerOpen && !tripViewOnly && !tripPlannerCollapsed}
         onOpenDashboard={openDashboard}
         onPanelChange={handleWorkspacePanelChange}
-        onWorkspacePanelToggle={toggleWorkspacePanelCollapsed}
-        onPlacesPanelToggle={() =>
-          setPlacesPanelCollapsed((collapsed) => !collapsed)
-        }
-        placesPanelCollapsed={placesPanelCollapsed}
-        onOpenTrips={toggleTripsFromNavigation}
-        isAdmin={user?.is_admin === true}
-        hasMaps={maps.length > 0}
         collapsed={navigationCollapsed}
         onCollapsedChange={setNavigationCollapsed}
       />
-      <div className="app-body">
+      <div className={`app-body${!dashboardOpen && activeMap && workspacePanel !== 'maps' && workspacePanel !== 'media' && workspacePanel !== 'trash' ? ' has-map-context-navigation' : ''}`}>
         <TopBar
-          isMapWorkspace={isMapWorkspace}
+          isMapWorkspace={mapCanvasActive}
           panelLayoutScope={activePanelLayoutScope}
           contextLabel={dashboardOpen ? t("dashboard.title") : undefined}
           markerCount={places.length}
@@ -1619,6 +1602,22 @@ function WorkspaceApp() {
           onOpenAdmin={openAdmin}
           onOpenRegistrationRequests={openRegistrationRequests}
         />
+        {!dashboardOpen && activeMap && workspacePanel !== 'maps' && workspacePanel !== 'media' && workspacePanel !== 'trash' && <MapContextNavigation
+          poiMap={activeMap}
+          activePanel={workspacePanel}
+          tripPlanningActive={tripPlannerOpen}
+          onBackToMaps={() => handleWorkspacePanelChange('maps')}
+          onPanelChange={handleWorkspacePanelChange}
+          onOpenTrips={toggleTripsFromNavigation}
+          onImport={() => {
+            setWorkspacePanel('places')
+            setPlacesPanelCollapsed(false)
+            setImportRequest((value) => value + 1)
+          }}
+          onExport={() => setExportMap(activeMap)}
+          onSettings={() => setSettingsMap(activeMap)}
+          onMembers={() => setMembersMap(activeMap)}
+        />}
         <Routes>
           <Route
             path="/dashboard"
@@ -1704,10 +1703,12 @@ function WorkspaceApp() {
             element={
               <Suspense
                 fallback={
-                  <AppLoadingScreen mode="map" />
+                  globalWorkspaceOpen ? <div className="global-workspace-page" role="status">{t('common.loading')}</div> : <AppLoadingScreen mode="map" />
                 }
               >
-                <MapPage
+                {globalWorkspaceOpen ? <section className={`global-workspace-page global-workspace-page--${workspacePanel}`} aria-label={workspacePanel === 'maps' ? t('maps.title') : workspacePanel === 'media' ? t('nav.media') : t('nav.trash')}>
+                  {workspaceContent}
+                </section> : <MapPage
                   activeMapId={activeMapId}
                   places={places}
                   canEdit={activeMap?.can_edit === true}
@@ -1722,7 +1723,7 @@ function WorkspaceApp() {
                   tripPlannerCollapsed={tripPlannerCollapsed}
                   placesPanelCollapsed={placesPanelCollapsed}
                   workspacePanelCollapsed={workspacePanel === "places" ? placesPanelCollapsed : collapsedWorkspacePanel === workspacePanel}
-                  workspacePanelCanFillWidth={workspacePanel === "media"}
+                  workspacePanelCanFillWidth={false}
                   workspacePanelId={workspacePanel ?? "places"}
                   placeCreationActive={sidebarState.mode === "create"}
                   placeListOpen={workspacePanel !== null}
@@ -1824,7 +1825,7 @@ function WorkspaceApp() {
                   onViewChange={setMapView}
                   onPlaceSelect={handleSelect}
                   onPopupClose={closePopup}
-                />
+                />}
               </Suspense>
             }
           />
@@ -1870,6 +1871,15 @@ function WorkspaceApp() {
             <AdminConsole onClose={closeAdmin} />
           </Suspense>
         </RequireAdmin>
+      )}
+      {settingsMap && (
+        <Suspense fallback={null}>
+          <PlaceFieldSettingsDialog
+            poiMap={settingsMap}
+            onClose={() => setSettingsMap(null)}
+            onSaved={() => setRefreshVersion((value) => value + 1)}
+          />
+        </Suspense>
       )}
       {confirmationDialog}
       <PrivacyConsentBanner />

@@ -47,4 +47,18 @@ describe('GlobalFeedbackToasts', () => {
       expect.objectContaining({ kind: 'success', message: 'POI « Manoir » créé.' }),
     ])
   })
+
+  it('displays information for three seconds and stores it in notification history', () => {
+    window.localStorage.clear()
+    render(<GlobalFeedbackToasts />)
+
+    act(() => publishGlobalFeedback('information', 'Le fond CartaVault est indisponible. OpenStreetMap a été activé automatiquement.'))
+
+    expect(screen.getByRole('status')).toHaveTextContent('OpenStreetMap a été activé automatiquement.')
+    expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
+      expect.objectContaining({ kind: 'information', message: expect.stringContaining('OpenStreetMap') }),
+    ])
+    act(() => vi.advanceTimersByTime(3_000))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
 })

@@ -74,7 +74,7 @@ describe('MapPage', () => {
   it('keeps the map and sidebar in the same responsive workspace and falls back after repeated errors', async () => {
     const account = await import('../api/account')
     render(
-      <MemoryRouter>
+      <><MemoryRouter>
         <MapPage
           places={[]}
           selectedPlaceId={null}
@@ -92,7 +92,7 @@ describe('MapPage', () => {
           onViewChange={vi.fn()}
           onPlaceSelect={vi.fn()}
         />
-      </MemoryRouter>,
+      </MemoryRouter><GlobalFeedbackToasts /></>,
     )
 
     const workspace = screen.getByLabelText("Carte des points d'intérêt").parentElement
@@ -122,6 +122,9 @@ describe('MapPage', () => {
     fireEvent.click(tileError)
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
     expect(screen.getByRole('status')).toHaveTextContent('Stadia clair a été activé automatiquement')
+    expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
+      expect.objectContaining({ kind: 'information', message: expect.stringContaining('Stadia clair a été activé automatiquement') }),
+    ])
     expect(window.localStorage.getItem('cartavault.basemap')).toBeNull()
     expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-light' }))
   })
@@ -366,13 +369,16 @@ describe('MapPage', () => {
       basemaps: { classic_provider: 'google', satellite_provider: 'google', google_api_key_id: 'google-key', google_maps_js_api_key_id: 'browser-key' },
     })
     const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
-    render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
+    render(<><MemoryRouter><MapPage {...props} /></MemoryRouter><GlobalFeedbackToasts /></>)
 
     await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-satellite'))
     fireEvent.click(screen.getByRole('button', { name: 'Simuler la restriction Google Satellite' }))
 
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-roadmap')
     expect(screen.getByRole('status')).toHaveTextContent('Google Satellite est indisponible dans cette région')
+    expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
+      expect.objectContaining({ kind: 'information', message: expect.stringContaining('Google Satellite est indisponible dans cette région') }),
+    ])
     expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({
       preferred_basemap: 'google-roadmap',
     }))
