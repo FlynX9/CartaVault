@@ -800,7 +800,7 @@ function AdminKeyCard({
       <footer>
         {item.editable ? (
           <>
-            <button type="button" disabled={busy} onClick={() => onTest(item)}>
+            <button className="primary-button" type="button" disabled={busy} onClick={() => onTest(item)}>
               <Play size={16} />
               {item.provider === "resend"
                 ? t("admin.api.sendTest")

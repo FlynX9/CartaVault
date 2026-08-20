@@ -746,7 +746,7 @@ function ApiKeyCard({
       )}
       {item.editable ? (
         <footer>
-          <button type="button" disabled={busy} onClick={() => onTest(item)}>
+          <button className="primary-button" type="button" disabled={busy} onClick={() => onTest(item)}>
             <Play size={16} />
             {t("account.apiCatalog.test")}
           </button>

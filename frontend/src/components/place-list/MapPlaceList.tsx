@@ -638,7 +638,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return (
       <aside className="country-place-panel cv-workspace-panel places-redesign-panel is-collapsed cv-places-compact-rail" id="map-place-list" tabIndex={-1} aria-label={t("places.title")}>
         <header className="places-redesign-header cv-places-compact-rail__header">
-          {poiMap?.can_edit !== false && <Link className="panel-icon-button cv-places-compact-rail__create" to={withMap("/places/new", poiMap?.id)} aria-label={t("places.new")} title={t("places.new")}><Plus size={19} aria-hidden="true" /></Link>}
+          {poiMap?.can_edit !== false && <Link className="panel-icon-button primary cv-places-compact-rail__create" to={withMap("/places/new", poiMap?.id)} aria-label={t("places.new")} title={t("places.new")}><Plus size={19} aria-hidden="true" /></Link>}
           <PanelWindowControls />
         </header>
         <div className="cv-places-compact-rail__list" role="list" aria-label={t("places.title")}>
@@ -718,7 +718,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
               )}
             </label>
             {!tripPlanningActive && poiMap.can_edit !== false && (
-              <Link className="places-search-create" to={withMap("/places/new", poiMap.id)} aria-label={t("places.add")} title={t("places.add")}>
+              <Link className="primary-button places-search-create" to={withMap("/places/new", poiMap.id)} aria-label={t("places.add")} title={t("places.add")}>
                 <Plus size={18} aria-hidden="true" />
               </Link>
             )}

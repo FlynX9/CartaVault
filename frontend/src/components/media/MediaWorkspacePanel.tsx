@@ -652,7 +652,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
                   <span className="media-card__unattached">Non rattaché à un POI</span>
                 )}
                 {media.can_create_place && (
-                  <button type="button" className="media-card__create-place" onClick={() => requestPlaceCreationFromMedia(media)}>
+                  <button type="button" className="primary-button media-card__create-place" onClick={() => requestPlaceCreationFromMedia(media)}>
                     <MapPin size={15} />
                     Créer un POI
                   </button>

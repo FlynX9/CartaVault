@@ -6,8 +6,9 @@ import type { PoiMap } from '../../types/map'
 import { MapsWorkspacePanel } from './MapsWorkspacePanel'
 
 vi.mock('../../api/maps', () => ({ acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn(), getPendingMapInvitations: vi.fn() }))
+vi.mock('./CountryShapeThumbnail', () => ({ CountryShapeThumbnail: ({ countryCode }: { countryCode: string }) => <svg data-testid="country-shape-thumbnail" data-country-code={countryCode} /> }))
 
-const map = { id: 'map-id', name: 'France historique', country: { name: 'France', iso_alpha2: 'FR' }, is_shared: false, place_count: 12, trip_count: 3 } as PoiMap
+const map = { id: 'map-id', name: 'France historique', country_id: 'country-id', country: { id: 'country-id', name: 'France', iso_alpha2: 'FR', iso_alpha3: 'FRA' }, effective_center_longitude: 2, is_shared: false, place_count: 12, trip_count: 3 } as PoiMap
 
 describe('MapsWorkspacePanel', () => {
   beforeEach(() => {
@@ -26,7 +27,7 @@ describe('MapsWorkspacePanel', () => {
     const preview = screen.getByRole('img', { name: 'Aperçu cartographique de France historique, France' })
     expect(preview).toBeVisible()
     expect(preview.closest('.maps-catalog__summary')).toBeVisible()
-    expect(preview.querySelector('img')).toHaveAttribute('src', expect.stringMatching(/^https:\/\/tile\.openstreetmap\.org\//))
+    expect(screen.getByTestId('country-shape-thumbnail')).toHaveAttribute('data-country-code', 'FRA')
     expect(screen.getByLabelText('Carte privée')).toBeVisible()
     const createButton = screen.getByRole('button', { name: 'Créer une carte' })
     expect(createButton).toHaveClass('panel-create-action')
@@ -35,7 +36,9 @@ describe('MapsWorkspacePanel', () => {
     expect(openButton).toHaveTextContent('Ouvrir')
     fireEvent.click(openButton)
     expect(open).toHaveBeenCalledWith('map-id')
-    fireEvent.click(screen.getByRole('button', { name: 'Options de France historique' }))
+    const optionsButton = screen.getByRole('button', { name: 'Options de France historique' })
+    expect(optionsButton.querySelector('.lucide-settings')).toBeInTheDocument()
+    fireEvent.click(optionsButton)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Supprimer France historique' }))
     expect(remove).toHaveBeenCalledWith(map)
   })

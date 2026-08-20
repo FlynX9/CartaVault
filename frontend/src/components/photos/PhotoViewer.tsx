@@ -126,7 +126,7 @@ export function PhotoViewer({ photos, placeName, initialPhotoId = null, onClose 
         <div className="photo-viewer__stage">
           {loading && !failed && <div className="photo-viewer__loading" role="status"><span />{t.loading}</div>}
           {failed
-            ? <div className="photo-viewer__error" role="alert"><strong>{t.error}</strong><button type="button" onClick={() => { setFailedPhotoIds((current) => { const next = new Set(current); next.delete(photo.id); return next }); setRetryKey((value) => value + 1) }}><RotateCcw size={16} />{t.retry}</button></div>
+            ? <div className="photo-viewer__error" role="alert"><strong>{t.error}</strong><button className="primary-button" type="button" onClick={() => { setFailedPhotoIds((current) => { const next = new Set(current); next.delete(photo.id); return next }); setRetryKey((value) => value + 1) }}><RotateCcw size={16} />{t.retry}</button></div>
             : <img key={`${photo.id}:${retryKey}`} src={getPhotoFileUrl(photo.id)} alt={alt} onLoad={() => setLoading(false)} onError={() => { setLoading(false); setFailedPhotoIds((current) => new Set(current).add(photo.id)) }} />}
           {orderedPhotos.length > 1 && <>
             <button className="photo-viewer__previous" type="button" disabled={index === 0} aria-label={t.previous} title={t.previous} onClick={() => select(index - 1)}><ChevronLeft size={25} /></button>

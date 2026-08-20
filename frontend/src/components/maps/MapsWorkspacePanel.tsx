@@ -1,4 +1,4 @@
-import { Check, Clock3, Download, ExternalLink, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings2, Share2, Trash2, Users, X } from "lucide-react";
+import { Check, Clock3, Download, ExternalLink, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings, Settings2, Share2, Trash2, Users, X } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from "../../api/maps";
@@ -6,6 +6,7 @@ import { NOTIFICATIONS_CHANGED_EVENT, notifyNotificationsChanged } from "../noti
 import { useI18n } from "../../i18n/useI18n";
 import type { PendingMapInvitation, PoiMap } from "../../types/map";
 import { CountryFlag } from "./CountryFlag";
+import { CountryShapeThumbnail } from "./CountryShapeThumbnail";
 import { CreateMapDialog } from "./CreateMapDialog";
 import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
@@ -35,17 +36,6 @@ const normalize = (value: string) =>
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
     .toLocaleLowerCase();
-
-function previewTileUrl(poiMap: PoiMap): string {
-  const zoom = Math.max(2, Math.min(6, Math.round(poiMap.effective_default_zoom || 5)))
-  const scale = 2 ** zoom
-  const longitude = Math.max(-180, Math.min(180, poiMap.effective_center_longitude))
-  const latitude = Math.max(-85.0511, Math.min(85.0511, poiMap.effective_center_latitude))
-  const x = Math.floor(((longitude + 180) / 360) * scale)
-  const radians = latitude * Math.PI / 180
-  const y = Math.floor((1 - Math.asinh(Math.tan(radians)) / Math.PI) / 2 * scale)
-  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
-}
 
 export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose, createRequest = 0 }: MapsWorkspacePanelProps) {
   const panelWindow = useContext(FloatingPanelWindowContext);
@@ -239,7 +229,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
                   })}
                   role="img"
                 >
-                  <img className="maps-catalog__preview-tile" src={previewTileUrl(poiMap)} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                  <CountryShapeThumbnail countryCode={poiMap.country.iso_alpha3} />
                 </div>
                 <div className="maps-catalog__details">
                   <span className={`maps-catalog__privacy${poiMap.is_shared ? " shared" : ""}`} aria-label={poiMap.is_shared ? t("maps.shared") : t("maps.private")} title={poiMap.is_shared ? t("maps.shared") : t("maps.private")}>
@@ -263,7 +253,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
                     <button type="button" className="secondary-button maps-catalog__open" aria-label={t("maps.openNamed", { name: poiMap.name })} onClick={() => onOpen(poiMap.id)}>{t("maps.open")}<ExternalLink size={15} /></button>
                     {poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={t("maps.export", { name: poiMap.name })} title={t("maps.export", { name: poiMap.name })} onClick={() => onExport(poiMap)}><Download size={17} /></button>}
                     <div className="maps-catalog__options-host">
-                      <button type="button" className="panel-icon-button" aria-label={t('maps.optionsNamed', { name: poiMap.name })} title={t('maps.options')} aria-expanded={optionsMapId === poiMap.id} onClick={() => setOptionsMapId((current) => current === poiMap.id ? null : poiMap.id)}><Settings2 size={17} /></button>
+                      <button type="button" className="panel-icon-button" aria-label={t('maps.optionsNamed', { name: poiMap.name })} title={t('maps.options')} aria-expanded={optionsMapId === poiMap.id} onClick={() => setOptionsMapId((current) => current === poiMap.id ? null : poiMap.id)}><Settings size={17} /></button>
                       {optionsMapId === poiMap.id && <div className="maps-catalog__options-menu" role="menu" aria-label={t('maps.optionsNamed', { name: poiMap.name })}>
                         <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setOfflineMap(poiMap) }}><HardDriveDownload size={16} /><span>{t('maps.offline')}</span></button>
                         {poiMap.can_edit && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setSettingsMap(poiMap) }}><Settings2 size={16} /><span>{t("maps.fields")}</span></button>}

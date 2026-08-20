@@ -18,7 +18,7 @@ export function PwaUpdatePrompt() {
         <strong>{t('pwa.update.title')}</strong>
         <span>{t('pwa.update.description')}</span>
       </div>
-      <button type="button" onClick={() => registration.waiting?.postMessage({ type: 'SKIP_WAITING' })}>
+      <button className="primary-button" type="button" onClick={() => registration.waiting?.postMessage({ type: 'SKIP_WAITING' })}>
         <RefreshCw size={16} aria-hidden="true" />
         {t('pwa.update.action')}
       </button>

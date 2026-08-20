@@ -198,5 +198,5 @@ export function AuthSubmitButton({
   children,
   ...buttonProps
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button className="auth-submit" type="submit" {...buttonProps}>{children}</button>
+  return <button className="primary-button auth-submit" type="submit" {...buttonProps}>{children}</button>
 }

@@ -45,6 +45,12 @@
   --cv-button-font-weight: 700;
   --cv-button-gap: var(--cv-button-reference-gap);
   --cv-button-icon-size: var(--cv-button-reference-icon-size);
+  /* Shared CartaVault primary-action signature. */
+  --cv-button-primary-bg-start: var(--cv-color-teal);
+  --cv-button-primary-bg-end: color-mix(in srgb, var(--cv-color-teal) 88%, #075f50);
+  --cv-button-primary-overlay: rgb(255 255 255 / 11%);
+  --cv-button-primary-shadow: 0 3px 10px rgb(5 96 82 / 22%);
+  --cv-button-primary-shadow-hover: 0 5px 14px rgb(5 96 82 / 29%);
   /* Canonical status-label geometry. Colours remain owned by each semantic tone. */
   --cv-label-height: 1.35rem;
   --cv-label-padding-block: .15rem;
@@ -111,6 +117,9 @@ html[data-theme='dark'] {
   --cv-tone-danger-border: rgb(255 180 171 / 28%);
   --cv-shadow-sm: 0 3px 14px rgb(0 0 0 / 34%);
   --cv-shadow-md: 0 18px 48px rgb(0 0 0 / 48%);
+  --cv-button-primary-overlay: rgb(255 255 255 / 9%);
+  --cv-button-primary-shadow: 0 3px 11px rgb(0 0 0 / 30%);
+  --cv-button-primary-shadow-hover: 0 5px 16px rgb(0 0 0 / 38%);
 }
 
 html[data-density='comfortable'] {
@@ -332,7 +341,11 @@ button.cv-button-action-success::after {
   border: 1px solid transparent;
   border-radius: .65rem;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
 }
+.map-context-navigation__back > svg,
+.map-context-navigation__tab > svg { width: .95rem; height: .95rem; }
 .map-context-navigation__back:hover,
 .map-context-navigation__tab:hover,
 .map-context-navigation__tab[aria-expanded='true'] { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 8%, transparent); }
@@ -341,8 +354,8 @@ button.cv-button-action-success::after {
 .map-context-navigation__map-copy { display: grid; min-width: 0; line-height: 1.1; }
 .map-context-navigation__map-copy strong,
 .map-context-navigation__map-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.map-context-navigation__map-copy strong { color: var(--cv-color-navy); font-size: .9rem; }
-.map-context-navigation__map-copy small { margin-top: .2rem; color: var(--cv-color-gray); font-size: .7rem; }
+.map-context-navigation__map-copy strong { color: var(--cv-color-navy); font-size: .78rem; }
+.map-context-navigation__map-copy small { margin-top: .18rem; color: var(--cv-color-gray); font-size: .62rem; }
 .map-context-navigation__tabs { flex: 0 0 auto; gap: .25rem; }
 .map-context-navigation__menu-host { position: relative; }
 .map-context-navigation__more { width: 2.75rem; padding-inline: .5rem; }
@@ -373,6 +386,7 @@ button.cv-button-action-success::after {
   border: 0;
   border-radius: .5rem;
   cursor: pointer;
+  font-size: .72rem;
   text-align: left;
 }
 .map-context-navigation__menu button:hover { color: var(--cv-color-teal); background: color-mix(in srgb, var(--cv-color-teal) 8%, transparent); }
@@ -383,13 +397,13 @@ html[data-theme='dark'] .map-context-navigation__map-copy strong { color: var(--
   .app-shell:has(.main-navigation.is-mobile) .app-body.has-map-context-navigation { grid-template-rows: 3.9rem auto minmax(0, 1fr) !important; }
   .map-context-navigation { display: block; min-height: 0; padding: .3rem .45rem 0; overflow: visible; }
   .map-context-navigation__identity { height: 2.45rem; gap: .4rem; padding-inline: .2rem; }
-  .map-context-navigation__back { min-height: 2rem; padding: .3rem .45rem; }
+  .map-context-navigation__back { min-height: 2rem; padding: .3rem .45rem; font-size: 14px; }
   .map-context-navigation__identity-separator { height: 1.25rem; }
-  .map-context-navigation__map-copy strong { font-size: .82rem; }
+  .map-context-navigation__map-copy strong { font-size: .74rem; }
   .map-context-navigation__map-copy small { display: none; }
   .map-context-navigation__tabs { width: 100%; justify-content: flex-start; gap: .15rem; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
   .map-context-navigation__tabs::-webkit-scrollbar { display: none; }
-  .map-context-navigation__tab { min-height: 2.55rem; flex: 0 0 auto; padding: .45rem .65rem; border-radius: .55rem .55rem 0 0; font-size: .78rem; }
+  .map-context-navigation__tab { min-height: 2.55rem; flex: 0 0 auto; padding: .45rem .65rem; border-radius: .55rem .55rem 0 0; font-size: 14px; }
   .map-context-navigation__menu-host { position: static; }
   .map-context-navigation__menu { top: auto; right: .45rem; left: .45rem; margin-top: .25rem; width: auto; }
 }
@@ -6555,9 +6569,22 @@ body {
 .maps-workspace-panel .maps-catalog { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1rem; }
 .maps-workspace-panel .maps-catalog > li.maps-catalog__card { min-width: 0; overflow: visible; background: var(--cv-surface); border-radius: 1rem; box-shadow: 0 8px 22px rgb(13 27 42 / 8%); }
 .maps-workspace-panel .maps-catalog > li.maps-catalog__card.active { border-width: 1px; box-shadow: 0 8px 22px rgb(13 27 42 / 8%), inset 0 0 0 1px color-mix(in srgb, var(--cv-color-teal) 35%, transparent); }
-.maps-workspace-panel .maps-catalog__summary { grid-template-columns: minmax(12rem, 44%) minmax(0, 1fr); min-height: 17rem; }
-.maps-workspace-panel .maps-catalog__summary .maps-catalog__preview { position: relative; min-height: 17rem; padding: 0; overflow: hidden; background: var(--cv-color-mist); border-radius: .9rem 0 0 .9rem; }
-.maps-catalog__preview-tile { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.08); filter: saturate(.78) contrast(.92) brightness(1.06); }
+.maps-workspace-panel .maps-catalog__summary { height: 17rem; min-height: 17rem; grid-template-columns: minmax(12rem, 44%) minmax(0, 1fr); }
+.maps-workspace-panel .maps-catalog__summary .maps-catalog__preview { position: relative; height: 17rem; min-height: 17rem; padding: 0; overflow: hidden; background: #f4f8f7; border-radius: .9rem 0 0 .9rem; }
+.maps-workspace-panel .maps-catalog__country-shape { display: block; width: 100%; height: 100%; }
+.maps-workspace-panel .maps-catalog__country-topography { fill: none; stroke: var(--cv-color-teal); stroke-width: .8px; opacity: .045; }
+.maps-workspace-panel .maps-catalog__country-topography path { vector-effect: non-scaling-stroke; }
+.maps-workspace-panel .maps-catalog__country-shape-path { stroke: #0fa68a; stroke-width: 1.75px; stroke-linejoin: round; }
+.maps-workspace-panel .maps-catalog__country-fill-start { stop-color: #0fa68a; stop-opacity: .025; }
+.maps-workspace-panel .maps-catalog__country-fill-middle { stop-color: #0fa68a; stop-opacity: .075; }
+.maps-workspace-panel .maps-catalog__country-fill-end { stop-color: #0fa68a; stop-opacity: .14; }
+.maps-workspace-panel .maps-catalog__preview-fallback { color: var(--cv-color-teal); }
+html[data-theme='dark'] .maps-workspace-panel .maps-catalog__summary .maps-catalog__preview { background: var(--cv-surface-muted); }
+html[data-theme='dark'] .maps-workspace-panel .maps-catalog__country-topography { stroke: #25c6aa; opacity: .055; }
+html[data-theme='dark'] .maps-workspace-panel .maps-catalog__country-shape-path { stroke: #25c6aa; }
+html[data-theme='dark'] .maps-workspace-panel .maps-catalog__country-fill-start { stop-color: #25c6aa; stop-opacity: .035; }
+html[data-theme='dark'] .maps-workspace-panel .maps-catalog__country-fill-middle { stop-color: #25c6aa; stop-opacity: .085; }
+html[data-theme='dark'] .maps-workspace-panel .maps-catalog__country-fill-end { stop-color: #25c6aa; stop-opacity: .14; }
 .maps-workspace-panel .maps-catalog__summary .maps-catalog__details { display: flex; min-width: 0; align-content: initial; flex-direction: column; gap: .55rem; padding: 1.1rem 1rem 1rem; }
 .maps-catalog__title { display: flex; min-width: 0; align-items: center; gap: .65rem; padding-right: 2.25rem; }
 .maps-workspace-panel .maps-catalog__summary .maps-catalog__title .maps-catalog__flag { width: 2rem; height: 1.35rem; flex: 0 0 auto; object-fit: cover; border: 1px solid var(--cv-border-subtle); border-radius: .2rem; }
@@ -6586,9 +6613,9 @@ body {
 }
 
 @media (max-width: 620px) {
-  .maps-workspace-panel .maps-catalog__summary { grid-template-columns: 1fr; }
-  .maps-workspace-panel .maps-catalog__summary .maps-catalog__preview { min-height: 9rem; border-radius: .9rem .9rem 0 0; }
-  .maps-workspace-panel .maps-catalog__summary .maps-catalog__details { min-height: 13rem; }
+  .maps-workspace-panel .maps-catalog__summary { height: 22rem; min-height: 22rem; grid-template-columns: 1fr; grid-template-rows: 9rem 13rem; }
+  .maps-workspace-panel .maps-catalog__summary .maps-catalog__preview { height: 9rem; min-height: 9rem; border-radius: .9rem .9rem 0 0; }
+  .maps-workspace-panel .maps-catalog__summary .maps-catalog__details { height: 13rem; min-height: 13rem; }
 }
 
 /* Map actions share one compact CartaVault dialog language. */
@@ -17548,9 +17575,7 @@ html[data-theme='dark'] .profile-import-dialog > footer > .cv-home-action-button
   height: var(--cv-button-icon-size);
 }
 
-/* Panel creation actions are always compact square controls. The previous
-   expanding-label behaviour conflicted with the shared icon-button geometry
-   and could leave the plus visually offset. */
+/* Panel creation actions default to compact square controls. */
 .panel-create-action {
   position:relative !important;
   box-sizing:border-box !important;
@@ -17586,6 +17611,34 @@ html[data-theme='dark'] .profile-import-dialog > footer > .cv-home-action-button
   width:var(--cv-button-height) !important;
   max-width:var(--cv-button-height) !important;
   padding:0 !important;
+}
+
+/* The Maps menu exposes its primary action explicitly instead of relying on
+   an icon-only affordance. Other compact panel actions keep their square form. */
+.maps-workspace-panel .panel-create-action,
+.maps-workspace-panel .panel-create-action:is(:hover, :focus-visible) {
+  display:inline-flex !important;
+  width:auto !important;
+  min-width:max-content !important;
+  max-width:none !important;
+  flex:0 0 auto !important;
+  align-items:center;
+  justify-content:center;
+  gap:var(--cv-button-gap) !important;
+  padding:0 var(--cv-button-padding-inline) !important;
+}
+.maps-workspace-panel .panel-create-action > svg {
+  position:static;
+  flex:0 0 var(--cv-button-icon-size);
+  transform:none;
+}
+.maps-workspace-panel .panel-create-action .panel-create-action__label {
+  display:block;
+  max-width:none;
+  overflow:visible;
+  opacity:1;
+  line-height:1;
+  white-space:nowrap;
 }
 
 /* Administration > Utilisateurs: the content panel follows the compact CartaVault reference. */
@@ -18812,4 +18865,281 @@ html[data-theme='dark'] .cv-main-navigation {
   html[data-theme='dark'] .cv-floating-panel-window :is(.cv-workspace-panel__header,.places-redesign-header,.trip-panel-header) { background:color-mix(in srgb,var(--cv-brand-navy,#0d1b2a) 58%,var(--cv-surface)); }
   .cv-places-compact-rail { display:flex !important; width:100% !important; min-width:0 !important; height:100%; flex-direction:column; }
   .cv-places-compact-rail > .cv-places-compact-rail__list { display:flex !important; }
+}
+
+/*
+ * Canonical primary CTA skin. The legacy selectors below are aliases of the
+ * same design-system variant; geometry remains owned by their components.
+ * The gold trip optimizer, danger actions and neutral icon buttons are not
+ * primary emerald actions and intentionally stay outside this contract.
+ */
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+) {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  background: linear-gradient(135deg, var(--cv-button-primary-bg-start), var(--cv-button-primary-bg-end));
+  border-color: var(--cv-button-primary-bg-start);
+  box-shadow: var(--cv-button-primary-shadow);
+  transition:
+    color 170ms ease,
+    background 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease,
+    filter 170ms ease,
+    transform 170ms ease;
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+)::before {
+  position: absolute;
+  z-index: -1;
+  top: -65%;
+  right: -18%;
+  width: 55%;
+  height: 180%;
+  border-radius: 45% 55% 60% 40% / 38% 47% 53% 62%;
+  background: var(--cv-button-primary-overlay);
+  content: '';
+  pointer-events: none;
+  transform: rotate(-12deg);
+  transform-origin: center;
+  transition: opacity 170ms ease, transform 170ms ease;
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+):not(:disabled):not([aria-disabled='true']):is(:hover, :focus-visible) {
+  color: #fff;
+  background: linear-gradient(135deg, var(--cv-button-primary-bg-start), var(--cv-button-primary-bg-end));
+  border-color: var(--cv-button-primary-bg-start);
+  box-shadow: var(--cv-button-primary-shadow-hover);
+  filter: brightness(1.055);
+  transform: translateY(-1px);
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--cv-color-teal) 58%, white);
+  outline-offset: 2px;
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+):not(:disabled):not([aria-disabled='true']):is(:hover, :focus-visible)::before {
+  opacity: 1;
+  transform: translateX(-2%) rotate(-12deg);
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+):not(:disabled):not([aria-disabled='true']):active {
+  box-shadow: 0 1px 5px rgb(5 96 82 / 20%);
+  filter: brightness(.98);
+  transform: translateY(1px);
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+):is(:disabled, [aria-disabled='true']) {
+  color: #fff;
+  background: linear-gradient(135deg, #627b75, #4b625d);
+  border-color: #627b75;
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: saturate(.55);
+  opacity: .64;
+  transform: none;
+}
+
+:is(
+  .primary-button,
+  .account-button--primary,
+  .positive-button,
+  .panel-icon-button.primary,
+  .photo-upload-button,
+  .photo-framing-dialog__primary,
+  .places-bulk-primary-action,
+  .map-context-menu__primary,
+  .popup-annotations__draw,
+  .popup-link-form button,
+  .dashboard-quick-actions button.primary,
+  .cv-home-action-button.primary,
+  .trip-pdf-export-dialog__footer button.primary,
+  .trip-load-settings button.primary,
+  .trip-time-settings button.primary,
+  .trip-day-color-picker__actions button.primary,
+  .trip-mobile-optimization-dialog > footer button.primary,
+  .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+):is(:disabled, [aria-disabled='true'])::before {
+  opacity: .28;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(
+    .primary-button,
+    .account-button--primary,
+    .positive-button,
+    .panel-icon-button.primary,
+    .photo-upload-button,
+    .photo-framing-dialog__primary,
+    .places-bulk-primary-action,
+    .map-context-menu__primary,
+    .popup-annotations__draw,
+    .popup-link-form button,
+    .dashboard-quick-actions button.primary,
+    .cv-home-action-button.primary,
+    .trip-pdf-export-dialog__footer button.primary,
+    .trip-load-settings button.primary,
+    .trip-time-settings button.primary,
+    .trip-day-color-picker__actions button.primary,
+    .trip-mobile-optimization-dialog > footer button.primary,
+    .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+  ),
+  :is(
+    .primary-button,
+    .account-button--primary,
+    .positive-button,
+    .panel-icon-button.primary,
+    .photo-upload-button,
+    .photo-framing-dialog__primary,
+    .places-bulk-primary-action,
+    .map-context-menu__primary,
+    .popup-annotations__draw,
+    .popup-link-form button,
+    .dashboard-quick-actions button.primary,
+    .cv-home-action-button.primary,
+    .trip-pdf-export-dialog__footer button.primary,
+    .trip-load-settings button.primary,
+    .trip-time-settings button.primary,
+    .trip-day-color-picker__actions button.primary,
+    .trip-mobile-optimization-dialog > footer button.primary,
+    .trip-mobile-optimization-overlay > .trip-panel-global-optimization > footer button.primary
+  )::before {
+    transition: none;
+  }
 }

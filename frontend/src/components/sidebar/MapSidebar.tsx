@@ -40,7 +40,7 @@ export function MapSidebar({ state, activeMapId, activeStatusId, maps, onClose, 
     if (state.mode === 'edit') navigate(withMap(`/places/${state.placeId}`, activeMapId, activeStatusId)); else onClose()
   }
   return <aside className="map-sidebar map-editor-panel" role="dialog" aria-modal="false" aria-label={state.mode === 'create' ? 'Créer un point d’intérêt' : 'Modifier le point d’intérêt'}>
-    <SidebarHeader title={state.mode === 'create' ? 'Nouveau POI' : 'Modifier le POI'} onClose={cancel} actions={state.mode === 'edit' ? <button className="poi-editor-save" type="submit" form="poi-edit-form" aria-label="Enregistrer les modifications" title="Enregistrer les modifications"><Save aria-hidden="true" size={17} /></button> : null} />
+    <SidebarHeader title={state.mode === 'create' ? 'Nouveau POI' : 'Modifier le POI'} onClose={cancel} actions={state.mode === 'edit' ? <button className="primary-button poi-editor-save" type="submit" form="poi-edit-form" aria-label="Enregistrer les modifications" title="Enregistrer les modifications"><Save aria-hidden="true" size={17} /></button> : null} />
     <div className="sidebar-content"><PlaceEditorPage mode={state.mode} placeId={state.mode === 'edit' ? state.placeId : undefined} activeMapId={activeMapId} activeStatusId={activeStatusId} maps={maps} embedded formId={state.mode === 'edit' ? 'poi-edit-form' : undefined} hideSubmit={state.mode === 'edit'} geographicPrefill={state.mode === 'create' ? geographicPrefill : null} coordinatePrefill={state.mode === 'create' ? coordinatePrefill : null} draftPosition={draftPosition} onDraftPositionChange={onDraftPositionChange} onPlaceMutated={onPlaceMutated} /></div>
     {confirmationDialog}
   </aside>

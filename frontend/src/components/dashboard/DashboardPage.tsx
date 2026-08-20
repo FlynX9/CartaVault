@@ -161,7 +161,7 @@ export function DashboardPage({
 
   if (error) {
     return <main className="dashboard-page dashboard-page--state" id="main-content">
-      <div className="dashboard-error" role="alert"><AlertTriangle /><h1>{t('dashboard.errorTitle')}</h1><p>{error}</p><button type="button" onClick={() => window.location.reload()}>{t('dashboard.retry')}</button></div>
+      <div className="dashboard-error" role="alert"><AlertTriangle /><h1>{t('dashboard.errorTitle')}</h1><p>{error}</p><button className="primary-button" type="button" onClick={() => window.location.reload()}>{t('dashboard.retry')}</button></div>
     </main>
   }
 
