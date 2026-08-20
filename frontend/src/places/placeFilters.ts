@@ -8,6 +8,7 @@ export const DEFAULT_PLACE_FILTERS: PlaceFilters = {
 }
 
 const listKeys = ['categoryIds', 'tagIds', 'statusIds', 'regions', 'dangerLevels', 'conditionValues'] as const
+const advancedScalarKeys = ['hasPhotos', 'createdFrom', 'createdTo', 'updatedFrom', 'updatedTo', 'hasValidCoordinates', 'inTrip', 'ratingMin'] as const
 const queryKeys: Record<keyof PlaceFilters, string> = {
   query: 'q', categoryIds: 'categories', tagIds: 'tags', statusIds: 'statuses', regions: 'regions', hasPhotos: 'has_photos',
   createdFrom: 'created_from', createdTo: 'created_to', updatedFrom: 'updated_from', updatedTo: 'updated_to',
@@ -66,6 +67,23 @@ export function countActivePlaceFilters(filters: PlaceFilters): number {
 }
 
 export const hasActivePlaceFilters = (filters: PlaceFilters) => countActivePlaceFilters(filters) > 0
+
+export function countActiveAdvancedPlaceFilters(filters: PlaceFilters): number {
+  const value = normalizePlaceFilters(filters)
+  return listKeys.reduce((count, key) => count + value[key].length, 0)
+    + advancedScalarKeys.reduce((count, key) => count + Number(value[key] !== null && value[key] !== ''), 0)
+}
+
+export const hasActiveAdvancedPlaceFilters = (filters: PlaceFilters) => countActiveAdvancedPlaceFilters(filters) > 0
+
+export function resetAdvancedPlaceFilters(filters: PlaceFilters): PlaceFilters {
+  return {
+    ...filters,
+    categoryIds: [], tagIds: [], statusIds: [], regions: [], dangerLevels: [], conditionValues: [],
+    hasPhotos: null, createdFrom: null, createdTo: null, updatedFrom: null, updatedTo: null,
+    hasValidCoordinates: null, inTrip: null, ratingMin: null,
+  }
+}
 
 export function resetPlaceFilters(filters: PlaceFilters): PlaceFilters {
   return {

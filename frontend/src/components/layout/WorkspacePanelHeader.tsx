@@ -1,8 +1,8 @@
-import { Minus, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useContext, type ReactNode } from "react";
 
 import { WorkspacePanelCloseContext } from "./WorkspacePanelCloseContext";
-import { PanelLayoutLockButton } from "./PanelLayoutLockButton";
+import { PanelWindowControls } from "./PanelWindowControls";
 
 interface WorkspacePanelHeaderProps {
   eyebrow: string;
@@ -28,14 +28,8 @@ export function WorkspacePanelHeader({ eyebrow, title, count, action, titleId, o
       <div className="cv-workspace-panel__header-actions">
         <span className="cv-workspace-panel__count">{count}</span>
         {action}
-        {collapseControls && (
-          <>
-            <PanelLayoutLockButton />
-            <button className="panel-icon-button workspace-panel-collapse-toggle" type="button" aria-label={collapseControls.collapsed ? "Agrandir le panneau" : "Réduire le panneau"} title={collapseControls.collapsed ? "Agrandir" : "Réduire"} aria-expanded={!collapseControls.collapsed} onClick={collapseControls.onToggleCollapsed}>
-              {collapseControls.collapsed ? <Plus size={18} aria-hidden="true" /> : <Minus size={18} aria-hidden="true" />}
-            </button>
-          </>
-        )}
+        <PanelWindowControls />
+        {collapseControls && <button className="panel-icon-button workspace-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={collapseControls.collapsed ? "Agrandir le panneau" : "Réduire le panneau"} onClick={collapseControls.onToggleCollapsed}>{collapseControls.collapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>}
         {onClose && (
           <button className="panel-icon-button" type="button" aria-label="Fermer le panneau" title="Fermer" onClick={onClose}>
             <X size={18} />

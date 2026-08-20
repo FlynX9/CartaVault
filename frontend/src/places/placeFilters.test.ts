@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_PLACE_FILTERS, buildPlaceFilterSearchParams, countActivePlaceFilters, deserializePlaceFilters, hasActivePlaceFilters, resetPlaceFilters, serializePlaceFilters } from './placeFilters'
+import { DEFAULT_PLACE_FILTERS, buildPlaceFilterSearchParams, countActiveAdvancedPlaceFilters, countActivePlaceFilters, deserializePlaceFilters, hasActivePlaceFilters, resetAdvancedPlaceFilters, resetPlaceFilters, serializePlaceFilters } from './placeFilters'
 
 describe('place filters', () => {
   it('normalizes, serializes and restores stable multi-value filters', () => {
@@ -29,5 +29,11 @@ describe('place filters', () => {
 
     const reset = resetPlaceFilters({ ...sorted, query: 'église', categoryIds: ['category-id'], isFavorite: true })
     expect(reset).toEqual({ ...DEFAULT_PLACE_FILTERS, query: 'église', sortBy: 'updated_at', sortDirection: 'desc' })
+  })
+
+  it('counts and resets advanced filters without touching search or quick filters', () => {
+    const filters = { ...DEFAULT_PLACE_FILTERS, query: 'musée', functionalState: 'visited' as const, isFavorite: true, categoryIds: ['museum', 'heritage'], hasPhotos: false, sortDirection: 'desc' as const }
+    expect(countActiveAdvancedPlaceFilters(filters)).toBe(3)
+    expect(resetAdvancedPlaceFilters(filters)).toEqual(expect.objectContaining({ query: 'musée', functionalState: 'visited', isFavorite: true, sortDirection: 'desc', categoryIds: [], hasPhotos: null }))
   })
 })

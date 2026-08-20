@@ -166,10 +166,15 @@ describe("MediaWorkspacePanel", () => {
     const { rerender } = render(
       <FloatingPanelWindowContext.Provider
         value={{
-          locked: false,
+          desktop: true,
+          dockable: true,
+          mode: "floating",
           maximized: false,
           toggleMaximize,
-          toggleLock: vi.fn(),
+          dock: vi.fn(),
+          detach: vi.fn(),
+          collapse: vi.fn(),
+          expand: vi.fn(),
         }}
       >
         <MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />
@@ -185,10 +190,15 @@ describe("MediaWorkspacePanel", () => {
     rerender(
       <FloatingPanelWindowContext.Provider
         value={{
-          locked: false,
+          desktop: true,
+          dockable: true,
+          mode: "floating",
           maximized: true,
           toggleMaximize,
-          toggleLock: vi.fn(),
+          dock: vi.fn(),
+          detach: vi.fn(),
+          collapse: vi.fn(),
+          expand: vi.fn(),
         }}
       >
         <MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />

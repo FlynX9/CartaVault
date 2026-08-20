@@ -7,6 +7,7 @@ import { getTags } from '../../api/tags'
 import { getTrip, listTrips } from '../../api/trips'
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
 import { MapPlaceList } from './MapPlaceList'
+import { FloatingPanelWindowContext } from '../layout/FloatingPanelWindow'
 
 vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ total: 42, non_visited: 31, visited: 11, favorites: 6, categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
 vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) }))
@@ -19,25 +20,42 @@ afterEach(() => {
 })
 
 describe('MapPlaceList', () => {
+  it('renders the compact desktop POI rail from the shared collapsed mode', async () => {
+    const place = { id: 'rail-place', name: 'Rail POI', latitude: 48, longitude: 2, primary_photo_id: null, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValueOnce([place])
+    const select = vi.fn()
+    const context = { desktop: true, dockable: true, mode: 'collapsed' as const, maximized: false, dock: vi.fn(), detach: vi.fn(), collapse: vi.fn(), expand: vi.fn(), toggleMaximize: vi.fn() }
+    const { container } = render(<MemoryRouter><FloatingPanelWindowContext.Provider value={context}><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId="rail-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={select} /></FloatingPanelWindowContext.Provider></MemoryRouter>)
+
+    const item = await screen.findByRole('listitem', { name: 'Rail POI' })
+    expect(container.querySelector('.cv-places-compact-rail')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Nouveau lieu' })).toBeVisible()
+    expect(item).toHaveClass('is-selected')
+    fireEvent.click(item)
+    expect(select).toHaveBeenCalledWith(place)
+  })
+
   it('shows only stable functional quick filters with dynamic counters', async () => {
     const onFiltersChange = vi.fn()
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={{ ...DEFAULT_PLACE_FILTERS, functionalState: 'non_visited' }} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     expect(await screen.findByRole('button', { name: /Tous42/ })).toBeVisible()
     expect(screen.getByRole('button', { name: /Non visités31/ })).toHaveClass('active')
+    expect(screen.getByRole('button', { name: /Non visités31/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /Visités11/ })).toBeVisible()
     expect(screen.getByRole('button', { name: /Favoris6/ })).toBeVisible()
     expect(screen.queryByRole('button', { name: /À faire/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /À vérifier/ })).not.toBeInTheDocument()
-    const createLink = screen.getByRole('link', { name: 'Nouveau lieu' })
-    expect(createLink).toHaveClass('panel-create-action')
-    expect(createLink).toHaveTextContent('Nouveau lieu')
+    const createLink = screen.getByRole('link', { name: 'Ajouter un lieu' })
+    expect(createLink).toHaveClass('places-search-create')
+    expect(createLink.querySelector('.lucide-plus')).toBeInTheDocument()
+    expect(createLink.closest('.places-search-create-row')).toContainElement(screen.getByRole('searchbox'))
 
     fireEvent.click(screen.getByRole('button', { name: /Favoris6/ }))
     expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ functionalState: 'non_visited', isFavorite: true }))
   })
 
-  it('resets every filter without changing the selected sort', async () => {
+  it('resets only advanced filters without changing search, quick filters or sort', async () => {
     const onFiltersChange = vi.fn()
     const filters = {
       ...DEFAULT_PLACE_FILTERS,
@@ -51,23 +69,59 @@ describe('MapPlaceList', () => {
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={filters} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     fireEvent.click(await screen.findByRole('button', { name: /Filtres/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser tous les filtres' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Réinitialiser les filtres avancés' }))
 
     expect(onFiltersChange).toHaveBeenCalledWith({
       ...DEFAULT_PLACE_FILTERS,
       query: 'église',
+      functionalState: 'visited',
+      isFavorite: true,
       sortBy: 'updated_at',
       sortDirection: 'desc',
     })
   })
 
+  it('combines sorting and direction in a single control', async () => {
+    const onFiltersChange = vi.fn()
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={DEFAULT_PLACE_FILTERS} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    const sort = await screen.findByRole('combobox', { name: 'Tri des lieux' })
+    fireEvent.change(sort, { target: { value: 'name:desc' } })
+
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ sortBy: 'name', sortDirection: 'desc' }))
+    expect(screen.queryByRole('button', { name: /Inverser|ordre/i })).not.toBeInTheDocument()
+  })
+
+  it('counts only advanced filters and exposes removable active-filter chips', async () => {
+    vi.mocked(getCategories).mockResolvedValueOnce([{ id: 'category-id', name: 'Musée', icon: 'mdi:museum' }] as never)
+    const onFiltersChange = vi.fn()
+    const filters = {
+      ...DEFAULT_PLACE_FILTERS,
+      query: 'paris',
+      functionalState: 'visited' as const,
+      isFavorite: true,
+      categoryIds: ['category-id'],
+      hasPhotos: true,
+    }
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={filters} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    const filtersButton = await screen.findByRole('button', { name: /Filtres/ })
+    expect(within(filtersButton).getByText('2')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retirer le filtre Musée' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retirer le filtre Photos : oui' })).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tout effacer' }))
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ query: 'paris', functionalState: 'visited', isFavorite: true, categoryIds: [], hasPhotos: null }))
+  })
+
   it('collapses to a summary row and restores the full places panel', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     const onCollapsedChange = vi.fn()
     const props = { poiMap: { id: 'map-id', name: 'France' } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn(), onCollapsedChange }
     const { container, rerender } = render(<MemoryRouter><MapPlaceList {...props} /></MemoryRouter>)
 
     const minimize = screen.getByRole('button', { name: 'Réduire le panneau Lieux' })
-    expect(minimize.querySelector('.lucide-minus')).toBeInTheDocument()
+    expect(minimize.querySelector('.lucide-chevron-down')).toBeInTheDocument()
     fireEvent.click(minimize)
     expect(onCollapsedChange).toHaveBeenCalledWith(true)
 
@@ -77,7 +131,7 @@ describe('MapPlaceList', () => {
     expect(screen.getByText('0 lieu')).toBeVisible()
     expect(container.querySelector('.places-redesign-panel')).toHaveClass('is-collapsed')
     const maximize = screen.getByRole('button', { name: 'Déployer le panneau Lieux' })
-    expect(maximize.querySelector('.lucide-plus')).toBeInTheDocument()
+    expect(maximize.querySelector('.lucide-chevron-down')).toBeInTheDocument()
     fireEvent.click(maximize)
     expect(onCollapsedChange).toHaveBeenLastCalledWith(false)
   })
@@ -108,7 +162,7 @@ describe('MapPlaceList', () => {
     render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlanningActive onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     await screen.findByRole('button', { name: /Tous42/ })
-    expect(screen.queryByRole('link', { name: 'Nouveau lieu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ajouter un lieu' })).not.toBeInTheDocument()
   })
 
   it('filters by the selected map UUID', async () => {
@@ -160,7 +214,7 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.place-list-tag')).toHaveStyle({ backgroundColor: '#336699', color: '#FFFFFF' })
     expect(container.querySelector('.place-list-category-bubble')).toHaveStyle({ backgroundColor: '#2563EB', borderColor: '#2563EB' })
     expect(container.querySelector('.place-list-category-bubble [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
-    expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).toBeVisible()
+    expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).not.toBeInTheDocument()
     fireEvent.click(item)
     expect(select).toHaveBeenCalledWith(place)
     expect(getPlaceListPosition).not.toHaveBeenCalled()
@@ -232,11 +286,16 @@ describe('MapPlaceList', () => {
     const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     await waitFor(() => expect(container.querySelector('.places-place-card')).not.toBeNull())
-    fireEvent.click(container.querySelector('.places-selection-toggle') as HTMLButtonElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Plus d’actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sélectionner' }))
 
     expect(container.querySelector('.places-place-card')).toHaveClass('has-selection')
     expect(screen.getByRole('checkbox', { name: 'Sélectionner Sélection' })).toBeVisible()
     expect(screen.getByRole('region', { name: 'Actions groupées' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Plus d’actions' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler la sélection' }))
+    expect(screen.getByRole('button', { name: 'Plus d’actions' })).toBeVisible()
   })
 
   it('announces the shared selection count to assistive technologies', async () => {

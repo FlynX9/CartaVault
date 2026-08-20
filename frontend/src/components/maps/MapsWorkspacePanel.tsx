@@ -1,5 +1,5 @@
 import { Check, Clock3, Download, ExternalLink, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings2, Share2, Trash2, Users, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from "../../api/maps";
 import { NOTIFICATIONS_CHANGED_EVENT, notifyNotificationsChanged } from "../notifications/events";
@@ -10,7 +10,8 @@ import { CreateMapDialog } from "./CreateMapDialog";
 import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
 import { OfflinePackageDialog } from "../pwa/OfflinePackageDialog";
-import { PanelLayoutLockButton } from "../layout/PanelLayoutLockButton";
+import { PanelWindowControls } from "../layout/PanelWindowControls";
+import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
 
 interface MapsWorkspacePanelProps {
   maps: PoiMap[];
@@ -47,6 +48,8 @@ function previewTileUrl(poiMap: PoiMap): string {
 }
 
 export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose, createRequest = 0 }: MapsWorkspacePanelProps) {
+  const panelWindow = useContext(FloatingPanelWindowContext);
+  const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
   const { t, formatDate } = useI18n();
   const [creating, setCreating] = useState(false);
   const [query, setQuery] = useState("");
@@ -142,7 +145,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   };
 
   return (
-    <aside id="workspace-maps-panel" className={`country-place-panel workspace-management-panel cv-workspace-panel maps-workspace-panel${collapsed ? " is-collapsed" : ""}`} aria-labelledby="workspace-maps-title" tabIndex={-1}>
+    <aside id="workspace-maps-panel" className={`country-place-panel workspace-management-panel cv-workspace-panel maps-workspace-panel${panelCollapsed ? " is-collapsed" : ""}`} aria-labelledby="workspace-maps-title" tabIndex={-1}>
       <header className="cv-workspace-panel__header">
         <div className="cv-workspace-panel__heading">
           <p className="cv-workspace-panel__eyebrow">{t("maps.eyebrow")}</p>
@@ -152,14 +155,14 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
         </div>
         <div className="cv-workspace-panel__header-actions">
           <span className="cv-workspace-panel__count">{t("maps.count", { count: totalCount })}</span>
-          {!collapsed && (
+          {!panelCollapsed && (
             <button ref={createButton} className="panel-icon-button primary panel-create-action" type="button" aria-label={t("maps.create")} title={t("maps.new")} onClick={() => setCreating(true)}>
               <Plus size={18} aria-hidden="true" />
               <span className="panel-create-action__label">{t("maps.new")}</span>
             </button>
           )}
-          <PanelLayoutLockButton />
-          <button className="panel-icon-button workspace-panel-collapse-toggle" type="button" aria-label={collapsed ? "Agrandir le panneau" : "Réduire le panneau"} title={collapsed ? "Agrandir" : "Réduire"} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>
+          <PanelWindowControls />
+          <button className="panel-icon-button workspace-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={collapsed ? "Agrandir le panneau" : "Réduire le panneau"} title={collapsed ? "Agrandir" : "Réduire"} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>
             {collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}
           </button>
         </div>

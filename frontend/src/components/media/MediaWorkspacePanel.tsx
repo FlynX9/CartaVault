@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowUpDown, Check, ChevronDown, Download, ExternalLink,
 
 import { bulkDeleteMedia, deleteMedia, getMedia, getMediaDownloadUrl, getSuggestedMediaMap, getMediaThumbnailUrl, getMediaUploadPolicy, setMainMedia, updateMedia, uploadMedia } from "../../api/media";
 import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
-import { PanelLayoutLockButton } from "../layout/PanelLayoutLockButton";
+import { PanelWindowControls } from "../layout/PanelWindowControls";
 import type { MediaItem, MediaPage, MediaQuery } from "../../types/media";
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { mediaMessages } from "./mediaI18n";
@@ -321,6 +321,7 @@ interface Props {
 
 export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onClose, onOpenPlace }: Props) {
   const floatingWindow = useContext(FloatingPanelWindowContext);
+  const panelCollapsed = floatingWindow?.desktop ? floatingWindow.mode === "collapsed" : collapsed;
   const t = mediaMessages();
   const { confirm, confirmationDialog } = useConfirmDialog();
   const [query, setQuery] = useState<MediaQuery>(DEFAULT_QUERY);
@@ -411,7 +412,7 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
   };
 
   return (
-    <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${collapsed ? " is-collapsed" : ""}${mobileFiltersOpen ? " mobile-filters-open" : ""}`} aria-label="Médiathèque" tabIndex={-1}>
+    <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${panelCollapsed ? " is-collapsed" : ""}${mobileFiltersOpen ? " mobile-filters-open" : ""}`} aria-label="Médiathèque" tabIndex={-1}>
       <header className="cv-workspace-panel__header">
         <div className="cv-workspace-panel__heading">
           <p className="cv-workspace-panel__eyebrow">Bibliothèque</p>
@@ -428,13 +429,13 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
           <button type="button" className="panel-icon-button media-mobile-view-toggle" aria-label={viewMode === "grid" ? "Afficher en liste" : "Afficher en galerie"} title={viewMode === "grid" ? "Afficher en liste" : "Afficher en galerie"} onClick={() => setViewMode((current) => (current === "grid" ? "list" : "grid"))}>
             {viewMode === "grid" ? <List size={18} /> : <Grid2X2 size={17} />}
           </button>
-          {!collapsed && floatingWindow && (
+          {!panelCollapsed && floatingWindow?.mode === "floating" && (
             <button type="button" className="panel-icon-button media-window-maximize" aria-label={floatingWindow.maximized ? "Rétablir la taille précédente de la fenêtre Médias" : "Agrandir la fenêtre Médias au maximum"} title={floatingWindow.maximized ? "Rétablir la taille précédente" : "Agrandir la fenêtre au maximum"} aria-pressed={floatingWindow.maximized} onClick={floatingWindow.toggleMaximize}>
               {floatingWindow.maximized ? <Minimize2 size={18} aria-hidden="true" /> : <Maximize2 size={18} aria-hidden="true" />}
             </button>
           )}
-          <PanelLayoutLockButton />
-          <button type="button" className="panel-icon-button workspace-panel-collapse-toggle" aria-label={collapsed ? "Agrandir le panneau" : "Réduire le panneau"} title={collapsed ? "Agrandir" : "Réduire"} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>
+          <PanelWindowControls />
+          <button type="button" className="panel-icon-button workspace-panel-collapse-toggle mobile-panel-collapse-toggle" aria-label={collapsed ? "Agrandir le panneau" : "Réduire le panneau"} title={collapsed ? "Agrandir" : "Réduire"} aria-expanded={!collapsed} onClick={() => (onCollapsedChange ?? (() => onClose?.()))(!collapsed)}>
             {collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}
           </button>
         </div>

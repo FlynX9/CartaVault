@@ -21,7 +21,8 @@ import { recordReversibleAction } from "../../ui/actionHistory";
 import { OfflinePackageDialog } from "../pwa/OfflinePackageDialog";
 import { useI18n } from "../../i18n/useI18n";
 import { publishGlobalFeedback } from "../common/globalFeedback";
-import { PanelLayoutLockButton } from "../layout/PanelLayoutLockButton";
+import { PanelWindowControls } from "../layout/PanelWindowControls";
+import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
 import { MobileTripStopSearchDialog } from "./MobileTripStopSearchDialog";
 
 export type UnsavedTripSettingsGuard = () => Promise<boolean>;
@@ -93,6 +94,8 @@ const tripPanelMetricsCache = new globalThis.Map<
 >();
 
 export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined }: Props) {
+  const panelWindow = useContext(FloatingPanelWindowContext);
+  const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
   const { confirm, confirmationDialog } = useConfirmDialog();
   const { t } = useI18n();
   const canEdit = poiMap.can_edit === true;
@@ -949,8 +952,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
             }),
         }}
       >
-        <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? " trip-planner-panel--trip-view" : ""}${isArchivedTrip ? " trip-planner-panel--read-only" : ""}${collapsed ? " is-collapsed" : ""}`} aria-label={t("trips.title")}>
-          {collapsed ? (
+        <aside className={`map-sidebar trip-planner-panel${tripViewOnly ? " trip-planner-panel--trip-view" : ""}${isArchivedTrip ? " trip-planner-panel--read-only" : ""}${panelCollapsed ? " is-collapsed" : ""}`} aria-label={t("trips.title")}>
+          {panelCollapsed ? (
             <header className="trip-panel-header trip-panel-header--collapsed cv-workspace-panel__header">
               <div className="cv-workspace-panel__heading">
                 <h2 className="cv-workspace-panel__title">{t("trips.title")}</h2>
@@ -959,8 +962,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                 </span>
               </div>
               <div className="cv-workspace-panel__header-actions">
-                <PanelLayoutLockButton />
-                <button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label={t("trips.expandPanel")} aria-expanded="false" onClick={() => onCollapsedChange(false)}>
+                <PanelWindowControls />
+                <button className="panel-icon-button trip-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={t("trips.expandPanel")} aria-expanded="false" onClick={() => onCollapsedChange(false)}>
                   <IconMaximize size={18} aria-hidden="true" />
                 </button>
               </div>
@@ -1002,8 +1005,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                   </button>
                   {!tripViewOnly && (
                     <>
-                      <PanelLayoutLockButton />
-                      <button className="panel-icon-button trip-panel-collapse-toggle" type="button" aria-label={t("trips.collapsePanel")} aria-expanded="true" onClick={() => onCollapsedChange(true)}>
+                      <PanelWindowControls />
+                      <button className="panel-icon-button trip-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={t("trips.collapsePanel")} aria-expanded="true" onClick={() => onCollapsedChange(true)}>
                         <IconMinimize size={17} aria-hidden="true" />
                       </button>
                     </>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { ArchiveRestore, MapPinned, MapPin, Minus as IconMinimize, Plus as IconMaximize, Route, Trash2 } from "lucide-react";
 
 import { getTrash, permanentlyDeleteTrashItem, restoreTrashItem } from "../../api/trash";
@@ -8,7 +8,8 @@ import { useI18n } from "../../i18n/useI18n";
 import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
 import { WorkspacePanelHeader } from "../layout/WorkspacePanelHeader";
-import { PanelLayoutLockButton } from "../layout/PanelLayoutLockButton";
+import { PanelWindowControls } from "../layout/PanelWindowControls";
+import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
 
 interface Props {
   collapsed?: boolean;
@@ -29,6 +30,8 @@ const typeMeta: Record<
 };
 
 export function TrashWorkspacePanel({ collapsed = false, onCollapsedChange = () => undefined, onChanged = () => undefined }: Props) {
+  const panelWindow = useContext(FloatingPanelWindowContext);
+  const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
   const { confirm, confirmationDialog } = useConfirmDialog();
   const { t, formatDate } = useI18n();
   const [items, setItems] = useState<TrashItem[]>([]);
@@ -88,7 +91,7 @@ export function TrashWorkspacePanel({ collapsed = false, onCollapsedChange = () 
   };
 
   return (
-    <aside id="workspace-trash-panel" className={`country-place-panel trash-workspace-panel cv-workspace-panel${collapsed ? " is-collapsed" : ""}`} aria-labelledby="trash-panel-title" tabIndex={-1}>
+    <aside id="workspace-trash-panel" className={`country-place-panel trash-workspace-panel cv-workspace-panel${panelCollapsed ? " is-collapsed" : ""}`} aria-labelledby="trash-panel-title" tabIndex={-1}>
       <WorkspacePanelHeader
         eyebrow={t("trash.eyebrow")}
         title={t("trash.title")}
@@ -96,14 +99,14 @@ export function TrashWorkspacePanel({ collapsed = false, onCollapsedChange = () 
         count={`${items.length} élément${items.length > 1 ? "s" : ""}`}
         action={
           <>
-            <PanelLayoutLockButton />
-            <button className="panel-icon-button workspace-panel-collapse-toggle" type="button" aria-label={collapsed ? t("trash.expand") : t("trash.collapse")} onClick={() => onCollapsedChange(!collapsed)}>
+            <PanelWindowControls />
+            <button className="panel-icon-button workspace-panel-collapse-toggle mobile-panel-collapse-toggle" type="button" aria-label={collapsed ? t("trash.expand") : t("trash.collapse")} onClick={() => onCollapsedChange(!collapsed)}>
               {collapsed ? <IconMaximize size={18} aria-hidden="true" /> : <IconMinimize size={18} aria-hidden="true" />}
             </button>
           </>
         }
       />
-      {!collapsed && (
+      {!panelCollapsed && (
         <div className="trash-workspace-content cv-workspace-panel__content">
           <div className="trash-filter" role="group" aria-label={t("trash.filter")}>
             {(
