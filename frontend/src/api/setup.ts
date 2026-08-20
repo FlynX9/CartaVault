@@ -41,7 +41,7 @@ export type SetupCompletion = {
     reply_to_address: string | null
   }
   mapping: {
-    default_basemap: 'cartavault-light' | 'cartavault-dark' | 'osm-standard' | 'satellite'
+    default_basemap: 'openfreemap-light' | 'openfreemap-dark' | 'arcgis-satellite'
     default_routing_engine: 'osrm' | 'google_routes'
   }
 }

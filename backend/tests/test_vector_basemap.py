@@ -66,8 +66,11 @@ def test_controlled_geofabrik_catalog_maps_iso_codes() -> None:
     assert vector_country_source("BR").geofabrik_path == "south-america/brazil-latest.osm.pbf"
     assert vector_country_source("AX").source_url == "https://download.geofabrik.de/europe/finland-latest.osm.pbf"
     assert vector_country_source("AX").filename == "aland.pmtiles"
-    assert vector_country_source("AX").bounds == (19.0, 59.65, 21.2, 60.75)
-    assert VECTOR_COUNTRY_CATALOG["AW"].supported is False
+
+
+def test_online_pmtiles_purpose_is_not_exposed(integration_client: TestClient) -> None:
+    response = integration_client.get("/basemaps/cartavault/config", params={"country_code": "FR", "purpose": "online"})
+    assert response.status_code == 422
 
 
 def test_vector_basemap_config_selects_country_archive(integration_client: TestClient, france_basemap: VectorBasemap) -> None:
@@ -82,7 +85,7 @@ def test_vector_basemap_config_selects_country_archive(integration_client: TestC
 def test_vector_basemap_config_explains_missing_pmtiles(integration_client: TestClient, france_basemap: VectorBasemap, vector_root: Path) -> None:
     (vector_root / "france.pmtiles").unlink()
 
-    response = integration_client.get("/basemaps/cartavault/config", params={"country_code": "FR", "purpose": "online"})
+    response = integration_client.get("/basemaps/cartavault/config", params={"country_code": "FR", "purpose": "status"})
 
     assert response.status_code == 200
     assert response.json()["available"] is False

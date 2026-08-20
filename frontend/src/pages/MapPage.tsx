@@ -49,25 +49,22 @@ const TRIP_PANEL_MAX_WIDTH = 1600
 const TILE_ERROR_FALLBACK_THRESHOLD = 3
 const COUNTRY_MASK_PREFERENCE_KEY = 'cartavault:country-mask-enabled'
 
-type ClassicBasemapProvider = 'cartavault' | 'osm' | 'stadia' | 'google'
-type SatelliteBasemapProvider = 'none' | 'stadia' | 'google' | 'mapbox'
-type GoogleSatelliteMode = 'maps-js' | 'map-tiles'
+type SatelliteBasemapProvider = 'none' | 'arcgis' | 'google'
 type MapTheme = 'light' | 'dark'
 
-function resolvePreferredBasemap(value: unknown, classicProvider: ClassicBasemapProvider = 'osm', satelliteProvider: SatelliteBasemapProvider = 'none', googleSatelliteMode: GoogleSatelliteMode = 'maps-js'): BasemapId {
-  if (classicProvider === 'cartavault' && (value === 'cartavault-light' || value === 'cartavault-dark')) return value
-  if (classicProvider === 'stadia' && (value === 'stadia-light' || value === 'stadia-dark')) return value
-  if (classicProvider === 'google' && value === 'google-roadmap') return value
-  if (classicProvider === 'osm' && value === 'osm') return value
-  if (satelliteProvider === 'stadia' && value === 'satellite') return value
-  if (satelliteProvider === 'google' && googleSatelliteMode === 'maps-js' && value === 'google-satellite') return value
-  if (satelliteProvider === 'google' && googleSatelliteMode === 'map-tiles' && value === 'google-satellite-tiles') return value
-  if (satelliteProvider === 'mapbox' && value === 'mapbox-satellite') return value
-  return classicProvider === 'cartavault' ? 'cartavault-light' : classicProvider === 'stadia' ? 'stadia-light' : classicProvider === 'google' ? 'google-roadmap' : 'osm'
+function resolvePreferredBasemap(value: unknown, satelliteProvider: SatelliteBasemapProvider = 'none'): BasemapId {
+  if (value === 'openfreemap-light' || value === 'openfreemap-dark') return value
+  if (satelliteProvider === 'google' && value === 'google-satellite') return value
+  if (satelliteProvider === 'arcgis' && value === 'arcgis-satellite') return value
+  return 'openfreemap-light'
 }
 
 function mapThemeFromBasemap(id: BasemapId): MapTheme {
-  return id === 'cartavault-dark' || id === 'stadia-dark' ? 'dark' : 'light'
+  return id === 'openfreemap-dark' || id === 'offline-vector-dark' ? 'dark' : 'light'
+}
+
+function isPersistedBasemap(id: BasemapId): id is AccountPreferences['preferred_basemap'] {
+  return id === 'openfreemap-light' || id === 'openfreemap-dark' || id === 'arcgis-satellite' || id === 'google-satellite'
 }
 
 function loadPanelWidth(key: string, fallback: number, min = 320, max = 720): number {
@@ -234,19 +231,17 @@ export function MapPage({
   const { resolvedTheme } = useTheme()
   const { locale, t } = useI18n()
   // Account preferences are the persistent source of truth. Starting from the
-  // keyless OSM renderer avoids a stale browser-local preference racing the
+  // keyless OpenFreeMap renderer avoids a stale browser-local preference racing the
   // authenticated preference request and triggering a false fallback.
-  const initialBasemapRef = useRef<BasemapId>('osm')
+  const initialBasemapRef = useRef<BasemapId>('openfreemap-light')
   const [basemapId, setBasemapId] = useState<BasemapId>(initialBasemapRef.current)
   const mapTheme = mapThemeFromBasemap(basemapId)
   const [photoMarkersEnabled, setPhotoMarkersEnabled] = useState(false)
-  const [classicBasemapProvider, setClassicBasemapProvider] = useState<ClassicBasemapProvider>('osm')
   const [configuredSatelliteProvider, setConfiguredSatelliteProvider] = useState<SatelliteBasemapProvider>('none')
-  const [googleSatelliteMode, setGoogleSatelliteMode] = useState<GoogleSatelliteMode>('maps-js')
   const [offlineBasemapActive, setOfflineBasemapActive] = useState(false)
   const onlineBasemapRef = useRef<BasemapId | null>(null)
   const accountPreferencesRef = useRef<AccountPreferences | null>(null)
-  const explicitBasemapSelectionRef = useRef<BasemapId | null>(null)
+  const explicitBasemapSelectionRef = useRef<AccountPreferences['preferred_basemap'] | null>(null)
   const basemapPreferenceSaveRef = useRef<Promise<void>>(Promise.resolve())
   const basemapSelectionVersionRef = useRef(0)
   const tileFailuresRef = useRef(new Map<BasemapId, number>())
@@ -318,9 +313,7 @@ export function MapPage({
       if (!current) return
       accountPreferencesRef.current = preferences
       setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
-      setClassicBasemapProvider(preferences.basemaps?.classic_provider ?? 'osm')
       setConfiguredSatelliteProvider(preferences.basemaps?.satellite_provider ?? 'none')
-      setGoogleSatelliteMode(preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
       const explicitSelection = explicitBasemapSelectionRef.current
@@ -337,23 +330,21 @@ export function MapPage({
         }
         return
       }
-      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
+      const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.satellite_provider ?? 'none')
       setBasemapId(preferred)
     }).catch(() => undefined)
     const onPreferencesUpdated = (event: Event) => {
       const preferences = (event as CustomEvent<AccountPreferences>).detail
       accountPreferencesRef.current = preferences
       setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
-      setClassicBasemapProvider(preferences.basemaps?.classic_provider ?? 'osm')
       setConfiguredSatelliteProvider(preferences.basemaps?.satellite_provider ?? 'none')
-      setGoogleSatelliteMode(preferences.basemaps?.google_satellite_mode ?? 'maps-js')
       applyDisplayDensity(preferences.density)
       saveDisplayDensity(preferences.density, window.localStorage)
       // A map-theme click updates basemapId synchronously and persists in the
       // background. Do not let an unrelated preferences event race that click
       // and overwrite the selected renderer/icon with a stale server value.
       if (explicitBasemapSelectionRef.current === null) {
-        const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.classic_provider ?? 'osm', preferences.basemaps?.satellite_provider ?? 'none', preferences.basemaps?.google_satellite_mode ?? 'maps-js')
+        const preferred = resolvePreferredBasemap(preferences.preferred_basemap, preferences.basemaps?.satellite_provider ?? 'none')
         setBasemapId(preferred)
       }
     }
@@ -370,9 +361,7 @@ export function MapPage({
     explicitBasemapSelectionRef.current = null
     setBasemapId(resolvePreferredBasemap(
       preferences.preferred_basemap,
-      preferences.basemaps?.classic_provider ?? 'osm',
       preferences.basemaps?.satellite_provider ?? 'none',
-      preferences.basemaps?.google_satellite_mode ?? 'maps-js',
     ))
   }, [activeCountryCode])
 
@@ -431,7 +420,7 @@ export function MapPage({
         setOfflineBasemapActive(navigator.onLine === false)
         if (navigator.onLine === false) {
           onlineBasemapRef.current ??= basemapId
-          setBasemapId(resolvedTheme === 'dark' ? 'cartavault-dark' : 'cartavault-light')
+          setBasemapId(resolvedTheme === 'dark' ? 'offline-vector-dark' : 'offline-vector-light')
           publishGlobalFeedback('information', offlineReady
             ? 'Fond CartaVault hors ligne activé temporairement. Votre préférence sera restaurée au retour de la connexion.'
             : 'Le mode hors ligne utilise uniquement un fond CartaVault téléchargé pour cette carte.')
@@ -609,6 +598,7 @@ export function MapPage({
     // The selector only exposes configured choices, so keep the clicked ID
     // verbatim. Normalising it against provider state that is still loading
     // would otherwise turn a satellite choice back into the initial OSM map.
+    if (!isPersistedBasemap(id)) return
     explicitBasemapSelectionRef.current = id
     setBasemapId(id)
     tileFailuresRef.current.clear()
@@ -649,8 +639,8 @@ export function MapPage({
       publishGlobalFeedback('information', 'Le fond CartaVault hors ligne est indisponible pour cette carte.')
       return
     }
-    const fallback = sourceId === 'satellite' || sourceId === 'google-satellite' || sourceId === 'google-satellite-tiles' || sourceId === 'mapbox-satellite'
-      ? resolvePreferredBasemap(null, classicBasemapProvider, 'none')
+    const fallback = sourceId === 'google-satellite' || sourceId === 'arcgis-satellite'
+      ? 'openfreemap-light'
       : 'osm'
     console.warn('[Basemap] fallback', {
       requested: sourceId,
@@ -804,7 +794,7 @@ export function MapPage({
             </div>
           )}
           <div className="map-overlay-control-slot map-overlay-control-slot--basemap">
-            <BasemapSelector expanded={openMapPanel === 'basemap'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'basemap' : null)} activeBasemapId={basemapId} mapTheme={mapTheme} onBasemapChange={selectBasemap} offline={offlineBasemapActive} classicProvider={classicBasemapProvider} satelliteProvider={configuredSatelliteProvider} googleSatelliteMode={googleSatelliteMode} />
+            <BasemapSelector expanded={openMapPanel === 'basemap'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'basemap' : null)} activeBasemapId={basemapId} mapTheme={mapTheme} onBasemapChange={selectBasemap} offline={offlineBasemapActive} satelliteProvider={configuredSatelliteProvider} />
           </div>
           {activeCountryId && <div className="map-overlay-control-slot map-overlay-control-slot--country-mask">
             <button

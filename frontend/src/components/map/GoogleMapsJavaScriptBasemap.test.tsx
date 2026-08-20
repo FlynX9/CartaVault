@@ -6,7 +6,7 @@ import { getGoogleMapsJavaScriptConfig, markGoogleMapsJavaScriptLoaded } from '.
 import { loadGoogleMapsJavaScript, recordGoogleMapInstanceCreated, recordGoogleMapInstanceDestroyed } from '../../map/googleMapsJavaScript'
 import { GoogleMapsJavaScriptBasemap } from './GoogleMapsJavaScriptBasemap'
 
-const { container, mapMock, moveCamera, setMapTypeId, GoogleMap } = vi.hoisted(() => {
+const { container, mapMock, moveCamera, GoogleMap } = vi.hoisted(() => {
   const container = document.createElement('div')
   const moveCamera = vi.fn()
   const setMapTypeId = vi.fn()
@@ -92,31 +92,15 @@ describe('GoogleMapsJavaScriptBasemap', () => {
     expect(container.querySelector('.google-maps-js-basemap')).toBeNull()
   })
 
-  it('requests and renders the Google roadmap integration independently', async () => {
-    vi.mocked(getGoogleMapsJavaScriptConfig).mockResolvedValueOnce({ api_key: 'classic-browser-key', language: 'fr', region: '', map_type: 'roadmap' })
-    const onError = vi.fn()
-
-    render(<GoogleMapsJavaScriptBasemap active basemapId="google-roadmap" mapType="roadmap" onError={onError} />)
-
-    await waitFor(() => expect(GoogleMap).toHaveBeenCalledTimes(1))
-    expect(getGoogleMapsJavaScriptConfig).toHaveBeenCalledWith('roadmap')
-    expect(GoogleMap).toHaveBeenCalledWith(expect.any(HTMLDivElement), expect.objectContaining({ mapTypeId: 'roadmap' }))
-    expect(markGoogleMapsJavaScriptLoaded).toHaveBeenCalledWith('roadmap')
-    expect(onError).not.toHaveBeenCalled()
-  })
-
   it('requests the selected server configuration when a previously inactive Google layer is activated', async () => {
     const onError = vi.fn()
-    vi.mocked(getGoogleMapsJavaScriptConfig).mockResolvedValueOnce({ api_key: 'roadmap-browser-key', language: 'fr', region: '', map_type: 'roadmap' })
-    const view = render(<GoogleMapsJavaScriptBasemap active={false} basemapId="google-roadmap" mapType="roadmap" onError={onError} />)
+    vi.mocked(getGoogleMapsJavaScriptConfig).mockResolvedValueOnce({ api_key: 'satellite-browser-key', language: 'fr', region: '', map_type: 'satellite' })
+    const view = render(<GoogleMapsJavaScriptBasemap active={false} basemapId="google-satellite" mapType="satellite" onError={onError} />)
 
     expect(GoogleMap).not.toHaveBeenCalled()
-    view.rerender(<GoogleMapsJavaScriptBasemap active basemapId="google-roadmap" mapType="roadmap" onError={onError} />)
-    await waitFor(() => expect(GoogleMap).toHaveBeenCalledTimes(1))
-    expect(getGoogleMapsJavaScriptConfig).toHaveBeenCalledWith('roadmap')
-    expect(GoogleMap).toHaveBeenCalledWith(expect.any(HTMLDivElement), expect.objectContaining({ mapTypeId: 'roadmap' }))
-
     view.rerender(<GoogleMapsJavaScriptBasemap active basemapId="google-satellite" mapType="satellite" onError={onError} />)
-    expect(setMapTypeId).toHaveBeenCalledWith('satellite')
+    await waitFor(() => expect(GoogleMap).toHaveBeenCalledTimes(1))
+    expect(getGoogleMapsJavaScriptConfig).toHaveBeenCalledWith('satellite')
+    expect(GoogleMap).toHaveBeenCalledWith(expect.any(HTMLDivElement), expect.objectContaining({ mapTypeId: 'satellite' }))
   })
 })

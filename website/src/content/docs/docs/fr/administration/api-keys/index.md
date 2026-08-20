@@ -39,7 +39,7 @@ Suivez ce chemin dans l’interface : **Administration → Clés API**.
 
 1. Ajoutez ou modifiez un credential d’instance.
 2. Testez sa validité sans afficher le secret.
-3. Configurez les services et seuils compatibles.
+3. Associez la clé aux services compatibles et aux quotas autorisés.
 
 ### Résultat attendu
 
@@ -48,13 +48,13 @@ Les secrets sont chiffrés et masqués après enregistrement.
 ## Comment ça fonctionne ?
 
 - Les secrets sont chiffrés et masqués après enregistrement.
-- Les diagnostics nettoyés indiquent fournisseur, statut et erreur utile.
-- Une clé personnelle peut rester prioritaire selon la préférence du compte.
+- Stadia est réservé à la recherche de lieux ; Google couvre Routes, Places et le satellite Maps JavaScript.
+- OpenFreeMap est direct et sans clé ; ArcGIS utilise la clé d’instance pour une courte session navigateur.
 
 ## À savoir
 
 :::note
-- Les compteurs client sont indicatifs ; une facturation autoritative doit être contrôlée chez le fournisseur.
+- La consommation et la facturation autoritatives doivent être contrôlées chez le fournisseur.
 :::
 
 ## Voir aussi

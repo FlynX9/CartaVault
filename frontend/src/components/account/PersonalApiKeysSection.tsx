@@ -38,7 +38,7 @@ export function PersonalApiKeysSection() {
   const [editing, setEditing] = useState<PersonalApiKey | null | "new">(null);
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<
-    "google" | "stadia" | "mapbox" | "openrouteservice"
+    "google" | "stadia" | "openrouteservice"
   >("google");
   const [secret, setSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
@@ -79,7 +79,7 @@ export function PersonalApiKeysSection() {
   const open = (key: PersonalApiKey | "new") => {
     setEditing(key);
     setName(key === "new" ? "" : key.name);
-    setProvider(key === "new" ? "google" : key.provider);
+    setProvider(key === "new" || key.provider === "mapbox" ? "google" : key.provider);
     setSecret("");
     setShowSecret(false);
     setError(null);
@@ -454,18 +454,8 @@ export function PersonalApiKeysSection() {
                         className={provider === "stadia" ? "is-selected" : ""}
                         onClick={() => setProvider("stadia")}
                       >
-                        <img
-                          src="https://www.stadiamaps.com/favicon.ico"
-                          alt=""
-                        />
+                        <KeyRound size={18} />
                         Stadia
-                      </button>
-                      <button
-                        type="button"
-                        className={provider === "mapbox" ? "is-selected" : ""}
-                        onClick={() => setProvider("mapbox")}
-                      >
-                        Mapbox
                       </button>
                       <button
                         type="button"
@@ -693,7 +683,7 @@ function ApiKeyCard({
           alt: "Google",
         }
       : item.provider === "stadia"
-        ? { src: "https://www.stadiamaps.com/favicon.ico", alt: "Stadia Maps" }
+        ? { src: "", alt: "Stadia Places" }
       : item.provider === "mapbox"
           ? { src: "/brands/mapbox-logo.svg", alt: "Mapbox" }
           : { src: "/brands/ors-logo.jpeg", alt: "ORS" };
@@ -709,7 +699,7 @@ function ApiKeyCard({
     <article className={`account-api-key-card${errored ? " is-error" : ""}`}>
       <header>
         <span className={`account-api-key-card__logo is-${item.provider}`}>
-          <img src={brand.src} alt={brand.alt} />
+          {brand.src ? <img src={brand.src} alt={brand.alt} /> : <KeyRound size={18} aria-label={brand.alt} />}
         </span>
         <div>
           <h3>{item.name}</h3>

@@ -25,7 +25,7 @@ export interface CartaVaultVectorConfig {
 const cached = new Map<string, CartaVaultVectorConfig>()
 const STORAGE_KEY = 'cartavault.vector-basemap-config'
 
-export async function getCartaVaultVectorConfig(signal?: AbortSignal, refresh = false, countryCode?: string, purpose: 'status' | 'online' | 'offline' = 'status'): Promise<CartaVaultVectorConfig> {
+export async function getCartaVaultVectorConfig(signal?: AbortSignal, refresh = false, countryCode?: string, purpose: 'status' | 'offline' = 'status'): Promise<CartaVaultVectorConfig> {
   const key = countryCode?.toUpperCase() ?? 'none'
   if (cached.has(key) && !refresh) return cached.get(key)!
   try {

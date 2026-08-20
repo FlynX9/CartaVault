@@ -18,7 +18,7 @@ vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user', dis
 vi.mock('../../theme/useTheme', () => ({ useTheme: () => ({ preference: 'light', resolvedTheme: 'light', setPreference: vi.fn(), toggleTheme: vi.fn() }) }))
 
 const profile = { id: 'user', display_name: 'Greg', email: 'greg@example.test', email_verified: true, is_admin: true, is_active: true, avatar_url: null, created_at: '2026-01-01', updated_at: '2026-01-01', last_login_at: null, owned_maps: [], shared_map_count: 1, active_session_count: 1, can_delete: true }
-const preferences = { language: 'fr' as const, default_theme: 'system' as const, preferred_basemap: 'osm' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const }, places: { provider: 'stadia' as const }, basemaps: { classic_provider: 'osm' as const, satellite_provider: 'none' as const } }
+const preferences = { language: 'fr' as const, default_theme: 'system' as const, preferred_basemap: 'openfreemap-light' as const, density: 'comfortable' as const, startup_panel: 'maps' as const, timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] as Array<'map' | 'place' | 'import' | 'trip' | 'organization'> }, routing: { provider: 'osrm' as const }, places: { provider: 'stadia' as const }, basemaps: { classic_provider: 'openfreemap' as const, satellite_provider: 'none' as const } }
 
 beforeEach(async () => {
   const account = await import('../../api/account')

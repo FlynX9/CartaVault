@@ -66,8 +66,8 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert defaults.status_code == 200
     assert defaults.json()["language"] == "fr"
     assert defaults.json()["default_theme"] == "system"
-    assert defaults.json()["preferred_basemap"] == "osm"
-    assert defaults.json()["basemaps"]["classic_provider"] == "osm"
+    assert defaults.json()["preferred_basemap"] == "openfreemap-light"
+    assert defaults.json()["basemaps"]["classic_provider"] == "openfreemap"
     assert defaults.json()["basemaps"]["satellite_provider"] == "none"
     assert defaults.json()["photo_markers_enabled"] is False
     assert defaults.json()["routing"]["provider"] == "osrm"
@@ -88,14 +88,8 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert updated.json()["startup_panel"] == "dashboard"
     assert updated.json()["routing"]["provider"] == "osrm"
     assert updated.json()["photo_markers_enabled"] is True
-    monkeypatch.setattr("app.auth.account_router.stadia_unauthenticated_allowed", lambda: True)
-    stadia = integration_client.put(
-        "/account/preferences",
-        json={**updated.json(), "preferred_basemap": "stadia-light", "basemaps": {"classic_provider": "stadia", "satellite_provider": "none"}},
-        headers=headers,
-    )
-    assert stadia.status_code == 200
-    assert stadia.json()["basemaps"]["classic_provider"] == "stadia"
+    assert updated.json()["preferred_basemap"] == "openfreemap-light"
+    assert updated.json()["basemaps"]["classic_provider"] == "openfreemap"
     unavailable = integration_client.put(
         "/account/preferences",
         json={**updated.json(), "routing": {"provider": "google"}},
@@ -123,28 +117,79 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert set(google.json()["routing"]) == {"provider", "api_key_id"}
     satellite_without_browser_key = integration_client.put(
         "/account/preferences",
-        json={**updated.json(), "basemaps": {"classic_provider": "google", "satellite_provider": "google", "google_satellite_mode": "maps-js", "google_api_key_id": str(credential.id)}},
+        json={**updated.json(), "basemaps": {"classic_provider": "openfreemap", "satellite_provider": "google"}},
         headers=headers,
     )
     assert satellite_without_browser_key.status_code == 409
     assert satellite_without_browser_key.json()["detail"]["code"] == "GOOGLE_MAPS_JS_CREDENTIAL_REQUIRED"
     satellite = integration_client.put(
         "/account/preferences",
-        json={**updated.json(), "basemaps": {"classic_provider": "google", "satellite_provider": "google", "google_api_key_id": str(credential.id), "google_maps_js_api_key_id": str(credential.id)}},
+        json={**updated.json(), "preferred_basemap": "google-satellite", "basemaps": {"classic_provider": "openfreemap", "satellite_provider": "google", "google_maps_js_api_key_id": str(credential.id)}},
         headers=headers,
     )
     assert satellite.status_code == 200
     assert satellite.json()["basemaps"]["google_maps_js_api_key_id"] == str(credential.id)
-    satellite_tiles = integration_client.put(
+    unknown = integration_client.put(
         "/account/preferences",
-        json={**updated.json(), "preferred_basemap": "google-satellite-tiles", "basemaps": {"classic_provider": "osm", "satellite_provider": "google", "google_satellite_mode": "map-tiles", "google_api_key_id": str(credential.id)}},
+        json={**updated.json(), "preferred_basemap": "unknown-provider"},
         headers=headers,
     )
-    assert satellite_tiles.status_code == 200
-    assert satellite_tiles.json()["basemaps"]["google_satellite_mode"] == "map-tiles"
-    assert integration_client.put("/account/preferences", json={"preferred_basemap": "invalid"}, headers=headers).status_code == 422
+    assert unknown.status_code == 200
+    assert unknown.json()["preferred_basemap"] == "openfreemap-light"
     reset = integration_client.post("/account/preferences/reset", headers=headers)
     assert reset.status_code == 200 and reset.json()["density"] == "compact"
     assert reset.json()["language"] == "fr"
     assert reset.json()["photo_markers_enabled"] is False
     assert reset.json()["default_theme"] == "system"
+
+
+def test_legacy_basemap_preferences_are_migrated_and_persisted(integration_client, database_session, auth_user, monkeypatch) -> None:
+    auth_user.preferences = {
+        "preferred_basemap": "mapbox-satellite",
+        "basemaps": {
+            "classic_provider": "stadia",
+            "satellite_provider": "mapbox",
+            "satellite_api_key_id": str(uuid4()),
+        },
+        "privacy_consent": {"analytics": False},
+    }
+    database_session.commit()
+    _login(integration_client, database_session, monkeypatch, auth_user)
+
+    first = integration_client.get("/account/preferences")
+    second = integration_client.get("/account/preferences")
+
+    assert first.status_code == 200
+    assert first.json() == second.json()
+    assert first.json()["preferred_basemap"] == "arcgis-satellite"
+    assert first.json()["basemaps"] == {
+        "classic_provider": "openfreemap",
+        "satellite_provider": "arcgis",
+        "google_maps_js_api_key_id": None,
+    }
+    database_session.refresh(auth_user)
+    assert auth_user.preferences["preferred_basemap"] == "arcgis-satellite"
+    assert auth_user.preferences["basemaps"] == first.json()["basemaps"]
+    assert auth_user.preferences["privacy_consent"] == {"analytics": False}
+
+
+def test_migrated_credential_ids_remain_json_serializable(integration_client, database_session, auth_user, monkeypatch) -> None:
+    google_key_id = uuid4()
+    auth_user.preferences = {
+        "preferred_basemap": "google-satellite-tiles",
+        "basemaps": {
+            "classic_provider": "google",
+            "satellite_provider": "google",
+            "google_api_key_id": str(google_key_id),
+        },
+    }
+    database_session.commit()
+    _login(integration_client, database_session, monkeypatch, auth_user)
+
+    response = integration_client.get("/account/preferences")
+
+    assert response.status_code == 200
+    assert response.json()["preferred_basemap"] == "google-satellite"
+    assert response.json()["basemaps"]["google_maps_js_api_key_id"] == str(google_key_id)
+    database_session.refresh(auth_user)
+    assert auth_user.preferences["basemaps"]["google_maps_js_api_key_id"] == str(google_key_id)

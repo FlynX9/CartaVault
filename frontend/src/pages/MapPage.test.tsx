@@ -28,7 +28,7 @@ vi.mock('../theme/useTheme', () => ({
 
 vi.mock('../api/account', () => ({
   ACCOUNT_PREFERENCES_UPDATED_EVENT: 'cartavault:preferences-updated',
-  getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'stadia-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'stadia', satellite_provider: 'stadia' } }),
+  getAccountPreferences: vi.fn().mockResolvedValue({ language: 'fr', preferred_basemap: 'openfreemap-light', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'openfreemap', satellite_provider: 'arcgis' } }),
   updateAccountPreferences: vi.fn().mockImplementation(async (preferences) => preferences),
 }))
 
@@ -39,7 +39,7 @@ vi.mock('../components/map/PoiMap', () => ({
   PoiMap: ({ layoutKey, basemapId, onBasemapTileError, countryId, countryMaskEnabled, measurementActive, measurementPoints, onMeasurementPointAdd, mapToolMode, onTemporaryExtentChange, onTemporaryCoordinateChange, focusRequest, annotationDrawing, onAnnotationDrawingPointsChange, onAnnotationDrawingComplete }: { layoutKey: string; basemapId: string; onBasemapTileError: (id: string, fatal?: boolean, reason?: string, errorCode?: string) => void; countryId?: string | null; countryMaskEnabled?: boolean; measurementActive?: boolean; measurementPoints?: Array<{ latitude: number; longitude: number }>; onMeasurementPointAdd?: (point: { latitude: number; longitude: number }) => void; mapToolMode?: string; onTemporaryExtentChange?: (extent: { start: { latitude: number; longitude: number }; end: { latitude: number; longitude: number }; locked: boolean }) => void; onTemporaryCoordinateChange?: (point: { latitude: number; longitude: number }) => void; focusRequest?: { bounds?: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number } } | null; annotationDrawing?: { points: Array<{ latitude: number; longitude: number }> } | null; onAnnotationDrawingPointsChange?: (points: Array<{ latitude: number; longitude: number }>) => void; onAnnotationDrawingComplete?: (points: Array<{ latitude: number; longitude: number }>) => void }) => (
     <div data-testid="poi-map" data-layout-key={layoutKey} data-basemap-id={basemapId} data-country-id={countryId ?? ''} data-country-mask={String(countryMaskEnabled)} data-measurement-active={String(measurementActive)} data-measurement-points={measurementPoints?.length ?? 0} data-tool-mode={mapToolMode} data-focus-bounds={focusRequest?.bounds ? JSON.stringify(focusRequest.bounds) : ''} data-annotation-points={annotationDrawing?.points.length ?? 0}>
       <button type="button" onClick={() => onBasemapTileError(basemapId)}>Simuler l'erreur de tuiles</button>
-      <button type="button" onClick={() => onBasemapTileError('google-satellite', true, 'Google Satellite est indisponible dans cette région.', 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE')}>Simuler la restriction Google Satellite</button>
+      <button type="button" onClick={() => onBasemapTileError('google-satellite', true, 'Google Satellite est indisponible avec cette clé.', 'GOOGLE_MAPS_JS_AUTHENTICATION_FAILED')}>Simuler la restriction Google Satellite</button>
       <button type="button" onClick={() => onMeasurementPointAdd?.({ latitude: 48.8566, longitude: 2.3522 })}>Simuler un clic de mesure</button>
       <button type="button" onClick={() => onTemporaryExtentChange?.({ start: { latitude: 47, longitude: 1 }, end: { latitude: 49, longitude: 3 }, locked: true })}>Simuler une emprise</button>
       <button type="button" onClick={() => onTemporaryCoordinateChange?.({ latitude: 48.1234567, longitude: 2.7654321 })}>Simuler des coordonnées</button>
@@ -111,21 +111,21 @@ describe('MapPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Afficher la légende des statuts' }))
     expect(legend).toHaveTextContent('À faire')
     fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia satellite' }))
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'satellite')
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond ArcGIS World Imagery' }))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'arcgis-satellite')
     expect(screen.getByTestId('poi-map')).toBe(map)
     const tileError = screen.getByRole('button', { name: "Simuler l'erreur de tuiles" })
     fireEvent.click(tileError)
     fireEvent.click(tileError)
     expect(screen.queryByText(/activé automatiquement/)).not.toBeInTheDocument()
     fireEvent.click(tileError)
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
-    expect(screen.getByRole('status')).toHaveTextContent('Stadia clair a été activé automatiquement')
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-light')
+    expect(screen.getByRole('status')).toHaveTextContent('OpenFreeMap clair a été activé automatiquement')
     expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
-      expect.objectContaining({ kind: 'information', message: expect.stringContaining('Stadia clair a été activé automatiquement') }),
+      expect.objectContaining({ kind: 'information', message: expect.stringContaining('OpenFreeMap clair a été activé automatiquement') }),
     ])
     expect(window.localStorage.getItem('cartavault.basemap')).toBeNull()
-    expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-light' }))
+    expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'openfreemap-light' }))
   })
 
   it('resizes both workspace panels without remounting the map', async () => {
@@ -198,13 +198,13 @@ describe('MapPage', () => {
     const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
     fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond Stadia sombre' }))
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
+    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond OpenFreeMap sombre' }))
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-dark')
     expect(themeState.setPreference).not.toHaveBeenCalled()
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-dark')
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-dark')
     expect(window.localStorage.getItem('cartavault.basemap')).toBeNull()
-    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'stadia-dark' })))
+    await waitFor(() => expect(account.updateAccountPreferences).toHaveBeenCalledWith(expect.objectContaining({ preferred_basemap: 'openfreemap-dark' })))
   })
 
   it('keeps Google Satellite configured when the JavaScript renderer reports a load error', async () => {
@@ -212,7 +212,7 @@ describe('MapPage', () => {
     vi.mocked(account.getAccountPreferences).mockResolvedValueOnce({
       language: 'fr', default_theme: 'system', preferred_basemap: 'google-satellite', density: 'comfortable', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30,
       photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' },
-      basemaps: { classic_provider: 'google', satellite_provider: 'google', google_api_key_id: 'google-key', google_maps_js_api_key_id: 'browser-key' },
+      basemaps: { classic_provider: 'openfreemap', satellite_provider: 'google', google_maps_js_api_key_id: 'browser-key' },
     })
     const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
     render(<><MemoryRouter><MapPage {...props} /></MemoryRouter><GlobalFeedbackToasts /></>)
@@ -220,13 +220,13 @@ describe('MapPage', () => {
     await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-satellite'))
     fireEvent.click(screen.getByRole('button', { name: 'Simuler la restriction Google Satellite' }))
 
-    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'google-roadmap')
-    expect(screen.getByRole('status')).toHaveTextContent('Google Satellite est indisponible dans cette région')
+    expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-light')
+    expect(screen.getByRole('status')).toHaveTextContent('Google Satellite est indisponible avec cette clé')
     expect(JSON.parse(window.localStorage.getItem('cartavault:notification-history') ?? '[]')).toEqual([
-      expect.objectContaining({ kind: 'information', message: expect.stringContaining('Google Satellite est indisponible dans cette région') }),
+      expect.objectContaining({ kind: 'information', message: expect.stringContaining('Google Satellite est indisponible avec cette clé') }),
     ])
     expect(account.updateAccountPreferences).not.toHaveBeenCalledWith(expect.objectContaining({
-      preferred_basemap: 'google-roadmap',
+      preferred_basemap: 'openfreemap-light',
     }))
   })
 
@@ -238,12 +238,12 @@ describe('MapPage', () => {
       onPlaceSelect: vi.fn(),
     }
     const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
-    expect(await screen.findByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light')
+    expect(await screen.findByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-light')
 
     themeState.resolvedTheme = 'dark'
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
 
-    await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'stadia-light'))
+    await waitFor(() => expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-light'))
   })
 
   it('disables the country mask without remounting the map and persists the choice', async () => {

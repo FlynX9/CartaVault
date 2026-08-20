@@ -1,6 +1,6 @@
 ---
 title: Prepare CartaVault Vector basemaps
-description: Download OSM extracts and generate country vector maps.
+description: Download OSM extracts and generate country vector maps for offline use.
 sidebar:
   order: 60
 ---
@@ -9,7 +9,7 @@ sidebar:
 
 ## What is this feature for?
 
-CartaVault Vector provides consistent instance-served cartography reusable offline without relying on third-party tile caching terms.
+CartaVault Vector provides consistent offline cartography without attempting to cache a third-party online provider.
 
 :::caution
 This page covers instance administration and is only available to administrators.
@@ -37,7 +37,7 @@ Follow this path in the interface : **Administration → General → CartaVault 
 
 ## How do I use it?
 
-1. Enable CartaVault Vector and choose a preparation strategy.
+1. Enable CartaVault Vector and choose an offline preparation strategy.
 2. Select a supported country and start Download and prepare.
 3. Follow phases and percentage; update, retry or delete the basemap.
 
@@ -49,7 +49,7 @@ Geofabrik supplies the controlled extract and Planetiler runs only during genera
 
 - Geofabrik supplies the controlled extract and Planetiler runs only during generation.
 - One basemap is generated at a time and the task persists server-side.
-- Users then download tiles from this prepared basemap; each device does not regenerate the source extract.
+- Users then extract the required tiles into IndexedDB; online navigation never uses PMTiles.
 
 ## Good to know
 

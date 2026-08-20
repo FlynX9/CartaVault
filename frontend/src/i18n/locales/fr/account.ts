@@ -192,7 +192,7 @@ export const accountFr = {
   'account.integrations.places': 'Recherche de lieux',
   'account.integrations.placesDescription': 'Choisissez le moteur utilisé pour la recherche de lieux.',
   'account.integrations.classicBasemap': 'Cartographie classique',
-  'account.integrations.classicBasemapDescription': 'OSM standard, CartaVault Vector clair/sombre, Stadia clair/sombre ou Google normal.',
+  'account.integrations.classicBasemapDescription': 'OpenFreeMap clair/sombre, avec OSM Standard comme fond de secours.',
   'account.integrations.satelliteBasemap': 'Cartographie satellite',
   'account.integrations.satelliteBasemapDescription': 'Fournisseur satellite indépendant, désactivé par défaut.',
   'account.integrations.disabled': 'Désactivée',

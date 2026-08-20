@@ -1,6 +1,6 @@
 ---
 title: Préparer les fonds CartaVault Vector
-description: Télécharger les extraits OSM et générer les fonds vectoriels par pays.
+description: Télécharger les extraits OSM et générer les fonds vectoriels par pays pour le hors-ligne.
 sidebar:
   order: 60
 ---
@@ -9,7 +9,7 @@ sidebar:
 
 ## À quoi sert cette fonction ?
 
-Le fond CartaVault fournit une cartographie cohérente servie par l’instance et réutilisable hors ligne, sans dépendre des conditions de cache d’un fournisseur tiers.
+Le fond CartaVault fournit une cartographie cohérente réutilisable hors ligne, sans tenter de mettre en cache un fournisseur online tiers.
 
 :::caution
 Cette page concerne l’administration de l’instance. Elle n’est accessible qu’aux administrateurs.
@@ -37,7 +37,7 @@ Suivez ce chemin dans l’interface : **Administration → Général → Fond de
 
 ## Comment l’utiliser ?
 
-1. Activez CartaVault Vector et choisissez la stratégie de préparation.
+1. Activez CartaVault Vector et choisissez la stratégie de préparation offline.
 2. Sélectionnez un pays pris en charge puis lancez Télécharger et préparer.
 3. Suivez les phases et le pourcentage ; mettez à jour, réessayez ou supprimez le fond.
 
@@ -49,7 +49,7 @@ Geofabrik fournit l’extrait contrôlé et Planetiler ne s’exécute que penda
 
 - Geofabrik fournit l’extrait contrôlé et Planetiler ne s’exécute que pendant la génération.
 - Un seul fond est généré à la fois et la tâche persiste côté serveur.
-- Les utilisateurs téléchargent ensuite les tuiles depuis ce fond déjà construit ; l’extrait source n’est pas régénéré par appareil.
+- Les utilisateurs extraient ensuite les tuiles nécessaires dans IndexedDB ; la navigation online n’utilise jamais PMTiles.
 
 ## À savoir
 

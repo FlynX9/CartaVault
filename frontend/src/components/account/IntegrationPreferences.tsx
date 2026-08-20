@@ -22,17 +22,15 @@ type ServiceKind =
 interface ServiceDraft {
   provider: string;
   apiKeyId: string;
-  googleSatelliteMode: "maps-js" | "map-tiles";
 }
 
 const providerLabels: Record<string, string> = {
   osrm: "OSRM",
   google: "Google Routes",
   openrouteservice: "OpenRouteService",
-  stadia: "Stadia Maps",
-  cartavault: "CartaVault Vector",
-  osm: "OpenStreetMap",
-  mapbox: "Mapbox",
+  stadia: "Stadia Places",
+  openfreemap: "OpenFreeMap",
+  arcgis: "ArcGIS World Imagery",
 };
 
 function compatibleKeys(
@@ -164,14 +162,12 @@ function ServiceDialog({
   kind,
   initial,
   keys,
-  stadiaKeyOptional,
   onClose,
   onSave,
 }: {
   kind: ServiceKind;
   initial: ServiceDraft;
   keys: PersonalApiKey[];
-  stadiaKeyOptional: boolean;
   onClose: () => void;
   onSave: (draft: ServiceDraft) => void;
 }) {
@@ -193,13 +189,9 @@ function ServiceDialog({
   );
   const keyDisabled =
     (kind === "routing" && draft.provider === "osrm") ||
-    (kind === "classic-basemap" && ["cartavault", "osm"].includes(draft.provider)) ||
-    (kind === "satellite-basemap" && draft.provider === "none");
-  const keyOptional =
-    keyDisabled ||
-    (kind.includes("basemap") &&
-      draft.provider === "stadia" &&
-      stadiaKeyOptional);
+    (kind === "classic-basemap" && draft.provider === "openfreemap") ||
+    (kind === "satellite-basemap" && ["none", "arcgis"].includes(draft.provider));
+  const keyOptional = keyDisabled;
   const changeProvider = (provider: string) =>
     setDraft({ ...draft, provider, apiKeyId: "" });
 
@@ -256,47 +248,18 @@ function ServiceDialog({
                   <option value="google">Google Places</option>
                 </>
               ) : kind === "classic-basemap" ? (
-                <>
-                  <option value="cartavault">CartaVault Vector clair / sombre</option>
-                  <option value="osm">OpenStreetMap standard</option>
-                  <option value="stadia">Stadia light / dark</option>
-                  <option value="google">Google normal</option>
-                </>
+                <option value="openfreemap">OpenFreeMap clair / sombre</option>
               ) : (
                 <>
                   <option value="none">
                     {t("account.integrations.disabled")}
                   </option>
-                  <option value="stadia">Stadia Satellite</option>
+                  <option value="arcgis">ArcGIS World Imagery</option>
                   <option value="google">Google Satellite</option>
-                  <option value="mapbox">Mapbox Satellite</option>
                 </>
               )}
             </select>
           </label>
-          {kind === "satellite-basemap" && draft.provider === "google" && (
-            <label>
-              Intégration Google Satellite
-              <select
-                value={draft.googleSatelliteMode}
-                onChange={(event) =>
-                  setDraft({
-                    ...draft,
-                    googleSatelliteMode: event.target
-                      .value as ServiceDraft["googleSatelliteMode"],
-                    apiKeyId: "",
-                  })
-                }
-              >
-                <option value="maps-js">
-                  Maps JavaScript API — compatible EEE
-                </option>
-                <option value="map-tiles">
-                  Map Tiles API — selon disponibilité Google
-                </option>
-              </select>
-            </label>
-          )}
           <label>
             {t("account.integrations.associatedKey")}{" "}
             {keyOptional && (
@@ -362,9 +325,6 @@ export function IntegrationPreferences({
   const { t } = useI18n();
   const [keys, setKeys] = useState<PersonalApiKey[]>([]);
   const [editing, setEditing] = useState<ServiceKind | null>(null);
-  const stadiaKeyOptional =
-    typeof window !== "undefined" &&
-    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   useEffect(() => {
     void getPersonalApiKeys()
       .then(setKeys)
@@ -372,10 +332,10 @@ export function IntegrationPreferences({
   }, []);
 
   const basemaps = preferences.basemaps ?? {
-    classic_provider: "osm" as const,
+    classic_provider: "openfreemap" as const,
     satellite_provider: "none" as const,
   };
-  const classicProvider = basemaps.classic_provider ?? "osm";
+  const classicProvider = "openfreemap" as const;
   const routingKeys = compatibleKeys(
     keys,
     "routing",
@@ -386,56 +346,36 @@ export function IntegrationPreferences({
     "places",
     preferences.places.provider,
   );
-  const classicKeys = compatibleKeys(keys, "classic-basemap", classicProvider);
   const satelliteKeys = compatibleKeys(
     keys,
     "satellite-basemap",
     basemaps.satellite_provider,
   );
-  const googleSatelliteMode = basemaps.google_satellite_mode ?? "maps-js";
-  const providerKey = (
-    provider: string,
-    kind: ServiceKind,
-    mode = googleSatelliteMode,
-  ) =>
-    kind === "classic-basemap" && basemaps.classic_api_key_id
-      ? basemaps.classic_api_key_id
-      : kind === "satellite-basemap" && mode !== "maps-js" && basemaps.satellite_api_key_id
-        ? basemaps.satellite_api_key_id
-        : provider === "stadia"
-      ? basemaps.stadia_api_key_id
-      : provider === "google"
-        ? kind === "satellite-basemap" && mode === "maps-js"
-          ? basemaps.google_maps_js_api_key_id
-          : basemaps.google_api_key_id
-        : provider === "mapbox"
-          ? basemaps.mapbox_api_key_id
-          : null;
+  const providerKey = (provider: string, kind: ServiceKind) =>
+    provider === "google" && kind === "satellite-basemap"
+      ? basemaps.google_maps_js_api_key_id
+      : null;
   const initialDraft: ServiceDraft =
     editing === "routing"
       ? {
           provider: preferences.routing.provider,
           apiKeyId: preferences.routing.api_key_id ?? "",
-          googleSatelliteMode,
         }
       : editing === "places"
         ? {
             provider: preferences.places.provider,
             apiKeyId: preferences.places.api_key_id ?? "",
-            googleSatelliteMode,
           }
         : editing === "classic-basemap"
           ? {
               provider: classicProvider,
-              apiKeyId: providerKey(classicProvider, "classic-basemap") ?? "",
-              googleSatelliteMode,
+              apiKeyId: "",
             }
           : {
               provider: basemaps.satellite_provider,
               apiKeyId:
                 providerKey(basemaps.satellite_provider, "satellite-basemap") ??
                 "",
-              googleSatelliteMode,
             };
 
   const saveService = (draft: ServiceDraft) => {
@@ -456,28 +396,12 @@ export function IntegrationPreferences({
         },
       });
     if (editing === "classic-basemap") {
-      const provider = draft.provider as NonNullable<
-        AccountPreferences["basemaps"]
-      >["classic_provider"];
       setPreferences({
         ...preferences,
-        preferred_basemap:
-          provider === "cartavault"
-            ? "cartavault-light"
-            : provider === "stadia"
-            ? "stadia-light"
-            : provider === "google"
-              ? "google-roadmap"
-              : "osm",
+        preferred_basemap: "openfreemap-light",
         basemaps: {
           ...basemaps,
-          classic_provider: provider,
-          classic_api_key_id: provider === "cartavault" || provider === "osm" ? null : draft.apiKeyId || null,
-          ...(provider === "stadia"
-            ? { stadia_api_key_id: draft.apiKeyId || null }
-            : provider === "google"
-              ? { google_api_key_id: draft.apiKeyId || null }
-              : {}),
+          classic_provider: "openfreemap",
         },
       });
     }
@@ -488,25 +412,15 @@ export function IntegrationPreferences({
       setPreferences({
         ...preferences,
         preferred_basemap:
-          provider === "google"
-            ? draft.googleSatelliteMode === "map-tiles"
-              ? "google-satellite-tiles"
-              : "google-satellite"
+          provider === "arcgis"
+            ? "arcgis-satellite"
+            : provider === "google"
+            ? "google-satellite"
             : preferences.preferred_basemap,
         basemaps: {
           ...basemaps,
           satellite_provider: provider,
-          google_satellite_mode: draft.googleSatelliteMode,
-          satellite_api_key_id: provider === "none" || (provider === "google" && draft.googleSatelliteMode === "maps-js") ? null : draft.apiKeyId || null,
-          ...(provider === "stadia"
-            ? { stadia_api_key_id: draft.apiKeyId || null }
-            : provider === "google"
-              ? draft.googleSatelliteMode === "maps-js"
-                ? { google_maps_js_api_key_id: draft.apiKeyId || null }
-                : { google_api_key_id: draft.apiKeyId || null }
-              : provider === "mapbox"
-                ? { mapbox_api_key_id: draft.apiKeyId || null }
-                : {}),
+          google_maps_js_api_key_id: provider === "google" ? draft.apiKeyId || null : basemaps.google_maps_js_api_key_id,
         },
       });
     }
@@ -579,26 +493,12 @@ export function IntegrationPreferences({
             description={t("account.integrations.classicBasemapDescription")}
             providerLabel={providerLabels[classicProvider]}
             providerCaption={t("account.integrations.provider")}
-            keyName={
-              ["cartavault", "osm"].includes(classicProvider) ||
-              (classicProvider === "stadia" &&
-                stadiaKeyOptional &&
-                !providerKey("stadia", "classic-basemap"))
-                ? t("account.integrations.noKeyRequired")
-                : keyLabel(
-                    classicKeys,
-                    providerKey(classicProvider, "classic-basemap"),
-                    t("account.integrations.noKey"),
-                  )
-            }
+            keyName={t("account.integrations.noKeyRequired")}
             state={
               <ServiceState
-                keys={classicKeys}
-                value={providerKey(classicProvider, "classic-basemap")}
-                optional={
-                  ["cartavault", "osm"].includes(classicProvider) ||
-                  (classicProvider === "stadia" && stadiaKeyOptional)
-                }
+                keys={[]}
+                value={null}
+                optional
               />
             }
             onEdit={() => setEditing("classic-basemap")}
@@ -608,24 +508,19 @@ export function IntegrationPreferences({
             title={t("account.integrations.satelliteBasemap")}
             description={
               basemaps.satellite_provider === "google"
-                ? googleSatelliteMode === "maps-js"
-                  ? "Maps JavaScript API avec clé navigateur restreinte par référent HTTP."
-                  : "Map Tiles API avec clé serveur ; le satellite peut être indisponible pour une facturation EEE."
+                ? "Maps JavaScript API avec clé navigateur restreinte par référent HTTP."
                 : t("account.integrations.satelliteBasemapDescription")
             }
             providerLabel={
               basemaps.satellite_provider === "google"
-                ? `Google Satellite · ${googleSatelliteMode === "maps-js" ? "Maps JavaScript" : "Map Tiles"}`
+                ? "Google Satellite · Maps JavaScript"
                 : basemaps.satellite_provider === "none"
                   ? t("account.integrations.disabled")
                   : providerLabels[basemaps.satellite_provider]
             }
             providerCaption={t("account.integrations.provider")}
             keyName={
-              basemaps.satellite_provider === "none" ||
-              (basemaps.satellite_provider === "stadia" &&
-                stadiaKeyOptional &&
-                !providerKey("stadia", "satellite-basemap"))
+              ["none", "arcgis"].includes(basemaps.satellite_provider)
                 ? t("account.integrations.noKeyRequired")
                 : keyLabel(
                     satelliteKeys,
@@ -644,9 +539,7 @@ export function IntegrationPreferences({
                   "satellite-basemap",
                 )}
                 optional={
-                  basemaps.satellite_provider === "none" ||
-                  (basemaps.satellite_provider === "stadia" &&
-                    stadiaKeyOptional)
+                  ["none", "arcgis"].includes(basemaps.satellite_provider)
                 }
               />
             }
@@ -660,7 +553,6 @@ export function IntegrationPreferences({
           kind={editing}
           initial={initialDraft}
           keys={keys}
-          stadiaKeyOptional={stadiaKeyOptional}
           onClose={() => setEditing(null)}
           onSave={saveService}
         />

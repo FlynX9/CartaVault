@@ -13,7 +13,7 @@ SETTING_KEY = "vector_basemap"
 @dataclass(frozen=True, slots=True)
 class VectorBasemapPolicy:
     enabled: bool = True
-    preparation_policy: str = "on_first_cartavault_use"
+    preparation_policy: str = "on_first_offline_use"
     update_policy: str = "disabled"
     min_zoom: int = 0
     max_zoom: int = 14
@@ -25,10 +25,12 @@ class VectorBasemapPolicy:
 
 def _normalized(value: dict[str, object] | None) -> VectorBasemapPolicy:
     raw = value or {}
-    preparation = str(raw.get("preparation_policy", "on_first_cartavault_use"))
+    preparation = str(raw.get("preparation_policy", "on_first_offline_use"))
     update = str(raw.get("update_policy", "disabled"))
-    if preparation not in {"on_map_creation", "on_first_cartavault_use", "on_first_offline_use", "manual"}:
-        preparation = "on_first_cartavault_use"
+    if preparation in {"on_map_creation", "on_first_cartavault_use"}:
+        preparation = "on_first_offline_use"
+    if preparation not in {"on_first_offline_use", "manual"}:
+        preparation = "on_first_offline_use"
     if update not in {"disabled", "monthly", "quarterly"}:
         update = "disabled"
     min_zoom = max(0, min(14, int(raw.get("min_zoom", 0))))

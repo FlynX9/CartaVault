@@ -60,29 +60,11 @@ def selected_api_key(session: Session, user: User, area: str, provider: str) -> 
     return _accessible_credential(session, user, key_id, provider, capability)
 
 
-def selected_basemap_api_key(
-    session: Session, user: User, provider: str, capability: ApiKeyCapability = "satellite_basemap"
-) -> ApiCredential | None:
-    root = user.preferences if isinstance(user.preferences, dict) else {}
-    settings = root.get("basemaps") if isinstance(root.get("basemaps"), dict) else {}
-    scoped_field = "classic_api_key_id" if capability == "classic_basemap" else "satellite_api_key_id"
-    raw_id = settings.get(scoped_field) or settings.get(f"{provider}_api_key_id")
-    if not isinstance(raw_id, str):
-        return None
-    try:
-        key_id = UUID(raw_id)
-    except ValueError:
-        return None
-    return _accessible_credential(session, user, key_id, provider, capability)
-
-
 def selected_google_maps_javascript_key(
     session: Session,
     user: User,
     capability: ApiKeyCapability = "satellite_basemap",
 ) -> ApiCredential | None:
-    if capability == "classic_basemap":
-        return selected_basemap_api_key(session, user, "google", capability)
     root = user.preferences if isinstance(user.preferences, dict) else {}
     settings = root.get("basemaps") if isinstance(root.get("basemaps"), dict) else {}
     raw_id = settings.get("google_maps_js_api_key_id")

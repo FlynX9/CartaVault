@@ -157,19 +157,18 @@ openroute_service_settings = OpenRouteServiceSettings()
 
 
 @dataclass(frozen=True)
-class GoogleMapTilesSettings:
-    enabled: bool = _boolean("CARTAVAULT_GOOGLE_SATELLITE_ENABLED", True)
-    base_url: str = os.getenv("CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL", "https://tile.googleapis.com").strip().rstrip("/")
-    timeout_seconds: int = _positive_int("CARTAVAULT_GOOGLE_MAP_TILES_TIMEOUT_SECONDS", 10)
-    daily_soft_limit: int = _positive_int("CARTAVAULT_GOOGLE_MAP_TILES_DAILY_LIMIT", 10_000)
-    monthly_soft_limit: int = _positive_int("CARTAVAULT_GOOGLE_MAP_TILES_MONTHLY_LIMIT", 100_000)
+class ArcGISBasemapSettings:
+    api_key: str = field(default=os.getenv("CARTAVAULT_ARCGIS_API_KEY", "").strip(), repr=False)
+    base_url: str = "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2"
+    timeout_seconds: int = _positive_int("CARTAVAULT_ARCGIS_TIMEOUT_SECONDS", 10)
+    session_duration_seconds: int = _positive_int("CARTAVAULT_ARCGIS_SESSION_DURATION_SECONDS", 43_200)
 
     def __post_init__(self) -> None:
-        if self.base_url != "https://tile.googleapis.com":
-            raise RuntimeError("CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL must use the official Google endpoint")
+        if self.session_duration_seconds > 43_200:
+            raise RuntimeError("CARTAVAULT_ARCGIS_SESSION_DURATION_SECONDS must be at most 43200")
 
 
-google_map_tiles_settings = GoogleMapTilesSettings()
+arcgis_basemap_settings = ArcGISBasemapSettings()
 
 
 @dataclass(frozen=True)

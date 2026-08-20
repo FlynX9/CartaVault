@@ -14,6 +14,7 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `AVATAR_STORAGE_PATH` | `storage/avatars` | `backend/app/auth/avatar_storage.py` |
 | `CARTAVAULT_API_PREFIX` | — | `backend/app/main.py` |
 | `CARTAVAULT_API_ROOT_PATH` | required / empty | `backend/app/main.py` |
+| `CARTAVAULT_ARCGIS_API_KEY` | sensitive value | `backend/app/config.py` |
 | `CARTAVAULT_BACKEND_REPLICAS` | — | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL` | — | `backend/app/cli.py` |
 | `CARTAVAULT_BOOTSTRAP_ADMIN_NAME` | — | `backend/app/cli.py` |
@@ -24,12 +25,11 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY` | sensitive value | `backend/app/config.py` |
 | `CARTAVAULT_CSRF_COOKIE_NAME` | `cartavault_csrf` | `backend/app/config.py` |
 | `CARTAVAULT_DEPLOYMENT_MODE` | `local` | `backend/app/instance_status/service.py` |
-| `CARTAVAULT_ENVIRONMENT` | dynamic | `backend/app/basemaps/stadia_router.py` |
+| `CARTAVAULT_ENVIRONMENT` | dynamic | `backend/app/instance_status/service.py` |
 | `CARTAVAULT_ENV_FILE` | `/config/.env` | `backend/app/setup_cli.py` |
 | `CARTAVAULT_FORWARDED_ALLOW_IPS` | required / empty | `backend/app/container_entrypoint.py` |
 | `CARTAVAULT_FRONTEND_DIST` | — | `backend/app/main.py` |
 | `CARTAVAULT_FRONTEND_VERSION` | — | `backend/app/instance_status/service.py` |
-| `CARTAVAULT_GOOGLE_MAP_TILES_BASE_URL` | `https://tile.googleapis.com` | `backend/app/config.py` |
 | `CARTAVAULT_JAVA_EXECUTABLE` | `java` | `backend/app/config.py` |
 | `CARTAVAULT_ORS_BASE_URL` | `https://api.openrouteservice.org` | `backend/app/config.py` |
 | `CARTAVAULT_PDF_MAP_TILES_ENABLED` | `true` | `backend/app/trips/pdf_export.py` |
@@ -60,7 +60,7 @@ Les valeurs sensibles ne sont jamais reproduites. Une valeur `dynamic` est calcu
 | `EMAIL_SMTP_PASSWORD` | sensitive value | `backend/app/config.py` |
 | `EMAIL_SMTP_SECURITY` | `starttls` | `backend/app/config.py` |
 | `EMAIL_SMTP_USERNAME` | required / empty | `backend/app/config.py` |
-| `ENVIRONMENT` | `development` | `backend/app/basemaps/stadia_router.py` |
+| `ENVIRONMENT` | `development` | `backend/app/instance_status/service.py` |
 | `EXPORT_STORAGE_PATH` | dynamic | `backend/app/exports/temporary_exports.py` |
 | `FRONTEND_PUBLIC_URL` | `http://localhost:5173` | `backend/app/config.py` |
 | `GOOGLE_MAPS_ROUTES_API_KEY` | sensitive value | `backend/app/config.py` |

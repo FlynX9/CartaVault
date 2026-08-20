@@ -49,8 +49,6 @@ const EMPTY_LIMITS: QuotaLimits = {
   steps_per_day_max: null,
   image_upload_megabytes_max: null,
   image_dimension_max: null,
-  google_satellite_tiles_daily_max: null,
-  google_satellite_tiles_monthly_max: null,
 };
 
 export type QuotaProfileDraft = {
@@ -77,7 +75,7 @@ const API_KEY_CAPABILITIES: Record<
 
 const API_KEY_PROVIDER_LABELS: Record<AdminApiKey["provider"], string> = {
   google: "Google",
-  stadia: "Stadia Maps",
+  stadia: "Stadia Places",
   mapbox: "Mapbox",
   openrouteservice: "OpenRouteService",
   resend: "Resend",
@@ -128,8 +126,6 @@ const TABS: Array<{ id: TabId; label: string; keys: QuotaKey[] }> = [
     id: "advanced",
     label: "Avancé",
     keys: [
-      "google_satellite_tiles_daily_max",
-      "google_satellite_tiles_monthly_max",
       "pending_invitations_max",
       "pending_invitations_per_map_max",
       "links_per_place_max",
@@ -600,7 +596,7 @@ function ApiKeyProviderLogo({
       />
     );
   if (provider === "stadia")
-    return <img src="https://www.stadiamaps.com/favicon.ico" alt="" />;
+    return <KeyRound size={20} />;
   if (provider === "mapbox")
     return <img src="/brands/mapbox-logo.svg" alt="" />;
   if (provider === "openrouteservice")

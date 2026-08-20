@@ -19,8 +19,7 @@ from app.auth.credential_encryption import CredentialEncryptionError, Credential
 from app.auth.dependencies import require_admin
 from app.auth.avatar_storage import resolve_avatar
 from app.auth.models import AdminApiCredential, SystemCredential, User, UserActivityEvent, UserSession
-from app.basemaps.stadia_router import _validate_key as validate_stadia_key
-from app.basemaps.mapbox_router import validate_mapbox_key
+from app.places.stadia_credential_router import _validate_key as validate_stadia_key
 from app.config import GoogleRoutesSettings, credential_settings
 from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
@@ -388,14 +387,14 @@ def verify_admin_api_key(key_id: UUID, session: Session = Depends(get_db), admin
             GoogleRoutesProvider(secret, GoogleRoutesSettings(routing_preference="TRAFFIC_UNAWARE")).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
         elif key.provider == "stadia":
             validate_stadia_key(secret)
-        elif key.provider == "mapbox":
-            validate_mapbox_key(secret)
         elif key.provider == "openrouteservice":
             OpenRouteServiceProvider(secret).calculate_route([(2.3522, 48.8566), (2.3601, 48.8610)])
-        else:
+        elif key.provider == "resend":
             _sync_resend_credential(session, key); session.commit()
             locale = str((admin.preferences or {}).get("language") or "fr")
             EmailService(provider_from_database(session, allow_disabled=True, provider="resend")).send_resend_verification(admin.email, admin.display_name, locale)
+        else:
+            raise HTTPException(422, {"code": "API_KEY_PROVIDER_LEGACY", "message": "Ce fournisseur historique n’est plus configurable."})
     except (CredentialEncryptionError, EmailDeliveryError, HTTPException, RoutingError) as error:
         detail = error.detail if isinstance(error, HTTPException) else None
         key.verified_at = None

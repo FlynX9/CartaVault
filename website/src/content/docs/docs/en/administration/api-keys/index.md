@@ -39,7 +39,7 @@ Follow this path in the interface : **Administration → API keys**.
 
 1. Add or edit an instance credential.
 2. Test it without revealing the secret.
-3. Configure compatible services and thresholds.
+3. Associate the key with compatible services and allowed quota profiles.
 
 ### Expected result
 
@@ -48,13 +48,13 @@ Secrets are encrypted and masked after saving.
 ## How does it work?
 
 - Secrets are encrypted and masked after saving.
-- Sanitized diagnostics expose provider, status and useful error information.
-- A personal key may remain preferred according to account settings.
+- Stadia is limited to place search; Google covers Routes, Places and Maps JavaScript satellite.
+- OpenFreeMap is direct and keyless; ArcGIS uses the instance key to create a short browser session.
 
 ## Good to know
 
 :::note
-- Client counters are indicative; authoritative billing must be checked at the provider.
+- Authoritative usage and billing must be checked with the provider.
 :::
 
 ## See also

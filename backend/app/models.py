@@ -21,6 +21,7 @@ from app.tags.models import Tag
 from app.trips.models import RoutingOptimizationProposal, Trip, TripDay, TripDeparture, TripNight, TripStop
 from app.tasks.models import BackgroundTask, GeneratedExport, KmzImportPreview
 from app.basemaps.vector_models import VectorBasemap
+from app.basemaps.models import GoogleSatelliteUsageDaily
 
 __all__ = (
     "Category",
@@ -58,6 +59,7 @@ __all__ = (
     "GeneratedExport",
     "KmzImportPreview",
     "VectorBasemap",
+    "GoogleSatelliteUsageDaily",
     "place_categories_table",
     "place_tags_table",
 )

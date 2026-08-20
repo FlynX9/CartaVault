@@ -39,7 +39,7 @@ Choisissez OSRM ou Google Routes, puis les contraintes de pays, péage, autorout
 
 ## Fournisseur de recherche de lieux
 
-Le panneau **Clés API** regroupe les catégories repliables Routage, Recherche de lieux et Fonds de carte. Les formulaires de clé suivent le fournisseur choisi. Stadia reste disponible sans clé personnelle pour la recherche et les tuiles ; les clés facultatives Stadia Places et Stadia Maps permettent d’utiliser le forfait associé. Google Places et Google Map Tiles exigent une clé vérifiée. Les clés Google Routes, Places et Map Tiles sont gérées séparément, même si Google Cloud peut autoriser plusieurs API sur un même projet. Aucune clé Stadia globale n’est injectée dans l’image Docker.
+Le panneau **Clés API** regroupe les catégories repliables Routage, Recherche de lieux et Fonds de carte. Les formulaires de clé suivent le fournisseur choisi. Stadia reste disponible sans clé personnelle uniquement pour la recherche de lieux ; une clé facultative Stadia Places permet d’utiliser le forfait associé. Google Routes et Google Places utilisent des clés serveur, tandis que Google Satellite exige une clé navigateur dédiée à Maps JavaScript API et restreinte aux référents HTTP de l’instance. Les anciens proxies Stadia Maps, Mapbox Satellite et Google Map Tiles ne sont plus proposés. Aucune clé Stadia globale n’est injectée dans l’image Docker.
 
 ## Clés Google personnelles
 

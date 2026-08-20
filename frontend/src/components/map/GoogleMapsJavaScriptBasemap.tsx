@@ -8,7 +8,7 @@ import { loadGoogleMapsJavaScript, onGoogleMapsAuthenticationFailure, recordGoog
 
 interface Props {
   active: boolean
-  basemapId: 'google-roadmap' | 'google-satellite'
+  basemapId: 'google-satellite'
   mapType: GoogleMapsJavaScriptMapType
   onError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void
 }
@@ -85,8 +85,7 @@ export function GoogleMapsJavaScriptBasemap({ active, basemapId, mapType, onErro
       leafletContainer.classList.remove('has-google-maps-js-basemap')
       onErrorRef.current(basemapId, true, reason, errorCode)
     }
-    const mapLabel = mapType === 'roadmap' ? 'Google classique' : 'Google Satellite'
-    authenticationFailureCleanupRef.current = onGoogleMapsAuthenticationFailure(() => fail(`${mapLabel} n’est pas disponible avec la configuration actuelle de votre clé Google. Vérifiez Maps JavaScript API, la facturation et les restrictions de référent HTTP.`, 'GOOGLE_MAPS_JS_AUTHENTICATION_FAILED'))
+    authenticationFailureCleanupRef.current = onGoogleMapsAuthenticationFailure(() => fail('Google Satellite n’est pas disponible avec la configuration actuelle de votre clé Google. Vérifiez Maps JavaScript API, la facturation et les restrictions de référent HTTP.', 'GOOGLE_MAPS_JS_AUTHENTICATION_FAILED'))
 
     initializationRef.current = getGoogleMapsJavaScriptConfig(mapType)
       .then(async (config) => {
@@ -109,7 +108,7 @@ export function GoogleMapsJavaScriptBasemap({ active, basemapId, mapType, onErro
         if (!activeRef.current) host.hidden = true
       })
       .catch((error: unknown) => {
-        const reason = error instanceof Error ? error.message : `${mapLabel} n’est pas disponible avec la configuration actuelle de votre clé Google.`
+        const reason = error instanceof Error ? error.message : 'Google Satellite n’est pas disponible avec la configuration actuelle de votre clé Google.'
         fail(reason, error instanceof ApiError ? error.code ?? 'GOOGLE_MAPS_JS_LOAD_FAILED' : 'GOOGLE_MAPS_JS_LOAD_FAILED')
       })
   }, [active, basemapId, leafletMap, mapType])

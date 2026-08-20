@@ -101,18 +101,12 @@
             "$ref": "#/components/schemas/PlacesPreferences"
           },
           "preferred_basemap": {
-            "default": "osm",
+            "default": "openfreemap-light",
             "enum": [
-              "cartavault-light",
-              "cartavault-dark",
-              "stadia-light",
-              "stadia-dark",
-              "google-roadmap",
-              "osm",
-              "satellite",
-              "google-satellite",
-              "google-satellite-tiles",
-              "mapbox-satellite"
+              "openfreemap-light",
+              "openfreemap-dark",
+              "arcgis-satellite",
+              "google-satellite"
             ],
             "title": "Preferred Basemap",
             "type": "string"
@@ -202,7 +196,6 @@
             "enum": [
               "google",
               "stadia",
-              "mapbox",
               "openrouteservice",
               "resend"
             ],
@@ -1671,39 +1664,11 @@
       },
       "BasemapPreferences": {
         "properties": {
-          "classic_api_key_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Classic Api Key Id"
-          },
           "classic_provider": {
-            "default": "osm",
-            "enum": [
-              "osm",
-              "stadia",
-              "google"
-            ],
+            "const": "openfreemap",
+            "default": "openfreemap",
             "title": "Classic Provider",
             "type": "string"
-          },
-          "google_api_key_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Google Api Key Id"
           },
           "google_maps_js_api_key_id": {
             "anyOf": [
@@ -1717,61 +1682,15 @@
             ],
             "title": "Google Maps Js Api Key Id"
           },
-          "google_satellite_mode": {
-            "default": "maps-js",
-            "enum": [
-              "maps-js",
-              "map-tiles"
-            ],
-            "title": "Google Satellite Mode",
-            "type": "string"
-          },
-          "mapbox_api_key_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mapbox Api Key Id"
-          },
-          "satellite_api_key_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Satellite Api Key Id"
-          },
           "satellite_provider": {
             "default": "none",
             "enum": [
               "none",
-              "stadia",
-              "google",
-              "mapbox"
+              "arcgis",
+              "google"
             ],
             "title": "Satellite Provider",
             "type": "string"
-          },
-          "stadia_api_key_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Stadia Api Key Id"
           }
         },
         "title": "BasemapPreferences",
@@ -4781,26 +4700,11 @@
         "title": "EmailMfaVerification",
         "type": "object"
       },
-      "GoogleMapSessionRequest": {
-        "properties": {
-          "map_type": {
-            "default": "satellite",
-            "pattern": "^(roadmap|satellite)$",
-            "title": "Map Type",
-            "type": "string"
-          }
-        },
-        "title": "GoogleMapSessionRequest",
-        "type": "object"
-      },
       "GoogleMapsJavaScriptLoaded": {
         "properties": {
           "map_type": {
+            "const": "satellite",
             "default": "satellite",
-            "enum": [
-              "roadmap",
-              "satellite"
-            ],
             "title": "Map Type",
             "type": "string"
           }
@@ -10725,9 +10629,7 @@
           "days_per_trip_max",
           "steps_per_day_max",
           "image_upload_megabytes_max",
-          "image_dimension_max",
-          "google_satellite_tiles_daily_max",
-          "google_satellite_tiles_monthly_max"
+          "image_dimension_max"
         ],
         "title": "QuotaKey",
         "type": "string"
@@ -10757,32 +10659,6 @@
               }
             ],
             "title": "Days Per Trip Max"
-          },
-          "google_satellite_tiles_daily_max": {
-            "anyOf": [
-              {
-                "maximum": 1000000000.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Google Satellite Tiles Daily Max"
-          },
-          "google_satellite_tiles_monthly_max": {
-            "anyOf": [
-              {
-                "maximum": 1000000000.0,
-                "minimum": 0.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Google Satellite Tiles Monthly Max"
           },
           "image_dimension_max": {
             "anyOf": [
@@ -11885,47 +11761,12 @@
       },
       "SatelliteSettingsUpdate": {
         "properties": {
-          "auto_disable_percent": {
-            "default": 100,
-            "maximum": 200.0,
-            "minimum": 50.0,
-            "title": "Auto Disable Percent",
-            "type": "integer"
-          },
-          "daily_soft_limit": {
-            "maximum": 100000000.0,
-            "minimum": 100.0,
-            "title": "Daily Soft Limit",
-            "type": "integer"
-          },
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          },
           "maps_javascript_enabled": {
             "default": true,
             "title": "Maps Javascript Enabled",
             "type": "boolean"
-          },
-          "monthly_soft_limit": {
-            "maximum": 1000000000.0,
-            "minimum": 100.0,
-            "title": "Monthly Soft Limit",
-            "type": "integer"
-          },
-          "repeated_error_limit": {
-            "default": 5,
-            "maximum": 100.0,
-            "minimum": 2.0,
-            "title": "Repeated Error Limit",
-            "type": "integer"
           }
         },
-        "required": [
-          "enabled",
-          "daily_soft_limit",
-          "monthly_soft_limit"
-        ],
         "title": "SatelliteSettingsUpdate",
         "type": "object"
       },
@@ -12303,12 +12144,11 @@
       "SetupMappingSettings": {
         "properties": {
           "default_basemap": {
-            "default": "cartavault-light",
+            "default": "openfreemap-light",
             "enum": [
-              "cartavault-light",
-              "cartavault-dark",
-              "osm-standard",
-              "satellite"
+              "openfreemap-light",
+              "openfreemap-dark",
+              "arcgis-satellite"
             ],
             "title": "Default Basemap",
             "type": "string"
@@ -15161,10 +15001,8 @@
             "type": "integer"
           },
           "preparation_policy": {
-            "default": "on_first_cartavault_use",
+            "default": "on_first_offline_use",
             "enum": [
-              "on_map_creation",
-              "on_first_cartavault_use",
               "on_first_offline_use",
               "manual"
             ],
@@ -15190,7 +15028,7 @@
   "info": {
     "description": "API for managing geographic points of interest",
     "title": "CartaVault API",
-    "version": "development"
+    "version": "1.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -16836,29 +16674,6 @@
           }
         },
         "summary": "Admin Status",
-        "tags": [
-          "admin-console"
-        ]
-      }
-    },
-    "/admin/console/google-satellite/reset-errors": {
-      "post": {
-        "operationId": "reset_errors_admin_console_google_satellite_reset_errors_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Reset Errors Admin Console Google Satellite Reset Errors Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Reset Errors",
         "tags": [
           "admin-console"
         ]
@@ -19676,6 +19491,29 @@
         ]
       }
     },
+    "/basemaps/arcgis-satellite/session": {
+      "post": {
+        "operationId": "create_arcgis_session_basemaps_arcgis_satellite_session_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Arcgis Session Basemaps Arcgis Satellite Session Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Arcgis Session",
+        "tags": [
+          "basemaps"
+        ]
+      }
+    },
     "/basemaps/cartavault/archive/{country_code}.pmtiles": {
       "get": {
         "operationId": "cartavault_vector_archive_basemaps_cartavault_archive__country_code__pmtiles_get",
@@ -19762,7 +19600,6 @@
               "default": "status",
               "enum": [
                 "status",
-                "online",
                 "offline"
               ],
               "title": "Purpose",
@@ -19858,11 +19695,8 @@
             "name": "map_type",
             "required": false,
             "schema": {
+              "const": "satellite",
               "default": "satellite",
-              "enum": [
-                "roadmap",
-                "satellite"
-              ],
               "title": "Map Type",
               "type": "string"
             }
@@ -19938,371 +19772,6 @@
           }
         },
         "summary": "Google Maps Javascript Loaded",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/google-satellite/session": {
-      "post": {
-        "operationId": "create_session_basemaps_google_satellite_session_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GoogleMapSessionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Session Basemaps Google Satellite Session Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Session",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/google-satellite/status": {
-      "get": {
-        "operationId": "public_status_basemaps_google_satellite_status_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Public Status Basemaps Google Satellite Status Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Public Status",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/google-satellite/tiles/{z}/{x}/{y}": {
-      "get": {
-        "operationId": "tile_basemaps_google_satellite_tiles__z___x___y__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "z",
-            "required": true,
-            "schema": {
-              "title": "Z",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "x",
-            "required": true,
-            "schema": {
-              "title": "X",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "y",
-            "required": true,
-            "schema": {
-              "title": "Y",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Tile",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/mapbox-satellite/session": {
-      "post": {
-        "operationId": "create_tile_session_basemaps_mapbox_satellite_session_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Tile Session Basemaps Mapbox Satellite Session Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Create Tile Session",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/mapbox-satellite/status": {
-      "get": {
-        "operationId": "status_basemaps_mapbox_satellite_status_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "title": "Response Status Basemaps Mapbox Satellite Status Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Status",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/mapbox-satellite/tiles/{z}/{x}/{y}": {
-      "get": {
-        "operationId": "tile_basemaps_mapbox_satellite_tiles__z___x___y__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "z",
-            "required": true,
-            "schema": {
-              "title": "Z",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "x",
-            "required": true,
-            "schema": {
-              "title": "X",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "y",
-            "required": true,
-            "schema": {
-              "title": "Y",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Tile",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/stadia/config": {
-      "get": {
-        "operationId": "basemap_config_basemaps_stadia_config_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "capability",
-            "required": false,
-            "schema": {
-              "default": "classic_basemap",
-              "enum": [
-                "classic_basemap",
-                "satellite_basemap"
-              ],
-              "title": "Capability",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Basemap Config Basemaps Stadia Config Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Basemap Config",
-        "tags": [
-          "basemaps"
-        ]
-      }
-    },
-    "/basemaps/stadia/tiles/{style}/{z}/{x}/{y}.{extension}": {
-      "get": {
-        "operationId": "basemap_tile_basemaps_stadia_tiles__style___z___x___y___extension__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "style",
-            "required": true,
-            "schema": {
-              "title": "Style",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "z",
-            "required": true,
-            "schema": {
-              "title": "Z",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "x",
-            "required": true,
-            "schema": {
-              "title": "X",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "y",
-            "required": true,
-            "schema": {
-              "title": "Y",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "path",
-            "name": "extension",
-            "required": true,
-            "schema": {
-              "title": "Extension",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "retina",
-            "required": false,
-            "schema": {
-              "default": "",
-              "title": "Retina",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Basemap Tile",
         "tags": [
           "basemaps"
         ]

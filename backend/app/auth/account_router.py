@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.api_keys import selected_api_key, selected_basemap_api_key, selected_google_maps_javascript_key
+from app.auth.api_keys import selected_api_key, selected_google_maps_javascript_key
 from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
@@ -22,7 +22,6 @@ from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
 from app.emails.notifications import notify_email_changed, notify_password_changed
 from app.maps.models import MapInvitation, MapMembership, PoiMap
-from app.basemaps.stadia_router import stadia_unauthenticated_allowed
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -59,10 +58,13 @@ def _profile(user: User, database_session: Session) -> dict:
 
 
 def _preferences(user: User) -> dict[str, object]:
-    # Normalize the one former flat routing key while retaining all other
-    # persisted settings.  No database migration is needed for JSONB data.
+    # AccountPreferences owns the idempotent legacy-basemap migration. Unknown
+    # persisted keys (notably privacy consent) are deliberately excluded from
+    # the public preferences response.
     stored = user.preferences or {}
-    return AccountPreferences.model_validate({**DEFAULT_PREFERENCES, **stored}).model_dump()
+    # JSON mode is required here because UUID credential identifiers must stay
+    # serializable before the normalized projection is persisted to JSONB.
+    return AccountPreferences.model_validate({**DEFAULT_PREFERENCES, **stored}).model_dump(mode="json")
 
 
 @router.get("/profile")
@@ -78,8 +80,18 @@ def update_profile(data: AccountProfileUpdate, database_session: Session = Depen
 
 
 @router.get("/preferences")
-def preferences(current: UserSession = Depends(get_current_session)) -> dict[str, object]:
-    return _preferences(current.user)
+def preferences(database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict[str, object]:
+    normalized = _preferences(current.user)
+    stored = current.user.preferences if isinstance(current.user.preferences, dict) else {}
+    # Persist the normalized projection so retired provider identifiers do not
+    # remain broken in JSONB forever. Preserve private extension keys managed
+    # by dedicated endpoints. Assignment (rather than an in-place update)
+    # ensures SQLAlchemy detects the JSON change. This is idempotent.
+    migrated = {**stored, **normalized}
+    if migrated != stored:
+        current.user.preferences = migrated
+        database_session.commit()
+    return normalized
 
 
 @router.put("/preferences")
@@ -100,19 +112,7 @@ def update_preferences(data: AccountPreferences, database_session: Session = Dep
     if data.places.provider == "google" and selected_api_key(database_session, current.user, "places", "google") is None:
         current.user.preferences = previous_preferences
         raise HTTPException(409, {"code": "GOOGLE_PLACES_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé Google pour la recherche de lieux."})
-    configured_basemaps = [
-        (data.basemaps.classic_provider, "classic_basemap"),
-        *([(data.basemaps.satellite_provider, "satellite_basemap")] if data.basemaps.satellite_provider != "google" or data.basemaps.google_satellite_mode == "map-tiles" else []),
-    ]
-    for basemap_provider, capability in configured_basemaps:
-        if basemap_provider not in {"stadia", "mapbox", "google"}:
-            continue
-        if basemap_provider == "stadia" and stadia_unauthenticated_allowed():
-            continue
-        if selected_basemap_api_key(database_session, current.user, basemap_provider, capability) is None:
-            current.user.preferences = previous_preferences
-            raise HTTPException(409, {"code": "BASEMAP_CREDENTIAL_REQUIRED", "message": f"Sélectionnez une clé {basemap_provider.title()} pour la cartographie configurée."})
-    if data.basemaps.satellite_provider == "google" and data.basemaps.google_satellite_mode == "maps-js" and selected_google_maps_javascript_key(database_session, current.user) is None:
+    if data.basemaps.satellite_provider == "google" and selected_google_maps_javascript_key(database_session, current.user) is None:
         current.user.preferences = previous_preferences
         raise HTTPException(409, {"code": "GOOGLE_MAPS_JS_CREDENTIAL_REQUIRED", "message": "Sélectionnez une clé navigateur Google Maps JavaScript pour le satellite."})
     database_session.commit()

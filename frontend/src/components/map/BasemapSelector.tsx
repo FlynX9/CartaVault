@@ -9,52 +9,41 @@ interface BasemapSelectorProps {
   onBasemapChange: (id: BasemapId) => void
   expanded?: boolean
   onExpandedChange?: (expanded: boolean) => void
-  googleSatelliteAvailable?: boolean
   offline?: boolean
-  classicProvider?: 'cartavault' | 'osm' | 'stadia' | 'google'
-  satelliteProvider?: 'none' | 'stadia' | 'google' | 'mapbox'
-  googleSatelliteMode?: 'maps-js' | 'map-tiles'
+  satelliteProvider?: 'none' | 'arcgis' | 'google'
 }
 
-const basemapIcons: Record<BasemapId, LucideIcon> = {
-  'cartavault-light': Sun,
-  'cartavault-dark': Moon,
-  'stadia-light': Sun,
-  'stadia-dark': Moon,
-  'google-roadmap': Sun,
-  satellite: Satellite,
+const basemapIcons: Partial<Record<BasemapId, LucideIcon>> = {
+  'openfreemap-light': Sun,
+  'openfreemap-dark': Moon,
   'google-satellite': Satellite,
-  'google-satellite-tiles': Satellite,
-  'mapbox-satellite': Satellite,
+  'arcgis-satellite': Satellite,
   osm: Sun,
+  'offline-vector-light': Sun,
+  'offline-vector-dark': Moon,
 }
 
-export function BasemapSelector({ activeBasemapId, mapTheme, onBasemapChange, expanded: controlledExpanded, onExpandedChange, offline = false, classicProvider = 'osm', satelliteProvider = 'none', googleSatelliteMode = 'maps-js' }: BasemapSelectorProps) {
+export function BasemapSelector({ activeBasemapId, mapTheme, onBasemapChange, expanded: controlledExpanded, onExpandedChange, offline = false, satelliteProvider = 'arcgis' }: BasemapSelectorProps) {
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false)
   const expanded = controlledExpanded ?? uncontrolledExpanded
   const setExpanded = onExpandedChange ?? setUncontrolledExpanded
   if (offline) return null
   const activeBasemap = getBasemap(activeBasemapId)
   const configuredBasemaps = [
-    ...(classicProvider === 'cartavault'
-      ? [getBasemap('cartavault-light'), getBasemap('cartavault-dark')]
-      : classicProvider === 'stadia'
-      ? [getBasemap('stadia-light'), getBasemap('stadia-dark')]
-      : classicProvider === 'google'
-        ? [getBasemap('google-roadmap')]
-        : [getBasemap('osm')]),
-    ...(satelliteProvider === 'stadia' ? [getBasemap('satellite')] : satelliteProvider === 'google' ? [getBasemap(googleSatelliteMode === 'map-tiles' ? 'google-satellite-tiles' : 'google-satellite')] : satelliteProvider === 'mapbox' ? [getBasemap('mapbox-satellite')] : []),
+    getBasemap('openfreemap-light'),
+    getBasemap('openfreemap-dark'),
+    ...(satelliteProvider === 'arcgis' ? [getBasemap('arcgis-satellite')] : satelliteProvider === 'google' ? [getBasemap('google-satellite')] : []),
   ].filter((basemap, index, items) => basemap.enabled && items.findIndex((item) => item.id === basemap.id) === index)
   const visibleBasemaps = configuredBasemaps
   const selectBasemap = (id: BasemapId) => {
     onBasemapChange(id)
     setExpanded(false)
   }
-  const ActiveIcon = activeBasemap.id === 'satellite' || activeBasemap.id === 'google-satellite' || activeBasemap.id === 'google-satellite-tiles' || activeBasemap.id === 'mapbox-satellite'
+  const ActiveIcon = activeBasemap.id === 'google-satellite' || activeBasemap.id === 'arcgis-satellite'
     ? Satellite
     : mapTheme === 'dark' ? Moon : Sun
   const renderBasemapButton = (basemap: typeof activeBasemap, active: boolean) => {
-    const Icon = basemapIcons[basemap.id]
+    const Icon = basemapIcons[basemap.id] ?? Sun
     return <button
       key={basemap.id}
       type="button"

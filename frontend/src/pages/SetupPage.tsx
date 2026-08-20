@@ -58,7 +58,7 @@ function initialPayload(): SetupCompletion {
       reply_to_address: null,
     },
     mapping: {
-      default_basemap: 'cartavault-light',
+      default_basemap: 'openfreemap-light',
       default_routing_engine: 'osrm',
     },
   }
@@ -219,7 +219,7 @@ export function SetupPage({ status, onCompleted }: SetupPageProps) {
             <div className="setup-section">
               <div className="setup-section__intro"><Map /><div><h2>Cartographie et routage</h2><p>Choisissez les valeurs proposées par défaut aux utilisateurs.</p></div></div>
               <div className="setup-grid">
-                <label className="setup-field"><span>Fond de carte</span><select value={payload.mapping.default_basemap} onChange={(event) => updateMapping({ default_basemap: event.target.value as SetupCompletion['mapping']['default_basemap'] })}><option value="cartavault-light">CartaVault clair</option><option value="cartavault-dark">CartaVault sombre</option><option value="osm-standard">OSM Standard</option><option value="satellite">Satellite</option></select></label>
+                <label className="setup-field"><span>Fond de carte</span><select value={payload.mapping.default_basemap} onChange={(event) => updateMapping({ default_basemap: event.target.value as SetupCompletion['mapping']['default_basemap'] })}><option value="openfreemap-light">OpenFreeMap clair</option><option value="openfreemap-dark">OpenFreeMap sombre</option><option value="arcgis-satellite">ArcGIS Satellite</option></select></label>
                 <label className="setup-field"><span>Moteur de routage</span><select value={payload.mapping.default_routing_engine} onChange={(event) => updateMapping({ default_routing_engine: event.target.value as SetupCompletion['mapping']['default_routing_engine'] })}><option value="osrm">OSRM</option><option value="google_routes">Google Routes</option></select></label>
               </div>
             </div>

@@ -29,19 +29,18 @@ const trackedMutations = new WeakMap<Response, ApiMutationEventDetail>()
 export const SESSION_EXPIRED_EVENT = 'cartavault:session-expired'
 
 function reportCredentialRequestFailure(path: string, code: string | null) {
-  if (path.includes('/verify') || code === null || code === 'GOOGLE_MAP_TILES_REGION_UNAVAILABLE') return
+  if (path.includes('/verify') || code === null) return
   const provider = code.startsWith('GOOGLE_ROUTES_') ? 'google_routes'
     : code.startsWith('GOOGLE_PLACES_') ? 'google_places'
       : code.startsWith('OPENROUTESERVICE_') || code.startsWith('ORS_') ? 'openrouteservice'
-        : code.startsWith('GOOGLE_MAP_TILES_') || code.startsWith('GOOGLE_SATELLITE_') ? 'google_map_tiles'
-          : code.startsWith('STADIA_MAPS_') ? 'stadia_maps'
+        : code.startsWith('GOOGLE_MAPS_JS_') ? 'google_maps_js'
             : code.startsWith('STADIA_PLACES_') ? 'stadia_places'
               : null
   if (provider) reportCredentialIssue(provider, `La clé API ${providerLabel(provider)} ne fonctionne plus. Vérifiez-la ou remplacez-la.`)
 }
 
 function providerLabel(provider: string) {
-  return ({ google_routes: 'Google Routes', google_places: 'Google Places', openrouteservice: 'OpenRouteService', google_map_tiles: 'Google Map Tiles', stadia_maps: 'Stadia Maps', stadia_places: 'Stadia Places' } as Record<string, string>)[provider] ?? provider
+  return ({ google_routes: 'Google Routes', google_places: 'Google Places', openrouteservice: 'OpenRouteService', google_maps_js: 'Google Maps JavaScript', stadia_places: 'Stadia Places' } as Record<string, string>)[provider] ?? provider
 }
 
 export function setCsrfToken(value: string | null): void {

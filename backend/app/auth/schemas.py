@@ -130,15 +130,9 @@ class PlacesPreferences(BaseModel):
 
 
 class BasemapPreferences(BaseModel):
-    classic_provider: Literal["cartavault", "osm", "stadia", "google"] = "osm"
-    satellite_provider: Literal["none", "stadia", "google", "mapbox"] = "none"
-    google_satellite_mode: Literal["maps-js", "map-tiles"] = "maps-js"
-    stadia_api_key_id: UUID | None = None
-    google_api_key_id: UUID | None = None
+    classic_provider: Literal["openfreemap"] = "openfreemap"
+    satellite_provider: Literal["none", "arcgis", "google"] = "none"
     google_maps_js_api_key_id: UUID | None = None
-    mapbox_api_key_id: UUID | None = None
-    classic_api_key_id: UUID | None = None
-    satellite_api_key_id: UUID | None = None
 
 
 class OnboardingPreferences(BaseModel):
@@ -149,7 +143,7 @@ class OnboardingPreferences(BaseModel):
 class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
     default_theme: Literal["light", "dark", "system"] = "system"
-    preferred_basemap: Literal["cartavault-light", "cartavault-dark", "stadia-light", "stadia-dark", "google-roadmap", "osm", "satellite", "google-satellite", "google-satellite-tiles", "mapbox-satellite"] = "osm"
+    preferred_basemap: Literal["openfreemap-light", "openfreemap-dark", "arcgis-satellite", "google-satellite"] = "openfreemap-light"
     density: Literal["compact", "comfortable", "spacious"] = "compact"
     startup_panel: Literal["dashboard", "maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
@@ -162,37 +156,53 @@ class AccountPreferences(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def migrate_legacy_routing_preference(cls, value: object) -> object:
+    def migrate_legacy_preferences(cls, value: object) -> object:
         if not isinstance(value, dict):
             return value
         migrated = dict(value)
+        preferred_migrations = {
+            "cartavault-light": "openfreemap-light",
+            "stadia-light": "openfreemap-light",
+            "google-roadmap": "openfreemap-light",
+            "osm": "openfreemap-light",
+            "osm-standard": "openfreemap-light",
+            "cartavault-dark": "openfreemap-dark",
+            "stadia-dark": "openfreemap-dark",
+            "satellite": "arcgis-satellite",
+            "stadia-satellite": "arcgis-satellite",
+            "mapbox-satellite": "arcgis-satellite",
+            "google-map-tiles": "google-satellite",
+            "google-satellite-tiles": "google-satellite",
+        }
+        preferred = migrated.get("preferred_basemap")
+        active_basemaps = {"openfreemap-light", "openfreemap-dark", "arcgis-satellite", "google-satellite"}
+        migrated["preferred_basemap"] = preferred_migrations.get(
+            preferred,
+            preferred if preferred in active_basemaps else "openfreemap-light",
+        )
         if "routing" not in migrated and "keep_routes_in_country" in migrated:
             migrated["routing"] = {"provider": "osrm"}
             migrated.pop("keep_routes_in_country", None)
         legacy = migrated.get("basemaps") if isinstance(migrated.get("basemaps"), dict) else {}
-        if "classic_provider" not in legacy:
-            preferred = migrated.get("preferred_basemap")
-            legacy = {**legacy, "classic_provider": "cartavault" if preferred in {"cartavault-light", "cartavault-dark"} else "google" if preferred == "google-roadmap" else "stadia" if preferred in {"stadia-light", "stadia-dark"} else "osm"}
-        elif migrated.get("preferred_basemap") in {"cartavault-light", "cartavault-dark"} and legacy.get("classic_provider") == "osm":
-            # A short-lived frontend version encoded CartaVault as the OSM
-            # provider. Normalize those persisted preferences back to the
-            # explicit provider without changing genuine OSM selections.
-            legacy = {**legacy, "classic_provider": "cartavault"}
-        if "satellite_provider" not in legacy:
-            preferred = migrated.get("preferred_basemap")
-            legacy = {**legacy, "satellite_provider": "google" if preferred == "google-satellite" else "mapbox" if preferred == "mapbox-satellite" else "stadia" if preferred == "satellite" else "none"}
-        if "api_key_id" in legacy:
-            provider = legacy.get("satellite_provider")
-            key_field = f"{provider}_api_key_id" if provider in {"stadia", "google", "mapbox"} else None
-            if key_field and key_field not in legacy:
-                legacy[key_field] = legacy["api_key_id"]
-            legacy.pop("api_key_id", None)
-        if "google_satellite_mode" not in legacy:
-            legacy_google_tiles = legacy.get("satellite_provider") == "google" and legacy.get("google_api_key_id") and not legacy.get("google_maps_js_api_key_id")
-            legacy = {**legacy, "google_satellite_mode": "map-tiles" if legacy_google_tiles else "maps-js"}
-            if legacy_google_tiles and migrated.get("preferred_basemap") == "google-satellite":
-                migrated["preferred_basemap"] = "google-satellite-tiles"
-        migrated["basemaps"] = legacy
+        legacy_satellite = legacy.get("satellite_provider")
+        satellite_provider = (
+            "google" if legacy_satellite == "google"
+            else "arcgis" if legacy_satellite in {"arcgis", "stadia", "mapbox"}
+            else "google" if migrated["preferred_basemap"] == "google-satellite"
+            else "arcgis" if migrated["preferred_basemap"] == "arcgis-satellite"
+            else "none"
+        )
+        google_key_id = (
+            legacy.get("google_maps_js_api_key_id")
+            or legacy.get("google_api_key_id")
+            or (legacy.get("satellite_api_key_id") if legacy_satellite == "google" else None)
+            or (legacy.get("api_key_id") if legacy_satellite == "google" else None)
+        )
+        migrated["basemaps"] = {
+            "classic_provider": "openfreemap",
+            "satellite_provider": satellite_provider,
+            "google_maps_js_api_key_id": google_key_id,
+        }
         return migrated
 
 

@@ -235,9 +235,10 @@ Account **API keys** centralizes the routing engine, place-search engine and bas
 |---|---|---|
 | Routing | OSRM | Google Routes |
 | Place search | Stadia public access | Google Places or a personal Stadia key |
-| Satellite map | Disabled | Stadia, Mapbox, or Google Maps JavaScript API |
+| Online basemap | OpenFreeMap Light/Dark | Direct browser access; OSM Standard is the fallback |
+| Satellite map | Disabled | ArcGIS World Imagery or Google Maps JavaScript API |
 
-There is no global Stadia key or build argument. A verified personal Stadia key uses the associated Stadia plan; without one, CartaVault uses public access. Google Satellite offers two implementations: Maps JavaScript API for EEA-compatible rendering with a dedicated referrer-restricted browser key, and Map Tiles API for Google projects where satellite tiles remain available with a server key. Google Routes and Google Places remain separate uses. See the [Google Satellite integration and cost model](docs/google-satellite.md).
+There is no global Stadia key or build argument. Stadia is retained only as a place-search provider; a verified personal key uses the associated Stadia plan and public search remains available without one. Online maps use OpenFreeMap directly, with optional ArcGIS World Imagery or Google Satellite through Maps JavaScript API. Google Routes and Google Places remain separate uses. See the [Google Satellite integration and cost model](docs/google-satellite.md).
 
 When personal provider credentials are stored, preserve this encryption key with the database backup:
 
@@ -269,7 +270,7 @@ See the [demo guide](demo/README.md) for reset rules, accounts, scenario coverag
 ## Documentation
 
 - [Current changelog](CHANGELOG.md) and [draft 1.0.0 release notes](docs/release-notes-v1.0.0.md)
-- [CartaVault Vector basemaps, online and offline](docs/vector-basemap.md)
+- [CartaVault Vector basemaps for offline use](docs/vector-basemap.md)
 
 The bilingual user and administrator guide is published at [cartavault.fr/docs/fr](https://cartavault.fr/docs/fr/) and [cartavault.fr/docs/en](https://cartavault.fr/docs/en/). It is built with the marketing site and includes searchable, generated API, environment, CLI and feature references.
 

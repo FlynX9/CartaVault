@@ -6,6 +6,8 @@ import type { MapPlace } from '../../types/place'
 import type { Trip } from '../../types/trip'
 import { PoiMap } from './PoiMap'
 
+vi.mock('./BasemapLayer', () => ({ BasemapLayer: () => null }))
+
 const place: MapPlace = {
   id: 'place-id',
   map_id: 'map-id',

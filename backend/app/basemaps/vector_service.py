@@ -107,11 +107,7 @@ def maybe_prepare_for_policy(session: Session, country_code: str, user_id: UUID,
     if vector_country_source(country_code) is None:
         session.commit()
         return None
-    expected = {
-        "map_creation": "on_map_creation",
-        "cartavault_use": "on_first_cartavault_use",
-        "offline_use": "on_first_offline_use",
-    }.get(trigger)
+    expected = "on_first_offline_use" if trigger == "offline_use" else None
     if expected and policy.preparation_policy == expected and archive_path(row) is None and row.state == "not_installed":
         # A native development server may not include the container-only Java
         # runtime. Do not create a doomed automatic job (or download a large
@@ -122,6 +118,7 @@ def maybe_prepare_for_policy(session: Session, country_code: str, user_id: UUID,
         except BasemapGenerationError:
             session.commit()
             return row
+        logger.info("[basemap-offline] requesting PMTiles preparation", extra={"country_code": country_code.upper(), "reason": trigger})
         row, _ = request_vector_basemap(session, country_code, user_id, reason=trigger)
     else:
         session.commit()

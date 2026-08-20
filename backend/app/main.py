@@ -26,8 +26,7 @@ from app.auth.google_places_credential_router import router as google_places_cre
 from app.auth.api_key_router import router as api_key_router
 from app.places.stadia_credential_router import router as stadia_places_credential_router
 from app.basemaps.router import admin_router as basemap_admin_router, router as basemap_router
-from app.basemaps.stadia_router import router as stadia_basemap_router
-from app.basemaps.mapbox_router import router as mapbox_basemap_router
+from app.basemaps.arcgis_router import router as arcgis_basemap_router
 from app.basemaps.vector_router import admin_router as vector_basemap_admin_router, router as vector_basemap_router
 from app.auth.dependencies import require_csrf
 from app.auth.models import User
@@ -74,7 +73,6 @@ from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
 from app.static_frontend import install_frontend, normalize_api_prefix
 from app.basemaps.vector_service import recover_vector_basemap_jobs, schedule_due_updates, start_pending_vector_basemap_jobs
-from app.basemaps.http_client import close_basemap_http_client, start_basemap_http_client
 
 
 logger = logging.getLogger(__name__)
@@ -187,7 +185,6 @@ async def lifespan(_: FastAPI):
     purge_task: asyncio.Task[None] | None = None
     vector_maintenance_task: asyncio.Task[None] | None = None
     maintenance_connection = None
-    await start_basemap_http_client()
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
@@ -222,7 +219,6 @@ async def lifespan(_: FastAPI):
                 await vector_maintenance_task
         if maintenance_connection is not None:
             release_maintenance_leadership(maintenance_connection)
-        await close_basemap_http_client()
 
 app = FastAPI(
     title="CartaVault API",
@@ -273,8 +269,7 @@ app.include_router(account_router, prefix=API_PREFIX)
 app.include_router(api_key_router, prefix=API_PREFIX)
 app.include_router(google_places_credential_router, prefix=API_PREFIX)
 app.include_router(basemap_router, prefix=API_PREFIX)
-app.include_router(stadia_basemap_router, prefix=API_PREFIX)
-app.include_router(mapbox_basemap_router, prefix=API_PREFIX)
+app.include_router(arcgis_basemap_router, prefix=API_PREFIX)
 app.include_router(vector_basemap_router, prefix=API_PREFIX)
 app.include_router(vector_basemap_admin_router, prefix=API_PREFIX)
 app.include_router(stadia_places_credential_router, prefix=API_PREFIX)

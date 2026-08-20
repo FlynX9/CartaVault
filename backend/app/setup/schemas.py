@@ -66,11 +66,10 @@ class SetupEmailSettings(BaseModel):
 
 class SetupMappingSettings(BaseModel):
     default_basemap: Literal[
-        "cartavault-light",
-        "cartavault-dark",
-        "osm-standard",
-        "satellite",
-    ] = "cartavault-light"
+        "openfreemap-light",
+        "openfreemap-dark",
+        "arcgis-satellite",
+    ] = "openfreemap-light"
     default_routing_engine: Literal["osrm", "google_routes"] = "osrm"
 
 

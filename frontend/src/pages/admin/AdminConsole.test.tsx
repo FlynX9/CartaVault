@@ -17,7 +17,7 @@ vi.mock('../../api/adminConsole', () => ({
 }))
 vi.mock('../../api/registration', () => ({ getPublicRegistrationSettings: vi.fn().mockResolvedValue({ enabled: false, approval_required: true }), getRegistrationRequests: vi.fn().mockResolvedValue([]), reviewRegistration: vi.fn(), updatePublicRegistrationSettings: vi.fn() }))
 vi.mock('../../api/privacy', () => ({ getAdminPrivacySettings: vi.fn(), saveAdminPrivacySettings: vi.fn() }))
-vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn(), resetGoogleSatelliteErrors: vi.fn() }))
+vi.mock('../../api/googleSatellite', () => ({ getGoogleSatelliteAdminStatus: vi.fn(), saveGoogleSatelliteSettings: vi.fn() }))
 vi.mock('../../auth/useAuth', () => ({ useAuth: () => ({ user: { display_name: 'Admin CartaVault' } }) }))
 
 beforeEach(() => {
@@ -34,14 +34,14 @@ beforeEach(() => {
   vi.mocked(getInstanceLogRetention).mockResolvedValue({ retention_days: 7 })
   vi.mocked(getMediaUploadSettings).mockResolvedValue({ max_upload_megabytes: 5, max_image_dimension: 2560 })
   vi.mocked(getSaasSettings).mockResolvedValue({ enabled: false })
-  vi.mocked(getVectorBasemapLibrary).mockResolvedValue({ settings: { enabled: true, preparation_policy: 'on_first_cartavault_use', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 }, items: [] })
+  vi.mocked(getVectorBasemapLibrary).mockResolvedValue({ settings: { enabled: true, preparation_policy: 'on_first_offline_use', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 }, items: [] })
   vi.mocked(saveVectorBasemapSettings).mockImplementation(async (settings) => settings)
   vi.mocked(saveInstanceLogRetention).mockImplementation(async (retentionDays) => ({ retention_days: retentionDays }))
   vi.mocked(saveMediaUploadSettings).mockImplementation(async (maxUploadMegabytes, maxImageDimension) => ({ max_upload_megabytes: maxUploadMegabytes, max_image_dimension: maxImageDimension }))
   vi.mocked(saveSaasSettings).mockImplementation(async (enabled) => ({ enabled }))
   vi.mocked(getInstanceLogs).mockResolvedValue({ items: [], truncated: false, next_before: null, max_limit: 200, retention_entries: 2000, retention_days: 7, source: 'database' })
   vi.mocked(refreshInstanceHealth).mockResolvedValue(instanceHealth)
-  vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ available: false, warning_level: 0, settings: { enabled: false, daily_soft_limit: 10000, monthly_soft_limit: 100000, auto_disable_percent: 100, repeated_error_limit: 5, consecutive_errors: 0, disabled_reason: null }, usage: { sessions_today: 0, tiles_started_today: 0, tiles_completed_today: 0, tiles_failed_today: 0, tiles_cancelled_today: 0, tiles_started_month: 0 }, quota: { scope: 'instance', daily_limit: 10000, monthly_limit: 100000, daily_reset_at: '2026-08-17', monthly_reset_at: '2026-09-01', blocked: false, reason: null }, authoritative_monitoring: { connected: true, source: 'backend_proxy', console_url: 'https://console.cloud.google.com/google/maps-apis/metrics', notice: 'Authoritative' } })
+  vi.mocked(getGoogleSatelliteAdminStatus).mockResolvedValue({ available: false, settings: { maps_javascript_enabled: false }, integration: 'google_maps_javascript', traffic: 'browser_to_google' })
 })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
@@ -128,7 +128,7 @@ describe('AdminConsole', () => {
     expect(screen.queryByText('Ajouter un fond')).not.toBeInTheDocument()
 
     fireEvent.click(toggle)
-    expect(screen.getByText('Préparation automatique')).toBeVisible()
+    expect(screen.getByText('Préparation offline')).toBeVisible()
     expect(screen.getByText('Fonds installés')).toBeVisible()
   })
 
@@ -500,7 +500,6 @@ const unlimitedProfile = {
     trips_per_map_max: null, members_per_map_max: null, pending_invitations_per_map_max: null,
     photos_per_place_max: null, links_per_place_max: null, days_per_trip_max: null, steps_per_day_max: null,
     image_upload_megabytes_max: null, image_dimension_max: null,
-    google_satellite_tiles_daily_max: null, google_satellite_tiles_monthly_max: null,
   },
 }
 

@@ -1,12 +1,12 @@
 {
   "summary": {
-    "detected": 52,
-    "detected_surfaces": 78,
+    "detected": 56,
+    "detected_surfaces": 74,
     "manifested": 49,
     "documented": 49,
     "scenarios": 49,
     "captures_ready": 49,
-    "coverage_percent": 94.2
+    "coverage_percent": 87.5
   },
   "sections": [
     {
@@ -102,6 +102,26 @@
       "id": "dialog:release-notes-title",
       "kind": "dialog",
       "source": "frontend/src/pages/ReleaseNotesPage.tsx"
+    },
+    {
+      "id": "dialog:trip-stop-search-title",
+      "kind": "dialog",
+      "source": "frontend/src/components/trips/MobileTripStopSearchDialog.tsx"
+    },
+    {
+      "id": "dialog:user-menu-account",
+      "kind": "dialog",
+      "source": "frontend/src/components/layout/TopBar.tsx"
+    },
+    {
+      "id": "dialog:user-menu-cartavault",
+      "kind": "dialog",
+      "source": "frontend/src/components/layout/TopBar.tsx"
+    },
+    {
+      "id": "dialog:user-menu-developers",
+      "kind": "dialog",
+      "source": "frontend/src/components/layout/TopBar.tsx"
     }
   ],
   "unknown_manifest_surfaces": [
@@ -116,9 +136,17 @@
     "dialog:account-language-label",
     "dialog:account-startup-label",
     "dialog:account-trash-retention-label",
+    "dialog:google-satellite-settings-title",
     "dialog:quota-tab-general",
     "dialog:trash-panel-title",
+    "menu:annotation-templates",
+    "menu:categories",
+    "menu:maps",
+    "menu:media",
     "menu:places",
+    "menu:statuses",
+    "menu:tags",
+    "menu:trash",
     "route:/login",
     "route:/places/:id"
   ],
@@ -193,7 +221,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "168795f3a78f5c18"
+      "source_hash": "9b6c12c2414ab70a"
     },
     {
       "id": "maps.create",
@@ -211,7 +239,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "77e9a8bb442dc343"
+      "source_hash": "7bf04ab0100aba62"
     },
     {
       "id": "maps.settings",
@@ -229,7 +257,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "168795f3a78f5c18"
+      "source_hash": "9b6c12c2414ab70a"
     },
     {
       "id": "maps.members",
@@ -265,7 +293,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "ae87fc0b139ce209"
+      "source_hash": "1a8ff92a1613c810"
     },
     {
       "id": "places.browse",
@@ -283,7 +311,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "82c88698540c3386"
+      "source_hash": "1a74a2c854474148"
     },
     {
       "id": "places.edit",
@@ -363,7 +391,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "aacf0985e6a9cc95"
+      "source_hash": "603efd3e9d51d733"
     },
     {
       "id": "organization.import-profiles",
@@ -425,7 +453,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "b5d14024fd81987b"
+      "source_hash": "d1ebee3a5aceb0d0"
     },
     {
       "id": "trips.routing",
@@ -443,7 +471,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "6773eb112dff8a7b"
+      "source_hash": "a54457c8bb117dc1"
     },
     {
       "id": "trips.timeline",
@@ -461,7 +489,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "5e576f4f762e734f"
+      "source_hash": "2fb5e522d3cb0396"
     },
     {
       "id": "trips.exports",
@@ -515,7 +543,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "42d0a79d202ed498"
+      "source_hash": "7d27dd4a2fe12e36"
     },
     {
       "id": "media.upload",
@@ -595,7 +623,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "63ef0172c52ac13a"
+      "source_hash": "5e3ee4d949e50e13"
     },
     {
       "id": "account.profile",
@@ -613,7 +641,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "4987df05eee1372c"
+      "source_hash": "68da9397f70615e1"
     },
     {
       "id": "account.preferences",
@@ -631,7 +659,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "6f3782eeaa8f3051"
+      "source_hash": "f3a963dc564dbca8"
     },
     {
       "id": "account.security",
@@ -649,7 +677,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "c48a3ec1a2a3a82d"
+      "source_hash": "aac4fe45b2daf1c6"
     },
     {
       "id": "account.email",
@@ -667,7 +695,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "c48a3ec1a2a3a82d"
+      "source_hash": "aac4fe45b2daf1c6"
     },
     {
       "id": "account.password",
@@ -687,7 +715,7 @@
         "backend/app/auth/password_policy.py"
       ],
       "potentially_stale": false,
-      "source_hash": "4749b26532359bde"
+      "source_hash": "d55e09938d358a9a"
     },
     {
       "id": "account.totp",
@@ -705,7 +733,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "cf5eca15bc05c624"
+      "source_hash": "7f683e0bd07ddc0f"
     },
     {
       "id": "account.email-mfa",
@@ -723,7 +751,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "382aaeedba6ddf40"
+      "source_hash": "9e00cd367e46b102"
     },
     {
       "id": "account.recovery-codes",
@@ -741,7 +769,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "49b592a090bbbfad"
+      "source_hash": "b667168f02618d7e"
     },
     {
       "id": "account.sessions",
@@ -759,7 +787,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "c48a3ec1a2a3a82d"
+      "source_hash": "aac4fe45b2daf1c6"
     },
     {
       "id": "account.api-keys",
@@ -781,7 +809,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "1a1e472a7d05ef86"
+      "source_hash": "37c74df9ef9d614c"
     },
     {
       "id": "account.privacy",
@@ -835,7 +863,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "c48a3ec1a2a3a82d"
+      "source_hash": "aac4fe45b2daf1c6"
     },
     {
       "id": "admin.general",
@@ -853,7 +881,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "b04f8c317f9ce7e8"
+      "source_hash": "6ad07cdba3496fd9"
     },
     {
       "id": "admin.registration",
@@ -871,7 +899,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "0163564892524505"
+      "source_hash": "ed2fc2aa525286e5"
     },
     {
       "id": "admin.users",
@@ -915,7 +943,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "ab093d885221914f"
+      "source_hash": "e2c9f73fc3ab96aa"
     },
     {
       "id": "admin.api-keys",
@@ -933,7 +961,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "fc682069743bbc92"
+      "source_hash": "342622a3c31a93a8"
     },
     {
       "id": "admin.vector-basemaps",
@@ -951,7 +979,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "4d68913cbc25b3e1"
+      "source_hash": "d96db241c92ed741"
     },
     {
       "id": "admin.privacy",
@@ -969,7 +997,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "7c1d093ad9d72df0"
+      "source_hash": "2e7072e836706d07"
     },
     {
       "id": "admin.media-logs",
@@ -987,7 +1015,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "0a9ebf38ae824123"
+      "source_hash": "fadeaf920cfbe160"
     },
     {
       "id": "admin.instance",
@@ -1023,7 +1051,7 @@
       "missing_captures": [],
       "missing_code_refs": [],
       "potentially_stale": false,
-      "source_hash": "d5c9cf4c6e5a60a4"
+      "source_hash": "ffcef5ac2986ec3d"
     },
     {
       "id": "deployment.email",
@@ -1043,7 +1071,7 @@
         "backend/app/email"
       ],
       "potentially_stale": false,
-      "source_hash": "cf9cf0d0b471fead"
+      "source_hash": "c871b6b7b9bce0fa"
     }
   ]
 }

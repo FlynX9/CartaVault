@@ -92,7 +92,7 @@ def test_initial_setup_is_token_protected_and_locks_after_first_admin(
                 "reply_to_address": None,
             },
             "mapping": {
-                "default_basemap": "cartavault-light",
+                    "default_basemap": "openfreemap-light",
                 "default_routing_engine": "osrm",
             },
         },

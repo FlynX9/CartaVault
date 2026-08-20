@@ -1,11 +1,8 @@
 # Google Satellite with Maps JavaScript API
 
-CartaVault offers two explicit implementations of Google Satellite:
+CartaVault integrates Google Satellite exclusively through **Maps JavaScript API**. CartaVault does not request, extract, proxy, cache, or prefetch Google's internal tile URLs. The former Map Tiles proxy, Google Roadmap option, tile sessions, counters and quotas have been removed.
 
-- **Maps JavaScript API**, recommended for projects billed in the EEA. CartaVault does not request, extract, proxy, cache, or prefetch its internal Google tile URLs.
-- **Map Tiles API**, retained for projects where Google still makes 2D satellite tiles available. It continues to use CartaVault's authenticated server-side session and tile proxy.
-
-The user selects the implementation in the satellite configuration. Both appear as a single configured satellite button on the map; its renderer follows the saved implementation. A Map Tiles `403` caused by the billing region does not invalidate the credential or remove the Maps JavaScript alternative. Google classic roadmap may continue to use the server-side Map Tiles path independently.
+Google is an optional satellite provider. The user chooses either ArcGIS World Imagery or Google in the satellite configuration; the map shows a single satellite button for the configured provider.
 
 The provider migration does not replace CartaVault's map engine. Leaflet remains the interactive map and owns POIs, clusters, routes, annotations, selection, measurement, search results, keyboard interactions, and the current camera. A native, non-interactive `google.maps.Map` is inserted below the Leaflet panes only when `google-satellite` is selected. Leaflet center and zoom changes are copied to Google with `moveCamera`. Switching backgrounds hides and reuses that instance; it does not recreate the `MapContainer`, POIs, or routes.
 
@@ -15,11 +12,11 @@ The provider migration does not replace CartaVault's map engine. Leaflet remains
 2. Create a dedicated browser key. Restrict **Application restrictions** to the exact production and development HTTP referrers that may host CartaVault.
 3. Restrict **API restrictions** to Maps JavaScript API only.
 4. In **Account → API keys**, save the key as a Google credential. In the satellite preferences, select **Google**, then **Maps JavaScript API** and explicitly associate this key.
-5. Enable Maps JavaScript in the administrator settings. Its toggle is independent from the Map Tiles toggle and quotas.
+5. Enable Maps JavaScript in the administrator settings.
 
 For a self-hosted instance, list every real origin pattern that users open, for example `https://cartavault.example.com/*`, `https://nas.example.local/*`, or the exact LAN origin such as `https://192.168.1.50/*`. Add a localhost origin only for development. Google referrer restrictions cannot be configured by CartaVault and an origin accessed by both hostname and IP needs both entries.
 
-Do not select a server key used by Routes, Places, or Map Tiles for the JavaScript mode. A generic server-side Google verification cannot prove that a browser-restricted Maps JavaScript key works: CartaVault marks this credential verified only after the native map emits its first `tilesloaded` event. Conversely, **Map Tiles API** mode selects the existing server credential and keeps its provider-session validation.
+Do not select a server key used by Routes or Places for the JavaScript mode. A generic server-side Google verification cannot prove that a browser-restricted Maps JavaScript key works: CartaVault marks this credential verified only after the native map emits its first `tilesloaded` event.
 
 ## Credential boundary
 
@@ -27,14 +24,11 @@ The selected key is encrypted at rest and never written to logs, local storage, 
 
 Deleting or deselecting the credential prevents new SDK initialization. Loading failures use CartaVault's existing basemap fallback without removing the user's provider or implementation choice. Production Content Security Policy allows only the official Google Maps script hosts needed by this integration. Google attribution and terms remain rendered by the native Google map.
 
-For Map Tiles mode, use a separate server key restricted to **Map Tiles API**. The persistent key and short-lived tile session remain hidden behind CartaVault's authenticated proxy. This mode can still return Google's regional `403`; switch the saved implementation to Maps JavaScript rather than weakening key restrictions.
-
 ## Troubleshooting
 
 - **The JavaScript map reports a key/configuration error:** verify billing, Maps JavaScript API activation, the exact browser referrer, and API restriction. Reload the page after selecting or rotating the browser key because the official SDK is a singleton per page.
-- **Map Tiles returns `403` although the key is valid:** if the Google Cloud billing context is affected by the EEA restriction, choose **Maps JavaScript API — compatible EEA**. Do not remove key restrictions.
 - **The map works but the account initially says “to verify”:** browser-restricted keys cannot be fully tested by CartaVault's server. The state becomes verified after the first native satellite map finishes loading.
-- **Offline:** neither Google implementation is cached. CartaVault continues to switch to its local vector background and restores the saved online implementation after connectivity returns.
+- **Offline:** Google is never cached. CartaVault switches to its local vector background and restores Google after connectivity returns.
 
 ## Lifecycle and cost instrumentation
 

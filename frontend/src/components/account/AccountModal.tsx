@@ -20,7 +20,7 @@ import { AvatarCropDialog } from './AvatarCropDialog'
 
 type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'privacy' | 'offline'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', default_theme: 'system', preferred_basemap: 'osm', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'osm', satellite_provider: 'none' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', default_theme: 'system', preferred_basemap: 'openfreemap-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'openfreemap', satellite_provider: 'none' } }
 
 const fallbackTimeZones = ['Europe/Paris', 'Europe/London', 'Europe/Brussels', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Zurich', 'America/New_York', 'America/Los_Angeles', 'America/Toronto', 'Asia/Tbilisi', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney', 'Pacific/Auckland', 'UTC']
 const supportedTimeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : fallbackTimeZones

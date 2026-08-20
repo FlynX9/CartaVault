@@ -6,9 +6,8 @@ from typing import Final, Literal
 ApiKeyCapability = Literal["routing", "places_search", "classic_basemap", "satellite_basemap"]
 
 CAPABILITIES_BY_PROVIDER: Final[dict[str, frozenset[ApiKeyCapability]]] = {
-    "google": frozenset({"routing", "places_search", "classic_basemap", "satellite_basemap"}),
-    "stadia": frozenset({"places_search", "classic_basemap", "satellite_basemap"}),
-    "mapbox": frozenset({"satellite_basemap"}),
+    "google": frozenset({"routing", "places_search", "satellite_basemap"}),
+    "stadia": frozenset({"places_search"}),
     "openrouteservice": frozenset({"routing"}),
     "resend": frozenset(),
 }

@@ -49,10 +49,10 @@ describe('getAccountPreferences', () => {
     const request = new Promise<AccountPreferences>((resolve) => { resolvePreferences = resolve })
     vi.mocked(getJson).mockReturnValue(request)
     const value = {
-      language: 'fr', default_theme: 'system', preferred_basemap: 'osm', density: 'compact', startup_panel: 'maps',
+      language: 'fr', default_theme: 'system', preferred_basemap: 'openfreemap-light', density: 'compact', startup_panel: 'maps',
       timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false,
       onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' },
-      basemaps: { classic_provider: 'osm', satellite_provider: 'none' },
+      basemaps: { classic_provider: 'openfreemap', satellite_provider: 'none' },
     } satisfies AccountPreferences
 
     const consumers = Array.from({ length: 4 }, () => getAccountPreferences())

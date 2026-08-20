@@ -7,14 +7,11 @@ import { TileLayer, useMap } from 'react-leaflet'
 
 import { getBasemap, type BasemapId, type RasterBasemapDefinition, type VectorBasemapDefinition } from '../../map/basemaps'
 import { loadCartaVaultStyle } from '../../map/maplibreStyle'
-import { createGoogleSatelliteSession } from '../../api/googleSatellite'
 import { ApiError } from '../../api/client'
-import { getStadiaBasemapConfig } from '../../api/stadiaMaps'
-import { createMapboxTileSession } from '../../api/mapboxMaps'
+import { createArcGISBasemapSession } from '../../api/arcgisMaps'
 import { getCartaVaultVectorConfig, type CartaVaultVectorConfig } from '../../api/vectorBasemap'
 import { cartaVaultTileTemplate, configureCartaVaultProtocol } from '../../map/vectorBasemapProtocol'
 import { getOfflineBasemapVersion } from '../../pwa/offlineData'
-import { API_BASE_URL } from '../../config'
 import { GoogleMapsJavaScriptBasemap } from './GoogleMapsJavaScriptBasemap'
 
 interface BasemapLayerProps {
@@ -49,7 +46,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
     let mapLibreErrorHandler: ((event: unknown) => void) | null = null
 
     void (async () => {
-      const purpose = navigator.onLine === false ? 'offline' : 'online'
+      const purpose = 'offline'
       let configured: CartaVaultVectorConfig
       try {
         configured = await getCartaVaultVectorConfig(controller.signal, true, countryCode ?? undefined, purpose)
@@ -61,7 +58,7 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
         }
         return null
       }
-      const offlineVersion = navigator.onLine === false ? await getOfflineBasemapVersion() : null
+      const offlineVersion = await getOfflineBasemapVersion()
       const config = offlineVersion ? { ...configured, version: offlineVersion, available: true } : configured
       console.info('[Basemap] CartaVault Vector availability', {
         requested: basemapRef.current.id,
@@ -149,92 +146,48 @@ function VectorBasemapLayer({ basemap, countryCode, onTileError }: { basemap: Ve
   return null
 }
 
-function GoogleBasemapLayer({ basemapId, onTileError }: { basemapId: 'google-satellite-tiles'; onTileError: (id: BasemapId, fatal?: boolean, reason?: string, errorCode?: string) => void }) {
-  const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
-  const sessionRequestRef = useRef<{ basemapId: typeof basemapId; promise: ReturnType<typeof createGoogleSatelliteSession> } | null>(null)
+function OpenFreeMapBasemapLayer({ basemap, onTileError }: { basemap: VectorBasemapDefinition; onTileError: BasemapLayerProps['onTileError'] }) {
+  const map = useMap()
+  const onTileErrorRef = useRef(onTileError)
+  onTileErrorRef.current = onTileError
+  useEffect(() => {
+    const layer = L.maplibreGL({ style: basemap.styleUrl, interactive: false, attributionControl: false })
+    const handleError = (event: unknown) => onTileErrorRef.current(basemap.id, false, (event as { error?: Error }).error?.message ?? 'OpenFreeMap est indisponible.', 'OPENFREEMAP_UNAVAILABLE')
+    // leaflet-maplibre-gl creates its MapLibre instance from onAdd(). Reading
+    // it before addTo() returns undefined and crashes the complete React tree.
+    layer.addTo(map)
+    const renderer = layer.getMaplibreMap()
+    renderer.on('error', handleError)
+    map.attributionControl?.addAttribution(basemap.attribution)
+    return () => {
+      renderer.off('error', handleError)
+      if (map.hasLayer(layer)) layer.removeFrom(map)
+      map.attributionControl?.removeAttribution(basemap.attribution)
+    }
+  }, [basemap, map])
+  return null
+}
+
+function ArcGISBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: BasemapLayerProps['onTileError'] }) {
+  const [session, setSession] = useState<Awaited<ReturnType<typeof createArcGISBasemapSession>> | null>(null)
+  const [generation, setGeneration] = useState(0)
   const onTileErrorRef = useRef(onTileError)
   onTileErrorRef.current = onTileError
   useEffect(() => {
     let current = true
-    const existing = sessionRequestRef.current
-    const promise = existing?.basemapId === basemapId
-      ? existing.promise
-      : createGoogleSatelliteSession('satellite')
-    sessionRequestRef.current = { basemapId, promise }
-    void promise.then((value) => { if (current) setSession(value) }).catch((error: unknown) => {
-      if (current) onTileErrorRef.current(basemapId, true, error instanceof Error ? error.message : undefined, error instanceof ApiError ? error.code ?? undefined : undefined)
+    let timer: ReturnType<typeof setTimeout> | null = null
+    setSession(null)
+    void createArcGISBasemapSession().then((value) => {
+      if (!current) return
+      setSession(value)
+      timer = setTimeout(() => setGeneration((item) => item + 1), Math.max(30_000, Date.parse(value.expires) - Date.now() - 60_000))
+    }).catch((error: unknown) => {
+      if (current) onTileErrorRef.current(basemap.id, true, error instanceof Error ? error.message : undefined, error instanceof ApiError ? error.code ?? undefined : undefined)
     })
-    return () => { current = false }
-  }, [basemapId])
+    return () => { current = false; if (timer !== null) clearTimeout(timer) }
+  }, [basemap.id, generation])
   if (!session) return null
-  return <TileLayer key={basemapId} url={`${API_BASE_URL}${session.tile_path}`} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemapId) }} />
-}
-
-const stadiaStyles: Partial<Record<BasemapId, { style: string; extension: 'png' | 'jpg' }>> = {
-  'stadia-light': { style: 'alidade_smooth', extension: 'png' },
-  'stadia-dark': { style: 'alidade_smooth_dark', extension: 'png' },
-  satellite: { style: 'alidade_satellite', extension: 'jpg' },
-}
-
-function StadiaBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
-  const [url, setUrl] = useState<string | null>(null)
-  const [sessionGeneration, setSessionGeneration] = useState(0)
-  const onTileErrorRef = useRef(onTileError)
-  onTileErrorRef.current = onTileError
-  useEffect(() => {
-    const controller = new AbortController()
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null
-    const definition = stadiaStyles[basemap.id]
-    if (!definition) return () => controller.abort()
-    setUrl(null)
-    const capability = basemap.id === 'satellite' ? 'satellite_basemap' : 'classic_basemap'
-    void getStadiaBasemapConfig(capability, controller.signal).then((config) => {
-      const tilePath = config.tile_path
-        .replace('{style}', definition.style)
-        .replace('{extension}', definition.extension)
-      if (!controller.signal.aborted) setUrl(tilePath.startsWith('http') ? tilePath : `${API_BASE_URL}${tilePath}`)
-      if (config.expires && !controller.signal.aborted) {
-        const refreshIn = Math.max(30_000, Date.parse(config.expires) - Date.now() - 60_000)
-        refreshTimer = setTimeout(() => setSessionGeneration((value) => value + 1), refreshIn)
-      }
-    }).catch(() => {
-      if (!controller.signal.aborted) onTileErrorRef.current(basemap.id, true)
-    })
-    return () => {
-      controller.abort()
-      if (refreshTimer !== null) clearTimeout(refreshTimer)
-    }
-  }, [basemap.id, basemap.url, sessionGeneration])
-  if (!url) return null
-  // Stadia's {r} URL token already requests a native @2x tile. Enabling
-  // Leaflet's detectRetina at the same time halves the logical tile size and
-  // downloads four times as many @2x images for the same viewport.
-  return <TileLayer key={`${basemap.id}:${url}`} url={url} attribution={basemap.attribution} maxZoom={basemap.maxZoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileError(basemap.id) }} />
-}
-
-function MapboxBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
-  const [session, setSession] = useState<{ tile_path: string; attribution: string; max_zoom: number } | null>(null)
-  const [sessionGeneration, setSessionGeneration] = useState(0)
-  const onTileErrorRef = useRef(onTileError)
-  onTileErrorRef.current = onTileError
-  useEffect(() => {
-    let current = true
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null
-    void createMapboxTileSession()
-      .then((value) => {
-        if (!current) return
-        setSession(value)
-        const refreshIn = Math.max(30_000, Date.parse(value.expires) - Date.now() - 60_000)
-        refreshTimer = setTimeout(() => setSessionGeneration((generation) => generation + 1), refreshIn)
-      })
-      .catch(() => { if (current) onTileErrorRef.current(basemap.id, true) })
-    return () => {
-      current = false
-      if (refreshTimer !== null) clearTimeout(refreshTimer)
-    }
-  }, [basemap.id, sessionGeneration])
-  if (!session) return null
-  return <TileLayer key={basemap.id} url={`${API_BASE_URL}${session.tile_path}`} attribution={basemap.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }} />
+  return <TileLayer key={`${basemap.id}:${session.expires}`} url={session.tile_url} attribution={session.attribution} maxZoom={session.max_zoom} detectRetina={false} eventHandlers={{ tileerror: () => onTileErrorRef.current(basemap.id) }} />
 }
 
 function RasterBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDefinition; onTileError: (id: BasemapId, fatal?: boolean) => void }) {
@@ -254,25 +207,23 @@ function RasterBasemapLayer({ basemap, onTileError }: { basemap: RasterBasemapDe
 /** Switching the base layer never recreates the Leaflet MapContainer or its overlays. */
 export function BasemapLayer({ basemapId, countryCode, onTileError }: BasemapLayerProps) {
   const basemap = getBasemap(basemapId)
-  const googleMapsBasemapId = basemapId === 'google-roadmap' ? 'google-roadmap' : 'google-satellite'
-  const googleMapsActive = basemapId === 'google-roadmap' || basemapId === 'google-satellite'
+  const googleMapsBasemapId = 'google-satellite'
+  const googleMapsActive = basemapId === 'google-satellite'
 
   // Key the Google overlay by its active state as well as its type. Otherwise React
   // keeps the same Google Maps instance mounted while a non-Google basemap is
   // selected, which can leave its DOM layer above the newly selected Leaflet layer.
-  const googleMapsLayer = <GoogleMapsJavaScriptBasemap key={`${googleMapsBasemapId}:${googleMapsActive}`} active={googleMapsActive} basemapId={googleMapsBasemapId} mapType={googleMapsBasemapId === 'google-roadmap' ? 'roadmap' : 'satellite'} onError={onTileError} />
+  const googleMapsLayer = <GoogleMapsJavaScriptBasemap key={`${googleMapsBasemapId}:${googleMapsActive}`} active={googleMapsActive} basemapId={googleMapsBasemapId} mapType="satellite" onError={onTileError} />
 
   if (basemap.kind === 'vector') {
     // MapLibre layers are imperative Leaflet layers. Their React key must include
     // the selected style, otherwise switching light ↔ dark can leave the previous
     // layer instance attached while the new style is loading.
-    return <>{googleMapsLayer}<VectorBasemapLayer basemap={basemap} countryCode={countryCode} onTileError={onTileError} /></>
+    return <>{googleMapsLayer}{basemap.source === 'remote-style' ? <OpenFreeMapBasemapLayer basemap={basemap} onTileError={onTileError} /> : <VectorBasemapLayer basemap={basemap} countryCode={countryCode} onTileError={onTileError} />}</>
   }
   if (basemap.id === 'google-satellite') return googleMapsLayer
-  if (basemap.id === 'google-satellite-tiles') return <>{googleMapsLayer}<GoogleBasemapLayer basemapId="google-satellite-tiles" onTileError={onTileError} /></>
   if (basemap.kind === 'google') return googleMapsLayer
-  if (basemap.id === 'mapbox-satellite') return <>{googleMapsLayer}<MapboxBasemapLayer basemap={basemap} onTileError={onTileError} /></>
-  if (basemap.requiresStadiaAuthentication) return <>{googleMapsLayer}<StadiaBasemapLayer basemap={basemap} onTileError={onTileError} /></>
+  if (basemap.id === 'arcgis-satellite') return <>{googleMapsLayer}<ArcGISBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 
   return <>{googleMapsLayer}<RasterBasemapLayer basemap={basemap} onTileError={onTileError} /></>
 }

@@ -69,7 +69,7 @@ export function getAccountPreferences(signal?: AbortSignal): Promise<AccountPref
 export async function updateAccountPreferences(preferences: AccountPreferences): Promise<AccountPreferences> { return rememberPreferences(await sendJson('/account/preferences', 'PUT', preferences) as AccountPreferences) }
 export async function resetAccountPreferences(): Promise<AccountPreferences> { return rememberPreferences(await sendJson('/account/preferences/reset', 'POST', {}) as AccountPreferences) }
 export async function getPersonalApiKeys(signal?: AbortSignal): Promise<PersonalApiKey[]> { return getJson('/account/api-keys', new URLSearchParams(), signal) as Promise<PersonalApiKey[]> }
-export async function createPersonalApiKey(data: { name: string; provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice'; api_key: string }): Promise<PersonalApiKey> { return sendJson('/account/api-keys', 'POST', data) as Promise<PersonalApiKey> }
+export async function createPersonalApiKey(data: { name: string; provider: 'google' | 'stadia' | 'openrouteservice'; api_key: string }): Promise<PersonalApiKey> { return sendJson('/account/api-keys', 'POST', data) as Promise<PersonalApiKey> }
 export async function updatePersonalApiKey(id: string, data: { name?: string; api_key?: string }): Promise<PersonalApiKey> { return sendJson(`/account/api-keys/${encodeURIComponent(id)}`, 'PATCH', data) as Promise<PersonalApiKey> }
 export async function verifyPersonalApiKey(id: string): Promise<PersonalApiKey> { return sendJson(`/account/api-keys/${encodeURIComponent(id)}/verify`, 'POST', {}) as Promise<PersonalApiKey> }
 export async function deletePersonalApiKey(id: string): Promise<void> { await sendWithoutResponse(`/account/api-keys/${encodeURIComponent(id)}`, 'DELETE') }

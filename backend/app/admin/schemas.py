@@ -92,7 +92,7 @@ class CredentialValue(BaseModel):
 
 class AdminApiKeyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    provider: Literal["google", "stadia", "mapbox", "openrouteservice", "resend"]
+    provider: Literal["google", "stadia", "openrouteservice", "resend"]
     api_key: str = Field(min_length=1, max_length=512)
     capabilities: list[Literal["routing", "places_search", "classic_basemap", "satellite_basemap"]] | None = None
 

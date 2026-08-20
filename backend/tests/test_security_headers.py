@@ -42,6 +42,15 @@ def test_security_headers_are_added_to_http_responses() -> None:
     assert "https://maps.gstatic.com" in response.headers["content-security-policy"]
     assert "https://fonts.googleapis.com" in response.headers["content-security-policy"]
     assert "https://fonts.gstatic.com" in response.headers["content-security-policy"]
+    assert "https://tiles.openfreemap.org" in response.headers["content-security-policy"]
+    assert "https://*.arcgisonline.com" in response.headers["content-security-policy"]
+    directives = {
+        values[0]: values[1:]
+        for directive in response.headers["content-security-policy"].split(";")
+        if (values := directive.strip().split())
+    }
+    assert "https:" not in directives["connect-src"]
+    assert "https:" not in directives["img-src"]
 
 
 def test_hsts_is_only_added_to_https_responses() -> None:

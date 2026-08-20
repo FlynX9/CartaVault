@@ -1,39 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { sendJsonViaXhr } from './client'
+import { getJson, sendJson } from './client'
+import { getGoogleMapsJavaScriptConfig, markGoogleMapsJavaScriptLoaded } from './googleSatellite'
 
-vi.mock('./client', () => ({
-  getJson: vi.fn(),
-  sendJson: vi.fn(),
-  sendJsonViaXhr: vi.fn(),
-}))
+vi.mock('./client', () => ({ getJson: vi.fn(), sendJson: vi.fn() }))
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  vi.resetModules()
-})
-
-describe('Google satellite sessions', () => {
-  it('deduplicates concurrent and immediate repeated session requests', async () => {
-    const session = { tile_path: '/tiles/{z}/{x}/{y}', expires: null, attribution: '© Google', max_zoom: 22 }
-    vi.mocked(sendJsonViaXhr).mockResolvedValue(session)
-    const { createGoogleSatelliteSession } = await import('./googleSatellite')
-
-    const first = createGoogleSatelliteSession('satellite')
-    const second = createGoogleSatelliteSession('satellite')
-
-    await expect(Promise.all([first, second])).resolves.toEqual([session, session])
-    expect(sendJsonViaXhr).toHaveBeenCalledOnce()
-    await expect(createGoogleSatelliteSession('satellite')).resolves.toEqual(session)
-    expect(sendJsonViaXhr).toHaveBeenCalledOnce()
+describe('Google Satellite Maps JavaScript integration', () => {
+  it('requests only the browser configuration endpoint', async () => {
+    vi.mocked(getJson).mockResolvedValue({ api_key: 'browser-key', language: 'fr', region: '', map_type: 'satellite' })
+    await expect(getGoogleMapsJavaScriptConfig()).resolves.toMatchObject({ map_type: 'satellite' })
+    expect(getJson).toHaveBeenCalledWith('/basemaps/google-satellite/maps-js/config', expect.any(URLSearchParams), undefined)
   })
 
-  it('allows a failed session request to be retried', async () => {
-    vi.mocked(sendJsonViaXhr).mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValueOnce({ tile_path: '/tiles/{z}/{x}/{y}', expires: null, attribution: '© Google', max_zoom: 22 })
-    const { createGoogleSatelliteSession } = await import('./googleSatellite')
-
-    await expect(createGoogleSatelliteSession('satellite')).rejects.toThrow('Unavailable')
-    await expect(createGoogleSatelliteSession('satellite')).resolves.toMatchObject({ attribution: '© Google' })
-    expect(sendJsonViaXhr).toHaveBeenCalledTimes(2)
+  it('marks a direct Google renderer as loaded without creating a tile session', async () => {
+    vi.mocked(sendJson).mockResolvedValue({ loaded: true })
+    await expect(markGoogleMapsJavaScriptLoaded()).resolves.toEqual({ loaded: true })
+    expect(sendJson).toHaveBeenCalledWith('/basemaps/google-satellite/maps-js/loaded', 'POST', { map_type: 'satellite' })
   })
 })

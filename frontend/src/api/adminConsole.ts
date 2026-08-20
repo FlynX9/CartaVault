@@ -6,7 +6,7 @@ export interface BackgroundTaskResult { task_id: string; status: string }
 export interface SaasSettings { enabled: boolean }
 export interface InstanceLogRetentionSettings { retention_days: number }
 export type VectorBasemapState = 'not_installed' | 'downloading' | 'generating' | 'validating' | 'ready' | 'update_available' | 'error' | 'deleting'
-export interface VectorBasemapSettings { enabled: boolean; preparation_policy: 'on_map_creation' | 'on_first_cartavault_use' | 'on_first_offline_use' | 'manual'; update_policy: 'disabled' | 'monthly' | 'quarterly'; min_zoom: number; max_zoom: number; offline_min_zoom: number; offline_max_zoom: number; offline_padding_km: number; offline_max_tiles: number }
+export interface VectorBasemapSettings { enabled: boolean; preparation_policy: 'on_first_offline_use' | 'manual'; update_policy: 'disabled' | 'monthly' | 'quarterly'; min_zoom: number; max_zoom: number; offline_min_zoom: number; offline_max_zoom: number; offline_padding_km: number; offline_max_tiles: number }
 export interface VectorBasemapItem { country_code: string; country_name: string; state: VectorBasemapState; phase: string | null; progress: number | null; version: string | null; file_size: number | null; source_size: number | null; installed_at: string | null; source_date: string | null; min_zoom: number | null; max_zoom: number | null; schema: string | null; error_code: string | null; error_message: string | null; task_id: string | null; map_count: number; supported: boolean }
 export interface VectorBasemapLibrary { settings: VectorBasemapSettings; items: VectorBasemapItem[] }
 
@@ -30,7 +30,7 @@ export function saveResendCredential(value: string) { return sendJson('/admin/co
 export function verifyResendCredential() { return sendJson('/admin/console/credentials/resend/verify', 'POST', {}) as Promise<CredentialStatus> }
 export function deleteResendCredential() { return sendWithoutResponse('/admin/console/credentials/resend', 'DELETE') }
 export function getAdminApiKeys(signal?: AbortSignal) { return getJson('/admin/console/credentials/keys', empty(), signal) as Promise<AdminApiKey[]> }
-export function createAdminApiKey(payload: { name: string; provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice' | 'resend'; api_key: string; capabilities?: AdminApiKey['capabilities'] }) { return sendJson('/admin/console/credentials/keys', 'POST', payload) as Promise<AdminApiKey> }
+export function createAdminApiKey(payload: { name: string; provider: 'google' | 'stadia' | 'openrouteservice' | 'resend'; api_key: string; capabilities?: AdminApiKey['capabilities'] }) { return sendJson('/admin/console/credentials/keys', 'POST', payload) as Promise<AdminApiKey> }
 export function updateAdminApiKey(id: string, payload: { name?: string; api_key?: string; capabilities?: AdminApiKey['capabilities'] }) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'PATCH', payload) as Promise<AdminApiKey> }
 export function verifyAdminApiKey(id: string) { return sendJson(`/admin/console/credentials/keys/${encodeURIComponent(id)}/verify`, 'POST', {}) as Promise<AdminApiKey> }
 export function deleteAdminApiKey(id: string) { return sendWithoutResponse(`/admin/console/credentials/keys/${encodeURIComponent(id)}`, 'DELETE') }

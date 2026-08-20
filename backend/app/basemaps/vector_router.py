@@ -34,7 +34,7 @@ _CHUNK_SIZE = 1024 * 1024
 
 class VectorPolicyPayload(BaseModel):
     enabled: bool = True
-    preparation_policy: Literal["on_map_creation", "on_first_cartavault_use", "on_first_offline_use", "manual"] = "on_first_cartavault_use"
+    preparation_policy: Literal["on_first_offline_use", "manual"] = "on_first_offline_use"
     update_policy: Literal["disabled", "monthly", "quarterly"] = "disabled"
     min_zoom: int = Field(default=0, ge=0, le=14)
     max_zoom: int = Field(default=14, ge=1, le=16)
@@ -129,13 +129,14 @@ def _config_payload(policy: VectorBasemapPolicy, row: VectorBasemap | None) -> d
 
 
 @router.get("/config")
-def config(country_code: str | None = Query(default=None, min_length=2, max_length=2), purpose: Literal["status", "online", "offline"] = "status", session: Session = Depends(get_db), current: User = Depends(get_current_user)) -> dict[str, object]:
+def config(country_code: str | None = Query(default=None, min_length=2, max_length=2), purpose: Literal["status", "offline"] = "status", session: Session = Depends(get_db), current: User = Depends(get_current_user)) -> dict[str, object]:
     policy = get_vector_basemap_policy(session)
     if country_code is None:
         return _config_payload(policy, None)
     code = country_code.upper()
-    if purpose != "status":
-        row = maybe_prepare_for_policy(session, code, current.id, "offline_use" if purpose == "offline" else "cartavault_use")
+    # Only an explicit offline preparation may create a Geofabrik/Planetiler job.
+    if purpose == "offline":
+        row = maybe_prepare_for_policy(session, code, current.id, "offline_use")
     else:
         ensure_catalog_rows(session)
         row = session.get(VectorBasemap, code)

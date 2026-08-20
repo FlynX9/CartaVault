@@ -15,7 +15,7 @@ export interface TotpRecoveryCodes { recovery_codes: string[] }
 export interface AccountPreferences {
   language: 'fr' | 'en'
   default_theme: 'light' | 'dark' | 'system'
-  preferred_basemap: 'cartavault-light' | 'cartavault-dark' | 'stadia-light' | 'stadia-dark' | 'google-roadmap' | 'osm' | 'satellite' | 'google-satellite' | 'google-satellite-tiles' | 'mapbox-satellite'
+  preferred_basemap: 'openfreemap-light' | 'openfreemap-dark' | 'arcgis-satellite' | 'google-satellite'
   density: 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string
@@ -30,7 +30,7 @@ export interface AccountPreferences {
     api_key_id?: string | null
   }
   places: { provider: 'stadia' | 'google'; api_key_id?: string | null }
-  basemaps?: { classic_provider?: 'cartavault' | 'osm' | 'stadia' | 'google'; satellite_provider: 'none' | 'stadia' | 'google' | 'mapbox'; google_satellite_mode?: 'maps-js' | 'map-tiles'; api_key_id?: string | null; stadia_api_key_id?: string | null; google_api_key_id?: string | null; google_maps_js_api_key_id?: string | null; mapbox_api_key_id?: string | null; classic_api_key_id?: string | null; satellite_api_key_id?: string | null }
+  basemaps?: { classic_provider: 'openfreemap'; satellite_provider: 'none' | 'arcgis' | 'google'; google_maps_js_api_key_id?: string | null }
 }
 
 export type ApiKeyCapability = 'routing' | 'places_search' | 'classic_basemap' | 'satellite_basemap'
@@ -38,7 +38,7 @@ export type ApiKeyCapability = 'routing' | 'places_search' | 'classic_basemap' |
 export interface PersonalApiKey {
   id: string
   name: string
-  provider: 'google' | 'stadia' | 'mapbox' | 'openrouteservice'
+  provider: 'google' | 'stadia' | 'openrouteservice' | 'mapbox'
   last4: string
   verified: boolean
   verified_at: string | null

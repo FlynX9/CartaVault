@@ -36,13 +36,12 @@ import { useI18n } from "../../i18n/useI18n";
 import type { I18nContextValue } from "../../i18n/i18nContext";
 
 type EditableProvider =
-  "google" | "stadia" | "mapbox" | "openrouteservice" | "resend";
+  "google" | "stadia" | "openrouteservice" | "resend";
 type Capability =
   "routing" | "places_search" | "classic_basemap" | "satellite_basemap";
 const PROVIDER_CAPABILITIES: Record<EditableProvider, Capability[]> = {
-  google: ["routing", "places_search", "classic_basemap", "satellite_basemap"],
-  stadia: ["places_search", "classic_basemap", "satellite_basemap"],
-  mapbox: ["satellite_basemap"],
+  google: ["routing", "places_search", "satellite_basemap"],
+  stadia: ["places_search"],
   openrouteservice: ["routing"],
   resend: [],
 };
@@ -450,14 +449,6 @@ export function AdminApiKeysSection() {
                         }}
                       />
                       <ProviderButton
-                        provider="mapbox"
-                        selected={provider === "mapbox"}
-                        onClick={() => {
-                          setProvider("mapbox");
-                          setCapabilities(PROVIDER_CAPABILITIES.mapbox);
-                        }}
-                      />
-                      <ProviderButton
                         provider="openrouteservice"
                         selected={provider === "openrouteservice"}
                         onClick={() => {
@@ -862,10 +853,7 @@ function brandFor(provider: AdminApiKey["provider"]) {
       alt: "Google",
     };
   if (provider === "stadia")
-    return {
-      src: "https://www.stadiamaps.com/favicon.ico",
-      alt: "Stadia Maps",
-    };
+    return { src: "", alt: "Stadia Places" };
   if (provider === "mapbox")
     return { src: "/brands/mapbox-logo.svg", alt: "Mapbox" };
   return { src: "", alt: "" };

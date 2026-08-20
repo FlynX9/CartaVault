@@ -1,6 +1,6 @@
 # Fonds vectoriels CartaVault par pays
 
-CartaVault peut préparer automatiquement les fonds vectoriels OpenStreetMap nécessaires aux pays utilisés par l’instance. Le workflow normal ne demande ni archive PMTiles, ni commande Planetiler, ni version saisie manuellement.
+CartaVault sépare la cartographie online de la préparation offline. Une navigation connectée utilise directement OpenFreeMap (clair/sombre) ou ArcGIS (satellite) et ne dépend jamais d’une archive PMTiles, de Planetiler, de Geofabrik ou de `/data/maps`.
 
 ## Architecture
 
@@ -21,11 +21,9 @@ Le conteneur embarque aussi les glyphes `Noto Sans Regular` et `Noto Sans Italic
 
 ## Activation et politique
 
-Ouvrez **Administration → Général → Fond de carte CartaVault** puis activez le switch. Choisissez une politique :
+Ouvrez **Administration → Général → Fond de carte CartaVault** puis activez le switch. Choisissez une politique offline :
 
-- **À la création d’une carte** : la première carte du pays planifie la préparation ; la création reste immédiate ;
-- **À la première utilisation du fond CartaVault** (valeur par défaut) : le job démarre lorsque le fond clair ou sombre est sélectionné ;
-- **Lors du premier téléchargement hors ligne** : le job démarre à la préparation du premier package du pays ;
+- **Lors du premier téléchargement hors ligne** (valeur par défaut) : le job démarre à la préparation explicite du premier package du pays ;
 - **Manuellement** : seul un administrateur lance l’installation.
 
 Les réglages de zoom, marge offline, limite de tuiles et fréquence de mise à jour sont persistés en base. Ils ne sont plus des options fonctionnelles `.env`.
@@ -57,18 +55,23 @@ Codes d’erreur stables : `DOWNLOAD_FAILED`, `INSUFFICIENT_DISK`, `GENERATION_F
 
 ## Utilisation online et offline
 
-En ligne, MapLibre lit uniquement les plages utiles de `/api/basemaps/cartavault/archive/<pays>.pmtiles` avec HTTP Range (`206`, `Accept-Ranges`, `Content-Range`, ETag). Le navigateur ne télécharge pas l’archive complète.
-
-Il n’existe plus de source vectorielle distante cachée :
-
 ```text
-ONLINE  : CartaVault → PMTiles local serveur
-OFFLINE : CartaVault → tuiles de zone dans IndexedDB
+ONLINE
+Browser ─────► OpenFreeMap
+Browser ─────► ArcGIS (après création d’une session courte par CartaVault)
+
+OFFLINE PREPARATION
+CartaVault ─► Geofabrik ─► Planetiler ─► PMTiles
+
+OFFLINE USAGE
+Browser ─────► IndexedDB / tuiles extraites du PMTiles préparé
 ```
+
+Les routes PMTiles et leurs lectures HTTP Range sont conservées uniquement pour la préparation offline et la compatibilité. Le trafic online normal ne les appelle pas.
 
 Lors d’un téléchargement offline, CartaVault calcule l’emprise des POI, étapes, nuitées et géométries, ajoute la marge configurée, puis extrait seulement les tuiles nécessaires aux zooms configurés. Les tuiles communes sont dédupliquées dans IndexedDB. Si le fond pays n’est pas prêt, aucun package incomplet et aucune tuile Google/OSM de substitution ne sont enregistrés ; l’interface indique que le fond est en préparation.
 
-OSM Standard est le fallback explicite pendant la préparation ou en cas d’erreur. Google, Stadia, OSRM, Google Routes, Google Places, les POI et les sorties ne sont pas modifiés par ce service.
+OSM Standard est le fallback online d’OpenFreeMap, ainsi que le fond utilisé pour les miniatures et les exports PDF. Une indisponibilité online ne déclenche jamais une préparation PMTiles. Stadia Maps, Mapbox Satellite, Google Map Tiles et le fond CartaVault vectoriel online ont été retirés : aucune route proxy ni option utilisateur ne doit les réactiver.
 
 ## Ressources et stockage
 
@@ -87,7 +90,7 @@ Monaco permet de tester le pipeline sans générer immédiatement la France :
 1. Construire/démarrer la stack officielle et ouvrir Administration → Général.
 2. Activer CartaVault et choisir **À la création d’une carte**, ou installer Monaco manuellement.
 3. Créer/ouvrir une carte Monaco et suivre `Téléchargement → Génération → Validation → Disponible`.
-4. Sélectionner CartaVault clair, puis sombre ; vérifier routes, labels, glyphes, zoom et attribution `© OpenStreetMap contributors · OpenMapTiles · CartaVault`.
+4. Préparer cette carte pour le hors-ligne, passer hors connexion et vérifier les variantes CartaVault claire et sombre, les routes, labels, glyphes, zoom et l’attribution `© OpenStreetMap contributors · OpenMapTiles · CartaVault`.
 5. Ajouter des POI et une sortie avec géométrie sauvegardée.
 6. Télécharger la carte ou la sortie depuis son action offline.
 7. Activer le mode avion, recharger l’application, vérifier le pan/zoom dans l’emprise, les POI et l’itinéraire sauvegardé.
@@ -103,4 +106,4 @@ Le workflow pris en charge est l’installation automatique. Un exploitant peut 
 
 ## Attribution
 
-Les styles clair et sombre affichent toujours **© OpenStreetMap contributors · OpenMapTiles · CartaVault**, en ligne comme hors ligne. La marque CartaVault ne remplace pas l’attribution des données et du schéma.
+Les styles CartaVault clair et sombre affichent toujours **© OpenStreetMap contributors · OpenMapTiles · CartaVault** pendant l’utilisation hors-ligne. La marque CartaVault ne remplace pas l’attribution des données et du schéma.

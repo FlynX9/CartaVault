@@ -39,7 +39,7 @@ Choose OSRM or Google Routes, then supported country, toll, highway, ferry, and 
 
 ## Place-search provider
 
-The **API keys** panel groups the collapsible Routing, Place search and Basemaps categories. Credential forms follow the selected provider. Stadia remains available without a personal key for both search and tiles; optional Stadia Places and Stadia Maps keys use the associated plan. Google Places and Google Map Tiles require verified keys. Google Routes, Places and Map Tiles keys are managed separately, even if one Google Cloud project enables several APIs. No global Stadia key is injected into the Docker image.
+The **API keys** panel groups the collapsible Routing, Place search and Basemaps categories. Credential forms follow the selected provider. Stadia remains available without a personal key only for place search; an optional Stadia Places key uses the associated plan. Google Routes and Google Places use server keys, while Google Satellite requires a dedicated Maps JavaScript browser key restricted to the instance's HTTP referrers. The former Stadia Maps, Mapbox Satellite and Google Map Tiles proxies are no longer offered. No global Stadia key is injected into the Docker image.
 
 ## Personal Google keys
 

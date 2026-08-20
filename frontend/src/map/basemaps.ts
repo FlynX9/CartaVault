@@ -1,19 +1,19 @@
 export const BASEMAP_PREFERENCE_KEY = "cartavault.basemap";
 
-export const BASEMAP_IDS = [
-  "cartavault-light",
-  "cartavault-dark",
-  "stadia-light",
-  "stadia-dark",
-  "google-roadmap",
-  "satellite",
+export const ACTIVE_BASEMAP_IDS = [
+  "openfreemap-light",
+  "openfreemap-dark",
+  "arcgis-satellite",
   "google-satellite",
-  "google-satellite-tiles",
-  "mapbox-satellite",
   "osm",
+  "offline-vector-light",
+  "offline-vector-dark",
 ] as const;
 
-export type BasemapId = (typeof BASEMAP_IDS)[number];
+export type BasemapId = (typeof ACTIVE_BASEMAP_IDS)[number]
+  | "cartavault-light" | "cartavault-dark"
+  | "stadia-light" | "stadia-dark" | "satellite"
+  | "mapbox-satellite" | "google-map-tiles" | "google-satellite-tiles" | "google-roadmap";
 
 interface BasemapCommonDefinition {
   id: BasemapId;
@@ -22,13 +22,12 @@ interface BasemapCommonDefinition {
   attribution: string;
   maxZoom: number;
   enabled: boolean;
-  requiresStadiaAuthentication: boolean;
 }
 
 export interface VectorBasemapDefinition extends BasemapCommonDefinition {
   kind: "vector";
+  source: "cartavault" | "remote-style";
   styleUrl: string;
-  tileJsonUrl: string;
   glyphsUrl: string;
 }
 
@@ -41,57 +40,42 @@ export interface GoogleBasemapDefinition extends BasemapCommonDefinition {
   kind: "google";
 }
 
-export type BasemapDefinition =
-  VectorBasemapDefinition | RasterBasemapDefinition | GoogleBasemapDefinition;
-
-export const DEFAULT_BASEMAP_ID: BasemapId = "osm";
+export type BasemapDefinition = VectorBasemapDefinition | RasterBasemapDefinition | GoogleBasemapDefinition;
+export const DEFAULT_BASEMAP_ID: BasemapId = "openfreemap-light";
 
 export interface BasemapAvailability {
-  "cartavault-light": boolean;
-  "cartavault-dark": boolean;
-  "stadia-light"?: boolean;
-  "stadia-dark"?: boolean;
-  "google-roadmap"?: boolean;
-  satellite: boolean;
+  "openfreemap-light"?: boolean;
+  "openfreemap-dark"?: boolean;
+  "arcgis-satellite"?: boolean;
   "google-satellite"?: boolean;
-  "google-satellite-tiles"?: boolean;
-  "mapbox-satellite"?: boolean;
   osm: boolean;
+  "offline-vector-light"?: boolean;
+  "offline-vector-dark"?: boolean;
 }
 
 export interface BasemapUrls {
   lightStyle: string;
   darkStyle: string;
-  openFreeMapTileJson: string;
-  openFreeMapGlyphs: string;
-  satellite: string;
+  openFreeMapLightStyle: string;
+  openFreeMapDarkStyle: string;
+  offlineGlyphs: string;
   osm: string;
 }
 
 const DEFAULT_BASEMAP_URLS: BasemapUrls = {
   lightStyle: "/map-styles/cartavault-light.json",
   darkStyle: "/map-styles/cartavault-dark.json",
-  openFreeMapTileJson: "about:blank",
-  openFreeMapGlyphs: "/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf",
-  satellite:
-    "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg",
+  openFreeMapLightStyle: "https://tiles.openfreemap.org/styles/positron",
+  openFreeMapDarkStyle: "https://tiles.openfreemap.org/styles/dark",
+  offlineGlyphs: "/api/basemaps/cartavault/fonts/{fontstack}/{range}.pbf",
   osm: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
 };
 
-const openFreeMapAttribution =
-  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> · CartaVault';
-const stadiaAttribution =
-  '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
-const satelliteAttribution =
-  "&copy; CNES, Distribution Airbus DS, &copy; Airbus DS, &copy; PlanetObserver (Contains Copernicus Data) | " +
-  stadiaAttribution;
-const osmAttribution =
-  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+const openFreeMapAttribution = '&copy; <a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
+const offlineAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · OpenMapTiles · CartaVault';
+const osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 
-function configuredUrl(value: string | undefined, fallback: string): string {
-  return value?.trim() || fallback;
-}
-
+function configuredUrl(value: string | undefined, fallback: string): string { return value?.trim() || fallback; }
 function enabled(value: string | undefined, fallback = true): boolean {
   if (value === undefined || value.trim() === "") return fallback;
   return !["0", "false", "no", "off"].includes(value.trim().toLowerCase());
@@ -99,239 +83,83 @@ function enabled(value: string | undefined, fallback = true): boolean {
 
 function configuredAvailability(): BasemapAvailability {
   return {
-    "cartavault-light": enabled(import.meta.env.VITE_BASEMAP_LIGHT_ENABLED),
-    "cartavault-dark": enabled(import.meta.env.VITE_BASEMAP_DARK_ENABLED),
-    "stadia-light": enabled(import.meta.env.VITE_BASEMAP_SATELLITE_ENABLED),
-    "stadia-dark": enabled(import.meta.env.VITE_BASEMAP_SATELLITE_ENABLED),
-    "google-roadmap": true,
-    satellite: enabled(import.meta.env.VITE_BASEMAP_SATELLITE_ENABLED),
+    "openfreemap-light": enabled(import.meta.env.VITE_OPENFREEMAP_ENABLED),
+    "openfreemap-dark": enabled(import.meta.env.VITE_OPENFREEMAP_ENABLED),
+    "arcgis-satellite": true,
     "google-satellite": true,
-    "google-satellite-tiles": true,
-    "mapbox-satellite": true,
+    "offline-vector-light": true,
+    "offline-vector-dark": true,
     osm: enabled(import.meta.env.VITE_BASEMAP_OSM_ENABLED),
   };
 }
 
 function configuredUrls(): BasemapUrls {
   return {
-    lightStyle: configuredUrl(
-      import.meta.env.VITE_BASEMAP_LIGHT_STYLE_URL,
-      DEFAULT_BASEMAP_URLS.lightStyle,
-    ),
-    darkStyle: configuredUrl(
-      import.meta.env.VITE_BASEMAP_DARK_STYLE_URL,
-      DEFAULT_BASEMAP_URLS.darkStyle,
-    ),
-    openFreeMapTileJson: configuredUrl(
-      import.meta.env.VITE_OPENFREEMAP_TILEJSON_URL,
-      DEFAULT_BASEMAP_URLS.openFreeMapTileJson,
-    ),
-    openFreeMapGlyphs: configuredUrl(
-      import.meta.env.VITE_OPENFREEMAP_GLYPHS_URL,
-      DEFAULT_BASEMAP_URLS.openFreeMapGlyphs,
-    ),
-    satellite: configuredUrl(
-      import.meta.env.VITE_BASEMAP_SATELLITE_URL,
-      DEFAULT_BASEMAP_URLS.satellite,
-    ),
-    osm: configuredUrl(
-      import.meta.env.VITE_BASEMAP_OSM_URL,
-      DEFAULT_BASEMAP_URLS.osm,
-    ),
+    lightStyle: configuredUrl(import.meta.env.VITE_BASEMAP_LIGHT_STYLE_URL, DEFAULT_BASEMAP_URLS.lightStyle),
+    darkStyle: configuredUrl(import.meta.env.VITE_BASEMAP_DARK_STYLE_URL, DEFAULT_BASEMAP_URLS.darkStyle),
+    openFreeMapLightStyle: configuredUrl(import.meta.env.VITE_OPENFREEMAP_LIGHT_STYLE_URL, DEFAULT_BASEMAP_URLS.openFreeMapLightStyle),
+    openFreeMapDarkStyle: configuredUrl(import.meta.env.VITE_OPENFREEMAP_DARK_STYLE_URL, DEFAULT_BASEMAP_URLS.openFreeMapDarkStyle),
+    offlineGlyphs: configuredUrl(import.meta.env.VITE_OFFLINE_VECTOR_GLYPHS_URL, DEFAULT_BASEMAP_URLS.offlineGlyphs),
+    osm: configuredUrl(import.meta.env.VITE_BASEMAP_OSM_URL, DEFAULT_BASEMAP_URLS.osm),
   };
 }
 
-/** Builds reviewed sources. Vector CartaVault themes never receive a provider key. */
-export function createBasemaps(
-  availability = configuredAvailability(),
-  urls = configuredUrls(),
-): readonly BasemapDefinition[] {
+export function createBasemaps(availability = configuredAvailability(), urls = configuredUrls()): readonly BasemapDefinition[] {
+  const vector = (id: BasemapId, label: string, shortLabel: string, source: "cartavault" | "remote-style", styleUrl: string, attribution: string, isEnabled: boolean): VectorBasemapDefinition => ({
+    kind: "vector", source, id, label, shortLabel, styleUrl,
+    glyphsUrl: source === "cartavault" ? urls.offlineGlyphs : "",
+    attribution, maxZoom: 20, enabled: isEnabled,
+  });
   return [
-    {
-      kind: "vector",
-      id: "cartavault-light",
-      label: "CartaVault clair",
-      shortLabel: "Clair",
-      styleUrl: urls.lightStyle,
-      tileJsonUrl: urls.openFreeMapTileJson,
-      glyphsUrl: urls.openFreeMapGlyphs,
-      attribution: openFreeMapAttribution,
-      maxZoom: 20,
-      enabled: availability["cartavault-light"],
-      requiresStadiaAuthentication: false,
-    },
-    {
-      kind: "google",
-      id: "google-roadmap",
-      label: "Google",
-      shortLabel: "Clair",
-      attribution: "&copy; Google",
-      maxZoom: 22,
-      enabled: availability["google-roadmap"] !== false,
-      requiresStadiaAuthentication: false,
-    },
-    {
-      kind: "vector",
-      id: "cartavault-dark",
-      label: "CartaVault sombre",
-      shortLabel: "Sombre",
-      styleUrl: urls.darkStyle,
-      tileJsonUrl: urls.openFreeMapTileJson,
-      glyphsUrl: urls.openFreeMapGlyphs,
-      attribution: openFreeMapAttribution,
-      maxZoom: 20,
-      enabled: availability["cartavault-dark"],
-      requiresStadiaAuthentication: false,
-    },
-    {
-      kind: "raster",
-      id: "stadia-light",
-      label: "Stadia clair",
-      shortLabel: "Clair",
-      url: urls.satellite,
-      attribution: stadiaAttribution,
-      maxZoom: 20,
-      enabled: availability["stadia-light"] ?? availability.satellite,
-      requiresStadiaAuthentication: urls.satellite.includes("stadiamaps.com"),
-    },
-    {
-      kind: "raster",
-      id: "stadia-dark",
-      label: "Stadia sombre",
-      shortLabel: "Sombre",
-      url: urls.satellite,
-      attribution: stadiaAttribution,
-      maxZoom: 20,
-      enabled: availability["stadia-dark"] ?? availability.satellite,
-      requiresStadiaAuthentication: urls.satellite.includes("stadiamaps.com"),
-    },
-    {
-      kind: "google",
-      id: "google-satellite",
-      label: "Google Satellite (Maps JavaScript)",
-      shortLabel: "Google",
-      attribution: "&copy; Google",
-      maxZoom: 22,
-      enabled: availability["google-satellite"] !== false,
-      requiresStadiaAuthentication: false,
-    },
-    {
-      kind: "google",
-      id: "google-satellite-tiles",
-      label: "Google Satellite (Map Tiles)",
-      shortLabel: "Google",
-      attribution: "&copy; Google",
-      maxZoom: 22,
-      enabled: availability["google-satellite-tiles"] !== false,
-      requiresStadiaAuthentication: false,
-    },
-    {
-      kind: "raster",
-      id: "mapbox-satellite",
-      label: "Mapbox Satellite",
-      shortLabel: "Satellite",
-      url: "about:blank",
-      attribution:
-        '&copy; <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
-      maxZoom: 22,
-      enabled: availability["mapbox-satellite"] !== false,
-      requiresStadiaAuthentication: false,
-    },
-    {
-      kind: "raster",
-      id: "satellite",
-      label: "Stadia satellite",
-      shortLabel: "Satellite",
-      url: urls.satellite,
-      attribution: satelliteAttribution,
-      maxZoom: 20,
-      enabled: availability.satellite,
-      requiresStadiaAuthentication: urls.satellite.includes("stadiamaps.com"),
-    },
-    {
-      kind: "raster",
-      id: "osm",
-      label: "OpenStreetMap Standard",
-      shortLabel: "Clair",
-      url: urls.osm,
-      attribution: osmAttribution,
-      maxZoom: 19,
-      enabled: availability.osm,
-      requiresStadiaAuthentication: false,
-    },
+    vector("openfreemap-light", "OpenFreeMap clair", "Clair", "remote-style", urls.openFreeMapLightStyle, openFreeMapAttribution, availability["openfreemap-light"] !== false),
+    vector("openfreemap-dark", "OpenFreeMap sombre", "Sombre", "remote-style", urls.openFreeMapDarkStyle, openFreeMapAttribution, availability["openfreemap-dark"] !== false),
+    { kind: "raster", id: "arcgis-satellite", label: "ArcGIS World Imagery", shortLabel: "Satellite", url: "about:blank", attribution: "Tiles &copy; Esri", maxZoom: 23, enabled: availability["arcgis-satellite"] !== false },
+    { kind: "google", id: "google-satellite", label: "Google Satellite", shortLabel: "Google", attribution: "&copy; Google", maxZoom: 22, enabled: availability["google-satellite"] !== false },
+    { kind: "raster", id: "osm", label: "OpenStreetMap Standard", shortLabel: "Clair", url: urls.osm, attribution: osmAttribution, maxZoom: 19, enabled: availability.osm },
+    vector("offline-vector-light", "CartaVault hors ligne clair", "Clair", "cartavault", urls.lightStyle, offlineAttribution, availability["offline-vector-light"] !== false),
+    vector("offline-vector-dark", "CartaVault hors ligne sombre", "Sombre", "cartavault", urls.darkStyle, offlineAttribution, availability["offline-vector-dark"] !== false),
   ];
 }
 
 export const BASEMAPS = createBasemaps();
 export const AVAILABLE_BASEMAPS = BASEMAPS.filter((basemap) => basemap.enabled);
 
+const LEGACY_BASEMAP_MIGRATIONS: Record<string, BasemapId> = {
+  "cartavault-light": "openfreemap-light",
+  "stadia-light": "openfreemap-light",
+  "google-roadmap": "openfreemap-light",
+  "cartavault-dark": "openfreemap-dark",
+  "stadia-dark": "openfreemap-dark",
+  "satellite": "arcgis-satellite",
+  "stadia-satellite": "arcgis-satellite",
+  "mapbox-satellite": "arcgis-satellite",
+  "google-map-tiles": "google-satellite",
+  "google-satellite-tiles": "google-satellite",
+};
+
+export function normalizeBasemapId(value: unknown): BasemapId | null {
+  if (typeof value !== "string") return null;
+  if (value in LEGACY_BASEMAP_MIGRATIONS) return LEGACY_BASEMAP_MIGRATIONS[value];
+  return ACTIVE_BASEMAP_IDS.includes(value as (typeof ACTIVE_BASEMAP_IDS)[number]) ? value as BasemapId : null;
+}
 export function getBasemap(id: BasemapId): BasemapDefinition {
-  return BASEMAPS.find((basemap) => basemap.id === id) ?? BASEMAPS[0];
+  const normalized = normalizeBasemapId(id) ?? DEFAULT_BASEMAP_ID;
+  return BASEMAPS.find((basemap) => basemap.id === normalized) ?? BASEMAPS[0];
 }
-
-export function parseBasemapId(value: unknown): BasemapId | null {
-  return typeof value === "string" && BASEMAP_IDS.includes(value as BasemapId)
-    ? (value as BasemapId)
-    : null;
+export const parseBasemapId = normalizeBasemapId;
+export function isBasemapAvailable(id: BasemapId): boolean { return getBasemap(id).enabled; }
+export function getThemeDefaultBasemapId(prefersDark = false): BasemapId {
+  const preferred: BasemapId = prefersDark ? "openfreemap-dark" : DEFAULT_BASEMAP_ID;
+  return isBasemapAvailable(preferred) ? preferred : "osm";
 }
-
-export function isBasemapAvailable(id: BasemapId): boolean {
-  return getBasemap(id).enabled;
+function getStorage(): Storage | null { try { return typeof window === "undefined" ? null : window.localStorage; } catch { return null; } }
+export function loadStoredBasemapPreference(storage: Storage | null = getStorage()): BasemapId | null {
+  try { const parsed = parseBasemapId(storage?.getItem(BASEMAP_PREFERENCE_KEY)); return parsed && isBasemapAvailable(parsed) ? parsed : null; } catch { return null; }
 }
-
-export function getThemeDefaultBasemapId(
-  prefersDark = typeof window !== "undefined" &&
-    window.matchMedia?.("(prefers-color-scheme: dark)").matches === true,
-): BasemapId {
-  void prefersDark;
-  return isBasemapAvailable(DEFAULT_BASEMAP_ID)
-    ? DEFAULT_BASEMAP_ID
-    : (AVAILABLE_BASEMAPS[0]?.id ?? "osm");
+export function loadBasemapPreference(storage: Storage | null = getStorage()): BasemapId { return loadStoredBasemapPreference(storage) ?? getThemeDefaultBasemapId(); }
+export function resolveAvailableBasemapId(value: unknown, prefersDark?: boolean): BasemapId {
+  const parsed = parseBasemapId(value); return parsed && isBasemapAvailable(parsed) ? parsed : getThemeDefaultBasemapId(prefersDark);
 }
-
-export function resolveAvailableBasemapId(
-  value: unknown,
-  prefersDark?: boolean,
-): BasemapId {
-  const parsed = parseBasemapId(value);
-  return parsed && isBasemapAvailable(parsed)
-    ? parsed
-    : getThemeDefaultBasemapId(prefersDark);
-}
-
-function getStorage(): Storage | null {
-  try {
-    return typeof window === "undefined" ? null : window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-export function loadStoredBasemapPreference(
-  storage: Storage | null = getStorage(),
-): BasemapId | null {
-  try {
-    const parsed = parseBasemapId(storage?.getItem(BASEMAP_PREFERENCE_KEY));
-    return parsed && isBasemapAvailable(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-export function loadBasemapPreference(
-  storage: Storage | null = getStorage(),
-): BasemapId {
-  return loadStoredBasemapPreference(storage) ?? getThemeDefaultBasemapId();
-}
-
-export function saveBasemapPreference(
-  id: BasemapId,
-  storage: Storage | null = getStorage(),
-): boolean {
-  try {
-    storage?.setItem(BASEMAP_PREFERENCE_KEY, id);
-    return storage !== null;
-  } catch {
-    return false;
-  }
+export function saveBasemapPreference(id: BasemapId, storage: Storage | null = getStorage()): boolean {
+  try { storage?.setItem(BASEMAP_PREFERENCE_KEY, normalizeBasemapId(id) ?? DEFAULT_BASEMAP_ID); return storage !== null; } catch { return false; }
 }
