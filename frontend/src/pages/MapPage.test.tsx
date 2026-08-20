@@ -159,12 +159,10 @@ describe('MapPage', () => {
     expect(workspace.style.getPropertyValue('--cv-right-panel-width')).toBe('640px')
     Object.defineProperty(workspace, 'clientWidth', { configurable: true, value: 1400 })
     const map = screen.getByTestId('poi-map')
-    const placesWindow = screen.getByLabelText('Panneau de navigation')
-    const tripsWindow = screen.getByLabelText('Panneau Sortie')
-    const placesWidth = Number.parseFloat(placesWindow.style.width)
-    const tripsWidth = Number.parseFloat(tripsWindow.style.width)
-    const placesResize = within(placesWindow).getByRole('separator', { name: 'Redimensionner Panneau de navigation' })
-    const tripsResize = within(tripsWindow).getAllByRole('separator', { name: 'Redimensionner Panneau Sortie' }).find((item) => item.tabIndex === 0 && item.getAttribute('aria-orientation') === 'vertical')!
+    const placesResize = screen.getByRole('separator', { name: 'Redimensionner Panneau de navigation' })
+    const tripsResize = screen.getAllByRole('separator', { name: 'Redimensionner Panneau Sortie' }).find((item) => item.tabIndex === 0 && item.getAttribute('aria-orientation') === 'vertical')!
+    const placesWidth = Number.parseFloat(placesResize.getAttribute('aria-valuenow') ?? '0')
+    const tripsWidth = Number.parseFloat(tripsResize.getAttribute('aria-valuenow') ?? '0')
     expect(tripsResize).toHaveAttribute('aria-valuemin', '420')
     expect(tripsResize).not.toHaveAttribute('aria-valuemax')
 
@@ -176,6 +174,56 @@ describe('MapPage', () => {
     expect(window.localStorage.getItem('cartavault:left-panel-width')).toBe(String(placesWidth + 24))
     expect(window.localStorage.getItem('cartavault:right-panel-width')).toBe(String(tripsWidth + 24))
     expect(screen.getByTestId('poi-map')).toBe(map)
+  })
+
+  it('keeps the Places window position and docking unchanged when Sorties is toggled', async () => {
+    const placesStorageKey = 'cartavault:desktop-places-window:panel-state'
+    window.localStorage.setItem(placesStorageKey, JSON.stringify({
+      mode: 'docked',
+      floatingGeometry: { x: 72, y: 44, width: 510, height: 620 },
+      dockedWidth: 510,
+      dockPlacement: { side: 'right', column: 0, slot: 'bottom' },
+    }))
+    const props = {
+      places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false,
+      errorMessage: null, placeListOpen: true, statuses: [], placeList: <aside aria-label="Lieux">Lieux</aside>,
+      focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(),
+    }
+    const { rerender } = render(<MemoryRouter><MapPage {...props} sidebarOpen={false} sidebar={null} tripPlanningActive={false} /></MemoryRouter>)
+    const placesWindow = screen.getByLabelText('Panneau de navigation')
+    const placesState = {
+      mode: placesWindow.dataset.panelMode,
+      side: placesWindow.dataset.dockSide,
+      column: placesWindow.dataset.dockColumn,
+      slot: placesWindow.dataset.dockSlot,
+      style: placesWindow.getAttribute('style'),
+      storage: window.localStorage.getItem(placesStorageKey),
+    }
+
+    rerender(<MemoryRouter><MapPage {...props} sidebarOpen sidebar={<aside aria-label="Sorties">Sorties</aside>} tripPlanningActive /></MemoryRouter>)
+
+    expect(screen.getByLabelText('Panneau de navigation')).toBe(placesWindow)
+    expect({
+      mode: placesWindow.dataset.panelMode,
+      side: placesWindow.dataset.dockSide,
+      column: placesWindow.dataset.dockColumn,
+      slot: placesWindow.dataset.dockSlot,
+      style: placesWindow.getAttribute('style'),
+      storage: window.localStorage.getItem(placesStorageKey),
+    }).toEqual(placesState)
+    expect(screen.getByLabelText('Panneau Sortie')).toBeVisible()
+
+    rerender(<MemoryRouter><MapPage {...props} sidebarOpen={false} sidebar={null} tripPlanningActive={false} /></MemoryRouter>)
+
+    expect(screen.getByLabelText('Panneau de navigation')).toBe(placesWindow)
+    expect({
+      mode: placesWindow.dataset.panelMode,
+      side: placesWindow.dataset.dockSide,
+      column: placesWindow.dataset.dockColumn,
+      slot: placesWindow.dataset.dockSlot,
+      style: placesWindow.getAttribute('style'),
+      storage: window.localStorage.getItem(placesStorageKey),
+    }).toEqual(placesState)
   })
 
   it('keeps geographic search in full preparation mode and hides it in trip-only view', () => {

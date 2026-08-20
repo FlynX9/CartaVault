@@ -17,7 +17,7 @@ vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve({ ite
 vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ placeId, showManagementActions, onClose }: { placeId: string; showManagementActions?: boolean; onClose: () => void }) => <div role="dialog" data-management-actions={String(showManagementActions)}>Popup {placeId}<button onClick={onClose}>Fermer popup</button></div> }))
 vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
 vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange, onTripChange, onPreviewStopSelect, onUnsavedChangesGuardChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void; onTripChange: (trip: never) => void; onPreviewStopSelect?: (stopId: string | null) => void; onUnsavedChangesGuardChange?: (guard: (() => Promise<boolean>) | null) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button><button type="button" onClick={() => onTripChange({ id: 'trip-1', map_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', created_by_user_id: 'user-id', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft', routing_profile: 'driving', low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [{ id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#0FA68A', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed', safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: null, route_duration_seconds: null, visit_duration_minutes: 60, total_duration_minutes: 60, route_geometry: null, route_segments: null, route_status: null, sort_order: 0, stops: [{ id: 'stop-place', trip_day_id: 'day-1', place_id: 'place-id', stop_type: 'place', name: 'POI', latitude: 48, longitude: 2, address: 'Adresse POI', sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' }, { id: 'stop-free', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location', name: 'Belvédère libre', latitude: 48.1, longitude: 2.1, address: 'Route des Crêtes', sort_order: 1, visit_duration_minutes: 30, notes: 'Masquée', is_required: true, is_locked: false, visit_status: 'planned' }] }] } as never)}>Charger une sortie</button><button type="button" onClick={() => onPreviewStopSelect?.('stop-place')}>Sélectionner l’étape POI</button><button type="button" onClick={() => onPreviewStopSelect?.('stop-free')}>Sélectionner l’étape libre</button><button type="button" onClick={() => onUnsavedChangesGuardChange?.(() => Promise.resolve(false))}>Simuler des modifications</button></aside> }))
-vi.mock('./pages/MapPage', () => ({ MapPage: ({ places, errorMessage, placeList, sidebar, popupContent, desktopPlaceDetailInline, focusRequest, selectedPlaceId, onPlaceSelect, onBoundsChange }: { places: Array<{ id: string; name: string }>; errorMessage: string | null; placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; desktopPlaceDetailInline?: boolean; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void; onBoundsChange: (bounds: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''} data-markers={places.map((place) => place.name).join(',')}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button><button onClick={() => onBoundsChange({ minLatitude: 40, maxLatitude: 50, minLongitude: -5, maxLongitude: 5 })}>Bounds A</button><button onClick={() => onBoundsChange({ minLatitude: 41, maxLatitude: 49, minLongitude: -4, maxLongitude: 4 })}>Bounds B</button>{errorMessage && <p data-testid="map-error">{errorMessage}</p>}{placeList}{!desktopPlaceDetailInline && popupContent}{sidebar}</div> }))
+vi.mock('./pages/MapPage', () => ({ MapPage: ({ places, errorMessage, mapOpening, placeList, sidebar, popupContent, desktopPlaceDetailInline, focusRequest, selectedPlaceId, onPlaceSelect, onBoundsChange }: { places: Array<{ id: string; name: string }>; errorMessage: string | null; mapOpening?: boolean; placeList: ReactNode; sidebar: ReactNode; popupContent: ReactNode; desktopPlaceDetailInline?: boolean; focusRequest: { id: number } | null; selectedPlaceId: string | null; onPlaceSelect: (place: never) => void; onBoundsChange: (bounds: { minLatitude: number; maxLatitude: number; minLongitude: number; maxLongitude: number }) => void }) => <div data-testid="workspace" data-focus={focusRequest?.id ?? ''} data-selected={selectedPlaceId ?? ''} data-markers={places.map((place) => place.name).join(',')} data-map-opening={String(mapOpening === true)}><button onClick={() => onPlaceSelect({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)}>Marqueur POI</button><button onClick={() => onBoundsChange({ minLatitude: 40, maxLatitude: 50, minLongitude: -5, maxLongitude: 5 })}>Bounds A</button><button onClick={() => onBoundsChange({ minLatitude: 41, maxLatitude: 49, minLongitude: -4, maxLongitude: 4 })}>Bounds B</button>{errorMessage && <p data-testid="map-error">{errorMessage}</p>}{placeList}{!desktopPlaceDetailInline && popupContent}{sidebar}</div> }))
 vi.mock('./components/dashboard/DashboardPage', () => ({ DashboardPage: () => <div>Dashboard</div> }))
 
 const MAP_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -135,26 +135,22 @@ describe('map URL workspace', () => {
   it('always opens Sorties with the complete Places and Preparation workspace', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
+    const workspace = await screen.findByTestId('workspace')
+    const tripsNavigation = await screen.findByRole('button', { name: 'Sorties' })
+    const openingStateBefore = workspace.getAttribute('data-map-opening')
+    fireEvent.click(tripsNavigation)
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
     expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
+    expect(workspace).toHaveAttribute('data-map-opening', openingStateBefore)
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Marqueur POI' }))
-    expect(await screen.findByRole('dialog')).toHaveAttribute('data-management-actions', 'false')
-    fireEvent.click(screen.getByRole('button', { name: 'Vue du voyage' }))
-    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'true')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.queryByRole('searchbox', { name: 'Rechercher un lieu' })).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Marqueur POI' }))
-    expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
-    expect(screen.queryByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Catégories' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
-    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
+    fireEvent.click(tripsNavigation)
+    expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument()
     expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
+    expect(workspace).toHaveAttribute('data-map-opening', openingStateBefore)
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
+    expect(tripsNavigation).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('keeps the active trip when returning from another workspace', async () => {
@@ -206,7 +202,7 @@ describe('map URL workspace', () => {
     expect(screen.getByTestId('workspace')).toHaveAttribute('data-focus', fittedFocus ?? '')
   })
 
-  it('returns to the Places workspace when Lieux is selected from Sorties', async () => {
+  it('toggles Places independently while Sorties remains open', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Sorties' }))
@@ -214,9 +210,14 @@ describe('map URL workspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
 
-    await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument())
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
+    expect(screen.getByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
+    expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
   })
 
   it('toggles the Places panel without navigating away from the map', async () => {

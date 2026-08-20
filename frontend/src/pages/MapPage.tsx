@@ -44,7 +44,6 @@ import { AppLoadingScreen } from '../components/loading/AppLoadingScreen'
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
 const PLACES_WINDOW_KEY = 'cartavault:desktop-places-window'
-const TRIPS_PLACES_WINDOW_KEY = 'cartavault:desktop-trips-places-window'
 const TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window'
 const PLACE_DETAIL_WINDOW_KEY = 'cartavault:desktop-place-detail-window-v2'
 const PLACE_EDITOR_WINDOW_KEY = 'cartavault:desktop-place-editor-window'
@@ -307,7 +306,7 @@ export function MapPage({
   const editorWindowInitialGeometry = initialEditorGeometryRef.current
   const workspaceRef = useRef<HTMLElement>(null)
   const workspaceWindowKey = workspacePanelId === 'places'
-    ? tripPlanningActive ? TRIPS_PLACES_WINDOW_KEY : PLACES_WINDOW_KEY
+    ? PLACES_WINDOW_KEY
     : `cartavault:desktop-workspace-window:${workspacePanelId}`
 
   useEffect(() => {

@@ -79,7 +79,8 @@ export function CountryMaskLayer({ countryId, enabled }: CountryMaskLayerProps) 
       pathOptions={{
         className: 'country-outside-mask',
         fill: true,
-        fillOpacity: 0.18,
+        fillColor: '#0FA68A',
+        fillOpacity: 0.12,
         fillRule: 'evenodd',
         stroke: false,
       }}

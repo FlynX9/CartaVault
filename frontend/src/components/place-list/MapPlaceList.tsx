@@ -20,7 +20,6 @@ import { MapMarkerFilterContext } from "../map/mapMarkerFilterContext";
 import { KmzImportDialog } from "../imports/KmzImportDialog";
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { useI18n } from "../../i18n/useI18n";
-import { CountryFlag } from "../maps/CountryFlag";
 import { getTagColorStyle } from "../../tags/tagColors";
 import { VirtualPlaceRows } from "./VirtualPlaceRows";
 import { PlaceListThumbnail } from "./PlaceListThumbnail";
@@ -96,17 +95,8 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1);
 };
 
-const formatMapLabel = (map: PoiMap, locale: string) => {
-  if (map.name !== map.country?.name || !map.country?.iso_alpha2) return map.name;
-  try {
-    return new Intl.DisplayNames([locale], { type: "region" }).of(map.country.iso_alpha2) ?? map.name;
-  } catch {
-    return map.name;
-  }
-};
-
 export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), tripAddTargetLabel = null, activeTripId = null, activeTripDayId = null, onTripPlaceAdd = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
-  const { t, formatDate, locale } = useI18n();
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { confirm, confirmationDialog } = useConfirmDialog();
   const panelWindow = useContext(FloatingPanelWindowContext);
@@ -688,25 +678,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
               </span>
             )}
           </div>
-          {!collapsed && poiMap && (
-            <p className="places-redesign-map-meta">
-              <span className="places-redesign-map-identity">
-                <CountryFlag countryCode={poiMap.country?.iso_alpha2 ?? ""} className="places-redesign-map-flag" fallbackSize={15} />
-                <span>{formatMapLabel(poiMap, locale)}</span>
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>
-                {poiMap.updated_at
-                  ? t("places.updatedAt", {
-                      date: formatDate(poiMap.updated_at, {
-                        day: "numeric",
-                        month: "short",
-                      }),
-                    })
-                  : t("places.updatedRecently")}
-              </span>
-            </p>
-          )}
+          {poiMap?.updated_at && <p className="places-redesign-updated"><time dateTime={poiMap.updated_at}>{t("places.updatedAt", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(poiMap.updated_at)) })}</time></p>}
         </div>
         <div className="places-redesign-header-actions">
           <PanelWindowControls />

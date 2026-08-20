@@ -235,7 +235,6 @@ function WorkspaceApp() {
   const [removedPlaceId, setRemovedPlaceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mapOpening, setMapOpening] = useState(false);
-  const [tripWorkspaceOpening, setTripWorkspaceOpening] = useState(false);
   const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
   const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false);
   const openingMapIdRef = useRef<string | null>(null);
@@ -263,9 +262,6 @@ function WorkspaceApp() {
     }
     if (openingMapRequestStartedRef.current) setMapOpening(false);
   }, [isLoading, mapOpening]);
-  useEffect(() => {
-    if (!tripPlannerOpen) setTripWorkspaceOpening(false);
-  }, [tripPlannerOpen]);
   useEffect(() => {
     try {
       window.localStorage.setItem("cartavault:navigation-collapsed", String(navigationCollapsed));
@@ -1461,7 +1457,6 @@ function WorkspaceApp() {
           onUnsavedChangesGuardChange={(guard) => {
             unsavedTripSettingsGuard.current = guard;
           }}
-          onInitialLoadComplete={() => setTripWorkspaceOpening(false)}
           onClose={() => {
             setTripPlannerOpen(false);
             setTripPlannerCollapsed(false);
@@ -1503,7 +1498,7 @@ function WorkspaceApp() {
 
   const applyWorkspacePanelChange = (panel: WorkspacePanel) => {
     if (dashboardOpen) navigate(withMap("/", activeMapId, activeStatusId));
-    if (panel !== "places" || tripPlannerOpen) {
+    if (panel !== null && panel !== "places") {
       setTripPlannerOpen(false);
       setTripPlannerCollapsed(false);
       setTripAnchorPopupTarget(null);
@@ -1555,17 +1550,21 @@ function WorkspaceApp() {
     setDraftPosition(null);
     setTripViewOnly(false);
     setTripPlannerCollapsed(false);
-    setPlacesPanelCollapsed(false);
     if (location.pathname !== "/") navigate(withMap("/", activeMapId, activeStatusId));
-    setWorkspacePanel("places");
-    if (!tripPlannerOpen) setTripWorkspaceOpening(true);
     setTripPlannerOpen(true);
     if (create) setCreateTripRequest((value) => value + 1);
   };
 
   const toggleTripsFromNavigation = () => {
     if (tripPlannerOpen) {
-      handleWorkspacePanelChange(null);
+      const closeTrips = () => {
+        setTripPlannerOpen(false);
+        setTripPlannerCollapsed(false);
+        setTripAnchorPopupTarget(null);
+      };
+      const guard = unsavedTripSettingsGuard.current;
+      if (!guard) closeTrips();
+      else void guard().then((canLeave) => { if (canLeave) closeTrips(); });
       return;
     }
     openTrips();
@@ -1721,7 +1720,7 @@ function WorkspaceApp() {
                   selectedPlaceId={selectedPlaceId}
                   initialView={mapView}
                   isLoading={isLoading}
-                  mapOpening={mapOpening || tripWorkspaceOpening}
+                  mapOpening={mapOpening}
                   errorMessage={errorMessage}
                   sidebarOpen={editorOpen || tripPlannerOpen}
                   sidebarResizable={tripPlannerOpen && !tripPlannerCollapsed}

@@ -10,12 +10,13 @@ vi.mock('react-leaflet', () => ({
     getZoom: () => 9,
     attributionControl: { addAttribution: vi.fn(), removeAttribution: vi.fn() },
   }),
-  Polygon: ({ positions, smoothFactor, interactive, bubblingMouseEvents }: {
+  Polygon: ({ positions, smoothFactor, interactive, bubblingMouseEvents, pathOptions }: {
     positions: unknown[]
     smoothFactor: number
     interactive: boolean
     bubblingMouseEvents: boolean
-  }) => <output data-testid="country-mask" data-rings={positions.length} data-smooth-factor={smoothFactor} data-interactive={String(interactive)} data-bubbling={String(bubblingMouseEvents)} />,
+    pathOptions: { fillColor?: string; fillOpacity?: number; fillRule?: string; stroke?: boolean }
+  }) => <output data-testid="country-mask" data-rings={positions.length} data-smooth-factor={smoothFactor} data-interactive={String(interactive)} data-bubbling={String(bubblingMouseEvents)} data-fill-color={pathOptions.fillColor} data-fill-opacity={pathOptions.fillOpacity} data-fill-rule={pathOptions.fillRule} data-stroke={String(pathOptions.stroke)} />,
 }))
 
 afterEach(() => {
@@ -50,6 +51,10 @@ describe('CountryMaskLayer', () => {
     expect(mask).toHaveAttribute('data-smooth-factor', '0')
     expect(mask).toHaveAttribute('data-interactive', 'false')
     expect(mask).toHaveAttribute('data-bubbling', 'false')
+    expect(mask).toHaveAttribute('data-fill-color', '#0FA68A')
+    expect(mask).toHaveAttribute('data-fill-opacity', '0.12')
+    expect(mask).toHaveAttribute('data-fill-rule', 'evenodd')
+    expect(mask).toHaveAttribute('data-stroke', 'false')
   })
 
   it('does not fetch or render geometry while disabled', async () => {

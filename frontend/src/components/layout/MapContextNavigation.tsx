@@ -20,8 +20,8 @@ interface Props {
   onMembers: () => void
 }
 
-function tabClass(active: boolean): string {
-  return `map-context-navigation__tab${active ? ' is-active' : ''}`
+function tabClass(active: boolean, panelToggle = false): string {
+  return `map-context-navigation__tab${panelToggle ? ' map-context-navigation__tab--panel-toggle' : ''}${active ? ' is-active' : ''}`
 }
 
 export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningActive, onMapChange, onPanelChange, onOpenTrips, onImport, onExport, onSettings, onMembers }: Props) {
@@ -49,7 +49,7 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
     setOpenMenu(null)
     onPanelChange(panel)
   }
-  const placesActive = activePanel === 'places' && !tripPlanningActive
+  const placesActive = activePanel === 'places'
   const organizationActive = activePanel === 'categories' || activePanel === 'tags' || activePanel === 'statuses' || activePanel === 'annotation-templates'
   const hasMoreActions = poiMap.can_edit === true || poiMap.can_export !== false || poiMap.can_manage_members === true
 
@@ -70,10 +70,14 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
       </div>
     </div>
     <div className="map-context-navigation__tabs">
-      <button type="button" className={tabClass(placesActive)} aria-pressed={placesActive} onClick={() => selectPanel(placesActive ? null : 'places')}><MapPin size={17} /><span>{t('nav.places')}</span></button>
-      <button type="button" className={tabClass(tripPlanningActive)} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={17} /><span>{t('nav.trips')}</span></button>
-      <div className="map-context-navigation__menu-host">
-        <button type="button" className={tabClass(organizationActive)} aria-expanded={openMenu === 'organization'} onClick={() => setOpenMenu((current) => current === 'organization' ? null : 'organization')}><Shapes size={17} /><span>{t('nav.organization')}</span><ChevronDown size={14} /></button>
+      <button type="button" className={tabClass(placesActive, true)} aria-pressed={placesActive} onClick={() => selectPanel(placesActive ? null : 'places')}><MapPin size={17} /><span>{t('nav.places')}</span></button>
+      <button type="button" className={tabClass(tripPlanningActive, true)} aria-pressed={tripPlanningActive} onClick={onOpenTrips}><Route size={17} /><span>{t('nav.trips')}</span></button>
+      <div className="map-context-navigation__menu-host map-context-navigation__organization-switcher">
+        <button type="button" className={`map-context-navigation__organization-trigger${organizationActive ? ' is-active' : ''}`} aria-label={t('nav.organization')} aria-expanded={openMenu === 'organization'} onClick={() => setOpenMenu((current) => current === 'organization' ? null : 'organization')}>
+          <span className="map-context-navigation__organization-icon" aria-hidden="true"><Shapes size={18} /></span>
+          <span className="map-context-navigation__organization-copy"><strong>{t('nav.organization')}</strong></span>
+          <ChevronDown size={14} aria-hidden="true" />
+        </button>
         {openMenu === 'organization' && <div className="map-context-navigation__menu" role="menu" aria-label={t('nav.organization')}>
           <button type="button" role="menuitem" onClick={() => selectPanel('categories')}><Shapes size={17} /><span>{t('nav.categories')}</span></button>
           <button type="button" role="menuitem" onClick={() => selectPanel('tags')}><Tag size={17} /><span>{t('nav.tags')}</span></button>

@@ -40,9 +40,23 @@ describe('MapContextNavigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
     expect(onOpenTrips).toHaveBeenCalledOnce()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }))
+    const organization = screen.getByRole('button', { name: 'Organisation' })
+    expect(organization).toHaveTextContent(/^Organisation$/)
+    fireEvent.click(organization)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Tags' }))
     expect(onPanelChange).toHaveBeenCalledWith('tags')
+  })
+
+  it('shows Places and Sorties as independent panel toggles', () => {
+    render(<MapContextNavigation poiMap={poiMap} maps={[poiMap]} activePanel="places" tripPlanningActive onMapChange={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
+
+    const places = screen.getByRole('button', { name: 'Lieux' })
+    const trips = screen.getByRole('button', { name: 'Sorties' })
+    expect(places).toHaveAttribute('aria-pressed', 'true')
+    expect(trips).toHaveAttribute('aria-pressed', 'true')
+    expect(places).toHaveClass('map-context-navigation__tab--panel-toggle')
+    expect(trips).toHaveClass('map-context-navigation__tab--panel-toggle')
+    expect(screen.getByRole('button', { name: 'Organisation' })).not.toHaveClass('map-context-navigation__tab--panel-toggle')
   })
 
   it('exposes real map actions according to permissions', () => {

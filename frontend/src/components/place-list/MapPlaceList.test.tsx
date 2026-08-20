@@ -167,12 +167,13 @@ describe('MapPlaceList', () => {
     expect(screen.queryByRole('link', { name: 'Ajouter un lieu' })).not.toBeInTheDocument()
   })
 
-  it('filters by the selected map UUID', async () => {
-    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', country: { iso_alpha2: 'FR', name: 'France' } } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+  it('filters by the selected map UUID without repeating map identity in the header', async () => {
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', updated_at: '2026-07-15T10:00:00Z', country: { iso_alpha2: 'FR', name: 'France' } } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))
     expect(screen.getByText('Lieux')).toBeVisible()
-    expect(screen.getByText(/France/)).toBeVisible()
-    expect(container.querySelector('.places-redesign-map-flag')).toHaveAttribute('src', 'https://flagcdn.com/fr.svg')
+    expect(screen.getByText(/Mis à jour le/)).toBeVisible()
+    expect(screen.queryByText('France')).not.toBeInTheDocument()
+    expect(container.querySelector('.places-redesign-map-flag')).not.toBeInTheDocument()
   })
 
   it('does not restart POI loading when the active map reference changes', async () => {

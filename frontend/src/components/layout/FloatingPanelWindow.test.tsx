@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FloatingPanelWindow, PANEL_LAYOUT, panelStateStorageKey, readPanelState } from "./FloatingPanelWindow";
+import { dockSplitStorageKey, FloatingPanelWindow, PANEL_LAYOUT, panelStateStorageKey, readPanelState } from "./FloatingPanelWindow";
 import { PanelWindowControls } from "./PanelWindowControls";
 
 const geometry = { x: 24, y: 24, width: 420, height: 560 };
@@ -25,6 +25,10 @@ function setWorkspaceDimensions(panel: HTMLElement, width = 1000, height = 800) 
   return workspace;
 }
 
+function dockedResizeHandle(storageKey: string, edge: "e" | "w") {
+  return document.querySelector<HTMLElement>(`[data-panel-resize-owner='${storageKey}'] [data-resize-edge='${edge}']`)!;
+}
+
 describe("FloatingPanelWindow", () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(cleanup);
@@ -33,8 +37,7 @@ describe("FloatingPanelWindow", () => {
     renderPanel();
     const panel = screen.getByLabelText("Navigation");
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
-    expect(panel.querySelectorAll(".cv-floating-panel-window__resize-indicator")).toHaveLength(1);
-    expect(panel.querySelector("[data-resize-edge='e'] [data-resize-visibility='persistent']")).toBeInTheDocument();
+    expect(dockedResizeHandle("test:panel", "e").querySelector("[data-resize-visibility='persistent']")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Détacher le panneau" }));
     expect(panel).toHaveAttribute("data-panel-mode", "floating");
@@ -186,9 +189,9 @@ describe("FloatingPanelWindow", () => {
     expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
     expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", "bottom");
     expect(document.querySelector(".cv-panel-dock-preview")).toHaveStyle({
-      left: "664px",
+      left: "652.8px",
       top: "400px",
-      width: "336px",
+      width: "347.2px",
       height: "300px",
     });
     fireEvent.pointerUp(panel, { pointerId: 38, clientX: 990, clientY: 581 });
@@ -253,6 +256,49 @@ describe("FloatingPanelWindow", () => {
   });
 
   it.each([
+    ["left", 20, 40, "top", "bottom"],
+    ["right", 980, 760, "bottom", "top"],
+  ] as const)("splits an existing full-height %s dock when a second panel targets one half", (side, clientX, clientY, secondSlot, firstSlot) => {
+    window.localStorage.setItem(panelStateStorageKey("test:split-first"), JSON.stringify({
+      mode: "docked",
+      floatingGeometry: geometry,
+      dockedWidth: geometry.width,
+      dockPlacement: { side, column: 0, slot: "full" },
+    }));
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:split-first" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:split-second" initialGeometry={geometry} minWidth={320} defaultMode="floating" resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const first = screen.getByLabelText("Navigation");
+    const second = screen.getByLabelText("Sortie");
+    setWorkspaceDimensions(first);
+    Object.defineProperty(first, "offsetWidth", { configurable: true, value: geometry.width });
+
+    fireEvent.pointerDown(screen.getByText("Sortie", { selector: "header" }), { button: 0, pointerId: 39, clientX: 650, clientY: 300 });
+    fireEvent.pointerMove(second, { pointerId: 39, clientX, clientY });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", side);
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-column", "0");
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-slot", secondSlot);
+    fireEvent.pointerUp(second, { pointerId: 39, clientX, clientY });
+
+    expect(first).toHaveAttribute("data-dock-side", side);
+    expect(first).toHaveAttribute("data-dock-column", "0");
+    expect(first).toHaveAttribute("data-dock-slot", firstSlot);
+    expect(second).toHaveAttribute("data-panel-mode", "docked");
+    expect(second).toHaveAttribute("data-dock-side", side);
+    expect(second).toHaveAttribute("data-dock-column", "0");
+    expect(second).toHaveAttribute("data-dock-slot", secondSlot);
+    expect(second).toHaveStyle({ width: `${geometry.width}px` });
+    expect(JSON.parse(window.localStorage.getItem(panelStateStorageKey("test:split-first")) ?? "{}").dockPlacement.slot).toBe(firstSlot);
+  });
+
+  it.each([
     ["top", 40],
     ["full", 400],
     ["bottom", 760],
@@ -273,7 +319,47 @@ describe("FloatingPanelWindow", () => {
     expect(panel).toHaveAttribute("data-dock-side", "right");
     expect(panel).toHaveAttribute("data-dock-column", "0");
     expect(panel).toHaveAttribute("data-dock-slot", slot);
-    expect(panel.querySelector("[data-resize-edge='w'] [data-resize-visibility='persistent']")).toBeInTheDocument();
+    expect(dockedResizeHandle("test:panel", "w").querySelector("[data-resize-visibility='persistent']")).toBeInTheDocument();
+    expect(document.querySelector("[data-panel-resize-owner='test:panel']")).toHaveAttribute("data-dock-slot", slot);
+    if (slot !== "full") expect(screen.queryByRole("separator", { name: "Redimensionner la séparation des panneaux" })).not.toBeInTheDocument();
+  });
+
+  it("keeps a left panel unchanged when the other panel is docked on the right", () => {
+    window.localStorage.setItem(panelStateStorageKey("test:left-fixed"), JSON.stringify({
+      mode: "docked",
+      floatingGeometry: geometry,
+      dockedWidth: geometry.width,
+      dockPlacement: { side: "left", column: 0, slot: "full" },
+    }));
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:left-fixed" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:right-target" initialGeometry={geometry} minWidth={320} defaultMode="floating" resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const first = screen.getByLabelText("Navigation");
+    const second = screen.getByLabelText("Sortie");
+    setWorkspaceDimensions(first);
+    const firstState = window.localStorage.getItem(panelStateStorageKey("test:left-fixed"));
+
+    fireEvent.pointerDown(screen.getByText("Sortie", { selector: "header" }), { button: 0, pointerId: 41, clientX: 500, clientY: 300 });
+    fireEvent.pointerMove(second, { pointerId: 41, clientX: 980, clientY: 400 });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
+    fireEvent.pointerUp(second, { pointerId: 41, clientX: 980, clientY: 400 });
+
+    expect(first).toHaveAttribute("data-panel-mode", "docked");
+    expect(first).toHaveAttribute("data-dock-side", "left");
+    expect(first).toHaveAttribute("data-dock-column", "0");
+    expect(first).toHaveAttribute("data-dock-slot", "full");
+    expect(window.localStorage.getItem(panelStateStorageKey("test:left-fixed"))).toBe(firstState);
+    expect(second).toHaveAttribute("data-panel-mode", "docked");
+    expect(second).toHaveAttribute("data-dock-side", "right");
+    expect(second).toHaveAttribute("data-dock-column", "0");
+    expect(second).toHaveAttribute("data-dock-slot", "full");
   });
 
   it("docks on the right when the panel edge reaches the workspace before the pointer", () => {
@@ -288,7 +374,7 @@ describe("FloatingPanelWindow", () => {
 
     expect(panel).toHaveStyle({ left: "568px" });
     expect(document.querySelector(".cv-panel-dock-preview")).toHaveAttribute("data-dock-side", "right");
-    expect(document.querySelector(".cv-panel-dock-preview")).toHaveStyle({ left: "580px", top: "0px" });
+    expect(document.querySelector(".cv-panel-dock-preview")).toHaveStyle({ left: "566px", top: "0px" });
     fireEvent.pointerUp(panel, { pointerId: 35, clientX: 700, clientY: 400 });
 
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
@@ -334,7 +420,7 @@ describe("FloatingPanelWindow", () => {
   it("offers only a persistent right resize handle while docked", () => {
     renderPanel();
     const panel = screen.getByLabelText("Navigation");
-    const handles = panel.querySelectorAll<HTMLElement>("[data-resize-edge]");
+    const handles = document.querySelectorAll<HTMLElement>("[data-panel-resize-owner='test:panel'] [data-resize-edge]");
 
     expect([...handles].map((handle) => handle.dataset.resizeEdge)).toEqual(["e"]);
     expect(handles[0]).toHaveAttribute("aria-orientation", "vertical");
@@ -348,17 +434,119 @@ describe("FloatingPanelWindow", () => {
     const workspace = panel.closest<HTMLElement>(".map-workspace")!;
     Object.defineProperty(workspace, "clientWidth", { configurable: true, value: 1000 });
     Object.defineProperty(workspace, "clientHeight", { configurable: true, value: 800 });
-    const right = panel.querySelector<HTMLElement>("[data-resize-edge='e']")!;
+    const right = dockedResizeHandle("test:panel", "e");
 
     fireEvent.pointerDown(right, { button: 0, pointerId: 8, clientX: 420, clientY: 200 });
-    fireEvent.pointerMove(panel, { pointerId: 8, clientX: 900, clientY: 200 });
-    fireEvent.pointerUp(panel, { pointerId: 8, clientX: 900, clientY: 200 });
-    expect(panel).toHaveStyle({ left: "0px", width: "500px" });
+    fireEvent.pointerMove(right, { pointerId: 8, clientX: 900, clientY: 200 });
+    fireEvent.pointerUp(right, { pointerId: 8, clientX: 900, clientY: 200 });
+    expect(panel).toHaveStyle({ left: "0px", width: "514px" });
 
     fireEvent.keyDown(right, { key: "ArrowRight", shiftKey: true });
-    expect(panel).toHaveStyle({ width: "500px" });
+    expect(panel).toHaveStyle({ width: "514px" });
     for (let index = 0; index < 5; index += 1) fireEvent.keyDown(right, { key: "ArrowLeft", shiftKey: true });
-    expect(panel).toHaveStyle({ left: "0px", width: "320px" });
+    expect(panel).toHaveStyle({ left: "0px", width: "334px" });
+  });
+
+  it("resizes stacked panel heights with one shared horizontal separator", async () => {
+    window.localStorage.setItem(panelStateStorageKey("test:split-top"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "left", column: 0, slot: "top" } }));
+    window.localStorage.setItem(panelStateStorageKey("test:split-bottom"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "left", column: 0, slot: "bottom" } }));
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:split-top" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:split-bottom" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const top = screen.getByLabelText("Navigation");
+    const workspace = setWorkspaceDimensions(top);
+    vi.spyOn(workspace, "getBoundingClientRect").mockReturnValue({ x: 0, y: 0, left: 0, top: 0, right: 1000, bottom: 800, width: 1000, height: 800, toJSON: () => ({}) });
+    const separator = await screen.findByRole("separator", { name: "Redimensionner la séparation des panneaux" });
+    expect(document.querySelector(".cv-floating-panel-window__dock-split-grip-complement")).toBeInTheDocument();
+
+    fireEvent.pointerDown(separator, { button: 0, pointerId: 52, clientY: 400 });
+    fireEvent.pointerMove(separator, { pointerId: 52, clientY: 520 });
+    fireEvent.pointerUp(separator, { pointerId: 52, clientY: 520 });
+
+    expect(workspace.style.getPropertyValue("--cv-dock-split-top")).toBe("65%");
+    expect(window.localStorage.getItem(dockSplitStorageKey("left", 0))).toBe("0.65");
+    fireEvent.keyDown(separator, { key: "ArrowUp" });
+    expect(workspace.style.getPropertyValue("--cv-dock-split-top")).toBe("62.5%");
+    fireEvent.doubleClick(separator);
+    expect(workspace.style.getPropertyValue("--cv-dock-split-top")).toBe("50%");
+    expect(separator).toHaveAttribute("aria-valuenow", "50");
+    expect(window.localStorage.getItem(dockSplitStorageKey("left", 0))).toBe("0.5");
+    const lowerHitArea = document.querySelector<HTMLElement>(".cv-floating-panel-window__dock-split-hit-complement")!;
+    fireEvent.pointerDown(lowerHitArea, { button: 0, pointerId: 56, clientY: 400 });
+    fireEvent.pointerMove(lowerHitArea, { pointerId: 56, clientY: 440 });
+    fireEvent.pointerUp(lowerHitArea, { pointerId: 56, clientY: 440 });
+    expect(workspace.style.getPropertyValue("--cv-dock-split-top")).toBe("55.00000000000001%");
+    expect(separator).toHaveAttribute("aria-valuenow", "55");
+    fireEvent.doubleClick(lowerHitArea);
+    expect(workspace.style.getPropertyValue("--cv-dock-split-top")).toBe("50%");
+  });
+
+  it("keeps the width of vertically stacked panels synchronized", () => {
+    window.localStorage.setItem(panelStateStorageKey("test:width-top"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "left", column: 0, slot: "top" } }));
+    window.localStorage.setItem(panelStateStorageKey("test:width-bottom"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "left", column: 0, slot: "bottom" } }));
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:width-top" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:width-bottom" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const top = screen.getByLabelText("Navigation");
+    const bottom = screen.getByLabelText("Sortie");
+    setWorkspaceDimensions(top);
+    const handle = dockedResizeHandle("test:width-top", "e");
+    expect(document.querySelectorAll(".cv-docked-track-resize-overlay[data-dock-side='left'][data-dock-column='0']")).toHaveLength(1);
+    expect(document.querySelector(".cv-docked-track-resize-overlay[data-panel-resize-owner='test:width-top']")).toHaveAttribute("data-dock-stacked", "true");
+
+    fireEvent.pointerDown(handle, { button: 0, pointerId: 53, clientX: 420, clientY: 200 });
+    fireEvent.pointerMove(handle, { pointerId: 53, clientX: 500, clientY: 200 });
+    fireEvent.pointerUp(handle, { pointerId: 53, clientX: 500, clientY: 200 });
+
+    expect(top).toHaveStyle({ width: "514px" });
+    expect(bottom).toHaveStyle({ width: "514px" });
+    expect(JSON.parse(window.localStorage.getItem(panelStateStorageKey("test:width-bottom")) ?? "{}").dockedWidth).toBe(500);
+  });
+
+  it("resizes panels on opposite sides independently", () => {
+    window.localStorage.setItem(panelStateStorageKey("test:width-left"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "left", column: 0, slot: "full" } }));
+    window.localStorage.setItem(panelStateStorageKey("test:width-right"), JSON.stringify({ mode: "docked", floatingGeometry: geometry, dockedWidth: geometry.width, dockPlacement: { side: "right", column: 0, slot: "full" } }));
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="workspace" label="Navigation" storageKey="test:width-left" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="cv-workspace-panel__header">Navigation <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+        <FloatingPanelWindow kind="trips" label="Sortie" storageKey="test:width-right" initialGeometry={geometry} minWidth={320} resetVersion={0} active onActivate={vi.fn()}>
+          <aside><header className="trip-panel-header">Sortie <PanelWindowControls /></header></aside>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const left = screen.getByLabelText("Navigation");
+    const right = screen.getByLabelText("Sortie");
+    setWorkspaceDimensions(left);
+
+    const leftHandle = dockedResizeHandle("test:width-left", "e");
+    fireEvent.pointerDown(leftHandle, { button: 0, pointerId: 54, clientX: 420, clientY: 200 });
+    fireEvent.pointerMove(leftHandle, { pointerId: 54, clientX: 480, clientY: 200 });
+    fireEvent.pointerUp(leftHandle, { pointerId: 54, clientX: 480, clientY: 200 });
+    expect(left).toHaveStyle({ width: "494px" });
+    expect(right).toHaveStyle({ width: "434px" });
+
+    const rightHandle = dockedResizeHandle("test:width-right", "w");
+    fireEvent.pointerDown(rightHandle, { button: 0, pointerId: 55, clientX: 580, clientY: 200 });
+    fireEvent.pointerMove(rightHandle, { pointerId: 55, clientX: 520, clientY: 200 });
+    fireEvent.pointerUp(rightHandle, { pointerId: 55, clientX: 520, clientY: 200 });
+    expect(left).toHaveStyle({ width: "494px" });
+    expect(right).toHaveStyle({ width: "494px" });
   });
 
   it("keeps floating resize within the configured min and max width", () => {
