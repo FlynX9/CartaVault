@@ -32,6 +32,8 @@ import { ExternalLinkFavicon } from "../places/ExternalLinkFavicon";
 
 interface Props {
   placeId: string;
+  variant?: "popup" | "inline";
+  initialPlace?: PlaceDetails | null;
   canEdit?: boolean;
   allowPhotoPaste?: boolean;
   showManagementActions?: boolean;
@@ -48,8 +50,10 @@ interface Props {
 const PASTE_SUCCESS_NOTICE = "Image ajoutée depuis le presse-papiers.";
 
 function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Non renseigné";
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(
-    new Date(value),
+    date,
   );
 }
 
@@ -59,6 +63,8 @@ function ratingFillPercentage(rating: number, star: number): number {
 
 export function PlaceMapPopup({
   placeId,
+  variant = "popup",
+  initialPlace = null,
   canEdit = true,
   allowPhotoPaste = true,
   showManagementActions = true,
@@ -74,16 +80,17 @@ export function PlaceMapPopup({
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches,
   );
-  const canPastePhotos = canEdit && allowPhotoPaste && !isMobileViewport;
+  const canPastePhotos = variant === "popup" && canEdit && allowPhotoPaste && !isMobileViewport;
   const { confirm, confirmationDialog } = useConfirmDialog();
-  const [place, setPlace] = useState<PlaceDetails | null>(null);
+  const [place, setPlace] = useState<PlaceDetails | null>(() => initialPlace?.id === placeId ? initialPlace : null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [history, setHistory] = useState<PlaceHistoryEvent[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(true);
-  const [photosLoading, setPhotosLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(() => !(variant === "inline" && initialPlace?.id === placeId));
+  const [photosLoading, setPhotosLoading] = useState(() => variant !== "inline");
   const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [detailsRequestVersion, setDetailsRequestVersion] = useState(0);
   const [photosError, setPhotosError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [addingToTrip, setAddingToTrip] = useState(false);
@@ -117,34 +124,41 @@ export function PlaceMapPopup({
     setPasteNotice(null);
     setRatingPreview(null);
     setRatingSaving(false);
-    setDetailsLoading(true);
-    setPhotosLoading(true);
+    const suppliedPlace = variant === "inline" && initialPlace?.id === placeId ? initialPlace : null;
+    setPlace(suppliedPlace);
+    setDetailsLoading(suppliedPlace === null);
+    setPhotosLoading(variant !== "inline");
+    if (variant === "inline") setPhotos([]);
     setDetailsError(null);
     setPhotosError(null);
-    void getPlaceDetails(placeId, controller.signal)
-      .then(setPlace)
-      .catch((error: unknown) => {
-        if (!(error instanceof Error && error.name === "AbortError"))
-          setDetailsError(
-            error instanceof Error ? error.message : "POI indisponible.",
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setDetailsLoading(false);
-      });
-    void getPlacePhotos(placeId, controller.signal)
-      .then(setPhotos)
-      .catch((error: unknown) => {
-        if (!(error instanceof Error && error.name === "AbortError"))
-          setPhotosError(
-            error instanceof Error ? error.message : "Photos indisponibles.",
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setPhotosLoading(false);
-      });
+    if (suppliedPlace === null) {
+      void getPlaceDetails(placeId, controller.signal)
+        .then(setPlace)
+        .catch((error: unknown) => {
+          if (!(error instanceof Error && error.name === "AbortError"))
+            setDetailsError(
+              error instanceof Error ? error.message : "POI indisponible.",
+            );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setDetailsLoading(false);
+        });
+    }
+    if (variant !== "inline") {
+      void getPlacePhotos(placeId, controller.signal)
+        .then(setPhotos)
+        .catch((error: unknown) => {
+          if (!(error instanceof Error && error.name === "AbortError"))
+            setPhotosError(
+              error instanceof Error ? error.message : "Photos indisponibles.",
+            );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setPhotosLoading(false);
+        });
+    }
     return () => controller.abort();
-  }, [placeId]);
+  }, [detailsRequestVersion, initialPlace, placeId, variant]);
 
   useEffect(() => {
     if (pasteNotice !== PASTE_SUCCESS_NOTICE) return;
@@ -166,8 +180,8 @@ export function PlaceMapPopup({
     // Do not focus the hidden clipboard textarea on open: mobile browsers then
     // treat the POI card as an editing surface and immediately open the keyboard.
     // The global paste handler still handles an explicit Ctrl/Cmd+V action.
-    titleRef.current?.focus({ preventScroll: true });
-  }, [detailsLoading, place]);
+    if (variant === "popup") titleRef.current?.focus({ preventScroll: true });
+  }, [detailsLoading, place, variant]);
 
   useEffect(() => {
     if (!canPastePhotos) return;
@@ -252,16 +266,15 @@ export function PlaceMapPopup({
 
   if (detailsLoading)
     return (
-      <div className="place-map-popup"><SkeletonList rows={3} label="Chargement du POI" /></div>
+      <div className={`place-map-popup${variant === "inline" ? " place-map-popup--inline" : ""}`}><SkeletonList rows={3} label="Chargement du POI" /></div>
     );
   if (detailsError || !place)
     return (
-      <div className="place-map-popup popup-error" role="alert">
-        <strong>Impossible d’afficher ce POI</strong>
+      <div className={`place-map-popup popup-error${variant === "inline" ? " place-map-popup--inline" : ""}`} role="alert">
+        <strong>Impossible de charger les détails du lieu.</strong>
         <span>{detailsError}</span>
-        <button type="button" onClick={onClose}>
-          Fermer
-        </button>
+        {variant === "inline" && <button type="button" onClick={() => setDetailsRequestVersion((value) => value + 1)}>Réessayer</button>}
+        {variant === "popup" && <button type="button" onClick={onClose}>Fermer</button>}
       </div>
     );
 
@@ -352,21 +365,22 @@ export function PlaceMapPopup({
 
   return (
     <article
-      className="place-map-popup"
-      aria-labelledby={`popup-title-${place.id}`}
+      className={`place-map-popup${variant === "inline" ? " place-map-popup--inline" : ""}`}
+      aria-labelledby={variant === "popup" ? `popup-title-${place.id}` : undefined}
+      aria-label={variant === "inline" ? `Détails de ${place.name}` : undefined}
     >
       {canPastePhotos && <textarea ref={pasteTargetRef} className="popup-paste-target" data-popup-paste-target="true" tabIndex={-1} aria-label="Collage d’image depuis le presse-papiers" />}
-      <section className="popup-hero">
-        <PlacePopupGallery
+      <section className={`popup-hero${variant === "inline" ? " popup-hero--inline" : ""}`}>
+        {variant === "popup" && <PlacePopupGallery
           placeName={place.name}
           photos={photos}
           isLoading={photosLoading}
           error={photosError}
           statusColor={place.status.color}
           categoryIcon={primaryCategory?.icon}
-        />
+        />}
         <div className="popup-overview">
-          <div className="popup-heading">
+          {variant === "popup" && <div className="popup-heading">
             <h2
               id={`popup-title-${place.id}`}
               ref={titleRef}
@@ -405,7 +419,7 @@ export function PlaceMapPopup({
                 ×
               </button>
             </div>
-          </div>
+          </div>}
           <div className="popup-overview-metadata">
             <section
               className="popup-overview-status-section"
@@ -530,6 +544,19 @@ export function PlaceMapPopup({
           {detailsError}
         </p>
       )}
+      {variant === "inline" && <div className="place-inline-details__utilities">
+        {canEdit && fieldEnabled("favorite") && <button
+          className={`popup-history-toggle${place.is_favorite ? " active" : ""}`}
+          type="button"
+          aria-pressed={place.is_favorite === true}
+          aria-label={place.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+          onClick={() => void toggleFavorite()}
+        >
+          <Heart size={15} fill={place.is_favorite ? "currentColor" : "none"} />
+          <span>Favori</span>
+        </button>}
+        <button className={`popup-history-toggle${historyOpen ? " active" : ""}`} type="button" aria-label="Afficher l’historique" aria-expanded={historyOpen} title="Historique" onClick={() => setHistoryOpen((value) => !value)}><History size={15} />Historique</button>
+      </div>}
       {historyOpen && <section className="popup-history" aria-label="Historique"><h3>Historique</h3>{historyLoading ? <p>Chargement…</p> : history.length === 0 ? <p>Aucun changement enregistré.</p> : <ol>{history.map((event) => <li key={event.id}><strong>{popupHistoryAction(event.action)}</strong><span>{event.actor_label} · {formatDate(event.created_at)}</span></li>)}</ol>}</section>}
       {fieldEnabled("description") && (
         <section className="popup-description">
@@ -567,14 +594,14 @@ export function PlaceMapPopup({
             <span>{place.region || "Non déterminée"}</span>
           </p>
         </article>
-        {coordinates && (
+        {(coordinates || variant === "inline") && (
           <article aria-label="Coordonnées GPS">
             <MapPin aria-hidden="true" />
             <p>
               <b>Coordonnées</b>
               <span className="popup-summary-coordinate-row">
-                <span>{coordinates}</span>
-                <button
+                <span>{coordinates ?? "Non renseignées"}</span>
+                {coordinates && <button
                   className="popup-summary-copy"
                   type="button"
                   aria-label="Copier les coordonnées GPS"
@@ -584,7 +611,7 @@ export function PlaceMapPopup({
                   }
                 >
                   <Copy size={13} aria-hidden="true" />
-                </button>
+                </button>}
               </span>
             </p>
           </article>
@@ -593,7 +620,7 @@ export function PlaceMapPopup({
           <Clock3 aria-hidden="true" />
           <p>
             <b>Durée de visite</b>
-            <span>{formatMinutes(place.default_visit_duration_minutes ?? 30)}</span>
+            <span>{place.default_visit_duration_minutes == null && variant === "inline" ? "Non renseignée" : formatMinutes(place.default_visit_duration_minutes ?? 30)}</span>
           </p>
         </article>
         {fieldEnabled("danger_level") && (

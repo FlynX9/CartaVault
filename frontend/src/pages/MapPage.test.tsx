@@ -505,4 +505,34 @@ describe('MapPage', () => {
     expect(detail.closest('.map-layout')).toBeNull()
     expect(screen.getByLabelText('Sortie')).toBeInTheDocument()
   })
+
+  it('keeps the desktop map clear when the selected POI detail is rendered inline', () => {
+    render(
+      <MemoryRouter>
+        <MapPage
+          places={[]}
+          selectedPlaceId="place-1"
+          initialView={{ center: [48, 2], zoom: 8 }}
+          isLoading={false}
+          errorMessage={null}
+          sidebarOpen={false}
+          placeListOpen
+          statuses={[]}
+          sidebar={null}
+          placeList={<aside aria-label="Liste de test">Détail intégré</aside>}
+          popupContent={<article>Fiche flottante du POI</article>}
+          desktopPlaceDetailInline
+          focusRequest={null}
+          onBoundsChange={vi.fn()}
+          onViewChange={vi.fn()}
+          onPlaceSelect={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByLabelText('Liste de test')).toHaveTextContent('Détail intégré')
+    expect(screen.queryByText('Fiche flottante du POI')).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Détails du lieu sélectionné' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('poi-map')).toBeVisible()
+  })
 })

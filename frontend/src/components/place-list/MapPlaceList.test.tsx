@@ -1,18 +1,20 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import { bulkAddPlacesToTrip, bulkUpdatePlaces, getPlaceFacets, getPlaceListPosition, getPlaces } from '../../api/places'
+import { bulkAddPlacesToTrip, bulkUpdatePlaces, getPlaceDetails, getPlaceFacets, getPlaces } from '../../api/places'
 import { getCategories } from '../../api/categories'
 import { getTags } from '../../api/tags'
 import { getTrip, listTrips } from '../../api/trips'
+import { getPlacePhotos } from '../../api/photos'
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
 import { MapPlaceList } from './MapPlaceList'
 import { FloatingPanelWindowContext } from '../layout/FloatingPanelWindow'
 
-vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: true, index: 0, page: 0, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ total: 42, non_visited: 31, visited: 11, favorites: 6, categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
+vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceDetails: vi.fn(), getPlaceFacets: vi.fn(() => Promise.resolve({ total: 42, non_visited: 31, visited: 11, favorites: 6, categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
 vi.mock('../../api/categories', () => ({ getCategories: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/tags', () => ({ getTags: vi.fn(() => Promise.resolve([])) }))
 vi.mock('../../api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])) }))
+vi.mock('../../api/photos', async (importOriginal) => ({ ...(await importOriginal<typeof import('../../api/photos')>()), getPlacePhotos: vi.fn(() => Promise.resolve([])) }))
 
 afterEach(() => {
   cleanup()
@@ -214,12 +216,34 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.place-list-tag')).toHaveStyle({ backgroundColor: '#336699', color: '#FFFFFF' })
     expect(container.querySelector('.place-list-tag')?.parentElement).toHaveClass('places-place-tags')
     expect(container.querySelector('.places-place-bottom')).not.toBeInTheDocument()
-    expect(container.querySelector('.place-list-category-bubble')).toHaveStyle({ backgroundColor: '#2563EB', borderColor: '#2563EB' })
-    expect(container.querySelector('.place-list-category-bubble [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.popup-photo-placeholder--category > span')).toHaveStyle({ backgroundColor: '#2563EB', borderColor: '#2563EB' }))
+    expect(container.querySelector('.popup-photo-placeholder--category [data-category-icon-id="mdi:church"]')).toBeInTheDocument()
     expect(container.querySelector('[aria-label="Importer un fichier KMZ"]')).not.toBeInTheDocument()
     fireEvent.click(item)
-    expect(select).toHaveBeenCalledWith(place)
-    expect(getPlaceListPosition).not.toHaveBeenCalled()
+    expect(select).not.toHaveBeenCalled()
+    expect(getPlaceDetails).not.toHaveBeenCalled()
+  })
+
+  it('expands only the selected desktop row and collapses it from its centered title', async () => {
+    const base = { map_id: 'map-id', map: { id: 'map-id', name: 'France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, latitude: 48, longitude: 2, description: null, region: 'Grand Est', condition: null, danger_level: null, categories: [], tags: [], is_favorite: false, interest_rating: null, visit_rating: null, default_visit_duration_minutes: null, created_at: '2026-01-01', updated_at: '2026-01-02' }
+    const first = { ...base, id: 'first-place', name: 'Premier lieu', status: { id: 'status-a', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' } } as never
+    const second = { ...base, id: 'second-place', name: 'Second lieu', status: { id: 'status-b', name: 'Visité', slug: 'visite', color: '#16A34A', is_active: true, functional_state: 'visited' } } as never
+    const collapse = vi.fn()
+    vi.mocked(getPlaces).mockResolvedValue([first, second])
+
+    const { container, rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId="first-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} onPlaceCollapse={collapse} /></MemoryRouter>)
+    expect(await screen.findByRole('region', { name: 'Détails de Premier lieu' })).toBeVisible()
+    expect(container.querySelectorAll('.place-inline-details')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Premier lieu' })).toHaveAttribute('aria-expanded', 'true')
+    expect(container.querySelector('.places-place-card.has-inline-details .places-place-actions')).not.toBeInTheDocument()
+
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId="second-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} onPlaceCollapse={collapse} /></MemoryRouter>)
+    expect(await screen.findByRole('region', { name: 'Détails de Second lieu' })).toBeVisible()
+    expect(screen.queryByRole('region', { name: 'Détails de Premier lieu' })).not.toBeInTheDocument()
+    expect(container.querySelectorAll('.place-inline-details')).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Second lieu' }))
+    expect(collapse).toHaveBeenCalledTimes(1)
   })
 
   it('selects a place when its list thumbnail is clicked without opening a photo viewer', async () => {
@@ -237,12 +261,25 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.photo-viewer')).not.toBeInTheDocument()
   })
 
+  it('opens the selected POI thumbnail in the existing full-screen photo viewer', async () => {
+    const placeId = 'selected-photo-place'
+    const place = { id: placeId, name: 'Hôtel abandonné', map_id: 'map-id', map: { id: 'map-id', name: 'France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, latitude: 48, longitude: 2, primary_photo_id: 'photo-id', description: null, region: 'Adjarie', condition: null, danger_level: null, created_at: '2026-01-01', updated_at: '2026-01-02', status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' }, categories: [], tags: [] } as never
+    const photo = { id: 'photo-id', place_id: placeId, filename: 'hotel.jpg', original_name: null, path: '', description: 'Façade de l’hôtel', taken_at: null, sort_order: 0, is_primary: true, created_at: null }
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    vi.mocked(getPlacePhotos).mockResolvedValueOnce([photo] as never)
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={placeId} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await waitFor(() => expect(document.querySelector('.place-inline-thumbnail-gallery .popup-gallery__open')).not.toBeNull())
+    fireEvent.click(document.querySelector('.place-inline-thumbnail-gallery .popup-gallery__open') as HTMLButtonElement)
+    expect(screen.getByRole('dialog', { name: 'Hôtel abandonné' })).toBeVisible()
+  })
+
   it('shows the rating relevant to the functional status in the status color', async () => {
     const visited = { id: 'visited-place', name: 'Visité', latitude: 48, longitude: 2, interest_rating: 2, visit_rating: 4.5, status: { id: 'visited-status', name: 'Visité', slug: 'visited', color: '#16A34A', is_active: true, functional_state: 'visited' }, categories: [], tags: [] } as never
     const planned = { id: 'planned-place', name: 'À visiter', latitude: 49, longitude: 3, interest_rating: 3.5, visit_rating: null, status: { id: 'planned-status', name: 'À faire', slug: 'planned', color: '#2563EB', is_active: true, functional_state: 'non_visited' }, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockResolvedValue([visited, planned])
 
-    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     const visitedRating = await screen.findByLabelText('Note 4.5')
     const plannedRating = screen.getByLabelText('Note 3.5')
@@ -251,6 +288,7 @@ describe('MapPlaceList', () => {
     expect(visitedRating.parentElement).toHaveClass('places-place-actions')
     expect(visitedRating.nextElementSibling).toHaveClass('favorite')
     expect(plannedRating.parentElement).toHaveClass('places-place-actions')
+    expect(container.querySelector('.places-place-secondary-actions')).not.toBeInTheDocument()
   })
 
   it('keeps POIs draggable during trip planning and marks reused places without muting them', async () => {
@@ -268,18 +306,20 @@ describe('MapPlaceList', () => {
     expect(reusedSetData).toHaveBeenCalledWith('application/x-cartavault-place', 'place-id')
   })
 
-  it('adds an available POI from a compact action next to Google Maps', async () => {
+  it('keeps the trip add shortcut without restoring row hover actions', async () => {
     const place = { id: 'place-id', name: 'Étape ciblée', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
     const onTripPlaceAdd = vi.fn()
     vi.mocked(getPlaces).mockResolvedValue([place])
     const props = { poiMap: { id: 'map-id', name: 'France', can_edit: false } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, tripPlanningActive: true, tripAddTargetLabel: 'Ajouter au jour 2', onTripPlaceAdd, onPlaceSelect: vi.fn() }
-    render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
+    const { container } = render(<MemoryRouter><MapPlaceList {...props} tripPlaceIds={new Set(['place-id'])} /></MemoryRouter>)
 
     const addButton = await screen.findByRole('button', { name: 'Ajouter au jour 2' })
-    const googleMaps = screen.getByRole('link', { name: 'Ouvrir Étape ciblée dans Google Maps' })
     expect(addButton).toHaveAttribute('title', 'Ajouter au jour 2')
     expect(addButton).not.toHaveTextContent('Ajouter au jour 2')
-    expect(addButton.closest('.places-trip-add-slot')?.nextElementSibling).toBe(googleMaps)
+    const hoverActions = container.querySelector('.places-place-secondary-actions')
+    expect(hoverActions?.querySelector('a[aria-label^="Ouvrir"]')).not.toBeInTheDocument()
+    expect(hoverActions?.querySelector('a[aria-label^="Éditer"]')).not.toBeInTheDocument()
+    expect(hoverActions?.querySelector('button[aria-label^="Supprimer"]')).not.toBeInTheDocument()
     fireEvent.click(addButton)
     expect(onTripPlaceAdd).toHaveBeenCalledWith(place)
 
@@ -467,18 +507,104 @@ describe('MapPlaceList', () => {
     expect(container.querySelector('.place-list-load-sentinel')).toBeNull()
   }, 10_000)
 
-  it('loads the matching page when the selected place is not mounted yet', async () => {
+  it('fetches one distant selected POI directly and pins it without loading intermediate pages', async () => {
     const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
-    const firstPage = Array.from({ length: 50 }, (_, index) => ({ id: `place-${index}`, name: `Place ${index}`, latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
-    const selectedPlace = { id: 'selected-place', name: 'Selected remote place', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({ id: `place-${index + 1}`, name: `Place ${index + 1}`, map_id: 'map-id', latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
+    const selectedPlace = { id: 'place-5000', name: 'Selected POI 5000', map_id: 'map-id', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockReset().mockResolvedValueOnce(firstPage)
+    vi.mocked(getPlaceDetails).mockReset().mockResolvedValueOnce(selectedPlace)
+
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={DEFAULT_PLACE_FILTERS} selectedPlaceId="place-5000" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await waitFor(() => expect(getPlaceDetails).toHaveBeenCalledWith('place-5000', expect.any(AbortSignal)))
+    expect(getPlaces).toHaveBeenCalledTimes(1)
+    expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ offset: 0, limit: 50 }), expect.any(AbortSignal))
+    await waitFor(() => expect(container.querySelector('.places-place-card.selected')).toHaveTextContent('Selected POI 5000'))
+    expect(container.querySelector('[data-virtual-index="0"] .places-place-card.selected')).toHaveTextContent('Selected POI 5000')
+  })
+
+  it('deduplicates the pinned POI when infinite scroll later loads its normal page', async () => {
+    let intersectionCallback: IntersectionObserverCallback | null = null
+    class IntersectionObserverMock {
+      constructor(callback: IntersectionObserverCallback) { intersectionCallback = callback }
+      observe = vi.fn()
+      disconnect = vi.fn()
+    }
+    vi.stubGlobal('IntersectionObserver', IntersectionObserverMock)
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({ id: `place-${index + 1}`, name: `Place ${index + 1}`, map_id: 'map-id', latitude: 48, longitude: 2, status, categories: [], tags: [] })) as never[]
+    const selectedPlace = { id: 'place-5000', name: 'Selected POI 5000', map_id: 'map-id', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
     vi.mocked(getPlaces).mockReset().mockResolvedValueOnce(firstPage).mockResolvedValueOnce([selectedPlace])
-    vi.mocked(getPlaceListPosition).mockResolvedValueOnce({ place_id: 'selected-place', matches_filters: true, index: 150, page: 3, page_size: 50 })
+    vi.mocked(getPlaceDetails).mockReset().mockResolvedValueOnce(selectedPlace)
 
-    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={DEFAULT_PLACE_FILTERS} selectedPlaceId="selected-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId="place-5000" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
-    await waitFor(() => expect(getPlaceListPosition).toHaveBeenCalledWith('selected-place', 'map-id', DEFAULT_PLACE_FILTERS, expect.any(AbortSignal)))
-    await waitFor(() => expect(getPlaces).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 150, limit: 50 }), expect.any(AbortSignal)))
-    await waitFor(() => expect(container.querySelector('.places-place-card.selected')).toHaveTextContent('Selected remote place'))
+    await waitFor(() => expect(container.querySelector('.places-place-card.selected')).toHaveTextContent('Selected POI 5000'))
+    await waitFor(() => expect(intersectionCallback).not.toBeNull())
+    await act(async () => intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver))
+    await waitFor(() => expect(getPlaces).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(container.querySelectorAll('.places-place-main[aria-label^="Selected POI 5000"]')).toHaveLength(1))
+    expect(container.querySelector('.places-place-card.selected')).toHaveTextContent('Selected POI 5000')
+  })
+
+  it('keeps filters and search unchanged while pinning a selected POI outside their results', async () => {
+    const status = { id: 'visited-status', name: 'Visited', slug: 'visited', color: '#16A34A', is_active: true, functional_state: 'visited' }
+    const loadedPlace = { id: 'matching-place', name: 'Needle result', map_id: 'map-id', latitude: 48, longitude: 2, status: { ...status, functional_state: 'non_visited' }, categories: [], tags: [] } as never
+    const selectedPlace = { id: 'outside-place', name: 'Outside current filters', map_id: 'map-id', latitude: 49, longitude: 3, status, categories: [], tags: [] } as never
+    const activeFilters = { ...DEFAULT_PLACE_FILTERS, query: 'needle', functionalState: 'non_visited' as const }
+    const onFiltersChange = vi.fn()
+    vi.mocked(getPlaces).mockReset().mockResolvedValue([loadedPlace])
+    vi.mocked(getPlaceDetails).mockReset().mockResolvedValueOnce(selectedPlace)
+
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={activeFilters} selectedPlaceId="outside-place" refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByRole('button', { name: /^Outside current filters/ })).toBeVisible()
+    expect(screen.getByRole('searchbox')).toHaveValue('needle')
+    expect(onFiltersChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /^Needle result/ })).toBeVisible()
+
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} filters={activeFilters} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onFiltersChange={onFiltersChange} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Outside current filters/ })).not.toBeInTheDocument())
+    expect(screen.getByRole('searchbox')).toHaveValue('needle')
+  })
+
+  it('ignores a stale direct response after the selection changes', async () => {
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    const placeA = { id: 'place-a', name: 'POI A', map_id: 'map-id', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
+    const placeB = { id: 'place-b', name: 'POI B', map_id: 'map-id', latitude: 49, longitude: 3, status, categories: [], tags: [] } as never
+    let resolveA!: (place: typeof placeA) => void
+    let resolveB!: (place: typeof placeB) => void
+    vi.mocked(getPlaces).mockReset().mockResolvedValue([])
+    vi.mocked(getPlaceDetails).mockReset().mockImplementation((placeId) => new Promise((resolve) => {
+      if (placeId === 'place-a') resolveA = resolve as typeof resolveA
+      else resolveB = resolve as typeof resolveB
+    }))
+
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId="place-a" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(getPlaceDetails).toHaveBeenCalledWith('place-a', expect.any(AbortSignal)))
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId="place-b" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(getPlaceDetails).toHaveBeenCalledWith('place-b', expect.any(AbortSignal)))
+
+    await act(async () => resolveB(placeB))
+    expect(await screen.findByRole('button', { name: /^POI B/ })).toBeVisible()
+    await act(async () => resolveA(placeA))
+    expect(screen.queryByRole('button', { name: /^POI A/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^POI B/ })).toBeVisible()
+  })
+
+  it('drops an obsolete pinned selection when switching maps', async () => {
+    const status = { id: 'status-id', name: 'Open', slug: 'open', color: '#2563EB', is_active: true }
+    const oldPlace = { id: 'old-place', name: 'Old map POI', map_id: 'map-a', latitude: 48, longitude: 2, status, categories: [], tags: [] } as never
+    let resolveOld!: (place: typeof oldPlace) => void
+    vi.mocked(getPlaces).mockReset().mockResolvedValue([])
+    vi.mocked(getPlaceDetails).mockReset().mockImplementation(() => new Promise((resolve) => { resolveOld = resolve as typeof resolveOld }))
+
+    const { rerender } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-a', name: 'Map A' } as never} selectedPlaceId="old-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await waitFor(() => expect(getPlaceDetails).toHaveBeenCalledWith('old-place', expect.any(AbortSignal)))
+    rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-b', name: 'Map B' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    await act(async () => resolveOld(oldPlace))
+
+    expect(screen.queryByRole('button', { name: /^Old map POI/ })).not.toBeInTheDocument()
   })
 
   it.each([500, 2_000])('keeps the mounted rich rows bounded for %i loaded places', async (placeCount) => {

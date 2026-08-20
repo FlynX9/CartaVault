@@ -18,6 +18,47 @@ beforeEach(() => { vi.mocked(getPlaceDetails).mockResolvedValue(PLACE); vi.mocke
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('PlaceMapPopup', () => {
+  it('renders the structured inline detail without duplicating the row image or title', async () => {
+    const edit = vi.fn()
+    render(<PlaceMapPopup placeId={PLACE_ID} variant="inline" initialPlace={{ ...PLACE, region: 'Grand Est', default_visit_duration_minutes: 45 }} onEdit={edit} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    const details = screen.getByRole('article', { name: 'Détails de Manufacture' })
+    expect(within(details).queryByRole('heading', { name: 'Manufacture' })).not.toBeInTheDocument()
+    expect(within(details).queryByRole('img')).not.toBeInTheDocument()
+    expect(within(details).queryByText(/Collez une image/)).not.toBeInTheDocument()
+    expect(within(details).getByRole('region', { name: 'Statut' })).toHaveTextContent('À faire')
+    expect(within(details).getByRole('region', { name: 'Catégorie' })).toHaveTextContent('Industrie')
+    expect(within(details).getByRole('region', { name: 'Tags' })).toHaveTextContent('Brique')
+    expect(within(details).getByRole('region', { name: 'Note' })).toHaveTextContent('Non noté')
+    expect(within(details).getByText('Ancienne usine')).toBeVisible()
+    expect(within(details).getByText('Plan / annotations')).toBeVisible()
+    expect(within(details).getByRole('article', { name: 'Région administrative' })).toHaveTextContent('Grand Est')
+    expect(within(details).getByRole('article', { name: 'Coordonnées GPS' })).toHaveTextContent('48.17000, 6.45000')
+    expect(within(details).getByRole('article', { name: 'Durée de visite' })).toHaveTextContent('45 min')
+    expect(within(details).getByText('Danger')).toBeVisible()
+    expect(within(details).getByText('Ajouté le')).toBeVisible()
+    expect(within(details).getByText('Modifié le')).toBeVisible()
+    expect(within(details).getByRole('button', { name: 'Modifier le POI' })).toBeVisible()
+    expect(within(details).getByRole('button', { name: 'Supprimer le POI' })).toBeVisible()
+    expect(within(details).getByRole('link', { name: 'Ouvrir dans Google Maps' })).toBeVisible()
+    expect(getPlaceDetails).not.toHaveBeenCalled()
+    expect(getPlacePhotos).not.toHaveBeenCalled()
+  })
+
+  it('keeps the inline layout complete when optional POI data is empty', () => {
+    const emptyPlace = { ...PLACE, description: null, region: null, longitude: null, latitude: null, categories: [], tags: [], danger_level: null, default_visit_duration_minutes: null, created_at: '', updated_at: '' }
+    render(<PlaceMapPopup placeId={PLACE_ID} variant="inline" initialPlace={emptyPlace} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    const details = screen.getByRole('article', { name: 'Détails de Manufacture' })
+    expect(within(details).getByText('Aucun tag')).toBeVisible()
+    expect(within(details).getByText('Non noté')).toBeVisible()
+    expect(within(details).getByText('Aucune description')).toBeVisible()
+    expect(within(details).getByRole('article', { name: 'Coordonnées GPS' })).toHaveTextContent('Non renseignées')
+    expect(within(details).getByRole('article', { name: 'Durée de visite' })).toHaveTextContent('Non renseignée')
+    expect(within(details).getByText('Non déterminée')).toBeVisible()
+    expect(within(details).getByText('Plan / annotations').closest('.popup-annotations')).toBeVisible()
+  })
+
   it('disables clipboard photo paste controls on mobile', async () => {
     const originalMatchMedia = window.matchMedia
     Object.defineProperty(window, 'matchMedia', {

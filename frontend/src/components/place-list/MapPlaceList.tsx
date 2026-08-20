@@ -1,9 +1,9 @@
 import { ArrowUpDown, CalendarPlus, Check, CircleCheck, ChevronDown, Heart, History, Folder, Grid2X2, LayoutList, List, Minus, MoreHorizontal, Pencil, Plus, Search, RotateCcw, SlidersHorizontal, Tag, Trash2, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { GoogleMapsIcon } from "../common/GoogleMapsIcon";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
-import { bulkAddPlacesToTrip, bulkUpdatePlaces, deletePlace, getPlaceFacets, getPlaceListPosition, getPlaces, restorePlace, updatePlace } from "../../api/places";
+import { bulkAddPlacesToTrip, bulkUpdatePlaces, deletePlace, getPlaceDetails, getPlaceFacets, getPlaces, restorePlace, updatePlace } from "../../api/places";
 import { publishGlobalFeedback } from "../common/globalFeedback";
 import { getCategories } from "../../api/categories";
 import { getTags } from "../../api/tags";
@@ -29,6 +29,8 @@ import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
 import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
 import { PanelWindowControls } from "../layout/PanelWindowControls";
+import { PlaceMapPopup } from "../map-popup/PlaceMapPopup";
+import { PlaceInlineThumbnailGallery } from "./PlaceInlineThumbnailGallery";
 
 const PAGE_SIZE = 50;
 const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000;
@@ -60,6 +62,8 @@ interface Props {
   removedPlaceId: string | null;
   onFiltersChange?: (filters: PlaceFilters) => void;
   onPlaceSelect: (place: PreviewPlace) => void;
+  onPlaceCollapse?: () => void;
+  onPlaceDeleted?: (placeId: string) => void;
   onClose?: () => void;
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -101,11 +105,13 @@ const formatMapLabel = (map: PoiMap, locale: string) => {
   }
 };
 
-export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), tripAddTargetLabel = null, activeTripId = null, activeTripDayId = null, onTripPlaceAdd = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, tripPlanningActive = false, tripPlaceIds = new Set(), tripAddTargetLabel = null, activeTripId = null, activeTripDayId = null, onTripPlaceAdd = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
   const { t, formatDate, locale } = useI18n();
+  const navigate = useNavigate();
   const { confirm, confirmationDialog } = useConfirmDialog();
   const panelWindow = useContext(FloatingPanelWindowContext);
   const [places, setPlaces] = useState<PlaceDetails[]>([]);
+  const [pinnedSelectedPlace, setPinnedSelectedPlace] = useState<PlaceDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [listReady, setListReady] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -155,7 +161,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
   const refs = useRef(new Map<string, HTMLButtonElement>());
   const listBodyRef = useRef<HTMLDivElement>(null);
-  const placesRef = useRef<PlaceDetails[]>([]);
   const listRequest = useRef(0);
   const listController = useRef<AbortController | null>(null);
   const loadMoreRequest = useRef(0);
@@ -189,9 +194,6 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     });
   }, [filters, setMarkerFilter]);
   useEffect(() => {
-    placesRef.current = places;
-  }, [places]);
-  useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const mediaQuery = window.matchMedia("(max-width: 760px)");
     const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
@@ -214,6 +216,8 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   }, [importRequest, isMobileViewport, poiMap, tripPlanningActive]);
   useEffect(() => {
     selectionController.current?.abort();
+    selectionRequest.current += 1;
+    setPinnedSelectedPlace(null);
     replaceSelectedIds(new Set());
     setPlaces([]);
     setFacets(emptyFacets);
@@ -309,7 +313,16 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return () => controller.abort();
   }, [tripId]);
 
-  const visible = useMemo(() => sortPlaces(places.filter((place) => place.id !== removedPlaceId)), [places, removedPlaceId]);
+  const loadedPlaces = useMemo(() => sortPlaces(places.filter((place) => place.id !== removedPlaceId)), [places, removedPlaceId]);
+  const visible = useMemo(() => {
+    if (
+      pinnedSelectedPlace === null ||
+      pinnedSelectedPlace.id !== selectedPlaceId ||
+      pinnedSelectedPlace.id === removedPlaceId ||
+      loadedPlaces.some((place) => place.id === pinnedSelectedPlace.id)
+    ) return loadedPlaces;
+    return [pinnedSelectedPlace, ...loadedPlaces];
+  }, [loadedPlaces, pinnedSelectedPlace, removedPlaceId, selectedPlaceId]);
   const selectedTrip = trips.find((trip) => trip.id === tripId);
   const hiddenSelected = [...selectedIds].filter((id) => !visible.some((place) => place.id === id)).length;
   const activeCount = countActiveAdvancedPlaceFilters(filters);
@@ -341,38 +354,39 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return () => window.clearTimeout(timeout);
   }, [filters.query, queryInput, update]);
   const selectedPlaceIndex = selectedPlaceId === null ? -1 : visible.findIndex((place) => place.id === selectedPlaceId);
-  const placeRowsVersion = [displayMode, selectedPlaceId ?? "", selectionMode ? "selection" : "", [...selectedIds].sort().join(","), [...tripPlaceIds].sort().join(","), tripPlanningActive ? "planning" : "", tripAddTargetLabel ?? "", poiMap?.can_edit === false ? "readonly" : "editable", mobilePlaceSwipe ? `${mobilePlaceSwipe.placeId}:${mobilePlaceSwipe.offset}` : "", mobilePlaceSwipeOpen ? `${mobilePlaceSwipeOpen.placeId}:${mobilePlaceSwipeOpen.direction}` : ""].join("|");
+  const placeRowsVersion = [displayMode, selectedPlaceId ?? "", isMobileViewport ? "mobile" : "desktop", selectionMode ? "selection" : "", [...selectedIds].sort().join(","), [...tripPlaceIds].sort().join(","), tripPlanningActive ? "planning" : "", tripAddTargetLabel ?? "", poiMap?.can_edit === false ? "readonly" : "editable", mobilePlaceSwipe ? `${mobilePlaceSwipe.placeId}:${mobilePlaceSwipe.offset}` : "", mobilePlaceSwipeOpen ? `${mobilePlaceSwipeOpen.placeId}:${mobilePlaceSwipeOpen.direction}` : ""].join("|");
   useEffect(() => {
-    if (!listReady || !selectedPlaceId || !poiMap || placesRef.current.some((place) => place.id === selectedPlaceId)) return;
     selectionController.current?.abort();
+    selectionRequest.current += 1;
+    if (!listReady || !selectedPlaceId || selectedPlaceId === removedPlaceId || !poiMap) {
+      setPinnedSelectedPlace(null);
+      return;
+    }
+    if (places.some((place) => place.id === selectedPlaceId)) {
+      setPinnedSelectedPlace(null);
+      return;
+    }
+    if (pinnedSelectedPlace?.id === selectedPlaceId) return;
     const controller = new AbortController();
     selectionController.current = controller;
-    const requestId = ++selectionRequest.current;
+    const requestId = selectionRequest.current;
+    const requestedPlaceId = selectedPlaceId;
+    const requestedMapId = poiMap.id;
     setError(null);
-    void getPlaceListPosition(selectedPlaceId, poiMap.id, filters, controller.signal)
-      .then(async (position) => {
+    void getPlaceDetails(requestedPlaceId, controller.signal)
+      .then((place) => {
         if (controller.signal.aborted || requestId !== selectionRequest.current) return;
-        if (!position.matches_filters || position.page === null) {
-          setError("Ce lieu est masqué par les filtres actuels.");
-          return;
-        }
-        const page = await getPlaces(
-          {
-            mapId: poiMap.id,
-            filters,
-            limit: PAGE_SIZE,
-            offset: position.page * PAGE_SIZE,
-          },
-          controller.signal,
-        );
-        if (controller.signal.aborted || requestId !== selectionRequest.current) return;
-        setPlaces((current) => sortPlaces([...new Map([...current, ...page].map((place) => [place.id, place])).values()]));
+        if (place.id !== requestedPlaceId || place.map_id !== requestedMapId) return;
+        setPinnedSelectedPlace(place);
       })
       .catch((caught: unknown) => {
-        if (!controller.signal.aborted && requestId === selectionRequest.current) setError(caught instanceof Error ? caught.message : "Impossible de localiser ce lieu dans la liste.");
+        if (!controller.signal.aborted && requestId === selectionRequest.current) setError(caught instanceof Error ? caught.message : "Impossible de charger ce lieu dans la liste.");
       });
     return () => controller.abort();
-  }, [filters, listReady, poiMap, selectedPlaceId]);
+  }, [listReady, pinnedSelectedPlace, places, poiMap, removedPlaceId, selectedPlaceId]);
+  useEffect(() => {
+    setPinnedSelectedPlace(null);
+  }, [refreshVersion]);
   const loadMore = useCallback(async () => {
     if (!poiMap || loading || loadingMore || !hasMore) return;
     loadMoreController.current?.abort();
@@ -433,6 +447,8 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
       return;
     try {
       await deletePlace(place.id);
+      setPinnedSelectedPlace((current) => current?.id === place.id ? null : current);
+      onPlaceDeleted(place.id);
       publishGlobalFeedback("success", `POI « ${place.name} » déplacé dans la corbeille.`);
       onBulkChanged();
       recordReversibleAction({
@@ -1136,6 +1152,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
               const primary = place.categories.find((item) => item.is_primary) ?? place.categories[0];
               const inTrip = tripPlaceIds.has(place.id);
               const isSelected = place.id === selectedPlaceId;
+              const inlineExpanded = isSelected && !isMobileViewport && !tripPlanningActive;
               const rating = formatRating(place);
               const canAddToTripTarget = tripAddTargetLabel !== null;
               const swipeOffset = mobilePlaceSwipe?.placeId === place.id ? mobilePlaceSwipe.offset : mobilePlaceSwipeOpen?.placeId === place.id ? (mobilePlaceSwipeOpen.direction === "delete" ? 92 : -116) : 0;
@@ -1143,7 +1160,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
               const moreRevealWidth = Math.max(0, -swipeOffset);
               return (
                 <article
-                  className={`places-place-card${isSelected ? " selected" : ""}${inTrip ? " trip-included" : ""}${selectionMode ? " has-selection" : ""}`}
+                  className={`places-place-card${isSelected ? " selected" : ""}${inlineExpanded ? " has-inline-details" : ""}${inTrip ? " trip-included" : ""}${selectionMode ? " has-selection" : ""}`}
                   onPointerDown={(event) => beginMobilePlaceSwipe(event, place.id)}
                   onPointerMove={moveMobilePlaceSwipe}
                   onPointerUp={finishMobilePlaceSwipe}
@@ -1170,6 +1187,9 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                   </div>
                   <div className="places-place-card-row" style={{ transform: `translateX(${swipeOffset}px)` }}>
                     {selectionMode && <input className="place-list-select" type="checkbox" aria-label={`Sélectionner ${place.name}`} checked={selectedIds.has(place.id)} onChange={() => toggleSelected(place.id)} />}
+                    {inlineExpanded && (
+                      <PlaceInlineThumbnailGallery placeId={place.id} placeName={place.name} statusColor={place.status.color} categoryIcon={primary?.icon} />
+                    )}
                     <button
                       ref={(node) => {
                         if (node) refs.current.set(place.id, node);
@@ -1177,6 +1197,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                       }}
                       type="button"
                       data-place-row-focus
+                      aria-expanded={inlineExpanded}
                       aria-label={`${place.name}${inTrip ? " — déjà présent dans la sortie" : ""}`}
                       draggable={tripPlanningActive}
                       className="places-place-main"
@@ -1192,10 +1213,11 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                           mobileSwipeMoved.current = false;
                           return;
                         }
-                        onPlaceSelect(place);
+                        if (inlineExpanded) onPlaceCollapse();
+                        else onPlaceSelect(place);
                       }}
                     >
-                      {displayMode === "expanded" && (
+                      {displayMode === "expanded" && !inlineExpanded && (
                         <span className="places-place-photo">
                           {inTrip && (
                             <span className="places-place-trip-check" aria-hidden="true" title="Déjà présent dans la sortie">
@@ -1205,7 +1227,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                           <PlaceListThumbnail photoId={place.primary_photo_id} statusColor={place.status.color} categoryIcon={primary?.icon} />
                         </span>
                       )}
-                      {displayMode === "compact" && (
+                      {displayMode === "compact" && !inlineExpanded && (
                         <span
                           className="place-list-category-bubble"
                           style={{
@@ -1263,7 +1285,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         )}
                       </span>
                     </button>
-                    {displayMode === "expanded" && (
+                    {displayMode === "expanded" && !inlineExpanded && (
                       <aside className="places-place-actions" aria-label={`Actions pour ${place.name}`}>
                         <span className="places-place-rating" style={{ color: place.status.color }} aria-label={rating == null ? "Aucune note" : `Note ${rating}`}>
                           ★ {rating ?? "—"}
@@ -1271,42 +1293,54 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         <button className={place.is_favorite ? "favorite active" : "favorite"} type="button" aria-label={place.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"} onClick={() => void toggleFavorite(place)}>
                           <Heart size={20} fill={place.is_favorite ? "currentColor" : "none"} />
                         </button>
-                        <div className="places-place-secondary-actions">
+                        {canAddToTripTarget && <div className="places-place-secondary-actions places-place-secondary-actions--trip">
                           <span className="places-map-actions">
-                            {canAddToTripTarget && (
-                              <span className="places-trip-add-slot">
-                                <button
-                                  className="places-trip-add-button"
-                                  type="button"
-                                  aria-label={tripAddTargetLabel}
-                                  title={tripAddTargetLabel}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    onTripPlaceAdd(place);
-                                  }}
-                                >
-                                  <Plus size={16} aria-hidden="true" />
-                                </button>
-                              </span>
-                            )}
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`} onClick={(event) => event.stopPropagation()}>
-                              <GoogleMapsIcon size={24} />
-                            </a>
+                            <span className="places-trip-add-slot">
+                              <button
+                                className="places-trip-add-button"
+                                type="button"
+                                aria-label={tripAddTargetLabel}
+                                title={tripAddTargetLabel}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onTripPlaceAdd(place);
+                                }}
+                              >
+                                <Plus size={16} aria-hidden="true" />
+                              </button>
+                            </span>
                           </span>
-                          {poiMap?.can_edit !== false && (
-                            <Link to={withMap(`/places/${place.id}/edit`, poiMap?.id)} aria-label={`Éditer ${place.name}`} onClick={(event) => event.stopPropagation()}>
-                              <Pencil size={16} />
-                            </Link>
-                          )}
-                          {poiMap?.can_edit !== false && (
-                            <button type="button" aria-label={`Supprimer ${place.name}`} onClick={() => void removePlace(place)}>
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
+                        </div>}
                       </aside>
                     )}
                   </div>
+                  {inlineExpanded && (
+                    <div className="place-inline-details" role="region" aria-label={`Détails de ${place.name}`}>
+                      <PlaceMapPopup
+                        placeId={place.id}
+                        variant="inline"
+                        initialPlace={place}
+                        canEdit={poiMap?.can_edit !== false}
+                        allowPhotoPaste={false}
+                        showManagementActions
+                        tripAddTargetLabel={tripAddTargetLabel}
+                        onAddToTrip={(updatedPlace) => onTripPlaceAdd(updatedPlace)}
+                        onUpdated={(updatedPlace) => {
+                          setPlaces((current) => current.map((item) => item.id === updatedPlace.id ? updatedPlace : item));
+                          setPinnedSelectedPlace((current) => current?.id === updatedPlace.id ? updatedPlace : current);
+                          onBulkChanged();
+                        }}
+                        onEdit={() => navigate(withMap(`/places/${place.id}/edit`, poiMap?.id))}
+                        onDeleted={(placeId) => {
+                          setPlaces((current) => current.filter((item) => item.id !== placeId));
+                          setPinnedSelectedPlace((current) => current?.id === placeId ? null : current);
+                          onPlaceDeleted(placeId);
+                          onBulkChanged();
+                        }}
+                        onClose={onPlaceCollapse}
+                      />
+                    </div>
+                  )}
                 </article>
               );
             }}

@@ -1246,6 +1246,11 @@ function WorkspaceApp() {
             });
           }}
           onPlaceSelect={(place) => handleSelect(place, true, true, true)}
+          onPlaceCollapse={closePopup}
+          onPlaceDeleted={(placeId) => {
+            handleDeletePlace(placeId);
+            navigate(withMap("/", activeMapId, activeStatusId));
+          }}
           onImported={() => setRefreshVersion((value) => value + 1)}
           onBulkChanged={() => setRefreshVersion((value) => value + 1)}
           onBulkTripChanged={(tripId) => {
@@ -1732,6 +1737,7 @@ function WorkspaceApp() {
                   statuses={statuses}
                   focusRequest={focusRequest}
                   popupContent={popupContent}
+                  desktopPlaceDetailInline={selectedPlaceId !== null && workspacePanel === "places" && !tripPlannerOpen}
                   mobilePlaceDetailOpen={
                     (mobilePlaceDetailOpen && selectedPlaceId !== null && !editorOpen) ||
                     (tripPlannerOpen && (

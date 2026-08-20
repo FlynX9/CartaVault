@@ -139,6 +139,7 @@ interface MapPageProps {
   sidebar: ReactNode
   popupContent?: ReactNode
   mobilePlaceDetailOpen?: boolean
+  desktopPlaceDetailInline?: boolean
   placeList: ReactNode
   focusRequest: MapFocusRequest | null
   onBoundsChange: (bounds: MapBounds) => void
@@ -195,6 +196,7 @@ export function MapPage({
   sidebar,
   popupContent = null,
   mobilePlaceDetailOpen = false,
+  desktopPlaceDetailInline = false,
   placeList,
   focusRequest,
   onBoundsChange,
@@ -714,7 +716,7 @@ export function MapPage({
           onAnnotationDrawingComplete={(points) => setAnnotationDrawing((current) => current ? { ...current, points } : null)}
           photoMarkersEnabled={photoMarkersEnabled}
         />
-        {popupContent && !mobilePlaceDetailOpen && (
+        {popupContent && !mobilePlaceDetailOpen && !desktopPlaceDetailInline && (
           <FloatingPanelWindow key={PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={PLACE_DETAIL_WINDOW_KEY} initialGeometry={detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector=".place-map-popup" fitContentMaxHeight={720} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} onActivate={() => setActiveFloatingPanel('detail')}>
             <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
               {popupContent}
