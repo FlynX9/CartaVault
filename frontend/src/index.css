@@ -11722,7 +11722,7 @@ html[data-theme='dark'] .status-marker.selected {
 .map-tools-control__notice { color: #9a5b00; background: #fff7df; }
 .map-tools-control__selection-count { color: var(--cv-color-teal); font-size: .67rem; font-weight: 700; }
 
-.map-workspace .map-overlay-controls .status-legend, .map-workspace .map-overlay-controls .geographic-search, .map-workspace .map-overlay-controls .basemap-selector { position: relative; width: auto; min-width: 0; height: auto; min-height: 0; padding: 0; overflow: visible; color: var(--cv-color-navy); background: transparent; border: 0; box-shadow: none; }
+.map-workspace .map-overlay-controls .status-legend, .map-workspace .map-overlay-controls .geographic-search, .map-workspace .map-overlay-controls .basemap-selector { position: relative; width: auto; min-width: 0; height: auto; min-height: 0; padding: 0; overflow: visible; color: var(--cv-color-navy); background: transparent; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .map-workspace .map-overlay-controls .status-legend__toggle { width: auto; min-width: 0; justify-content: center; }
 .map-workspace .map-overlay-controls .status-legend__toggle > span { display: inline-flex; align-items: center; gap: .45rem; }
 .map-workspace .map-overlay-controls .status-legend__toggle > span > svg { padding: 0; color: currentColor; background: transparent; }
