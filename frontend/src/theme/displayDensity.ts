@@ -1,19 +1,20 @@
-export type DisplayDensity = 'compact' | 'comfortable' | 'spacious'
+export type DisplayDensity = '60' | '70' | '80' | '90' | '100' | 'compact' | 'comfortable' | 'spacious'
 
 export const DISPLAY_DENSITY_STORAGE_KEY = 'cartavault.display-density'
 
 export function parseDisplayDensity(value: unknown): DisplayDensity {
-  return value === 'comfortable' || value === 'spacious' || value === 'compact'
-    ? value
-    : 'compact'
+  if (value === '60' || value === '70' || value === '80' || value === '90' || value === '100') return value
+  if (value === 'compact') return '80'
+  if (value === 'comfortable') return '90'
+  return '100'
 }
 
 export function loadDisplayDensity(storage: Storage | null): DisplayDensity {
-  if (storage === null) return 'compact'
+  if (storage === null) return '100'
   try {
     return parseDisplayDensity(storage.getItem(DISPLAY_DENSITY_STORAGE_KEY))
   } catch {
-    return 'compact'
+    return '100'
   }
 }
 

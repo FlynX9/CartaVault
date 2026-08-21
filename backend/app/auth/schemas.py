@@ -144,7 +144,7 @@ class AccountPreferences(BaseModel):
     language: Literal["fr", "en"] = "fr"
     default_theme: Literal["light", "dark", "system"] = "system"
     preferred_basemap: Literal["openfreemap-light", "openfreemap-dark", "arcgis-satellite", "google-satellite"] = "openfreemap-light"
-    density: Literal["compact", "comfortable", "spacious"] = "compact"
+    density: Literal["60", "70", "80", "90", "100"] = "100"
     startup_panel: Literal["dashboard", "maps", "places", "last"] = "maps"
     timezone: str = Field(default="Europe/Paris", min_length=1, max_length=64)
     trash_retention_days: int = Field(default=30, ge=1, le=365)
@@ -159,6 +159,9 @@ class AccountPreferences(BaseModel):
     def migrate_legacy_preferences(cls, value: object) -> object:
         if not isinstance(value, dict):
             return value
+        density = value.get("density")
+        if density in {"compact", "comfortable", "spacious"}:
+            value = {**value, "density": {"compact": "80", "comfortable": "90", "spacious": "100"}[density]}
         migrated = dict(value)
         preferred_migrations = {
             "cartavault-light": "openfreemap-light",

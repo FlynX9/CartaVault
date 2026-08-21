@@ -16,7 +16,7 @@ export interface AccountPreferences {
   language: 'fr' | 'en'
   default_theme: 'light' | 'dark' | 'system'
   preferred_basemap: 'openfreemap-light' | 'openfreemap-dark' | 'arcgis-satellite' | 'google-satellite'
-  density: 'compact' | 'comfortable' | 'spacious'
+  density: '60' | '70' | '80' | '90' | '100' | 'compact' | 'comfortable' | 'spacious'
   startup_panel: 'dashboard' | 'maps' | 'places' | 'last'
   timezone: string
   trash_retention_days: number

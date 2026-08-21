@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { BookOpen, Braces, ChevronDown, ExternalLink, FileText, LogOut, Mail, Moon, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from "lucide-react";
+import { BookOpen, Braces, ChevronDown, ExternalLink, FileText, LogOut, Mail, Moon, Rows2, Rows4, Settings2, ShieldCheck, Sun, UserRound, WifiOff } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { accountAvatarUrl } from "../../api/account";
+import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, getAccountPreferences, updateAccountPreferences } from "../../api/account";
+import type { AccountPreferences } from "../../types/account";
+import { applyDisplayDensity, parseDisplayDensity, saveDisplayDensity, type DisplayDensity } from "../../theme/displayDensity";
 import { getSaasStatus } from "../../api/contact";
 import { useAuth } from "../../auth/useAuth";
 import { API_BASE_URL } from "../../config";
@@ -11,7 +13,6 @@ import { useTheme } from "../../theme/useTheme";
 import { AccountModal } from "../account/AccountModal";
 import { ContactModal } from "../contact/ContactModal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
-import { ActionHistoryControls } from "./ActionHistoryControls";
 import { clearActionHistory } from "../../ui/actionHistory";
 import { OfflineDownloadManager } from "../pwa/OfflineDownloadManager";
 import { CARTAVAULT_VERSION } from "../../version";
@@ -43,6 +44,7 @@ export function TopBar({ isMapWorkspace, contextLabel, onMapAccessChanged, onOpe
   const [releaseNotesOpen, setReleaseNotesOpen] = useState(false);
   const [saasEnabled, setSaasEnabled] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
+  const [preferences, setPreferences] = useState<AccountPreferences | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const avatar = accountAvatarUrl(user?.avatar_url ?? null);
@@ -110,6 +112,28 @@ export function TopBar({ isMapWorkspace, contextLabel, onMapAccessChanged, onOpe
       });
     return () => controller.abort();
   }, [user?.id]);
+  useEffect(() => {
+    if (!user) { setPreferences(null); return; }
+    const controller = new AbortController();
+    void getAccountPreferences(controller.signal).then((value) => { if (!controller.signal.aborted) setPreferences(value); }).catch(() => undefined);
+    const sync = (event: Event) => setPreferences((event as CustomEvent<AccountPreferences>).detail);
+    window.addEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, sync);
+    return () => { controller.abort(); window.removeEventListener(ACCOUNT_PREFERENCES_UPDATED_EVENT, sync); };
+  }, [user?.id]);
+  const updateDensity = (density: DisplayDensity) => {
+    if (!preferences) return;
+    const next = { ...preferences, density };
+    setPreferences(next);
+    applyDisplayDensity(density);
+    saveDisplayDensity(density, window.localStorage);
+    window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next }));
+    void updateAccountPreferences(next).then((saved) => {
+      setPreferences(saved);
+      window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: saved }));
+    }).catch(() => undefined);
+  };
+  const density = parseDisplayDensity(preferences?.density);
+  const densityValue = Number(density);
 
   return (
     <header className="app-header">
@@ -131,10 +155,14 @@ export function TopBar({ isMapWorkspace, contextLabel, onMapAccessChanged, onOpe
             <span>{t("offline.status")}</span>
           </span>
         )}
-        {isMapWorkspace && <ActionHistoryControls />}
-        {user && <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />}
         {user && (
           <div className="user-account-cluster">
+            <div className="topbar-density-control" aria-label="Densité de l’interface">
+              <button type="button" aria-label="Interface plus compacte" title="Interface plus compacte" disabled={densityValue <= 60} onClick={() => updateDensity(String(densityValue - 10) as DisplayDensity)}><Rows4 size={16} /></button>
+              <input type="range" min="60" max="100" step="10" value={densityValue} aria-label="Densité de l’interface" title={`Densité de l’interface : ${densityValue} %`} onChange={(event) => updateDensity(event.target.value as DisplayDensity)} />
+              <button type="button" aria-label="Interface plus espacée" title="Interface plus espacée" disabled={densityValue >= 100} onClick={() => updateDensity(String(densityValue + 10) as DisplayDensity)}><Rows2 size={16} /></button>
+              <output title={`Densité de l’interface : ${densityValue} %`}>{densityValue}%</output>
+            </div>
             <button className="topbar-theme-toggle" type="button" aria-label={nextThemeLabel} title={nextThemeLabel} aria-pressed={resolvedTheme === "dark"} onClick={toggleTheme}>
               <span className={`topbar-theme-toggle__choice${resolvedTheme === "light" ? " is-active" : ""}`}>
                 <Sun size={17} aria-hidden="true" />
@@ -146,6 +174,7 @@ export function TopBar({ isMapWorkspace, contextLabel, onMapAccessChanged, onOpe
             <button className="topbar-theme-toggle-mobile panel-icon-button" type="button" aria-label={nextThemeLabel} title={nextThemeLabel} aria-pressed={resolvedTheme === "dark"} onClick={toggleTheme}>
               {resolvedTheme === "light" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
             </button>
+            <NotificationCenter userId={user.id} isAdmin={user.is_admin} onAccessChanged={onMapAccessChanged} onOpenRegistrationRequests={onOpenRegistrationRequests} />
             <div ref={menu} className="user-account-menu">
               <button
                 ref={trigger}

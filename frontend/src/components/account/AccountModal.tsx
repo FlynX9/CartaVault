@@ -20,7 +20,7 @@ import { AvatarCropDialog } from './AvatarCropDialog'
 
 type Section = 'profile' | 'security' | 'preferences' | 'api_keys' | 'privacy' | 'offline'
 
-const emptyPreferences: AccountPreferences = { language: 'fr', default_theme: 'system', preferred_basemap: 'openfreemap-light', density: 'compact', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'openfreemap', satellite_provider: 'none' } }
+const emptyPreferences: AccountPreferences = { language: 'fr', default_theme: 'system', preferred_basemap: 'openfreemap-light', density: '100', startup_panel: 'maps', timezone: 'Europe/Paris', trash_retention_days: 30, photo_markers_enabled: false, onboarding: { dismissed: false, completed_steps: [] }, routing: { provider: 'osrm' }, places: { provider: 'stadia' }, basemaps: { classic_provider: 'openfreemap', satellite_provider: 'none' } }
 
 const fallbackTimeZones = ['Europe/Paris', 'Europe/London', 'Europe/Brussels', 'Europe/Berlin', 'Europe/Rome', 'Europe/Madrid', 'Europe/Zurich', 'America/New_York', 'America/Los_Angeles', 'America/Toronto', 'Asia/Tbilisi', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney', 'Pacific/Auckland', 'UTC']
 const supportedTimeZones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : fallbackTimeZones
@@ -424,7 +424,7 @@ function PreferencesSection({ preferences, setPreferences }: { preferences: Acco
           <select id="account-language" aria-labelledby="account-language-label" value={preferences.language} onChange={(event) => update('language', event.target.value as AccountPreferences['language'])}><option value="fr">{t('common.french')}</option><option value="en">{t('common.english')}</option></select>
         </PreferenceField>
         <PreferenceField icon={List} label={t('account.preferences.density')} htmlFor="account-density" description={t('account.preferences.densityDescription')}>
-          <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="compact">{t('account.preferences.compact')}</option><option value="comfortable">{t('account.preferences.comfortable')}</option><option value="spacious">{t('account.preferences.spacious')}</option></select>
+          <select id="account-density" aria-labelledby="account-density-label" value={preferences.density} onChange={(event) => update('density', event.target.value as AccountPreferences['density'])}><option value="60">60 %</option><option value="70">70 %</option><option value="80">80 %</option><option value="90">90 %</option><option value="100">100 %</option></select>
         </PreferenceField>
         <PreferenceField icon={LayoutDashboard} label={t('account.preferences.startup')} htmlFor="account-startup" description={t('account.preferences.startupDescription')}>
           <select id="account-startup" aria-labelledby="account-startup-label" value={preferences.startup_panel} onChange={(event) => update('startup_panel', event.target.value as AccountPreferences['startup_panel'])}><option value="dashboard">{t('dashboard.title')}</option><option value="maps">{t('nav.maps')}</option><option value="places">{t('nav.places')}</option><option value="last">{t('account.preferences.lastView')}</option></select>

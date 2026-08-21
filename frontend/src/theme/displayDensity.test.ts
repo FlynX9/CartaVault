@@ -14,11 +14,11 @@ import {
 const stylesheet = readFileSync('src/index.css', 'utf8')
 
 describe('CartaVault display density', () => {
-  it('normalizes unknown values to the existing compact scale', () => {
-    expect(parseDisplayDensity('compact')).toBe('compact')
-    expect(parseDisplayDensity('comfortable')).toBe('comfortable')
-    expect(parseDisplayDensity('spacious')).toBe('spacious')
-    expect(parseDisplayDensity('browser-zoom')).toBe('compact')
+  it('migrates legacy values and normalizes unknown values to 100 %', () => {
+    expect(parseDisplayDensity('compact')).toBe('80')
+    expect(parseDisplayDensity('comfortable')).toBe('90')
+    expect(parseDisplayDensity('spacious')).toBe('100')
+    expect(parseDisplayDensity('browser-zoom')).toBe('100')
   })
 
   it('stores the selected density for the next application paint', () => {
@@ -27,7 +27,7 @@ describe('CartaVault display density', () => {
     saveDisplayDensity('spacious', storage)
 
     expect(storage.getItem(DISPLAY_DENSITY_STORAGE_KEY)).toBe('spacious')
-    expect(loadDisplayDensity(storage)).toBe('spacious')
+    expect(loadDisplayDensity(storage)).toBe('100')
   })
 
   it('applies the density to the application root', () => {
