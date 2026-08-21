@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, CircleDot, Download, Ellipsis, FileUp, ListFilter, Map as MapIcon, MapPin, Route, Settings2, Shapes, Spline, SquareDashed, Tag, Users } from 'lucide-react'
+import { ChevronDown, CircleDot, Download, Ellipsis, FileUp, HardDriveDownload, ListFilter, Map as MapIcon, MapPin, Route, Settings2, Shapes, Spline, SquareDashed, Tag, Users } from 'lucide-react'
 import { IconTimelineEvent } from '@tabler/icons-react'
 
 import { useI18n } from '../../i18n/useI18n'
 import { CountryFlag } from '../maps/CountryFlag'
 import type { PoiMap } from '../../types/map'
 import type { WorkspacePanel } from './MainNavigation'
+import { ActionHistoryControls, ActionHistoryKeyboardShortcuts } from './ActionHistoryControls'
+
+export interface TripTechnicalActions {
+  exportTrip: () => void
+  makeOffline: () => void
+  toggleSettings: () => void
+}
 
 interface Props {
   poiMap: PoiMap
@@ -28,13 +35,14 @@ interface Props {
   onMapToolsPanelToggle?: () => void
   onLegendPanelToggle?: () => void
   onCountryMaskToggle?: () => void
+  tripTechnicalActions?: TripTechnicalActions | null
 }
 
 function tabClass(active: boolean, panelToggle = false): string {
   return `map-context-navigation__tab${panelToggle ? ' map-context-navigation__tab--panel-toggle' : ''}${active ? ' is-active' : ''}`
 }
 
-export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningActive, tripTimelineActive = false, tripTimelineAvailable = poiMap.trip_count > 0, mapToolsPanelOpen = false, legendPanelOpen = false, countryMaskEnabled = true, onMapChange, onPanelChange, onOpenTrips, onTripTimelineToggle = () => undefined, onImport, onExport, onSettings, onMembers, onMapToolsPanelToggle = () => undefined, onLegendPanelToggle = () => undefined, onCountryMaskToggle = () => undefined }: Props) {
+export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningActive, tripTimelineActive = false, tripTimelineAvailable = poiMap.trip_count > 0, mapToolsPanelOpen = false, legendPanelOpen = false, countryMaskEnabled = true, onMapChange, onPanelChange, onOpenTrips, onTripTimelineToggle = () => undefined, onImport, onExport, onSettings, onMembers, onMapToolsPanelToggle = () => undefined, onLegendPanelToggle = () => undefined, onCountryMaskToggle = () => undefined, tripTechnicalActions = null }: Props) {
   const { t } = useI18n()
   const [openMenu, setOpenMenu] = useState<'maps' | 'organization' | 'more' | null>(null)
   const navigationRef = useRef<HTMLElement>(null)
@@ -70,6 +78,7 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
   const tripsDisplayed = tripPlanningActive && !tripTimelineActive
 
   return <nav ref={navigationRef} className="map-context-navigation" aria-label={t('nav.mapContext')}>
+    <ActionHistoryKeyboardShortcuts />
     <div className="map-context-navigation__identity">
       <div ref={mapSwitcherRef} className="map-context-navigation__menu-host map-context-navigation__map-switcher">
         <button type="button" className="map-context-navigation__map-trigger" aria-label={t('nav.chooseMap')} aria-haspopup="listbox" aria-expanded={openMenu === 'maps'} onClick={() => setOpenMenu((current) => current === 'maps' ? null : 'maps')}>
@@ -109,13 +118,22 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
     <div ref={moreActionsRef} className="map-context-navigation__menu-host map-context-navigation__menu-host--more">
       <button type="button" className="map-context-navigation__tab map-context-navigation__more" aria-label={t('nav.mapActions')} aria-expanded={openMenu === 'more'} onClick={() => setOpenMenu((current) => current === 'more' ? null : 'more')}><Ellipsis size={20} /></button>
       {openMenu === 'more' && <div className="map-context-navigation__menu map-context-navigation__menu--more" role="menu" aria-label={t('nav.mapActions')}>
+        <div className="map-context-navigation__menu-section map-context-navigation__menu-section--first" role="presentation">Outils</div>
+        <ActionHistoryControls menu />
         <button type="button" className={`map-context-navigation__toggle-action${mapToolsPanelOpen ? ' is-active' : ''}`} role="menuitemcheckbox" aria-checked={mapToolsPanelOpen} onClick={onMapToolsPanelToggle}><MapIcon size={17} /><span>{t('map.tools.title')}</span><i aria-hidden="true"><b /></i></button>
         <button type="button" className={`map-context-navigation__toggle-action${legendPanelOpen ? ' is-active' : ''}`} role="menuitemcheckbox" aria-checked={legendPanelOpen} onClick={onLegendPanelToggle}><ListFilter size={17} /><span>{t('map.legend.title')}</span><i aria-hidden="true"><b /></i></button>
         <button type="button" className={`map-context-navigation__toggle-action${countryMaskEnabled ? ' is-active' : ''}`} role="menuitemcheckbox" aria-checked={countryMaskEnabled} onClick={onCountryMaskToggle}><SquareDashed size={17} /><span>Masque de pays</span><i aria-hidden="true"><b /></i></button>
+        <div className="map-context-navigation__menu-section" role="presentation">Carte</div>
         {poiMap.can_edit === true && <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onSettings() }}><Settings2 size={17} /><span>{t('maps.fields')}</span></button>}
         {poiMap.can_manage_members === true && <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onMembers() }}><Users size={17} /><span>{t('maps.members')}</span></button>}
         {poiMap.can_edit === true && poiMap.can_import !== false && <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onImport() }}><FileUp size={17} /><span>{t('places.import')}</span></button>}
         {poiMap.can_export !== false && <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); onExport() }}><Download size={17} /><span>{t('maps.export', { name: poiMap.name })}</span></button>}
+        {tripPlanningActive && tripTechnicalActions && <>
+          <div className="map-context-navigation__menu-section" role="presentation">Sortie</div>
+          <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); tripTechnicalActions.exportTrip() }}><Download size={17} /><span>Exporter la sortie</span></button>
+          <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); tripTechnicalActions.makeOffline() }}><HardDriveDownload size={17} /><span>Mettre hors ligne</span></button>
+          <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); tripTechnicalActions.toggleSettings() }}><Settings2 size={17} /><span>Paramètres de la sortie</span></button>
+        </>}
       </div>}
     </div>
   </nav>

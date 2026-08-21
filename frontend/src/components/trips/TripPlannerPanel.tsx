@@ -26,6 +26,11 @@ import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
 import { MobileTripStopSearchDialog } from "./MobileTripStopSearchDialog";
 
 export type UnsavedTripSettingsGuard = () => Promise<boolean>;
+export type TripTechnicalActions = {
+  exportTrip: () => void;
+  makeOffline: () => void;
+  toggleSettings: () => void;
+};
 
 interface Props {
   poiMap: PoiMap;
@@ -52,6 +57,7 @@ interface Props {
   onPreviewSelectionChange?: (key: string | null) => void;
   onUnsavedChangesGuardChange?: (guard: UnsavedTripSettingsGuard | null) => void;
   onInitialLoadComplete?: () => void;
+  onTechnicalActionsChange?: (actions: TripTechnicalActions | null) => void;
   onClose: () => void;
 }
 
@@ -93,7 +99,7 @@ const tripPanelMetricsCache = new globalThis.Map<
   }
 >();
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined, onTechnicalActionsChange }: Props) {
   const panelWindow = useContext(FloatingPanelWindowContext);
   const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
   const { confirm, confirmationDialog } = useConfirmDialog();
@@ -101,6 +107,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const canEdit = poiMap.can_edit === true;
   const isArchivedTrip = trip?.status === "completed" || trip?.status === "archived";
   const canEditTrip = canEdit && !isArchivedTrip;
+  const showLegacyTechnicalActions = onTechnicalActionsChange === undefined;
   const [trips, setTrips] = useState<Trip[]>([]);
   const [optimization, setOptimization] = useState<{
     dayId: string;
@@ -160,6 +167,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const [mobileDayTransitionDirection, setMobileDayTransitionDirection] = useState<MobileDayTransitionDirection>("forward");
   const [mobileDaySwipeOffset, setMobileDaySwipeOffset] = useState(0);
   const [mobileTimelineTarget, setMobileTimelineTarget] = useState<MobileTimelineTarget>(null);
+  const technicalActionsRef = useRef<TripTechnicalActions | null>(null);
   useEffect(() => {
     const query = window.matchMedia?.("(max-width: 760px)");
     if (!query) return;
@@ -660,15 +668,35 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       await reload(trip.id);
     });
   };
-  const exportGpx = async () => {
-    const item = await exportTripGpx(trip!.id);
-    window.open(tripExportUrl(item.download_url), "_blank", "noopener,noreferrer");
-  };
   const exportPdf = async (options: TripPdfExportOptions) => {
     const item = await exportTripPdf(trip!.id, options);
     const blob = await downloadTripExport(item.download_url);
     downloadFile(blob, item.file_name);
   };
+  const exportGpx = async () => {
+    const item = await exportTripGpx(trip!.id);
+    window.open(tripExportUrl(item.download_url), "_blank", "noopener,noreferrer");
+  };
+  technicalActionsRef.current = trip && !tripViewOnly ? {
+    exportTrip: () => {
+      setPdfExportTrigger(null);
+      setPdfExportOpen(true);
+    },
+    makeOffline: () => setOfflineDialogOpen(true),
+    toggleSettings,
+  } : null;
+  useEffect(() => {
+    if (!onTechnicalActionsChange) return;
+    const actions: TripTechnicalActions | null = trip && !tripViewOnly
+      ? {
+          exportTrip: () => technicalActionsRef.current?.exportTrip(),
+          makeOffline: () => technicalActionsRef.current?.makeOffline(),
+          toggleSettings: () => technicalActionsRef.current?.toggleSettings(),
+        }
+      : null;
+    onTechnicalActionsChange(actions);
+    return () => onTechnicalActionsChange(null);
+  }, [onTechnicalActionsChange, trip?.id, tripViewOnly]);
   const toggleDayCollapsed = (dayId: string) =>
     setCollapsedDayIds((current) => {
       const next = new Set(current);
@@ -1250,17 +1278,17 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                           <Plus size={16} />
                         </button>
                       )}
-                      {trip && (
+                      {showLegacyTechnicalActions && trip && (
                         <button className="panel-icon-button" type="button" aria-label="Rendre cette sortie disponible hors ligne" title="Disponible hors ligne" onClick={() => setOfflineDialogOpen(true)}>
                           <HardDriveDownload size={16} />
                         </button>
                       )}
-                      {trip && (
+                      {showLegacyTechnicalActions && trip && (
                         <button className={`panel-icon-button trip-settings-button${settingsOpen ? " active" : ""}`} type="button" aria-label={settingsOpen ? "Masquer les paramètres de la sortie" : "Afficher les paramètres de la sortie"} aria-expanded={settingsOpen} aria-pressed={settingsOpen} title="Paramètres de la sortie" onClick={toggleSettings}>
                           <SlidersHorizontal size={16} />
                         </button>
                       )}
-                      {trip && (
+                      {showLegacyTechnicalActions && trip && (
                         <TripExportMenu
                           onGpx={() => void run(exportGpx)}
                           onPdf={(trigger) => {
@@ -3920,39 +3948,8 @@ function downloadFile(blob: Blob, fileName: string) {
 }
 function TripExportMenu({ onGpx, onPdf }: { onGpx: () => void; onPdf: (trigger: HTMLButtonElement) => void }) {
   const menuRef = useRef<HTMLDetailsElement>(null);
-  return (
-    <details ref={menuRef} className="trip-export-menu">
-      <summary className="panel-icon-button" aria-label="Exporter la sortie" title="Exporter la sortie">
-        <Download size={16} />
-      </summary>
-      <div role="menu" aria-label="Options d’export">
-        <button
-          type="button"
-          role="menuitem"
-          onClick={(event) => {
-            menuRef.current?.removeAttribute("open");
-            onPdf(event.currentTarget);
-          }}
-        >
-          <Download size={14} />
-          Exporter en PDF
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            menuRef.current?.removeAttribute("open");
-            onGpx();
-          }}
-        >
-          <Download size={14} />
-          Exporter en GPX
-        </button>
-      </div>
-    </details>
-  );
+  return <details ref={menuRef} className="trip-export-menu"><summary className="panel-icon-button" aria-label="Exporter la sortie" title="Exporter la sortie"><Download size={16} /></summary><div role="menu" aria-label="Options d’export"><button type="button" role="menuitem" onClick={(event) => { menuRef.current?.removeAttribute("open"); onPdf(event.currentTarget); }}><Download size={14} />Exporter en PDF</button><button type="button" role="menuitem" onClick={() => { menuRef.current?.removeAttribute("open"); onGpx(); }}><Download size={14} />Exporter en GPX</button></div></details>;
 }
-
 function InsertDayControl({ day, onInsert }: { day: TripDay; onInsert: () => void }) {
   return (
     <div className="trip-panel-insert-day">

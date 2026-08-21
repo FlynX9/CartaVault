@@ -64,7 +64,7 @@ import {
   serializePlaceFilters,
 } from "./places/placeFilters";
 import { getTripMapBounds } from "./components/trips/tripMapBounds";
-import type { UnsavedTripSettingsGuard } from "./components/trips/TripPlannerPanel";
+import type { TripTechnicalActions, UnsavedTripSettingsGuard } from "./components/trips/TripPlannerPanel";
 import { recordReversibleAction, WORKSPACE_CHANGED_EVENT } from "./ui/actionHistory";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireAdmin } from "./auth/RequireAdmin";
@@ -236,6 +236,7 @@ function WorkspaceApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [mapOpening, setMapOpening] = useState(false);
   const [tripPlannerOpen, setTripPlannerOpen] = useState(false);
+  const [tripTechnicalActions, setTripTechnicalActions] = useState<TripTechnicalActions | null>(null);
   const [tripPlannerCollapsed, setTripPlannerCollapsed] = useState(false);
   const [mapToolsPanelOpen, setMapToolsPanelOpen] = useState(false);
   const [mapLegendPanelOpen, setMapLegendPanelOpen] = useState(false);
@@ -1449,6 +1450,7 @@ function WorkspaceApp() {
           onUnsavedChangesGuardChange={timelineOnly ? undefined : (guard) => {
             unsavedTripSettingsGuard.current = guard;
           }}
+          onTechnicalActionsChange={timelineOnly ? undefined : setTripTechnicalActions}
           onClose={() => {
             tripTimelineRestoreState.current = null;
             setTripPlannerOpen(false);
@@ -1626,6 +1628,7 @@ function WorkspaceApp() {
           mapToolsPanelOpen={mapToolsPanelOpen}
           legendPanelOpen={mapLegendPanelOpen}
           countryMaskEnabled={countryMaskEnabled}
+          tripTechnicalActions={tripTechnicalActions}
           onMapChange={handleContextMapChange}
           onPanelChange={handleWorkspacePanelChange}
           onOpenTrips={toggleTripsFromNavigation}
