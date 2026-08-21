@@ -1,4 +1,4 @@
-import { CalendarPlus, MapPinned, Pencil, Trash2, X } from "lucide-react";
+import { CalendarPlus, History, MapPinned, Pencil, Trash2, X } from "lucide-react";
 import { GoogleMapsIcon } from "../common/GoogleMapsIcon";
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   tripAddTargetLabel?: string | null;
   canChooseTripDay?: boolean;
   isAddingToTrip?: boolean;
+  isHistoryOpen?: boolean;
+  onToggleHistory?: () => void;
   onAddToTrip?: () => void;
   onShowOnMap?: () => void;
   onEdit: () => void;
@@ -26,6 +28,8 @@ export function PlacePopupActions({
   tripAddTargetLabel = null,
   canChooseTripDay = false,
   isAddingToTrip = false,
+  isHistoryOpen = false,
+  onToggleHistory,
   onAddToTrip = () => undefined,
   onShowOnMap,
   onEdit,
@@ -99,6 +103,19 @@ export function PlacePopupActions({
           <GoogleMapsIcon size={24} />
           <span>Ouvrir dans Google Maps</span>
         </a>
+      )}
+      {onToggleHistory && (
+        <button
+          className={`popup-action-history${isHistoryOpen ? " active" : ""}`}
+          type="button"
+          aria-label="Afficher l’historique"
+          aria-expanded={isHistoryOpen}
+          title="Historique"
+          onClick={onToggleHistory}
+        >
+          <History aria-hidden="true" size={17} />
+          <span>Historique</span>
+        </button>
       )}
       {showClose && (
         <button

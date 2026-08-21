@@ -544,19 +544,7 @@ export function PlaceMapPopup({
           {detailsError}
         </p>
       )}
-      {variant === "inline" && <div className="place-inline-details__utilities">
-        {canEdit && fieldEnabled("favorite") && <button
-          className={`popup-history-toggle${place.is_favorite ? " active" : ""}`}
-          type="button"
-          aria-pressed={place.is_favorite === true}
-          aria-label={place.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-          onClick={() => void toggleFavorite()}
-        >
-          <Heart size={15} fill={place.is_favorite ? "currentColor" : "none"} />
-          <span>Favori</span>
-        </button>}
-        <button className={`popup-history-toggle${historyOpen ? " active" : ""}`} type="button" aria-label="Afficher l’historique" aria-expanded={historyOpen} title="Historique" onClick={() => setHistoryOpen((value) => !value)}><History size={15} />Historique</button>
-      </div>}
+
       {historyOpen && <section className="popup-history" aria-label="Historique"><h3>Historique</h3>{historyLoading ? <p>Chargement…</p> : history.length === 0 ? <p>Aucun changement enregistré.</p> : <ol>{history.map((event) => <li key={event.id}><strong>{popupHistoryAction(event.action)}</strong><span>{event.actor_label} · {formatDate(event.created_at)}</span></li>)}</ol>}</section>}
       {fieldEnabled("description") && (
         <section className="popup-description">
@@ -656,6 +644,8 @@ export function PlaceMapPopup({
         tripAddTargetLabel={tripAddTargetLabel}
         canChooseTripDay={tripDays.length > 0}
         isAddingToTrip={addingToTrip}
+        isHistoryOpen={historyOpen}
+        onToggleHistory={variant === "inline" ? () => setHistoryOpen((value) => !value) : undefined}
         onAddToTrip={requestTripAdd}
         onShowOnMap={onShowOnMap}
         onEdit={onEdit}

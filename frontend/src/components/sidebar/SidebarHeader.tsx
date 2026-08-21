@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { PanelWindowControls } from '../layout/PanelWindowControls'
 
 interface SidebarHeaderProps {
   title: string
@@ -14,7 +15,7 @@ export function SidebarHeader({ title, onClose, actions = null }: SidebarHeaderP
   return (
     <header className="sidebar-header">
       <h2>{title}</h2>
-      <div className="sidebar-header__actions">{actions}<button
+      <div className="sidebar-header__actions">{actions}<PanelWindowControls /><button
         ref={closeButton}
         className="close-button"
         type="button"
