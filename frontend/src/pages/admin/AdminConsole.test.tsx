@@ -107,7 +107,7 @@ describe('AdminConsole', () => {
       settings: { enabled: true, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
       items: [{ country_code: 'BE', country_name: 'Belgique', state: 'generating', phase: 'Génération du fond', progress: 42, version: null, file_size: null, source_size: 1000, installed_at: null, source_date: null, min_zoom: null, max_zoom: null, schema: null, error_code: null, error_message: null, task_id: 'task-be', map_count: 1, supported: true }],
     })
-    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/admin/offline-maps']}><AdminConsole /></MemoryRouter>)
 
     const progress = await screen.findByRole('progressbar', { name: 'Génération du fond de Belgique' })
     expect(progress).toHaveAttribute('aria-valuenow', '42')
@@ -119,16 +119,16 @@ describe('AdminConsole', () => {
       settings: { enabled: false, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
       items: [],
     })
-    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/admin/offline-maps']}><AdminConsole /></MemoryRouter>)
 
-    const toggle = await screen.findByRole('switch', { name: 'Activer le fond CartaVault' })
+    const toggle = await screen.findByRole('switch', { name: 'Activer les données cartographiques hors ligne' })
     expect(toggle).not.toBeChecked()
     expect(screen.queryByText('Préparation automatique')).not.toBeInTheDocument()
     expect(screen.queryByText('Fonds installés')).not.toBeInTheDocument()
     expect(screen.queryByText('Ajouter un fond')).not.toBeInTheDocument()
 
     fireEvent.click(toggle)
-    expect(screen.getByText('Préparation offline')).toBeVisible()
+    expect(screen.getByText('Création des données nationales')).toBeVisible()
     expect(screen.getByText('Fonds installés')).toBeVisible()
   })
 
@@ -137,7 +137,7 @@ describe('AdminConsole', () => {
       settings: { enabled: true, preparation_policy: 'manual', update_policy: 'disabled', min_zoom: 0, max_zoom: 14, offline_min_zoom: 5, offline_max_zoom: 14, offline_padding_km: 20, offline_max_tiles: 25000 },
       items: [{ country_code: 'FR', country_name: 'France', state: 'error', phase: 'Erreur', progress: null, version: null, file_size: null, source_size: null, installed_at: null, source_date: null, min_zoom: null, max_zoom: null, schema: null, error_code: 'GENERATION_FAILED', error_message: 'Échec', task_id: null, map_count: 1, supported: true }],
     })
-    render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={['/admin/offline-maps']}><AdminConsole /></MemoryRouter>)
 
     expect(await screen.findByRole('button', { name: 'Supprimer' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeVisible()
