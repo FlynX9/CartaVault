@@ -5,9 +5,10 @@ interface SidebarHeaderProps {
   title: string
   onClose: () => void
   actions?: ReactNode
+  showCollapse?: boolean
 }
 
-export function SidebarHeader({ title, onClose, actions = null }: SidebarHeaderProps) {
+export function SidebarHeader({ title, onClose, actions = null, showCollapse = true }: SidebarHeaderProps) {
   const closeButton = useRef<HTMLButtonElement>(null)
 
   useEffect(() => closeButton.current?.focus(), [])
@@ -15,7 +16,7 @@ export function SidebarHeader({ title, onClose, actions = null }: SidebarHeaderP
   return (
     <header className="sidebar-header">
       <h2>{title}</h2>
-      <div className="sidebar-header__actions">{actions}<PanelWindowControls /><button
+      <div className="sidebar-header__actions">{actions}<PanelWindowControls showCollapse={showCollapse} /><button
         ref={closeButton}
         className="close-button"
         type="button"
@@ -23,7 +24,7 @@ export function SidebarHeader({ title, onClose, actions = null }: SidebarHeaderP
         aria-label="Fermer le volet"
       >
         ×
-      </button></div>
+        </button></div>
     </header>
   )
 }

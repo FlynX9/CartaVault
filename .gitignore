@@ -62,6 +62,7 @@ htmlcov/
 # Local Codex workspace metadata
 /.agents/
 /.codex-remote-attachments/
+/.opencode/
 
 /docs/screenshots/convert_to_webp.py
 

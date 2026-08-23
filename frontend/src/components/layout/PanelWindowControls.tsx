@@ -4,7 +4,11 @@ import { useContext } from "react";
 
 import { FloatingPanelWindowContext } from "./FloatingPanelWindow";
 
-export function PanelWindowControls() {
+interface PanelWindowControlsProps {
+  showCollapse?: boolean;
+}
+
+export function PanelWindowControls({ showCollapse = true }: PanelWindowControlsProps) {
   const panel = useContext(FloatingPanelWindowContext);
   if (!panel?.desktop || !panel.dockable) return null;
   const collapsed = panel.mode === "collapsed";
@@ -20,9 +24,11 @@ export function PanelWindowControls() {
             : <IconMagnetOff size={18} aria-hidden="true" data-panel-attachment-icon="detach" />}
         </button>
       )}
-      <button className="panel-icon-button panel-window-collapse-toggle" type="button" aria-label={collapsed ? "Déployer le panneau" : "Réduire le panneau"} title={collapsed ? "Déployer le panneau" : "Réduire le panneau"} aria-expanded={!collapsed} onClick={collapsed ? panel.expand : panel.collapse}>
-        {collapsed ? <ChevronRight size={18} aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
-      </button>
+      {showCollapse && (
+        <button className="panel-icon-button panel-window-collapse-toggle" type="button" aria-label={collapsed ? "Déployer le panneau" : "Réduire le panneau"} title={collapsed ? "Déployer le panneau" : "Réduire le panneau"} aria-expanded={!collapsed} onClick={collapsed ? panel.expand : panel.collapse}>
+          {collapsed ? <ChevronRight size={18} aria-hidden="true" /> : <ChevronLeft size={18} aria-hidden="true" />}
+        </button>
+      )}
     </div>
-  );
+  )
 }

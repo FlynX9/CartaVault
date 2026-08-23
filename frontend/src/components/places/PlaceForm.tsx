@@ -341,9 +341,9 @@ export function PlaceForm({
             {errors.condition && <small className="field-error">{errors.condition}</small>}
           </label>}
           {fieldEnabled('danger_level') && <label className="form-field form-field-wide danger-level-field">
-            <span>Niveau de danger</span>
-            <div className="danger-level-control" style={{ '--danger-level-color': DANGER_LEVELS[dangerLevelIndex(values.danger_level)].color } as CSSProperties}>
-              <div className="danger-level-control__options" role="group" aria-label="Niveau de danger">
+             <span>Risque</span>
+             <div className="danger-level-control" style={{ '--danger-level-color': DANGER_LEVELS[dangerLevelIndex(values.danger_level)].color } as CSSProperties}>
+               <div className="danger-level-control__options" role="group" aria-label="Risque">
                 {DANGER_LEVELS.map((level) => <button key={level.value} type="button" className={level.value === (values.danger_level || 'Normal') ? 'is-selected' : ''} style={{ '--danger-option-color': level.color } as CSSProperties} aria-pressed={level.value === (values.danger_level || 'Normal')} onClick={() => setValue('danger_level', level.value)}><Shield aria-hidden="true" size={18} />{level.label}</button>)}
               </div>
             </div>

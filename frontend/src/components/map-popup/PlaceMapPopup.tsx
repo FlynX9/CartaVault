@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -9,9 +9,11 @@ import {
   ExternalLink,
   Heart,
   History,
+  Info,
   MapPin,
   Link2,
   Star,
+  ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
 import { deletePlace, getPlaceDetails, getPlaceHistory, updatePlace } from "../../api/places";
@@ -60,6 +62,13 @@ function formatDate(value: string): string {
 function ratingFillPercentage(rating: number, star: number): number {
   return Math.max(0, Math.min(100, (rating - (star - 1)) * 100));
 }
+
+const DANGER_LEVEL_COLORS: Record<string, string> = {
+  Faible: "#159f83",
+  Normal: "#2788c8",
+  Moyen: "#e27a18",
+  "Élevé": "#d94d4d",
+};
 
 export function PlaceMapPopup({
   placeId,
@@ -283,6 +292,7 @@ export function PlaceMapPopup({
     place.latitude !== null && place.longitude !== null
       ? `${place.latitude.toFixed(5)}, ${place.longitude.toFixed(5)}`
       : null;
+  const dangerLevelColor = DANGER_LEVEL_COLORS[place.danger_level ?? ""] ?? "var(--cv-color-gray)";
   const fieldEnabled = (field: string) => place.field_config?.[field] !== false;
   const primaryCategory = place.categories.find((item) => item.is_primary);
   const isVisited = place.status.functional_state === "visited";
@@ -555,6 +565,75 @@ export function PlaceMapPopup({
           <p className={place.description ? undefined : "is-empty"}>{place.description || "Aucune description"}</p>
         </section>
       )}
+      {variant === "inline" && <section className="popup-practical-info" aria-labelledby={`practical-info-${place.id}`}>
+        <header className="popup-practical-info__header">
+          <Info size={18} aria-hidden="true" />
+          <h3 id={`practical-info-${place.id}`}>Informations pratiques</h3>
+        </header>
+        <div className="popup-practical-info__grid">
+          <article aria-label="Région administrative">
+            <Earth aria-hidden="true" />
+            <p>
+              <b>Région</b>
+              <span>{place.region || "Non déterminée"}</span>
+            </p>
+          </article>
+          {(coordinates || variant === "inline") && (
+            <article aria-label="Coordonnées GPS">
+              <MapPin aria-hidden="true" />
+              <p>
+                <b>Coordonnées</b>
+                <span className="popup-summary-coordinate-row">
+                  <span>{coordinates ?? "Non renseignées"}</span>
+                  {coordinates && <button
+                    className="popup-summary-copy"
+                    type="button"
+                    aria-label="Copier les coordonnées GPS"
+                    title="Copier les coordonnées"
+                    onClick={() =>
+                      void navigator.clipboard?.writeText(coordinates)
+                    }
+                  >
+                    <Copy size={13} aria-hidden="true" />
+                  </button>}
+                </span>
+              </p>
+            </article>
+          )}
+          <article aria-label="Durée de visite">
+            <Clock3 aria-hidden="true" />
+            <p>
+              <b>Durée de visite</b>
+              <span>{place.default_visit_duration_minutes == null && variant === "inline" ? "Non renseignée" : formatMinutes(place.default_visit_duration_minutes ?? 30)}</span>
+            </p>
+          </article>
+          {fieldEnabled("danger_level") && (
+            <article className="popup-summary-danger">
+              <ShieldCheck aria-hidden="true" />
+              <p>
+                <b>Risque</b>
+                <span><span className="popup-danger-value" style={{ "--danger-level-color": dangerLevelColor } as CSSProperties}><i aria-hidden="true" />{place.danger_level || "Non renseigné"}</span></span>
+              </p>
+            </article>
+          )}
+        </div>
+      </section>}
+      {variant === "inline" && <section className="popup-practical-history" aria-labelledby={`practical-history-${place.id}`}>
+        <header className="popup-practical-history__header">
+          <History size={19} aria-hidden="true" />
+          <h3 id={`practical-history-${place.id}`}>Historique</h3>
+        </header>
+        <div className="popup-practical-history__entries">
+          <div>
+            <CalendarDays size={18} aria-hidden="true" />
+            <span><b>Ajouté le</b><time dateTime={place.created_at}>{formatDate(place.created_at)}</time></span>
+          </div>
+          <div>
+            <History size={19} aria-hidden="true" />
+            <span><b>Modifié le</b><time dateTime={place.updated_at}>{formatDate(place.updated_at)}</time></span>
+          </div>
+        </div>
+      </section>}
       <PlaceAnnotations placeId={place.id} mapId={place.map_id} canEdit={canEdit} />
       {fieldEnabled("links") && (place.links?.length ?? 0) > 0 && (
         <details className="popup-links">
@@ -574,7 +653,7 @@ export function PlaceMapPopup({
           </ul>
         </details>
       )}
-      <div className="popup-summary">
+      {variant !== "inline" && <div className="popup-summary">
         <article aria-label="Région administrative">
           <Earth aria-hidden="true" />
           <p>
@@ -582,24 +661,22 @@ export function PlaceMapPopup({
             <span>{place.region || "Non déterminée"}</span>
           </p>
         </article>
-        {(coordinates || variant === "inline") && (
+        {coordinates && (
           <article aria-label="Coordonnées GPS">
             <MapPin aria-hidden="true" />
             <p>
               <b>Coordonnées</b>
               <span className="popup-summary-coordinate-row">
-                <span>{coordinates ?? "Non renseignées"}</span>
-                {coordinates && <button
+                <span>{coordinates}</span>
+                <button
                   className="popup-summary-copy"
                   type="button"
                   aria-label="Copier les coordonnées GPS"
                   title="Copier les coordonnées"
-                  onClick={() =>
-                    void navigator.clipboard?.writeText(coordinates)
-                  }
+                  onClick={() => void navigator.clipboard?.writeText(coordinates)}
                 >
                   <Copy size={13} aria-hidden="true" />
-                </button>}
+                </button>
               </span>
             </p>
           </article>
@@ -608,15 +685,15 @@ export function PlaceMapPopup({
           <Clock3 aria-hidden="true" />
           <p>
             <b>Durée de visite</b>
-            <span>{place.default_visit_duration_minutes == null && variant === "inline" ? "Non renseignée" : formatMinutes(place.default_visit_duration_minutes ?? 30)}</span>
+            <span>{formatMinutes(place.default_visit_duration_minutes ?? 30)}</span>
           </p>
         </article>
         {fieldEnabled("danger_level") && (
           <article className="popup-summary-danger">
             <TriangleAlert aria-hidden="true" />
             <p>
-              <b>Danger</b>
-              <span><span className="popup-danger-value"><i aria-hidden="true" />{place.danger_level || "Non renseigné"}</span></span>
+              <b>Risque</b>
+              <span><span className="popup-danger-value" style={{ "--danger-level-color": dangerLevelColor } as CSSProperties}><i aria-hidden="true" />{place.danger_level || "Non renseigné"}</span></span>
             </p>
           </article>
         )}
@@ -634,7 +711,7 @@ export function PlaceMapPopup({
             <span>{formatDate(place.updated_at)}</span>
           </p>
         </article>
-      </div>
+      </div>}
       <PlacePopupActions
         googleMapsUrl={googleUrl}
         isDeleting={deleting}
