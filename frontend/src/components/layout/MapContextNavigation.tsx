@@ -77,7 +77,7 @@ export function MapContextNavigation({ poiMap, maps, activePanel, tripPlanningAc
   const placesDisplayed = placesActive && !tripTimelineActive
   const tripsDisplayed = tripPlanningActive && !tripTimelineActive
 
-  return <nav ref={navigationRef} className="map-context-navigation" aria-label={t('nav.mapContext')}>
+  return <nav ref={navigationRef} className={`map-context-navigation${activePanel === null ? ' is-map-only' : ''}`} aria-label={t('nav.mapContext')}>
     <ActionHistoryKeyboardShortcuts />
     <div className="map-context-navigation__identity">
       <div ref={mapSwitcherRef} className="map-context-navigation__menu-host map-context-navigation__map-switcher">

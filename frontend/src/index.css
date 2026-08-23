@@ -562,6 +562,7 @@ html[data-theme='dark'] .map-context-navigation__map-copy strong { color: var(--
   .map-context-navigation__organization-menu { top: calc(100% - 1px); right: 0; left: 0; width: 100%; margin-top: 0; }
   .map-context-navigation__menu-host--more { position: absolute; top: .3rem; right: .45rem; margin-left: 0; }
   .map-context-navigation__menu-host--more .map-context-navigation__menu { top: calc(100% + .25rem); right: 0; left: auto; width: max-content; min-width: 13rem; }
+  .map-context-navigation.is-map-only .map-context-navigation__tabs { display: none; }
 }
 .main-navigation { z-index: var(--cv-z-topbar); display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 0.8rem 0.55rem; color: #dce4eb; background: var(--cv-color-navy); }
 .main-navigation-brand { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 0.75rem; }
@@ -4366,7 +4367,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 .map-editor-panel .photo-uploader {
   gap: 0.8rem;
   padding: 0.95rem;
-  background: var(--cv-color-off-white);
+  background: var(--cv-surface);
   border: 1px solid rgb(43 62 89 / 12%);
   border-radius: var(--cv-radius-md);
   box-shadow: 0 1px 0 rgb(13 27 42 / 2%);
@@ -4482,7 +4483,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 }
 
 .map-editor-panel .form-section--general .general-description textarea {
-  min-height: 13rem;
+  min-height: 6.5rem;
   resize: none;
 }
 
@@ -4632,15 +4633,16 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
 
 .map-editor-panel .photo-uploader,
 .map-editor-panel .photo-manager .photo-uploader {
-  background: var(--cv-color-off-white);
+  background: var(--cv-surface);
 }
 
 .map-editor-panel .photo-manager {
   margin-top: 0;
+  background: var(--cv-surface);
 }
 
 .map-editor-panel .place-links-editor {
-  background: var(--cv-color-off-white);
+  background: var(--cv-surface);
 }
 
 .map-editor-panel .photo-uploader-heading h3 {
@@ -4753,7 +4755,7 @@ html[data-theme='dark'] .trash-filter button[aria-pressed='true'] {
   }
 
   .map-editor-panel .form-section--general .general-description textarea {
-    min-height: 13rem;
+    min-height: 6.5rem;
     flex: 1;
   }
 
@@ -20475,6 +20477,95 @@ body.cv-panel-dock-split-resizing {
     background: #fff;
     box-shadow: 0 0 3px rgb(0 0 0 / 35%);
     transform: translate(-50%,-50%);
+  }
+}
+
+.map-editor-panel .photo-manager,
+.map-editor-panel .photo-manager .photo-uploader,
+.map-editor-panel .place-links-editor {
+  background: var(--cv-surface);
+}
+
+.map-editor-panel .place-links-editor__item.is-editing {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: end;
+  min-height: 6rem;
+  row-gap: .55rem;
+  padding: .7rem;
+}
+
+.map-editor-panel .place-links-editor__item.is-editing .field-error {
+  grid-column: 1 / -1;
+}
+
+.map-editor-panel .place-links-editor__item.is-editing .place-links-editor__item-actions {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+}
+
+.map-editor-panel .place-links-editor__item.is-editing .place-links-editor__item-actions button {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2.15rem;
+  padding: 0;
+  font-size: 0;
+}
+
+.map-editor-panel .place-links-editor__item.is-editing .place-links-editor__item-actions button:first-child::before {
+  color: var(--cv-color-teal);
+  content: "\2713";
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.map-editor-panel .sidebar-header .close-button {
+  color: var(--cv-color-slate);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.map-editor-panel .sidebar-header .close-button:is(:hover, :focus-visible) {
+  color: #b42318;
+  background: #fff5f5;
+  border-color: #b42318;
+  outline-color: rgb(180 35 24 / 18%);
+}
+
+.place-map-popup--inline .popup-practical-history__entries > div > svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 2.5rem;
+  padding: .48rem;
+  color: var(--cv-color-teal);
+  background: color-mix(in srgb, var(--cv-color-teal) 10%, var(--cv-surface));
+  border-radius: 50%;
+}
+
+.map-editor-panel .place-links-editor__item.is-editing select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 2.15rem;
+  padding: .4rem .55rem;
+  color: var(--cv-color-navy);
+  background: var(--cv-surface);
+  border: 1px solid var(--cv-border-strong);
+  border-radius: .45rem;
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 400;
+}
+
+@media (max-width: 600px) {
+  .map-editor-panel .place-links-editor__item.is-editing {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .map-editor-panel .place-links-editor__item.is-editing .place-links-editor__item-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: end;
   }
 }
 
