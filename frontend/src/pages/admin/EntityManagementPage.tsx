@@ -36,9 +36,10 @@ interface EntityManagementPageProps {
   config: EntityManagementConfig
   variant?: 'page' | 'panel'
   readOnly?: boolean
+  onClose?: () => void
 }
 
-export function EntityManagementPage({ config, variant = 'page', readOnly = false }: EntityManagementPageProps) {
+export function EntityManagementPage({ config, variant = 'page', readOnly = false, onClose }: EntityManagementPageProps) {
   const entityLabel = config.singularLabel.replace(/^(?:un|une)\s+/i, '')
   const displayEntityLabel = entityLabel.charAt(0).toLocaleUpperCase('fr-FR') + entityLabel.slice(1)
   const feminineEntity = /^une\s+/i.test(config.singularLabel)
@@ -128,7 +129,7 @@ export function EntityManagementPage({ config, variant = 'page', readOnly = fals
 
   return <section className={`admin-page${isPanel ? ' cv-management-panel' : ''}`}>
     {isPanel
-      ? <WorkspacePanelHeader eyebrow="Organisation" title={config.pluralLabel} count={`${entities.length} élément${entities.length > 1 ? 's' : ''}`} action={createAction} />
+      ? <WorkspacePanelHeader eyebrow="Organisation" title={config.pluralLabel} count={`${entities.length} élément${entities.length > 1 ? 's' : ''}`} action={createAction} onClose={onClose} />
       : <header className="admin-page-header"><div><h2>{config.pluralLabel}</h2></div>{!readOnly && <button className="primary-button" type="button" onClick={create}>Créer {config.singularLabel}</button>}</header>}
     {isPanel
       ? <WorkspaceSearchField value={queryInput} placeholder={`Rechercher ${config.singularLabel}`} onChange={setQueryInput} />

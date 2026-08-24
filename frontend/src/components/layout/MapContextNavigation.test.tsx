@@ -1,8 +1,11 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { listAccessibleTrips } from '../../api/trips'
 import type { PoiMap } from '../../types/map'
 import { MapContextNavigation } from './MapContextNavigation'
+
+vi.mock('../../api/trips', () => ({ listAccessibleTrips: vi.fn() }))
 
 const poiMap: PoiMap = {
   id: 'map-1', name: 'Carnet de France', country_id: 'fr', country: { id: 'fr', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' },
@@ -20,12 +23,12 @@ const belgiumMap: PoiMap = {
 
 describe('MapContextNavigation', () => {
   afterEach(cleanup)
+  beforeEach(() => vi.mocked(listAccessibleTrips).mockResolvedValue([]))
 
   it('identifies the map and switches contextual modules', () => {
     const onPanelChange = vi.fn()
-    const onOpenTrips = vi.fn()
     const onMapChange = vi.fn()
-    render(<MapContextNavigation poiMap={poiMap} maps={[poiMap, belgiumMap]} activePanel="places" tripPlanningActive={false} onMapChange={onMapChange} onPanelChange={onPanelChange} onOpenTrips={onOpenTrips} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
+     render(<MapContextNavigation poiMap={poiMap} maps={[poiMap, belgiumMap]} activePanel="places" tripPlanningActive={false} onMapChange={onMapChange} onPanelChange={onPanelChange} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
     expect(screen.queryByRole('button', { name: 'Retour aux cartes' })).not.toBeInTheDocument()
     expect(screen.getByText('Carnet de France')).toBeInTheDocument()
     expect(screen.getByText('France')).toBeInTheDocument()
@@ -34,68 +37,75 @@ describe('MapContextNavigation', () => {
     expect(belgiumOption.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/be.svg')
     fireEvent.click(belgiumOption)
     expect(onMapChange).toHaveBeenCalledWith('map-2')
-    expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(screen.getByRole('button', { name: 'Lieux' }))
-    expect(onPanelChange).toHaveBeenCalledWith(null)
-    fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
-    expect(onOpenTrips).toHaveBeenCalledOnce()
+     expect(screen.queryByRole('button', { name: 'Lieux' })).not.toBeInTheDocument()
+     expect(screen.queryByRole('button', { name: 'Sorties' })).not.toBeInTheDocument()
+     expect(screen.queryByRole('button', { name: 'Chronologie' })).not.toBeInTheDocument()
 
     const organization = screen.getByRole('button', { name: 'Organisation' })
-    expect(organization).toHaveTextContent(/^Organisation$/)
     fireEvent.click(organization)
     fireEvent.click(screen.getByRole('menuitem', { name: 'Tags' }))
     expect(onPanelChange).toHaveBeenCalledWith('tags')
-
-    fireEvent.click(organization)
-    expect(screen.getByRole('menu', { name: 'Organisation' })).toBeInTheDocument()
-    fireEvent.pointerDown(document.body)
-    expect(screen.queryByRole('menu', { name: 'Organisation' })).not.toBeInTheDocument()
   })
 
-  it('shows Places and Sorties as independent panel toggles', () => {
+  it('shows independently managed Places, Trips and Timeline tabs on the trip screen', () => {
     const onTripTimelineToggle = vi.fn()
-    const props = { poiMap, maps: [poiMap], activePanel: 'places' as const, tripPlanningActive: true, onMapChange: vi.fn(), onPanelChange: vi.fn(), onOpenTrips: vi.fn(), onTripTimelineToggle, onImport: vi.fn(), onExport: vi.fn(), onSettings: vi.fn(), onMembers: vi.fn() }
+    const onTripScreenPanelChange = vi.fn()
+    const props = { poiMap, maps: [poiMap], activePanel: 'trip' as const, tripPlanningActive: true, tripScreenActive: true, onMapChange: vi.fn(), onPanelChange: vi.fn(), onOpenTrips: vi.fn(), onTripTimelineToggle, onTripScreenPanelChange, onImport: vi.fn(), onExport: vi.fn(), onSettings: vi.fn(), onMembers: vi.fn() }
     const { rerender } = render(<MapContextNavigation {...props} tripTimelineActive />)
+    expect(screen.queryByRole('button', { name: 'Organisation' })).not.toBeInTheDocument()
 
-    const places = screen.getByRole('button', { name: 'Lieux' })
-    const trips = screen.getByRole('button', { name: 'Sorties' })
-    const timeline = screen.getByRole('button', { name: 'Chronologie' })
-    expect(places).toHaveAttribute('aria-pressed', 'false')
-    expect(trips).toHaveAttribute('aria-pressed', 'false')
-    expect(places).toBeDisabled()
-    expect(trips).toBeDisabled()
-    expect(timeline).toHaveAttribute('aria-pressed', 'true')
-    expect(places).toHaveClass('map-context-navigation__tab--panel-toggle')
-    expect(trips).toHaveClass('map-context-navigation__tab--panel-toggle')
-    expect(timeline).toHaveClass('map-context-navigation__tab--panel-toggle')
-    expect(timeline.querySelector('.tabler-icon-timeline-event')).toBeInTheDocument()
-    fireEvent.click(timeline)
-    expect(onTripTimelineToggle).toHaveBeenCalledOnce()
-    rerender(<MapContextNavigation {...props} tripTimelineActive={false} />)
+      const places = screen.getByRole('button', { name: 'Lieux' })
+      expect(screen.getByRole('button', { name: 'Sorties' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Chronologie' })).toBeInTheDocument()
+     expect(places).toHaveAttribute('aria-pressed', 'false')
     expect(places).toBeEnabled()
-    expect(trips).toBeEnabled()
-    expect(places).toHaveAttribute('aria-pressed', 'true')
-    expect(trips).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Organisation' })).not.toHaveClass('map-context-navigation__tab--panel-toggle')
+      expect(screen.getByRole('button', { name: 'Sorties' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Sorties' })).toHaveAttribute('aria-pressed', 'false')
+      expect(places).toHaveClass('map-context-navigation__tab--panel-toggle')
+      rerender(<MapContextNavigation {...props} tripScreenPanels={{ places: true, trip: true }} tripTimelineActive={false} />)
+      expect(places).toBeEnabled()
+      expect(places).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: 'Sorties' })).toHaveAttribute('aria-pressed', 'true')
+      fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
+      expect(screen.getByRole('button', { name: 'Sorties' })).toHaveClass('map-context-navigation__tab--panel-toggle')
+      expect(onTripScreenPanelChange).toHaveBeenCalledWith('trip')
+      rerender(<MapContextNavigation {...props} tripTimelineActive={false} />)
+      expect(screen.getByRole('button', { name: 'Sorties' })).toHaveAttribute('aria-pressed', 'true')
+      fireEvent.click(screen.getByRole('button', { name: 'Sorties' }))
+      expect(onTripScreenPanelChange).toHaveBeenCalledWith('trip')
     const toolbarSlot = document.getElementById('map-context-toolbar-slot')
-    expect(toolbarSlot?.previousElementSibling).toContainElement(screen.getByRole('button', { name: 'Organisation' }))
     expect(toolbarSlot?.parentElement?.nextElementSibling).toContainElement(screen.getByRole('button', { name: 'Actions de la carte' }))
   })
 
+  it('selects from the same global trip list as Mes Sorties', async () => {
+    const onTripSelect = vi.fn()
+    vi.mocked(listAccessibleTrips).mockResolvedValue([
+      { id: 'trip-1', map_id: poiMap.id, map_name: poiMap.name, country_name: 'France', country_code: 'FR', name: 'Séjour en France', start_date: null, end_date: null, status: 'draft', created_at: '', updated_at: '', day_count: 0, stop_count: 0, thumbnail_photo_id: null },
+      { id: 'trip-2', map_id: belgiumMap.id, map_name: belgiumMap.name, country_name: 'Belgique', country_code: 'BE', name: 'Week-end belge', start_date: null, end_date: null, status: 'draft', created_at: '', updated_at: '', day_count: 0, stop_count: 0, thumbnail_photo_id: null },
+    ])
+    render(<MapContextNavigation poiMap={poiMap} maps={[poiMap, belgiumMap]} activePanel="trip" tripPlanningActive tripScreenActive activeTrip={{ id: 'trip-1', name: 'Séjour en France' }} onTripSelect={onTripSelect} onMapChange={vi.fn()} onPanelChange={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choisir un voyage' }))
+    const option = await screen.findByRole('option', { name: /Week-end belge/ })
+    expect(option.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/be.svg')
+    fireEvent.click(option)
+    expect(onTripSelect).toHaveBeenCalledWith('trip-2')
+  })
+
   it('hides the timeline toggle when the map has no trip', () => {
-    render(<MapContextNavigation poiMap={{ ...poiMap, trip_count: 0 }} maps={[poiMap]} activePanel="places" tripPlanningActive tripTimelineAvailable={false} onMapChange={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
+    render(<MapContextNavigation poiMap={{ ...poiMap, trip_count: 0 }} maps={[poiMap]} activePanel="trip" tripPlanningActive tripScreenActive tripTimelineAvailable={false} onMapChange={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
 
     expect(screen.queryByRole('button', { name: 'Chronologie' })).not.toBeInTheDocument()
   })
 
-  it('keeps the timeline toggle available when the Trips panel is closed', () => {
+  it('hides all trip tabs when the trip is closed', () => {
     const onTripTimelineToggle = vi.fn()
     render(<MapContextNavigation poiMap={poiMap} maps={[poiMap]} activePanel="places" tripPlanningActive={false} tripTimelineAvailable onMapChange={vi.fn()} onPanelChange={vi.fn()} onOpenTrips={vi.fn()} onTripTimelineToggle={onTripTimelineToggle} onImport={vi.fn()} onExport={vi.fn()} onSettings={vi.fn()} onMembers={vi.fn()} />)
 
-    const timeline = screen.getByRole('button', { name: 'Chronologie' })
-    expect(timeline).toHaveAttribute('aria-pressed', 'false')
-    fireEvent.click(timeline)
-    expect(onTripTimelineToggle).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: 'Lieux' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sorties' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Chronologie' })).not.toBeInTheDocument()
+    expect(onTripTimelineToggle).not.toHaveBeenCalled()
   })
 
   it('exposes real map actions according to permissions', () => {

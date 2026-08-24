@@ -18,7 +18,7 @@ const shapes: Array<{ value: AnnotationShapeType; label: string }> = [
   { value: 'path', label: 'Chemin' },
 ]
 
-export function AnnotationTemplatesWorkspacePanel({ mapId, canEdit = true, collapsed = false, onCollapsedChange = () => undefined }: { mapId?: string; canEdit?: boolean; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void }) {
+export function AnnotationTemplatesWorkspacePanel({ mapId, canEdit = true, collapsed = false, onCollapsedChange = () => undefined, onClose }: { mapId?: string; canEdit?: boolean; collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void; onClose?: () => void }) {
   const [items, setItems] = useState<AnnotationTemplate[]>([])
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<AnnotationTemplate | null | undefined>(undefined)
@@ -90,7 +90,7 @@ export function AnnotationTemplatesWorkspacePanel({ mapId, canEdit = true, colla
   return <aside id="workspace-annotation-templates-panel" className={`country-place-panel workspace-management-panel cv-workspace-panel${collapsed ? ' is-collapsed' : ''}`} aria-label="Modèles d’annotation" tabIndex={-1}>
     <WorkspacePanelCloseContext.Provider value={{ collapsed, onToggleCollapsed: () => onCollapsedChange(!collapsed) }}>
       <section className="admin-page cv-management-panel">
-        <WorkspacePanelHeader eyebrow="Organisation" title="Annotations" count={`${items.length} élément${items.length > 1 ? 's' : ''}`} action={canEdit ? <button className="panel-icon-button primary panel-create-action" type="button" aria-label="Nouveau modèle d’annotation" title="Nouveau modèle" onClick={() => edit(null)}><Plus size={18} /></button> : undefined} />
+        <WorkspacePanelHeader eyebrow="Organisation" title="Annotations" count={`${items.length} élément${items.length > 1 ? 's' : ''}`} action={canEdit ? <button className="panel-icon-button primary panel-create-action" type="button" aria-label="Nouveau modèle d’annotation" title="Nouveau modèle" onClick={() => edit(null)}><Plus size={18} /></button> : undefined} onClose={onClose} />
         <WorkspaceSearchField value={search} placeholder="Rechercher une annotation" onChange={setSearch} />
         {error && <p className="form-alert" role="alert">{error}</p>}
         {editing !== undefined && canEdit && <form className="admin-form" onSubmit={(event) => { event.preventDefault(); void save() }}>

@@ -214,11 +214,28 @@ def test_archiving_a_trip_marks_it_completed_and_keeps_it_listed(integration_cli
     assert archived.json()["completed_at"] is not None
     assert archived.json()["archived_at"] is None
     assert trip["id"] in {item["id"] for item in integration_client.get(f"/maps/{poi_map.id}/trips").json()}
-
     restored = integration_client.post(f"/trips/{trip['id']}/unarchive")
     assert restored.status_code == 200
     assert restored.json()["status"] == "in_progress"
     assert restored.json()["completed_at"] is None
+
+
+def test_global_trip_listing_includes_map_context_and_counts(integration_client, poi_map) -> None:
+    created = integration_client.post(
+        f"/maps/{poi_map.id}/trips",
+        json={"name": "Bibliothèque globale"},
+    )
+    assert created.status_code == 201
+
+    response = integration_client.get("/trips")
+
+    assert response.status_code == 200
+    item = next(item for item in response.json() if item["id"] == created.json()["id"])
+    assert item["map_id"] == str(poi_map.id)
+    assert item["map_name"] == poi_map.name
+    assert item["day_count"] == 1
+    assert item["stop_count"] == 0
+    assert item["thumbnail_photo_id"] is None
 
 
 def test_new_trip_stop_uses_place_visit_duration_or_thirty_minutes(integration_client, poi_map) -> None:

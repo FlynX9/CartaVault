@@ -1,21 +1,25 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarDays, Route, X } from 'lucide-react'
+import { CalendarDays, MapPinned, Route, X } from 'lucide-react'
 
 import type { TripCreatePayload } from '../../api/trips'
 import { useModalFocus } from '../../hooks/useModalFocus'
+import { useI18n } from '../../i18n/useI18n'
+import type { PoiMap } from '../../types/map'
 
 interface Props {
-  mapName: string
+  maps: PoiMap[]
   onClose: () => void
-  onCreate: (payload: TripCreatePayload) => Promise<void>
+  onCreate: (mapId: string, payload: TripCreatePayload) => Promise<void>
 }
 
-export function CreateTripDialog({ mapName, onClose, onCreate }: Props) {
+export function CreateTripDialog({ maps, onClose, onCreate }: Props) {
+  const { t } = useI18n()
   const nameInput = useRef<HTMLInputElement>(null)
   const dialog = useRef<HTMLElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mapId, setMapId] = useState(maps[0]?.id ?? '')
 
   useModalFocus({ dialogRef: dialog, initialFocusRef: nameInput, onEscape: busy ? undefined : onClose })
 
@@ -24,33 +28,34 @@ export function CreateTripDialog({ mapName, onClose, onCreate }: Props) {
     const data = new FormData(event.currentTarget)
     const name = String(data.get('name') ?? '').trim()
     const startDate = String(data.get('start_date') ?? '')
-    if (!name) { setError('Donnez un nom à la sortie.'); return }
+    if (!name || !mapId) { setError(t('trips.createDialog.validation')); return }
     setBusy(true); setError(null)
     try {
-      await onCreate({
+      await onCreate(mapId, {
         name,
         description: String(data.get('description') ?? '').trim() || undefined,
         start_date: startDate || undefined,
         routing_profile: String(data.get('routing_profile') ?? 'driving') as TripCreatePayload['routing_profile'],
       })
     } catch (caught) {
-      setError(caught instanceof Error && caught.message !== 'Internal Server Error' ? caught.message : 'Impossible de créer la sortie pour le moment.')
+      setError(caught instanceof Error && caught.message !== 'Internal Server Error' ? caught.message : t('trips.createDialog.error'))
       setBusy(false)
     }
   }
 
   return createPortal(<div className="cv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
-    <section ref={dialog} className="create-trip-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-title">
+    <section ref={dialog} className="create-trip-dialog create-map-dialog cv-modal" role="dialog" aria-modal="true" aria-labelledby="create-trip-title">
       <form onSubmit={(event) => void submit(event)}>
-        <header><div><p className="cv-workspace-panel__eyebrow">Nouvelle sortie</p><h2 id="create-trip-title">Préparer une sortie</h2><span>Carte : {mapName}</span></div><button className="panel-icon-button" type="button" aria-label="Fermer" disabled={busy} onClick={onClose}><X size={18} /></button></header>
+        <header className="create-map-dialog__header"><span className="create-map-dialog__header-icon"><MapPinned aria-hidden="true" /></span><div><span>{t('trips.createDialog.eyebrow')}</span><h2 id="create-trip-title">{t('trips.createDialog.title')}</h2><p>{t('trips.createDialog.description')}</p></div><button type="button" aria-label={t('common.close')} disabled={busy} onClick={onClose}><X aria-hidden="true" /></button></header>
         <div className="create-trip-dialog__body">
           {error && <p className="form-alert" role="alert">{error}</p>}
-          <label className="form-field"><span>Nom de la sortie *</span><input ref={nameInput} name="name" maxLength={160} placeholder="Week-end en Belgique" required /></label>
-          <label className="form-field"><span>Description</span><textarea name="description" maxLength={10000} rows={3} placeholder="Objectif ou notes générales…" /></label>
-          <label className="form-field"><span>Date de départ</span><input name="start_date" type="date" /></label>
-          <label className="form-field"><span>Mode de déplacement</span><span className="create-trip-dialog__select"><Route size={16} /><select name="routing_profile" defaultValue="driving"><option value="driving">Voiture</option><option value="walking">Marche</option><option value="cycling">Vélo</option></select></span></label>
+          <label className="form-field"><span>{t('trips.createDialog.map')}</span><select value={mapId} onChange={(event) => setMapId(event.target.value)} required>{maps.map((map) => <option key={map.id} value={map.id}>{map.name}</option>)}</select></label>
+          <label className="form-field"><span>{t('trips.createDialog.name')}</span><input ref={nameInput} name="name" maxLength={160} placeholder={t('trips.createDialog.namePlaceholder')} required /></label>
+          <label className="form-field"><span>{t('trips.createDialog.descriptionLabel')}</span><textarea name="description" maxLength={10000} rows={3} placeholder={t('trips.createDialog.descriptionPlaceholder')} /></label>
+          <label className="form-field"><span>{t('trips.createDialog.startDate')}</span><input name="start_date" type="date" /></label>
+          <label className="form-field"><span>{t('trips.createDialog.routingProfile')}</span><span className="create-trip-dialog__select"><Route size={16} /><select name="routing_profile" defaultValue="driving"><option value="driving">{t('trips.createDialog.driving')}</option><option value="walking">{t('trips.createDialog.walking')}</option><option value="cycling">{t('trips.createDialog.cycling')}</option></select></span></label>
         </div>
-        <footer className="dialog-actions"><button className="secondary-button" type="button" disabled={busy} onClick={onClose}>Annuler</button><button className="primary-button" type="submit" disabled={busy}><CalendarDays size={16} />{busy ? 'Création…' : 'Créer la sortie'}</button></footer>
+        <footer className="dialog-actions"><button className="secondary-button cv-action-button" type="button" disabled={busy} onClick={onClose}>{t('common.cancel')}</button><button className="primary-button cv-action-button is-primary" type="submit" disabled={busy || !mapId}><CalendarDays size={16} />{busy ? t('trips.createDialog.submitting') : t('trips.createDialog.submit')}</button></footer>
       </form>
     </section>
   </div>, document.body)

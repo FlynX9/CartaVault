@@ -332,6 +332,23 @@ class TripRead(ORMRead):
     days: list[DayRead] = Field(default_factory=list); nights: list[NightRead] = Field(default_factory=list); departure: DepartureRead | None = None; arrival: ArrivalRead | None = None
 
 
+class TripListRead(BaseModel):
+    id: UUID
+    map_id: UUID
+    map_name: str
+    country_name: str
+    country_code: str
+    name: str
+    start_date: DateValue | None
+    end_date: DateValue | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    day_count: int
+    stop_count: int
+    thumbnail_photo_id: UUID | None = None
+
+
 class TripSummaryRead(BaseModel):
     trip_id: UUID; days: int; nights: int; stops: int; unique_places: int; distance_meters: float; route_duration_seconds: float
     visit_duration_minutes: int; total_duration_minutes: int; visit_status_counts: dict[str, int]

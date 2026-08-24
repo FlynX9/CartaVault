@@ -35,9 +35,10 @@ interface StatusesPanelProps {
   variant?: 'page' | 'panel'
   mapId?: string
   canEdit?: boolean
+  onClose?: () => void
 }
 
-export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: StatusesPanelProps) {
+export function StatusesPanel({ variant = 'page', mapId, canEdit = true, onClose }: StatusesPanelProps) {
   const { confirm, confirmationDialog } = useConfirmDialog({ overlayClassName: 'account-admin-modal-overlay' })
   const [statuses, setStatuses] = useState<PlaceStatus[]>([])
   const [search, setSearch] = useState('')
@@ -211,6 +212,7 @@ export function StatusesPanel({ variant = 'page', mapId, canEdit = true }: Statu
           <span className="panel-create-action__label">Nouveau statut</span>
         </button></div>
       ) : undefined}
+      onClose={onClose}
     />
   )
 

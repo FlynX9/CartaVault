@@ -108,7 +108,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('region', { name: 'Contenu de la sortie' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Sortie' })).not.toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Chronologie compacte de la sortie' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Jour 1' })).toHaveTextContent('J1')
+    expect(screen.getByRole('button', { name: 'Jour 1' }).querySelector('.lucide-sun')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir le panneau Sortie' }))
     expect(onCollapsedChange).toHaveBeenCalledWith(false)
   })
@@ -143,6 +143,7 @@ describe('TripPlannerPanel', () => {
     const firstBlock = firstHeader.closest<HTMLElement>('.trip-timeline-day-block')!
     const secondBlock = secondHeader.closest<HTMLElement>('.trip-timeline-day-block')!
     expect(firstHeader).toHaveAttribute('draggable', 'true')
+    fireEvent.click(firstBlock.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival)')!)
     expect(within(firstBlock).getByText('Nuit du premier jour')).toBeVisible()
     expect(secondBlock.querySelector('.trip-panel-night:not(.trip-panel-arrival)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Déplacer le jour/ })).not.toBeInTheDocument()
@@ -205,7 +206,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByRole('button', { name: 'Optimiser le voyage' })).toBeVisible()
     const journeyToolbar = container.querySelector<HTMLElement>('.trip-panel-journeys-header-actions')!
     expect(journeyToolbar).not.toBeNull()
-    expect(within(journeyToolbar).getAllByRole('button')).toHaveLength(4)
+    expect(within(journeyToolbar).getAllByRole('button')).toHaveLength(2)
 
     const selector = screen.getByLabelText('Choisir un voyage').closest<HTMLElement>('.trip-panel-selector')!
     const createButton = within(selector).getByRole('button', { name: 'Créer une sortie' })
@@ -484,12 +485,12 @@ describe('TripPlannerPanel', () => {
 
   it('navigates the interactive preview timeline and focuses its stops on the map', async () => {
     const firstDay = { ...trip.days[0], stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: 'place-1', stop_type: 'place' as const, name: 'Musée', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'departure:departure-1', to: 'stop:stop-1', distance_meters: 3_500, duration_seconds: 420, routable: true }, { from: 'stop:stop-1', to: 'night:night-1', distance_meters: 4_200, duration_seconds: 480, routable: true }] }
-    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563EB', stops: [{ id: 'stop-2', trip_day_id: 'day-2', place_id: null, stop_type: 'free_location' as const, name: 'Belvédère', latitude: 48.2, longitude: 2.2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'night:night-1', to: 'stop:stop-2', distance_meters: 6_100, duration_seconds: 720, routable: true }, { from: 'stop:stop-2', to: 'arrival:departure-1', distance_meters: 7_300, duration_seconds: 660, routable: true }] }
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1, color: '#2563EB', stops: [{ id: 'stop-2', trip_day_id: 'day-2', place_id: null, stop_type: 'free_location' as const, name: 'Belvédère', latitude: 48.2, longitude: 2.2, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }], route_segments: [{ from: 'night:night-1', to: 'stop:stop-2', distance_meters: 6_100, duration_seconds: 720, routable: true }, { from: 'stop:stop-2', to: 'arrival:arrival-1', distance_meters: 7_300, duration_seconds: 660, routable: true }] }
     const previewTrip: Trip = {
       ...trip,
       days: [firstDay, secondDay],
       departure: { id: 'departure-1', trip_id: trip.id, place_id: 'station-1', name: 'Gare', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
-      arrival: null,
+      arrival: { id: 'arrival-1', trip_id: trip.id, place_id: 'station-2', name: 'Gare', latitude: 48, longitude: 2, address: null, notes: null },
       nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-1', source_type: 'place', name: 'Hôtel Central', latitude: 48.15, longitude: 2.15, address: null, google_place_id: null, notes: null, check_in_time: '20:30:00', check_out_time: null }],
     }
     vi.mocked(listTrips).mockResolvedValue([previewTrip])
@@ -662,6 +663,16 @@ describe('TripPlannerPanel', () => {
     expect(onStopPlaceSelect).not.toHaveBeenCalledWith('hotel-1')
   })
 
+  it('does not show the departure as an implicit arrival', async () => {
+    const departureOnly = { ...trip, departure: { id: 'departure-1', trip_id: trip.id, place_id: 'station-1', name: 'Gare', latitude: 48, longitude: 2, address: null, notes: null, departure_time: null }, arrival: null } satisfies Trip
+    vi.mocked(getTrip).mockResolvedValue(departureOnly)
+    vi.mocked(listTrips).mockResolvedValue([departureOnly])
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={departureOnly} activeDayId="day-1" tripViewOnly onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    expect(await screen.findByRole('button', { name: 'Départ : Gare' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Arrivée : Gare' })).not.toBeInTheDocument()
+  })
+
   it('shows route metrics between stops only for the day opened by a stop selection', async () => {
     const stops = [
       { id: 'stop-a', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Alpha', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const },
@@ -737,7 +748,7 @@ describe('TripPlannerPanel', () => {
     const dayBlock = hideToggle.closest('.trip-timeline-day-block')
     const dayDetails = dayBlock?.querySelector('details')
     expect(dayDetails?.querySelector('summary')).not.toContainElement(hideToggle)
-    expect(dayDetails?.querySelector('.trip-panel-day-header-controls')).not.toContainElement(hideToggle)
+    expect(dayDetails?.querySelector('.trip-panel-day-header-controls')).toBeNull()
     expect(dayBlock).toContainElement(hideToggle)
     const footerActions = dayDetails?.querySelector('.trip-panel-route-actions')
     expect(dayDetails?.querySelector('summary')).not.toContainElement(screen.getByRole('button', { name: 'Dupliquer la journée' }))
@@ -834,7 +845,53 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByText('Chargement du voyage…')).not.toBeInTheDocument()
   })
 
-  it('selects a day without collapsing it, and uses its dedicated control to collapse it', async () => {
+  it('shows a green ghost block for each place drop target', async () => {
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    await screen.findByRole('button', { name: 'Sélectionner le départ comme cible d’ajout' })
+    const dataTransfer = { types: ['application/x-cartavault-place'], getData: () => 'place-42', dropEffect: 'none' }
+    const day = container.querySelector<HTMLElement>('.trip-panel-day')!
+    fireEvent.dragOver(day, { dataTransfer })
+    expect(within(day).getByText('Déposer le POI ici')).toBeVisible()
+    fireEvent.dragLeave(day, { relatedTarget: document.body })
+    expect(within(day).queryByText('Déposer le POI ici')).not.toBeInTheDocument()
+
+    const targets = [container.querySelector<HTMLElement>('.trip-panel-departure')!, container.querySelector<HTMLElement>('.trip-panel-arrival')!]
+    for (const target of targets) {
+      fireEvent.dragEnter(target, { dataTransfer })
+      expect(within(target).getByText('Déposer le POI ici')).toBeVisible()
+      fireEvent.dragLeave(target, { relatedTarget: document.body })
+      expect(within(target).queryByText('Déposer le POI ici')).not.toBeInTheDocument()
+    }
+  })
+
+  it('previews a replacement around existing anchors and nights, but not in a populated day', async () => {
+    const stop = { id: 'stop-1', trip_day_id: 'day-1', place_id: 'place-1', stop_type: 'place' as const, name: 'Étape existante', latitude: 48, longitude: 2, address: null, sort_order: 0, visit_duration_minutes: null, notes: null, is_required: false, is_locked: false, visit_status: 'planned' as const }
+    const populatedTrip = {
+      ...trip,
+      departure: { id: 'departure-1', trip_id: trip.id, place_id: 'place-departure', name: 'Départ existant', latitude: 48, longitude: 2, address: null, notes: null, departure_time: null },
+      arrival: { id: 'arrival-1', trip_id: trip.id, place_id: 'place-arrival', name: 'Arrivée existante', latitude: 49, longitude: 3, address: null, notes: null },
+      days: [{ ...trip.days[0], stops: [stop] }, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }],
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'place-night', source_type: 'place' as const, name: 'Nuit existante', latitude: 48.5, longitude: 2.5, address: null, google_place_id: null, notes: null }],
+    } satisfies Trip
+    vi.mocked(getTrip).mockResolvedValue(populatedTrip)
+    vi.mocked(listTrips).mockResolvedValue([populatedTrip])
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={populatedTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+    const dataTransfer = { types: ['application/x-cartavault-place'], getData: () => 'place-42', dropEffect: 'none' }
+
+    const day = await screen.findByText('Étape existante')
+    fireEvent.dragOver(day.closest('.trip-panel-day')!, { dataTransfer })
+    expect(screen.queryByText('Déposer le POI ici')).not.toBeInTheDocument()
+
+    for (const target of [container.querySelector<HTMLElement>('.trip-panel-departure')!, container.querySelector<HTMLElement>('.trip-panel-arrival')!, container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival)')!]) {
+      fireEvent.click(target.querySelector<HTMLElement>('.trip-night-header-row')!)
+      fireEvent.dragEnter(target, { dataTransfer })
+      expect(within(target).getByText('Remplacer le POI').closest('.trip-night-stop')).toBeInTheDocument()
+      expect(target.querySelector('.trip-night-stop')).toBeInTheDocument()
+      fireEvent.dragLeave(target, { relatedTarget: document.body })
+    }
+  })
+
+  it('selects a day from its header without a dedicated collapse control', async () => {
     const onActiveDayChange = vi.fn()
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={trip} activeDayId={null} onTripChange={vi.fn()} onActiveDayChange={onActiveDayChange} onClose={vi.fn()} />)
     await waitFor(() => expect(getTrip).toHaveBeenCalledWith('trip-1', expect.any(AbortSignal)))
@@ -849,9 +906,7 @@ describe('TripPlannerPanel', () => {
     fireEvent.click(day.querySelector('.trip-panel-day-content')!)
     expect(onActiveDayChange).toHaveBeenCalledTimes(2)
 
-    fireEvent.click(within(day).getByRole('button', { name: /Réduire le jour 1/i }))
-    expect(day.open).toBe(false)
-    expect(within(day).getByRole('button', { name: /Développer le jour 1/i })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(day).queryByRole('button', { name: /Réduire le jour|Développer le jour/i })).not.toBeInTheDocument()
   })
 
   it('inserts a POI dropped on an existing stop without sending the drag prefix as a UUID', async () => {
@@ -871,9 +926,9 @@ describe('TripPlannerPanel', () => {
     const target = await screen.findByRole('button', { name: /Étape existante/ })
     const dataTransfer = { getData: () => 'place:place-42' }
     fireEvent.dragOver(target.closest('li')!, { dataTransfer, clientY: 0 })
-    expect(target.closest('li')).toHaveClass('drop-before')
+    expect(within(target.closest('li')!).getByText('Déposer le POI ici')).toBeVisible()
     fireEvent.dragEnd(window)
-    expect(target.closest('li')).not.toHaveClass('drop-before')
+    expect(within(target.closest('li')!).queryByText('Déposer le POI ici')).not.toBeInTheDocument()
     fireEvent.dragOver(target.closest('li')!, { dataTransfer, clientY: 0 })
     fireEvent.drop(target.closest('li')!, { dataTransfer })
 
@@ -888,43 +943,48 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTrip).mockResolvedValue(twoDays)
     vi.mocked(getPlaceDetails).mockResolvedValue({ id: 'hotel-poi', name: 'Hôtel POI', latitude: 50, longitude: 4, map: { id: 'map-1', name: 'Belgique', country: {} } } as never)
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    expect(await screen.findByText('N1')).toBeVisible()
     const nightBadge = container.querySelector<HTMLElement>('.trip-timeline-night-badge')
-    expect(nightBadge?.querySelector('.lucide-moon')).toBeInTheDocument()
+    expect(nightBadge?.querySelector('.lucide-bed-single')).toBeInTheDocument()
     const nightCard = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')
     expect(nightCard?.style.getPropertyValue('--trip-night-previous-color')).toBe('#e11d48')
     expect(nightCard?.style.getPropertyValue('--trip-night-next-color')).toBe('#2563eb')
     const nightDropTarget = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')!
     const dataTransfer = { types: ['text/plain'], getData: () => 'place:hotel-poi' }
     fireEvent.dragEnter(nightDropTarget, { dataTransfer })
-    expect(within(nightDropTarget).getByText('Déposer ici')).toBeVisible()
+    expect(within(nightDropTarget).getByText('Déposer le POI ici')).toBeVisible()
     expect(within(nightDropTarget).queryByText('Glissez un POI ou utilisez la recherche de la carte')).not.toBeInTheDocument()
     fireEvent.dragLeave(nightDropTarget, { relatedTarget: document.body })
-    expect(within(nightDropTarget).queryByText('Déposer ici')).not.toBeInTheDocument()
+    expect(within(nightDropTarget).queryByText('Déposer le POI ici')).not.toBeInTheDocument()
     expect(within(nightDropTarget).getByText('Glissez un POI ou utilisez la recherche de la carte')).toBeVisible()
     fireEvent.dragEnter(nightDropTarget, { dataTransfer })
     fireEvent.dragEnd(window)
-    expect(within(nightDropTarget).queryByText('Déposer ici')).not.toBeInTheDocument()
+    expect(within(nightDropTarget).queryByText('Déposer le POI ici')).not.toBeInTheDocument()
     fireEvent.dragEnter(nightDropTarget, { dataTransfer })
     fireEvent.drop(nightDropTarget, { dataTransfer })
     await waitFor(() => expect(addTripNight).toHaveBeenCalledWith('trip-1', { previous_day_id: 'day-1', next_day_id: 'day-2', place_id: 'hotel-poi', source_type: 'place' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('collapses and expands a night with its dedicated control', async () => {
+  it('expands only the selected timeline item', async () => {
     const twoDays = { ...trip, days: [{ ...trip.days[0] }, { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }] }
     vi.mocked(listTrips).mockResolvedValue([twoDays])
     vi.mocked(getTrip).mockResolvedValue(twoDays)
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
     const nightCard = container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure)')!
+    const firstDay = container.querySelector<HTMLElement>('.trip-panel-day')!
+    const departureCard = container.querySelector<HTMLElement>('.trip-panel-departure')!
+    const arrivalCard = container.querySelector<HTMLElement>('.trip-panel-arrival')!
 
-    fireEvent.click(await within(nightCard).findByRole('button', { name: 'Réduire la nuit 1' }))
+    expect(firstDay).toHaveAttribute('open')
     expect(nightCard).toHaveClass('is-collapsed')
-    expect(within(nightCard).queryByText('Glissez un POI ou utilisez la recherche de la carte')).not.toBeInTheDocument()
+    expect(departureCard).toHaveClass('is-collapsed')
+    expect(arrivalCard).toHaveClass('is-collapsed')
 
-    fireEvent.click(within(nightCard).getByRole('button', { name: 'Développer la nuit 1' }))
-    expect(nightCard).not.toHaveClass('is-collapsed')
+    fireEvent.click(nightCard)
+    await waitFor(() => expect(nightCard).not.toHaveClass('is-collapsed'))
+    expect(firstDay).not.toHaveAttribute('open')
     expect(within(nightCard).getByText('Glissez un POI ou utilisez la recherche de la carte')).toBeVisible()
+    expect(within(nightCard).queryByRole('button', { name: /Réduire la nuit|Développer la nuit/ })).not.toBeInTheDocument()
   })
 
   it('removes a stop and refreshes the active trip without reloading the panel', async () => {
@@ -978,7 +1038,7 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('combobox', { name: /Visite/ })).not.toBeInTheDocument()
   })
 
-  it('shows a precise insertion bar and moves the dragged stop to that position', async () => {
+  it('shows an insertion ghost and moves the dragged stop to that position', async () => {
     const stops = [0, 1].map((index) => ({ id: `stop-${index}`, trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: `Étape ${index}`, latitude: 48 + index, longitude: 2 + index, address: null, sort_order: index, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }))
     const withStops = { ...trip, days: [{ ...trip.days[0], stops }] } satisfies Trip
     vi.mocked(listTrips).mockResolvedValue([withStops]); vi.mocked(getTrip).mockResolvedValue(withStops)
@@ -992,7 +1052,7 @@ describe('TripPlannerPanel', () => {
     fireEvent.dragStart(source, { dataTransfer })
     expect(source).toHaveClass('is-dragging')
     fireEvent.dragOver(target, { dataTransfer, clientY: 0 })
-    expect(target).toHaveClass('drop-before')
+    expect(within(target).getByText('Déplacer l’étape ici')).toBeVisible()
     fireEvent.drop(target, { dataTransfer })
     await waitFor(() => expect(moveTripStop).toHaveBeenCalledWith('stop-0', 'day-1', 1))
   })
@@ -1237,7 +1297,9 @@ describe('TripPlannerPanel', () => {
     const onAnchorPopupChange = vi.fn()
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={linkedTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onStopPlaceSelect={onStopPlaceSelect} onAnchorPopupChange={onAnchorPopupChange} onClose={vi.fn()} />)
 
-    fireEvent.click(await within(container.querySelector('.trip-panel-departure') as HTMLElement).findByRole('button', { name: 'POI' }))
+    const departureCard = container.querySelector<HTMLElement>('.trip-panel-departure')!
+    fireEvent.click(departureCard.querySelector<HTMLElement>('.trip-night-header-row')!)
+    fireEvent.click(await within(departureCard).findByRole('button', { name: 'POI' }))
 
     expect(onStopPlaceSelect).toHaveBeenCalledWith('place-1')
     expect(onAnchorPopupChange).not.toHaveBeenCalled()
@@ -1268,23 +1330,22 @@ describe('TripPlannerPanel', () => {
 
     const departureCard = container.querySelector<HTMLElement>('.trip-panel-departure')!
     const arrivalCard = container.querySelector<HTMLElement>('.trip-panel-arrival')!
+    fireEvent.click(departureCard.querySelector<HTMLElement>('.trip-night-header-row')!)
     fireEvent.click(await within(departureCard).findByRole('button', { name: 'Point cartographique' }))
     expect(onActiveAnchorTargetChange).toHaveBeenLastCalledWith('departure')
     expect(onAnchorPopupChange).toHaveBeenLastCalledWith('departure')
-    fireEvent.click(within(arrivalCard).getByRole('button', { name: 'Point cartographique' }))
+    fireEvent.click(arrivalCard.querySelector<HTMLElement>('.trip-night-header-row')!)
+    fireEvent.click(within(arrivalCard).getByRole('button', { name: 'Sélectionner l’arrivée comme cible d’ajout' }))
     expect(onActiveAnchorTargetChange).toHaveBeenLastCalledWith('arrival')
+    fireEvent.click(await within(arrivalCard).findByRole('button', { name: 'Point cartographique' }))
     expect(onAnchorPopupChange).toHaveBeenLastCalledWith('arrival')
     expect(screen.queryByRole('button', { name: 'Modifier le point de départ' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Modifier le point d’arrivée' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Supprimer le point d’arrivée' })).toBeVisible()
+    fireEvent.click(container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival)')!)
     expect(screen.getByRole('button', { name: 'Retirer le lieu de la nuit' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Modifier le lieu de la nuit' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Ouvrir la fiche Google Maps de Hôtel' })).not.toBeInTheDocument()
-    const departureGoogleLink = screen.getByRole('link', { name: 'Ouvrir Maison dans Google Maps' })
-    const arrivalGoogleLink = screen.getByRole('link', { name: 'Ouvrir Retour maison dans Google Maps' })
-    expect(departureGoogleLink).toHaveAttribute('href', expect.stringContaining('query=48%2C2'))
-    expect(arrivalGoogleLink).toHaveAttribute('href', expect.stringContaining('query=48%2C2'))
-    expect(screen.getByRole('button', { name: 'Supprimer le point de départ' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Supprimer le point d’arrivée' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Utiliser le point de départ comme arrivée' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Supprimer l’hébergement' })).not.toBeInTheDocument()
     expect(container.querySelector('.trip-night-metrics')).not.toBeInTheDocument()
@@ -1305,30 +1366,19 @@ describe('TripPlannerPanel', () => {
     expect(arrivalMetrics?.children[0]).toBe(within(arrivalHeader).getByLabelText('Arrivée estimée : 18:40'))
     expect(arrivalMetrics?.children[3]).toContainElement(within(arrivalHeader).getByText('Valide').closest('.trip-timeline-status'))
 
+    fireEvent.click(arrivalHeader)
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer le point d’arrivée' }))
     await waitFor(() => expect(deleteTripArrival).toHaveBeenCalledWith('arrival-1'))
+    fireEvent.click(departureHeader)
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer le point de départ' }))
     await waitFor(() => expect(deleteTripDeparture).toHaveBeenCalledWith('departure-1'))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Réduire le départ' }))
-    expect(screen.queryByText('Maison')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Développer le départ' }))
-    expect(screen.getByText('Maison')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /Réduire le départ|Développer le départ|Réduire l’arrivée|Développer l’arrivée/ })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Réduire l’arrivée' }))
-    expect(screen.queryByText('Retour maison')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Développer l’arrivée' }))
-    expect(screen.getByText('Retour maison')).toBeVisible()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Tout replier' }))
-    expect(screen.queryByText('Maison')).not.toBeInTheDocument()
-    expect(screen.queryByText('Hôtel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tout replier' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tout déplier' })).not.toBeInTheDocument()
     expect(screen.queryByText('Retour maison')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Tout déplier' }))
-    expect(screen.getByText('Maison')).toBeVisible()
-    expect(screen.getByText('Hôtel')).toBeVisible()
-    expect(screen.getByText('Retour maison')).toBeVisible()
   })
 
   it('directs an empty night to the map search without opening a dialog', async () => {
@@ -1376,8 +1426,9 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const onStopFocus = vi.fn()
     const onStopPlaceSelect = vi.fn()
-    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
+    const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onStopFocus={onStopFocus} onStopPlaceSelect={onStopPlaceSelect} onClose={vi.fn()} />)
 
+    fireEvent.click(container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival)')!)
     fireEvent.click(await screen.findByText('Adresse de nuit'))
 
     expect(onStopFocus).toHaveBeenCalledWith(48.8566, 2.3522)
@@ -1391,6 +1442,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTrip).mockResolvedValue(withNight)
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
+    fireEvent.click(container.querySelector<HTMLElement>('.trip-panel-night:not(.trip-panel-departure):not(.trip-panel-arrival)')!)
     expect(await screen.findByText('Hôtel central')).toBeVisible()
     const nightStop = container.querySelector('.trip-night-stop')
     expect(nightStop).toBeInTheDocument()

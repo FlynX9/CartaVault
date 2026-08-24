@@ -11,8 +11,13 @@ interface Props {
   canChooseTripDay?: boolean;
   isAddingToTrip?: boolean;
   isHistoryOpen?: boolean;
+  showHistoryAction?: boolean;
+  tripTargets?: Array<{ id: string; label: string }>;
+  tripTargetPickerOpen?: boolean;
   onToggleHistory?: () => void;
   onAddToTrip?: () => void;
+  onToggleTripTargetPicker?: () => void;
+  onSelectTripTarget?: (targetId: string) => void;
   onShowOnMap?: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -29,16 +34,43 @@ export function PlacePopupActions({
   canChooseTripDay = false,
   isAddingToTrip = false,
   isHistoryOpen = false,
+  showHistoryAction = true,
+  tripTargets = [],
+  tripTargetPickerOpen = false,
   onToggleHistory,
   onAddToTrip = () => undefined,
+  onToggleTripTargetPicker,
+  onSelectTripTarget,
   onShowOnMap,
   onEdit,
   onDelete,
   onClose,
 }: Props) {
   return (
-    <div className="popup-actions" aria-label="Actions du POI">
-      {(tripAddTargetLabel || canChooseTripDay) && (
+    <div className={`popup-actions${tripTargets.length > 0 ? " popup-actions--trip-targets" : ""}`} aria-label="Actions du POI">
+      {tripTargets.length > 0 ? (
+        <div className="popup-trip-target-picker">
+          <button
+            className="popup-action-add-to-trip"
+            type="button"
+            aria-label="Ajouter au voyage"
+            title="Ajouter au voyage"
+            aria-expanded={tripTargetPickerOpen}
+            disabled={isDeleting || isAddingToTrip}
+            onClick={onToggleTripTargetPicker}
+          >
+            <CalendarPlus aria-hidden="true" size={17} />
+            <span>{isAddingToTrip ? "Ajout…" : "Ajouter au voyage"}</span>
+          </button>
+          {tripTargetPickerOpen && (
+            <div className="popup-trip-target-menu" role="menu" aria-label="Choisir une destination du voyage">
+              {tripTargets.map((target) => (
+                <button key={target.id} type="button" role="menuitem" onClick={() => onSelectTripTarget?.(target.id)}>{target.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (tripAddTargetLabel || canChooseTripDay) && (
         <button
           className="popup-action-add-to-trip"
           type="button"
@@ -104,7 +136,7 @@ export function PlacePopupActions({
           <span>Ouvrir dans Google Maps</span>
         </a>
       )}
-      {onToggleHistory && (
+      {showHistoryAction && onToggleHistory && (
         <button
           className={`popup-action-history${isHistoryOpen ? " active" : ""}`}
           type="button"

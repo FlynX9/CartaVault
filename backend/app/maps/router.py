@@ -24,9 +24,10 @@ from app.database import get_db
 from app.emails.providers.base import EmailDeliveryError
 from app.emails.service import EmailService, provider_from_database
 from app.maps.models import MapInvitation, MapMembership, PoiMap
+from app.maps.duplication import duplicate_map
 from app.map_profiles.service import initialize_map_profile, profile_resource_counts
 from app.maps.schemas import (
-    InvitationCreate, InvitationRead, MapCreate, MapPlaceFieldConfig, MapRead, MapUpdate,
+    InvitationCreate, InvitationRead, MapCreate, MapDuplicate, MapPlaceFieldConfig, MapRead, MapUpdate,
     MembershipRead, MembershipUpdate, TransferOwnership,
 )
 from app.places.models import Place
@@ -178,13 +179,35 @@ def create_map(map_data: MapCreate, database_session: Session = Depends(get_db),
         return map_to_read_with_counts(database_session, result, MapAccess(result, "owner"))
     except IntegrityError as error:
         database_session.rollback()
-        raise HTTPException(status_code=409, detail="A map already exists for this owner and country") from error
+        raise HTTPException(status_code=409, detail="Unable to create the map") from error
     except HTTPException:
         database_session.rollback()
         raise
     except SQLAlchemyError as error:
         database_session.rollback()
         raise HTTPException(status_code=500, detail="Unable to initialize the map") from error
+
+
+@router.post("/{map_id}/duplicate", response_model=MapRead, status_code=201)
+def duplicate_map_endpoint(
+    map_id: UUID,
+    data: MapDuplicate,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MapRead:
+    require_map_role(database_session, map_id, current_user, "owner")
+    try:
+        copied = duplicate_map(database_session, map_id, current_user, data.name)
+        database_session.commit()
+    except HTTPException:
+        database_session.rollback()
+        raise
+    except (IntegrityError, SQLAlchemyError) as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to duplicate the map") from error
+    result = read_map(database_session, copied.id)
+    assert result is not None
+    return map_to_read_with_counts(database_session, result, MapAccess(result, "owner"))
 
 
 @router.patch("/{map_id}", response_model=MapRead)

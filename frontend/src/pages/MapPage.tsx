@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, RotateCcw, X } from 'lucide-react'
 
@@ -30,7 +30,7 @@ import { isTemporaryMapMode, resolveInteractiveMapMode, type InternalMapToolMode
 import { getTripMapBounds } from '../components/trips/tripMapBounds'
 
 function MapToolbarPortal({ target, children }: { target: HTMLElement | null; children: ReactNode }) {
-  return target ? createPortal(children, target) : children
+  return target ? createPortal(children, target) : null
 }
 import { getPlaceDetails } from '../api/places'
 import { createPlaceAnnotation, getPlaceAnnotations } from '../api/annotations'
@@ -47,6 +47,7 @@ const PLACES_WINDOW_KEY = 'cartavault:desktop-places-window'
 const TRIPS_WINDOW_KEY = 'cartavault:desktop-trips-window'
 const TRIP_TIMELINE_WINDOW_KEY = 'cartavault:desktop-trip-timeline-window'
 const PLACE_DETAIL_WINDOW_KEY = 'cartavault:desktop-place-detail-window-v2'
+const TIMELINE_PLACE_DETAIL_WINDOW_KEY = 'cartavault:desktop-timeline-place-detail-window-v3'
 const PLACE_EDITOR_WINDOW_KEY = 'cartavault:desktop-place-editor-window'
 const MAP_TOOLS_WINDOW_KEY = 'cartavault:desktop-map-tools-window'
 const MAP_LEGEND_WINDOW_KEY = 'cartavault:desktop-map-legend-window'
@@ -106,6 +107,12 @@ function defaultPlaceDetailGeometry(width: number, height: number) {
   return { x: Math.max(margin, width - panelWidth - margin), y: margin, width: panelWidth, height: panelHeight }
 }
 
+function defaultTimelinePlaceDetailGeometry(width: number, height: number) {
+  const margin = 12
+  const panelWidth = Math.min(640, Math.max(480, Math.round(width * .33)))
+  return { x: Math.max(margin, width - panelWidth - margin), y: 24, width: panelWidth, height: Math.min(620, Math.max(420, height - margin * 2)) }
+}
+
 function defaultPlaceEditorGeometry(width: number, height: number) {
   const margin = 12
   const panelWidth = Math.min(560, Math.max(380, Math.round(width * .38)))
@@ -141,6 +148,7 @@ interface MapPageProps {
   sidebar: ReactNode
   timelineSidebar?: ReactNode
   popupContent?: ReactNode
+  showPlaceDetailInTimeline?: boolean
   mobilePlaceDetailOpen?: boolean
   desktopPlaceDetailInline?: boolean
   placeList: ReactNode
@@ -204,6 +212,7 @@ export function MapPage({
   sidebar,
   timelineSidebar = null,
   popupContent = null,
+  showPlaceDetailInTimeline = false,
   mobilePlaceDetailOpen = false,
   desktopPlaceDetailInline = false,
   placeList,
@@ -313,6 +322,7 @@ export function MapPage({
   const placesWindowInitialGeometry = initialFloatingLayoutRef.current.places
   const tripsWindowInitialGeometry = initialFloatingLayoutRef.current.trips
   const detailWindowInitialGeometry = initialDetailGeometryRef.current
+  const timelineDetailWindowInitialGeometry = useRef(defaultTimelinePlaceDetailGeometry(window.innerWidth - 76, window.innerHeight - 76)).current
   const editorWindowInitialGeometry = initialEditorGeometryRef.current
   const mapToolsWindowInitialGeometry = initialMapToolsGeometryRef.current
   const mapLegendWindowInitialGeometry = initialMapLegendGeometryRef.current
@@ -322,7 +332,7 @@ export function MapPage({
     ? PLACES_WINDOW_KEY
     : `cartavault:desktop-workspace-window:${workspacePanelId}`
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setMapToolbarHost(document.getElementById('map-context-toolbar-slot'))
   }, [])
 
@@ -738,7 +748,7 @@ export function MapPage({
           photoMarkersEnabled={photoMarkersEnabled}
         />
         {popupContent && !mobilePlaceDetailOpen && !desktopPlaceDetailInline && (
-          <FloatingPanelWindow key={PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={PLACE_DETAIL_WINDOW_KEY} initialGeometry={detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector=".place-map-popup" fitContentMaxHeight={720} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} hidden={tripViewOnly} onActivate={() => setActiveFloatingPanel('detail')}>
+          <FloatingPanelWindow key={showPlaceDetailInTimeline ? TIMELINE_PLACE_DETAIL_WINDOW_KEY : PLACE_DETAIL_WINDOW_KEY} kind="detail" label="Fiche du lieu" storageKey={showPlaceDetailInTimeline ? TIMELINE_PLACE_DETAIL_WINDOW_KEY : PLACE_DETAIL_WINDOW_KEY} initialGeometry={showPlaceDetailInTimeline ? timelineDetailWindowInitialGeometry : detailWindowInitialGeometry} minWidth={340} minHeight={300} fitContentSelector={showPlaceDetailInTimeline ? ".timeline-place-detail" : ".place-map-popup"} fitContentMaxHeight={showPlaceDetailInTimeline ? Infinity : 720} fitContentOnce={showPlaceDetailInTimeline} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'detail'} hidden={tripViewOnly && !showPlaceDetailInTimeline} onActivate={() => setActiveFloatingPanel('detail')}>
             <aside className="map-place-detail-overlay" aria-label="Détails du lieu sélectionné">
               {popupContent}
             </aside>
@@ -756,7 +766,12 @@ export function MapPage({
         </div>}
         {!tripViewOnly && (
           <div className="map-geographic-search-control">
-            <GeographicSearch persistent focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
+            <div className="map-geographic-search-row">
+              <GeographicSearch persistent focus={initialView.center} countryCode={activeCountryCode} selected={selectedSearchResult} canCreate={canEdit} tripAddTargetLabel={geographicTripAddTargetLabel} onSelect={(result) => { setLocalSearchResult(result); onGeographicResultSelect(result) }} onClear={() => { setLocalSearchResult(null); onGeographicResultClear() }} onCreate={onCreateFromGeographicResult} onAddToTrip={onGeographicResultAddToTrip} />
+              {!placeListOpen && <div className="map-mobile-basemap">
+                <BasemapSelector expanded={openMapPanel === 'basemap'} onExpandedChange={(expanded) => setOpenMapPanel(expanded ? 'basemap' : null)} activeBasemapId={basemapId} mapTheme={mapTheme} onBasemapChange={selectBasemap} offline={offlineBasemapActive} satelliteProvider={configuredSatelliteProvider} />
+              </div>}
+            </div>
           </div>
         )}
         {showMapToolsPanel && <FloatingPanelWindow kind="tools" label={t('map.tools.title')} storageKey={MAP_TOOLS_WINDOW_KEY} initialGeometry={mapToolsWindowInitialGeometry} minWidth={320} minHeight={360} dockable={false} defaultMode="floating" resetVersion={floatingPanelResetVersion} active={activeFloatingPanel === 'tools'} hidden={tripViewOnly} onActivate={() => setActiveFloatingPanel('tools')}>

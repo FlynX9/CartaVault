@@ -31,13 +31,6 @@ class PoiMap(Base):
         CheckConstraint("default_zoom IS NULL OR default_zoom BETWEEN 1 AND 18", name="poi_maps_default_zoom_range"),
         Index("poi_maps_deleted_at_idx", "deleted_at"),
         Index("poi_maps_purge_after_idx", "purge_after"),
-        Index(
-            "poi_maps_owner_country_active_key",
-            "owner_id",
-            "country_id",
-            unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))

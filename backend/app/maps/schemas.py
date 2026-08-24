@@ -21,8 +21,23 @@ class MapCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_center(self) -> Self:
+        if self.name is not None:
+            self.name = self.name.strip()
+            if not self.name:
+                raise ValueError("The name cannot be empty")
         if (self.center_latitude is None) != (self.center_longitude is None):
             raise ValueError("Center latitude and longitude must be provided together")
+        return self
+
+
+class MapDuplicate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+    @model_validator(mode="after")
+    def validate_name(self) -> Self:
+        self.name = self.name.strip()
+        if not self.name:
+            raise ValueError("The name cannot be empty")
         return self
 
 
@@ -35,8 +50,12 @@ class MapUpdate(BaseModel):
     @model_validator(mode="after")
     def validate_update(self) -> Self:
         supplied = self.model_fields_set
-        if "name" in supplied and self.name is None:
-            raise ValueError("The name cannot be null")
+        if "name" in supplied:
+            if self.name is None:
+                raise ValueError("The name cannot be null")
+            self.name = self.name.strip()
+            if not self.name:
+                raise ValueError("The name cannot be empty")
         center_fields = {"center_latitude", "center_longitude"}
         if supplied & center_fields and not center_fields <= supplied:
             raise ValueError("Center latitude and longitude must be provided together")

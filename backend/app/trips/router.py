@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -15,8 +15,11 @@ from app.auth.credential_encryption import CredentialEncryptionService
 from app.auth.models import User
 from app.auth.permissions import require_map_role
 from app.database import get_db
+from app.countries.models import Country
+from app.maps.models import MapMembership, PoiMap
 from app.exports.temporary_exports import get as get_export
 from app.places.models import Place
+from app.photos.models import Photo
 from app.media.settings import get_media_upload_policy
 from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, PhotoTooLargeError, UnsupportedPhotoTypeError, delete_photo_file, resolve_photo_file, store_photo_file
 from app.statuses.models import PlaceStatus
@@ -26,7 +29,7 @@ from app.trips.optimizer import optimize_matrix
 from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RouteResult, RoutingConstraints, RoutingError, RoutingProvider
-from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
+from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripListRead, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
 from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, apply_day_route_result, calculate_day_route, day_coordinates, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, resolve_constraint_country, synchronize_trip_dates
 from app.trips.optimization_store import OptimizationProposalUnavailable, optimization_proposal_store
 from app.trips.routing.country_validator import CountryRouteValidator
@@ -102,6 +105,45 @@ def list_trips(map_id: UUID, session: Session = Depends(get_db), user: User = De
     require_map_role(session, map_id, user, "viewer")
     ids = session.scalars(select(Trip.id).where(Trip.map_id == map_id, Trip.deleted_at.is_(None)).order_by(Trip.archived_at.is_not(None), Trip.updated_at.desc())).all()
     return [_trip_read(session, item) for item in ids]
+
+
+@router.get("/trips", response_model=list[TripListRead])
+def list_accessible_trips(session: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    accessible_map = (PoiMap.owner_id == user.id) | exists(
+        select(MapMembership.id).where(MapMembership.map_id == PoiMap.id, MapMembership.user_id == user.id)
+    )
+    thumbnail_photo = (
+        select(Photo.id)
+        .join(Place, Place.id == Photo.place_id)
+        .join(TripStop, TripStop.place_id == Place.id)
+        .join(TripDay, TripDay.id == TripStop.trip_day_id)
+        .where(TripDay.trip_id == Trip.id, Place.deleted_at.is_(None))
+        .order_by(TripDay.sort_order, TripStop.sort_order, Photo.is_primary.desc(), Photo.sort_order, Photo.id)
+        .limit(1)
+        .scalar_subquery()
+    )
+    day_count = select(func.count(TripDay.id)).where(TripDay.trip_id == Trip.id).correlate(Trip).scalar_subquery()
+    stop_count = (
+        select(func.count(TripStop.id))
+        .join(TripDay, TripDay.id == TripStop.trip_day_id)
+        .where(TripDay.trip_id == Trip.id)
+        .correlate(Trip)
+        .scalar_subquery()
+    )
+    rows = session.execute(
+        select(Trip, PoiMap.name, Country.name, Country.iso_alpha2, day_count, stop_count, thumbnail_photo)
+        .join(PoiMap, PoiMap.id == Trip.map_id)
+        .join(Country, Country.id == PoiMap.country_id)
+        .where(Trip.deleted_at.is_(None), PoiMap.deleted_at.is_(None), accessible_map)
+        .order_by(Trip.archived_at.is_not(None), Trip.updated_at.desc())
+    ).all()
+    return [TripListRead.model_validate({
+        "id": trip.id, "map_id": trip.map_id, "map_name": map_name,
+        "country_name": country_name, "country_code": country_code,
+        "name": trip.name, "start_date": trip.start_date, "end_date": trip.end_date,
+        "status": trip.status, "created_at": trip.created_at, "updated_at": trip.updated_at,
+        "day_count": days, "stop_count": stops, "thumbnail_photo_id": photo_id,
+    }) for trip, map_name, country_name, country_code, days, stops, photo_id in rows]
 
 
 @router.post("/maps/{map_id}/trips", response_model=TripRead, status_code=201)

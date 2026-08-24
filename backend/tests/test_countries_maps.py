@@ -35,12 +35,16 @@ def test_country_catalog_list_search_codes_and_read(integration_client: TestClie
     assert cached.status_code == 304
 
 
-def test_map_crud_conflict_and_empty_delete(integration_client: TestClient, france_country: Country) -> None:
+def test_map_crud_multiple_maps_and_empty_delete(integration_client: TestClient, france_country: Country) -> None:
     created = integration_client.post("/maps", json={"country_id": str(france_country.id)})
     assert created.status_code == 201
     map_id = created.json()["id"]
     assert created.json()["effective_center_latitude"] == france_country.center_latitude
-    assert integration_client.post("/maps", json={"country_id": str(france_country.id)}).status_code == 409
+    second = integration_client.post("/maps", json={"country_id": str(france_country.id), "name": "Second France map"})
+    assert second.status_code == 201
+    duplicate = integration_client.post(f"/maps/{map_id}/duplicate", json={"name": "Duplicated France map"})
+    assert duplicate.status_code == 201
+    assert duplicate.json()["name"] == "Duplicated France map"
     assert integration_client.get(f"/maps/{map_id}").status_code == 200
     assert integration_client.patch(f"/maps/{map_id}", json={"name": "Carte France"}).json()["name"] == "Carte France"
     assert integration_client.delete(f"/maps/{map_id}").status_code == 204

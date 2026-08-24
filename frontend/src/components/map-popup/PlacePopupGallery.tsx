@@ -91,8 +91,8 @@ export function PlacePopupGallery({ placeName, photos, isLoading, error, statusC
       {failed ? (
         <div className="popup-photo-placeholder" role="img" aria-label={alternativeText}>Image indisponible</div>
       ) : (
-        <button className="popup-gallery__open" type="button" aria-label={`${t.view} — ${alternativeText}`} onClick={() => setViewerOpen(true)}>
-          <img src={offlineSource ?? getPhotoFileUrl(photo.id)} alt={alternativeText} style={{ objectPosition: `${(photo.focal_x ?? .5) * 100}% ${(photo.focal_y ?? .5) * 100}%` }} onError={() => offlineSource ? setFailed(true) : loadOfflineThumbnail()} />
+        <button className="popup-gallery__open" type="button" aria-label={`${t.view} — ${alternativeText}`} onDragStart={(event) => event.preventDefault()} onClick={(event) => { if (event.currentTarget.closest<HTMLElement>('[data-panel-drag-handle]')?.dataset.panelDragMoved) return; setViewerOpen(true) }}>
+          <img draggable={false} src={offlineSource ?? getPhotoFileUrl(photo.id)} alt={alternativeText} style={{ objectPosition: `${(photo.focal_x ?? .5) * 100}% ${(photo.focal_y ?? .5) * 100}%` }} onError={() => offlineSource ? setFailed(true) : loadOfflineThumbnail()} />
           <span><Maximize2 aria-hidden="true" size={15} /></span>
         </button>
       )}

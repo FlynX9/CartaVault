@@ -20,7 +20,8 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 describe('PlaceMapPopup', () => {
   it('renders the structured inline detail without duplicating the row image or title', async () => {
     const edit = vi.fn()
-    render(<PlaceMapPopup placeId={PLACE_ID} variant="inline" initialPlace={{ ...PLACE, region: 'Grand Est', default_visit_duration_minutes: 45 }} onEdit={edit} onDeleted={vi.fn()} onClose={vi.fn()} />)
+    const close = vi.fn()
+    render(<PlaceMapPopup placeId={PLACE_ID} variant="inline" initialPlace={{ ...PLACE, region: 'Grand Est', default_visit_duration_minutes: 45 }} onEdit={edit} onDeleted={vi.fn()} onClose={close} />)
 
     const details = screen.getByRole('article', { name: 'Détails de Manufacture' })
     expect(within(details).queryByRole('heading', { name: 'Manufacture' })).not.toBeInTheDocument()
@@ -249,6 +250,20 @@ describe('PlaceMapPopup', () => {
     expect(screen.queryByRole('button', { name: 'Supprimer le POI' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ajouter au départ' })).toBeVisible()
     expect(screen.getByRole('link', { name: 'Ouvrir dans Google Maps' })).toBeVisible()
+  })
+
+  it('adds a POI directly to the selected trip target from its dropdown', async () => {
+    const onAddToTrip = vi.fn().mockResolvedValue(undefined)
+    render(<PlaceMapPopup placeId={PLACE_ID} variant="inline" showManagementActions={false} showHistoryAction={false} tripTargets={[{ id: 'departure', label: 'Départ' }, { id: 'day:day-1', label: 'Jour 1' }, { id: 'night:day-1:day-2', label: 'Nuit 1' }, { id: 'arrival', label: 'Arrivée' }]} onAddToTrip={onAddToTrip} onEdit={vi.fn()} onDeleted={vi.fn()} onClose={vi.fn()} />)
+
+    await screen.findByRole('article', { name: 'Détails de Manufacture' })
+    expect(screen.queryByRole('button', { name: 'Modifier le POI' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Supprimer le POI' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Afficher l’historique' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ajouter au voyage' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Nuit 1' }))
+
+    await waitFor(() => expect(onAddToTrip).toHaveBeenCalledWith(PLACE, 'night:day-1:day-2'))
   })
 
   it('shows only the rating that matches the status visit classification', async () => {

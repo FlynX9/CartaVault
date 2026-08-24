@@ -138,6 +138,44 @@ describe("FloatingPanelWindow", () => {
     expect(panel).toHaveAttribute("data-panel-mode", "docked");
   });
 
+  it("suppresses a drag handle click after moving the panel", () => {
+    const onImageClick = vi.fn();
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="detail" label="Fiche" storageKey="test:drag-handle" initialGeometry={geometry} minWidth={320} defaultMode="floating" dockable={false} resetVersion={0} active onActivate={vi.fn()}>
+          <button type="button" data-panel-drag-handle onClick={(event) => { if (!event.currentTarget.dataset.panelDragMoved) onImageClick() }}>Image</button>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const panel = screen.getByLabelText("Fiche");
+    const image = screen.getByRole("button", { name: "Image" });
+
+    fireEvent.pointerDown(image, { button: 0, pointerId: 23, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(panel, { pointerId: 23, clientX: 140, clientY: 120 });
+    fireEvent.pointerUp(panel, { pointerId: 23, clientX: 140, clientY: 120 });
+    fireEvent.click(image);
+
+    expect(onImageClick).not.toHaveBeenCalled();
+  });
+
+  it("preserves a drag handle click when the pointer does not move", () => {
+    const onImageClick = vi.fn();
+    render(
+      <section className="map-workspace">
+        <FloatingPanelWindow kind="detail" label="Fiche" storageKey="test:click-handle" initialGeometry={geometry} minWidth={320} defaultMode="floating" dockable={false} resetVersion={0} active onActivate={vi.fn()}>
+          <button type="button" data-panel-drag-handle onClick={onImageClick}>Image</button>
+        </FloatingPanelWindow>
+      </section>,
+    );
+    const image = screen.getByRole("button", { name: "Image" });
+
+    fireEvent.pointerDown(image, { button: 0, pointerId: 24, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(image, { pointerId: 24, clientX: 100, clientY: 100 });
+    fireEvent.click(image);
+
+    expect(onImageClick).toHaveBeenCalledOnce();
+  });
+
   it("attaches a floating panel when it is dragged to the left edge", () => {
     renderPanel();
     const panel = screen.getByLabelText("Navigation");

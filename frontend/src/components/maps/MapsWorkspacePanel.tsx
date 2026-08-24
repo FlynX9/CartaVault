@@ -1,4 +1,4 @@
-import { Check, Clock3, Download, ExternalLink, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Plus, Plus as IconMaximize, Route, Search, Settings, Settings2, Share2, Trash2, Users, X } from "lucide-react";
+import { Check, Clock3, Copy, Download, ExternalLink, HardDriveDownload, LockKeyhole, Map, MapPin, Minus as IconMinimize, Pencil, Plus, Plus as IconMaximize, Route, Search, Settings, Settings2, Share2, Trash2, Users, X } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { acceptPendingMapInvitation, declinePendingMapInvitation, getPendingMapInvitations, updateMapPlaceFields } from "../../api/maps";
@@ -8,6 +8,7 @@ import type { PendingMapInvitation, PoiMap } from "../../types/map";
 import { CountryFlag } from "./CountryFlag";
 import { CountryShapeThumbnail } from "./CountryShapeThumbnail";
 import { CreateMapDialog } from "./CreateMapDialog";
+import { MapNameDialog } from "./MapNameDialog";
 import { SkeletonList } from "../common/Skeleton";
 import { EmptyState } from "../common/EmptyState";
 import { OfflinePackageDialog } from "../pwa/OfflinePackageDialog";
@@ -20,8 +21,10 @@ interface MapsWorkspacePanelProps {
   isLoading: boolean;
   errorMessage: string | null;
   onOpen: (mapId: string) => void;
+  onCloseActive?: () => void;
   onDelete: (poiMap: PoiMap) => void;
   onCreated: (poiMap: PoiMap) => void;
+  onUpdated?: (poiMap: PoiMap, mode: "rename" | "duplicate") => void;
   onExport?: (poiMap: PoiMap) => void;
   onMembers?: (poiMap: PoiMap) => void;
   onAccessChanged?: () => void;
@@ -37,7 +40,7 @@ const normalize = (value: string) =>
     .replace(/\p{Diacritic}/gu, "")
     .toLocaleLowerCase();
 
-export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onDelete, onCreated, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose, createRequest = 0 }: MapsWorkspacePanelProps) {
+export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage, onOpen, onCloseActive = () => undefined, onDelete, onCreated, onUpdated = () => undefined, onExport = () => undefined, onMembers = () => undefined, onAccessChanged = () => undefined, collapsed = false, onCollapsedChange, onClose, createRequest = 0 }: MapsWorkspacePanelProps) {
   const panelWindow = useContext(FloatingPanelWindowContext);
   const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
   const { t, formatDate } = useI18n();
@@ -49,6 +52,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
   const [settingsMap, setSettingsMap] = useState<PoiMap | null>(null);
   const [offlineMap, setOfflineMap] = useState<PoiMap | null>(null);
   const [optionsMapId, setOptionsMapId] = useState<string | null>(null);
+  const [nameDialog, setNameDialog] = useState<{ map: PoiMap; mode: "rename" | "duplicate" } | null>(null);
   const createButton = useRef<HTMLButtonElement>(null);
   const invitationController = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -59,6 +63,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
       setCreating(false);
       setSettingsMap(null);
       setOfflineMap(null);
+      setNameDialog(null);
     };
     window.addEventListener("cartavault:close-mobile-modal-layers", closeDialogs);
     return () => window.removeEventListener("cartavault:close-mobile-modal-layers", closeDialogs);
@@ -250,13 +255,15 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
                   </div>
                   {(poiMap.current_user_role === "editor" || poiMap.current_user_role === "viewer") && poiMap.owner_email && <em className="maps-catalog__owner">{poiMap.owner_display_name || poiMap.owner_email}</em>}
                   <div className="maps-catalog__actions">
-                    <button type="button" className="secondary-button maps-catalog__open" aria-label={t("maps.openNamed", { name: poiMap.name })} onClick={() => onOpen(poiMap.id)}>{t("maps.open")}<ExternalLink size={15} /></button>
+                    <button type="button" className={`secondary-button maps-catalog__open${poiMap.id === activeMapId ? ' maps-catalog__close' : ''}`} aria-label={poiMap.id === activeMapId ? t('common.close') : t("maps.openNamed", { name: poiMap.name })} onClick={() => poiMap.id === activeMapId ? onCloseActive() : onOpen(poiMap.id)}>{poiMap.id === activeMapId ? t('common.close') : t("maps.open")}<ExternalLink size={15} /></button>
                     {poiMap.can_export !== false && <button type="button" className="panel-icon-button" aria-label={t("maps.export", { name: poiMap.name })} title={t("maps.export", { name: poiMap.name })} onClick={() => onExport(poiMap)}><Download size={17} /></button>}
                     <div className="maps-catalog__options-host">
                       <button type="button" className="panel-icon-button" aria-label={t('maps.optionsNamed', { name: poiMap.name })} title={t('maps.options')} aria-expanded={optionsMapId === poiMap.id} onClick={() => setOptionsMapId((current) => current === poiMap.id ? null : poiMap.id)}><Settings size={17} /></button>
                       {optionsMapId === poiMap.id && <div className="maps-catalog__options-menu" role="menu" aria-label={t('maps.optionsNamed', { name: poiMap.name })}>
                         <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setOfflineMap(poiMap) }}><HardDriveDownload size={16} /><span>{t('maps.offline')}</span></button>
-                        {poiMap.can_edit && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setSettingsMap(poiMap) }}><Settings2 size={16} /><span>{t("maps.fields")}</span></button>}
+                         {poiMap.can_edit && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setSettingsMap(poiMap) }}><Settings2 size={16} /><span>{t("maps.fields")}</span></button>}
+                         {poiMap.current_user_role === "owner" && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setNameDialog({ map: poiMap, mode: "rename" }) }}><Pencil size={16} /><span>{t("maps.rename.action")}</span></button>}
+                         {poiMap.current_user_role === "owner" && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); setNameDialog({ map: poiMap, mode: "duplicate" }) }}><Copy size={16} /><span>{t("maps.duplicate.action")}</span></button>}
                         {poiMap.can_manage_members && <button type="button" role="menuitem" onClick={() => { setOptionsMapId(null); onMembers(poiMap) }}><Users size={16} /><span>{t("maps.members")}</span></button>}
                         {poiMap.can_delete !== false && <button type="button" role="menuitem" className="danger" onClick={() => { setOptionsMapId(null); onDelete(poiMap) }}><Trash2 size={16} /><span>{t("maps.deleteNamed", { name: poiMap.name })}</span></button>}
                       </div>}
@@ -279,6 +286,7 @@ export function MapsWorkspacePanel({ maps, activeMapId, isLoading, errorMessage,
       )}
       {settingsMap && <PlaceFieldSettingsDialog poiMap={settingsMap} onClose={() => setSettingsMap(null)} onSaved={onAccessChanged} />}
       {offlineMap && <OfflinePackageDialog map={offlineMap} onClose={() => setOfflineMap(null)} />}
+      {nameDialog && <MapNameDialog map={nameDialog.map} mode={nameDialog.mode} onClose={() => setNameDialog(null)} onSaved={(poiMap) => { setNameDialog(null); onUpdated(poiMap, nameDialog.mode) }} />}
     </aside>
   );
 }

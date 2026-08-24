@@ -53,6 +53,14 @@ export async function createMap(payload: MapCreatePayload): Promise<PoiMap> {
   return parseMap(await sendJson('/maps', 'POST', payload))
 }
 
+export async function updateMap(mapId: string, payload: { name: string }): Promise<PoiMap> {
+  return parseMap(await sendJson(`/maps/${encodeURIComponent(mapId)}`, 'PATCH', payload))
+}
+
+export async function duplicateMap(mapId: string, name: string): Promise<PoiMap> {
+  return parseMap(await sendJson(`/maps/${encodeURIComponent(mapId)}/duplicate`, 'POST', { name }))
+}
+
 export async function getMapProfiles(signal?: AbortSignal): Promise<StarterProfile[]> {
   return getJson('/map-profiles', new URLSearchParams(), signal) as Promise<StarterProfile[]>
 }

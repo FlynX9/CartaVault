@@ -18,13 +18,13 @@ const place: MapPlace = {
 
 describe('deriveMapSidebarState', () => {
   it('keeps preview local to the map URL', () => {
-    expect(deriveMapSidebarState('/', place)).toEqual({ mode: 'preview', place })
+    expect(deriveMapSidebarState('/maps/map-id', place)).toEqual({ mode: 'preview', place })
   })
 
   it.each([
-    ['/places/new', { mode: 'create' }],
-    [`/places/${place.id}`, { mode: 'details', placeId: place.id }],
-    [`/places/${place.id}/edit`, { mode: 'edit', placeId: place.id }],
+    ['/maps/map-id/places/new', { mode: 'create' }],
+    [`/maps/map-id/places/${place.id}`, { mode: 'details', placeId: place.id }],
+    [`/maps/map-id/places/${place.id}/edit`, { mode: 'edit', placeId: place.id }],
   ])('derives the routed sidebar for %s', (pathname, expected) => {
     expect(deriveMapSidebarState(pathname, null)).toEqual(expected)
   })

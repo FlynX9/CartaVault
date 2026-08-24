@@ -31,18 +31,18 @@ interface ScopedPanelProps {
 
 export function CategoriesWorkspacePanel({ mapId, canEdit = true, collapsed = false, onCollapsedChange, onClose }: ScopedPanelProps) {
   return <WorkspaceManagementPanel id="workspace-categories-panel" label="Gestion des catégories" collapsed={collapsed} onCollapsedChange={onCollapsedChange ?? (() => onClose?.())}>
-    <EntityManagementPage config={categoriesConfig(mapId)} variant="panel" readOnly={!canEdit} />
+    <EntityManagementPage config={categoriesConfig(mapId)} variant="panel" readOnly={!canEdit} onClose={onClose} />
   </WorkspaceManagementPanel>
 }
 
 export function TagsWorkspacePanel({ mapId, canEdit = true, collapsed = false, onCollapsedChange, onClose }: ScopedPanelProps) {
   return <WorkspaceManagementPanel id="workspace-tags-panel" label="Gestion des tags" collapsed={collapsed} onCollapsedChange={onCollapsedChange ?? (() => onClose?.())}>
-    <EntityManagementPage config={tagsConfig(mapId)} variant="panel" readOnly={!canEdit} />
+    <EntityManagementPage config={tagsConfig(mapId)} variant="panel" readOnly={!canEdit} onClose={onClose} />
   </WorkspaceManagementPanel>
 }
 
 export function StatusesWorkspacePanel({ mapId, canEdit = true, collapsed = false, onCollapsedChange, onClose }: ScopedPanelProps) {
   return <WorkspaceManagementPanel id="workspace-statuses-panel" label="Gestion des statuts" collapsed={collapsed} onCollapsedChange={onCollapsedChange ?? (() => onClose?.())}>
-    <StatusesPanel variant="panel" mapId={mapId} canEdit={canEdit} />
+    <StatusesPanel variant="panel" mapId={mapId} canEdit={canEdit} onClose={onClose} />
   </WorkspaceManagementPanel>
 }

@@ -51,10 +51,15 @@ vi.mock('../components/map/PoiMap', () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   themeState.resolvedTheme = 'light'
+  document.getElementById('map-context-toolbar-slot')?.remove()
+  const toolbarSlot = document.createElement('div')
+  toolbarSlot.id = 'map-context-toolbar-slot'
+  document.body.append(toolbarSlot)
 })
 
 afterEach(() => {
   cleanup()
+  document.getElementById('map-context-toolbar-slot')?.remove()
   window.localStorage.clear()
   Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: null })
 })
@@ -109,7 +114,9 @@ describe('MapPage', () => {
     await waitFor(() => expect(editorWindow).toHaveClass('is-active'))
     const legend = screen.getByRole('region', { name: 'Légende des statuts' })
     expect(legend).toHaveTextContent('À faire')
-    fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
+    const themeButton = screen.getByRole('button', { name: 'Thème de carte' })
+    expect(document.getElementById('map-context-toolbar-slot')).toContainElement(themeButton)
+    fireEvent.click(themeButton)
     fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond ArcGIS World Imagery' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'arcgis-satellite')
     expect(screen.getByTestId('poi-map')).toBe(map)
@@ -614,5 +621,34 @@ describe('MapPage', () => {
     expect(screen.queryByText('Fiche flottante du POI')).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Détails du lieu sélectionné' })).not.toBeInTheDocument()
     expect(screen.getByTestId('poi-map')).toBeVisible()
+  })
+
+  it('shows the draggable place detail window for a selected POI in timeline mode', () => {
+    render(
+      <MemoryRouter>
+        <MapPage
+          places={[]}
+          selectedPlaceId="place-1"
+          initialView={{ center: [48, 2], zoom: 8 }}
+          isLoading={false}
+          errorMessage={null}
+          sidebarOpen
+          placeListOpen={false}
+          statuses={[]}
+          sidebar={null}
+          placeList={null}
+          popupContent={<article>Fiche de la frise</article>}
+          tripViewOnly
+          showPlaceDetailInTimeline
+          focusRequest={null}
+          onBoundsChange={vi.fn()}
+          onViewChange={vi.fn()}
+          onPlaceSelect={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByLabelText('Fiche du lieu')).not.toHaveClass('is-hidden')
+    expect(screen.getByText('Fiche de la frise')).toBeVisible()
   })
 })

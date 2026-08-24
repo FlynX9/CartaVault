@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config'
 import { getBlob, getJson, sendFormData, sendJson, sendWithoutResponse } from './client'
-import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripOptimizationProposal, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
+import type { Trip, TripArrival, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripDeparture, TripExport, TripListItem, TripLoadSettings, TripNight, TripNightSourceType, TripOptimization, TripOptimizationProposal, TripStop, TripSummary, TripVisitStatus } from '../types/trip'
 import { isNetworkFailure, offlineTrip, offlineTrips } from '../pwa/offlineData'
 
 const empty = new URLSearchParams()
@@ -23,6 +23,9 @@ export async function listTrips(mapId: string, signal?: AbortSignal): Promise<Tr
     if (cached.length === 0) throw error
     return cached
   }
+}
+export async function listAccessibleTrips(signal?: AbortSignal): Promise<TripListItem[]> {
+  return await getJson('/trips', empty, signal) as TripListItem[]
 }
 export async function getTrip(id: string, signal?: AbortSignal): Promise<Trip> {
   try { return await getJson(`/trips/${id}`, empty, signal) as Trip }

@@ -168,6 +168,13 @@ describe('MapPlaceList', () => {
     expect(screen.queryByRole('button', { name: 'Vue compacte' })).not.toBeInTheDocument()
   })
 
+  it('hides the new-place action when shown from an open trip', async () => {
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} hideCreateAction onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    await screen.findByRole('button', { name: /Tous42/ })
+    expect(screen.queryByRole('link', { name: 'Ajouter un lieu' })).not.toBeInTheDocument()
+  })
+
   it('filters by the selected map UUID without repeating map identity in the header', async () => {
     const { container } = render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', updated_at: '2026-07-15T10:00:00Z', country: { iso_alpha2: 'FR', name: 'France' } } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
     await waitFor(() => expect(getPlaces).toHaveBeenCalledWith(expect.objectContaining({ mapId: 'map-id' }), expect.any(AbortSignal)))
@@ -226,7 +233,7 @@ describe('MapPlaceList', () => {
     expect(getPlaceDetails).not.toHaveBeenCalled()
   })
 
-  it('expands only the selected desktop row and collapses it from its centered title', async () => {
+  it('expands only the selected desktop row and collapses it from its close button', async () => {
     const base = { map_id: 'map-id', map: { id: 'map-id', name: 'France', country: { id: 'country-id', iso_alpha2: 'FR', iso_alpha3: 'FRA', name: 'France' } }, latitude: 48, longitude: 2, description: null, region: 'Grand Est', condition: null, danger_level: null, categories: [], tags: [], is_favorite: false, interest_rating: null, visit_rating: null, default_visit_duration_minutes: null, created_at: '2026-01-01', updated_at: '2026-01-02' }
     const first = { ...base, id: 'first-place', name: 'Premier lieu', status: { id: 'status-a', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true, functional_state: 'non_visited' } } as never
     const second = { ...base, id: 'second-place', name: 'Second lieu', status: { id: 'status-b', name: 'Visité', slug: 'visite', color: '#16A34A', is_active: true, functional_state: 'visited' } } as never
@@ -237,7 +244,10 @@ describe('MapPlaceList', () => {
     expect(await screen.findByRole('region', { name: 'Détails de Premier lieu' })).toBeVisible()
     expect(container.querySelectorAll('.place-inline-details')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Premier lieu' })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la fiche' }))
+    expect(collapse).toHaveBeenCalledTimes(1)
     expect(container.querySelector('.places-place-card.has-inline-details .places-place-actions')).not.toBeInTheDocument()
+    collapse.mockClear()
 
     rerender(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId="second-place" refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} onPlaceCollapse={collapse} /></MemoryRouter>)
     expect(await screen.findByRole('region', { name: 'Détails de Second lieu' })).toBeVisible()
@@ -301,6 +311,19 @@ describe('MapPlaceList', () => {
     expect(placeRow).not.toHaveAttribute('draggable')
     expect(container.querySelector('.places-redesign-panel')).not.toHaveClass('is-trip-planning')
     expect(container.querySelector('.places-place-trip-check')).not.toBeInTheDocument()
+  })
+
+  it('makes place rows draggable only when an open trip accepts drops', async () => {
+    const place = { id: 'place-id', name: 'Étape', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France' } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} tripPlaceDropEnabled onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    const placeRow = await screen.findByRole('button', { name: 'Étape' })
+    const dataTransfer = { effectAllowed: '', setData: vi.fn() }
+    expect(placeRow).toHaveAttribute('draggable', 'true')
+    fireEvent.dragStart(placeRow, { dataTransfer })
+    expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', 'place:place-id')
+    expect(dataTransfer.setData).toHaveBeenCalledWith('application/x-cartavault-place', 'place-id')
   })
 
   it('does not add an active-day shortcut to place rows', async () => {

@@ -39,8 +39,11 @@ interface Props {
   canEdit?: boolean;
   allowPhotoPaste?: boolean;
   showManagementActions?: boolean;
+  showHistoryAction?: boolean;
   tripAddTargetLabel?: string | null;
   tripDays?: Array<{ id: string; label: string }>;
+  tripTargets?: Array<{ id: string; label: string }>;
+  tripTargetPickerLabel?: string;
   onAddToTrip?: (place: PlaceDetails, dayId?: string) => Promise<void> | void;
   onUpdated?: (place: PlaceDetails) => void;
   onShowOnMap?: () => void;
@@ -77,8 +80,11 @@ export function PlaceMapPopup({
   canEdit = true,
   allowPhotoPaste = true,
   showManagementActions = true,
+  showHistoryAction = true,
   tripAddTargetLabel = null,
   tripDays = [],
+  tripTargets = [],
+  tripTargetPickerLabel = "Ajouter au voyage",
   onAddToTrip = () => undefined,
   onUpdated = () => undefined,
   onShowOnMap,
@@ -104,6 +110,7 @@ export function PlaceMapPopup({
   const [deleting, setDeleting] = useState(false);
   const [addingToTrip, setAddingToTrip] = useState(false);
   const [tripDayPickerOpen, setTripDayPickerOpen] = useState(false);
+  const [tripTargetPickerOpen, setTripTargetPickerOpen] = useState(false);
   const [targetDayId, setTargetDayId] = useState("");
   const [pasteUploading, setPasteUploading] = useState(false);
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
@@ -355,20 +362,22 @@ export function PlaceMapPopup({
       setRatingPreview(null);
     }
   };
-  const addToTrip = async (dayId?: string) => {
-    if ((!tripAddTargetLabel && tripDays.length === 0) || addingToTrip) return;
+  const pickerTargets = tripTargets.length > 0 ? tripTargets : tripDays;
+  const addToTrip = async (targetId?: string) => {
+    if ((!tripAddTargetLabel && pickerTargets.length === 0) || addingToTrip) return;
     setAddingToTrip(true);
     try {
-      if (dayId === undefined) await onAddToTrip(place);
-      else await onAddToTrip(place, dayId);
+      if (targetId === undefined) await onAddToTrip(place);
+      else await onAddToTrip(place, targetId);
     } finally {
       setAddingToTrip(false);
     }
   };
   const requestTripAdd = () => {
-    if (tripAddTargetLabel) void addToTrip();
+    if (tripTargets.length > 0) setTripTargetPickerOpen((value) => !value);
+    else if (tripAddTargetLabel) void addToTrip();
     else {
-      setTargetDayId(tripDays[0]?.id ?? "");
+      setTargetDayId(pickerTargets[0]?.id ?? "");
       setTripDayPickerOpen(true);
     }
   };
@@ -718,12 +727,20 @@ export function PlaceMapPopup({
         canEdit={canEdit}
         showManagementActions={showManagementActions}
         showClose={false}
-        tripAddTargetLabel={tripAddTargetLabel}
-        canChooseTripDay={tripDays.length > 0}
+        tripAddTargetLabel={tripAddTargetLabel ?? (tripTargets.length > 0 ? tripTargetPickerLabel : null)}
+        canChooseTripDay={pickerTargets.length > 0}
         isAddingToTrip={addingToTrip}
         isHistoryOpen={historyOpen}
+        showHistoryAction={showHistoryAction}
+        tripTargets={tripTargets}
+        tripTargetPickerOpen={tripTargetPickerOpen}
         onToggleHistory={variant === "inline" ? () => setHistoryOpen((value) => !value) : undefined}
         onAddToTrip={requestTripAdd}
+        onToggleTripTargetPicker={() => setTripTargetPickerOpen((value) => !value)}
+        onSelectTripTarget={(targetId) => {
+          setTripTargetPickerOpen(false);
+          void addToTrip(targetId);
+        }}
         onShowOnMap={onShowOnMap}
         onEdit={onEdit}
         onDelete={() => void remove()}
@@ -734,18 +751,18 @@ export function PlaceMapPopup({
           className="popup-trip-day-picker"
           role="dialog"
           aria-modal="true"
-          aria-label="Choisir une journée de sortie"
+          aria-label="Choisir une cible de voyage"
         >
-          <h3>Ajouter {place.name} à une journée</h3>
+          <h3>Ajouter {place.name} au voyage</h3>
           <label>
-            Journée
+            Destination
             <select
               value={targetDayId}
               onChange={(event) => setTargetDayId(event.target.value)}
             >
-              {tripDays.map((day) => (
-                <option key={day.id} value={day.id}>
-                  {day.label}
+              {pickerTargets.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.label}
                 </option>
               ))}
             </select>

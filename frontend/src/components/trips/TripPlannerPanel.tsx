@@ -1,6 +1,6 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, BadgeCheck, Calculator, CalendarDays, CalendarPlus, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsDown, ChevronsLeft, ChevronsRight, ChevronsUp, CircleAlert, Clock3, Copy, Download, Ellipsis, Eye, EyeOff, Flag, FolderOpen, Gauge, GripVertical, HardDriveDownload, LoaderCircle, Lock, Map, MapPin, MapPlus, Minus as IconMinimize, Moon, Navigation, Pencil, Play, Plus, Plus as IconMaximize, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2, TriangleAlert, X } from "lucide-react";
+import { Archive, ArchiveRestore, BadgeCheck, BedSingle, Calculator, CalendarDays, CalendarPlus, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, Clock3, Copy, Download, Ellipsis, Eye, EyeOff, Flag, FolderOpen, Gauge, GripVertical, HardDriveDownload, LoaderCircle, Lock, Map, MapPin, MapPlus, Minus as IconMinimize, Moon, Navigation, Pencil, Play, Plus, Plus as IconMaximize, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2, TriangleAlert, X } from "lucide-react";
 import { IconTimelineEvent } from "@tabler/icons-react";
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from "../../api/trips";
@@ -41,6 +41,7 @@ interface Props {
   hiddenDayIds?: ReadonlySet<string>;
   collapsed?: boolean;
   createRequest?: number;
+  tripSelectorVisible?: boolean;
   restoreCachedState?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   onTripViewOnlyChange?: (enabled: boolean) => void;
@@ -61,10 +62,6 @@ interface Props {
   onClose: () => void;
 }
 
-const DayCollapseContext = createContext<{
-  collapsedDayIds: ReadonlySet<string>;
-  onToggle: (dayId: string) => void;
-} | null>(null);
 const TripAnchorActionsContext = createContext<{
   canEdit: boolean;
   reload: (id?: string) => Promise<void>;
@@ -99,7 +96,7 @@ const tripPanelMetricsCache = new globalThis.Map<
   }
 >();
 
-export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined, onTechnicalActionsChange }: Props) {
+export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, tripSelectorVisible = true, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined, onTechnicalActionsChange }: Props) {
   const panelWindow = useContext(FloatingPanelWindowContext);
   const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
   const { confirm, confirmationDialog } = useConfirmDialog();
@@ -139,6 +136,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     dayId: string;
     index: number;
   } | null>(null);
+  const [placeDropDayId, setPlaceDropDayId] = useState<string | null>(null);
   const [routeFeedback, setRouteFeedback] = useState<string | null>(null);
   const initialMetricsRef = useRef(restoreCachedState && trip ? tripPanelMetricsCache.get(trip.id) : undefined);
   const initialTripRef = useRef(restoreCachedState ? trip : null);
@@ -151,11 +149,14 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const [mobileStopSearchDayId, setMobileStopSearchDayId] = useState<string | null>(null);
   const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false);
   const [savingUnsavedChanges, setSavingUnsavedChanges] = useState(false);
-  const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set());
+  const initialExpandedDayId = trip?.days.some((day) => day.id === activeDayId) ? activeDayId : trip?.days[0]?.id;
+  const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set(trip?.days.filter((day) => day.id !== initialExpandedDayId).map((day) => day.id) ?? []));
   const [timelineCollapseRequest, setTimelineCollapseRequest] = useState({
     collapsed: false,
+    expandedItem: initialExpandedDayId ? `day:${initialExpandedDayId}` : null,
     version: 0,
   });
+  const timelineTripIdRef = useRef(trip?.id ?? null);
   const [openDaySettingsIds, setOpenDaySettingsIds] = useState<Set<string>>(() => new Set());
   const [activeNightTarget, setActiveNightTarget] = useState<TripNightTarget | null>(null);
   const [previewSelectionKey, setPreviewSelectionKey] = useState<string | null>(null);
@@ -210,6 +211,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       setDropTarget(null);
       setDraggedDayId(null);
       setDayDropTarget(null);
+      setPlaceDropDayId(null);
     };
     window.addEventListener("dragend", clearStopDropState);
     window.addEventListener("drop", clearStopDropState);
@@ -223,9 +225,16 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   }, [canEdit, createRequest]);
   useEffect(() => {
     const dayIds = new Set(trip?.days.map((day) => day.id) ?? []);
-    setCollapsedDayIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))));
+    if (trip && timelineTripIdRef.current !== trip.id) {
+      timelineTripIdRef.current = trip.id;
+      const expandedDayId = trip.days.some((day) => day.id === activeDayId) ? activeDayId : trip.days[0]?.id;
+      setCollapsedDayIds(new Set(trip.days.filter((day) => day.id !== expandedDayId).map((day) => day.id)));
+      setTimelineCollapseRequest((current) => ({ collapsed: false, expandedItem: expandedDayId ? `day:${expandedDayId}` : null, version: current.version + 1 }));
+    } else {
+      setCollapsedDayIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))));
+    }
     setOpenDaySettingsIds((current) => new Set([...current].filter((dayId) => dayIds.has(dayId))));
-  }, [trip]);
+  }, [activeDayId, trip]);
   useEffect(() => setPreviewSelectionKey(null), [trip?.id]);
   useEffect(() => {
     if (mobileStopSearchDayId && !trip?.days.some((day) => day.id === mobileStopSearchDayId)) setMobileStopSearchDayId(null);
@@ -697,13 +706,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     onTechnicalActionsChange(actions);
     return () => onTechnicalActionsChange(null);
   }, [onTechnicalActionsChange, trip?.id, tripViewOnly]);
-  const toggleDayCollapsed = (dayId: string) =>
-    setCollapsedDayIds((current) => {
-      const next = new Set(current);
-      if (next.has(dayId)) next.delete(dayId);
-      else next.add(dayId);
-      return next;
-    });
+  const expandTimelineItem = (item: string, dayId?: string) => {
+    setCollapsedDayIds(new Set(trip?.days.filter((day) => day.id !== dayId).map((day) => day.id) ?? []));
+    setTimelineCollapseRequest((current) => ({ collapsed: false, expandedItem: item, version: current.version + 1 }));
+  };
   const toggleDaySettings = (dayId: string) =>
     setOpenDaySettingsIds((current) => {
       const next = new Set(current);
@@ -746,7 +752,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     }, 230);
   };
   const activateMobileAnchor = (target: "departure" | "arrival", direction: MobileDayTransitionDirection) => {
-    const anchor = target === "departure" ? trip?.departure : (trip?.arrival ?? trip?.departure);
+    const anchor = target === "departure" ? trip?.departure : trip?.arrival;
     const dayId = target === "departure" ? trip?.days[0]?.id : trip?.days.at(-1)?.id;
     if (!anchor || !dayId) return;
     setMobileDayTransitionDirection(direction);
@@ -832,13 +838,6 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
         await refreshTripSilently(trip.id);
       }),
     );
-  };
-  const setAllTimelineCollapsed = (nextCollapsed: boolean) => {
-    setCollapsedDayIds(nextCollapsed ? new Set(trip?.days.map((day) => day.id) ?? []) : new Set());
-    setTimelineCollapseRequest((current) => ({
-      collapsed: nextCollapsed,
-      version: current.version + 1,
-    }));
   };
 
   const activeDay = trip?.days.find((day) => day.id === activeDayId) ?? trip?.days[0] ?? null;
@@ -993,11 +992,11 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
               {trip && <nav className="trip-panel-collapsed-timeline" aria-label="Chronologie compacte de la sortie">
                 <button type="button" className={`trip-panel-collapsed-timeline__anchor${activeAnchorTarget === "departure" ? " is-active" : ""}`} aria-label="Départ" title="Départ" onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveDayChange(null); onActiveAnchorTargetChange("departure"); onAnchorPopupChange("departure") }}><Play size={16} aria-hidden="true" /></button>
                 {trip.days.map((day) => <Fragment key={day.id}>
-                  <button type="button" className={`trip-panel-collapsed-timeline__day${activeDayId === day.id && activeNightTarget === null ? " is-active" : ""}`} style={{ "--collapsed-trip-day-color": day.color ?? "#0FA68A" } as CSSProperties} aria-label={`Jour ${day.day_number}`} title={day.title || `Jour ${day.day_number}`} onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveAnchorTargetChange(null); onActiveDayChange(day.id) }}><Sun size={15} aria-hidden="true" /><span>J{day.day_number}</span></button>
+                  <button type="button" className={`trip-panel-collapsed-timeline__day${activeDayId === day.id && activeNightTarget === null ? " is-active" : ""}`} style={{ "--collapsed-trip-day-color": day.color ?? "#0FA68A" } as CSSProperties} aria-label={`Jour ${day.day_number}`} title={day.title || `Jour ${day.day_number}`} onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveAnchorTargetChange(null); onActiveDayChange(day.id) }}><Sun size={15} aria-hidden="true" /></button>
                   {trip.nights.filter((night) => night.previous_day_id === day.id).map((night) => {
                     const target = { nightId: night.id, previousDayId: night.previous_day_id, nextDayId: night.next_day_id }
                     const selected = activeNightTarget?.nightId === night.id
-                    return <button key={night.id} type="button" className={`trip-panel-collapsed-timeline__night${selected ? " is-active" : ""}`} aria-label={`Nuit ${day.day_number}`} title={night.name || `Nuit ${day.day_number}`} onClick={() => { setActiveNightTarget(target); onActiveAnchorTargetChange(null); onActiveDayChange(night.next_day_id); onActiveNightTargetChange(target, true) }}><Moon size={14} aria-hidden="true" /><span>N{day.day_number}</span></button>
+                    return <button key={night.id} type="button" className={`trip-panel-collapsed-timeline__night${selected ? " is-active" : ""}`} aria-label={`Nuit ${day.day_number}`} title={night.name || `Nuit ${day.day_number}`} onClick={() => { setActiveNightTarget(target); onActiveAnchorTargetChange(null); onActiveDayChange(night.next_day_id); onActiveNightTargetChange(target, true) }}><BedSingle size={15} aria-hidden="true" /></button>
                   })}
                 </Fragment>)}
                 <button type="button" className={`trip-panel-collapsed-timeline__anchor trip-panel-collapsed-timeline__anchor--arrival${activeAnchorTarget === "arrival" ? " is-active" : ""}`} aria-label="Arrivée" title="Arrivée" onClick={() => { setActiveNightTarget(null); onActiveNightTargetChange(null); onActiveDayChange(null); onActiveAnchorTargetChange("arrival"); onAnchorPopupChange("arrival") }}><Flag size={16} aria-hidden="true" /></button>
@@ -1064,7 +1063,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                     }}
                   />
                 )}
-                {isMobile && !tripViewOnly && trip && (mobileTimelineTarget?.kind === "departure" || mobileTimelineTarget?.kind === "arrival") && <MobileTripAnchorPage target={mobileTimelineTarget.kind} anchor={mobileTimelineTarget.kind === "departure" ? trip.departure : (trip.arrival ?? trip.departure)} onOpen={() => onAnchorPopupChange(mobileTimelineTarget.kind === "arrival" && !trip.arrival ? "departure" : mobileTimelineTarget.kind)} onPrevious={mobileTimelineTarget.kind === "arrival" ? () => activateMobileDay(trip.days.at(-1)?.id ?? "", "backward") : undefined} onNext={mobileTimelineTarget.kind === "departure" ? () => activateMobileDay(trip.days[0]?.id ?? "", "forward") : undefined} onSwipeProgress={setMobileDaySwipeOffset} swipeOffset={mobileDaySwipeOffset} />}
+                {isMobile && !tripViewOnly && trip && (mobileTimelineTarget?.kind === "departure" || mobileTimelineTarget?.kind === "arrival") && <MobileTripAnchorPage target={mobileTimelineTarget.kind} anchor={mobileTimelineTarget.kind === "departure" ? trip.departure : trip.arrival ?? null} onOpen={() => onAnchorPopupChange(mobileTimelineTarget.kind)} onPrevious={mobileTimelineTarget.kind === "arrival" ? () => activateMobileDay(trip.days.at(-1)?.id ?? "", "backward") : undefined} onNext={mobileTimelineTarget.kind === "departure" ? () => activateMobileDay(trip.days[0]?.id ?? "", "forward") : undefined} onSwipeProgress={setMobileDaySwipeOffset} swipeOffset={mobileDaySwipeOffset} />}
                 {isMobile && !tripViewOnly && (
                   <div className="trip-mobile-primary-actions" aria-label="Actions de sortie">
                     <select aria-label="Liste des sorties" value={loadingTripId ?? trip?.id ?? ""} onChange={(event) => changeSelectedTrip(event.target.value)}>
@@ -1264,7 +1263,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                         {error === "Internal Server Error" ? "Une erreur serveur empêche cette opération." : error}
                       </p>
                     )}
-                    <div className="trip-panel-selector">
+                    {tripSelectorVisible && <div className="trip-panel-selector">
                       <select aria-label={t("trips.select")} value={loadingTripId ?? trip?.id ?? ""} onChange={(event) => changeSelectedTrip(event.target.value)}>
                         <option value="">{t("trips.select")}</option>
                         {trips.map((item) => (
@@ -1297,7 +1296,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                           }}
                         />
                       )}
-                    </div>
+                    </div>}
                     {loadingTripId ? (
                       <div className="trip-panel-empty" role="status">
                         <Route size={28} />
@@ -1404,16 +1403,6 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                       </button>
                                     </span>
                                   )}
-                                  <span className="trip-panel-journeys-toggle-actions">
-                                    <button type="button" aria-label="Tout déplier" title="Tout déplier" onClick={() => setAllTimelineCollapsed(false)}>
-                                      <ChevronsDown size={13} />
-                                      <span>Tout déplier</span>
-                                    </button>
-                                    <button type="button" aria-label="Tout replier" title="Tout replier" onClick={() => setAllTimelineCollapsed(true)}>
-                                      <ChevronsUp size={13} />
-                                      <span>Tout replier</span>
-                                    </button>
-                                  </span>
                                 </span>
                               </header>
                               {globalOptimization && <GlobalOptimizationReview proposals={globalOptimization.days} busy={busy} onCancel={() => setGlobalOptimization(null)} onApply={applyGlobalOptimization} />}
@@ -1425,22 +1414,17 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                   onPlaceDrop: onAnchorPlaceDrop,
                                 }}
                               >
-                                <DayCollapseContext.Provider
-                                  value={{
-                                    collapsedDayIds,
-                                    onToggle: toggleDayCollapsed,
-                                  }}
-                                >
                                   <div className="trip-panel-days">
                                     {trip.days[0] && (
                                       <Departure
                                         trip={trip}
                                         selected={activeAnchorTarget === "departure"}
                                         recommendedStart={daySummaries[trip.days[0].id]?.recommended_start_time ?? null}
-                                        recommendedStartOffset={daySummaries[trip.days[0].id]?.recommended_start_day_offset ?? null}
-                                        collapseRequest={timelineCollapseRequest}
-                                        onSelect={() => {
-                                          setActiveNightTarget(null);
+                                         recommendedStartOffset={daySummaries[trip.days[0].id]?.recommended_start_day_offset ?? null}
+                                         collapseRequest={timelineCollapseRequest}
+                                         onSelect={() => {
+                                           expandTimelineItem("departure");
+                                           setActiveNightTarget(null);
                                           onActiveNightTargetChange(null);
                                           onActiveAnchorTargetChange("departure");
                                           onActiveDayChange(trip.days[0].id);
@@ -1483,20 +1467,35 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                         }}
                                       >
                                         <DayVisibilityBubble day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />
-                                        <details
-                                          className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? " is-active" : ""}`}
+                                          <details
+                                            className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? " is-active" : ""}${placeDropDayId === day.id ? " is-drop-target" : ""}`}
                                           open={!collapsedDayIds.has(day.id)}
                                           onClick={(event) => {
                                             const target = event.target as HTMLElement;
-                                            if (target.closest("button, input, select, textarea, a")) return;
-                                            activateDay(day.id);
-                                            if (target.closest(".trip-panel-day > summary")) event.preventDefault();
+                                             if (target.closest("button, input, select, textarea, a")) return;
+                                             activateDay(day.id);
+                                             expandTimelineItem(`day:${day.id}`, day.id);
+                                             if (target.closest(".trip-panel-day > summary")) event.preventDefault();
                                           }}
-                                          onDragLeave={(event) => {
-                                            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget((current) => (current?.dayId === day.id ? null : current));
-                                          }}
-                                          onDragOver={(event) => event.preventDefault()}
-                                          onDrop={(event) => drop(event, day)}
+                                            onDragLeave={(event) => {
+                                              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                                                setDropTarget((current) => (current?.dayId === day.id ? null : current));
+                                                setPlaceDropDayId((current) => current === day.id ? null : current);
+                                              }
+                                            }}
+                                            onDragOver={(event) => {
+                                              event.preventDefault();
+                                              if (canEditTrip && day.stops.length === 0 && hasDraggedPlace(event.dataTransfer)) {
+                                                setPlaceDropDayId(day.id);
+                                                setCollapsedDayIds((current) => {
+                                                  if (!current.has(day.id)) return current;
+                                                  const next = new Set(current);
+                                                  next.delete(day.id);
+                                                  return next;
+                                                });
+                                              }
+                                            }}
+                                            onDrop={(event) => { setPlaceDropDayId(null); drop(event, day); }}
                                         >
                                           <summary
                                             className={canEdit ? "trip-day-drag-surface" : undefined}
@@ -1524,18 +1523,18 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                             </span>
                                             <DayHeaderMetrics summary={daySummaries[day.id]} status={getDayTimelineStatus(day, daySummaries[day.id])} />
                                           </summary>
-                                          <div className="trip-panel-day-header-controls">
-                                            <DayCollapseToggle day={day} />
-                                          </div>
-                                          <div className="trip-panel-day-content">
+                                           {placeDropDayId === day.id && day.stops.length === 0 && <PlaceDropGhost />}
+                                           <div className="trip-panel-day-content">
                                             {day.route_status === "stale" && <p>Itinéraire à recalculer</p>}
                                             {daySummaries[day.id]?.country_constraint_status === "unchecked" && <p className="trip-metrics-warning">Itinéraire à vérifier avec la contrainte pays.</p>}
                                             {daySummaries[day.id]?.country_constraint_status === "invalid" && <p className="trip-panel-error">Itinéraire refusé : passage hors de {daySummaries[day.id]?.constraint_country_name}.</p>}
                                             <ul>
-                                              {day.stops.map((stop, index) => (
-                                                <li
+                                              {day.stops.map((stop, index) => {
+                                                const dropBefore = dropTarget?.dayId === day.id && dropTarget.index === index;
+                                                const dropAfter = index === day.stops.length - 1 && dropTarget?.dayId === day.id && dropTarget.index === day.stops.length;
+                                                return <li
                                                   key={stop.id}
-                                                  className={`${draggedStopId === stop.id ? "is-dragging" : ""}${dropTarget?.dayId === day.id && dropTarget.index === index ? " drop-before" : ""}${index === day.stops.length - 1 && dropTarget?.dayId === day.id && dropTarget.index === day.stops.length ? " drop-after" : ""}`}
+                                                  className={`${draggedStopId === stop.id ? "is-dragging" : ""}${dropBefore ? " has-place-drop-before" : ""}${dropAfter ? " has-place-drop-after" : ""}`}
                                                   draggable={canEdit}
                                                   onDragStart={(event) => {
                                                     event.dataTransfer.effectAllowed = "move";
@@ -1560,6 +1559,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                                     if (!draggedDayId) dropStop(event, day, dropTarget?.dayId === day.id ? dropTarget.index : index);
                                                   }}
                                                 >
+                                                  {dropBefore && <PlaceDropGhost moving={draggedStopId !== null} />}
                                                   <GripVertical className="trip-stop-grip" size={13} />
                                                   <i>{index + 1}</i>
                                                   <MapPin className="trip-stop-kind" aria-hidden="true" size={14} />
@@ -1633,8 +1633,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                                       </button>
                                                     </span>
                                                   )}
-                                                </li>
-                                              ))}
+                                                  {dropAfter && <PlaceDropGhost moving={draggedStopId !== null} />}
+                                                </li>;
+                                              })}
                                             </ul>
                                             {day.stops.length === 0 && <p className="trip-panel-drop">Glissez un POI ou utilisez la recherche de la carte</p>}
                                             <div className={`trip-panel-route-actions${canEdit ? " trip-panel-route-actions--editable" : ""}`}>
@@ -1785,8 +1786,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                             canEdit={canEditTrip}
                                             reload={reload}
                                             collapseRequest={timelineCollapseRequest}
-                                            onSelect={(target, openPopup) => {
-                                              setActiveNightTarget(target);
+                                             onSelect={(target, openPopup) => {
+                                               expandTimelineItem(`night:${day.id}:${trip.days[dayIndex + 1].id}`);
+                                               setActiveNightTarget(target);
                                               onActiveAnchorTargetChange(null);
                                               onActiveNightTargetChange(target, openPopup);
                                               onActiveDayChange(trip.days[dayIndex + 1].id);
@@ -1803,9 +1805,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                         selected={activeAnchorTarget === "arrival"}
                                         estimatedArrival={daySummaries[trip.days.at(-1)!.id]?.estimated_arrival_time ?? null}
                                         estimatedArrivalOffset={daySummaries[trip.days.at(-1)!.id]?.estimated_arrival_day_offset ?? null}
-                                        collapseRequest={timelineCollapseRequest}
-                                        onSelect={() => {
-                                          setActiveNightTarget(null);
+                                         collapseRequest={timelineCollapseRequest}
+                                         onSelect={() => {
+                                           expandTimelineItem("arrival");
+                                           setActiveNightTarget(null);
                                           onActiveNightTargetChange(null);
                                           onActiveAnchorTargetChange("arrival");
                                           onActiveDayChange(trip.days.at(-1)!.id);
@@ -1815,7 +1818,6 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                       />
                                     )}
                                   </div>
-                                </DayCollapseContext.Provider>
                               </TripAnchorActionsContext.Provider>
                             </section>
                           </>
@@ -1846,9 +1848,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
               {isMobile && !tripViewOnly && trip && mobileTimelineTarget?.kind === "arrival" && <MobileTripAnchorFooter target="arrival" previousLabel={`Jour ${trip.days.at(-1)?.day_number ?? trip.days.length}`} nextLabel="" disabledNext onPrevious={() => activateMobileDay(trip.days.at(-1)?.id ?? "", "backward")} onNext={() => undefined} />}
               {createOpen && (
                 <CreateTripDialog
-                  mapName={poiMap.name}
+                  maps={[poiMap]}
                   onClose={() => setCreateOpen(false)}
-                  onCreate={async (payload) => {
+                  onCreate={async (_mapId, payload) => {
                     const created = await createTrip(poiMap.id, payload);
                     await reload(created.id);
                     setCreateOpen(false);
@@ -3260,7 +3262,7 @@ function TripPreviewTimeline({ trip, activeDayId, selectedKey, daySummaries, onS
   };
   const firstDay = trip.days[0];
   const lastDay = trip.days.at(-1);
-  const effectiveArrival = trip.arrival ?? trip.departure;
+  const effectiveArrival = trip.arrival;
   const arrivalTime = lastDay ? formatClock(daySummaries[lastDay.id]?.estimated_arrival_time ?? null, daySummaries[lastDay.id]?.estimated_arrival_day_offset ?? null) : "—";
   const navigationItems = useMemo(() => {
     const items: Array<{ key: string; stopId: string | null }> = [];
@@ -4023,10 +4025,6 @@ function DayVisibilityBubble({ day, hidden, onChange }: { day: TripDay; hidden: 
     >
       <span className="trip-day-bubble__default" aria-hidden="true">
         <Sun size={12} />
-        <b>
-          <span>J</span>
-          <span>{day.day_number}</span>
-        </b>
       </span>
       <span className="trip-day-bubble__visibility" aria-hidden="true">
         {visible ? <Eye size={15} /> : <EyeOff size={15} />}
@@ -4035,28 +4033,7 @@ function DayVisibilityBubble({ day, hidden, onChange }: { day: TripDay; hidden: 
   );
 }
 
-function DayCollapseToggle({ day }: { day: TripDay }) {
-  const dayCollapse = useContext(DayCollapseContext);
-  if (!dayCollapse) return null;
-  const collapsed = dayCollapse?.collapsedDayIds.has(day.id) ?? false;
-  return (
-    <button
-      className="trip-day-collapse-toggle trip-day-collapse-toggle--inline"
-      type="button"
-      aria-label={`${collapsed ? "Développer" : "Réduire"} le jour ${day.day_number}`}
-      aria-expanded={!collapsed}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        dayCollapse.onToggle(day.id);
-      }}
-    >
-      <ChevronDown className={collapsed ? "is-collapsed" : undefined} size={14} />
-    </button>
-  );
-}
-
-type TimelineCollapseRequest = { collapsed: boolean; version: number };
+type TimelineCollapseRequest = { collapsed: boolean; expandedItem: string | null; version: number };
 
 function useTransientDropState() {
   const [dropActive, setDropActive] = useState(false);
@@ -4081,6 +4058,10 @@ function draggedPlaceId(dataTransfer: DataTransfer) {
 
 function hasDraggedPlace(dataTransfer: DataTransfer) {
   return dataTransfer.types.includes("application/x-cartavault-place") || dataTransfer.types.includes("text/plain");
+}
+
+function PlaceDropGhost({ replacement = false, moving = false }: { replacement?: boolean; moving?: boolean }) {
+  return <span className={`trip-place-drop-ghost${replacement ? " trip-place-drop-ghost--replacement" : ""}`} aria-hidden="true"><Plus size={14} />{replacement ? "Remplacer le POI" : moving ? "Déplacer l’étape ici" : "Déposer le POI ici"}</span>
 }
 
 function useTripUndo(trip: Trip, reload: (id?: string) => Promise<void>) {
@@ -4110,7 +4091,7 @@ function Departure({ trip, selected, recommendedStart, recommendedStartOffset, c
   const departure = trip.departure;
   const reload = anchorActions?.reload ?? (async () => undefined);
   const runUndoable = useTripUndo(trip, reload);
-  useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest]);
+  useEffect(() => setCollapsed(collapseRequest.collapsed || (collapseRequest.expandedItem !== null && collapseRequest.expandedItem !== "departure")), [collapseRequest]);
   const recommendedLabel = formatClock(recommendedStart, recommendedStartOffset);
   const focusDeparture = () => {
     onSelect();
@@ -4208,12 +4189,8 @@ function Departure({ trip, selected, recommendedStart, recommendedStartOffset, c
               </span>
               <span className="trip-night-header-spacer" aria-hidden="true" />
             </span>
-            <span className="trip-night-header-actions">
-              <button className="trip-day-collapse-toggle trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? "Développer" : "Réduire"} le départ`} aria-expanded={!collapsed} onClick={() => setCollapsed((current) => !current)}>
-                <ChevronDown className={collapsed ? "is-collapsed" : undefined} size={14} />
-              </button>
-            </span>
           </div>
+          {dropActive && !departure && <PlaceDropGhost />}
           {!collapsed &&
             (departure ? (
               <div
@@ -4248,6 +4225,7 @@ function Departure({ trip, selected, recommendedStart, recommendedStartOffset, c
                     )}
                   </span>
                 )}
+                {dropActive && <PlaceDropGhost replacement />}
               </div>
             ) : (
               <div className="trip-night-placeholder">
@@ -4265,11 +4243,11 @@ function Arrival({ trip, selected, estimatedArrival, estimatedArrivalOffset, col
   const [collapsed, setCollapsed] = useState(false);
   const [dropActive, setDropActive] = useTransientDropState();
   const arrival = trip.arrival;
-  const effectiveArrival = arrival ?? trip.departure;
+  const effectiveArrival = arrival;
   const reload = anchorActions?.reload ?? (async () => undefined);
   const runUndoable = useTripUndo(trip, reload);
   const estimatedArrivalLabel = formatClock(estimatedArrival, estimatedArrivalOffset);
-  useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest]);
+  useEffect(() => setCollapsed(collapseRequest.collapsed || (collapseRequest.expandedItem !== null && collapseRequest.expandedItem !== "arrival")), [collapseRequest]);
   const focusArrival = () => {
     onSelect();
     if (!effectiveArrival) return;
@@ -4362,12 +4340,8 @@ function Arrival({ trip, selected, estimatedArrival, estimatedArrivalOffset, col
               </span>
               <span className="trip-night-header-spacer" aria-hidden="true" />
             </span>
-            <span className="trip-night-header-actions">
-              <button className="trip-day-collapse-toggle trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? "Développer" : "Réduire"} l’arrivée`} aria-expanded={!collapsed} onClick={() => setCollapsed((current) => !current)}>
-                <ChevronDown className={collapsed ? "is-collapsed" : undefined} size={14} />
-              </button>
-            </span>
           </div>
+          {dropActive && !arrival && <PlaceDropGhost />}
           {!collapsed &&
             (effectiveArrival ? (
               <div
@@ -4402,6 +4376,7 @@ function Arrival({ trip, selected, estimatedArrival, estimatedArrivalOffset, col
                     )}
                   </span>
                 )}
+                {dropActive && arrival && <PlaceDropGhost replacement />}
               </div>
             ) : (
               <div className="trip-night-placeholder">
@@ -4421,7 +4396,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
   const [dropping, setDropping] = useState(false);
   const [dropActive, setDropActive] = useTransientDropState();
   const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => setCollapsed(collapseRequest.collapsed), [collapseRequest]);
+  useEffect(() => setCollapsed(collapseRequest.collapsed || (collapseRequest.expandedItem !== null && collapseRequest.expandedItem !== `night:${previous.id}:${next.id}`)), [collapseRequest, previous.id, next.id]);
   const drop = (event: DragEvent) => {
     event.preventDefault();
     setDropActive(false);
@@ -4507,7 +4482,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
           }
         }}
         onDragEnter={(event) => {
-          if (canEdit && event.dataTransfer.types.includes("text/plain")) {
+          if (canEdit && hasDraggedPlace(event.dataTransfer)) {
             setCollapsed(false);
             setDropActive(true);
           }
@@ -4525,8 +4500,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
         onDrop={drop}
       >
         <span className="trip-timeline-night-badge">
-          <Moon aria-hidden="true" size={13} />
-          <b>N{previous.day_number}</b>
+          <BedSingle aria-hidden="true" size={15} />
         </span>
         <div className="trip-night-content">
           <div className="trip-night-header-row">
@@ -4548,11 +4522,6 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
               </span>
               <span className="trip-night-header-spacer" aria-hidden="true" />
             </span>
-            <span className="trip-night-header-actions">
-              <button className="trip-day-collapse-toggle trip-day-collapse-toggle--inline trip-night-collapse-toggle" type="button" aria-label={`${collapsed ? "Développer" : "Réduire"} la nuit ${previous.day_number}`} aria-expanded={!collapsed} onClick={() => setCollapsed((value) => !value)}>
-                <ChevronDown className={collapsed ? "is-collapsed" : undefined} size={14} />
-              </button>
-            </span>
           </div>
           {!collapsed &&
             (night ? (
@@ -4571,14 +4540,12 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
                     )}
                   </span>
                 )}
+                {dropActive && <PlaceDropGhost replacement />}
               </div>
             ) : (
               <div className="trip-night-placeholder">
                 {dropActive ? (
-                  <span className="trip-night-drop-indicator" aria-hidden="true">
-                    <Plus size={12} />
-                    Déposer ici
-                  </span>
+                  <PlaceDropGhost />
                 ) : (
                   <span>Glissez un POI ou utilisez la recherche de la carte</span>
                 )}
@@ -4630,7 +4597,7 @@ function TimelineStatusBadge({ status }: { status: TimelineStatus }) {
 function canCalculateRoute(trip: Trip, day: TripDay, dayIndex: number) {
   const hasInheritedStart = dayIndex > 0 && trip.days[dayIndex - 1]?.stops.length > 0;
   const hasStart = dayIndex === 0 ? trip.departure !== null : trip.nights.some((night) => night.next_day_id === day.id) || hasInheritedStart;
-  const hasEnd = trip.nights.some((night) => night.previous_day_id === day.id) || (dayIndex === trip.days.length - 1 && (trip.arrival ?? trip.departure) !== null);
+  const hasEnd = trip.nights.some((night) => night.previous_day_id === day.id) || (dayIndex === trip.days.length - 1 && trip.arrival != null);
   return day.stops.length + Number(hasStart) + Number(hasEnd) >= 2;
 }
 function readLoadSettings(trip: Trip): TripLoadSettings {

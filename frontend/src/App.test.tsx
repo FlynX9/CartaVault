@@ -27,7 +27,7 @@ function Path() { const location = useLocation(); return <output data-testid="pa
 function BrowserBack() { const navigate = useNavigate(); return <button type="button" onClick={() => navigate(-1)}>Précédent</button> }
 
 beforeEach(() => vi.mocked(getMaps).mockResolvedValue([MAP]))
-afterEach(() => { cleanup(); vi.clearAllMocks(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); window.localStorage.clear(); vi.clearAllMocks(); vi.unstubAllGlobals() })
 
 describe('map URL workspace', () => {
   it('cancels obsolete bounds requests and retains usable markers during refresh failures', async () => {
@@ -93,13 +93,43 @@ describe('map URL workspace', () => {
     expect(document.getElementById('map-context-toolbar-slot')?.closest('nav')).toHaveAccessibleName('Navigation de la carte')
   })
 
+  it('replaces legacy map query context while retaining filters', async () => {
+    render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}&q=musée`]}><App /><Path /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}?q=musée`))
+  })
+
+  it('does not automatically open a map when the URL has no map context', async () => {
+    render(<MemoryRouter initialEntries={['/']}><App /><Path /></MemoryRouter>)
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/dashboard'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mes Cartes' }))
+    expect(await screen.findByRole('heading', { name: 'Mes cartes' })).toBeVisible()
+  })
+
+  it('keeps a closed map out of subsequent navigation', async () => {
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+    await screen.findByTestId('workspace')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer Carte France' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/maps'))
+    fireEvent.click(screen.getByRole('button', { name: 'Accueil' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/dashboard'))
+    expect(screen.queryByTestId('workspace')).not.toBeInTheDocument()
+  })
+
   it('opens the maps panel and starts creation from its dedicated button', async () => {
     render(<MemoryRouter initialEntries={['/']}><App /><Path /></MemoryRouter>)
-    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`))
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mes Cartes' }))
     expect(await screen.findByRole('heading', { name: 'Mes cartes' })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Créer une carte' }))
     expect(screen.getByRole('heading', { name: 'Créer une carte' })).toBeVisible()
+  })
+
+  it('opens the trash workspace at its dedicated route', async () => {
+    render(<MemoryRouter initialEntries={['/maps']}><App /><Path /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Corbeille' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/trash'))
   })
 
   it('collapses and restores the Places panel from its panel control', async () => {
@@ -129,7 +159,7 @@ describe('map URL workspace', () => {
     expect(await screen.findByRole('heading', { name: 'Quotas' })).toBeVisible()
     expect(getMaps).toHaveBeenCalledTimes(mapCallsBeforeSectionChange)
     fireEvent.click(screen.getByRole('button', { name: 'Fermer l’administration' }))
-    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}`))
   })
 
   it('always opens Sorties with the complete Places and Preparation workspace', async () => {
@@ -254,7 +284,7 @@ describe('map URL workspace', () => {
     fireEvent.click(placesNavigation)
     expect(placesNavigation).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).not.toBeInTheDocument()
-    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
+    expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}`)
 
     fireEvent.click(placesNavigation)
     expect(placesNavigation).toHaveAttribute('aria-pressed', 'true')
@@ -277,7 +307,7 @@ describe('map URL workspace', () => {
   it('reports an API failure when moving a map to trash', async () => {
     vi.mocked(deleteMap).mockRejectedValue(new ApiError(409, 'Conflict'))
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
-    fireEvent.click(await screen.findByRole('button', { name: 'Cartes' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Mes Cartes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Options de Carte France' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Supprimer Carte France' }))
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
@@ -289,9 +319,9 @@ describe('map URL workspace', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Marqueur POI' }))
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
     expect(screen.getByRole('dialog')).toHaveAttribute('data-management-actions', 'true')
-    expect(screen.getByTestId('path')).toHaveTextContent(`/places/place-id?map=${MAP_ID}`)
+    expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}/places/place-id`)
     fireEvent.click(screen.getByRole('button', { name: 'Fermer popup' }))
-    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
+    expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}`)
   })
 
   it('preserves the place search while opening and closing a POI card', async () => {
@@ -299,10 +329,10 @@ describe('map URL workspace', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Marqueur POI' }))
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
-    expect(screen.getByTestId('path')).toHaveTextContent(`/places/place-id?map=${MAP_ID}&q=musée`)
+    expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}/places/place-id?q=musée`)
 
     fireEvent.click(screen.getByRole('button', { name: 'Fermer popup' }))
-    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}&q=musée`)
+    expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}?q=musée`)
   })
 
   it('centers a POI only when its popup opens and preserves manual map navigation', async () => {
@@ -322,7 +352,7 @@ describe('map URL workspace', () => {
   })
 
   it('restores a direct place URL inside the map workspace', async () => {
-    render(<MemoryRouter initialEntries={[`/places/place-id?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}/places/place-id`]}><App /><Path /></MemoryRouter>)
     expect(await screen.findByRole('dialog')).toHaveTextContent('Popup place-id')
     expect(screen.getByTestId('workspace')).toBeVisible()
   })
@@ -336,13 +366,13 @@ describe('map URL workspace', () => {
     fireEvent.focus(window)
 
     await waitFor(() => expect(getMaps).toHaveBeenCalledTimes(callsBeforeRevocation + 1))
-    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(/^\/$/))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/maps'))
   })
 
   it('refreshes map access silently without hiding the current catalog', async () => {
     render(<MemoryRouter initialEntries={[`/?map=${MAP_ID}`]}><App /></MemoryRouter>)
     await waitFor(() => expect(getMaps).toHaveBeenCalled())
-    fireEvent.click(screen.getByRole('button', { name: 'Cartes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mes Cartes' }))
     expect(await screen.findByRole('button', { name: 'Ouvrir Carte France' })).toBeVisible()
 
     let resolveRefresh!: (maps: typeof MAP[]) => void
@@ -357,9 +387,9 @@ describe('map URL workspace', () => {
   it('does not restore an aborted direct URL selection after closing the popup', async () => {
     let resolveDetails!: (place: never) => void
     vi.mocked(getPlaceDetails).mockImplementationOnce(() => new Promise((resolve) => { resolveDetails = resolve }))
-    render(<MemoryRouter initialEntries={[`/places/place-id?map=${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}/places/place-id`]}><App /><Path /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Fermer popup' }))
-    expect(screen.getByTestId('path')).toHaveTextContent(`/?map=${MAP_ID}`)
+    expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}`)
     resolveDetails({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, categories: [], tags: [] } as never)
     await waitFor(() => expect(screen.getByTestId('workspace')).toHaveAttribute('data-selected', ''))
   })

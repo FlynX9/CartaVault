@@ -9,12 +9,12 @@ export function deriveMapSidebarState(
   pathname: string,
   selectedPlace: { id: string } | null,
 ): MapSidebarState {
-  if (pathname === '/places/new') return { mode: 'create' }
+  if (/^\/maps\/[^/]+\/places\/new$/.test(pathname)) return { mode: 'create' }
 
-  const editMatch = pathname.match(/^\/places\/([^/]+)\/edit$/)
+  const editMatch = pathname.match(/^\/maps\/[^/]+\/places\/([^/]+)\/edit$/)
   if (editMatch?.[1]) return { mode: 'edit', placeId: editMatch[1] }
 
-  const detailsMatch = pathname.match(/^\/places\/([^/]+)$/)
+  const detailsMatch = pathname.match(/^\/maps\/[^/]+\/places\/([^/]+)$/)
   if (detailsMatch?.[1]) return { mode: 'details', placeId: detailsMatch[1] }
 
   if (selectedPlace !== null) return { mode: 'preview', place: selectedPlace }

@@ -69,6 +69,10 @@ interface Props {
   onImported?: () => void;
   onBulkChanged?: () => void;
   onBulkTripChanged?: (tripId: string) => void;
+  tripPlaceDropEnabled?: boolean;
+  hideCreateAction?: boolean;
+  tripTargets?: Array<{ id: string; label: string }>;
+  onAddToTripTarget?: (place: PlaceDetails, targetId: string) => Promise<void> | void;
   importRequest?: number;
   selectionMode?: boolean;
   selectedPlaceIds?: ReadonlySet<string>;
@@ -89,7 +93,7 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1);
 };
 
-export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
+export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, tripPlaceDropEnabled = false, hideCreateAction = false, tripTargets = [], onAddToTripTarget, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { confirm, confirmationDialog } = useConfirmDialog();
@@ -631,7 +635,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return (
       <aside className="country-place-panel cv-workspace-panel places-redesign-panel is-collapsed cv-places-compact-rail" id="map-place-list" tabIndex={-1} aria-label={t("places.title")}>
         <header className="places-redesign-header cv-places-compact-rail__header">
-          {poiMap?.can_edit !== false && <Link className="panel-icon-button primary cv-places-compact-rail__create" to={withMap("/places/new", poiMap?.id)} aria-label={t("places.new")} title={t("places.new")}><Plus size={19} aria-hidden="true" /></Link>}
+          {!hideCreateAction && poiMap?.can_edit !== false && <Link className="panel-icon-button primary cv-places-compact-rail__create" to={withMap("/places/new", poiMap?.id)} aria-label={t("places.new")} title={t("places.new")}><Plus size={19} aria-hidden="true" /></Link>}
           <PanelWindowControls />
         </header>
         <div className="cv-places-compact-rail__list" role="list" aria-label={t("places.title")}>
@@ -692,7 +696,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                 </button>
               )}
             </label>
-            {poiMap.can_edit !== false && (
+            {!hideCreateAction && poiMap.can_edit !== false && (
               <Link className="primary-button places-search-create" to={withMap("/places/new", poiMap.id)} aria-label={t("places.add")} title={t("places.add")}>
                 <Plus size={18} aria-hidden="true" />
                 <span>{t("places.add")}</span>
@@ -1145,24 +1149,35 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                     {inlineExpanded && (
                       <PlaceInlineThumbnailGallery placeId={place.id} placeName={place.name} statusColor={place.status.color} categoryIcon={primary?.icon} />
                     )}
+                    {inlineExpanded && (
+                      <button className="popup-inline-close" type="button" aria-label="Fermer la fiche" title="Fermer" onClick={onPlaceCollapse}>
+                        <X size={16} aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       ref={(node) => {
                         if (node) refs.current.set(place.id, node);
                         else refs.current.delete(place.id);
                       }}
-                      type="button"
-                      data-place-row-focus
+                       type="button"
+                       draggable={tripPlaceDropEnabled || undefined}
+                       data-place-row-focus
                       aria-expanded={inlineExpanded}
                       aria-label={place.name}
                       className="places-place-main"
-                      onClick={() => {
+                       onClick={() => {
                         if (mobileSwipeMoved.current) {
                           mobileSwipeMoved.current = false;
                           return;
                         }
                         if (inlineExpanded) onPlaceCollapse();
-                        else onPlaceSelect(place);
-                      }}
+                         else onPlaceSelect(place);
+                       }}
+                       onDragStart={(event) => {
+                         event.dataTransfer.effectAllowed = "copy";
+                         event.dataTransfer.setData("text/plain", `place:${place.id}`);
+                         event.dataTransfer.setData("application/x-cartavault-place", place.id);
+                       }}
                     >
                       {!inlineExpanded && (
                         <span className="places-place-photo">
@@ -1219,7 +1234,12 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         initialPlace={place}
                         canEdit={poiMap?.can_edit !== false}
                         allowPhotoPaste={false}
-                        showManagementActions
+                        showManagementActions={tripTargets.length === 0}
+                        showHistoryAction={tripTargets.length === 0}
+                        tripTargets={tripTargets}
+                        onAddToTrip={(targetPlace, targetId) => {
+                          if (targetId) return onAddToTripTarget?.(targetPlace, targetId);
+                        }}
                         onUpdated={(updatedPlace) => {
                           setPlaces((current) => current.map((item) => item.id === updatedPlace.id ? updatedPlace : item));
                           setPinnedSelectedPlace((current) => current?.id === updatedPlace.id ? updatedPlace : current);
