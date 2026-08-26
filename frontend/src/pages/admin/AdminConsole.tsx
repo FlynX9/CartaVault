@@ -26,6 +26,7 @@ import { AdminApiKeysSection } from './AdminApiKeysSection'
 import { AdminPublicRegistrationSection } from './AdminPublicRegistrationSection'
 import { AdminSaveContext, useAdminSaveEntry, type AdminSaveContextValue, type AdminSaveEntry } from './adminSaveContext'
 import type { AdminRole, AdminUser, AdminUserActivity, AdminUserDetails, AdminUserPage, AdminUserState, QuotaProfile } from '../../types/adminConsole'
+import { useUnsavedChangeSignal } from '../../hooks/useUnsavedChangeSignal'
 
 const sections = [
   ['general', Settings2, 'admin.sections.general'], ['users', Users, 'admin.sections.users'], ['credentials', KeyRound, 'admin.sections.apiKeys'],
@@ -41,7 +42,6 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
   const closeButton = useRef<HTMLButtonElement>(null)
   const [saveEntries, setSaveEntries] = useState<Record<string, AdminSaveEntry>>({})
   const [savingAll, setSavingAll] = useState(false)
-  const [closePromptOpen, setClosePromptOpen] = useState(false)
   const activeSection = sections.find(([path]) => location.pathname === `/admin/${path}`)?.[0] ?? 'general'
   const [visitedSections, setVisitedSections] = useState<Set<AdminSectionKey>>(() => new Set([activeSection]))
   const saveContext = useMemo<AdminSaveContextValue>(() => ({
@@ -50,8 +50,9 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
   }), [])
   const dirtyEntries = Object.values(saveEntries).filter((entry) => entry.dirty)
   const hasDirtyChanges = dirtyEntries.length > 0
+  useUnsavedChangeSignal('admin-settings', hasDirtyChanges)
   const performClose = useCallback(() => { if (onClose) onClose(); else navigate('/') }, [navigate, onClose])
-  const requestClose = useCallback(() => { if (hasDirtyChanges) setClosePromptOpen(true); else performClose() }, [hasDirtyChanges, performClose])
+  const requestClose = performClose
   const saveAll = useCallback(async () => {
     const entries = Object.values(saveEntries).filter((entry) => entry.dirty)
     if (entries.length === 0) return true
@@ -76,7 +77,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     const onKeyDown = (event: KeyboardEvent) => {
       const nestedModal = document.querySelector('[role="alertdialog"][aria-modal="true"]')
       if (nestedModal !== null && !modal.current?.contains(nestedModal)) return
-      if (event.key === 'Escape') { event.preventDefault(); if (closePromptOpen) setClosePromptOpen(false); else requestClose(); return }
+      if (event.key === 'Escape') { event.preventDefault(); requestClose(); return }
       if (event.key !== 'Tab' || !modal.current) return
       const focusable = [...modal.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
       if (focusable.length === 0) return
@@ -86,7 +87,7 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown) }
-  }, [closePromptOpen, requestClose])
+  }, [requestClose])
   useEffect(() => {
     window.addEventListener('cartavault:close-mobile-modal-layers', requestClose)
     return () => window.removeEventListener('cartavault:close-mobile-modal-layers', requestClose)
@@ -105,7 +106,6 @@ export function AdminConsole({ onClose }: { onClose?: () => void } = {}) {
         {visitedSections.has('quotas') && <div hidden={activeSection !== 'quotas'}><QuotaProfilesPage active={activeSection === 'quotas'} /></div>}
         {visitedSections.has('instance') && <div hidden={activeSection !== 'instance'}><InstanceStatusPage /></div>}
       </div></AdminSaveContext.Provider>
-      {closePromptOpen && <div className="cv-overlay admin-unsaved-overlay account-admin-modal-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setClosePromptOpen(false) }}><section className="cv-modal admin-unsaved-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-unsaved-title"><header><div><p className="cv-workspace-panel__eyebrow">{t('admin.unsaved.eyebrow')}</p><h2 id="admin-unsaved-title">{t('admin.unsaved.title')}</h2></div><button className="panel-icon-button" type="button" aria-label={t('admin.users.close')} onClick={() => setClosePromptOpen(false)}><X size={16} /></button></header><p>{t('admin.unsaved.description')}</p><footer><button className="secondary-button" type="button" onClick={() => setClosePromptOpen(false)}>{t('admin.unsaved.continue')}</button><button className="danger-button" type="button" onClick={() => { dirtyEntries.forEach((entry) => entry.discard()); setClosePromptOpen(false); performClose() }}>{t('admin.unsaved.discard')}</button><button className="primary-button" type="button" disabled={savingAll} onClick={() => void saveAll().then((saved) => { if (saved) { setClosePromptOpen(false); performClose() } })}><Save size={15} />{t('admin.save')}</button></footer></section></div>}
     </section>
   </div>, document.body)
 }

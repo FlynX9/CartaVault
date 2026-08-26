@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, deleteTripArrival, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDeparture, updateTripNight } from '../../api/trips'
 import { getPlaceDetails, getPlaces } from '../../api/places'
+import { ApiError } from '../../api/client'
 import type { Trip } from '../../types/trip'
 import { TripPlannerPanel } from './TripPlannerPanel'
 
@@ -158,6 +159,50 @@ describe('TripPlannerPanel', () => {
     fireEvent.drop(firstBlock, { dataTransfer, clientY: 0 })
 
     await waitFor(() => expect(reorderTripDays).toHaveBeenCalledWith(trip.id, ['day-2', 'day-1']))
+  })
+
+  it('shows the terminal-night conflict without changing the displayed order', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const night = { id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map' as const, name: 'Hôtel', latitude: 48.5, longitude: 2.5, address: null, google_place_id: null, notes: null, check_in_time: null, check_out_time: null }
+    const withNight = { ...trip, days: [trip.days[0], secondDay], nights: [night] } satisfies Trip
+    vi.mocked(getTrip).mockResolvedValue(withNight)
+    vi.mocked(reorderTripDays).mockRejectedValue(new ApiError(409, 'Conflict', {}, 'TRIP_REORDER_NIGHT_CONFLICT'))
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={withNight} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const firstHeader = await screen.findByText('Jour 1')
+    const firstBlock = firstHeader.closest<HTMLElement>('.trip-timeline-day-block')!
+    const secondBlock = screen.getByText('Jour 2').closest<HTMLElement>('.trip-timeline-day-block')!
+    const dataTransfer = { effectAllowed: '', setData: vi.fn(), getData: () => 'day:day-1' }
+    fireEvent.dragStart(firstHeader.closest<HTMLElement>('summary')!, { dataTransfer })
+    await waitFor(() => expect(firstBlock).toHaveClass('is-dragging'))
+    fireEvent.dragOver(secondBlock, { dataTransfer, clientY: 999 })
+    fireEvent.drop(secondBlock, { dataTransfer, clientY: 999 })
+
+    await waitFor(() => expect(reorderTripDays).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('alert')).toHaveTextContent('ne peut pas devenir la dernière')
+  })
+
+  it('sends only one reorder while the first request is pending', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const twoDays = { ...trip, days: [trip.days[0], secondDay] } satisfies Trip
+    const pending = deferred<Trip>()
+    vi.mocked(getTrip).mockResolvedValue(twoDays)
+    vi.mocked(reorderTripDays).mockReturnValue(pending.promise)
+    render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
+
+    const firstHeader = (await screen.findByText('Jour 1')).closest<HTMLElement>('summary')!
+    const firstBlock = firstHeader.closest<HTMLElement>('.trip-timeline-day-block')!
+    const secondBlock = screen.getByText('Jour 2').closest<HTMLElement>('.trip-timeline-day-block')!
+    const dataTransfer = { effectAllowed: '', setData: vi.fn(), getData: () => 'day:day-1' }
+    fireEvent.dragStart(firstHeader, { dataTransfer })
+    await waitFor(() => expect(firstBlock).toHaveClass('is-dragging'))
+    fireEvent.dragOver(secondBlock, { dataTransfer, clientY: 999 })
+    fireEvent.drop(secondBlock, { dataTransfer, clientY: 999 })
+    fireEvent.dragStart(firstHeader, { dataTransfer })
+    fireEvent.drop(secondBlock, { dataTransfer, clientY: 999 })
+
+    await waitFor(() => expect(reorderTripDays).toHaveBeenCalledOnce())
+    pending.resolve(twoDays)
   })
 
   it('shows valid for a ready day and non-calculated when its route needs attention', async () => {
@@ -386,6 +431,8 @@ describe('TripPlannerPanel', () => {
     expect(screen.queryByRole('button', { name: 'Réactiver la sortie' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
     expect(screen.getByRole('button', { name: 'Dupliquer le voyage' })).toBeVisible()
+    expect(screen.getByLabelText('Nom du voyage')).not.toHaveAttribute('readonly')
+    expect(screen.queryByRole('button', { name: /Ajouter une journée après le jour/ })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Réactiver la sortie' }))
     await waitFor(() => expect(unarchiveTrip).toHaveBeenCalledWith('trip-1'))
   })
@@ -1014,6 +1061,10 @@ describe('TripPlannerPanel', () => {
     onTripChange.mockClear()
     vi.mocked(getTrip).mockResolvedValue(withoutStop)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher les paramètres de la sortie' }))
+    const nameDraft = screen.getByLabelText('Nom du voyage')
+    fireEvent.change(nameDraft, { target: { value: 'Brouillon préservé' } })
+
     fireEvent.click(await screen.findByRole('button', { name: 'Supprimer l’étape' }))
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer' }))
 
@@ -1022,6 +1073,7 @@ describe('TripPlannerPanel', () => {
     expect(getTrip).toHaveBeenCalledWith('trip-1')
     expect(listTrips).not.toHaveBeenCalled()
     expect(screen.queryByText('Chargement du voyage…')).not.toBeInTheDocument()
+    expect(nameDraft).toHaveValue('Brouillon préservé')
   })
 
   it('focuses the map when a stop is selected and hides visit status controls', async () => {
@@ -1183,8 +1235,12 @@ describe('TripPlannerPanel', () => {
     expect(settingsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Planification horaire')).toBeVisible()
     expect(screen.getByText('Couleur du jour')).toBeVisible()
+    const timingDraft = screen.getByLabelText('Heure cible de fin de journée')
+    fireEvent.change(timingDraft, { target: { value: '19:30' } })
     fireEvent.click(settingsButton)
-    expect(screen.queryByText('Planification horaire')).not.toBeInTheDocument()
+    expect(screen.getByText('Planification horaire')).not.toBeVisible()
+    fireEvent.click(settingsButton)
+    expect(timingDraft).toHaveValue('19:30')
   })
 
   it('keeps a day color as a draft until it is explicitly applied', async () => {

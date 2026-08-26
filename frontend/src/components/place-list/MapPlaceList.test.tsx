@@ -7,7 +7,7 @@ import { getTags } from '../../api/tags'
 import { getTrip, listTrips } from '../../api/trips'
 import { getPlacePhotos } from '../../api/photos'
 import { DEFAULT_PLACE_FILTERS } from '../../places/placeFilters'
-import { MapPlaceList } from './MapPlaceList'
+import { MapPlaceList, PlacesPanel, TripPlacesPanel } from './MapPlaceList'
 import { FloatingPanelWindowContext } from '../layout/FloatingPanelWindow'
 
 vi.mock('../../api/places', () => ({ getPlaces: vi.fn(() => Promise.resolve([])), getPlaceDetails: vi.fn(), getPlaceFacets: vi.fn(() => Promise.resolve({ total: 42, non_visited: 31, visited: 11, favorites: 6, categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn() }))
@@ -169,10 +169,43 @@ describe('MapPlaceList', () => {
   })
 
   it('hides the new-place action when shown from an open trip', async () => {
-    render(<MemoryRouter><MapPlaceList poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} hideCreateAction onPlaceSelect={vi.fn()} /></MemoryRouter>)
+    render(<MemoryRouter><MapPlaceList context={{ mode: 'trip', mapId: 'map-id', tripId: 'trip-id' }} poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} hideCreateAction onPlaceSelect={vi.fn()} /></MemoryRouter>)
 
     await screen.findByRole('button', { name: /Tous42/ })
     expect(screen.queryByRole('link', { name: 'Ajouter un lieu' })).not.toBeInTheDocument()
+  })
+
+  it('keeps catalog creation available in map context', async () => {
+    render(<MemoryRouter><MapPlaceList context={{ mode: 'map', mapId: 'map-id' }} poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={vi.fn()} /></MemoryRouter>)
+
+    expect(await screen.findByRole('link', { name: 'Ajouter un lieu' })).toBeVisible()
+  })
+
+  it('keeps catalog actions in PlacesPanel and removes them from TripPlacesPanel', async () => {
+    const place = { id: 'context-place', name: 'Lieu contextuel', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const props = { poiMap: { id: 'map-id', name: 'France', can_edit: true } as never, selectedPlaceId: null, refreshVersion: 0, removedPlaceId: null, onPlaceSelect: vi.fn() }
+    const { rerender } = render(<MemoryRouter><PlacesPanel {...props} /></MemoryRouter>)
+
+    expect(await screen.findByRole('link', { name: 'Ajouter un lieu' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Plus d’actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Sélectionner' })).toBeVisible()
+
+    rerender(<MemoryRouter><TripPlacesPanel {...props} tripId="trip-id" tripTargets={[{ id: 'day:day-2', label: 'Jour 2' }]} onAddToTripTarget={vi.fn()} /></MemoryRouter>)
+
+    expect(screen.queryByRole('link', { name: 'Ajouter un lieu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Plus d’actions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Sélectionner' })).not.toBeInTheDocument()
+  })
+
+  it('opens the selected place details from TripPlacesPanel', async () => {
+    const place = { id: 'trip-place', name: 'Lieu de sortie', latitude: 48, longitude: 2, status: { id: 'status-id', name: 'À faire', slug: 'a-faire', color: '#2563EB', is_active: true }, categories: [], tags: [] } as never
+    vi.mocked(getPlaces).mockResolvedValue([place])
+    const onPlaceSelect = vi.fn()
+    render(<MemoryRouter><TripPlacesPanel tripId="trip-id" poiMap={{ id: 'map-id', name: 'France', can_edit: true } as never} selectedPlaceId={null} refreshVersion={0} removedPlaceId={null} onPlaceSelect={onPlaceSelect} /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Lieu de sortie' }))
+    expect(onPlaceSelect).toHaveBeenCalledWith(place)
   })
 
   it('filters by the selected map UUID without repeating map identity in the header', async () => {

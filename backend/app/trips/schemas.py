@@ -63,6 +63,7 @@ class TripUpdate(BaseModel):
     avoid_highways: bool | None = None
     avoid_ferries: bool | None = None
     traffic_mode: Literal["traffic_unaware", "traffic_aware", "traffic_aware_optimal"] | None = None
+    destructive_change_token: str | None = Field(default=None, max_length=256)
 
     @model_validator(mode="after")
     def values(self) -> Self:
@@ -330,6 +331,40 @@ class TripRead(ORMRead):
     status: str; routing_profile: str; stay_in_country: bool; avoid_tolls: bool; avoid_highways: bool; avoid_ferries: bool; traffic_mode: Literal["traffic_unaware", "traffic_aware", "traffic_aware_optimal"]; created_at: datetime; updated_at: datetime; completed_at: datetime | None; archived_at: datetime | None
     low_load_max_minutes: int; medium_load_max_minutes: int; low_load_color: str; medium_load_color: str; high_load_color: str
     days: list[DayRead] = Field(default_factory=list); nights: list[NightRead] = Field(default_factory=list); departure: DepartureRead | None = None; arrival: ArrivalRead | None = None
+
+
+class TripResizeDayImpact(BaseModel):
+    id: UUID
+    day_number: int
+    date: DateValue | None
+    title: str | None
+    stop_count: int
+    route_count: int
+
+
+class TripResizeImpact(BaseModel):
+    current_start_date: DateValue | None
+    current_end_date: DateValue | None
+    requested_start_date: DateValue
+    requested_end_date: DateValue
+    current_day_count: int
+    target_day_count: int
+    removed_day_count: int
+    removed_stop_count: int
+    removed_linked_place_stop_count: int
+    removed_night_count: int
+    removed_night_photo_count: int
+    removed_route_count: int
+    invalidated_retained_route_count: int
+    removed_days: list[TripResizeDayImpact]
+
+
+class TripResizeConfirmationDetail(BaseModel):
+    code: Literal["TRIP_RESIZE_CONFIRMATION_REQUIRED", "TRIP_RESIZE_CONFIRMATION_STALE"]
+    message: str
+    confirmation_token: str
+    expires_at: datetime
+    impact: TripResizeImpact
 
 
 class TripListRead(BaseModel):

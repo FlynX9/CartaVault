@@ -46,9 +46,10 @@ def _set_session_cookies(response: Response, token: str, csrf_token: str, max_ag
         security_settings.csrf_cookie_name, csrf_token, max_age=max_age, httponly=False,
         secure=security_settings.cookie_secure, samesite="lax", path="/",
     )
+    response.headers["X-CSRF-Token"] = csrf_token
 
 
-@router.post("/login", response_model=UserSelfRead | TotpLoginChallenge)
+@router.post("/login", response_model=UserSelfRead | TotpLoginChallenge | EmailMfaLoginChallenge)
 def login(data: LoginRequest, request: Request, response: Response, database_session: Session = Depends(get_db)) -> UserSelfRead | TotpLoginChallenge | EmailMfaLoginChallenge:
     email = normalize_email(str(data.email))
     client_host = request.client.host if request.client else "unknown"

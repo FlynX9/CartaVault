@@ -21,6 +21,7 @@ import { createPortal } from "react-dom";
 import { FieldHelp } from "../../../components/common/FieldHelp";
 import { useConfirmDialog } from "../../../components/common/useConfirmDialog";
 import { useModalFocus } from "../../../hooks/useModalFocus";
+import { useUnsavedChangeSignal } from "../../../hooks/useUnsavedChangeSignal";
 import type {
   AdminApiKey,
   QuotaKey,
@@ -185,6 +186,7 @@ export function QuotaProfileModal({
   });
   const system = profile?.is_system === true;
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialDraft);
+  useUnsavedChangeSignal("admin-quota-profile", dirty);
   const customized = Object.values(draft.limits).filter(
     (value) => value !== null,
   ).length;

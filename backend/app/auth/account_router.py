@@ -38,6 +38,7 @@ def _set_session_cookies(response: Response, token: str, csrf_token: str) -> Non
         security_settings.csrf_cookie_name, csrf_token, max_age=max_age,
         httponly=False, secure=security_settings.cookie_secure, samesite="lax", path="/",
     )
+    response.headers["X-CSRF-Token"] = csrf_token
 
 
 def _rotate_session(database_session: Session, current: UserSession) -> tuple[str, str]:

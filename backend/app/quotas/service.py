@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
@@ -76,13 +76,37 @@ class QuotaService:
             raise HTTPException(404, detail={"code": "quota.scope.not_found", "params": {"scope_id": str(scope_id)}})
         return owner_id
 
+    def _accountable_media_statement(self, owner_id: UUID):
+        """Media rows charged to one account, each row counted exactly once.
+
+        The accounting priority mirrors the media ACL authority: an attached
+        photo belongs to its place's map, an unattached upload to its own map,
+        and only a fully orphaned upload (no place and no map) falls back to
+        its uploader. ``Photo.map_id`` therefore can never double-count an
+        attached photo.
+        """
+
+        return (
+            select(Photo)
+            .outerjoin(Place, Photo.place_id == Place.id)
+            .outerjoin(PoiMap, PoiMap.id == func.coalesce(Place.map_id, Photo.map_id))
+            .where(
+                or_(
+                    PoiMap.owner_id == owner_id,
+                    and_(PoiMap.id.is_(None), Photo.uploaded_by_user_id == owner_id),
+                )
+            )
+        )
+
     def usage(self, owner_id: UUID, key: QuotaKey, scope_id: UUID | None = None) -> int:
         if key in self.NON_MEASURABLE_KEYS:
             raise ValueError(f"{key.value} is a configuration limit and has no usage counter")
         now = datetime.now(UTC).replace(tzinfo=None)
         if key == QuotaKey.PHOTOS_TOTAL_MAX:
             place_photos = self.session.scalar(
-                select(func.count()).select_from(Photo).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id)
+                select(func.count()).select_from(
+                    self._accountable_media_statement(owner_id).subquery()
+                )
             ) or 0
             night_photos = self.session.scalar(
                 select(func.count())
@@ -115,8 +139,14 @@ class QuotaService:
         return int(self.session.scalar(statements[key]) or 0)
 
     def storage_usage(self, owner_id: UUID) -> int:
+        media_source = (
+            self._accountable_media_statement(owner_id)
+            .with_only_columns(Photo.file_size_bytes)
+            .order_by(None)
+            .subquery()
+        )
         place_bytes = self.session.scalar(
-            select(func.coalesce(func.sum(Photo.file_size_bytes), 0)).join(Place).join(PoiMap).where(PoiMap.owner_id == owner_id)
+            select(func.coalesce(func.sum(media_source.c.file_size_bytes), 0))
         ) or 0
         night_bytes = self.session.scalar(
             select(func.coalesce(func.sum(TripNightPhoto.file_size_bytes), 0))

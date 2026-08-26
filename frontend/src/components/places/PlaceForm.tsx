@@ -23,6 +23,7 @@ interface PlaceFormProps {
   maps: PoiMap[]
   statuses?: PlaceStatusSummary[]
   allowMapChange: boolean
+  isExistingPlace?: boolean
   submitLabel: string
   isSubmitting: boolean
   serverErrors?: PlaceFormErrors
@@ -33,6 +34,7 @@ interface PlaceFormProps {
   regionMetadata?: { manuallyOverridden: boolean; resolvedAt: string | null } | null
   onRefreshRegion?: () => Promise<string | null>
   afterLocation?: ReactNode
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const GENERAL_FIELDS = [
@@ -123,6 +125,7 @@ export function PlaceForm({
   maps,
   statuses = [],
   allowMapChange,
+  isExistingPlace = false,
   submitLabel,
   isSubmitting,
   serverErrors = {},
@@ -133,6 +136,7 @@ export function PlaceForm({
   regionMetadata = null,
   onRefreshRegion,
   afterLocation = null,
+  onDirtyChange,
 }: PlaceFormProps) {
   const [values, setValues] = useState(initialValues)
   const [localErrors, setLocalErrors] = useState<PlaceFormErrors>({})
@@ -152,13 +156,17 @@ export function PlaceForm({
     setRegionRefreshError(null)
   }, [initialValues])
 
+  const dirty = JSON.stringify(values) !== JSON.stringify(initialValues)
+
   useEffect(() => {
-    document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { formDirty: JSON.stringify(values) !== JSON.stringify(initialValues) } }))
-  }, [initialValues, values])
+    document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { formDirty: dirty } }))
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
 
   useEffect(() => () => {
     document.dispatchEvent(new CustomEvent('cartavault:poi-editor-unsaved', { detail: { formDirty: false } }))
-  }, [])
+    onDirtyChange?.(false)
+  }, [onDirtyChange])
 
   useEffect(() => {
     if (draftPosition === null) return
@@ -237,10 +245,10 @@ export function PlaceForm({
         <div className="form-grid">
           <label className="form-field form-field-wide general-map">
             <span>Carte *</span>
-            <select value={values.mapId} disabled={!allowMapChange} onChange={(event) => setValue('mapId', event.target.value)} aria-invalid={Boolean(errors.mapId)}>
+            {isExistingPlace ? <output>{selectedMap ? `${selectedMap.name} — ${selectedMap.country.name}` : 'Carte inconnue'}</output> : <select value={values.mapId} disabled={!allowMapChange} onChange={(event) => setValue('mapId', event.target.value)} aria-invalid={Boolean(errors.mapId)}>
               <option value="">Choisir une carte</option>
               {maps.map((poiMap) => <option key={poiMap.id} value={poiMap.id}>{poiMap.name} — {poiMap.country.name}</option>)}
-            </select>
+            </select>}
             {errors.mapId && <small className="field-error">{errors.mapId}</small>}
           </label>
           {GENERAL_FIELDS.filter(([field]) => fieldEnabled(field)).map(([field, label, maxLength]) => (

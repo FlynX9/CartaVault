@@ -33,6 +33,9 @@ import { PlaceInlineThumbnailGallery } from "./PlaceInlineThumbnailGallery";
 
 const PAGE_SIZE = 50;
 const PLACE_LIST_REQUEST_TIMEOUT_MS = 20_000;
+export type PlacePanelContext =
+  | { mode: "map"; mapId: string }
+  | { mode: "trip"; mapId: string; tripId: string };
 const emptyFacets: PlaceFacets = {
   total: 0,
   non_visited: 0,
@@ -53,6 +56,7 @@ const emptyFacets: PlaceFacets = {
 };
 
 interface Props {
+  context?: PlacePanelContext | null;
   poiMap: PoiMap | null;
   statuses?: PlaceStatusSummary[];
   filters?: PlaceFilters;
@@ -80,6 +84,16 @@ interface Props {
   onSelectedPlaceIdsChange?: (ids: Set<string>) => void;
 }
 
+type ContextualProps = Omit<Props, "context" | "hideCreateAction">;
+
+export function PlacesPanel(props: ContextualProps) {
+  return <MapPlaceList {...props} context={props.poiMap ? { mode: "map", mapId: props.poiMap.id } : null} />;
+}
+
+export function TripPlacesPanel({ tripId, ...props }: ContextualProps & { tripId: string }) {
+  return <MapPlaceList {...props} context={props.poiMap ? { mode: "trip", mapId: props.poiMap.id, tripId } : null} hideCreateAction />;
+}
+
 const sortPlaces = (places: PlaceDetails[]) => places;
 const toggle = (values: string[], value: string) => (values.includes(value) ? values.filter((item) => item !== value) : [...values, value]);
 const formatLocation = (place: PlaceDetails) => place.region || (place.latitude !== null && place.longitude !== null ? `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}` : "Coordonnées non renseignées");
@@ -93,7 +107,7 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1);
 };
 
-export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, tripPlaceDropEnabled = false, hideCreateAction = false, tripTargets = [], onAddToTripTarget, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
+export function MapPlaceList({ context = null, poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, tripPlaceDropEnabled = false, hideCreateAction = false, tripTargets = [], onAddToTripTarget, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { confirm, confirmationDialog } = useConfirmDialog();
@@ -157,6 +171,8 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
   const selectionRequest = useRef(0);
   const selectionController = useRef<AbortController | null>(null);
   const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext);
+  const isTripContext = context?.mode === "trip";
+  const canManageCatalog = !isTripContext;
   const canImportKmz = poiMap?.can_import !== false && !isMobileViewport;
   const selectionMode = controlledSelectionMode ?? internalSelectionMode;
   const selectedIds = controlledSelectedIds ?? internalSelectedIds;
@@ -275,13 +291,22 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     };
   }, [filters, listRequestVersion, poiMap?.id, refreshVersion]);
   useEffect(() => {
-    if (!poiMap?.can_edit || !selectionMode) return;
+    if (!canManageCatalog || !poiMap?.can_edit || !selectionMode) return;
     const controller = new AbortController();
     void listTrips(poiMap.id, controller.signal)
       .then(setTrips)
       .catch(() => setTrips([]));
     return () => controller.abort();
-  }, [poiMap?.can_edit, poiMap?.id, selectionMode]);
+  }, [canManageCatalog, poiMap?.can_edit, poiMap?.id, selectionMode]);
+  useEffect(() => {
+    if (canManageCatalog) return;
+    replaceSelectionMode(false);
+    replaceSelectedIds(new Set());
+    setBulkEditorOpen(false);
+    setSecondaryActionsOpen(false);
+    setTripId("");
+    setDayId("");
+  }, [canManageCatalog, replaceSelectedIds]);
   useEffect(() => {
     if (!tripId) {
       setDayId("");
@@ -635,7 +660,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
     return (
       <aside className="country-place-panel cv-workspace-panel places-redesign-panel is-collapsed cv-places-compact-rail" id="map-place-list" tabIndex={-1} aria-label={t("places.title")}>
         <header className="places-redesign-header cv-places-compact-rail__header">
-          {!hideCreateAction && poiMap?.can_edit !== false && <Link className="panel-icon-button primary cv-places-compact-rail__create" to={withMap("/places/new", poiMap?.id)} aria-label={t("places.new")} title={t("places.new")}><Plus size={19} aria-hidden="true" /></Link>}
+          {canManageCatalog && !hideCreateAction && poiMap?.can_edit !== false && <Link className="panel-icon-button primary cv-places-compact-rail__create" to={withMap("/places/new", poiMap?.id)} aria-label={t("places.new")} title={t("places.new")}><Plus size={19} aria-hidden="true" /></Link>}
           <PanelWindowControls />
         </header>
         <div className="cv-places-compact-rail__list" role="list" aria-label={t("places.title")}>
@@ -696,7 +721,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                 </button>
               )}
             </label>
-            {!hideCreateAction && poiMap.can_edit !== false && (
+            {canManageCatalog && !hideCreateAction && poiMap.can_edit !== false && (
               <Link className="primary-button places-search-create" to={withMap("/places/new", poiMap.id)} aria-label={t("places.add")} title={t("places.add")}>
                 <Plus size={18} aria-hidden="true" />
                 <span>{t("places.add")}</span>
@@ -792,7 +817,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                 {t("places.filters")}
                 {activeCount > 0 && <span className="places-filter-count" aria-label={t("places.activeFilterCount", { count: activeCount })}>{activeCount}</span>}
               </button>
-              {poiMap && (
+              {canManageCatalog && poiMap && (
                 <div className="places-secondary-actions">
                   <button className="places-secondary-actions__toggle" type="button" aria-label={t("places.moreActions")} title={t("places.moreActions")} aria-expanded={secondaryActionsOpen} onClick={() => setSecondaryActionsOpen((open) => !open)}>
                     <MoreHorizontal size={18} aria-hidden="true" />
@@ -889,7 +914,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
           )}
         </section>
       )}
-      {selectionMode && (
+      {canManageCatalog && selectionMode && (
         <section className="places-selection-bar" aria-label="Actions groupées">
           <div className="places-selection-summary">
             <CircleCheck />
@@ -1129,7 +1154,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                     setMobilePlaceSwipe(null);
                   }}
                 >
-                  {poiMap?.can_edit !== false && (
+                  {canManageCatalog && poiMap?.can_edit !== false && (
                     <button className="places-mobile-swipe-action places-mobile-swipe-action--delete" style={{ width: `${deleteRevealWidth}px` }} type="button" aria-hidden={swipeOffset <= 0} tabIndex={swipeOffset > 0 ? 0 : -1} aria-label={`Supprimer ${place.name}`} onClick={() => void removePlace(place)}>
                       <Trash2 size={18} />
                     </button>
@@ -1138,7 +1163,7 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.latitude ?? ""},${place.longitude ?? ""}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${place.name} dans Google Maps`}>
                       <GoogleMapsIcon size={26} />
                     </a>
-                    {poiMap?.can_edit !== false && (
+                    {canManageCatalog && poiMap?.can_edit !== false && (
                       <Link to={withMap(`/places/${place.id}/edit`, poiMap?.id)} aria-label={`Éditer ${place.name}`}>
                         <Pencil size={17} />
                       </Link>
@@ -1234,8 +1259,8 @@ export function MapPlaceList({ poiMap, statuses = [], filters = DEFAULT_PLACE_FI
                         initialPlace={place}
                         canEdit={poiMap?.can_edit !== false}
                         allowPhotoPaste={false}
-                        showManagementActions={tripTargets.length === 0}
-                        showHistoryAction={tripTargets.length === 0}
+                        showManagementActions={canManageCatalog}
+                        showHistoryAction={canManageCatalog}
                         tripTargets={tripTargets}
                         onAddToTrip={(targetPlace, targetId) => {
                           if (targetId) return onAddToTripTarget?.(targetPlace, targetId);

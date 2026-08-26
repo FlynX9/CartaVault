@@ -68,6 +68,15 @@ class PhotoFileMetadata:
     height: int | None
 
 
+@dataclass(frozen=True)
+class CopiedPhotoFile:
+    """Safe paths and metadata generated for one physically copied media file."""
+
+    relative_path: str
+    media_type: str
+    file_size_bytes: int
+
+
 def get_photo_storage_root() -> Path:
     """Resolve the configured storage root independently of the current cwd."""
 
@@ -231,6 +240,84 @@ def store_photo_file(
         file_size_bytes=final_path.stat().st_size,
         width=dimensions[0],
         height=dimensions[1],
+    )
+
+
+def copy_photo_file(
+    source_path: str,
+    source_scope_id: UUID,
+    source_photo_id: UUID,
+    *,
+    target_scope_id: UUID,
+    target_photo_id: UUID,
+) -> CopiedPhotoFile:
+    """Physically duplicate one stored media file under a fresh identity.
+
+    The source is only ever read; it is never renamed, moved or deleted.
+    The produced bytes are bit-identical to the source and the new key
+    follows the canonical ``{scope}/{photo_id}{ext}`` layout so the copy is
+    indistinguishable from a normal upload.
+    """
+
+    source_file = resolve_photo_file(
+        source_path,
+        source_scope_id,
+        source_photo_id,
+        require_file=True,
+    )
+
+    extension = source_file.suffix
+    if extension not in ALLOWED_PHOTO_TYPES.values():
+        raise InvalidPhotoPathError("The stored photo extension is invalid")
+
+    storage_root = get_photo_storage_root()
+    unresolved_target_directory = storage_root / str(target_scope_id)
+
+    if unresolved_target_directory.is_symlink():
+        raise PhotoStorageError("The photo directory must not be a symbolic link")
+
+    target_directory = unresolved_target_directory.resolve()
+
+    try:
+        target_directory.relative_to(storage_root)
+    except ValueError as error:
+        raise PhotoStorageError("Unable to create a safe photo directory") from error
+
+    filename = f"{target_photo_id}{extension}"
+    final_path = target_directory / filename
+
+    if final_path.exists():
+        raise PhotoStorageError("The target photo file already exists")
+
+    partial_path = target_directory / f".{filename}.partial"
+    relative_path = PurePosixPath(str(target_scope_id), filename).as_posix()
+    media_type = get_photo_media_type(final_path)
+
+    try:
+        target_directory.mkdir(parents=True, exist_ok=True)
+
+        with partial_path.open("xb") as destination, source_file.open("rb") as source:
+            while chunk := source.read(PHOTO_CHUNK_SIZE):
+                destination.write(chunk)
+
+        partial_path.replace(final_path)
+
+    except OSError as error:
+        partial_path.unlink(missing_ok=True)
+        _remove_directory_if_empty(target_directory, storage_root)
+        raise PhotoStorageError("Unable to copy the stored image") from error
+
+    try:
+        build_object_storage().put(relative_path, final_path, content_type=media_type)
+    except ObjectStorageError as error:
+        final_path.unlink(missing_ok=True)
+        _remove_directory_if_empty(target_directory, storage_root)
+        raise PhotoStorageError(str(error)) from error
+
+    return CopiedPhotoFile(
+        relative_path=relative_path,
+        media_type=media_type,
+        file_size_bytes=final_path.stat().st_size,
     )
 
 

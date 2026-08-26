@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import '@fontsource/manrope/latin-400.css'
 import '@fontsource/manrope/latin-500.css'
 import '@fontsource/manrope/latin-600.css'
@@ -34,10 +34,11 @@ if (import.meta.hot) import.meta.hot.dispose(() => {
   uninstallInteractiveTitles()
 })
 
+const router = createBrowserRouter([{
+  path: '*',
+  element: <AuthProvider><I18nProvider><App enableNavigationBlocker /><MediaUploadHost /><PwaUpdatePrompt /><GlobalFeedbackToasts /></I18nProvider></AuthProvider>,
+}])
+
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <BrowserRouter>
-      <AuthProvider><I18nProvider><App /><MediaUploadHost /><PwaUpdatePrompt /><GlobalFeedbackToasts /></I18nProvider></AuthProvider>
-    </BrowserRouter>
-  </StrictMode>,
+  <StrictMode><RouterProvider router={router} /></StrictMode>,
 )

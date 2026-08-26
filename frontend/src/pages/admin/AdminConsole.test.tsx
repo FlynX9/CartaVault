@@ -9,6 +9,7 @@ import { getPublicRegistrationSettings, getRegistrationRequests, reviewRegistrat
 import { getAdminPrivacySettings, saveAdminPrivacySettings } from '../../api/privacy'
 import { getGoogleSatelliteAdminStatus } from '../../api/googleSatellite'
 import type { QuotaRegistryItem } from '../../types/adminConsole'
+import { UNSAVED_CHANGE_EVENT } from '../../hooks/useUnsavedChangeSignal'
 
 vi.mock('../../api/adminConsole', () => ({
   archiveQuotaProfile: vi.fn(), assignUserQuotaProfile: vi.fn(), createQuotaProfile: vi.fn(), deleteQuotaProfile: vi.fn(), deleteAdminApiKey: vi.fn(), duplicateQuotaProfile: vi.fn(),
@@ -206,21 +207,19 @@ describe('AdminConsole', () => {
     expect(saveSaasSettings).not.toHaveBeenCalled()
   })
 
-  it('asks what to do with unsaved changes before closing', async () => {
+  it('publishes dirty changes to the global guard and delegates routed closing', async () => {
     const onClose = vi.fn()
+    const listener = vi.fn()
+    document.addEventListener(UNSAVED_CHANGE_EVENT, listener)
     render(<MemoryRouter initialEntries={['/admin/general']}><AdminConsole onClose={onClose} /></MemoryRouter>)
     fireEvent.change(await screen.findByLabelText(/Taille maximale par image/), { target: { value: '9' } })
 
+    await waitFor(() => expect(listener).toHaveBeenCalledWith(expect.objectContaining({ detail: { source: 'admin-settings', dirty: true } })))
     fireEvent.click(screen.getByRole('button', { name: /Fermer l’administration/ }))
-    const warning = await screen.findByRole('alertdialog', { name: /Enregistrer ou Annuler les modifications/ })
-    expect(onClose).not.toHaveBeenCalled()
-    fireEvent.click(within(warning).getByRole('button', { name: 'Continuer l’édition' }))
-    expect(onClose).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: /Fermer l’administration/ }))
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Annuler les modifications' }))
     expect(onClose).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(saveMediaUploadSettings).not.toHaveBeenCalled()
+    document.removeEventListener(UNSAVED_CHANGE_EVENT, listener)
   })
 
   it('does not expose an expected request cancellation as a panel error', async () => {

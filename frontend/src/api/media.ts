@@ -76,9 +76,10 @@ export async function bulkDeleteMedia(mediaIds: string[]): Promise<void> {
   await sendJson('/media/bulk-delete', 'POST', { media_ids: mediaIds })
 }
 
-export async function uploadMedia(file: File, coordinates: { latitude: number; longitude: number } | null, takenAt?: string | null, gpsSource?: File | null): Promise<MediaItem> {
+export async function uploadMedia(file: File, coordinates: { latitude: number; longitude: number } | null, takenAt?: string | null, gpsSource?: File | null, mapId?: string | null): Promise<MediaItem> {
   const data = new FormData()
   data.append('file', file)
+  if (mapId) data.append('map_id', mapId)
   if (coordinates) { data.append('latitude', String(coordinates.latitude)); data.append('longitude', String(coordinates.longitude)) }
   if (takenAt) data.append('taken_at', takenAt)
   if (!coordinates && gpsSource) data.append('gps_source', gpsSource)

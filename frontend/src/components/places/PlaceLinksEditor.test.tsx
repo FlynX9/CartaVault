@@ -1,7 +1,16 @@
+import { useState } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { PlaceLinkFormValue } from '../../types/place'
 import { PlaceLinksEditor } from './PlaceLinksEditor'
+
+// The editor is a controlled component: apply emitted changes so the row
+// reflects the parent state, like the real place form does.
+function EditableLinks({ initial, onChange }: { initial: PlaceLinkFormValue[]; onChange?: (links: PlaceLinkFormValue[]) => void }) {
+  const [links, setLinks] = useState(initial)
+  return <PlaceLinksEditor links={links} onChange={(next) => { onChange?.(next); setLinks(next) }} />
+}
 
 describe('PlaceLinksEditor', () => {
   afterEach(cleanup)
@@ -17,13 +26,16 @@ describe('PlaceLinksEditor', () => {
 
   it('edits and removes a compact link row', () => {
     const onChange = vi.fn()
-    const links = [{ clientId: 'one', id: 'one', label: 'Site officiel', url: 'https://example.org' }]
-    render(<PlaceLinksEditor links={links} onChange={onChange} />)
+    const links: PlaceLinkFormValue[] = [{ clientId: 'one', id: 'one', label: 'Site officiel', url: 'https://example.org' }]
+    render(<EditableLinks initial={links} onChange={onChange} />)
     expect(screen.getAllByRole('link', { name: /Site officiel/ })[0]).toHaveAttribute('rel', 'noopener noreferrer')
     fireEvent.click(screen.getByRole('button', { name: 'Modifier Site officiel' }))
-    fireEvent.change(screen.getByLabelText('Nom du lien'), { target: { value: 'Article' } })
+    // The link label is now chosen from the "Type de lien" suggestions select,
+    // and removal is available again once the edit is confirmed.
+    fireEvent.change(screen.getByLabelText('Type de lien'), { target: { value: 'Article' } })
     expect(onChange).toHaveBeenLastCalledWith([{ ...links[0], label: 'Article' }])
-    fireEvent.click(screen.getByRole('button', { name: 'Supprimer Site officiel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Terminer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Supprimer Article' }))
     expect(onChange).toHaveBeenLastCalledWith([])
   })
 

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getJson, sendJson } from './client'
+import { getJson, sendJson, setCsrfToken } from './client'
 import { API_MUTATION_FAILURE_EVENT, API_MUTATION_SUCCESS_EVENT } from './mutationEvents'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { setCsrfToken(null); vi.unstubAllGlobals() })
 
 describe('API errors', () => {
   it('bypasses the browser cache for authenticated API reads', async () => {
@@ -63,5 +63,19 @@ describe('API errors', () => {
     expect(failed).toHaveBeenCalledOnce()
     window.removeEventListener(API_MUTATION_SUCCESS_EVENT, succeeded)
     window.removeEventListener(API_MUTATION_FAILURE_EVENT, failed)
+  })
+
+  it('uses a rotated CSRF response token for the next mutation', async () => {
+    setCsrfToken('csrf-A')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': 'csrf-B' } }))
+      .mockResolvedValueOnce(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await sendJson('/account/change-email', 'POST', {})
+    await sendJson('/account/preferences/reset', 'POST', {})
+
+    expect(fetchMock.mock.calls[0][1].headers['X-CSRF-Token']).toBe('csrf-A')
+    expect(fetchMock.mock.calls[1][1].headers['X-CSRF-Token']).toBe('csrf-B')
   })
 })

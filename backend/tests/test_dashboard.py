@@ -136,6 +136,117 @@ def test_dashboard_returns_a_complete_empty_state_for_an_account_without_maps(
     assert payload["activity"] == []
 
 
+def _create_trip_with_days(
+    integration_client: TestClient,
+    poi_map_id,
+    name: str,
+    day_specs: list[dict],
+    database_session: Session,
+):
+    """Create one trip and stamp each day with explicit route columns."""
+
+    created = integration_client.post(f"/maps/{poi_map_id}/trips", json={"name": name})
+    assert created.status_code == 201, created.text
+    trip_id = created.json()["id"]
+    # A fresh trip already ships its first day; add only the missing ones.
+    for _ in range(max(0, len(day_specs) - 1)):
+        day = integration_client.post(f"/trips/{trip_id}/days", json={})
+        assert day.status_code == 201, day.text
+
+    from app.trips.models import TripDay
+
+    days = (
+        database_session.query(TripDay)
+        .filter(TripDay.trip_id == trip_id)
+        .order_by(TripDay.sort_order)
+        .all()
+    )
+    assert len(days) == len(day_specs)
+    for day, spec in zip(days, day_specs):
+        day.route_status = spec.get("status")
+        day.route_distance_meters = spec.get("distance")
+        day.route_duration_seconds = spec.get("duration")
+    database_session.flush()
+    return trip_id
+
+
+def test_dashboard_route_metrics_only_count_current_routes(
+    integration_client: TestClient,
+    database_session: Session,
+    auth_user: User,
+    poi_map: PoiMap,
+) -> None:
+    auth_user.is_admin = False
+    _set_current_user(auth_user)
+
+    _create_trip_with_days(
+        integration_client,
+        poi_map.id,
+        "Toutes prêtes",
+        [
+            {"status": "ready", "distance": 1000.0, "duration": 600.0},
+            {"status": "ready", "distance": 2000.0, "duration": 1200.0},
+        ],
+        database_session,
+    )
+    _create_trip_with_days(
+        integration_client,
+        poi_map.id,
+        "Mixte",
+        [
+            {"status": "ready", "distance": 10000.0, "duration": 3600.0},
+            {"status": "stale", "distance": 999999.0, "duration": 99999.0},
+            {"status": "failed", "distance": 888888.0, "duration": 88888.0},
+            {"status": None, "distance": 777777.0, "duration": 77777.0},
+            {"status": "ready", "distance": None, "duration": None},
+        ],
+        database_session,
+    )
+    _create_trip_with_days(
+        integration_client,
+        poi_map.id,
+        "Aucune prête",
+        [{"status": "stale", "distance": 555555.0, "duration": 55555.0}],
+        database_session,
+    )
+
+    response = integration_client.get("/dashboard")
+    assert response.status_code == 200
+    payload = response.json()
+
+    trips_by_name = {trip["name"]: trip for trip in payload["recent_trips"]}
+    assert set(trips_by_name) == {"Toutes prêtes", "Mixte", "Aucune prête"}
+
+    ready_only = trips_by_name["Toutes prêtes"]
+    assert ready_only["day_count"] == 2
+    assert ready_only["route_distance_meters"] == 3000.0
+    assert ready_only["route_duration_seconds"] == 1800.0
+
+    mixed = trips_by_name["Mixte"]
+    # Only the single ready day feeds distance/duration; stale, failed and
+    # unlabelled routes are excluded even though their old values persist.
+    assert mixed["day_count"] == 5
+    assert mixed["route_distance_meters"] == 10000.0
+    assert mixed["route_duration_seconds"] == 3600.0
+
+    none_ready = trips_by_name["Aucune prête"]
+    assert none_ready["day_count"] == 1
+    assert none_ready["route_distance_meters"] == 0
+    assert none_ready["route_duration_seconds"] == 0
+
+    # The existing stale-routes attention counter is unaffected by AUD-020.
+    assert payload["attention"]["stale_routes"] == 3
+
+    # Same policy as the canonical per-trip summary: ready-only totals.
+    from app.trips.summary_service import trip_summary
+    from app.trips.models import Trip
+
+    mixed_row = database_session.query(Trip).filter(Trip.name == "Mixte").one()
+    summary = trip_summary(mixed_row)
+    assert summary["total_route_distance_meters"] == mixed["route_distance_meters"]
+    assert summary["total_route_duration_seconds"] == mixed["route_duration_seconds"]
+
+
 def test_dashboard_groups_identical_statuses_and_categories_across_accessible_maps(
     integration_client: TestClient,
     database_session: Session,

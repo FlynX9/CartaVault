@@ -574,6 +574,15 @@ def delete_photo(
         if stored_place_id is not None:
             add_place_history(database_session, stored_place_id, current_user.id, "photo_removed", {"photo": {"old": {"id": str(photo_id), "original_name": photo.original_name}, "new": None}})
         remaining = database_session.scalars(select(Photo).where(Photo.place_id == stored_place_id).order_by(Photo.sort_order, Photo.id)).all() if stored_place_id is not None else []
+        # Shift every remaining row above the occupied range first so the
+        # per-row renumbering below can never collide with the unique
+        # (place_id, sort_order) constraint regardless of update ordering.
+        if remaining:
+            database_session.execute(
+                update(Photo)
+                .where(Photo.place_id == stored_place_id)
+                .values(sort_order=Photo.sort_order + len(remaining))
+            )
         for position, remaining_photo in enumerate(remaining):
             remaining_photo.sort_order = position
             remaining_photo.is_primary = position == 0

@@ -3,7 +3,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const stylesheet = readFileSync('src/index.css', 'utf8')
+// index.css mixes LF and CRLF line endings; normalize before matching anchors.
+const stylesheet = readFileSync('src/index.css', 'utf8').replace(/\r\n/g, '\n')
 const contractStart = stylesheet.indexOf('/*\n * Canonical primary CTA skin.')
 const primaryContract = stylesheet.slice(contractStart)
 

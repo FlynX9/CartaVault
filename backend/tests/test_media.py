@@ -1,5 +1,6 @@
+from datetime import UTC, datetime
 from io import BytesIO
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from PIL import Image
@@ -10,6 +11,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.main import app
 from app.maps.models import MapMembership, PoiMap
+from app.photos.models import Photo
 
 
 pytestmark = pytest.mark.integration
@@ -181,3 +183,100 @@ def test_unassigned_media_without_gps_can_still_start_manual_place_creation(
 
     deleted = integration_client.delete(f"/media/{uploaded.json()['id']}")
     assert deleted.status_code == 204
+
+
+def test_media_upload_preserves_the_selected_map_context(
+    integration_client: TestClient,
+    database_session: Session,
+    poi_map: PoiMap,
+) -> None:
+    editor = User(
+        email=f"media-editor-{uuid4()}@example.test",
+        display_name="Media editor",
+        password_hash="test",
+        is_active=True,
+    )
+    database_session.add(editor)
+    database_session.flush()
+    database_session.add(MapMembership(map_id=poi_map.id, user_id=editor.id, role="editor"))
+    database_session.commit()
+    app.dependency_overrides[get_current_user] = lambda: editor
+
+    uploaded = integration_client.post(
+        "/media-actions/upload",
+        data={"map_id": str(poi_map.id), "latitude": "45.764", "longitude": "4.8357"},
+        files={"file": ("map-scoped.png", png_bytes(), "image/png")},
+    )
+
+    assert uploaded.status_code == 201, uploaded.text
+    assert uploaded.json()["can_edit"] is True
+    assert uploaded.json()["map"]["id"] == str(poi_map.id)
+    media_id = UUID(uploaded.json()["id"])
+    photo = database_session.get(Photo, media_id)
+    assert photo is not None
+    assert photo.place_id is None
+    assert photo.map_id == poi_map.id
+    assert photo.uploaded_by_user_id == editor.id
+    assert photo.storage_scope_id == photo.id
+    assert integration_client.get(f"/media/{media_id}/download").status_code == 200
+    catalogue = integration_client.get("/media", params={"map_id": str(poi_map.id)})
+    assert catalogue.status_code == 200
+    assert str(media_id) in {item["id"] for item in catalogue.json()["items"]}
+
+    created = integration_client.post(f"/media-actions/{media_id}/create-place")
+    assert created.status_code == 200, created.text
+    assert created.json()["map"]["id"] == str(poi_map.id)
+    assert created.json()["place"] is not None
+    database_session.refresh(photo)
+    assert photo.place_id is not None
+    assert photo.map_id == poi_map.id
+
+    assert integration_client.delete(f"/photos/{media_id}").status_code == 204
+
+
+def test_media_upload_rejects_invalid_map_context_before_storage(
+    integration_client: TestClient,
+    database_session: Session,
+    poi_map: PoiMap,
+    auth_user: User,
+    photo_storage,
+) -> None:
+    viewer = User(
+        email=f"media-viewer-{uuid4()}@example.test",
+        display_name="Media viewer",
+        password_hash="test",
+        is_active=True,
+    )
+    database_session.add(viewer)
+    database_session.flush()
+    database_session.add(MapMembership(map_id=poi_map.id, user_id=viewer.id, role="viewer"))
+    database_session.commit()
+    original_photo_count = database_session.query(Photo).count()
+    original_files = {path.relative_to(photo_storage) for path in photo_storage.rglob("*") if path.is_file()}
+
+    app.dependency_overrides[get_current_user] = lambda: viewer
+    forbidden = integration_client.post(
+        "/media-actions/upload",
+        data={"map_id": str(poi_map.id)},
+        files={"file": ("forbidden.png", png_bytes(), "image/png")},
+    )
+    assert forbidden.status_code == 403
+
+    app.dependency_overrides[get_current_user] = lambda: auth_user
+    missing = integration_client.post(
+        "/media-actions/upload",
+        data={"map_id": str(uuid4())},
+        files={"file": ("missing.png", png_bytes(), "image/png")},
+    )
+    assert missing.status_code == 404
+
+    poi_map.deleted_at = datetime.now(UTC).replace(tzinfo=None)
+    database_session.commit()
+    deleted = integration_client.post(
+        "/media-actions/upload",
+        data={"map_id": str(poi_map.id)},
+        files={"file": ("deleted.png", png_bytes(), "image/png")},
+    )
+    assert deleted.status_code == 404
+    assert database_session.query(Photo).count() == original_photo_count
+    assert {path.relative_to(photo_storage) for path in photo_storage.rglob("*") if path.is_file()} == original_files

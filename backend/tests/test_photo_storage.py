@@ -1,4 +1,5 @@
 from io import BytesIO
+import shutil
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -11,9 +12,11 @@ from app.photos.storage import (
     MAX_PHOTO_DIMENSION,
     MAX_PHOTO_SIZE,
     InvalidPhotoPathError,
+    PhotoFileNotFoundError,
     PhotoStorageError,
     PhotoTooLargeError,
     UnsupportedPhotoTypeError,
+    copy_photo_file,
     delete_photo_file,
     get_photo_storage_root,
     normalize_original_name,
@@ -258,6 +261,110 @@ def test_rejects_relative_storage_root_outside_backend(
 
     with pytest.raises(PhotoStorageError):
         get_photo_storage_root()
+
+
+def test_copy_photo_file_duplicates_bytes_under_fresh_identity(photo_storage: Path) -> None:
+    source_scope = uuid4()
+    source_photo = uuid4()
+    stored = store_photo_file(BytesIO(JPEG_BYTES), "image/jpeg", source_scope, source_photo)
+
+    target_scope = uuid4()
+    target_photo = uuid4()
+    copied = copy_photo_file(
+        stored.relative_path,
+        source_scope,
+        source_photo,
+        target_scope_id=target_scope,
+        target_photo_id=target_photo,
+    )
+
+    assert copied.relative_path == f"{target_scope}/{target_photo}.jpg"
+    assert copied.media_type == "image/jpeg"
+    assert copied.file_size_bytes == len(JPEG_BYTES)
+    assert resolve_photo_file(copied.relative_path, target_scope, target_photo, require_file=True).read_bytes() == JPEG_BYTES
+    # The source blob is untouched.
+    assert stored.absolute_path.read_bytes() == JPEG_BYTES
+
+    assert delete_photo_file(copied.relative_path, target_scope, target_photo)
+    assert delete_photo_file(stored.relative_path, source_scope, source_photo)
+
+
+def test_copy_photo_file_requires_an_existing_source(photo_storage: Path) -> None:
+    source_scope = uuid4()
+    source_photo = uuid4()
+    stored = store_photo_file(BytesIO(JPEG_BYTES), "image/jpeg", source_scope, source_photo)
+    delete_photo_file(stored.relative_path, source_scope, source_photo)
+
+    with pytest.raises(PhotoFileNotFoundError):
+        copy_photo_file(
+            stored.relative_path,
+            source_scope,
+            source_photo,
+            target_scope_id=uuid4(),
+            target_photo_id=uuid4(),
+        )
+
+
+def test_copy_photo_file_validates_source_identity_and_extension(photo_storage: Path) -> None:
+    source_scope = uuid4()
+    source_photo = uuid4()
+    stored = store_photo_file(BytesIO(JPEG_BYTES), "image/jpeg", source_scope, source_photo)
+
+    with pytest.raises(InvalidPhotoPathError):
+        copy_photo_file(
+            stored.relative_path,
+            uuid4(),
+            source_photo,
+            target_scope_id=uuid4(),
+            target_photo_id=uuid4(),
+        )
+
+    legacy_scope = uuid4()
+    legacy_photo = uuid4()
+    legacy_directory = photo_storage / str(legacy_scope)
+    legacy_directory.mkdir(parents=True)
+    legacy_file = legacy_directory / f"{legacy_photo}.gif"
+    legacy_file.write_bytes(b"GIF89a")
+    try:
+        with pytest.raises(InvalidPhotoPathError):
+            copy_photo_file(
+                f"{legacy_scope}/{legacy_photo}.gif",
+                legacy_scope,
+                legacy_photo,
+                target_scope_id=uuid4(),
+                target_photo_id=uuid4(),
+            )
+    finally:
+        shutil.rmtree(legacy_directory)
+
+    assert delete_photo_file(stored.relative_path, source_scope, source_photo)
+
+
+def test_copy_photo_file_refuses_to_overwrite_an_existing_target(photo_storage: Path) -> None:
+    source_scope = uuid4()
+    source_photo = uuid4()
+    stored = store_photo_file(BytesIO(JPEG_BYTES), "image/jpeg", source_scope, source_photo)
+
+    target_scope = uuid4()
+    target_photo = uuid4()
+    existing_target = photo_storage / str(target_scope) / f"{target_photo}.jpg"
+    existing_target.parent.mkdir(parents=True)
+    existing_target.write_bytes(b"existing-bytes")
+
+    with pytest.raises(PhotoStorageError):
+        copy_photo_file(
+            stored.relative_path,
+            source_scope,
+            source_photo,
+            target_scope_id=target_scope,
+            target_photo_id=target_photo,
+        )
+
+    assert existing_target.read_bytes() == b"existing-bytes"
+    assert not any(path.name.endswith(".partial") for path in photo_storage.rglob("*"))
+
+    shutil.rmtree(existing_target.parent)
+    assert delete_photo_file(stored.relative_path, source_scope, source_photo)
 
 
 def test_relative_storage_root_does_not_depend_on_current_directory(

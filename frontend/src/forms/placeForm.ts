@@ -56,7 +56,6 @@ export function buildCreatePayload(values: PlaceFormValues): PlaceCreatePayload 
 export function buildMinimalUpdatePayload(initial: PlaceFormValues, current: PlaceFormValues): PlaceUpdatePayload {
   const payload: PlaceUpdatePayload = {}
   if (initial.name.trim() !== current.name.trim()) payload.name = current.name.trim()
-  if (initial.mapId !== current.mapId) payload.map_id = current.mapId
   if (initial.statusId !== current.statusId) payload.status_id = current.statusId
   if (initial.isFavorite !== current.isFavorite) payload.is_favorite = current.isFavorite
   if (initial.interestRating !== current.interestRating) payload.interest_rating = current.interestRating ? Number(current.interestRating) : null

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from dataclasses import replace
 from hashlib import sha256
+import json
+import logging
 from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -26,11 +29,11 @@ from app.statuses.models import PlaceStatus
 from app.trips.export_service import create_gpx, create_kmz, google_maps_links
 from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripNightPhoto, TripStop
 from app.trips.optimizer import optimize_matrix
-from app.trips.permissions import require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
+from app.trips.permissions import ensure_trip_structurally_mutable, require_arrival_role, require_day_role, require_departure_role, require_night_role, require_stop_role, require_trip_editor, require_trip_owner, require_trip_viewer
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RouteResult, RoutingConstraints, RoutingError, RoutingProvider
-from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripListRead, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, apply_day_route_result, calculate_day_route, day_coordinates, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, resolve_constraint_country, synchronize_trip_dates
+from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripListRead, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripResizeConfirmationDetail, TripResizeImpact, TripResizeDayImpact, TripSummaryRead, TripUpdate
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, PhotoCleanupTarget, TripResizePlan, analyze_trip_resize, apply_day_route_result, apply_trip_resize, calculate_day_route, day_coordinates, day_last_stop_id, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, stale_route_and_following, resolve_constraint_country, synchronize_trip_dates
 from app.trips.optimization_store import OptimizationProposalUnavailable, optimization_proposal_store
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
@@ -42,6 +45,9 @@ from app.tasks.schemas import TaskStart
 from app.tasks.service import create_task, submit_task
 
 router = APIRouter(tags=["trips"])
+logger = logging.getLogger(__name__)
+TRIP_RESIZE_TOKEN_VERSION = "v1"
+TRIP_RESIZE_TOKEN_TTL = timedelta(minutes=5)
 
 
 def get_routing_provider() -> RoutingProvider | None:
@@ -98,6 +104,346 @@ def _assert_export_routes(session: Session, user: User, trip: Trip) -> None:
 
 
 def _trip_read(session: Session, trip_id: UUID) -> TripRead: return TripRead.model_validate(load_trip(session, trip_id))
+
+
+def _lock_trip_for_mutation(session: Session, trip_id: UUID) -> Trip:
+    """Lock the Trip before evaluating its lifecycle state and descendants."""
+    trip = session.scalar(
+        select(Trip).where(Trip.id == trip_id, Trip.deleted_at.is_(None)).with_for_update()
+    )
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+    return load_trip(session, trip_id)
+
+
+def _ensure_documentary_fields(trip: Trip, fields: set[str], allowed: set[str]) -> None:
+    if trip.status not in {"completed", "archived"} or fields <= allowed:
+        return
+    ensure_trip_structurally_mutable(trip)
+
+
+def _lock_trip_resize_graph(session: Session, trip_id: UUID) -> Trip:
+    """Lock the resize graph in a stable parent-to-child order.
+
+    The order is Trip -> Day -> Stop -> Night -> Photo.  The later eager load
+    only populates relationships; the rows have already been locked.
+    """
+    trip = session.scalar(
+        select(Trip)
+        .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
+        .with_for_update()
+    )
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+    day_ids = session.scalars(
+        select(TripDay.id)
+        .where(TripDay.trip_id == trip_id)
+        .order_by(TripDay.sort_order, TripDay.id)
+        .with_for_update()
+    ).all()
+    if day_ids:
+        session.scalars(
+            select(TripStop.id)
+            .where(TripStop.trip_day_id.in_(day_ids))
+            .order_by(TripStop.trip_day_id, TripStop.sort_order, TripStop.id)
+            .with_for_update()
+        ).all()
+    night_ids = session.scalars(
+        select(TripNight.id)
+        .where(TripNight.trip_id == trip_id)
+        .order_by(TripNight.id)
+        .with_for_update()
+    ).all()
+    if night_ids:
+        session.scalars(
+            select(TripNightPhoto.id)
+            .where(TripNightPhoto.night_id.in_(night_ids))
+            .order_by(TripNightPhoto.night_id, TripNightPhoto.sort_order, TripNightPhoto.id)
+            .with_for_update()
+        ).all()
+    return load_trip(session, trip_id)
+
+
+def _lock_trip_resize_days(session: Session, trip_id: UUID) -> Trip:
+    """Lock only the rows needed to safely remove an empty day tail."""
+    trip = session.scalar(
+        select(Trip)
+        .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
+        .with_for_update()
+    )
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+    session.scalars(
+        select(TripDay.id)
+        .where(TripDay.trip_id == trip_id)
+        .order_by(TripDay.sort_order, TripDay.id)
+        .with_for_update()
+    ).all()
+    return load_trip(session, trip_id)
+
+
+def _lock_trip_for_day_mutation(session: Session, trip_id: UUID) -> Trip:
+    """Serialize day insertion and reorder with destructive resize at the parent."""
+    trip = session.scalar(
+        select(Trip)
+        .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
+        .with_for_update()
+    )
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+    return load_trip(session, trip_id)
+
+
+def _lock_trip_for_reorder(session: Session, trip_id: UUID) -> Trip:
+    """Lock the mutable reorder graph without touching stops or night photos."""
+    trip = session.scalar(
+        select(Trip)
+        .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
+        .with_for_update()
+    )
+    if trip is None:
+        raise HTTPException(404, "Trip not found")
+    session.scalars(
+        select(TripDay.id)
+        .where(TripDay.trip_id == trip_id)
+        .order_by(TripDay.sort_order, TripDay.id)
+        .with_for_update()
+    ).all()
+    session.scalars(
+        select(TripNight.id)
+        .where(TripNight.trip_id == trip_id)
+        .order_by(TripNight.id)
+        .with_for_update()
+    ).all()
+    return load_trip(session, trip_id)
+
+
+def _reorder_night_conflict(night: TripNight) -> HTTPException:
+    return HTTPException(409, {
+        "code": "TRIP_REORDER_NIGHT_CONFLICT",
+        "message": "Ce déplacement placerait un jour avec hébergement en dernière position.",
+        "night_id": str(night.id),
+        "previous_day_id": str(night.previous_day_id),
+        "night_name": night.name,
+    })
+
+
+def _apply_reordered_night_successors(session: Session, trip: Trip, successors: dict[UUID, UUID | None]) -> None:
+    """Reassign night successors without temporarily violating unique constraints."""
+    day_ids = {day.id for day in trip.days}
+    current_order = {day.id: index for index, day in enumerate(sorted(trip.days, key=lambda day: day.sort_order))}
+    if any(
+        night.previous_day_id not in day_ids
+        or night.next_day_id not in day_ids
+        or night.previous_day_id == night.next_day_id
+        or current_order[night.next_day_id] != current_order[night.previous_day_id] + 1
+        for night in trip.nights
+    ):
+        raise HTTPException(409, {"code": "TRIP_REORDER_INVALID_NIGHT_STATE", "message": "Les nuits existantes ne peuvent pas être réordonnées de manière sûre."})
+    current_by_night = {night.id: night.next_day_id for night in trip.nights}
+    desired_by_night = {night.id: successors[night.previous_day_id] for night in trip.nights}
+    if any(desired is None for desired in desired_by_night.values()):
+        terminal = next(night for night in trip.nights if desired_by_night[night.id] is None)
+        raise _reorder_night_conflict(terminal)
+
+    pending = {night.id: desired for night in trip.nights if (desired := desired_by_night[night.id]) != current_by_night[night.id]}
+    occupied = set(current_by_night.values())
+    nights_by_id = {night.id: night for night in trip.nights}
+
+    def move(night_id: UUID, destination: UUID) -> None:
+        night = nights_by_id[night_id]
+        session.execute(
+            update(TripNight)
+            .where(TripNight.id == night_id)
+            .values(next_day_id=destination, updated_at=night.updated_at)
+        )
+        occupied.remove(current_by_night[night_id])
+        occupied.add(destination)
+        current_by_night[night_id] = destination
+
+    while pending:
+        movable = next((night_id for night_id, destination in pending.items() if destination not in occupied), None)
+        if movable is not None:
+            move(movable, pending.pop(movable))
+            continue
+
+        temporary_candidates = day_ids - occupied
+        cycle_night_id = next(
+            (night_id for night_id in pending if any(candidate != nights_by_id[night_id].previous_day_id for candidate in temporary_candidates)),
+            None,
+        )
+        if cycle_night_id is None:
+            raise HTTPException(409, {"code": "TRIP_REORDER_INVALID_NIGHT_STATE", "message": "Les nuits existantes ne peuvent pas être réordonnées de manière sûre."})
+        temporary = next(candidate for candidate in temporary_candidates if candidate != nights_by_id[cycle_night_id].previous_day_id)
+        move(cycle_night_id, temporary)
+
+
+def _canonical_resize_value(value: object) -> object:
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()  # date and time values
+    if isinstance(value, dict):
+        return {str(key): _canonical_resize_value(item) for key, item in sorted(value.items())}
+    if isinstance(value, (list, tuple)):
+        return [_canonical_resize_value(item) for item in value]
+    return value
+
+
+def _resize_plan_fingerprint(trip: Trip, user: User, values: dict[str, object], plan: TripResizePlan, expires_at: int) -> str:
+    def day_state(day: TripDay) -> dict[str, object]:
+        return {
+            "id": day.id,
+            "day_number": day.day_number,
+            "sort_order": day.sort_order,
+            "date": day.date,
+            "title": day.title,
+            "notes": day.notes,
+            "planned_start_time": day.planned_start_time,
+            "planned_end_time": day.planned_end_time,
+            "target_arrival_time": day.target_arrival_time,
+            "default_stop_buffer_minutes": day.default_stop_buffer_minutes,
+            "safety_margin_type": day.safety_margin_type,
+            "safety_margin_value": day.safety_margin_value,
+            "max_total_duration_minutes": day.max_total_duration_minutes,
+            "route_distance_meters": day.route_distance_meters,
+            "route_duration_seconds": day.route_duration_seconds,
+            "visit_duration_minutes": day.visit_duration_minutes,
+            "total_duration_minutes": day.total_duration_minutes,
+            "route_geometry": day.route_geometry,
+            "route_segments": day.route_segments,
+            "route_status": day.route_status,
+            "route_provider": day.route_provider,
+            "stops": [
+                {
+                    "id": stop.id,
+                    "place_id": stop.place_id,
+                    "stop_type": stop.stop_type,
+                    "name": stop.name,
+                    "latitude": stop.latitude,
+                    "longitude": stop.longitude,
+                    "address": stop.address,
+                    "sort_order": stop.sort_order,
+                    "visit_duration_minutes": stop.visit_duration_minutes,
+                    "planned_arrival": stop.planned_arrival,
+                    "planned_departure": stop.planned_departure,
+                    "notes": stop.notes,
+                    "is_required": stop.is_required,
+                    "is_locked": stop.is_locked,
+                    "visit_status": stop.visit_status,
+                }
+                for stop in sorted(day.stops, key=lambda item: (item.sort_order, item.id))
+            ],
+        }
+
+    payload = {
+        "version": 1,
+        "expires_at": expires_at,
+        "trip_id": trip.id,
+        "user_id": user.id,
+        "patch": values,
+        "target_day_count": plan.target_day_count,
+        "ordered_days": [
+            {"id": day.id, "day_number": day.day_number, "sort_order": day.sort_order}
+            for day in sorted(trip.days, key=lambda item: (item.sort_order, item.id))
+        ],
+        "removed_days": [day_state(day) for day in plan.removed_days],
+        "affected_nights": [
+            {
+                "id": night.id,
+                "previous_day_id": night.previous_day_id,
+                "next_day_id": night.next_day_id,
+                "place_id": night.place_id,
+                "source_type": night.source_type,
+                "name": night.name,
+                "latitude": night.latitude,
+                "longitude": night.longitude,
+                "address": night.address,
+                "google_place_id": night.google_place_id,
+                "website_url": night.website_url,
+                "description": night.description,
+                "notes": night.notes,
+                "check_in_from_time": night.check_in_from_time,
+                "check_in_until_time": night.check_in_until_time,
+                "check_out_from_time": night.check_out_from_time,
+                "check_out_until_time": night.check_out_until_time,
+                "photos": [
+                    {"id": photo.id, "file_path": photo.file_path, "file_size_bytes": photo.file_size_bytes, "sort_order": photo.sort_order}
+                    for photo in sorted(night.photos, key=lambda item: (item.sort_order, item.id))
+                ],
+            }
+            for night in plan.affected_nights
+        ],
+        "retained_last_day": day_state(plan.retained_last_day) if plan.retained_last_day else None,
+    }
+    encoded = json.dumps(_canonical_resize_value(payload), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _issue_resize_token(fingerprint: str, expires_at: int) -> tuple[str, datetime]:
+    expiry = datetime.fromtimestamp(expires_at, UTC)
+    return f"{TRIP_RESIZE_TOKEN_VERSION}.{expires_at}.{fingerprint}", expiry
+
+
+def _read_resize_token(token: str | None) -> tuple[int, str] | None:
+    if token is None:
+        return None
+    version, separator, remainder = token.partition(".")
+    expires_at, separator, candidate = remainder.partition(".")
+    if version != TRIP_RESIZE_TOKEN_VERSION or not separator:
+        return None
+    try:
+        expiry = int(expires_at)
+    except ValueError:
+        return None
+    if expiry < int(datetime.now(UTC).timestamp()):
+        return None
+    return expiry, candidate
+
+
+def _resize_impact(trip: Trip, requested_start_date, requested_end_date, plan: TripResizePlan) -> TripResizeImpact:
+    return TripResizeImpact(
+        current_start_date=trip.start_date,
+        current_end_date=trip.end_date,
+        requested_start_date=requested_start_date,
+        requested_end_date=requested_end_date,
+        current_day_count=len(trip.days),
+        target_day_count=plan.target_day_count,
+        removed_day_count=len(plan.removed_days),
+        removed_stop_count=len(plan.removed_stops),
+        removed_linked_place_stop_count=sum(stop.place_id is not None for stop in plan.removed_stops),
+        removed_night_count=len(plan.affected_nights),
+        removed_night_photo_count=len(plan.affected_photos),
+        removed_route_count=len(plan.removed_route_days),
+        invalidated_retained_route_count=len(plan.invalidated_retained_route_days),
+        removed_days=[
+            TripResizeDayImpact(
+                id=day.id,
+                day_number=day.day_number,
+                date=day.date,
+                title=day.title,
+                stop_count=len(day.stops),
+                route_count=int(any(route_day.id == day.id for route_day in plan.removed_route_days)),
+            )
+            for day in plan.removed_days
+        ],
+    )
+
+
+def _resize_confirmation_error(code: Literal["TRIP_RESIZE_CONFIRMATION_REQUIRED", "TRIP_RESIZE_CONFIRMATION_STALE"], trip: Trip, user: User, values: dict[str, object], requested_start_date, requested_end_date, plan: TripResizePlan) -> HTTPException:
+    expiry = int((datetime.now(UTC) + TRIP_RESIZE_TOKEN_TTL).timestamp())
+    fingerprint = _resize_plan_fingerprint(trip, user, values, plan, expiry)
+    token, expires_at = _issue_resize_token(fingerprint, expiry)
+    detail = TripResizeConfirmationDetail(
+        code=code,
+        message="La réduction de cette sortie supprimera des données." if code.endswith("REQUIRED") else "La sortie a changé depuis la confirmation.",
+        confirmation_token=token,
+        expires_at=expires_at,
+        impact=_resize_impact(trip, requested_start_date, requested_end_date, plan),
+    )
+    return HTTPException(409, detail.model_dump(mode="json"))
 
 
 @router.get("/maps/{map_id}/trips", response_model=list[TripRead])
@@ -169,7 +515,8 @@ def read_trip(trip_id: UUID, response: Response, session: Session = Depends(get_
 def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Atomically restore a previously read trip state for undo/redo."""
     access = require_trip_editor(session, trip_id, user)
-    trip = load_trip(session, access.trip.id)
+    trip = _lock_trip_for_mutation(session, access.trip.id)
+    ensure_trip_structurally_mutable(trip)
     if data.id != trip.id or data.map_id != trip.map_id or data.created_by_user_id != trip.created_by_user_id:
         raise HTTPException(422, "A restored state must belong to the same trip")
     if not data.days:
@@ -207,8 +554,18 @@ def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends
         ]
         if place_id is not None
     }
-    valid_place_ids = set(session.scalars(select(Place.id).where(Place.map_id == trip.map_id, Place.id.in_(place_ids)))) if place_ids else set()
-    if valid_place_ids != place_ids:
+    locked_place_ids = set(session.scalars(
+        select(Place.id)
+        .where(Place.id.in_(place_ids))
+        .order_by(Place.id)
+        .with_for_update(read=True)
+    )) if place_ids else set()
+    if locked_place_ids != place_ids or any(
+        map_id != trip.map_id
+        for map_id in session.scalars(
+            select(Place.map_id).where(Place.id.in_(place_ids)).order_by(Place.id)
+        )
+    ):
         raise HTTPException(422, "A restored place must belong to the trip map")
 
     restored_night_ids = {night.id for night in data.nights}
@@ -266,17 +623,20 @@ def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends
 @router.patch("/trips/{trip_id}", response_model=TripRead)
 def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_trip_editor(session, trip_id, user)
-    # Load the days before changing the dates. Loading them afterwards triggers
-    # an autoflush where the new start date is still paired with the old derived
-    # end date, which can violate the database date constraint.
-    trip = load_trip(session, trip_id)
     values = data.model_dump(exclude_unset=True)
+    destructive_change_token = values.pop("destructive_change_token", None)
+    trip = _lock_trip_for_mutation(session, trip_id)
+    _ensure_documentary_fields(trip, set(values), {"name", "description"})
     routing_option_keys = {"stay_in_country", "avoid_tolls", "avoid_highways", "avoid_ferries", "traffic_mode"}
     routing_options_changed = any(key in values and values[key] != getattr(trip, key) for key in routing_option_keys)
     end_date_was_set = "end_date" in data.model_fields_set
     requested_end_date = values.pop("end_date", None)
+    fingerprint_values = {**values}
+    if end_date_was_set:
+        fingerprint_values["end_date"] = requested_end_date
     target_start_date = values.get("start_date", trip.start_date)
     target_day_count: int | None = None
+    resize_plan: TripResizePlan | None = None
     if end_date_was_set and requested_end_date is not None:
         if target_start_date is None:
             raise HTTPException(422, "A departure date is required before setting the arrival date")
@@ -286,22 +646,69 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
         additional_days = target_day_count - len(trip.days)
         if additional_days > 0:
             QuotaService(session).ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id, increment=additional_days)
+        elif additional_days < 0:
+            initial_plan = analyze_trip_resize(trip, target_day_count)
+            trip = _lock_trip_resize_graph(session, trip_id) if initial_plan.destructive else _lock_trip_resize_days(session, trip_id)
+            ensure_trip_structurally_mutable(trip)
+            target_start_date = values.get("start_date", trip.start_date)
+            if target_start_date is None:
+                raise HTTPException(422, "A departure date is required before setting the arrival date")
+            target_day_count = (requested_end_date - target_start_date).days + 1
+            routing_options_changed = any(key in values and values[key] != getattr(trip, key) for key in routing_option_keys)
+            resize_plan = analyze_trip_resize(trip, target_day_count)
+            # The lightweight lock prevents a newly-added child from being
+            # removed as part of what was initially an empty reduction.
+            if not initial_plan.destructive and resize_plan.destructive:
+                trip = _lock_trip_resize_graph(session, trip_id)
+                ensure_trip_structurally_mutable(trip)
+                target_start_date = values.get("start_date", trip.start_date)
+                if target_start_date is None:
+                    raise HTTPException(422, "A departure date is required before setting the arrival date")
+                target_day_count = (requested_end_date - target_start_date).days + 1
+                routing_options_changed = any(key in values and values[key] != getattr(trip, key) for key in routing_option_keys)
+                resize_plan = analyze_trip_resize(trip, target_day_count)
+            if routing_options_changed:
+                removed_ids = {day.id for day in resize_plan.removed_days}
+                retained = [day for day in trip.days if day.id not in removed_ids and day.route_status == "ready"]
+                invalidated = {day.id: day for day in [*resize_plan.invalidated_retained_route_days, *retained]}
+                resize_plan = replace(resize_plan, invalidated_retained_route_days=tuple(invalidated.values()))
+            if resize_plan.destructive:
+                parsed_token = _read_resize_token(destructive_change_token if isinstance(destructive_change_token, str) else None)
+                fingerprint = _resize_plan_fingerprint(trip, user, fingerprint_values, resize_plan, parsed_token[0]) if parsed_token else None
+                if parsed_token is None or parsed_token[1] != fingerprint:
+                    code: Literal["TRIP_RESIZE_CONFIRMATION_REQUIRED", "TRIP_RESIZE_CONFIRMATION_STALE"] = (
+                        "TRIP_RESIZE_CONFIRMATION_STALE" if destructive_change_token is not None else "TRIP_RESIZE_CONFIRMATION_REQUIRED"
+                    )
+                    error = _resize_confirmation_error(code, trip, user, fingerprint_values, target_start_date, requested_end_date, resize_plan)
+                    session.rollback()
+                    raise error
     if "start_date" in values or target_day_count is not None:
         trip.end_date = None
     for key, value in values.items(): setattr(trip, key, value)
+    cleanup_targets: list[PhotoCleanupTarget] = []
     if target_day_count is not None:
-        resize_trip_days(session, trip, target_day_count)
-    else:
+        if resize_plan is not None:
+            cleanup_targets = apply_trip_resize(session, trip, resize_plan)
+        else:
+            resize_trip_days(session, trip, target_day_count)
+    elif trip.status in {"draft", "planned", "in_progress"}:
         synchronize_trip_dates(trip)
     if routing_options_changed:
         for day in trip.days:
             stale(day)
-    session.commit(); return _trip_read(session, trip_id)
+    session.commit()
+    for target in cleanup_targets:
+        try:
+            delete_photo_file(target.file_path, target.night_id, target.photo_id)
+        except PhotoStorageError:
+            logger.warning("Unable to clean up a removed trip night photo", extra={"trip_id": str(trip_id), "photo_id": str(target.photo_id)})
+    return _trip_read(session, trip_id)
 
 
 @router.patch("/trips/{trip_id}/load-settings", response_model=TripRead)
 def update_trip_load_settings(trip_id: UUID, data: TripLoadSettings, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id)
+    ensure_trip_structurally_mutable(trip)
     for key, value in data.model_dump().items(): setattr(trip, key, value)
     session.commit(); return _trip_read(session, trip_id)
 
@@ -316,7 +723,7 @@ def remove_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = 
 
 @router.post("/trips/{trip_id}/archive", response_model=TripRead)
 def archive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id)
     trip.status = "completed"
     trip.completed_at = datetime.now(UTC).replace(tzinfo=None)
     trip.archived_at = None
@@ -326,7 +733,7 @@ def archive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User =
 
 @router.post("/trips/{trip_id}/unarchive", response_model=TripRead)
 def unarchive_trip(trip_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = require_trip_editor(session, trip_id, user).trip
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id)
     trip.status = "in_progress"
     trip.completed_at = None
     trip.archived_at = None
@@ -360,7 +767,8 @@ def duplicate_trip(trip_id: UUID, session: Session = Depends(get_db), user: User
 
 @router.post("/trips/{trip_id}/days", response_model=DayRead, status_code=201)
 def add_day(trip_id: UUID, data: DayCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id); ordered = sorted(trip.days, key=lambda item: item.sort_order)
+    require_trip_editor(session, trip_id, user)
+    trip = _lock_trip_for_day_mutation(session, trip_id); ensure_trip_structurally_mutable(trip); ordered = sorted(trip.days, key=lambda item: item.sort_order)
     QuotaService(session).ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id)
     if data.after_day_id is None:
         insertion = len(ordered); previous = ordered[-1] if ordered else None
@@ -380,14 +788,19 @@ def add_day(trip_id: UUID, data: DayCreate, session: Session = Depends(get_db), 
 
 @router.patch("/trip-days/{day_id}", response_model=DayRead)
 def update_day(day_id: UUID, data: DayUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    day, _ = require_day_role(session, day_id, user, "editor")
+    day, access = require_day_role(session, day_id, user, "editor")
+    trip = _lock_trip_for_mutation(session, access.trip.id)
+    _ensure_documentary_fields(trip, set(data.model_fields_set), {"title", "notes", "color"})
+    day = next(item for item in trip.days if item.id == day_id)
     for key, value in data.model_dump(exclude_unset=True).items(): setattr(day, key, value)
     session.commit(); return DayRead.model_validate(day)
 
 
 @router.patch("/trip-days/{day_id}/timing", response_model=DaySummaryRead)
 def update_day_timing(day_id: UUID, data: TripDayTimingUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    day, _ = require_day_role(session, day_id, user, "editor")
+    day, access = require_day_role(session, day_id, user, "editor")
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    day = next(item for item in trip.days if item.id == day_id)
     for key, value in data.model_dump().items(): setattr(day, key, value)
     metrics = day_summary(day)
     day.visit_duration_minutes = metrics["visit_duration_minutes"]
@@ -398,7 +811,9 @@ def update_day_timing(day_id: UUID, data: TripDayTimingUpdate, session: Session 
 @router.delete("/trip-days/{day_id}", status_code=204)
 def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     day, access = require_day_role(session, day_id, user, "editor")
-    if len(load_trip(session, access.trip.id).days) <= 1: raise HTTPException(422, "A trip must keep at least one day")
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    day = next(item for item in trip.days if item.id == day_id)
+    if len(trip.days) <= 1: raise HTTPException(422, "A trip must keep at least one day")
     trip_id = day.trip_id
     # Delete links first: SQLAlchemy otherwise tries to null a non-nullable FK before
     # PostgreSQL's ON DELETE CASCADE can remove the overnight row.
@@ -413,30 +828,18 @@ def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = De
 
 @router.post("/trips/{trip_id}/days/reorder", response_model=TripRead)
 def reorder_days(trip_id: UUID, data: IdOrder, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    require_trip_editor(session, trip_id, user)
+    trip = _lock_trip_for_reorder(session, trip_id)
+    ensure_trip_structurally_mutable(trip)
     if set(data.ids) != {day.id for day in trip.days} or len(data.ids) != len(trip.days): raise HTTPException(422, "Day order must contain every day exactly once")
-    nights = session.scalars(select(TripNight).where(TripNight.trip_id == trip.id)).all()
-    nights_by_previous_day = {
-        night.previous_day_id: {column.name: getattr(night, column.name) for column in TripNight.__table__.columns}
-        for night in nights
-    }
-    # A night travels with the day it follows. Rebuild the links atomically so
-    # each retained night targets the day's new successor; the new last day
-    # cannot keep an overnight stop before the arrival anchor.
-    if nights:
-        session.execute(delete(TripNight).where(TripNight.trip_id == trip.id))
-        session.flush()
+    ordered_ids = [day.id for day in sorted(trip.days, key=lambda day: day.sort_order)]
+    if data.ids == ordered_ids:
+        return _trip_read(session, trip_id)
+    successors = {day_id: data.ids[index + 1] if index + 1 < len(data.ids) else None for index, day_id in enumerate(data.ids)}
+    _apply_reordered_night_successors(session, trip, successors)
     for day in trip.days: day.sort_order += 10_000; day.day_number += 10_000
     session.flush(); lookup = {day.id: day for day in trip.days}
     for index, item in enumerate(data.ids): lookup[item].sort_order = index; lookup[item].day_number = index + 1
-    rebuilt_nights = []
-    for index, day_id in enumerate(data.ids[:-1]):
-        values = nights_by_previous_day.get(day_id)
-        if values is None: continue
-        values["next_day_id"] = data.ids[index + 1]
-        values["updated_at"] = datetime.now(UTC)
-        rebuilt_nights.append(values)
-    if rebuilt_nights: session.execute(TripNight.__table__.insert(), rebuilt_nights)
     for day in trip.days: stale(day)
     synchronize_trip_dates(trip)
     session.commit(); session.expire_all(); return _trip_read(session, trip_id)
@@ -444,7 +847,7 @@ def reorder_days(trip_id: UUID, data: IdOrder, session: Session = Depends(get_db
 
 @router.post("/trip-days/{day_id}/duplicate", response_model=DayRead, status_code=201)
 def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    source, _ = require_day_role(session, day_id, user, "editor"); trip = load_trip(session, source.trip_id)
+    source, access = require_day_role(session, day_id, user, "editor"); trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip); source = next(item for item in trip.days if item.id == day_id)
     quotas = QuotaService(session)
     quotas.ensure_can_create(user.id, QuotaKey.DAYS_PER_TRIP_MAX, scope_id=trip.id)
     for day in trip.days: day.sort_order += 10_000; day.day_number += 10_000
@@ -462,10 +865,14 @@ def duplicate_day(day_id: UUID, session: Session = Depends(get_db), user: User =
 @router.post("/trip-days/{day_id}/stops", response_model=StopRead, status_code=201)
 def add_stop(day_id: UUID, data: StopCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     day, access = require_day_role(session, day_id, user, "editor"); values = data.model_dump()
-    QuotaService(session).ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day_id)
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    day = next(item for item in trip.days if item.id == day_id)
     place = None
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, stop_type="place")
+        if place.map_id != access.trip.map_id:
+            raise HTTPException(422, "Place must belong to the trip map")
+    QuotaService(session).ensure_can_create(user.id, QuotaKey.STEPS_PER_DAY_MAX, scope_id=day_id)
     if "visit_duration_minutes" not in data.model_fields_set:
         values["visit_duration_minutes"] = place.default_visit_duration_minutes if place is not None and place.default_visit_duration_minutes is not None else 30
     next_sort_order = session.scalar(
@@ -478,23 +885,31 @@ def add_stop(day_id: UUID, data: StopCreate, session: Session = Depends(get_db),
         sort_order=next_sort_order,
         **values,
     )
-    session.add(stop); stale(day); session.commit(); return StopRead.model_validate(stop)
+    session.add(stop); stale_route_and_following(day, boundary_changed=True); session.commit(); return StopRead.model_validate(stop)
 
 
 @router.patch("/trip-stops/{stop_id}", response_model=StopRead)
 def update_stop(stop_id: UUID, data: StopUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    stop, _ = require_stop_role(session, stop_id, user, "editor")
+    stop, access = require_stop_role(session, stop_id, user, "editor")
+    trip = _lock_trip_for_mutation(session, access.trip.id)
     values = data.model_dump(exclude_unset=True)
+    _ensure_documentary_fields(trip, set(values), {"notes", "visit_status"})
+    stop = next(item for day in trip.days for item in day.stops if item.id == stop_id)
+    previous_last_stop_id = day_last_stop_id(stop.day)
     for key, value in values.items(): setattr(stop, key, value)
-    if {"latitude", "longitude"} & values.keys(): stale(stop.day)
+    if {"latitude", "longitude"} & values.keys():
+        stale_route_and_following(stop.day, boundary_changed=day_last_stop_id(stop.day) != previous_last_stop_id)
     session.commit(); return StopRead.model_validate(stop)
 
 
 @router.delete("/trip-stops/{stop_id}", status_code=204)
 def remove_stop(stop_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    stop, _ = require_stop_role(session, stop_id, user, "editor")
+    stop, access = require_stop_role(session, stop_id, user, "editor")
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    stop = next(item for day in trip.days for item in day.stops if item.id == stop_id)
     day = stop.day
     day_id = day.id
+    previous_last_stop_id = day_last_stop_id(day)
     session.delete(stop)
     session.flush()
 
@@ -509,25 +924,40 @@ def remove_stop(stop_id: UUID, session: Session = Depends(get_db), user: User = 
     for index, item in enumerate(remaining):
         item.sort_order = index
 
-    stale(day)
+    current_last_stop_id = remaining[-1].id if remaining else None
+    stale_route_and_following(day, boundary_changed=current_last_stop_id != previous_last_stop_id)
     session.commit()
 
 
 @router.post("/trip-days/{day_id}/stops/reorder", response_model=DayRead)
 def reorder_stops(day_id: UUID, data: IdOrder, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    day, _ = require_day_role(session, day_id, user, "editor")
+    day, access = require_day_role(session, day_id, user, "editor")
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    day = next(item for item in trip.days if item.id == day_id)
     if set(data.ids) != {item.id for item in day.stops} or len(data.ids) != len(day.stops): raise HTTPException(422, "Stop order must contain every stop exactly once")
+    previous_order = [stop.id for stop in sorted(day.stops, key=lambda item: item.sort_order)]
+    previous_last_stop_id = previous_order[-1] if previous_order else None
     for stop in day.stops: stop.sort_order += 10_000
     session.flush(); lookup = {stop.id: stop for stop in day.stops}
     for index, item in enumerate(data.ids): lookup[item].sort_order = index
-    stale(day); session.commit(); return DayRead.model_validate(day)
+    # Strict no-op: an identical order must not invalidate any route.
+    if data.ids == previous_order:
+        session.commit(); return DayRead.model_validate(day)
+    boundary_changed = bool(previous_order) and data.ids[-1] != previous_last_stop_id
+    stale_route_and_following(day, boundary_changed=boundary_changed)
+    session.commit(); return DayRead.model_validate(day)
 
 
 @router.post("/trip-stops/{stop_id}/move", response_model=TripRead)
 def move_stop(stop_id: UUID, data: StopMove, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     stop, access = require_stop_role(session, stop_id, user, "editor"); target, target_access = require_day_role(session, data.target_day_id, user, "editor")
     if target.trip_id != access.trip.id: raise HTTPException(422, "A stop can only move inside its trip")
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    stop = next(item for day in trip.days for item in day.stops if item.id == stop_id)
+    target = next(item for item in trip.days if item.id == data.target_day_id)
     source = stop.day
+    previous_source_last_stop_id = day_last_stop_id(source)
+    previous_target_last_stop_id = day_last_stop_id(target)
     source_items = sorted((item for item in source.stops if item.id != stop.id), key=lambda item: item.sort_order)
     target_items = source_items if source.id == target.id else sorted(target.stops, key=lambda item: item.sort_order)
     for item in {item.id: item for item in [*source.stops, *target.stops]}.values(): item.sort_order += 10_000
@@ -538,13 +968,18 @@ def move_stop(stop_id: UUID, data: StopMove, session: Session = Depends(get_db),
     target_items = [item for item in target_items if item.id != stop.id]
     target_items.insert(min(data.sort_order, len(target_items)), stop)
     for index, item in enumerate(target_items): item.sort_order = index
-    stale(source)
-    stale(target); session.commit(); return _trip_read(session, access.trip.id)
+    # AUD-014: each affected day propagates to its following day when the
+    # ending boundary (last effective stop, absent an intervening night)
+    # changed; duplicates are harmless because stale() is idempotent.
+    stale_route_and_following(source, boundary_changed=day_last_stop_id(source) != previous_source_last_stop_id)
+    if target.id != source.id:
+        stale_route_and_following(target, boundary_changed=day_last_stop_id(target) != previous_target_last_stop_id)
+    session.commit(); return _trip_read(session, access.trip.id)
 
 
 @router.post("/trips/{trip_id}/nights", response_model=NightRead, status_code=201)
 def add_night(trip_id: UUID, data: NightCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id); lookup = {day.id: day for day in trip.days}
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id); ensure_trip_structurally_mutable(trip); lookup = {day.id: day for day in trip.days}
     previous, following = lookup.get(data.previous_day_id), lookup.get(data.next_day_id)
     if previous is None or following is None or following.sort_order != previous.sort_order + 1: raise HTTPException(422, "A night must connect consecutive days of the same trip")
     values = data.model_dump(exclude={"previous_day_id", "next_day_id"})
@@ -555,7 +990,7 @@ def add_night(trip_id: UUID, data: NightCreate, session: Session = Depends(get_d
 
 @router.patch("/trip-nights/{night_id}", response_model=NightRead)
 def update_night(night_id: UUID, data: NightUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    night, access = require_night_role(session, night_id, user, "editor"); values = data.model_dump(exclude_unset=True)
+    night, access = require_night_role(session, night_id, user, "editor"); trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip); night = next(item for item in trip.nights if item.id == night_id); values = data.model_dump(exclude_unset=True)
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude, source_type="place", google_place_id=None)
     for key, value in values.items(): setattr(night, key, value)
@@ -668,7 +1103,7 @@ def _remove_night_photo(session: Session, night: TripNight, photo: TripNightPhot
 
 @router.delete("/trip-nights/{night_id}", status_code=204)
 def remove_night(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    night, _ = require_night_role(session, night_id, user, "editor")
+    night, access = require_night_role(session, night_id, user, "editor"); trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip); night = next(item for item in trip.nights if item.id == night_id)
     photos = [(photo.file_path, photo.id) for photo in night.photos]
     stale(night.previous_day); stale(night.next_day); session.delete(night); session.commit()
     for path, photo_id in photos:
@@ -680,7 +1115,7 @@ def remove_night(night_id: UUID, session: Session = Depends(get_db), user: User 
 
 @router.post("/trips/{trip_id}/departure", response_model=DepartureRead, status_code=201)
 def add_departure(trip_id: UUID, data: DepartureCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id); ensure_trip_structurally_mutable(trip)
     if trip.departure is not None: raise HTTPException(409, "This trip already has a departure point")
     values = data.model_dump()
     if data.place_id:
@@ -701,7 +1136,7 @@ def set_trip_anchor_place(
     user: User = Depends(get_current_user),
 ):
     """Atomically create or replace a trip anchor from a map POI."""
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id); ensure_trip_structurally_mutable(trip)
     place, latitude, longitude = place_snapshot(session, place_id, trip.map_id)
     if anchor == "departure":
         if trip.departure is None:
@@ -743,7 +1178,8 @@ def set_trip_anchor_place(
 @router.delete("/trip-departures/{departure_id}", status_code=204)
 def remove_departure(departure_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     departure, access = require_departure_role(session, departure_id, user, "editor")
-    trip = load_trip(session, access.trip.id)
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    departure = trip.departure
     if trip.days:
         stale(trip.days[0])
         stale(trip.days[-1])
@@ -753,11 +1189,12 @@ def remove_departure(departure_id: UUID, session: Session = Depends(get_db), use
 @router.patch("/trip-departures/{departure_id}", response_model=DepartureRead)
 def update_departure(departure_id: UUID, data: DepartureUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     departure, access = require_departure_role(session, departure_id, user, "editor")
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    departure = trip.departure
     values = data.model_dump()
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude)
     for key, value in values.items(): setattr(departure, key, value)
-    trip = load_trip(session, access.trip.id)
     if trip.days:
         stale(trip.days[0])
         stale(trip.days[-1])
@@ -766,7 +1203,7 @@ def update_departure(departure_id: UUID, data: DepartureUpdate, session: Session
 
 @router.post("/trips/{trip_id}/arrival", response_model=ArrivalRead, status_code=201)
 def add_arrival(trip_id: UUID, data: ArrivalCreate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    trip = load_trip(session, require_trip_editor(session, trip_id, user).trip.id)
+    trip = _lock_trip_for_mutation(session, require_trip_editor(session, trip_id, user).trip.id); ensure_trip_structurally_mutable(trip)
     if trip.arrival is not None: raise HTTPException(409, "This trip already has an arrival point")
     values = data.model_dump()
     if data.place_id:
@@ -778,18 +1215,17 @@ def add_arrival(trip_id: UUID, data: ArrivalCreate, session: Session = Depends(g
 
 @router.patch("/trip-arrivals/{arrival_id}", response_model=ArrivalRead)
 def update_arrival(arrival_id: UUID, data: ArrivalUpdate, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    arrival, access = require_arrival_role(session, arrival_id, user, "editor"); values = data.model_dump()
+    arrival, access = require_arrival_role(session, arrival_id, user, "editor"); trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip); arrival = trip.arrival; values = data.model_dump()
     if data.place_id:
         place, latitude, longitude = place_snapshot(session, data.place_id, access.trip.map_id); values.update(name=place.name, latitude=latitude, longitude=longitude)
     for key, value in values.items(): setattr(arrival, key, value)
-    trip = load_trip(session, access.trip.id)
     if trip.days: stale(trip.days[-1])
     session.commit(); return ArrivalRead.model_validate(arrival)
 
 
 @router.delete("/trip-arrivals/{arrival_id}", status_code=204)
 def remove_arrival(arrival_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    arrival, access = require_arrival_role(session, arrival_id, user, "editor"); trip = load_trip(session, access.trip.id)
+    arrival, access = require_arrival_role(session, arrival_id, user, "editor"); trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip); arrival = trip.arrival
     if trip.days: stale(trip.days[-1])
     session.delete(arrival); session.commit()
 
@@ -798,7 +1234,7 @@ def remove_arrival(arrival_id: UUID, session: Session = Depends(get_db), user: U
 @router.post("/trip-days/{day_id}/route/recalculate", response_model=DayRead)
 def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     _, access = require_day_role(session, day_id, user, "editor")
-    trip = load_trip(session, access.trip.id)
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
     day = next(item for item in trip.days if item.id == day_id)
     provider = provider or _routing_provider_for_trip(session, user, trip)
     return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(trip)))
@@ -922,7 +1358,7 @@ def _store_optimization(session: Session, user: User, trip: Trip, days: list[dic
 @router.post("/trip-days/{day_id}/optimize", response_model=DayOptimizationRead)
 def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     _, access = require_day_role(session, day_id, user, "editor")
-    trip = load_trip(session, access.trip.id)
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
     day = next(item for item in trip.days if item.id == day_id)
     provider = provider or _routing_provider_for_trip(session, user, trip)
     metrics, stored = _build_day_optimization(day, provider, options)
@@ -933,7 +1369,7 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
 @router.post("/trips/{trip_id}/optimize", response_model=TripOptimizationRead)
 def optimize_trip(trip_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     require_trip_editor(session, trip_id, user)
-    trip = load_trip(session, trip_id)
+    trip = _lock_trip_for_mutation(session, trip_id); ensure_trip_structurally_mutable(trip)
     provider = provider or _routing_provider_for_trip(session, user, trip)
     optimizable = [day for day in sorted(trip.days, key=lambda item: item.sort_order) if len(day.stops) >= 2]
     if not optimizable:
@@ -997,7 +1433,7 @@ def _google_optimized_stops(provider: RoutingProvider, stops: list[TripStop], st
 @router.post("/trip-days/{day_id}/optimize/confirm", response_model=DayRead)
 def confirm_optimization(day_id: UUID, data: OptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     day, access = require_day_role(session, day_id, user, "editor")
-    trip = load_trip(session, access.trip.id)
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
     provider = provider or _routing_provider_for_trip(session, user, trip)
     _apply_optimization_proposal(session, user, trip, data.proposal_id, provider, expected_day_id=day_id)
     return DayRead.model_validate(next(item for item in load_trip(session, access.trip.id).days if item.id == day_id))
@@ -1006,7 +1442,7 @@ def confirm_optimization(day_id: UUID, data: OptimizeConfirm, session: Session =
 @router.post("/trips/{trip_id}/optimize/confirm", response_model=TripRead)
 def confirm_trip_optimization(trip_id: UUID, data: TripOptimizeConfirm, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     require_trip_editor(session, trip_id, user)
-    trip = load_trip(session, trip_id)
+    trip = _lock_trip_for_mutation(session, trip_id); ensure_trip_structurally_mutable(trip)
     provider = provider or _routing_provider_for_trip(session, user, trip)
     _apply_optimization_proposal(session, user, trip, data.proposal_id, provider)
     return TripRead.model_validate(load_trip(session, trip_id))
@@ -1097,8 +1533,12 @@ def apply_place_statuses(trip_id: UUID, data: ApplyPlaceStatuses, session: Sessi
             if stop.place_id and status_id:
                 status = session.get(PlaceStatus, status_id)
                 if status is None or status.map_id != trip.map_id: raise HTTPException(422, "Unknown place status")
+                place = session.get(Place, stop.place_id)
+                if place is None or place.map_id != trip.map_id:
+                    raise HTTPException(409, "A linked place must belong to the trip map")
+                require_map_role(session, place.map_id, user, "editor")
                 proposals.append({"stop_id": stop.id, "place_id": stop.place_id, "visit_status": stop.visit_status, "status_id": status_id})
-                if data.confirm: session.get(Place, stop.place_id).status_id = status_id
+                if data.confirm: place.status_id = status_id
     if data.confirm: session.commit()
     return {"confirmed": data.confirm, "proposals": proposals}
 

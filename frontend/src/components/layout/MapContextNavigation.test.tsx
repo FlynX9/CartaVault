@@ -40,6 +40,7 @@ describe('MapContextNavigation', () => {
      expect(screen.queryByRole('button', { name: 'Lieux' })).not.toBeInTheDocument()
      expect(screen.queryByRole('button', { name: 'Sorties' })).not.toBeInTheDocument()
      expect(screen.queryByRole('button', { name: 'Chronologie' })).not.toBeInTheDocument()
+     expect(document.getElementById('map-context-toolbar-slot')).toBeInTheDocument()
 
     const organization = screen.getByRole('button', { name: 'Organisation' })
     fireEvent.click(organization)

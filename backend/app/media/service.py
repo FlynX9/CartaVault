@@ -4,19 +4,13 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, case, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.countries.models import Country
 from app.maps.models import MapMembership, PoiMap
 from app.photos.models import Photo
-from app.photos.storage import (
-    InvalidPhotoPathError,
-    PhotoFileNotFoundError,
-    PhotoStorageError,
-    inspect_photo_file,
-)
 from app.places.models import Place
 
 
@@ -34,13 +28,50 @@ class MediaAccess:
         return self.role in {"owner", "editor"}
 
 
+def declared_file_state(path=None, scope_id=None, width=None, height=None):
+    """SQL expression computing one photo's declared state.
+
+    Single source of truth for the catalogue's file_state semantics; the
+    Python mirror lives in ``infer_file_state`` and must stay aligned.
+    Defaults to the ``Photo`` columns so it can be reused on any compatible
+    selectable (listing filters, aggregate counts).
+    """
+
+    path = path if path is not None else Photo.path
+    scope_id = scope_id if scope_id is not None else Photo.storage_scope_id
+    width = width if width is not None else Photo.width
+    height = height if height is not None else Photo.height
+    return case(
+        (
+            or_(path.is_(None), scope_id.is_(None)),
+            "missing",
+        ),
+        (
+            or_(width.is_(None), height.is_(None)),
+            "error",
+        ),
+        else_="healthy",
+    )
+
+
+def file_state_condition(state: str):
+    return declared_file_state() == state
+
+
 def accessible_media_statement(user_id: UUID) -> Select:
-    """Build the common media query without an administrator bypass."""
+    """Build the common media query without an administrator bypass.
+
+    An attached photo is governed exclusively by its place's map:
+    ``Photo.map_id`` is a denormalised cache and must never widen access,
+    even when it still references the map the photo historically lived on.
+    Only a photo attached to no place falls back to ``Photo.map_id``, and
+    only a fully orphaned upload stays visible to its uploader alone.
+    """
 
     return (
         select(Photo, Place, PoiMap, Country, User, MapMembership.role)
         .outerjoin(Place, Photo.place_id == Place.id)
-        .outerjoin(PoiMap, Photo.map_id == PoiMap.id)
+        .outerjoin(PoiMap, PoiMap.id == func.coalesce(Place.map_id, Photo.map_id))
         .outerjoin(Country, PoiMap.country_id == Country.id)
         .outerjoin(User, Photo.uploaded_by_user_id == User.id)
         .outerjoin(
@@ -52,8 +83,16 @@ def accessible_media_statement(user_id: UUID) -> Select:
         )
         .where(
             or_(Place.id.is_(None), Place.deleted_at.is_(None)),
+            # A trashed map must not become reachable again through /media.
+            # For a fully orphaned photo the joined row is NULL and IS NULL
+            # evaluates true, keeping uploader-only visibility intact.
+            PoiMap.deleted_at.is_(None),
             or_(
-                and_(Photo.map_id.is_(None), Photo.uploaded_by_user_id == user_id),
+                and_(
+                    Photo.place_id.is_(None),
+                    Photo.map_id.is_(None),
+                    Photo.uploaded_by_user_id == user_id,
+                ),
                 PoiMap.owner_id == user_id,
                 MapMembership.user_id == user_id,
             ),
@@ -90,15 +129,17 @@ def get_media_access(
 
 
 def infer_file_state(photo: Photo) -> str:
+    """Declared catalogue state, derived from DB metadata only (AUD-021).
+
+    This is the Python mirror of ``file_state_condition``: the listing never
+    touches the storage layer. The physical blob is verified when content is
+    actually served, so a blob removed out-of-band stays declared healthy
+    until a read fails.
+    """
+
     if photo.path is None or photo.storage_scope_id is None:
         return "missing"
-    try:
-        metadata = inspect_photo_file(photo.path, photo.storage_scope_id, photo.id)
-    except PhotoFileNotFoundError:
-        return "missing"
-    except (InvalidPhotoPathError, PhotoStorageError):
-        return "error"
-    if metadata.width is None or metadata.height is None:
+    if photo.width is None or photo.height is None:
         return "error"
     return "healthy"
 
@@ -168,18 +209,11 @@ def apply_media_filters(
     if min_height is not None:
         statement = statement.where(Photo.height >= min_height)
     if file_state == "missing":
-        statement = statement.where(Photo.path.is_(None))
+        statement = statement.where(file_state_condition("missing"))
     elif file_state == "error":
-        statement = statement.where(
-            Photo.path.is_not(None),
-            or_(Photo.width.is_(None), Photo.height.is_(None)),
-        )
+        statement = statement.where(file_state_condition("error"))
     elif file_state == "healthy":
-        statement = statement.where(
-            Photo.path.is_not(None),
-            Photo.width.is_not(None),
-            Photo.height.is_not(None),
-        )
+        statement = statement.where(file_state_condition("healthy"))
     return statement
 
 

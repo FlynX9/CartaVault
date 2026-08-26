@@ -31,6 +31,8 @@ from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
 from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_ordering
 from app.places.models import Place
+from app.photos.models import Photo
+from app.annotations.models import PlaceAnnotation
 from app.places.fields import normalize_place_field_config
 from app.places.history import add_place_history, changed_values
 from app.places.reverse_geocoding import (
@@ -40,16 +42,16 @@ from app.places.reverse_geocoding import (
     get_reverse_geocoder,
     log_resolution_failure,
 )
-from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceListPosition, PlaceRead, PlaceUpdate
+from app.places.schemas import PlaceBulkAction, PlaceBulkResult, PlaceBulkTripAction, PlaceBulkTripResult, PlaceCategoryRead, PlaceCreate, PlaceFacets, PlaceFacetItem, PlaceListPosition, PlaceMove, PlaceRead, PlaceUpdate
 from app.trash.service import trash_deadline
 from app.tags.models import Tag
 from app.tags.schemas import TagRead
 from app.statuses.models import PlaceStatus
 from app.statuses.schemas import PlaceStatusSummary
 from app.tags.associations import place_tags_table
-from app.trips.models import TripArrival, TripDay, TripDeparture, TripNight, TripStop
-from app.trips.permissions import require_trip_editor
-from app.trips.service import stale
+from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
+from app.trips.permissions import ensure_trip_structurally_mutable, require_trip_editor
+from app.trips.service import stale, synchronize_place_coordinate_references
 
 
 router = APIRouter(
@@ -80,10 +82,23 @@ def synchronize_place_name_references(
 ) -> None:
     """Keep every trip location linked to a place on its canonical name."""
 
-    for model in (TripStop, TripNight, TripDeparture, TripArrival):
+    database_session.execute(
+        update(TripStop)
+        .where(
+            TripStop.place_id == place_id,
+            TripStop.name != current_name,
+            TripStop.trip_day_id.in_(select(TripDay.id).join(Trip).where(Trip.map_id == select(Place.map_id).where(Place.id == place_id).scalar_subquery())),
+        )
+        .values(name=current_name)
+    )
+    for model in (TripNight, TripDeparture, TripArrival):
         database_session.execute(
             update(model)
-            .where(model.place_id == place_id, model.name != current_name)
+            .where(
+                model.place_id == place_id,
+                model.name != current_name,
+                model.trip_id.in_(select(Trip.id).where(Trip.map_id == select(Place.map_id).where(Place.id == place_id).scalar_subquery())),
+            )
             .values(name=current_name)
         )
 
@@ -363,10 +378,16 @@ def bulk_update_places(
     current_user: User = Depends(get_current_user),
 ) -> PlaceBulkResult:
     """Apply one validated action atomically to an explicit, bounded selection."""
+    # Serialize map-scoped association writes with a cross-map move.  UUID
+    # ordering keeps overlapping bulk operations from taking row locks in a
+    # different order.
     places = database_session.scalars(
-        select(Place).where(Place.id.in_(action_data.place_ids), Place.deleted_at.is_(None)).options(
-            selectinload(Place.categories), selectinload(Place.tags),
-        )
+        select(Place)
+        .where(Place.id.in_(action_data.place_ids), Place.deleted_at.is_(None))
+        .order_by(Place.id)
+        .with_for_update()
+        .options(selectinload(Place.categories), selectinload(Place.tags))
+        .execution_options(populate_existing=True)
     ).all()
     if len(places) != len(action_data.place_ids):
         raise HTTPException(status_code=404, detail="BULK_PLACE_NOT_FOUND")
@@ -457,13 +478,23 @@ def bulk_add_to_trip(
     current_user: User = Depends(get_current_user),
 ) -> PlaceBulkTripResult:
     """Append selected same-map POIs to one editable trip day atomically."""
-    places = database_session.scalars(select(Place).where(Place.id.in_(action_data.place_ids))).all()
+    # Share-lock the POIs while creating TripStop references so a concurrent
+    # cross-map move cannot pass its dependency check between this read and commit.
+    places = database_session.scalars(
+        select(Place).where(Place.id.in_(action_data.place_ids)).order_by(Place.id).with_for_update(read=True)
+    ).all()
     if len(places) != len(action_data.place_ids):
         raise HTTPException(status_code=404, detail="BULK_PLACE_NOT_FOUND")
     map_ids = {place.map_id for place in places}
     if len(map_ids) != 1:
         raise HTTPException(status_code=409, detail="BULK_PLACE_FORBIDDEN")
     trip_access = require_trip_editor(database_session, action_data.trip_id, current_user)
+    trip = database_session.scalar(
+        select(Trip).where(Trip.id == trip_access.trip.id, Trip.deleted_at.is_(None)).with_for_update()
+    )
+    if trip is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    ensure_trip_structurally_mutable(trip)
     day = database_session.get(TripDay, action_data.day_id)
     if day is None or day.trip_id != trip_access.trip.id:
         raise HTTPException(status_code=409, detail="BULK_DAY_FORBIDDEN")
@@ -734,6 +765,141 @@ def create_place(
         ) from error
 
 
+def _move_blockers(database_session: Session, place_id: UUID) -> dict[str, int]:
+    """Count dependencies that cannot cross a map boundary unchanged."""
+
+    # Keep references from soft-deleted trips as blockers: restoring a trip
+    # must not be able to recreate a cross-map reference.
+    trip_stop_count = database_session.scalar(
+        select(func.count()).select_from(TripStop).where(TripStop.place_id == place_id)
+    ) or 0
+    trip_night_count = database_session.scalar(
+        select(func.count()).select_from(TripNight).where(TripNight.place_id == place_id)
+    ) or 0
+    trip_anchor_count = sum(
+        database_session.scalar(select(func.count()).select_from(model).where(model.place_id == place_id)) or 0
+        for model in (TripDeparture, TripArrival)
+    )
+    return {
+        "categories": database_session.scalar(
+            select(func.count()).select_from(place_categories_table).where(place_categories_table.c.place_id == place_id)
+        ) or 0,
+        "tags": database_session.scalar(
+            select(func.count()).select_from(place_tags_table).where(place_tags_table.c.place_id == place_id)
+        ) or 0,
+        "annotations": database_session.scalar(
+            select(func.count()).select_from(PlaceAnnotation).where(PlaceAnnotation.place_id == place_id)
+        ) or 0,
+        "trip_stops": trip_stop_count,
+        "trip_nights": trip_night_count,
+        "trip_anchors": trip_anchor_count,
+    }
+
+
+def _lock_place(database_session: Session, place_id: UUID) -> Place | None:
+    """Serialize map-scoped child mutations with a cross-map move."""
+
+    return database_session.scalar(
+        select(Place).where(Place.id == place_id).with_for_update().execution_options(populate_existing=True)
+    )
+
+
+@router.post("/{place_id}/move", response_model=PlaceRead)
+def move_place(
+    place_id: UUID,
+    move_data: PlaceMove,
+    database_session: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PlaceRead:
+    """Atomically move a POI and its attached media to another editable map."""
+
+    # Check both ACL boundaries before taking locks; the locked re-check below
+    # makes a concurrent map move fail safely rather than using stale state.
+    source_place = require_place_role(database_session, place_id, current_user, "editor")
+    target_access = require_map_role(database_session, move_data.target_map_id, current_user, "editor")
+    if source_place.map_id == target_access.map.id:
+        return read_place(database_session=database_session, place_id=place_id)
+
+    try:
+        place = _lock_place(database_session, place_id)
+        if place is None or place.deleted_at is not None:
+            raise HTTPException(status_code=404, detail="Place not found")
+        require_map_role(database_session, place.map_id, current_user, "editor")
+        target_access = require_map_role(database_session, move_data.target_map_id, current_user, "editor")
+        if place.map_id == target_access.map.id:
+            return read_place(database_session=database_session, place_id=place_id)
+
+        target_status = database_session.scalar(
+            select(PlaceStatus)
+            .where(PlaceStatus.id == move_data.target_status_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if target_status is None:
+            raise HTTPException(status_code=404, detail=f"Status with id {move_data.target_status_id} was not found")
+        if target_status.map_id != target_access.map.id:
+            raise HTTPException(status_code=409, detail="The status belongs to another map")
+        if not target_status.is_active:
+            raise HTTPException(status_code=409, detail="An inactive status cannot be selected")
+
+        longitude, latitude = database_session.execute(
+            select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(Place.id == place.id)
+        ).one()
+        if latitude is not None and longitude is not None:
+            require_country_confirmation(target_access.map, float(latitude), float(longitude), move_data.confirm_outside_country)
+
+        # QuotaService owns the per-owner serialization used by normal creates.
+        # It is deliberately invoked before any ORM mutation.
+        quotas = QuotaService(database_session)
+        quotas.ensure_can_create(current_user.id, QuotaKey.PLACES_PER_MAP_MAX, scope_id=target_access.map.id)
+        photos = list(database_session.scalars(
+            select(Photo).where(Photo.place_id == place.id).order_by(Photo.id).with_for_update()
+        ))
+        source_owner_id = place.map.owner_id
+        target_owner_id = target_access.map.owner_id
+        if source_owner_id != target_owner_id and photos:
+            photo_bytes = sum(photo.file_size_bytes or 0 for photo in photos)
+            quotas.ensure_can_create(target_owner_id, QuotaKey.PHOTOS_TOTAL_MAX, increment=len(photos))
+            if photo_bytes:
+                quotas.ensure_can_create(target_owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=photo_bytes)
+
+        blockers = _move_blockers(database_session, place.id)
+        if any(blockers.values()):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "PLACE_MOVE_BLOCKED",
+                    "message": "Ce lieu ne peut pas être déplacé tant que certaines dépendances existent.",
+                    "blockers": blockers,
+                },
+            )
+
+        previous_map_id, previous_status_id = place.map_id, place.status_id
+        place.map_id = target_access.map.id
+        place.status_id = target_status.id
+        for photo in photos:
+            photo.map_id = target_access.map.id
+        add_place_history(
+            database_session,
+            place.id,
+            current_user.id,
+            "moved",
+            {
+                "map_id": {"old": previous_map_id, "new": place.map_id},
+                "status_id": {"old": previous_status_id, "new": place.status_id},
+            },
+        )
+        database_session.commit()
+        database_session.refresh(place)
+        return read_place(database_session=database_session, place_id=place.id)
+    except HTTPException:
+        database_session.rollback()
+        raise
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to move the place") from error
+
+
 @router.patch(
     "/{place_id}",
     response_model=PlaceRead,
@@ -759,13 +925,6 @@ def update_place(
         )
     ).one()
 
-    requested_map_id = supplied_data.get("map_id")
-    target_map = place.map
-    if requested_map_id is not None:
-        target_map = require_map_role(database_session, requested_map_id, current_user, "editor").map
-        if requested_map_id != place.map_id and (place.categories or place.tags):
-            raise HTTPException(status_code=409, detail="Remove map-scoped categories and tags before moving the place")
-
     requested_status_id = supplied_data.get("status_id")
     if requested_status_id is not None:
         requested_status = database_session.get(PlaceStatus, requested_status_id)
@@ -774,8 +933,7 @@ def update_place(
                 status_code=404,
                 detail=f"Status with id {requested_status_id} was not found",
             )
-        target_map_id = requested_map_id or place.map_id
-        if requested_status.map_id != target_map_id:
+        if requested_status.map_id != place.map_id:
             raise HTTPException(status_code=409, detail="The status belongs to another map")
         if not requested_status.is_active:
             raise HTTPException(status_code=409, detail="An inactive status cannot be selected")
@@ -785,13 +943,11 @@ def update_place(
 
     if latitude is not None and longitude is not None:
         target_latitude, target_longitude = latitude, longitude
-    elif requested_map_id is not None:
-        target_longitude, target_latitude = current_longitude, current_latitude
     else:
         target_latitude = target_longitude = None
     if target_latitude is not None and target_longitude is not None:
         require_country_confirmation(
-            target_map,
+            place.map,
             float(target_latitude),
             float(target_longitude),
             confirmed_outside_country,
@@ -837,6 +993,23 @@ def update_place(
                 longitude,
                 reverse_geocoder,
             )
+    else:
+        coordinates_changed = False
+
+    # AUD-014: trip routes are computed from coordinate snapshots stored on
+    # TripStop/TripNight/TripDeparture/TripArrival, never from Place.location.
+    # When the coordinates actually change, refresh those snapshots for every
+    # mutable trip referencing this place and stale their affected routes —
+    # inside this same transaction, under the shared Trip FOR UPDATE lock, so
+    # a concurrent route calculation can never commit a ready route built on
+    # pre-sync snapshots.  completed/archived trips keep frozen snapshots.
+    if coordinates_changed:
+        synchronize_place_coordinate_references(
+            database_session,
+            place.id,
+            float(latitude),
+            float(longitude),
+        )
 
     changes = changed_values(before, {field: getattr(place, field) for field in audited_fields})
     if latitude is not None and longitude is not None:
@@ -960,13 +1133,7 @@ def add_category_to_place(
 ) -> PlaceRead:
     """Assign a category to a place."""
 
-    place = database_session.get(
-        Place,
-        place_id,
-        options=[
-            selectinload(Place.categories),
-        ],
-    )
+    place = _lock_place(database_session, place_id)
 
     if place is None:
         raise HTTPException(
@@ -1083,13 +1250,7 @@ def add_tag_to_place(
 ) -> PlaceRead:
     """Assign a tag to a place."""
 
-    place = database_session.get(
-        Place,
-        place_id,
-        options=[
-            selectinload(Place.tags),
-        ],
-    )
+    place = _lock_place(database_session, place_id)
 
     if place is None:
         raise HTTPException(

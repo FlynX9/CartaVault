@@ -284,8 +284,12 @@ describe('MapPage', () => {
     const props = { places: [], selectedPlaceId: null, initialView: { center: [48.17, 6.45] as [number, number], zoom: 13 }, isLoading: false, errorMessage: null, sidebarOpen: false, placeListOpen: false, statuses: [], sidebar: null, placeList: null, focusRequest: null, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn() }
     const { rerender } = render(<MemoryRouter><MapPage {...props} /></MemoryRouter>)
     await screen.findByTestId('poi-map')
-    fireEvent.click(screen.getByRole('button', { name: 'Thème de carte' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Utiliser le fond OpenFreeMap sombre' }))
+    // Desktop renders the basemap selector inside the toolbar slot; a second
+    // mobile-only variant stays in the DOM but is hidden by CSS breakpoints.
+    const toolbarSlot = document.getElementById('map-context-toolbar-slot') as HTMLElement
+    const themeToggle = within(toolbarSlot).getByRole('button', { name: 'Thème de carte' })
+    fireEvent.click(themeToggle)
+    fireEvent.click(within(toolbarSlot).getByRole('button', { name: 'Utiliser le fond OpenFreeMap sombre' }))
     expect(screen.getByTestId('poi-map')).toHaveAttribute('data-basemap-id', 'openfreemap-dark')
     expect(themeState.setPreference).not.toHaveBeenCalled()
     rerender(<MemoryRouter><MapPage {...props} /></MemoryRouter>)

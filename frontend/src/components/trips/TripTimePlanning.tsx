@@ -1,9 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { ChevronDown, Clock3, Gauge } from 'lucide-react'
 
 import { FieldHelp } from '../common/FieldHelp'
 import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripStop } from '../../types/trip'
 import { formatClock, formatMinutes, formatRouteDistance } from './tripMetrics'
+import { useUnsavedChangeSignal } from '../../hooks/useUnsavedChangeSignal'
 
 interface DayTimingProps {
   day: TripDay
@@ -15,8 +16,11 @@ interface DayTimingProps {
 }
 
 export function DayTimingSettings({ day, summary: _summary, canEdit, busy, endsAtHotel = false, onSave }: DayTimingProps) {
-  const [draft, setDraft] = useState<TripDayTimingPayload>(() => timingPayload(day))
-  useEffect(() => setDraft(timingPayload(day)), [day])
+  const savedTiming = useMemo(() => timingPayload(day), [day.id, day.target_arrival_time, day.default_stop_buffer_minutes, day.safety_margin_type, day.safety_margin_value])
+  const [draft, setDraft] = useState<TripDayTimingPayload>(() => savedTiming)
+  useEffect(() => setDraft(savedTiming), [savedTiming])
+  const dirty = JSON.stringify(draft) !== JSON.stringify(savedTiming)
+  useUnsavedChangeSignal(`trip-day-timing:${day.id}`, dirty)
 
   const update = <K extends keyof TripDayTimingPayload>(key: K, value: TripDayTimingPayload[K]) => setDraft((current) => ({ ...current, [key]: value }))
   const bufferPresets = [0, 5, 10, 15, 20, 30]

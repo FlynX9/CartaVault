@@ -33,8 +33,9 @@ class PlaceCreate(BaseModel):
 
 
 class PlaceUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    map_id: UUID | None = None
     status_id: UUID | None = None
     description: str | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -53,8 +54,6 @@ class PlaceUpdate(BaseModel):
         supplied = self.model_fields_set
         if "name" in supplied and self.name is None:
             raise ValueError("The name cannot be null")
-        if "map_id" in supplied and self.map_id is None:
-            raise ValueError("The map_id cannot be null")
         if "status_id" in supplied and self.status_id is None:
             raise ValueError("The status_id cannot be null")
         latitude_supplied = "latitude" in supplied
@@ -123,6 +122,12 @@ class PlaceLinkUpdate(BaseModel):
         if "sort_order" in supplied and self.sort_order is None:
             raise ValueError("sort_order cannot be null")
         return self
+
+
+class PlaceMove(BaseModel):
+    target_map_id: UUID
+    target_status_id: UUID
+    confirm_outside_country: bool = False
 
 
 class PlaceLinkWrite(PlaceLinkCreate):

@@ -245,7 +245,7 @@ app.add_middleware(
         "X-CSRF-Token",
         "X-CartaVault-Setup-Token",
     ],
-    expose_headers=["Accept-Ranges", "Content-Length", "Content-Range", "ETag"],
+    expose_headers=["Accept-Ranges", "Content-Length", "Content-Range", "ETag", "X-CSRF-Token"],
 )
 app.add_middleware(SecurityHeadersMiddleware)
 

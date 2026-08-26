@@ -100,7 +100,7 @@ export function MediaUploadDialog({ onClose, onDone }: { onClose: () => void; on
       for (const source of Array.from(files)) {
         const [coordinates, compressed] = await Promise.all([readImageLocation(source), compressImage(source, maxImageDimension)]);
         if (compressed.size > maxUploadBytes) throw new Error(`« ${source.name} » dépasse la limite d’import de ${(maxUploadBytes / 1024 / 1024).toLocaleString("fr-FR")} Mo.`);
-        await uploadMedia(compressed, coordinates, undefined, source);
+        await uploadMedia(compressed, coordinates, undefined, source, mapId);
       }
       onDone();
       onClose();

@@ -40,6 +40,7 @@ import { distanceBetweenPoints } from '../components/map/measurement'
 import { publishGlobalFeedback } from '../components/common/globalFeedback'
 import { getOfflineBasemapVersion } from '../pwa/offlineData'
 import { AppLoadingScreen } from '../components/loading/AppLoadingScreen'
+import { useUnsavedChangeSignal } from '../hooks/useUnsavedChangeSignal'
 
 const LEFT_PANEL_WIDTH_KEY = 'cartavault:left-panel-width'
 const RIGHT_PANEL_WIDTH_KEY = 'cartavault:right-panel-width'
@@ -295,6 +296,7 @@ export function MapPage({
   const [annotations, setAnnotations] = useState<PlaceAnnotation[]>([])
   const [hiddenAnnotationIds, setHiddenAnnotationIds] = useState<Set<string>>(() => new Set())
   const [annotationDrawing, setAnnotationDrawing] = useState<(AnnotationDrawingState & { placeId: string; template: AnnotationTemplate; title: string | null; description: string | null }) | null>(null)
+  useUnsavedChangeSignal('map-annotation-drawing', Boolean(annotationDrawing?.points.length))
   const mapLayoutRef = useRef<HTMLDivElement>(null)
   const selectionFitControllerRef = useRef<AbortController | null>(null)
   const selectedSearchResult = temporarySearchResult ?? localSearchResult
@@ -333,7 +335,19 @@ export function MapPage({
     : `cartavault:desktop-workspace-window:${workspacePanelId}`
 
   useLayoutEffect(() => {
-    setMapToolbarHost(document.getElementById('map-context-toolbar-slot'))
+    const resolveToolbarHost = () => {
+      setMapToolbarHost((current) => {
+        const next = document.getElementById('map-context-toolbar-slot')
+        return next === current ? current : next
+      })
+    }
+    resolveToolbarHost()
+    // The context navigation (and its toolbar slot) remounts when the
+    // workspace switches between an open map and an open trip; keep the
+    // basemap selector attached to whichever slot currently exists.
+    const observer = new MutationObserver(resolveToolbarHost)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {

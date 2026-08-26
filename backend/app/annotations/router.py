@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.auth.permissions import require_map_role, require_place_role
 from app.database import get_db
+from app.places.models import Place
 
 router = APIRouter(prefix="/annotations", tags=["annotations"])
 
@@ -122,6 +123,12 @@ def get_place_annotations(place_id: UUID, database_session: Session = Depends(ge
 @router.post("/places/{place_id}", response_model=PlaceAnnotationRead, status_code=201)
 def create_place_annotation(place_id: UUID, data: PlaceAnnotationCreate, database_session: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> PlaceAnnotationRead:
     place = require_place_role(database_session, place_id, current_user, "editor")
+    # Match Place move's exclusive lock before attaching a map-scoped template.
+    place = database_session.scalar(
+        select(Place).where(Place.id == place.id).with_for_update().execution_options(populate_existing=True)
+    )
+    if place is None:
+        raise HTTPException(status_code=404, detail="Place not found")
     template = database_session.get(AnnotationTemplate, data.template_id)
     if template is None or template.map_id != place.map_id:
         raise HTTPException(status_code=404, detail="Annotation template not found")

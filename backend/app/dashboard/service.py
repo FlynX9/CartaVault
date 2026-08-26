@@ -145,8 +145,16 @@ def build_dashboard(session: Session, user: User) -> DashboardRead:
         select(
             TripDay.trip_id.label("trip_id"),
             func.count(TripDay.id).label("day_count"),
-            func.coalesce(func.sum(TripDay.route_distance_meters), 0).label("route_distance_meters"),
-            func.coalesce(func.sum(TripDay.route_duration_seconds), 0).label("route_duration_seconds"),
+            # AUD-020: only current routes feed the metrics. The canonical rule
+            # lives in summary_service._has_current_route: a day contributes
+            # only when route_status == "ready", and SUM naturally skips the
+            # rare ready row whose measures are still NULL.
+            func.coalesce(
+                func.sum(TripDay.route_distance_meters).filter(TripDay.route_status == "ready"), 0
+            ).label("route_distance_meters"),
+            func.coalesce(
+                func.sum(TripDay.route_duration_seconds).filter(TripDay.route_status == "ready"), 0
+            ).label("route_duration_seconds"),
         )
         .group_by(TripDay.trip_id)
         .subquery()

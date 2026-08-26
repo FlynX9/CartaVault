@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, FileText, ImagePlus, Link2, Ma
 import { deleteTripNightPhoto, tripNightPhotoUrl, updateTripNight, uploadTripNightPhoto } from '../../api/trips'
 import type { TripNight, TripNightPhoto } from '../../types/trip'
 import { GoogleMapsIcon } from '../common/GoogleMapsIcon'
+import { useUnsavedChangeSignal } from '../../hooks/useUnsavedChangeSignal'
 
 interface Props {
   night: TripNight
@@ -50,7 +51,7 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
     setCheckInUntilTime(clockValue(night.check_in_until_time ?? night.check_in_time))
     setCheckOutFromTime(clockValue(night.check_out_from_time))
     setCheckOutUntilTime(clockValue(night.check_out_until_time ?? night.check_out_time))
-  }, [night])
+  }, [night.id, night.description, night.website_url, night.check_in_from_time, night.check_in_until_time, night.check_in_time, night.check_out_from_time, night.check_out_until_time, night.check_out_time])
 
   useEffect(() => {
     pasteInFlight.current = false
@@ -147,6 +148,7 @@ export function TripNightMapPopup({ night, canEdit, onUpdated, onClose }: Props)
     || checkInUntilTime !== clockValue(night.check_in_until_time ?? night.check_in_time)
     || checkOutFromTime !== clockValue(night.check_out_from_time)
     || checkOutUntilTime !== clockValue(night.check_out_until_time ?? night.check_out_time)
+  useUnsavedChangeSignal(`trip-night-details:${night.id}`, detailsChanged)
 
   return <><article className="place-map-popup trip-night-map-popup" aria-labelledby={`trip-night-popup-title-${night.id}`}>
     <section className="popup-hero">

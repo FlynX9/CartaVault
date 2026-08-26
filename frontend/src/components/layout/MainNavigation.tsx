@@ -23,6 +23,7 @@ interface Props {
   onOpenTrip?: () => void
   onCloseMap?: () => void
   onCloseTrip?: () => void
+  organizationAvailable?: boolean
 }
 
 const MOBILE_NAVIGATION_MEDIA_QUERY = '(max-width: 900px), (max-device-width: 900px), (pointer: coarse), (max-aspect-ratio: 3 / 4)'
@@ -35,7 +36,7 @@ function closeMobileModalLayers() {
   if (window.matchMedia?.('(max-width: 760px)').matches) window.dispatchEvent(new Event('cartavault:close-mobile-modal-layers'))
 }
 
-export function MainNavigation({ activePanel, onPanelChange, dashboardActive = false, onOpenDashboard, collapsed = false, onCollapsedChange = () => undefined, maps = [], activeMapId = null, activeTrip = null, tripOpen = false, onOpenTrip = () => undefined, onCloseMap = () => undefined, onCloseTrip = () => undefined }: Props) {
+export function MainNavigation({ activePanel, onPanelChange, dashboardActive = false, onOpenDashboard, collapsed = false, onCollapsedChange = () => undefined, maps = [], activeMapId = null, activeTrip = null, tripOpen = false, onOpenTrip = () => undefined, onCloseMap = () => undefined, onCloseTrip = () => undefined, organizationAvailable = true }: Props) {
   const { t } = useI18n()
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(MOBILE_NAVIGATION_MEDIA_QUERY).matches === true)
   const [organizationOpen, setOrganizationOpen] = useState(false)
@@ -49,6 +50,9 @@ export function MainNavigation({ activePanel, onPanelChange, dashboardActive = f
     mediaQuery.addEventListener?.('change', updateViewport)
     return () => mediaQuery.removeEventListener?.('change', updateViewport)
   }, [])
+  useEffect(() => {
+    if (!organizationAvailable) setOrganizationOpen(false)
+  }, [organizationAvailable])
 
   const mapsActive = activePanel === 'maps'
   const selectPanel = (panel: 'maps' | 'trips' | 'media' | 'trash') => {
@@ -86,7 +90,7 @@ export function MainNavigation({ activePanel, onPanelChange, dashboardActive = f
         <div className="cv-main-navigation__group cv-main-navigation__group--trash">
           <button type="button" className={`${navClass(activePanel === 'trash')} cv-main-navigation__secondary-mobile`} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => selectPanel('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
         </div>
-        {isMobileViewport && <div className="cv-main-navigation__organization-mobile">
+        {isMobileViewport && organizationAvailable && <div className="cv-main-navigation__organization-mobile">
           <button type="button" className={navClass(activePanel === 'categories' || activePanel === 'tags' || activePanel === 'statuses' || activePanel === 'annotation-templates' || activePanel === 'media' || activePanel === 'trash')} aria-label={t('nav.organization')} aria-expanded={organizationOpen} onClick={() => setOrganizationOpen((open) => !open)}><Shapes size={23} /><span>{t('nav.organization')}</span></button>
           {organizationOpen && <div className="cv-main-navigation__organization-menu" role="menu" aria-label={t('nav.organization')}>
             <button type="button" role="menuitem" onClick={() => selectOrganizationPanel('categories')}><Shapes size={17} /><span>{t('nav.categories')}</span></button>

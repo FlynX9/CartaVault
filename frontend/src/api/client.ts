@@ -9,18 +9,21 @@ export class ApiError extends Error {
   readonly status: number
   readonly fieldErrors: ApiFieldErrors
   readonly code: string | null
+  readonly detail: unknown
 
   constructor(
     status: number,
     message: string,
     fieldErrors: ApiFieldErrors = {},
     code: string | null = null,
+    detail: unknown = null,
   ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
     this.code = code
+    this.detail = detail
   }
 }
 
@@ -47,21 +50,27 @@ export function setCsrfToken(value: string | null): void {
   csrfToken = value
 }
 
+function synchronizeCsrfToken(response: Response): void {
+  const rotatedToken = response.headers.get('X-CSRF-Token')
+  if (rotatedToken !== null) setCsrfToken(rotatedToken)
+}
+
 interface ParsedErrorPayload {
   message: string | null
   fieldErrors: ApiFieldErrors
   code: string | null
+  detail: unknown
 }
 
 function parseApiErrorPayload(payload: unknown): ParsedErrorPayload {
   if (typeof payload !== 'object' || payload === null || !('detail' in payload)) {
-    return { message: null, fieldErrors: {}, code: null }
+    return { message: null, fieldErrors: {}, code: null, detail: null }
   }
 
   const detail = payload.detail
 
   if (typeof detail === 'string') {
-    return { message: detail, fieldErrors: {}, code: null }
+    return { message: detail, fieldErrors: {}, code: null, detail }
   }
 
   if (typeof detail === 'object' && detail !== null && 'message' in detail && typeof detail.message === 'string') {
@@ -69,11 +78,12 @@ function parseApiErrorPayload(payload: unknown): ParsedErrorPayload {
       message: detail.message,
       fieldErrors: {},
       code: 'code' in detail && typeof detail.code === 'string' ? detail.code : null,
+      detail,
     }
   }
 
   if (!Array.isArray(detail)) {
-    return { message: null, fieldErrors: {}, code: null }
+    return { message: null, fieldErrors: {}, code: null, detail }
   }
 
   const messages: string[] = []
@@ -104,6 +114,7 @@ function parseApiErrorPayload(payload: unknown): ParsedErrorPayload {
     message: messages.length > 0 ? messages.join(', ') : null,
     fieldErrors,
     code: null,
+    detail,
   }
 }
 
@@ -117,10 +128,11 @@ async function getResponseError(response: Response): Promise<ParsedErrorPayload>
       message: parsed.message ?? fallback,
       fieldErrors: parsed.fieldErrors,
       code: parsed.code,
+      detail: parsed.detail,
     }
   } catch {
     const text = (await response.text()).trim()
-    return { message: text || fallback, fieldErrors: {}, code: null }
+    return { message: text || fallback, fieldErrors: {}, code: null, detail: null }
   }
 }
 
@@ -179,9 +191,11 @@ async function request(
         error.message ?? 'Erreur API.',
         error.fieldErrors,
         error.code,
+        error.detail,
       )
     }
 
+    synchronizeCsrfToken(response)
     if (mutation) trackedMutations.set(response, mutation)
     return response
   } catch (error) {
@@ -252,6 +266,8 @@ export function sendJsonViaXhr(
         fail(new ApiError(xhr.status, parsed.message ?? `L'API a répondu avec le statut ${xhr.status}.`, parsed.fieldErrors, parsed.code))
         return
       }
+      const rotatedToken = xhr.getResponseHeader('X-CSRF-Token')
+      if (rotatedToken !== null) setCsrfToken(rotatedToken)
       announceApiMutationSuccess(mutation)
       resolve(payload)
     }
@@ -313,6 +329,7 @@ export async function sendFormData(
       }
       throw new ApiError(response.status, error.message ?? 'Erreur API.', error.fieldErrors, error.code)
     }
+    synchronizeCsrfToken(response)
     const payload: unknown = await response.json()
     announceApiMutationSuccess(mutation)
     return payload

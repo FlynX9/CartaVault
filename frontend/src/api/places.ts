@@ -16,6 +16,7 @@ import type {
   PlaceListPosition,
   PlaceHistoryPage,
   PlaceLink,
+  PlaceMovePayload,
 } from '../types/place'
 import { buildPlaceFilterSearchParams, DEFAULT_PLACE_FILTERS } from '../places/placeFilters'
 import { getJson, sendJson, sendWithoutResponse } from './client'
@@ -333,6 +334,10 @@ export async function getTrashedPlaces(mapId: string, signal?: AbortSignal): Pro
 
 export async function createPlaceLink(placeId: string, data: { url: string; label?: string | null; sort_order?: number }): Promise<PlaceLink> {
   return sendJson(`/places/${encodeURIComponent(placeId)}/links`, 'POST', data) as Promise<PlaceLink>
+}
+
+export async function movePlace(placeId: string, payload: PlaceMovePayload): Promise<PlaceDetails> {
+  return parsePlaceDetailsResponse(await sendJson(`/places/${encodeURIComponent(placeId)}/move`, 'POST', payload))
 }
 
 export async function replacePlaceLinks(placeId: string, links: Array<{ id?: string; url: string; label: string | null; sort_order: number }>): Promise<PlaceLink[]> {

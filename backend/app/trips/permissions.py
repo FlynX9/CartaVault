@@ -10,6 +10,16 @@ from app.auth.models import User
 from app.auth.permissions import MapAccess, require_map_role
 from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripStop
 
+STRUCTURALLY_MUTABLE_STATUSES = {"draft", "planned", "in_progress"}
+
+
+def ensure_trip_structurally_mutable(trip: Trip) -> None:
+    if trip.status not in STRUCTURALLY_MUTABLE_STATUSES:
+        raise HTTPException(status_code=409, detail={
+            "code": "TRIP_COMPLETED_READ_ONLY",
+            "message": "Cette sortie est terminée et ne peut plus être modifiée.",
+        })
+
 
 @dataclass(frozen=True)
 class TripAccess:

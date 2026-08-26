@@ -48,6 +48,35 @@ def test_login_session_me_csrf_logout(integration_client, database_session, monk
     assert integration_client.get("/auth/me").status_code == 401
 
 
+def test_email_mfa_login_challenge_matches_the_declared_response_model(integration_client, database_session, monkeypatch) -> None:
+    user = _user(database_session)
+    user.email_mfa_enabled = True
+    sent_codes: list[str] = []
+    monkeypatch.setattr("app.auth.router.verify_password", lambda _stored, _password: (True, False))
+    monkeypatch.setattr(
+        "app.auth.router.EmailService.send_email_mfa_code",
+        lambda _service, _email, _name, code, _locale: sent_codes.append(code),
+    )
+    monkeypatch.setattr("app.auth.router.provider_from_database", lambda _session: object())
+
+    challenge = integration_client.post("/auth/login", json={"email": user.email, "password": "correct password"})
+
+    assert challenge.status_code == 200
+    assert challenge.json() == {
+        "requires_email_mfa": True,
+        "challenge_token": challenge.json()["challenge_token"],
+    }
+    assert len(challenge.json()["challenge_token"]) >= 32
+    assert len(sent_codes) == 1
+
+    authenticated = integration_client.post(
+        "/auth/email-mfa/verify",
+        json={"challenge_token": challenge.json()["challenge_token"], "code": sent_codes[0]},
+    )
+    assert authenticated.status_code == 200
+    assert authenticated.json()["csrf_token"] == authenticated.headers["X-CSRF-Token"]
+
+
 def test_pending_registration_login_reports_admin_approval_without_leaking_on_wrong_password(
     integration_client,
     database_session,
@@ -118,6 +147,10 @@ def test_change_password_revokes_other_sessions(integration_client, database_ses
     database_session.add(extra); database_session.flush()
     changed = integration_client.post("/auth/change-password", json={"current_password": "current password", "new_password": "a sufficiently long new password"}, headers={"X-CSRF-Token": csrf})
     assert changed.status_code == 204
+    rotated_csrf = changed.headers["X-CSRF-Token"]
+    assert rotated_csrf != csrf
+    assert integration_client.post("/account/preferences/reset", headers={"X-CSRF-Token": csrf}).status_code == 403
+    assert integration_client.post("/account/preferences/reset", headers={"X-CSRF-Token": rotated_csrf}).status_code == 200
     assert user.password_hash == "new::a sufficiently long new password"
     database_session.refresh(extra)
     assert extra.revoked_at is not None

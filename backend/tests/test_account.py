@@ -29,8 +29,12 @@ def test_account_profile_email_password_and_sessions(integration_client, databas
     monkeypatch.setattr("app.auth.account_router.verify_password", lambda _hash, password: (password == "current password", False))
     changed_email = integration_client.post("/account/change-email", json={"current_password": "current password", "new_email": f"NEW-{uuid4()}@Example.Test"}, headers=headers)
     assert changed_email.status_code == 200 and changed_email.json()["email"].endswith("@example.test")
+    email_csrf = changed_email.headers["X-CSRF-Token"]
+    assert email_csrf != csrf
+    assert integration_client.patch("/account/profile", json={"display_name": "Old token"}, headers=headers).status_code == 403
+    assert integration_client.patch("/account/profile", json={"display_name": "Rotated token"}, headers={"X-CSRF-Token": email_csrf}).status_code == 200
     database_session.refresh(extra); assert extra.revoked_at is not None
-    headers = {"X-CSRF-Token": integration_client.cookies.get("cartavault_csrf")}
+    headers = {"X-CSRF-Token": email_csrf}
 
     extra2 = UserSession(user_id=auth_user.id, token_hash="e" * 64, csrf_token_hash="f" * 64, expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(days=1), last_used_at=datetime.now(UTC).replace(tzinfo=None))
     database_session.add(extra2); database_session.flush()
@@ -39,6 +43,10 @@ def test_account_profile_email_password_and_sessions(integration_client, databas
     assert weak_password.status_code == 422
     changed_password = integration_client.post("/account/change-password", json={"current_password": "current password", "new_password": "New Strong Password 42!", "confirmation": "New Strong Password 42!"}, headers=headers)
     assert changed_password.status_code == 204 and auth_user.password_hash.startswith("account::")
+    password_csrf = changed_password.headers["X-CSRF-Token"]
+    assert password_csrf != email_csrf
+    assert integration_client.post("/account/preferences/reset", headers=headers).status_code == 403
+    assert integration_client.post("/account/preferences/reset", headers={"X-CSRF-Token": password_csrf}).status_code == 200
     database_session.refresh(extra2); assert extra2.revoked_at is not None
 
     listed = integration_client.get("/account/sessions").json()
@@ -82,7 +90,8 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
         json={"language": "en", "default_theme": "dark", "preferred_basemap": "cartavault-light", "density": "spacious", "startup_panel": "dashboard", "timezone": "Europe/Paris", "photo_markers_enabled": True, "routing": {"provider": "osrm"}},
         headers=headers,
     )
-    assert updated.status_code == 200 and updated.json()["density"] == "spacious"
+    assert updated.status_code == 200
+    assert updated.json()["density"] == "100"
     assert updated.json()["language"] == "en"
     assert updated.json()["default_theme"] == "dark"
     assert updated.json()["startup_panel"] == "dashboard"
@@ -137,7 +146,8 @@ def test_account_preferences_are_validated_and_isolated(integration_client, data
     assert unknown.status_code == 200
     assert unknown.json()["preferred_basemap"] == "openfreemap-light"
     reset = integration_client.post("/account/preferences/reset", headers=headers)
-    assert reset.status_code == 200 and reset.json()["density"] == "compact"
+    assert reset.status_code == 200
+    assert reset.json()["density"] == "100"
     assert reset.json()["language"] == "fr"
     assert reset.json()["photo_markers_enabled"] is False
     assert reset.json()["default_theme"] == "system"

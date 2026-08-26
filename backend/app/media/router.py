@@ -31,8 +31,10 @@ from app.media.schemas import (
     MediaUploaderSummary,
 )
 from app.media.service import (
+    MediaAccess,
     apply_media_filters,
     accessible_media_statement,
+    declared_file_state,
     get_media_access,
     infer_file_state,
     infer_format,
@@ -267,20 +269,15 @@ def list_media(
     aggregate_source = filtered.with_only_columns(
         Photo.file_size_bytes.label("file_size_bytes"),
         Photo.is_primary.label("is_primary"),
-        Photo.path.label("path"),
-        Photo.width.label("width"),
-        Photo.height.label("height"),
+        declared_file_state().label("file_state"),
     ).order_by(None).subquery()
+    declared_state = aggregate_source.c.file_state
     aggregate = database_session.execute(
         select(
             func.coalesce(func.sum(aggregate_source.c.file_size_bytes), 0),
             func.count().filter(aggregate_source.c.is_primary.is_(True)),
-            func.count().filter(aggregate_source.c.path.is_(None)),
-            func.count().filter(
-                aggregate_source.c.path.is_not(None),
-                (aggregate_source.c.width.is_(None))
-                | (aggregate_source.c.height.is_(None)),
-            ),
+            func.count().filter(declared_state == "missing"),
+            func.count().filter(declared_state == "error"),
         )
     ).one()
 
@@ -347,6 +344,7 @@ def list_media(
 @upload_router.post("/upload", response_model=MediaItemRead, status_code=status.HTTP_201_CREATED)
 def upload_unassigned_media(
     file: UploadFile = File(...),
+    map_id: UUID | None = Form(default=None),
     latitude: float | None = Form(default=None, ge=-90, le=90),
     longitude: float | None = Form(default=None, ge=-180, le=180),
     gps_source: UploadFile | None = File(default=None),
@@ -355,6 +353,13 @@ def upload_unassigned_media(
     current_user: User = Depends(get_current_user),
 ) -> MediaItemRead:
     """Store one compressed browser upload until the user chooses its POI."""
+    map_access = require_map_role(database_session, map_id, current_user, "editor") if map_id is not None else None
+    validated_map_id = map_access.map.id if map_access is not None else None
+    # AUD-017: the media is charged to the account that owns its storage, i.e.
+    # the map owner for a map-scoped upload and the uploader when no map was
+    # selected. The per-owner row lock in ensure_can_create serialises
+    # concurrent uploads against that same account.
+    quota_owner_id = map_access.map.owner_id if map_access is not None else current_user.id
     if latitude is None and longitude is None and gps_source is not None:
         coordinates = read_uploaded_gps(gps_source)
         if coordinates is not None:
@@ -362,7 +367,7 @@ def upload_unassigned_media(
     if (latitude is None) != (longitude is None):
         raise HTTPException(status_code=422, detail="Latitude and longitude must be provided together")
     quotas = QuotaService(database_session)
-    quotas.ensure_can_create(current_user.id, QuotaKey.PHOTOS_TOTAL_MAX)
+    quotas.ensure_can_create(quota_owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
     from uuid import uuid4
     photo_id = uuid4()
     maximum, dimension = get_effective_media_upload_policy(database_session, current_user.id)
@@ -375,19 +380,33 @@ def upload_unassigned_media(
             max_size_bytes=maximum * 1024 * 1024,
             max_dimension=dimension,
         )
-        quotas.ensure_can_create(current_user.id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
-        photo = Photo(
-            id=photo_id, map_id=None, storage_scope_id=photo_id,
-            filename=stored.filename, original_name=normalize_original_name(file.filename), path=stored.relative_path,
-            mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, width=stored.width, height=stored.height,
-            uploaded_by_user_id=current_user.id, latitude=latitude, longitude=longitude, taken_at=taken_at,
-            sort_order=0, is_primary=False,
-        )
-        database_session.add(photo); database_session.commit()
     except (UnsupportedPhotoTypeError, PhotoTooLargeError) as error:
         database_session.rollback(); raise HTTPException(status_code=415, detail=str(error)) from error
     except Exception as error:
         database_session.rollback(); raise HTTPException(status_code=500, detail="Unable to store media") from error
+    # A storage-quota refusal keeps its 409 contract and must never leave the
+    # just-written blob behind.
+    try:
+        quotas.ensure_can_create(quota_owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
+    except HTTPException:
+        delete_photo_file(stored.relative_path, photo_id, photo_id)
+        raise
+    photo = Photo(
+        id=photo_id, map_id=validated_map_id, storage_scope_id=photo_id,
+        filename=stored.filename, original_name=normalize_original_name(file.filename), path=stored.relative_path,
+        mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, width=stored.width, height=stored.height,
+        uploaded_by_user_id=current_user.id, latitude=latitude, longitude=longitude, taken_at=taken_at,
+        sort_order=0, is_primary=False,
+    )
+    try:
+        database_session.add(photo); database_session.commit()
+    except SQLAlchemyError as error:
+        database_session.rollback()
+        try:
+            delete_photo_file(stored.relative_path, photo_id, photo_id)
+        except PhotoStorageError:
+            pass
+        raise HTTPException(status_code=500, detail="Unable to store media") from error
     row = database_session.execute(accessible_media_statement(current_user.id).where(Photo.id == photo_id)).one()
     return to_media_read(row, current_user.id)
 
@@ -457,20 +476,60 @@ def attach_media_to_place(
     current_user: User = Depends(get_current_user),
 ) -> MediaItemRead:
     """Attach a previously uploaded geotagged image after its POI is saved."""
+    # Match the move order: Place before Photo.  Locking the Place first makes
+    # the map assignment below observe a concurrent move's final map_id.
+    place = database_session.scalar(
+        select(Place)
+        .where(Place.id == data.place_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if place is None or place.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Place not found")
+    require_map_role(database_session, place.map_id, current_user, "editor")
     access = get_media_access(database_session, media_id, current_user, require_editor=True)
-    photo = access.photo
+    photo = database_session.scalar(
+        select(Photo)
+        .where(Photo.id == access.photo.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Media not found")
     if photo.place_id is not None:
         raise HTTPException(status_code=409, detail="Media is already attached to a place")
-    place = require_place_role(database_session, data.place_id, current_user, "editor")
+    # AUD-017 accounting: the media is already charged to its current owner
+    # (the map owner for a map-scoped orphan, the uploader for a fully
+    # orphaned upload). Only a change of accounting owner creates a new charge
+    # and therefore needs a quota revalidation before the mutation.
+    previous_owner_id = (
+        database_session.scalar(select(PoiMap.owner_id).where(PoiMap.id == photo.map_id))
+        if photo.map_id is not None
+        else photo.uploaded_by_user_id
+    )
+    target_owner_id = place.map.owner_id
+    if previous_owner_id != target_owner_id:
+        quotas = QuotaService(database_session)
+        quotas.ensure_can_create(target_owner_id, QuotaKey.PHOTOS_TOTAL_MAX)
+        if photo.file_size_bytes:
+            quotas.ensure_can_create(target_owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=photo.file_size_bytes)
+    # Compute the append position and primary state BEFORE touching the photo:
+    # the ORM would autoflush an already-mutated photo into both queries.
+    # The Place row lock serialises concurrent attaches, so the next free
+    # order can never collide with a parallel attach. An orphan keeps its
+    # legacy sort_order=0 in the catalogue; appending at the end is what
+    # keeps UNIQUE(place_id, sort_order) satisfied.
+    next_order = database_session.scalar(
+        select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place.id)
+    )
+    has_primary_photo = database_session.scalar(
+        select(Photo.id).where(Photo.place_id == place.id, Photo.is_primary.is_(True))
+    )
     try:
         photo.map_id = place.map_id
         photo.place_id = place.id
-        has_primary_photo = database_session.scalar(
-            select(Photo.id).where(Photo.place_id == place.id, Photo.is_primary.is_(True))
-        )
-        if has_primary_photo is None:
-            photo.is_primary = True
-            photo.sort_order = 0
+        photo.sort_order = next_order
+        photo.is_primary = has_primary_photo is None
         add_place_history(
             database_session,
             place.id,
@@ -619,6 +678,50 @@ def set_main_media(
     return to_media_read(row, current_user.id)
 
 
+def _locked_deletion_accesses(
+    media_ids: list[UUID],
+    database_session: Session,
+    current_user: User,
+) -> list[MediaAccess]:
+    """Resolve deletions against the locked canonical Place state.
+
+    The lock order matches the cross-map move path (Place rows ordered by
+    id, then Photo rows ordered by id) so a concurrent move serialises
+    instead of deadlocking.  Authority and permissions are re-evaluated
+    after acquisition: the first resolution may have waited while a move
+    changed the place's map, and the stale ``Photo.map_id`` cache must
+    never decide the outcome.
+    """
+
+    accesses = [
+        get_media_access(database_session, media_id, current_user, require_editor=True)
+        for media_id in media_ids
+    ]
+    place_ids = sorted({access.photo.place_id for access in accesses if access.photo.place_id is not None})
+    if not place_ids:
+        return accesses
+    database_session.scalars(
+        select(Place.id)
+        .where(Place.id.in_(place_ids))
+        .order_by(Place.id)
+        .with_for_update()
+    ).all()
+    database_session.scalars(
+        select(Photo.id)
+        .where(Photo.id.in_(media_ids))
+        .order_by(Photo.id)
+        .with_for_update()
+    ).all()
+    for access in accesses:
+        database_session.expire(access.photo)
+        if access.place is not None:
+            database_session.expire(access.place)
+    return [
+        get_media_access(database_session, media_id, current_user, require_editor=True)
+        for media_id in media_ids
+    ]
+
+
 def delete_accesses(
     accesses,
     database_session: Session,
@@ -680,14 +783,9 @@ def delete_media(
     database_session: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    access = get_media_access(
-        database_session,
-        media_id,
-        current_user,
-        require_editor=True,
-    )
+    access_group = _locked_deletion_accesses([media_id], database_session, current_user)
     try:
-        delete_accesses([access], database_session, current_user)
+        delete_accesses(access_group, database_session, current_user)
     except (SQLAlchemyError, PhotoStorageError) as error:
         database_session.rollback()
         raise HTTPException(status_code=500, detail="Unable to delete media") from error
@@ -701,15 +799,7 @@ def bulk_delete_media(
     current_user: User = Depends(get_current_user),
 ) -> MediaBulkDeleteResult:
     ids = list(dict.fromkeys(payload.media_ids))
-    accesses = [
-        get_media_access(
-            database_session,
-            media_id,
-            current_user,
-            require_editor=True,
-        )
-        for media_id in ids
-    ]
+    accesses = _locked_deletion_accesses(ids, database_session, current_user)
     try:
         deleted = delete_accesses(accesses, database_session, current_user)
     except (SQLAlchemyError, PhotoStorageError) as error:

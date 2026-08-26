@@ -3,14 +3,16 @@ import { createPortal } from "react-dom";
 import { Archive, ArchiveRestore, BadgeCheck, BedSingle, Calculator, CalendarDays, CalendarPlus, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, Clock3, Copy, Download, Ellipsis, Eye, EyeOff, Flag, FolderOpen, Gauge, GripVertical, HardDriveDownload, LoaderCircle, Lock, Map, MapPin, MapPlus, Minus as IconMinimize, Moon, Navigation, Pencil, Play, Plus, Plus as IconMaximize, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2, TriangleAlert, X } from "lucide-react";
 import { IconTimelineEvent } from "@tabler/icons-react";
 
-import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions } from "../../api/trips";
+import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions, type TripUpdatePayload } from "../../api/trips";
+import { ApiError } from "../../api/client";
 import type { PoiMap } from "../../types/map";
 import type { PlaceDetails } from "../../types/place";
-import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripOptimizationProposal, TripStop, TripSummary } from "../../types/trip";
+import type { Trip, TripDay, TripDayTimeSummary, TripDayTimingPayload, TripLoadSettings, TripNightTarget, TripOptimization, TripOptimizationProposal, TripResizeConfirmationDetail, TripStop, TripSummary } from "../../types/trip";
 import type { GeocodingResult } from "../../geocoding/types";
 import { CreateTripDialog } from "./CreateTripDialog";
 import { formatClock, formatMinutes, formatRouteDistance, formatRouteDuration } from "./tripMetrics";
 import { DayTimingSettings, TripLoadSettingsForm, VisitDurationControl } from "./TripTimePlanning";
+import { useUnsavedChangeSignal } from "../../hooks/useUnsavedChangeSignal";
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { GoogleMapsIcon } from "../common/GoogleMapsIcon";
 import { EmptyState } from "../common/EmptyState";
@@ -24,6 +26,7 @@ import { publishGlobalFeedback } from "../common/globalFeedback";
 import { PanelWindowControls } from "../layout/PanelWindowControls";
 import { FloatingPanelWindowContext } from "../layout/FloatingPanelWindow";
 import { MobileTripStopSearchDialog } from "./MobileTripStopSearchDialog";
+import { TripResizeConfirmationDialog } from "./TripResizeConfirmationDialog";
 
 export type UnsavedTripSettingsGuard = () => Promise<boolean>;
 export type TripTechnicalActions = {
@@ -96,6 +99,20 @@ const tripPanelMetricsCache = new globalThis.Map<
   }
 >();
 
+function isTripResizeConfirmationDetail(value: unknown): value is TripResizeConfirmationDetail {
+  if (typeof value !== "object" || value === null) return false;
+  const detail = value as Record<string, unknown>;
+  if ((detail.code !== "TRIP_RESIZE_CONFIRMATION_REQUIRED" && detail.code !== "TRIP_RESIZE_CONFIRMATION_STALE") || typeof detail.confirmation_token !== "string" || typeof detail.expires_at !== "string" || typeof detail.impact !== "object" || detail.impact === null) return false;
+  const impact = detail.impact as Record<string, unknown>;
+  return Array.isArray(impact.removed_days)
+    && typeof impact.removed_day_count === "number"
+    && typeof impact.removed_stop_count === "number"
+    && typeof impact.removed_night_count === "number"
+    && typeof impact.removed_night_photo_count === "number"
+    && typeof impact.removed_route_count === "number"
+    && typeof impact.invalidated_retained_route_count === "number";
+}
+
 export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget = null, tripViewOnly = false, hiddenDayIds = new Set<string>(), collapsed = false, createRequest = 0, tripSelectorVisible = true, restoreCachedState = false, onCollapsedChange = () => undefined, onTripViewOnlyChange = () => undefined, onDayVisibilityChange = () => undefined, onTripChange, onActiveDayChange, onActiveAnchorTargetChange = () => undefined, onActiveNightTargetChange = () => undefined, onAnchorPopupChange = () => undefined, onAnchorPlaceDrop, onStopFocus, onStopPlaceSelect = () => undefined, onPreviewStopSelect = () => undefined, onPreviewSelectionChange = () => undefined, onUnsavedChangesGuardChange = () => undefined, onInitialLoadComplete = () => undefined, onTechnicalActionsChange }: Props) {
   const panelWindow = useContext(FloatingPanelWindowContext);
   const panelCollapsed = panelWindow?.desktop ? panelWindow.mode === "collapsed" : collapsed;
@@ -132,6 +149,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     index: number;
   } | null>(null);
   const [draggedDayId, setDraggedDayId] = useState<string | null>(null);
+  const draggedDayIdRef = useRef<string | null>(null);
   const [dayDropTarget, setDayDropTarget] = useState<{
     dayId: string;
     index: number;
@@ -143,12 +161,26 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const [summary, setSummary] = useState<TripSummary | null>(() => initialMetricsRef.current?.summary ?? null);
   const [daySummaries, setDaySummaries] = useState<Record<string, TripDayTimeSummary>>(() => initialMetricsRef.current?.daySummaries ?? {});
   const [loadSettingsDraft, setLoadSettingsDraft] = useState<TripLoadSettings | null>(null);
+  const settingsDirtyRef = useRef(false);
+  const settingsTripIdRef = useRef<string | null>(null);
+  const settingsDraftInitializedRef = useRef(false);
   const [loadingTripId, setLoadingTripId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileTripPickerOpen, setMobileTripPickerOpen] = useState(false);
   const [mobileStopSearchDayId, setMobileStopSearchDayId] = useState<string | null>(null);
   const [unsavedPromptOpen, setUnsavedPromptOpen] = useState(false);
   const [savingUnsavedChanges, setSavingUnsavedChanges] = useState(false);
+  const [resizeConfirmation, setResizeConfirmation] = useState<{
+    tripId: string;
+    detail: TripResizeConfirmationDetail;
+    payload: TripUpdatePayload;
+    loadSettings: TripLoadSettings;
+    draftKey: string;
+    stale: boolean;
+  } | null>(null);
+  const savePendingRef = useRef(false);
+  const reorderPendingRef = useRef(false);
+  const mountedRef = useRef(true);
   const initialExpandedDayId = trip?.days.some((day) => day.id === activeDayId) ? activeDayId : trip?.days[0]?.id;
   const [collapsedDayIds, setCollapsedDayIds] = useState<Set<string>>(() => new Set(trip?.days.filter((day) => day.id !== initialExpandedDayId).map((day) => day.id) ?? []));
   const [timelineCollapseRequest, setTimelineCollapseRequest] = useState({
@@ -170,6 +202,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const [mobileTimelineTarget, setMobileTimelineTarget] = useState<MobileTimelineTarget>(null);
   const technicalActionsRef = useRef<TripTechnicalActions | null>(null);
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+  useEffect(() => {
     const query = window.matchMedia?.("(max-width: 760px)");
     if (!query) return;
     const sync = () => setIsMobile(query.matches);
@@ -180,6 +216,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   useEffect(() => onPreviewSelectionChange(previewSelectionKey), [onPreviewSelectionChange, previewSelectionKey]);
   const activeDayIdRef = useRef(activeDayId);
   const onTripChangeRef = useRef(onTripChange);
+  // AUD-008: latest trip identity, used to discard late reloads/undo-restore
+  // closures that belong to a trip the user has already left.
+  const currentTripIdRef = useRef<string | null>(null);
+  currentTripIdRef.current = trip?.id ?? null;
   const onActiveDayChangeRef = useRef(onActiveDayChange);
   const onActiveNightTargetChangeRef = useRef(onActiveNightTargetChange);
   const onActiveAnchorTargetChangeRef = useRef(onActiveAnchorTargetChange);
@@ -257,18 +297,22 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     };
   }, []);
   const applyLoadedTrip = useCallback(({ loaded, loadedSummary, daySummaries: loadedDays }: Awaited<ReturnType<typeof loadTripDetails>>) => {
+    const preserveSettingsDraft = settingsDraftInitializedRef.current && settingsDirtyRef.current && settingsTripIdRef.current === loaded.id;
     onTripChangeRef.current(loaded);
     setSummary(loadedSummary);
     setDaySummaries(loadedDays);
-    setDraftName(loaded.name);
-    setDraftStartDate(loaded.start_date);
-    setDraftEndDate(loaded.end_date);
-    setStayInCountryDraft(loaded.stay_in_country === true);
-    setAvoidTollsDraft(loaded.avoid_tolls === true);
-    setAvoidHighwaysDraft(loaded.avoid_highways === true);
-    setAvoidFerriesDraft(loaded.avoid_ferries === true);
-    setTrafficModeDraft(loaded.traffic_mode ?? "traffic_unaware");
-    setLoadSettingsDraft(readLoadSettings(loaded));
+    if (!preserveSettingsDraft) {
+      setDraftName(loaded.name);
+      setDraftStartDate(loaded.start_date);
+      setDraftEndDate(loaded.end_date);
+      setStayInCountryDraft(loaded.stay_in_country === true);
+      setAvoidTollsDraft(loaded.avoid_tolls === true);
+      setAvoidHighwaysDraft(loaded.avoid_highways === true);
+      setAvoidFerriesDraft(loaded.avoid_ferries === true);
+      setTrafficModeDraft(loaded.traffic_mode ?? "traffic_unaware");
+      setLoadSettingsDraft(readLoadSettings(loaded));
+      settingsDraftInitializedRef.current = true;
+    }
     const currentDayId = activeDayIdRef.current;
     onActiveDayChangeRef.current(loaded.days.some((day) => day.id === currentDayId) ? currentDayId : (loaded.days[0]?.id ?? null));
   }, []);
@@ -328,13 +372,14 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     if (!id) return;
     const selectionVersion = selectionVersionRef.current;
     const loaded = await getTrip(id);
-    if (selectionVersion !== selectionVersionRef.current) return;
+    // AUD-008: never inject a reloaded trip the user has already left.
+    if (selectionVersion !== selectionVersionRef.current || currentTripIdRef.current !== id) return;
     onTripChangeRef.current(loaded);
     setTrips((current) => current.map((item) => (item.id === loaded.id ? loaded : item)));
 
     void Promise.all([getTripSummary(id), Promise.all(loaded.days.map((day) => getTripDaySummary(day.id)))])
       .then(([loadedSummary, perDay]) => {
-        if (selectionVersion !== selectionVersionRef.current) return;
+        if (selectionVersion !== selectionVersionRef.current || currentTripIdRef.current !== id) return;
         setSummary(loadedSummary);
         setDaySummaries(Object.fromEntries(perDay.map((item) => [item.day_id, item])));
       })
@@ -395,7 +440,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       await action();
       return true;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Opération impossible.");
+      setError(caught instanceof ApiError && caught.code === "TRIP_COMPLETED_READ_ONLY" ? t("trips.completedReadOnly") : caught instanceof Error ? caught.message : "Opération impossible.");
       return false;
     } finally {
       if (actionKey) setPendingAction(null);
@@ -416,6 +461,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
       publishGlobalFeedback("success", removedDay ? `Jour ${removedDay.day_number} supprimé de la sortie « ${after.name} ».` : `Journée supprimée de la sortie « ${after.name} ».`);
     }
     const restore = async (state: Trip) => {
+      // AUD-008: never restore/reload a trip the user has already left.
+      if (currentTripIdRef.current !== tripId) return;
       await restoreTripState(tripId, state);
       await reload(tripId);
     };
@@ -466,6 +513,9 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
   const savedLoadSettings = useMemo(() => (trip ? readLoadSettings(trip) : null), [trip]);
   const activeLoadSettings = loadSettingsDraft ?? savedLoadSettings;
   const hasUnsavedSettings = Boolean(trip && activeLoadSettings && (draftName !== trip.name || draftStartDate !== trip.start_date || draftEndDate !== trip.end_date || stayInCountryDraft !== (trip.stay_in_country === true) || avoidTollsDraft !== (trip.avoid_tolls === true) || avoidHighwaysDraft !== (trip.avoid_highways === true) || avoidFerriesDraft !== (trip.avoid_ferries === true) || trafficModeDraft !== (trip.traffic_mode ?? "traffic_unaware") || !sameLoadSettings(activeLoadSettings, savedLoadSettings!)));
+  settingsDirtyRef.current = hasUnsavedSettings;
+  settingsTripIdRef.current = trip?.id ?? null;
+  const settingsDraftKey = JSON.stringify([draftName, draftStartDate, draftEndDate, stayInCountryDraft, avoidTollsDraft, avoidHighwaysDraft, avoidFerriesDraft, trafficModeDraft]);
   const datesValid = !draftEndDate || Boolean(draftStartDate && tripDateSpan(draftStartDate, draftEndDate) >= 1);
   const changeDraftStartDate = (value: string | null) => {
     const currentSpan = tripDateSpan(draftStartDate, draftEndDate);
@@ -486,22 +536,69 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     setLoadSettingsDraft(readLoadSettings(trip));
   }, [trip]);
   const saveSettings = useCallback(async () => {
-    if (!trip || !activeLoadSettings || !hasUnsavedSettings) return true;
-    return run(async () => {
-      const tripChanges: Partial<Pick<Trip, "name" | "start_date" | "end_date" | "stay_in_country" | "avoid_tolls" | "avoid_highways" | "avoid_ferries" | "traffic_mode">> = {};
-      if (draftName !== trip.name) tripChanges.name = draftName;
-      if (draftStartDate !== trip.start_date) tripChanges.start_date = draftStartDate;
-      if (draftEndDate !== trip.end_date) tripChanges.end_date = draftEndDate;
-      if (stayInCountryDraft !== (trip.stay_in_country === true)) tripChanges.stay_in_country = stayInCountryDraft;
-      if (avoidTollsDraft !== (trip.avoid_tolls === true)) tripChanges.avoid_tolls = avoidTollsDraft;
-      if (avoidHighwaysDraft !== (trip.avoid_highways === true)) tripChanges.avoid_highways = avoidHighwaysDraft;
-      if (avoidFerriesDraft !== (trip.avoid_ferries === true)) tripChanges.avoid_ferries = avoidFerriesDraft;
-      if (trafficModeDraft !== (trip.traffic_mode ?? "traffic_unaware")) tripChanges.traffic_mode = trafficModeDraft;
+    if (!trip || !activeLoadSettings || !hasUnsavedSettings || savePendingRef.current) return !savePendingRef.current;
+    const tripChanges: TripUpdatePayload = {};
+    if (draftName !== trip.name) tripChanges.name = draftName;
+    if (draftStartDate !== trip.start_date) tripChanges.start_date = draftStartDate;
+    if (draftEndDate !== trip.end_date) tripChanges.end_date = draftEndDate;
+    if (stayInCountryDraft !== (trip.stay_in_country === true)) tripChanges.stay_in_country = stayInCountryDraft;
+    if (avoidTollsDraft !== (trip.avoid_tolls === true)) tripChanges.avoid_tolls = avoidTollsDraft;
+    if (avoidHighwaysDraft !== (trip.avoid_highways === true)) tripChanges.avoid_highways = avoidHighwaysDraft;
+    if (avoidFerriesDraft !== (trip.avoid_ferries === true)) tripChanges.avoid_ferries = avoidFerriesDraft;
+    if (trafficModeDraft !== (trip.traffic_mode ?? "traffic_unaware")) tripChanges.traffic_mode = trafficModeDraft;
+    savePendingRef.current = true;
+    setBusy(true); setError(null);
+    try {
       if (Object.keys(tripChanges).length > 0) await updateTrip(trip.id, tripChanges);
       if (!sameLoadSettings(activeLoadSettings, readLoadSettings(trip))) await updateTripLoadSettings(trip.id, activeLoadSettings);
       await reload(trip.id);
-    });
-  }, [activeLoadSettings, avoidFerriesDraft, avoidHighwaysDraft, avoidTollsDraft, draftEndDate, draftName, draftStartDate, hasUnsavedSettings, reload, stayInCountryDraft, trafficModeDraft, trip]);
+      return true;
+    } catch (caught) {
+      if (!mountedRef.current) return false;
+      if (caught instanceof ApiError && caught.status === 409 && isTripResizeConfirmationDetail(caught.detail) && caught.detail.code === "TRIP_RESIZE_CONFIRMATION_REQUIRED") {
+        setResizeConfirmation({ tripId: trip.id, detail: caught.detail, payload: tripChanges, loadSettings: activeLoadSettings, draftKey: settingsDraftKey, stale: false });
+      } else {
+        setError(caught instanceof Error ? caught.message : "Action impossible.");
+      }
+      return false;
+    } finally {
+      savePendingRef.current = false;
+      if (mountedRef.current) setBusy(false);
+    }
+  }, [activeLoadSettings, avoidFerriesDraft, avoidHighwaysDraft, avoidTollsDraft, draftEndDate, draftName, draftStartDate, hasUnsavedSettings, reload, settingsDraftKey, stayInCountryDraft, trafficModeDraft, trip]);
+  const confirmResize = useCallback(async () => {
+    const tripBeforeResize = trip
+    if (!resizeConfirmation || !tripBeforeResize || savePendingRef.current) return;
+    savePendingRef.current = true;
+    setBusy(true); setError(null);
+    try {
+      await updateTrip(resizeConfirmation.tripId, { ...resizeConfirmation.payload, destructive_change_token: resizeConfirmation.detail.confirmation_token });
+      setResizeConfirmation(null);
+      await reload(resizeConfirmation.tripId);
+      if (!sameLoadSettings(resizeConfirmation.loadSettings, readLoadSettings(tripBeforeResize))) {
+        try {
+          await updateTripLoadSettings(resizeConfirmation.tripId, resizeConfirmation.loadSettings);
+          await reload(resizeConfirmation.tripId);
+        } catch (caught) {
+          if (mountedRef.current) setError(caught instanceof Error ? `Sortie redimensionnée, mais les réglages n'ont pas été enregistrés : ${caught.message}` : "Sortie redimensionnée, mais les réglages n'ont pas été enregistrés.");
+        }
+      }
+    } catch (caught) {
+      if (!mountedRef.current) return;
+      const detail = caught instanceof ApiError ? caught.detail : null
+      if (caught instanceof ApiError && caught.status === 409 && isTripResizeConfirmationDetail(detail) && detail.code === "TRIP_RESIZE_CONFIRMATION_STALE") {
+        setResizeConfirmation((current) => current ? { ...current, detail, stale: true } : current);
+      } else {
+        setError(caught instanceof Error ? caught.message : "Action impossible.");
+      }
+    } finally {
+      savePendingRef.current = false;
+      if (mountedRef.current) setBusy(false);
+    }
+  }, [reload, resizeConfirmation, trip]);
+  useEffect(() => {
+    if (resizeConfirmation && (resizeConfirmation.tripId !== trip?.id || resizeConfirmation.draftKey !== settingsDraftKey)) setResizeConfirmation(null);
+  }, [resizeConfirmation, settingsDraftKey, trip?.id]);
   const settleUnsavedPrompt = useCallback((canLeave: boolean) => {
     unsavedPromptResolverRef.current?.(canLeave);
     unsavedPromptResolverRef.current = null;
@@ -529,15 +626,6 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     onUnsavedChangesGuardChange(hasUnsavedSettings ? requestSettingsLeave : null);
     return () => onUnsavedChangesGuardChange(null);
   }, [hasUnsavedSettings, onUnsavedChangesGuardChange, requestSettingsLeave]);
-  useEffect(() => {
-    if (!hasUnsavedSettings) return;
-    const preventUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", preventUnload);
-    return () => window.removeEventListener("beforeunload", preventUnload);
-  }, [hasUnsavedSettings]);
   useEffect(() => () => unsavedPromptResolverRef.current?.(false), []);
 
   const changeSelectedTrip = (target: string) => {
@@ -559,7 +647,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     });
   };
   const reorderDay = (dayId: string, targetIndex: number) => {
-    if (!trip || !canEditTrip) return;
+    if (!trip || !canEditTrip || reorderPendingRef.current) return;
     const ids = trip.days.map((day) => day.id);
     const sourceIndex = ids.indexOf(dayId);
     if (sourceIndex < 0) return;
@@ -567,12 +655,30 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
     const insertionIndex = Math.max(0, Math.min(ids.length, targetIndex - Number(sourceIndex < targetIndex)));
     ids.splice(insertionIndex, 0, dayId);
     if (ids.every((id, index) => id === trip.days[index]?.id)) return;
-    void run(() =>
-      runUndoable("déplacement de la journée", async () => {
-        await reorderTripDays(trip.id, ids);
-        await reload(trip.id);
-      }),
-    );
+    reorderPendingRef.current = true;
+    void (async () => {
+      try {
+        await run(() => runUndoable("déplacement de la journée", async () => {
+        try {
+          await reorderTripDays(trip.id, ids);
+        } catch (caught) {
+          if (caught instanceof ApiError && (caught.code === "TRIP_REORDER_NIGHT_CONFLICT" || (caught.detail && typeof caught.detail === "object" && "code" in caught.detail && caught.detail.code === "TRIP_REORDER_NIGHT_CONFLICT"))) {
+            throw new Error(t("trips.reorderNightConflict"));
+          }
+          throw caught;
+        }
+        setActiveNightTarget(null);
+        onActiveNightTargetChange(null);
+        try {
+          await reload(trip.id);
+        } catch {
+          setError(t("trips.reorderReloadFailed"));
+        }
+        }));
+      } finally {
+        reorderPendingRef.current = false;
+      }
+    })();
   };
   const insertDayAfter = (day: TripDay) => {
     if (!trip || !canEditTrip) return;
@@ -1329,9 +1435,10 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                             {settingsOpen && activeLoadSettings && (
                               <TripSettings
                                 trip={trip}
-                                canEdit={canEditTrip}
+                                canEdit={canEdit}
+                                canEditStructure={canEditTrip}
                                 canManage={canEdit}
-                                canDelete={canEditTrip && poiMap.can_delete === true}
+                                canDelete={canEdit && poiMap.can_delete === true}
                                 busy={busy}
                                 draftName={draftName}
                                 draftStartDate={draftStartDate}
@@ -1391,7 +1498,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                             <section className="trip-panel-section trip-panel-journeys">
                               <header className="trip-panel-journeys-header">
                                 <span className="trip-panel-journeys-header-actions">
-                                  {canEdit && (
+                                  {canEditTrip && (
                                     <span className="trip-panel-journeys-route-actions">
                                       <button className={routeFeedback === "all" ? "route-success" : undefined} type="button" aria-label={pendingAction === "route-all" ? "Calcul des itinéraires en cours" : routeFeedback === "all" ? "Itinéraires rafraîchis" : "Calculer les itinéraires"} title={pendingAction === "route-all" ? "Calcul des itinéraires en cours" : routeFeedback === "all" ? "Itinéraires rafraîchis" : "Calculer les itinéraires"} disabled={busy || !trip.days.some((day, dayIndex) => canCalculateRoute(trip, day, dayIndex))} onClick={recalculateAllRoutes}>
                                         {pendingAction === "route-all" ? <LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" /> : routeFeedback === "all" ? <Check size={13} /> : <Route size={13} />}
@@ -1450,18 +1557,24 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                           event.preventDefault();
                                           event.stopPropagation();
                                           const bounds = event.currentTarget.getBoundingClientRect();
+                                          const sourceIndex = trip.days.findIndex((item) => item.id === draggedDayId);
+                                          const fallbackIndex = sourceIndex < dayIndex ? dayIndex + 1 : dayIndex;
                                           setDayDropTarget({
                                             dayId: day.id,
-                                            index: dayIndex + Number(event.clientY > bounds.top + bounds.height / 2),
+                                            index: bounds.height > 0 ? dayIndex + Number(event.clientY > bounds.top + bounds.height / 2) : fallbackIndex,
                                           });
                                         }}
                                         onDrop={(event) => {
-                                          if (!draggedDayId) return;
+                                          const transferred = event.dataTransfer.getData("application/x-cartavault-day");
+                                          const sourceId = draggedDayId ?? draggedDayIdRef.current ?? (transferred.startsWith("day:") ? transferred.slice(4) : transferred);
+                                          if (!sourceId) return;
                                           event.preventDefault();
                                           event.stopPropagation();
-                                          const targetIndex = dayDropTarget?.dayId === day.id ? dayDropTarget.index : dayIndex;
-                                          const sourceId = draggedDayId;
+                                          const sourceIndex = trip.days.findIndex((item) => item.id === sourceId);
+                                          const fallbackIndex = sourceIndex < dayIndex ? dayIndex + 1 : dayIndex;
+                                          const targetIndex = dayDropTarget?.dayId === day.id ? dayDropTarget.index : fallbackIndex;
                                           setDraggedDayId(null);
+                                          draggedDayIdRef.current = null;
                                           setDayDropTarget(null);
                                           reorderDay(sourceId, targetIndex);
                                         }}
@@ -1498,18 +1611,20 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                             onDrop={(event) => { setPlaceDropDayId(null); drop(event, day); }}
                                         >
                                           <summary
-                                            className={canEdit ? "trip-day-drag-surface" : undefined}
-                                            draggable={canEdit}
+                                            className={canEditTrip ? "trip-day-drag-surface" : undefined}
+                                            draggable={canEditTrip}
                                             onDragStart={(event) => {
-                                              if (!canEdit) return;
+                                              if (!canEditTrip) return;
                                               event.stopPropagation();
                                               event.dataTransfer.effectAllowed = "move";
                                               event.dataTransfer.setData("application/x-cartavault-day", day.id);
+                                              draggedDayIdRef.current = day.id;
                                               setDraggedDayId(day.id);
                                               setDayDropTarget(null);
                                             }}
                                             onDragEnd={() => {
                                               setDraggedDayId(null);
+                                              draggedDayIdRef.current = null;
                                               setDayDropTarget(null);
                                             }}
                                           >
@@ -1638,8 +1753,8 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                               })}
                                             </ul>
                                             {day.stops.length === 0 && <p className="trip-panel-drop">Glissez un POI ou utilisez la recherche de la carte</p>}
-                                            <div className={`trip-panel-route-actions${canEdit ? " trip-panel-route-actions--editable" : ""}`}>
-                                              <button className={routeFeedback === day.id ? "route-success" : undefined} type="button" aria-label={pendingAction === `route:${day.id}` ? "Calcul de l’itinéraire en cours" : routeFeedback === day.id ? "Itinéraire rafraîchi" : "Itinéraire"} disabled={busy || !canCalculateRoute(trip, day, dayIndex)} onClick={() => recalculateRoute(day)}>
+                                            <div className={`trip-panel-route-actions${canEditTrip ? " trip-panel-route-actions--editable" : ""}`}>
+                                              <button className={routeFeedback === day.id ? "route-success" : undefined} type="button" aria-label={pendingAction === `route:${day.id}` ? "Calcul de l’itinéraire en cours" : routeFeedback === day.id ? "Itinéraire rafraîchi" : "Itinéraire"} disabled={busy || !canEditTrip || !canCalculateRoute(trip, day, dayIndex)} onClick={() => recalculateRoute(day)}>
                                                 {pendingAction === `route:${day.id}` ? (
                                                   <>
                                                     <LoaderCircle className="trip-action-spinner" size={13} aria-hidden="true" />
@@ -1757,7 +1872,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                               open={openDaySettingsIds.has(day.id)}
                                               day={day}
                                               summary={daySummaries[day.id]}
-                                              canEdit={canEdit}
+                                              canEdit={canEditTrip}
                                               busy={busy}
                                               endsAtHotel={trip.nights.some((night) => night.previous_day_id === day.id)}
                                               onTimingSave={async (payload) => {
@@ -1796,7 +1911,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                             onStopFocus={onStopFocus}
                                           />
                                         )}
-                                        {canEdit && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
+                                        {canEditTrip && <InsertDayControl day={day} onInsert={() => insertDayAfter(day)} />}
                                       </div>
                                     ))}
                                     {trip.days.length > 0 && (
@@ -1905,6 +2020,28 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
               {pdfExportOpen && <TripPdfExportDialog trigger={pdfExportTrigger} onClose={() => setPdfExportOpen(false)} onExport={exportPdf} />}
               {offlineDialogOpen && trip && <OfflinePackageDialog map={poiMap} trip={trip} onClose={() => setOfflineDialogOpen(false)} />}
               {unsavedPromptOpen && <UnsavedChangesDialog saving={savingUnsavedChanges} onCancel={() => settleUnsavedPrompt(false)} onDiscard={discardAndContinue} onSave={() => void saveAndContinue()} />}
+              {resizeConfirmation && <TripResizeConfirmationDialog
+                impact={resizeConfirmation.detail.impact}
+                busy={busy}
+                stale={resizeConfirmation.stale}
+                labels={{
+                  title: t("trips.resizeConfirmation.title"),
+                  day: t("trips.resizeConfirmation.day"),
+                  message: t("trips.resizeConfirmation.message"),
+                  stale: t("trips.resizeConfirmation.stale"),
+                  requestedEndDate: t("trips.resizeConfirmation.requestedEndDate"),
+                  days: [t("trips.resizeConfirmation.daysOne"), t("trips.resizeConfirmation.daysOther")],
+                  stops: [t("trips.resizeConfirmation.stopsOne"), t("trips.resizeConfirmation.stopsOther")],
+                  nights: [t("trips.resizeConfirmation.nightsOne"), t("trips.resizeConfirmation.nightsOther")],
+                  photos: [t("trips.resizeConfirmation.photosOne"), t("trips.resizeConfirmation.photosOther")],
+                  routes: [t("trips.resizeConfirmation.routesOne"), t("trips.resizeConfirmation.routesOther")],
+                  cancel: t("common.cancel"),
+                  confirm: t("trips.resizeConfirmation.confirm"),
+                  close: t("common.close"),
+                }}
+                onCancel={() => setResizeConfirmation(null)}
+                onConfirm={() => void confirmResize()}
+              />}
               {confirmationDialog}
             </>
           )}
@@ -2955,7 +3092,7 @@ function MobileMoveNightDialog({ night, days, nights, busy, onClose, onMoveToDay
   );
 }
 
-function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, draftStartDate, draftEndDate, stayInCountry, avoidTolls, avoidHighways, avoidFerries, trafficMode, datesValid, dirty, loadSettings, onNameChange, onStartDateChange, onEndDateChange, onStayInCountryChange, onAvoidTollsChange, onAvoidHighwaysChange, onAvoidFerriesChange, onTrafficModeChange, onLoadSettingsChange, onSave, onDuplicate, onArchive, onUnarchive, onDelete }: { trip: Trip; canEdit: boolean; canManage: boolean; canDelete: boolean; busy: boolean; draftName: string; draftStartDate: string | null; draftEndDate: string | null; stayInCountry: boolean; avoidTolls: boolean; avoidHighways: boolean; avoidFerries: boolean; trafficMode: NonNullable<Trip["traffic_mode"]>; datesValid: boolean; dirty: boolean; loadSettings: TripLoadSettings; onNameChange: (value: string) => void; onStartDateChange: (value: string | null) => void; onEndDateChange: (value: string | null) => void; onStayInCountryChange: (value: boolean) => void; onAvoidTollsChange: (value: boolean) => void; onAvoidHighwaysChange: (value: boolean) => void; onAvoidFerriesChange: (value: boolean) => void; onTrafficModeChange: (value: NonNullable<Trip["traffic_mode"]>) => void; onLoadSettingsChange: (settings: TripLoadSettings) => void; onSave: () => void; onDuplicate: () => void; onArchive: () => void; onUnarchive: () => void; onDelete: () => void }) {
+function TripSettings({ trip, canEdit, canEditStructure, canManage, canDelete, busy, draftName, draftStartDate, draftEndDate, stayInCountry, avoidTolls, avoidHighways, avoidFerries, trafficMode, datesValid, dirty, loadSettings, onNameChange, onStartDateChange, onEndDateChange, onStayInCountryChange, onAvoidTollsChange, onAvoidHighwaysChange, onAvoidFerriesChange, onTrafficModeChange, onLoadSettingsChange, onSave, onDuplicate, onArchive, onUnarchive, onDelete }: { trip: Trip; canEdit: boolean; canEditStructure: boolean; canManage: boolean; canDelete: boolean; busy: boolean; draftName: string; draftStartDate: string | null; draftEndDate: string | null; stayInCountry: boolean; avoidTolls: boolean; avoidHighways: boolean; avoidFerries: boolean; trafficMode: NonNullable<Trip["traffic_mode"]>; datesValid: boolean; dirty: boolean; loadSettings: TripLoadSettings; onNameChange: (value: string) => void; onStartDateChange: (value: string | null) => void; onEndDateChange: (value: string | null) => void; onStayInCountryChange: (value: boolean) => void; onAvoidTollsChange: (value: boolean) => void; onAvoidHighwaysChange: (value: boolean) => void; onAvoidFerriesChange: (value: boolean) => void; onTrafficModeChange: (value: NonNullable<Trip["traffic_mode"]>) => void; onLoadSettingsChange: (settings: TripLoadSettings) => void; onSave: () => void; onDuplicate: () => void; onArchive: () => void; onUnarchive: () => void; onDelete: () => void }) {
   const archived = trip.status === "completed" || trip.status === "archived";
   const [editingDate, setEditingDate] = useState<"start" | "end" | null>(null);
   useEffect(() => setEditingDate(null), [trip.id]);
@@ -2994,9 +3131,9 @@ function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, dr
             <CalendarDays aria-hidden="true" size={16} />
             <span>
               <small>Date de départ</small>
-              {editingDate === "start" && canEdit ? <input autoFocus aria-label="Date de départ du voyage" type="date" value={draftStartDate ?? ""} disabled={busy} onChange={(event) => onStartDateChange(event.target.value || null)} /> : <strong>{formatTripDate(draftStartDate)}</strong>}
+              {editingDate === "start" && canEditStructure ? <input autoFocus aria-label="Date de départ du voyage" type="date" value={draftStartDate ?? ""} disabled={busy} onChange={(event) => onStartDateChange(event.target.value || null)} /> : <strong>{formatTripDate(draftStartDate)}</strong>}
             </span>
-            {canEdit && (
+            {canEditStructure && (
               <button type="button" aria-label="Modifier la date de départ" title="Modifier la date de départ" disabled={busy} onClick={() => setEditingDate((current) => (current === "start" ? null : "start"))}>
                 <Pencil aria-hidden="true" size={12} />
               </button>
@@ -3006,9 +3143,9 @@ function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, dr
             <Flag aria-hidden="true" size={16} />
             <span>
               <small>Date d’arrivée</small>
-              {editingDate === "end" && canEdit ? <input autoFocus aria-label="Date d’arrivée du voyage" type="date" min={draftStartDate ?? undefined} value={draftEndDate ?? ""} disabled={busy || !draftStartDate} onChange={(event) => onEndDateChange(event.target.value || null)} /> : <strong>{formatTripDate(draftEndDate)}</strong>}
+              {editingDate === "end" && canEditStructure ? <input autoFocus aria-label="Date d’arrivée du voyage" type="date" min={draftStartDate ?? undefined} value={draftEndDate ?? ""} disabled={busy || !draftStartDate} onChange={(event) => onEndDateChange(event.target.value || null)} /> : <strong>{formatTripDate(draftEndDate)}</strong>}
             </span>
-            {canEdit && (
+            {canEditStructure && (
               <button type="button" aria-label="Modifier la date d’arrivée" title="Modifier la date d’arrivée" disabled={busy || !draftStartDate} onClick={() => setEditingDate((current) => (current === "end" ? null : "end"))}>
                 <Pencil aria-hidden="true" size={12} />
               </button>
@@ -3031,29 +3168,29 @@ function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, dr
             <strong>Rester dans le pays de la carte</strong>
             <small>Le calcul privilégie uniquement les routes situées dans le pays associé à cette carte.</small>
           </span>
-          <input type="checkbox" checked={stayInCountry} disabled={!canEdit || busy} onChange={(event) => onStayInCountryChange(event.target.checked)} />
+          <input type="checkbox" checked={stayInCountry} disabled={!canEditStructure || busy} onChange={(event) => onStayInCountryChange(event.target.checked)} />
           <i aria-hidden="true" />
         </label>
         <div className="trip-routing-options" aria-label="Options de l’itinéraire">
           <p>Appliquées lorsque Google Routes est utilisé.</p>
           <label>
             <span>Éviter les péages</span>
-            <input type="checkbox" checked={avoidTolls} disabled={!canEdit || busy} onChange={(event) => onAvoidTollsChange(event.target.checked)} />
+            <input type="checkbox" checked={avoidTolls} disabled={!canEditStructure || busy} onChange={(event) => onAvoidTollsChange(event.target.checked)} />
             <i aria-hidden="true" />
           </label>
           <label>
             <span>Éviter les autoroutes</span>
-            <input type="checkbox" checked={avoidHighways} disabled={!canEdit || busy} onChange={(event) => onAvoidHighwaysChange(event.target.checked)} />
+            <input type="checkbox" checked={avoidHighways} disabled={!canEditStructure || busy} onChange={(event) => onAvoidHighwaysChange(event.target.checked)} />
             <i aria-hidden="true" />
           </label>
           <label>
             <span>Éviter les ferries</span>
-            <input type="checkbox" checked={avoidFerries} disabled={!canEdit || busy} onChange={(event) => onAvoidFerriesChange(event.target.checked)} />
+            <input type="checkbox" checked={avoidFerries} disabled={!canEditStructure || busy} onChange={(event) => onAvoidFerriesChange(event.target.checked)} />
             <i aria-hidden="true" />
           </label>
           <label className="trip-routing-options__traffic">
             <span>Prise en compte du trafic</span>
-            <select aria-label="Prise en compte du trafic" value={trafficMode} disabled={!canEdit || busy} onChange={(event) => onTrafficModeChange(event.target.value as NonNullable<Trip["traffic_mode"]>)}>
+            <select aria-label="Prise en compte du trafic" value={trafficMode} disabled={!canEditStructure || busy} onChange={(event) => onTrafficModeChange(event.target.value as NonNullable<Trip["traffic_mode"]>)}>
               <option value="traffic_unaware">Sans trafic</option>
               <option value="traffic_aware">Trafic actuel</option>
               <option value="traffic_aware_optimal">Trafic optimal</option>
@@ -3061,7 +3198,7 @@ function TripSettings({ trip, canEdit, canManage, canDelete, busy, draftName, dr
           </label>
         </div>
       </section>
-      <TripLoadSettingsForm trip={trip} canEdit={canEdit} busy={busy} value={loadSettings} onChange={onLoadSettingsChange} embedded />
+      <TripLoadSettingsForm trip={trip} canEdit={canEditStructure} busy={busy} value={loadSettings} onChange={onLoadSettingsChange} embedded />
       {canManage && (
         <section className="trip-settings-controls" aria-label="Contrôles de la sortie">
           <h3>Contrôles de la sortie</h3>
@@ -3973,6 +4110,7 @@ function DayColorPicker({ day, disabled, onSave }: { day: TripDay; disabled: boo
   useEffect(() => setDraftColor(initialColor), [day.id, initialColor]);
 
   const hasChanges = draftColor !== initialColor;
+  useUnsavedChangeSignal(`trip-day-color:${day.id}`, hasChanges);
   return (
     <section className="trip-day-color-picker">
       <label htmlFor={`day-color-${day.id}`}>Choisir la couleur du tracé et des étapes</label>
@@ -3990,9 +4128,8 @@ function DayColorPicker({ day, disabled, onSave }: { day: TripDay; disabled: boo
 }
 
 function DaySettings({ open, day, summary, canEdit, busy, endsAtHotel, onTimingSave, onColorSave }: { open: boolean; day: TripDay; summary: TripDayTimeSummary | undefined; canEdit: boolean; busy: boolean; endsAtHotel: boolean; onTimingSave: (payload: TripDayTimingPayload) => Promise<void>; onColorSave: (color: string) => void }) {
-  if (!open) return null;
   return (
-    <section id={`trip-day-settings-${day.id}`} className="trip-day-settings" aria-label={`Paramètres du jour ${day.day_number}`}>
+    <section id={`trip-day-settings-${day.id}`} className="trip-day-settings" aria-label={`Paramètres du jour ${day.day_number}`} hidden={!open}>
       <div className="trip-day-settings__body">
         <section className="trip-day-color-section">
           <h4>Couleur du jour</h4>
@@ -4065,12 +4202,17 @@ function PlaceDropGhost({ replacement = false, moving = false }: { replacement?:
 }
 
 function useTripUndo(trip: Trip, reload: (id?: string) => Promise<void>) {
+  // AUD-008: latest trip identity, to discard undo/redo restores belonging to
+  // a trip the user has already left.
+  const currentTripIdRef = useRef<string | null>(null);
+  currentTripIdRef.current = trip?.id ?? null;
   return useCallback(
     async (label: string, action: () => Promise<void>) => {
       const before = await getTrip(trip.id);
       await action();
       const after = await getTrip(trip.id);
       const restore = async (state: Trip) => {
+        if (currentTripIdRef.current !== trip.id) return;
         await restoreTripState(trip.id, state);
         await reload(trip.id);
       };
