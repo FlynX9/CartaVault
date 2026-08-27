@@ -3959,25 +3959,25 @@ function DayHeaderMetrics({ summary }: { summary: TripDayTimeSummary | undefined
   return (
     <span className="trip-day-header-metrics" aria-label="Résumé de la journée">
       <span className="trip-day-header-metric">
+        <small>Distance</small>
         <strong>
           <Road aria-hidden="true" size={16} />
           {formatRouteDistance(summary?.route_distance_meters ?? null)}
         </strong>
-        <small>Distance</small>
       </span>
       <span className="trip-day-header-metric">
+        <small>Temps de route</small>
         <strong>
           <Car aria-hidden="true" size={16} />
           {formatMinutes(summary?.route_duration_minutes ?? null)}
         </strong>
-        <small>Route</small>
       </span>
       <span className="trip-day-header-metric">
+        <small>Temps total</small>
         <strong>
           <Clock3 aria-hidden="true" size={16} />
           {formatMinutes(summary?.total_duration_minutes ?? null)}
         </strong>
-        <small>Total</small>
       </span>
       <span className="trip-day-header-status" aria-hidden="true" />
       <span className="trip-day-header-load">

@@ -11420,7 +11420,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
    planning workflow read from left to right: places, itinerary, map. */
 .map-workspace.trip-planning-open {
   --cv-trip-panel-gap: .6rem;
-  --cv-trip-panel-min-width: 40rem;
+   --cv-trip-panel-min-width: 38rem;
   --cv-trip-map-min-width: 22rem;
   --cv-trip-left-dock-width: var(--cv-left-panel-width, var(--cv-workspace-sidebar-width));
   --cv-trip-panel-dock-width: var(--cv-right-panel-width, 40rem);
@@ -21129,6 +21129,55 @@ body.cv-panel-dock-split-resizing {
     height: 42px;
     min-height: 42px;
     align-self: center;
+  }
+}
+
+/* The timeline reserve includes the complete marker width; Charge stays the
+   first column to give up space when the panel reaches its minimum width. */
+@media (min-width: 761px) {
+  .trip-planner-panel .trip-panel-days {
+    padding-left: 3.5rem;
+  }
+
+  .trip-planner-panel {
+    --trip-header-columns:
+      minmax(5.6rem, 1.25fr)
+      minmax(6rem, 1fr)
+      minmax(5.6rem, 1fr)
+      minmax(5.6rem, 1fr)
+      minmax(5rem, .65fr);
+  }
+
+  .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) {
+    grid-template-columns: var(--trip-header-columns);
+  }
+
+  .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) > .trip-day-header-metrics > .trip-day-header-load {
+    min-width: 5rem;
+  }
+
+  .trip-planner-panel .trip-day-load-segments > i {
+    width: 16px;
+    height: 7px;
+  }
+}
+
+@media (min-width: 761px) {
+  .trip-planner-panel .trip-day-load-label {
+    gap: .22rem;
+  }
+
+  .trip-planner-panel .trip-day-load-label > small {
+    font-size: .54rem;
+  }
+
+  .trip-planner-panel .trip-day-load-segments {
+    gap: 4px;
+  }
+
+  .trip-planner-panel .trip-day-load-segments > i {
+    width: 18px;
+    height: 8px;
   }
 }
 

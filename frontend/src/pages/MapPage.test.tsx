@@ -169,7 +169,7 @@ describe('MapPage', () => {
     const tripsResize = screen.getAllByRole('separator', { name: 'Redimensionner Panneau Sortie' }).find((item) => item.tabIndex === 0 && item.getAttribute('aria-orientation') === 'vertical')!
     const placesWidth = Number.parseFloat(placesResize.getAttribute('aria-valuenow') ?? '0')
     const tripsWidth = Number.parseFloat(tripsResize.getAttribute('aria-valuenow') ?? '0')
-    expect(tripsResize).toHaveAttribute('aria-valuemin', '420')
+    expect(tripsResize).toHaveAttribute('aria-valuemin', '608')
     expect(tripsResize).not.toHaveAttribute('aria-valuemax')
 
     fireEvent.keyDown(placesResize, { key: 'ArrowRight' })
