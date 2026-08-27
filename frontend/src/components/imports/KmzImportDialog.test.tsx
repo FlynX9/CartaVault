@@ -130,4 +130,28 @@ describe('KmzImportDialog', () => {
     expect(await screen.findByRole('progressbar', { name: /Progression/ })).toHaveAttribute('aria-valuenow', '30')
     expect(screen.getByText(/Téléchargement de l.image distante 2\/5/)).toBeVisible()
   })
+
+  it('keeps an accepted server import tracked while its presentation is hidden', async () => {
+    vi.mocked(previewKmzImport).mockResolvedValue(preview)
+    let resolveImport!: (report: Awaited<ReturnType<typeof confirmKmzImport>>) => void
+    vi.mocked(confirmKmzImport).mockImplementation((_mapId, _importId, _selected, _download, _forced, _progress, signal) => new Promise((resolve, reject) => {
+      resolveImport = resolve
+      signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+    }))
+    const imported = vi.fn()
+    const started = vi.fn()
+    const { rerender } = render(<KmzImportDialog poiMap={poiMap} onClose={vi.fn()} onImported={imported} onTaskStarted={started} />)
+    const input = document.body.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File(['zip'], 'points.kmz', { type: 'application/vnd.google-earth.kmz' })] } })
+    await screen.findByText('Point importé')
+    fireEvent.click(screen.getByRole('button', { name: /Importer 1 POI/ }))
+    await waitFor(() => expect(confirmKmzImport).toHaveBeenCalledOnce())
+    expect(started).toHaveBeenCalledOnce()
+
+    rerender(<KmzImportDialog poiMap={poiMap} hidden onClose={vi.fn()} onImported={imported} onTaskStarted={started} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    resolveImport({ created_count: 1, skipped_count: 0, error_count: 0, images_added: 0, embedded_images_added: 0, remote_images_added: 0, remote_images_unavailable: 0, created_place_ids: ['place-id'], failures: [], warnings: [] })
+
+    await waitFor(() => expect(imported).toHaveBeenCalledOnce())
+  })
 })

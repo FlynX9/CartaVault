@@ -10,6 +10,9 @@ interface Props {
   poiMap: PoiMap
   onClose: () => void
   onImported: () => void
+  onTaskStarted?: () => void
+  onTaskFailed?: (message: string) => void
+  hidden?: boolean
 }
 
 type Step = 'upload' | 'analyzing' | 'preview' | 'confirming' | 'report'
@@ -23,7 +26,7 @@ function fileSize(bytes: number) {
   }).format(bytes)
 }
 
-export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
+export function KmzImportDialog({ poiMap, onClose, onImported, onTaskStarted, onTaskFailed, hidden = false }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<KmzPreview | null>(null)
@@ -81,6 +84,7 @@ export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
     setStep('confirming')
     setError(null)
     setProgress({ status: 'pending', completed: 0, total: 1, percent: 0, message: 'Préparation de l’import' })
+    onTaskStarted?.()
     try {
       const nextReport = await confirmKmzImport(
         poiMap.id,
@@ -96,8 +100,10 @@ export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
       onImported()
     } catch (caught) {
       if (caught instanceof Error && caught.name === 'AbortError') return
-      setError(caught instanceof Error ? caught.message : "L'import est impossible.")
+      const message = caught instanceof Error ? caught.message : "L'import est impossible."
+      setError(message)
       setStep('preview')
+      onTaskFailed?.(message)
     } finally {
       if (operationController.current === controller) operationController.current = null
     }
@@ -119,6 +125,8 @@ export function KmzImportDialog({ poiMap, onClose, onImported }: Props) {
     setForced((current) => [...new Set([...current, ...duplicateIndexes])])
   }
   const toggleAll = () => setSelected(preview?.items.filter((item) => item.importable && !item.errors.length).map((item) => item.source_index) ?? [])
+
+  if (hidden) return null
 
   return createPortal(
     <div className="cv-overlay kmz-import-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>

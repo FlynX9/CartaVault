@@ -1,6 +1,6 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Archive, ArchiveRestore, BadgeCheck, BedSingle, Calculator, CalendarDays, CalendarPlus, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, CircleAlert, Clock3, Copy, Download, Ellipsis, Eye, EyeOff, Flag, FolderOpen, Gauge, GripVertical, HardDriveDownload, LoaderCircle, Lock, Map, MapPin, MapPlus, Minus as IconMinimize, Moon, Navigation, Pencil, Play, Plus, Plus as IconMaximize, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2, TriangleAlert, X } from "lucide-react";
+import { Archive, ArchiveRestore, BadgeCheck, BedSingle, CalendarDays, CalendarPlus, Car, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsLeft, ChevronsRight, Clock3, Copy, Download, Ellipsis, Eye, EyeOff, Flag, FolderOpen, GripVertical, HardDriveDownload, LoaderCircle, Lock, Map, MapPin, MapPlus, Minus as IconMinimize, Moon, Navigation, Pencil, Play, Plus, Plus as IconMaximize, Road, Route, Save, Settings2, SlidersHorizontal, Sparkles, Sun, Timer, Trash2, TriangleAlert, X } from "lucide-react";
 import { IconTimelineEvent } from "@tabler/icons-react";
 
 import { addTripArrival, addTripDay, addTripDeparture, addTripNight, addTripStop, archiveTrip, calculateTripDayRoute, confirmTripOptimization, confirmTripOptimizations, createTrip, deleteTrip, deleteTripArrival, deleteTripDay, deleteTripDeparture, deleteTripNight, deleteTripStop, downloadTripExport, duplicateTrip, duplicateTripDay, exportTripGpx, exportTripPdf, getTrip, getTripDaySummary, getTripSummary, listTrips, moveTripStop, optimizeTrip, optimizeTripDay, reorderTripDays, restoreTripState, tripExportUrl, unarchiveTrip, updateTrip, updateTripArrival, updateTripDay, updateTripDayTiming, updateTripDeparture, updateTripLoadSettings, updateTripNight, updateTripStop, type TripPdfExportOptions, type TripUpdatePayload } from "../../api/trips";
@@ -1579,7 +1579,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                           reorderDay(sourceId, targetIndex);
                                         }}
                                       >
-                                        <DayVisibilityBubble day={day} hidden={hiddenDayIds.has(day.id)} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />
+                                        <DayVisibilityBubble day={day} hidden={hiddenDayIds.has(day.id)} status={getDayTimelineStatus(day, daySummaries[day.id])} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />
                                           <details
                                             className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? " is-active" : ""}${placeDropDayId === day.id ? " is-drop-target" : ""}`}
                                           open={!collapsedDayIds.has(day.id)}
@@ -1636,7 +1636,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                                 {day.stops.length} {day.stops.length > 1 ? "étapes" : "étape"}
                                               </small>
                                             </span>
-                                            <DayHeaderMetrics summary={daySummaries[day.id]} status={getDayTimelineStatus(day, daySummaries[day.id])} />
+                                            <DayHeaderMetrics summary={daySummaries[day.id]} />
                                           </summary>
                                            {placeDropDayId === day.id && day.stops.length === 0 && <PlaceDropGhost />}
                                            <div className="trip-panel-day-content">
@@ -3952,43 +3952,45 @@ function addDaysToTripDate(value: string, days: number) {
   return result.toISOString().slice(0, 10);
 }
 
-function DayHeaderMetrics({ summary, status }: { summary: TripDayTimeSummary | undefined; status: TimelineStatus }) {
+function DayHeaderMetrics({ summary }: { summary: TripDayTimeSummary | undefined }) {
   const loadLabels: Record<Exclude<TripDayTimeSummary["load_level"], "unavailable">, string> = { low: "Faible", medium: "Modérée", high: "Élevée" };
+  const activeLoadSegments = summary?.load_level === "low" ? 1 : summary?.load_level === "medium" ? 2 : 3;
   const loadStyle = summary?.load_color ? ({ "--trip-load-color": summary.load_color } as CSSProperties) : undefined;
   return (
     <span className="trip-day-header-metrics" aria-label="Résumé de la journée">
       <span className="trip-day-header-metric">
         <strong>
-          <Road aria-hidden="true" size={12} />
+          <Road aria-hidden="true" size={16} />
           {formatRouteDistance(summary?.route_distance_meters ?? null)}
         </strong>
         <small>Distance</small>
       </span>
       <span className="trip-day-header-metric">
         <strong>
-          <Car aria-hidden="true" size={12} />
+          <Car aria-hidden="true" size={16} />
           {formatMinutes(summary?.route_duration_minutes ?? null)}
         </strong>
         <small>Route</small>
       </span>
       <span className="trip-day-header-metric">
         <strong>
-          <Clock3 aria-hidden="true" size={12} />
+          <Clock3 aria-hidden="true" size={16} />
           {formatMinutes(summary?.total_duration_minutes ?? null)}
         </strong>
         <small>Total</small>
       </span>
-      <span className="trip-day-header-status">
-        <TimelineStatusBadge status={status} />
-      </span>
-      {summary && summary.load_level !== "unavailable" && (
-        <span className="trip-day-header-load">
-          <span className="trip-day-load-label" style={loadStyle}>
-            <Gauge aria-hidden="true" size={12} />
+      <span className="trip-day-header-status" aria-hidden="true" />
+      <span className="trip-day-header-load">
+        {summary && summary.load_level !== "unavailable" && (
+          <span className="trip-day-load-label" style={loadStyle} aria-label={`Charge ${loadLabels[summary.load_level].toLowerCase()}`} title={`Charge ${loadLabels[summary.load_level].toLowerCase()}`} tabIndex={0}>
+            <small>Charge du jour</small>
+            <span className="trip-day-load-segments" aria-hidden="true">
+              {[0, 1, 2].map((index) => <i key={index} className={index < activeLoadSegments ? "is-active" : undefined} />)}
+            </span>
             <strong>{loadLabels[summary.load_level]}</strong>
           </span>
-        </span>
-      )}
+        )}
+      </span>
     </span>
   );
 }
@@ -4141,7 +4143,7 @@ function DaySettings({ open, day, summary, canEdit, busy, endsAtHotel, onTimingS
   );
 }
 
-function DayVisibilityBubble({ day, hidden, onChange }: { day: TripDay; hidden: boolean; onChange: (visible: boolean) => void }) {
+function DayVisibilityBubble({ day, hidden, status, onChange }: { day: TripDay; hidden: boolean; status: TimelineStatus; onChange: (visible: boolean) => void }) {
   const hasMapContent = day.stops.length > 0 || Boolean(day.route_geometry?.coordinates.length);
   const visible = hasMapContent && !hidden;
   const label = !hasMapContent ? `Jour ${day.day_number} sans contenu cartographique` : `${hidden ? "Afficher" : "Masquer"} le jour ${day.day_number} sur la carte`;
@@ -4166,6 +4168,7 @@ function DayVisibilityBubble({ day, hidden, onChange }: { day: TripDay; hidden: 
       <span className="trip-day-bubble__visibility" aria-hidden="true">
         {visible ? <Eye size={15} /> : <EyeOff size={15} />}
       </span>
+      <TimelineStatusBadge status={status} subject="Journée" marker />
     </button>
   );
 }
@@ -4295,6 +4298,7 @@ function Departure({ trip, selected, recommendedStart, recommendedStartOffset, c
       >
         <span className="trip-timeline-anchor-badge">
           <Play aria-hidden="true" size={15} />
+          <TimelineStatusBadge status={departure ? "valid" : "empty"} subject="Départ" marker />
         </span>
         <div className="trip-night-content">
           <div
@@ -4326,9 +4330,7 @@ function Departure({ trip, selected, recommendedStart, recommendedStartOffset, c
               </span>
               <span className="trip-night-header-spacer" aria-hidden="true" />
               <span className="trip-night-header-spacer" aria-hidden="true" />
-              <span className="trip-day-header-status">
-                <TimelineStatusBadge status={departure ? "valid" : "empty"} />
-              </span>
+              <span className="trip-day-header-status" aria-hidden="true" />
               <span className="trip-night-header-spacer" aria-hidden="true" />
             </span>
           </div>
@@ -4446,6 +4448,7 @@ function Arrival({ trip, selected, estimatedArrival, estimatedArrivalOffset, col
       >
         <span className="trip-timeline-anchor-badge trip-timeline-arrival-badge">
           <Flag aria-hidden="true" size={14} />
+          <TimelineStatusBadge status={effectiveArrival ? "valid" : "empty"} subject="Arrivée" marker />
         </span>
         <div className="trip-night-content">
           <div
@@ -4477,9 +4480,7 @@ function Arrival({ trip, selected, estimatedArrival, estimatedArrivalOffset, col
               </span>
               <span className="trip-night-header-spacer" aria-hidden="true" />
               <span className="trip-night-header-spacer" aria-hidden="true" />
-              <span className="trip-day-header-status">
-                <TimelineStatusBadge status={effectiveArrival ? "valid" : "empty"} />
-              </span>
+              <span className="trip-day-header-status" aria-hidden="true" />
               <span className="trip-night-header-spacer" aria-hidden="true" />
             </span>
           </div>
@@ -4643,6 +4644,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
       >
         <span className="trip-timeline-night-badge">
           <BedSingle aria-hidden="true" size={15} />
+          <TimelineStatusBadge status={night ? "valid" : "empty"} subject="Nuit" marker />
         </span>
         <div className="trip-night-content">
           <div className="trip-night-header-row">
@@ -4659,9 +4661,7 @@ function Night({ trip, previous, next, recommendedStart, recommendedStartOffset,
               </span>
               <span className="trip-night-header-spacer" aria-hidden="true" />
               <span className="trip-night-header-spacer" aria-hidden="true" />
-              <span className="trip-day-header-status">
-                <TimelineStatusBadge status={night ? "valid" : "empty"} />
-              </span>
+              <span className="trip-day-header-status" aria-hidden="true" />
               <span className="trip-night-header-spacer" aria-hidden="true" />
             </span>
           </div>
@@ -4721,17 +4721,12 @@ function getDayTimelineStatus(day: TripDay, summary: TripDayTimeSummary | undefi
   return day.route_status === "ready" && !summary?.route_is_stale && !constraintNeedsAttention ? "valid" : "pending";
 }
 
-function TimelineStatusBadge({ status }: { status: TimelineStatus }) {
-  const labels: Record<TimelineStatus, string> = {
-    valid: "Valide",
-    pending: "Non calculé",
-    empty: "Vide",
-  };
-  const StatusIcon = status === "valid" ? BadgeCheck : status === "pending" ? Calculator : CircleAlert;
+function TimelineStatusBadge({ status, subject, marker = false }: { status: TimelineStatus; subject: "Journée" | "Nuit" | "Départ" | "Arrivée"; marker?: boolean }) {
+  const label = `${subject} ${status === "valid" ? "valide" : "invalide"}`;
+  const StatusIcon = status === "valid" ? BadgeCheck : X;
   return (
-    <span className={`trip-timeline-status trip-timeline-status--${status}`}>
-      <StatusIcon aria-hidden="true" size={12} />
-      <strong>{labels[status]}</strong>
+    <span className={`trip-timeline-status trip-timeline-status--${status}${marker ? " trip-timeline-status--marker" : ""}`} aria-label={label} title={label} tabIndex={marker ? undefined : 0}>
+      <StatusIcon aria-hidden="true" size={16} />
     </span>
   );
 }

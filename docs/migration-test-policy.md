@@ -2,7 +2,7 @@
 
 ## Production policy
 
-CartaVault production startup only performs `alembic upgrade heads`. A failed
+CartaVault production startup only performs `alembic upgrade head`. A failed
 upgrade blocks application startup. Production never runs an automatic
 downgrade.
 
@@ -23,7 +23,7 @@ remains operational; such a chain is not a production rollback mechanism.
 
 Normal integration tests use the database named by `TEST_DATABASE_URL`. The
 session fixture rebuilds it at current model head and verifies at teardown that
-its Alembic revision still equals every repository head.
+its Alembic revision still equals the repository head.
 
 Every migration-cycle test instead receives a unique PostgreSQL database named
 `cartavault_mig_<worker>_<uuid>`. It has its own schema and `alembic_version`

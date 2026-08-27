@@ -5,6 +5,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import pytest
 
 from app.imports.kmz_mapping import map_extended_data
+from app.imports.remote_images import download_remote_image
 from app.imports.service import _item_links
 from app.imports.kmz_parser import KmzParseError, ParsedPlacemark, parse_kmz
 from app.imports.kmz_security import KmzSecurityError, validate_kmz_upload
@@ -180,3 +181,47 @@ def test_kmz_preview_reports_and_deselects_outside_country_items(monkeypatch: py
     assert preview.items[1].outside_map_country is True
     assert preview.items[1].selected_by_default is False
     assert "hors de France" in preview.items[1].warnings[0]
+
+
+@pytest.mark.parametrize("content_length", [None, "1", str(100 * 1024 * 1024)])
+def test_remote_image_download_uses_streamed_bytes_not_content_length(
+    monkeypatch: pytest.MonkeyPatch,
+    content_length: str | None,
+) -> None:
+    payload = b"\x89PNG\r\n\x1a\nactual-bytes"
+
+    class Response:
+        status = 200
+
+        def __init__(self) -> None:
+            self.sent = False
+
+        def getheader(self, name: str):
+            return content_length if name == "Content-Length" else None
+
+        def read(self, _size: int) -> bytes:
+            if self.sent:
+                return b""
+            self.sent = True
+            return payload
+
+    class Connection:
+        def __init__(self, *_args, **_kwargs) -> None:
+            self.response = Response()
+
+        def request(self, *_args, **_kwargs) -> None:
+            return None
+
+        def getresponse(self) -> Response:
+            return self.response
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr("app.imports.remote_images._validate_public_dns", lambda _host: None)
+    monkeypatch.setattr("app.imports.remote_images.http.client.HTTPSConnection", Connection)
+
+    downloaded = download_remote_image("https://mymaps.usercontent.google.com/photo")
+
+    assert downloaded.payload == payload
+    assert downloaded.mime_type == "image/png"

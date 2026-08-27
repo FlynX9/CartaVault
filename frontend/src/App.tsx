@@ -37,6 +37,7 @@ import {
 } from "./components/map/mapOpeningFocus";
 import { MapSidebar } from "./components/sidebar/MapSidebar";
 import { PlacesPanel, TripPlacesPanel } from "./components/place-list/MapPlaceList";
+import { KMZ_IMPORTED_EVENT } from "./components/imports/KmzImportHost";
 import { PlaceMapPopup } from "./components/map-popup/PlaceMapPopup";
 import { TripStopMapPopup } from "./components/map-popup/TripStopMapPopup";
 import { TripNightMapPopup } from "./components/map-popup/TripNightMapPopup";
@@ -406,6 +407,12 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   const poiEditorDirty = poiUnsavedState.formDirty || poiUnsavedState.pendingPhotos;
   const hasUnsavedChanges = poiEditorDirty || tripSettingsDirty || localDraftSources.size > 0;
   const skipNextNavigationRef = useRef(false);
+
+  useEffect(() => {
+    const refreshImportedData = () => setRefreshVersion((value) => value + 1);
+    window.addEventListener(KMZ_IMPORTED_EVENT, refreshImportedData);
+    return () => window.removeEventListener(KMZ_IMPORTED_EVENT, refreshImportedData);
+  }, []);
 
   useEffect(() => {
     const updatePoiUnsavedState = (event: Event) => {

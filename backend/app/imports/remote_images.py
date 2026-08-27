@@ -60,9 +60,6 @@ def download_remote_image(value: str) -> DownloadedRemoteImage:
                 continue
             if response.status != 200:
                 raise RemoteImageError("The remote image is not accessible anonymously")
-            content_length = response.getheader("Content-Length")
-            if content_length is not None and int(content_length) > MAX_PHOTO_SIZE:
-                raise RemoteImageError("The remote image exceeds the size limit")
             chunks: list[bytes] = []
             size = 0
             while chunk := response.read(1024 * 1024):

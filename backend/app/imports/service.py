@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Callable
 from uuid import UUID, uuid4
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from geoalchemy2.elements import WKTElement
 from sqlalchemy import func, select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.categories.associations import place_categories_table
@@ -34,7 +35,7 @@ from app.imports.schemas import (
 from app.maps.models import PoiMap
 from app.media.settings import get_media_upload_policy
 from app.photos.models import Photo
-from app.photos.storage import PhotoStorageError, delete_photo_file, store_photo_file
+from app.photos.storage import PhotoTooLargeError, UnsupportedPhotoTypeError, delete_photo_file, store_photo_file
 from app.imports.remote_images import RemoteImageError, download_remote_image
 from app.places.models import Place, PlaceLink
 from app.places.schemas import PlaceLinkCreate
@@ -43,12 +44,14 @@ from app.statuses.router import slugify_status_name
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.tasks.models import KmzImportPreview
+from app.tasks.registry import register_rollback_cleanup
 
 
 IMPORT_TTL = timedelta(minutes=15)
 ProgressCallback = Callable[[int, int, str], None]
 DEFAULT_IMPORT_ROOT = Path(__file__).resolve().parents[2] / "storage" / "imports"
 IMPORT_ROOT = Path(os.getenv("IMPORT_STORAGE_PATH", str(DEFAULT_IMPORT_ROOT))).expanduser().resolve()
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -77,8 +80,13 @@ def cache_preview(
     storage_name = f"{uuid4()}.kmz"
     final_path = IMPORT_ROOT / storage_name
     temporary_path = IMPORT_ROOT / f".{storage_name}.tmp"
-    temporary_path.write_bytes(payload)
-    temporary_path.replace(final_path)
+    try:
+        temporary_path.write_bytes(payload)
+        temporary_path.replace(final_path)
+    except OSError:
+        temporary_path.unlink(missing_ok=True)
+        raise
+    register_rollback_cleanup(database_session, lambda: final_path.unlink(missing_ok=True))
     now = datetime.now(UTC)
     preview = KmzImportPreview(
         map_id=map_id,
@@ -186,12 +194,24 @@ def get_cached_import(database_session: Session, import_id: UUID, map_id: UUID, 
     )
 
 
-def remove_cached_import(database_session: Session, import_id: UUID) -> None:
+def remove_cached_import(database_session: Session, import_id: UUID) -> Path | None:
+    """Delete the preview row in-transaction and return its auxiliary file."""
+
     preview = database_session.get(KmzImportPreview, import_id)
     if preview is None:
-        return
-    (IMPORT_ROOT / preview.storage_name).unlink(missing_ok=True)
+        return None
+    archive_path = IMPORT_ROOT / preview.storage_name
     database_session.delete(preview)
+    return archive_path
+
+
+def cleanup_cached_import_file(archive_path: Path | None) -> None:
+    if archive_path is None:
+        return
+    try:
+        archive_path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("Unable to remove consumed KMZ preview path=%s", archive_path, exc_info=True)
 
 
 def preview_to_read(cached: CachedKmzImport) -> KmzPreviewRead:
@@ -264,10 +284,6 @@ def confirm_import(
     )
     if image_increment:
         quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_TOTAL_MAX, increment=image_increment)
-    embedded_bytes = sum(image.size or 0 for item in new_items for image in item.images if image.source_type == "embedded")
-    if embedded_bytes:
-        quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=embedded_bytes)
-
     stored_files: list[tuple[str, UUID, UUID]] = []
     created_ids: list[UUID] = []
     embedded_images_added = 0
@@ -299,132 +315,122 @@ def confirm_import(
             progress_callback(progress_completed, progress_total, message)
 
     report_progress("Préparation de l’import")
-    try:
-        category = _get_or_create_import_category(database_session, map_id)
-        place_status = _get_or_create_import_status(database_session, map_id)
-        for item in selected:
-            duplicate_exists = (
-                item.duplicate_place_id is not None
-                or _find_existing_duplicate(database_session, map_id, item) is not None
-            )
-            if duplicate_exists and item.source_index not in forced_indexes:
-                skipped_count += 1
-                skipped_images = sum(
-                    image.source_type == "embedded"
-                    or (download_remote_images and image.source_type == "remote_supported")
-                    for image in item.images
-                )
-                report_progress("POI déjà présent, ignoré", 1 + skipped_images)
-                continue
-            mapped_fields, custom_fields = _item_data(item)
-            place = Place(
-                name=mapped_fields.get("name", f"Point importé {item.source_index + 1}"),
-                map_id=map_id,
-                status_id=place_status.id,
-                description=mapped_fields.get("description"),
-                location=WKTElement(f"POINT({item.longitude} {item.latitude})", srid=4326),
-                region=mapped_fields.get("region"),
-                condition=mapped_fields.get("condition"),
-                danger_level=mapped_fields.get("danger_level"),
-                custom_fields=custom_fields,
-            )
-            database_session.add(place)
-            database_session.flush()
-            imported_links = _item_links(item)
-            if imported_links:
-                quotas.ensure_can_create(owner_id, QuotaKey.LINKS_PER_PLACE_MAX, scope_id=place.id, increment=len(imported_links))
-                database_session.add_all(
-                    PlaceLink(place_id=place.id, url=link.url, label=link.label, sort_order=sort_order)
-                    for sort_order, link in enumerate(imported_links)
-                )
-            place_image_increment = sum(
-                image.source_type == "embedded" or (download_remote_images and image.source_type == "remote_supported")
+    category = _get_or_create_import_category(database_session, map_id)
+    place_status = _get_or_create_import_status(database_session, map_id)
+    for item in selected:
+        duplicate_exists = (
+            item.duplicate_place_id is not None
+            or _find_existing_duplicate(database_session, map_id, item) is not None
+        )
+        if duplicate_exists and item.source_index not in forced_indexes:
+            skipped_count += 1
+            skipped_images = sum(
+                image.source_type == "embedded"
+                or (download_remote_images and image.source_type == "remote_supported")
                 for image in item.images
             )
-            if place_image_increment:
-                quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_PER_PLACE_MAX, scope_id=place.id, increment=place_image_increment)
-            database_session.execute(place_categories_table.insert().values(place_id=place.id, category_id=category.id, is_primary=True))
-            image_assignments.append((place, item.images))
-            created_ids.append(place.id)
-            report_progress(f"POI créé : {place.name}", 1)
+            report_progress("POI déjà présent, ignoré", 1 + skipped_images)
+            continue
+        mapped_fields, custom_fields = _item_data(item)
+        place = Place(
+            name=mapped_fields.get("name", f"Point importé {item.source_index + 1}"),
+            map_id=map_id,
+            status_id=place_status.id,
+            description=mapped_fields.get("description"),
+            location=WKTElement(f"POINT({item.longitude} {item.latitude})", srid=4326),
+            region=mapped_fields.get("region"),
+            condition=mapped_fields.get("condition"),
+            danger_level=mapped_fields.get("danger_level"),
+            custom_fields=custom_fields,
+        )
+        database_session.add(place)
+        database_session.flush()
+        imported_links = _item_links(item)
+        if imported_links:
+            quotas.ensure_can_create(owner_id, QuotaKey.LINKS_PER_PLACE_MAX, scope_id=place.id, increment=len(imported_links))
+            database_session.add_all(
+                PlaceLink(place_id=place.id, url=link.url, label=link.label, sort_order=sort_order)
+                for sort_order, link in enumerate(imported_links)
+            )
+        place_image_increment = sum(
+            image.source_type == "embedded" or (download_remote_images and image.source_type == "remote_supported")
+            for image in item.images
+        )
+        if place_image_increment:
+            quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_PER_PLACE_MAX, scope_id=place.id, increment=place_image_increment)
+        database_session.execute(place_categories_table.insert().values(place_id=place.id, category_id=category.id, is_primary=True))
+        image_assignments.append((place, item.images))
+        created_ids.append(place.id)
+        report_progress(f"POI créé : {place.name}", 1)
 
+    for place, images in image_assignments:
+        for order, image in enumerate(images):
+            if image.source_type != "embedded" or image.payload is None:
+                continue
+            _store_image(
+                database_session,
+                place,
+                image,
+                order,
+                stored_files,
+                owner_id,
+                cached.user_id,
+            )
+            embedded_images_added += 1
+            report_progress(f"Image intégrée ajoutée à {place.name}", 1)
+
+    if download_remote_images:
+        remote_assignments: dict[str, list[tuple[Place, ParsedImage, int]]] = {}
         for place, images in image_assignments:
             for order, image in enumerate(images):
-                if image.source_type != "embedded" or image.payload is None:
-                    continue
+                if image.source_type == "remote_supported" and image.remote_url:
+                    remote_assignments.setdefault(image.remote_url, []).append((place, image, order))
+
+        remote_count = len(remote_assignments)
+        for remote_index, (remote_url, assignments) in enumerate(remote_assignments.items(), start=1):
+            report_progress(f"Téléchargement de l’image distante {remote_index}/{remote_count}")
+            try:
+                downloaded = download_remote_image(remote_url)
+            except RemoteImageError:
+                remote_images_unavailable += len(assignments)
+                import_warnings.append(
+                    f"Une image distante utilisée par {len(assignments)} POI n’a pas pu être téléchargée"
+                )
+                report_progress("Image distante indisponible", len(assignments))
+                continue
+
+            for assignment_index, (place, image, order) in enumerate(assignments):
+                downloaded_image = ParsedImage(
+                    internal_id=image.internal_id,
+                    original_name=image.original_name,
+                    mime_type=downloaded.mime_type,
+                    size=len(downloaded.payload),
+                    payload=downloaded.payload,
+                    source_type="remote_supported",
+                    host=image.host,
+                )
                 try:
                     _store_image(
                         database_session,
                         place,
-                        image,
+                        downloaded_image,
                         order,
                         stored_files,
+                        owner_id,
                         cached.user_id,
                     )
-                    embedded_images_added += 1
-                    report_progress(f"Image intégrée ajoutée à {place.name}", 1)
-                except (PhotoStorageError, OSError) as error:
-                    import_warnings.append(f"Image ignorée pour {place.name}: {error}")
-                    report_progress(f"Image ignorée pour {place.name}", 1)
-
-        if download_remote_images:
-            remote_assignments: dict[str, list[tuple[Place, ParsedImage, int]]] = {}
-            for place, images in image_assignments:
-                for order, image in enumerate(images):
-                    if image.source_type == "remote_supported" and image.remote_url:
-                        remote_assignments.setdefault(image.remote_url, []).append((place, image, order))
-
-            remote_count = len(remote_assignments)
-            for remote_index, (remote_url, assignments) in enumerate(remote_assignments.items(), start=1):
-                report_progress(f"Téléchargement de l’image distante {remote_index}/{remote_count}")
-                try:
-                    downloaded = download_remote_image(remote_url)
-                except RemoteImageError:
-                    remote_images_unavailable += len(assignments)
+                except (UnsupportedPhotoTypeError, PhotoTooLargeError):
+                    remaining = len(assignments) - assignment_index
+                    remote_images_unavailable += remaining
                     import_warnings.append(
-                        f"Une image distante utilisée par {len(assignments)} POI n’a pas pu être téléchargée"
+                        f"Une image distante utilisée par {remaining} POI n’a pas pu être validée"
                     )
-                    report_progress("Image distante indisponible", len(assignments))
-                    continue
-
-                for place, image, order in assignments:
-                    downloaded_image = ParsedImage(
-                        internal_id=image.internal_id,
-                        original_name=image.original_name,
-                        mime_type=downloaded.mime_type,
-                        size=len(downloaded.payload),
-                        payload=downloaded.payload,
-                        source_type="remote_supported",
-                        host=image.host,
-                    )
-                    try:
-                        _store_image(
-                            database_session,
-                            place,
-                            downloaded_image,
-                            order,
-                            stored_files,
-                            cached.user_id,
-                        )
-                        remote_images_added += 1
-                        report_progress(f"Image distante ajoutée à {place.name}", 1)
-                    except (PhotoStorageError, OSError) as error:
-                        remote_images_unavailable += 1
-                        import_warnings.append(f"Image distante ignorée pour {place.name}: {error}")
-                        report_progress(f"Image distante ignorée pour {place.name}", 1)
-        database_session.commit()
-    except Exception as error:
-        database_session.rollback()
-        for relative_path, place_id, photo_id in reversed(stored_files):
-            try:
-                delete_photo_file(relative_path, place_id, photo_id)
-            except PhotoStorageError:
-                pass
-        if isinstance(error, (SQLAlchemyError, PhotoStorageError, OSError, TypeError)):
-            raise HTTPException(status_code=500, detail="Unable to confirm the KMZ import") from error
-        raise
-
+                    report_progress("Image distante invalide", remaining)
+                    break
+                remote_images_added += 1
+                report_progress(f"Image distante ajoutée à {place.name}", 1)
     report_progress("Import terminé", progress_total - progress_completed)
+
     return KmzImportReport(
         created_count=len(created_ids),
         skipped_count=skipped_count,
@@ -445,12 +451,13 @@ def _store_image(
     image: ParsedImage,
     order: int,
     stored_files: list[tuple[str, UUID, UUID]],
+    quota_owner_id: UUID,
     uploaded_by_user_id: UUID,
 ) -> None:
     if image.payload is None:
         return
     photo_id = uuid4()
-    maximum, dimension = get_media_upload_policy(database_session, uploaded_by_user_id)
+    maximum, dimension = get_media_upload_policy(database_session, quota_owner_id)
     stored = store_photo_file(
         BytesIO(image.payload),
         image.mime_type,
@@ -460,10 +467,21 @@ def _store_image(
         max_dimension=dimension,
     )
     stored_files.append((stored.relative_path, place.id, photo_id))
+    register_rollback_cleanup(
+        database_session,
+        lambda: delete_photo_file(stored.relative_path, place.id, photo_id),
+    )
+    QuotaService(database_session).ensure_can_create(
+        quota_owner_id,
+        QuotaKey.STORAGE_BYTES_MAX,
+        increment=stored.file_size_bytes,
+    )
     database_session.add(
         Photo(
             id=photo_id,
             place_id=place.id,
+            map_id=place.map_id,
+            storage_scope_id=place.id,
             filename=stored.filename,
             original_name=image.original_name,
             path=stored.relative_path,

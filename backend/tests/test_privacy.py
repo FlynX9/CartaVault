@@ -3,9 +3,17 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from uuid import uuid4
+
+from sqlalchemy import select
 
 from app.auth.dependencies import get_current_session, require_admin
 from app.auth.models import AuthSecurityEvent, UserApiCredential, UserSession
+from app.annotations.models import AnnotationTemplate, PlaceAnnotation
+from app.places.models import Place, PlaceLink
+from app.photos.models import Photo
+from app.places.models import Place
+from app.trips.models import Trip, TripArrival, TripDay, TripDeparture, TripNight, TripNightPhoto, TripStop
 from app.main import app
 from app.privacy.router import _data_export
 from app.privacy.service import purge_expired_privacy_artifacts
@@ -81,6 +89,79 @@ def test_personal_export_excludes_credentials_and_media_binary_paths(database_se
     assert "password_hash" not in serialized
     assert "encrypted_secret" not in serialized
     assert "path" not in serialized
+
+
+def test_personal_export_keeps_night_photo_metadata_without_storage_paths(database_session, auth_user, poi_map):
+    trip = Trip(map_id=poi_map.id, created_by_user_id=auth_user.id, name="Photo portable")
+    database_session.add(trip); database_session.flush()
+    first = TripDay(trip_id=trip.id, day_number=1, sort_order=0)
+    second = TripDay(trip_id=trip.id, day_number=2, sort_order=1)
+    database_session.add_all([first, second]); database_session.flush()
+    night = TripNight(trip_id=trip.id, previous_day_id=first.id, next_day_id=second.id, name="Nuit portable", latitude=48, longitude=2)
+    database_session.add(night); database_session.flush()
+    photo = TripNightPhoto(night_id=night.id, file_path=f"{night.id}/{uuid4()}.jpg", mime_type="image/jpeg", file_size_bytes=123456, sort_order=0)
+    database_session.add(photo); database_session.flush()
+
+    export = _data_export(database_session, auth_user)
+
+    exported = next(item for item in export["trip_night_photos"] if item["id"] == photo.id)
+    assert exported == {
+        "id": photo.id,
+        "night_id": night.id,
+        "mime_type": "image/jpeg",
+        "file_size_bytes": 123456,
+        "sort_order": 0,
+        "created_at": photo.created_at,
+    }
+    assert "path" not in json.dumps(export, default=str)
+    assert all("path" not in item for item in export["media_metadata"])
+
+
+def test_personal_export_contains_place_coordinates_media_orphans_and_trip_children(database_session, auth_user, poi_map):
+    place = Place(name="Portable place", map_id=poi_map.id, status_id=poi_map.statuses[0].id, location="SRID=4326;POINT(2 48)")
+    database_session.add(place); database_session.flush()
+    database_session.add(PlaceLink(place_id=place.id, url="https://example.test", label="Site"))
+    orphan = Photo(map_id=poi_map.id, storage_scope_id=uuid4(), filename="orphan.jpg", original_name="orphan.jpg", mime_type="image/jpeg", file_size_bytes=12, uploaded_by_user_id=auth_user.id)
+    database_session.add(orphan)
+    trip = Trip(map_id=poi_map.id, created_by_user_id=auth_user.id, name="Portabilité", status="in_progress")
+    database_session.add(trip); database_session.flush()
+    first = TripDay(trip_id=trip.id, day_number=1, sort_order=0); second = TripDay(trip_id=trip.id, day_number=2, sort_order=1)
+    database_session.add_all([first, second]); database_session.flush()
+    database_session.add_all([
+        TripStop(trip_day_id=first.id, place_id=place.id, stop_type="place", name=place.name, latitude=48, longitude=2, sort_order=0),
+        TripNight(trip_id=trip.id, previous_day_id=first.id, next_day_id=second.id, name="Nuit", latitude=48, longitude=2),
+        TripDeparture(trip_id=trip.id, name="Départ", latitude=48, longitude=2),
+        TripArrival(trip_id=trip.id, name="Arrivée", latitude=48, longitude=2),
+        AnnotationTemplate(map_id=poi_map.id, name="Zone", shape_type="circle"),
+    ])
+    database_session.flush()
+    database_session.commit()
+
+    export = _data_export(database_session, auth_user)
+    exported_place = next(item for item in export["places"] if item["id"] == place.id)
+    assert exported_place["latitude"] == 48.0 and exported_place["longitude"] == 2.0
+    assert any(item["id"] == orphan.id for item in export["media_metadata"])
+    assert len(export["trip_days"]) == 2
+    assert len(export["trip_stops"]) == len(export["trip_nights"]) == len(export["trip_departures"]) == len(export["trip_arrivals"]) == 1
+    assert export["place_links"]
+    assert export["annotation_templates"]
+
+
+def test_personal_export_includes_owned_soft_deleted_data_but_no_security_secrets(database_session, auth_user, poi_map):
+    poi_map.deleted_at = datetime.now(UTC).replace(tzinfo=None)
+    place = Place(name="Deleted portable place", map_id=poi_map.id, status_id=poi_map.statuses[0].id, location="SRID=4326;POINT(2 48)")
+    database_session.add(place); database_session.flush()
+    place.deleted_at = datetime.now(UTC).replace(tzinfo=None)
+    database_session.commit()
+
+    export = _data_export(database_session, auth_user)
+    serialized = json.dumps(export, default=str)
+    assert any(item["id"] == poi_map.id for item in export["owned_maps"])
+    assert any(item["id"] == place.id for item in export["places"])
+    assert "password_hash" not in serialized
+    assert "totp_secret_encrypted" not in serialized
+    assert "token_hash" not in serialized
+    assert "csrf_token_hash" not in serialized
 
 
 def test_privacy_cleanup_removes_expired_security_artifacts_only(database_session, auth_user):

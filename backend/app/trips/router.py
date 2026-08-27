@@ -33,7 +33,7 @@ from app.trips.permissions import ensure_trip_structurally_mutable, require_arri
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RouteResult, RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripListRead, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripResizeConfirmationDetail, TripResizeImpact, TripResizeDayImpact, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, PhotoCleanupTarget, TripResizePlan, analyze_trip_resize, apply_day_route_result, apply_trip_resize, calculate_day_route, day_coordinates, day_last_stop_id, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, stale_route_and_following, resolve_constraint_country, synchronize_trip_dates
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, PhotoCleanupTarget, TripResizePlan, analyze_trip_resize, apply_day_route_result, apply_trip_resize, day_coordinates, day_last_stop_id, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, stale_route_and_following, resolve_constraint_country, synchronize_trip_dates
 from app.trips.optimization_store import OptimizationProposalUnavailable, optimization_proposal_store
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
@@ -515,7 +515,7 @@ def read_trip(trip_id: UUID, response: Response, session: Session = Depends(get_
 def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Atomically restore a previously read trip state for undo/redo."""
     access = require_trip_editor(session, trip_id, user)
-    trip = _lock_trip_for_mutation(session, access.trip.id)
+    trip = _lock_trip_resize_graph(session, access.trip.id)
     ensure_trip_structurally_mutable(trip)
     if data.id != trip.id or data.map_id != trip.map_id or data.created_by_user_id != trip.created_by_user_id:
         raise HTTPException(422, "A restored state must belong to the same trip")
@@ -556,25 +556,39 @@ def restore_trip_state(trip_id: UUID, data: TripRead, session: Session = Depends
     }
     locked_place_ids = set(session.scalars(
         select(Place.id)
-        .where(Place.id.in_(place_ids))
+        .where(Place.id.in_(place_ids), Place.deleted_at.is_(None), Place.map_id == trip.map_id)
         .order_by(Place.id)
         .with_for_update(read=True)
     )) if place_ids else set()
-    if locked_place_ids != place_ids or any(
-        map_id != trip.map_id
-        for map_id in session.scalars(
-            select(Place.map_id).where(Place.id.in_(place_ids)).order_by(Place.id)
-        )
-    ):
+    if locked_place_ids != place_ids:
         raise HTTPException(422, "A restored place must belong to the trip map")
 
     restored_night_ids = {night.id for night in data.nights}
+    current_photos = {
+        photo.id: (night.id, photo)
+        for night in trip.nights
+        for photo in night.photos
+    }
+    submitted_photo_nights = [
+        (photo.id, night.id)
+        for night in data.nights
+        for photo in night.photos
+    ]
+    submitted_photo_ids = [photo_id for photo_id, _ in submitted_photo_nights]
+    if len(submitted_photo_ids) != len(set(submitted_photo_ids)) or any(
+        photo_id not in current_photos or current_photos[photo_id][0] != night_id
+        for photo_id, night_id in submitted_photo_nights
+    ):
+        raise HTTPException(422, "A restored night photo must already belong to this trip and night")
+    if any(night.photos and night.id not in restored_night_ids for night in trip.nights):
+        raise HTTPException(422, "A restored state must retain nights that own photos")
     preserved_night_photos = [
         {
             "id": photo.id,
             "night_id": night.id,
             "file_path": photo.file_path,
             "mime_type": photo.mime_type,
+            "file_size_bytes": photo.file_size_bytes,
             "sort_order": photo.sort_order,
             "created_at": photo.created_at,
         }
@@ -1236,14 +1250,45 @@ def route_day(day_id: UUID, session: Session = Depends(get_db), user: User = Dep
     _, access = require_day_role(session, day_id, user, "editor")
     trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
     day = next(item for item in trip.days if item.id == day_id)
-    provider = provider or _routing_provider_for_trip(session, user, trip)
-    return DayRead.model_validate(calculate_day_route(session, day, provider, trip.routing_profile, _routing_constraints(trip)))
+    provider_override = provider
+    provider = provider_override or _routing_provider_for_trip(session, user, trip)
+    profile = trip.routing_profile
+    constraints = _routing_constraints(trip)
+    coordinates, labels = day_coordinates(day)
+    if len(coordinates) < 2:
+        raise HTTPException(422, "At least two route points are required")
+    fingerprint = _day_routing_fingerprint(day, provider, profile)
+    session.commit()
+
+    try:
+        result = provider.calculate_route(coordinates, profile)
+    except RoutingError as error:
+        raise _routing_failure(error) from error
+    actual_provider = str(getattr(provider, "last_provider_id", provider.provider_id))
+
+    session.refresh(user)
+    access = require_day_role(session, day_id, user, "editor")[1]
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    day = next(item for item in trip.days if item.id == day_id)
+    current_provider = provider_override or _routing_provider_for_trip(session, user, trip)
+    if fingerprint != _day_routing_fingerprint(day, current_provider, trip.routing_profile):
+        session.rollback()
+        raise _routing_inputs_changed()
+    apply_day_route_result(session, day, result, actual_provider, constraints, labels=labels, commit=True)
+    return DayRead.model_validate(day)
 
 
 def _routing_failure(error: RoutingError) -> HTTPException:
     status = 429 if error.code == "GOOGLE_ROUTING_RATE_LIMITED" else 503 if error.code == "ROUTING_PROVIDER_UNAVAILABLE" else 502
     headers = {"Retry-After": str(error.retry_after)} if error.retry_after else None
     return HTTPException(status, {"code": error.code, "message": str(error)}, headers=headers)
+
+
+def _routing_inputs_changed() -> HTTPException:
+    return HTTPException(409, {
+        "code": "TRIP_ROUTING_INPUTS_CHANGED",
+        "message": "La sortie a changé pendant le calcul. Relancez l’itinéraire.",
+    })
 
 
 def _route_payload(result: RouteResult) -> dict[str, object]:
@@ -1270,22 +1315,56 @@ def _current_route(day: TripDay, provider: RoutingProvider) -> RouteResult | Non
     return RouteResult(day.route_geometry, day.route_distance_meters, day.route_duration_seconds, day.route_segments)
 
 
-def _day_optimization_fingerprint(day: TripDay, provider: RoutingProvider, profile: str) -> str:
+def _day_routing_fingerprint(day: TripDay, provider: RoutingProvider, profile: str) -> str:
     coordinates, _ = day_coordinates(day)
     stops = sorted(day.stops, key=lambda item: item.sort_order)
     settings = getattr(provider, "settings", None)
     source = {
+        "trip_id": str(day.trip.id),
+        "map_id": str(day.trip.map_id),
         "day_id": str(day.id),
-        "provider": provider.provider_id,
+        "day_number": day.day_number,
+        "provider": _provider_routing_identity(provider),
         "profile": profile,
-        "routing_settings": {
-            key: getattr(settings, key, None)
-            for key in ("routing_preference", "avoid_tolls", "avoid_highways", "avoid_ferries")
+        "routing_options": {
+            "stay_in_country": day.trip.stay_in_country,
+            "avoid_tolls": day.trip.avoid_tolls,
+            "avoid_highways": day.trip.avoid_highways,
+            "avoid_ferries": day.trip.avoid_ferries,
+            "traffic_mode": day.trip.traffic_mode,
+            "provider_routing_preference": getattr(settings, "routing_preference", None),
         },
         "coordinates": coordinates,
-        "stops": [(str(stop.id), stop.sort_order, stop.is_locked) for stop in stops],
+        "stops": [(str(stop.id), stop.sort_order, stop.is_locked, stop.visit_duration_minutes) for stop in stops],
+        "timing": (day.default_stop_buffer_minutes, day.safety_margin_type, day.safety_margin_value),
+        "current_route": (
+            day.route_status, day.route_provider, day.route_geometry,
+            day.route_distance_meters, day.route_duration_seconds, day.route_segments,
+        ),
     }
     return sha256(repr(source).encode("utf-8")).hexdigest()
+
+
+def _provider_routing_identity(provider: RoutingProvider) -> tuple[object, ...]:
+    settings = getattr(provider, "settings", None)
+    nested = tuple(
+        _provider_routing_identity(item)
+        for item in (getattr(provider, "primary", None), getattr(provider, "secondary", None))
+        if isinstance(item, RoutingProvider)
+    )
+    return (
+        provider.provider_id,
+        getattr(provider, "language", None),
+        tuple(
+            (key, getattr(settings, key, None))
+            for key in ("routing_preference", "avoid_tolls", "avoid_highways", "avoid_ferries")
+        ),
+        nested,
+    )
+
+
+def _day_optimization_fingerprint(day: TripDay, provider: RoutingProvider, profile: str) -> str:
+    return _day_routing_fingerprint(day, provider, profile)
 
 
 def _optimization_metrics(day: TripDay, stops: list[TripStop], optimized_stops: list[TripStop], manual_route: RouteResult, optimized_route: RouteResult, options: OptimizeOptions) -> dict[str, object]:
@@ -1360,9 +1439,20 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
     _, access = require_day_role(session, day_id, user, "editor")
     trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
     day = next(item for item in trip.days if item.id == day_id)
-    provider = provider or _routing_provider_for_trip(session, user, trip)
+    provider_override = provider
+    provider = provider_override or _routing_provider_for_trip(session, user, trip)
+    fingerprint = _day_optimization_fingerprint(day, provider, trip.routing_profile)
+    session.commit()
     metrics, stored = _build_day_optimization(day, provider, options)
-    proposal_id = _store_optimization(session, user, access.trip, [stored])
+    session.refresh(user)
+    access = require_day_role(session, day_id, user, "editor")[1]
+    trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip)
+    day = next(item for item in trip.days if item.id == day_id)
+    current_provider = provider_override or _routing_provider_for_trip(session, user, trip)
+    if fingerprint != _day_optimization_fingerprint(day, current_provider, trip.routing_profile):
+        session.rollback()
+        raise _routing_inputs_changed()
+    proposal_id = _store_optimization(session, user, trip, [stored])
     return {**metrics, "proposal_id": proposal_id}
 
 
@@ -1370,13 +1460,27 @@ def optimize_day(day_id: UUID, options: OptimizeOptions, session: Session = Depe
 def optimize_trip(trip_id: UUID, options: OptimizeOptions, session: Session = Depends(get_db), user: User = Depends(get_current_user), provider: RoutingProvider | None = Depends(get_routing_provider)):
     require_trip_editor(session, trip_id, user)
     trip = _lock_trip_for_mutation(session, trip_id); ensure_trip_structurally_mutable(trip)
-    provider = provider or _routing_provider_for_trip(session, user, trip)
+    provider_override = provider
+    provider = provider_override or _routing_provider_for_trip(session, user, trip)
     optimizable = [day for day in sorted(trip.days, key=lambda item: item.sort_order) if len(day.stops) >= 2]
     if not optimizable:
         raise HTTPException(422, "At least one day with two stops is required for optimization")
+    fingerprints = {day.id: _day_optimization_fingerprint(day, provider, trip.routing_profile) for day in optimizable}
+    session.commit()
     # Intentionally sequential: this bounds Google concurrency and prevents a
     # single trip from producing a sudden billable burst.
     results = [_build_day_optimization(day, provider, options) for day in optimizable]
+    session.refresh(user)
+    require_trip_editor(session, trip_id, user)
+    trip = _lock_trip_for_mutation(session, trip_id); ensure_trip_structurally_mutable(trip)
+    current_provider = provider_override or _routing_provider_for_trip(session, user, trip)
+    current_days = [day for day in sorted(trip.days, key=lambda item: item.sort_order) if len(day.stops) >= 2]
+    if set(fingerprints) != {day.id for day in current_days} or any(
+        fingerprints[day.id] != _day_optimization_fingerprint(day, current_provider, trip.routing_profile)
+        for day in current_days
+    ):
+        session.rollback()
+        raise _routing_inputs_changed()
     proposal_id = _store_optimization(session, user, trip, [stored for _, stored in results])
     return {
         "proposal_id": proposal_id,

@@ -29,10 +29,11 @@ MAX_TOTAL_SIZE = 500 * 1024 * 1024
 
 def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: KmzExportOptions) -> tuple[TemporaryExport, KmzExportReport]:
     poi_map = session.get(PoiMap, map_id)
-    if poi_map is None:
+    if poi_map is None or poi_map.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Map not found")
-    total = session.scalar(select(func.count()).select_from(Place).where(Place.map_id == map_id)) or 0
-    statement = select(Place).where(Place.map_id == map_id).options(selectinload(Place.categories), selectinload(Place.tags), selectinload(Place.photos), selectinload(Place.status), selectinload(Place.links))
+    active_places = (Place.map_id == map_id, Place.deleted_at.is_(None))
+    total = session.scalar(select(func.count()).select_from(Place).where(*active_places)) or 0
+    statement = select(Place).where(*active_places).options(selectinload(Place.categories), selectinload(Place.tags), selectinload(Place.photos), selectinload(Place.status), selectinload(Place.links))
     if options.category_ids:
         statement = statement.where(Place.categories.any(Place.categories.property.mapper.class_.id.in_(options.category_ids)))
     if options.status_ids:

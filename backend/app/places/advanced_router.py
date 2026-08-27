@@ -11,6 +11,7 @@ from app.auth.models import User
 from app.auth.permissions import require_map_role, require_place_role
 from app.database import get_db
 from app.places.history import add_place_history
+from app.trash.service import lock_and_ensure_restore_capacity, permanently_delete_place as purge_place
 from app.places.models import Place, PlaceHistory, PlaceLink
 from app.places.router import build_place_read_statement, get_primary_category_keys, place_to_read
 from app.places.schemas import PlaceHistoryPage, PlaceHistoryRead, PlaceLinkCreate, PlaceLinkRead, PlaceLinksReplace, PlaceLinkUpdate, PlaceRead
@@ -58,6 +59,7 @@ def restore_place(place_id: UUID, database_session: Session = Depends(get_db), c
     place = require_place_role(database_session, place_id, current_user, "editor", include_deleted=True)
     if place.deleted_at is None:
         raise HTTPException(status_code=409, detail="The place is not in the trash")
+    place = lock_and_ensure_restore_capacity(database_session, place)
     place.deleted_at = None
     place.deleted_by_user_id = None
     place.purge_after = None
@@ -80,8 +82,7 @@ def permanently_delete_place(place_id: UUID, database_session: Session = Depends
         raise HTTPException(status_code=409, detail="Move the place to the trash before permanent deletion")
     if place.trip_stops or place.trip_nights:
         raise HTTPException(status_code=409, detail="Remove this place from every trip before permanent deletion")
-    database_session.delete(place)
-    database_session.commit()
+    purge_place(database_session, place.id)
     return Response(status_code=204)
 
 

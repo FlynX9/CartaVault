@@ -91,14 +91,14 @@ jobs:
       - name: Apply and verify Alembic migrations
         working-directory: backend
         run: |
-          python -m alembic upgrade heads
+          python -m alembic upgrade head
           python -m alembic heads
           python -m alembic current
           python -m alembic check
 
       - name: Prepare the isolated pytest database
         working-directory: backend
-        run: DATABASE_URL="${TEST_DATABASE_URL}" python -m alembic upgrade heads
+        run: DATABASE_URL="${TEST_DATABASE_URL}" python -m alembic upgrade head
 
       - name: Run backend tests
         working-directory: backend

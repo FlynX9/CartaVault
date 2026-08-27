@@ -122,12 +122,12 @@ describe('TripPlannerPanel', () => {
 
     const { container } = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={twoDays} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const emptyStatuses = await screen.findAllByText('Vide')
+    const emptyStatuses = await screen.findAllByLabelText(/invalide$/)
     expect(emptyStatuses).toHaveLength(5)
-    emptyStatuses.forEach((status) => expect(status.closest('.trip-timeline-status')).toHaveClass('trip-timeline-status--empty'))
-    emptyStatuses.forEach((status) => expect(status.closest('.trip-timeline-status')?.querySelector('.lucide-circle-alert')).toBeInTheDocument())
-    expect(within(container.querySelector('.trip-panel-departure') as HTMLElement).getByText('Vide')).toBeVisible()
-    expect(within(container.querySelector('.trip-panel-arrival') as HTMLElement).getByText('Vide')).toBeVisible()
+    emptyStatuses.forEach((status) => expect(status).toHaveClass('trip-timeline-status--empty'))
+    emptyStatuses.forEach((status) => expect(status.querySelector('.lucide-x')).toBeInTheDocument())
+    expect(within(container.querySelector('.trip-panel-departure') as HTMLElement).getByLabelText('Départ invalide')).toBeVisible()
+    expect(within(container.querySelector('.trip-panel-arrival') as HTMLElement).getByLabelText('Arrivée invalide')).toBeVisible()
   })
 
   it('reorders days by drag and drop while keeping the following night in the same block', async () => {
@@ -213,7 +213,7 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'ready', has_current_route: true })
 
     const rendered = render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={readyTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
-    const validStatus = (await screen.findByText('Valide')).closest('.trip-timeline-status')
+    const validStatus = await screen.findByLabelText('Journée valide')
     expect(validStatus).toHaveClass('trip-timeline-status--valid')
     expect(validStatus?.querySelector('.lucide-badge-check')).toBeInTheDocument()
 
@@ -224,9 +224,9 @@ describe('TripPlannerPanel', () => {
     vi.mocked(getTripDaySummary).mockResolvedValue({ ...emptyDaySummary, stops: 1, route_status: 'stale', route_is_stale: true })
     render(<TripPlannerPanel poiMap={{ id: 'map-1', can_edit: true } as never} trip={staleTrip} activeDayId="day-1" onTripChange={vi.fn()} onActiveDayChange={vi.fn()} onClose={vi.fn()} />)
 
-    const pendingStatus = (await screen.findByText('Non calculé')).closest('.trip-timeline-status')
+    const pendingStatus = await screen.findByLabelText('Journée invalide')
     expect(pendingStatus).toHaveClass('trip-timeline-status--pending')
-    expect(pendingStatus?.querySelector('.lucide-calculator')).toBeInTheDocument()
+    expect(pendingStatus?.querySelector('.lucide-x')).toBeInTheDocument()
   })
 
   it('organizes the workspace into summary, settings and journeys without lifecycle actions', async () => {
@@ -1206,16 +1206,27 @@ describe('TripPlannerPanel', () => {
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('184,3 km')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('3 h 42')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('9 h 12')
+    expect(within(screen.getByLabelText('Résumé de la journée')).getByLabelText('Charge modérée')).toBeVisible()
+    expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Charge du jour')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Modérée')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Distance')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Route')
     expect(screen.getByLabelText('Résumé de la journée')).toHaveTextContent('Total')
-    expect(screen.getByLabelText('Résumé de la journée').querySelector('.trip-timeline-status')).toBeInTheDocument()
+    expect(screen.getByLabelText('Résumé de la journée').querySelector('.trip-timeline-status')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Chiffres clés du voyage').querySelector('.lucide-road')).toBeInTheDocument()
     expect(screen.getByLabelText('Résumé de la journée').querySelector('.lucide-road')).toBeInTheDocument()
-    expect(screen.getByLabelText('Résumé de la journée').querySelector('.lucide-gauge')).toBeInTheDocument()
+    expect(screen.getByLabelText('Résumé de la journée').querySelectorAll('.trip-day-load-segments > .is-active')).toHaveLength(2)
     expect(screen.getByLabelText('Résumé de la journée').closest('summary')?.querySelector('.trip-panel-day-actions .lucide-eye')).not.toBeInTheDocument()
-    expect(screen.getByText('Valide').closest('.trip-panel-day')).not.toBeNull()
+    expect(screen.getByLabelText('Journée valide').closest('.trip-timeline-day-block')).not.toBeNull()
+    expect(
+      Array.from(screen.getByLabelText('Résumé de la journée').querySelectorAll(':scope > span')).map((cell) => cell.className),
+    ).toEqual([
+      'trip-day-header-metric',
+      'trip-day-header-metric',
+      'trip-day-header-metric',
+      'trip-day-header-status',
+      'trip-day-header-load',
+    ])
     expect(screen.queryByText('Bilan de la journée')).not.toBeInTheDocument()
   })
 
@@ -1410,17 +1421,20 @@ describe('TripPlannerPanel', () => {
     const departureHeader = container.querySelector('.trip-panel-departure .trip-night-header-row') as HTMLElement
     const departureMetrics = departureHeader.querySelector('.trip-anchor-header-metrics')
     expect(departureMetrics?.children[0]).toBe(within(departureHeader).getByLabelText('Départ recommandé : 07:10'))
-    expect(departureMetrics?.children[3]).toContainElement(within(departureHeader).getByText('Valide').closest('.trip-timeline-status'))
+    expect(departureMetrics?.children[3]).toBeEmptyDOMElement()
     const nightHeader = (await screen.findByText('Nuit 1')).closest('.trip-night-header-row') as HTMLElement
     const nightMetrics = nightHeader.querySelector('.trip-night-header-metrics')
     const recommendedDeparture = within(nightHeader).getByLabelText('Départ recommandé : 08:25')
     expect(recommendedDeparture).toHaveClass('trip-day-header-metric', 'trip-night-recommended')
     expect(nightMetrics?.children[0]).toBe(recommendedDeparture)
-    expect(nightMetrics?.children[3]).toContainElement(within(nightHeader).getByText('Valide').closest('.trip-timeline-status'))
+    expect(nightMetrics?.children[3]).toBeEmptyDOMElement()
     const arrivalHeader = container.querySelector('.trip-panel-arrival .trip-night-header-row') as HTMLElement
     const arrivalMetrics = arrivalHeader.querySelector('.trip-anchor-header-metrics')
     expect(arrivalMetrics?.children[0]).toBe(within(arrivalHeader).getByLabelText('Arrivée estimée : 18:40'))
-    expect(arrivalMetrics?.children[3]).toContainElement(within(arrivalHeader).getByText('Valide').closest('.trip-timeline-status'))
+    expect(arrivalMetrics?.children[3]).toBeEmptyDOMElement()
+    expect(container.querySelector('.trip-timeline-anchor-badge [aria-label="Départ valide"]')).toBeVisible()
+    expect(container.querySelector('.trip-timeline-night-badge [aria-label="Nuit valide"]')).toBeVisible()
+    expect(container.querySelector('.trip-timeline-arrival-badge [aria-label="Arrivée valide"]')).toBeVisible()
 
     fireEvent.click(arrivalHeader)
     fireEvent.click(screen.getByRole('button', { name: 'Supprimer le point d’arrivée' }))

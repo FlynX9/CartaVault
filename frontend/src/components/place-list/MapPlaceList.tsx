@@ -17,7 +17,7 @@ import { CategoryIconPreview } from "../icons/CategoryIconPreview";
 import { withMap } from "../../utils/map";
 import { recordReversibleAction } from "../../ui/actionHistory";
 import { MapMarkerFilterContext } from "../map/mapMarkerFilterContext";
-import { KmzImportDialog } from "../imports/KmzImportDialog";
+import { openKmzImport } from "../imports/KmzImportHost";
 import { useConfirmDialog } from "../common/useConfirmDialog";
 import { useI18n } from "../../i18n/useI18n";
 import { getTagColorStyle } from "../../tags/tagColors";
@@ -107,7 +107,7 @@ const formatRating = (place: PlaceDetails) => {
   return rating == null ? null : rating.toFixed(1);
 };
 
-export function MapPlaceList({ context = null, poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onImported = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, tripPlaceDropEnabled = false, hideCreateAction = false, tripTargets = [], onAddToTripTarget, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
+export function MapPlaceList({ context = null, poiMap, statuses = [], filters = DEFAULT_PLACE_FILTERS, selectedPlaceId, refreshVersion, removedPlaceId, onFiltersChange = () => undefined, onPlaceSelect, onPlaceCollapse = () => undefined, onPlaceDeleted = () => undefined, collapsed = false, onCollapsedChange = () => undefined, onBulkChanged = () => undefined, onBulkTripChanged = () => undefined, tripPlaceDropEnabled = false, hideCreateAction = false, tripTargets = [], onAddToTripTarget, importRequest = 0, selectionMode: controlledSelectionMode, selectedPlaceIds: controlledSelectedIds, onSelectionModeChange, onSelectedPlaceIdsChange }: Props) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { confirm, confirmationDialog } = useConfirmDialog();
@@ -139,7 +139,6 @@ export function MapPlaceList({ context = null, poiMap, statuses = [], filters = 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [tripId, setTripId] = useState("");
   const [dayId, setDayId] = useState("");
-  const [importing, setImporting] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(max-width: 760px)").matches);
   const effectiveCollapsed = isMobileViewport ? collapsed : panelWindow ? panelWindow.mode === "collapsed" : collapsed;
   const [displayMode, setDisplayMode] = useState<"expanded" | "gallery">("expanded");
@@ -173,7 +172,6 @@ export function MapPlaceList({ context = null, poiMap, statuses = [], filters = 
   const { setFilter: setMarkerFilter } = useContext(MapMarkerFilterContext);
   const isTripContext = context?.mode === "trip";
   const canManageCatalog = !isTripContext;
-  const canImportKmz = poiMap?.can_import !== false && !isMobileViewport;
   const selectionMode = controlledSelectionMode ?? internalSelectionMode;
   const selectedIds = controlledSelectedIds ?? internalSelectedIds;
   const replaceSelectedIds = useCallback(
@@ -206,10 +204,7 @@ export function MapPlaceList({ context = null, poiMap, statuses = [], filters = 
     return () => mediaQuery.removeEventListener("change", updateViewport);
   }, []);
   useEffect(() => {
-    if (isMobileViewport) setImporting(false);
-  }, [isMobileViewport]);
-  useEffect(() => {
-    if (importRequest > 0 && poiMap?.can_import !== false && !isMobileViewport) setImporting(true);
+    if (importRequest > 0 && poiMap && poiMap.can_import !== false && !isMobileViewport) openKmzImport(poiMap);
   }, [importRequest, isMobileViewport, poiMap]);
   useEffect(() => {
     selectionController.current?.abort();
@@ -1299,7 +1294,6 @@ export function MapPlaceList({ context = null, poiMap, statuses = [], filters = 
           </button>
         )}
       </div>
-      {canImportKmz && importing && poiMap && <KmzImportDialog poiMap={poiMap} onClose={() => setImporting(false)} onImported={onImported} />}
       {confirmationDialog}
     </aside>
   );

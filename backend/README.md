@@ -66,10 +66,10 @@ An inaccessible private resource returns `404` to avoid revealing its existence;
 ## First administrator and upgrade sequence
 
 Alembic is the sole application-schema source. A clean database is upgraded
-directly to all heads:
+directly to the repository head:
 
 ```powershell
-python -m alembic upgrade heads
+python -m alembic upgrade head
 python -m app.cli create-admin
 ```
 
@@ -150,7 +150,7 @@ Copy-Item .env.example .env
 ```
 
 Configure `DATABASE_URL` in `backend/.env`, run `python -m alembic upgrade
-heads`, then create the first administrator when installing a fresh local
+head`, then create the first administrator when installing a fresh local
 instance.
 
 ## Environment variables

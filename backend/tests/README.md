@@ -84,7 +84,7 @@ The suite requires PostgreSQL, verifies PostGIS, requires a database name contai
 ## Integration schema preparation
 
 The first Alembic migration creates the historical base schema, so `alembic
-upgrade heads` can build a clean database without an external SQL snapshot.
+upgrade head` can build a clean database without an external SQL snapshot.
 `test_fresh_database_deployment.py` validates this in an isolated schema inside
 the guarded `cartavault_test` database and verifies idempotent administrator
 bootstrap. For the rest of the suite, the session fixture:

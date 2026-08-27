@@ -1,9 +1,11 @@
 import inspect
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
+from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
 from app.auth.models import User
@@ -12,6 +14,7 @@ from app.main import app
 from app.exports import temporary_exports
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place
+from app.quotas.service import QuotaService
 from app.trips.models import Trip, TripDay, TripDeparture, TripNight, TripNightPhoto, TripStop
 from app.trips.router import add_stop, get_routing_provider
 from app.trips.routing.base import MatrixResult, RouteResult, RoutingProvider, WaypointOptimizationResult
@@ -29,6 +32,25 @@ class StubRoutingProvider(RoutingProvider):
     def calculate_matrix(self, coordinates, profile="driving"):
         size = len(coordinates); values = [[0 if source == target else abs(source - target) * 10 for target in range(size)] for source in range(size)]
         return MatrixResult(values, values)
+
+
+class CallbackRoutingProvider(StubRoutingProvider):
+    def __init__(self, callback):
+        self.callback = callback
+        self.called = False
+
+    def _callback(self):
+        if not self.called:
+            self.called = True
+            self.callback()
+
+    def calculate_route(self, coordinates, profile="driving"):
+        self._callback()
+        return super().calculate_route(coordinates, profile)
+
+    def calculate_matrix(self, coordinates, profile="driving"):
+        self._callback()
+        return super().calculate_matrix(coordinates, profile)
 
 
 class StubGoogleRoutingProvider(StubRoutingProvider):
@@ -558,6 +580,205 @@ def test_trip_state_can_restore_deleted_days_stops_and_nights(integration_client
     assert payload["nights"][0]["id"] == night["id"]
 
 
+def test_trip_state_restore_preserves_night_photo_accounting_metadata(integration_client, database_session, photo_storage, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Photo comptable"}).json()
+    first = trip["days"][0]
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    night = integration_client.post(f"/trips/{trip['id']}/nights", json={"previous_day_id": first["id"], "next_day_id": second["id"], "name": "Hôtel", "latitude": 48.2, "longitude": 2.2}).json()
+    uploaded = integration_client.post(f"/trip-nights/{night['id']}/photos", files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")}).json()
+    photo_id = uploaded["photos"][0]["id"]
+    photo = database_session.get(TripNightPhoto, photo_id)
+    assert photo is not None
+    photo.file_size_bytes = 123456
+    database_session.commit()
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+
+    restored = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+
+    assert restored.status_code == 200, restored.text
+    restored_photo = database_session.get(TripNightPhoto, photo_id)
+    assert restored_photo is not None
+    assert restored_photo.file_size_bytes == 123456
+    assert restored_photo.file_path
+    assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{photo_id}").status_code == 200
+
+
+def test_trip_state_restore_uses_server_night_photo_metadata_and_preserves_storage_quota(
+    integration_client, database_session, photo_storage, poi_map, auth_user, monkeypatch
+) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Autorité photo"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    night = integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={"previous_day_id": trip["days"][0]["id"], "next_day_id": second["id"], "name": "Nuit autoritaire", "latitude": 48.2, "longitude": 2.2},
+    ).json()
+    uploaded = integration_client.post(
+        f"/trip-nights/{night['id']}/photos",
+        files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
+    ).json()
+    photo_id = uploaded["photos"][0]["id"]
+    photo = database_session.get(TripNightPhoto, photo_id)
+    photo.file_size_bytes = 123456
+    database_session.commit()
+    real_path = photo.file_path
+    real_mime_type = photo.mime_type
+    storage_before = QuotaService(database_session).storage_usage(auth_user.id)
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+    snapshot_photo = snapshot["nights"][0]["photos"][0]
+    snapshot_photo.update(file_path="fake/path.jpg", mime_type="image/png", file_size_bytes=1)
+
+    def unexpected_storage_io(*_args, **_kwargs):
+        raise AssertionError("Trip state restore must not access storage")
+
+    with monkeypatch.context() as no_storage:
+        no_storage.setattr("app.trips.router.resolve_photo_file", unexpected_storage_io)
+        no_storage.setattr("app.trips.router.store_photo_file", unexpected_storage_io)
+        no_storage.setattr("app.trips.router.delete_photo_file", unexpected_storage_io)
+        restored = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+
+    assert restored.status_code == 200, restored.text
+    database_session.expire_all()
+    restored_photo = database_session.get(TripNightPhoto, photo_id)
+    assert restored_photo.file_path == real_path
+    assert restored_photo.mime_type == real_mime_type
+    assert restored_photo.file_size_bytes == 123456
+    assert QuotaService(database_session).storage_usage(auth_user.id) == storage_before
+    public_photo = restored.json()["nights"][0]["photos"][0]
+    assert {"file_path", "mime_type", "file_size_bytes"}.isdisjoint(public_photo)
+    assert (photo_storage / real_path).is_file()
+    assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{photo_id}").status_code == 200
+
+
+def test_trip_state_restore_preserves_existing_photo_omitted_from_snapshot(
+    integration_client, database_session, photo_storage, poi_map
+) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Photo omise"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    night = integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={"previous_day_id": trip["days"][0]["id"], "next_day_id": second["id"], "name": "Nuit conservée", "latitude": 48.2, "longitude": 2.2},
+    ).json()
+    uploaded = integration_client.post(
+        f"/trip-nights/{night['id']}/photos",
+        files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
+    ).json()
+    photo_id = uploaded["photos"][0]["id"]
+    photo = database_session.get(TripNightPhoto, photo_id)
+    physical_path = photo_storage / photo.file_path
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+    snapshot["nights"][0]["photos"] = []
+
+    restored = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+
+    assert restored.status_code == 200, restored.text
+    assert database_session.get(TripNightPhoto, photo_id) is not None
+    assert physical_path.is_file()
+    assert [item["id"] for item in restored.json()["nights"][0]["photos"]] == [photo_id]
+    assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{photo_id}").status_code == 200
+
+
+def test_trip_state_restore_rejects_omitted_night_that_owns_a_photo(
+    integration_client, database_session, photo_storage, poi_map
+) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Nuit omise"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    night = integration_client.post(
+        f"/trips/{trip['id']}/nights",
+        json={"previous_day_id": trip["days"][0]["id"], "next_day_id": second["id"], "name": "Nuit protégée", "latitude": 48.2, "longitude": 2.2},
+    ).json()
+    uploaded = integration_client.post(
+        f"/trip-nights/{night['id']}/photos",
+        files={"file": ("hotel.jpg", JPEG_BYTES, "image/jpeg")},
+    ).json()
+    photo_id = uploaded["photos"][0]["id"]
+    photo = database_session.get(TripNightPhoto, photo_id)
+    physical_path = photo_storage / photo.file_path
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+    snapshot["nights"] = []
+    before = integration_client.get(f"/trips/{trip['id']}").json()
+
+    response = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+
+    assert response.status_code == 422
+    assert integration_client.get(f"/trips/{trip['id']}").json() == before
+    assert database_session.get(TripNightPhoto, photo_id) is not None
+    assert physical_path.is_file()
+    assert integration_client.delete(f"/trip-nights/{night['id']}/photos/{photo_id}").status_code == 200
+
+
+def test_trip_state_restore_rejects_cross_trip_photo_before_mutation(
+    integration_client, database_session, photo_storage, poi_map
+) -> None:
+    first_trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Trip protégé"}).json()
+    first_second = integration_client.post(f"/trips/{first_trip['id']}/days", json={}).json()
+    first_night = integration_client.post(
+        f"/trips/{first_trip['id']}/nights",
+        json={"previous_day_id": first_trip["days"][0]["id"], "next_day_id": first_second["id"], "name": "Nuit protégée", "latitude": 48.2, "longitude": 2.2},
+    ).json()
+    first_upload = integration_client.post(
+        f"/trip-nights/{first_night['id']}/photos",
+        files={"file": ("first.jpg", JPEG_BYTES, "image/jpeg")},
+    ).json()
+    second_trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Trip source"}).json()
+    second_day = integration_client.post(f"/trips/{second_trip['id']}/days", json={}).json()
+    second_night = integration_client.post(
+        f"/trips/{second_trip['id']}/nights",
+        json={"previous_day_id": second_trip["days"][0]["id"], "next_day_id": second_day["id"], "name": "Nuit source", "latitude": 48.3, "longitude": 2.3},
+    ).json()
+    second_upload = integration_client.post(
+        f"/trip-nights/{second_night['id']}/photos",
+        files={"file": ("second.jpg", SECOND_JPEG_BYTES, "image/jpeg")},
+    ).json()
+    first_photo_id = first_upload["photos"][0]["id"]
+    second_photo = second_upload["photos"][0]
+    first_path = photo_storage / database_session.get(TripNightPhoto, first_photo_id).file_path
+    second_path = photo_storage / database_session.get(TripNightPhoto, second_photo["id"]).file_path
+    snapshot = integration_client.get(f"/trips/{first_trip['id']}").json()
+    snapshot["nights"][0]["photos"].append({**second_photo, "sort_order": 1})
+    before = integration_client.get(f"/trips/{first_trip['id']}").json()
+
+    response = integration_client.put(f"/trips/{first_trip['id']}/state", json=snapshot)
+
+    assert response.status_code == 422
+    after = integration_client.get(f"/trips/{first_trip['id']}").json()
+    assert after == before
+    assert database_session.get(TripNightPhoto, first_photo_id) is not None
+    assert database_session.get(TripNightPhoto, second_photo["id"]) is not None
+    assert first_path.is_file() and second_path.is_file()
+    assert integration_client.delete(f"/trip-nights/{first_night['id']}/photos/{first_photo_id}").status_code == 200
+    assert integration_client.delete(f"/trip-nights/{second_night['id']}/photos/{second_photo['id']}").status_code == 200
+
+
+def test_trip_state_restore_rejects_deleted_place_before_mutating_trip(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Place supprimé"}).json()
+    day = trip["days"][0]
+    place = integration_client.post("/places", json={"name": "Historique", "map_id": str(poi_map.id), "latitude": 48.1, "longitude": 2.1}).json()
+    stop = integration_client.post(f"/trip-days/{day['id']}/stops", json={"place_id": place["id"]}).json()
+    snapshot = integration_client.get(f"/trips/{trip['id']}").json()
+    database_session.get(Place, place["id"]).deleted_at = datetime.now(UTC).replace(tzinfo=None)
+    database_session.commit()
+
+    response = integration_client.put(f"/trips/{trip['id']}/state", json=snapshot)
+
+    assert response.status_code == 422
+    unchanged = integration_client.get(f"/trips/{trip['id']}").json()
+    assert unchanged["days"][0]["stops"][0]["id"] == stop["id"]
+
+
+def test_trip_reference_writers_reject_deleted_place(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Référence corbeille"}).json()
+    second = integration_client.post(f"/trips/{trip['id']}/days", json={}).json()
+    place = integration_client.post("/places", json={"name": "Corbeille", "map_id": str(poi_map.id), "latitude": 48.1, "longitude": 2.1}).json()
+    database_session.get(Place, place["id"]).deleted_at = datetime.now(UTC).replace(tzinfo=None)
+    database_session.commit()
+
+    assert integration_client.post(f"/trip-days/{trip['days'][0]['id']}/stops", json={"place_id": place["id"]}).status_code == 422
+    assert integration_client.post("/places/bulk/add-to-trip", json={"place_ids": [place["id"]], "trip_id": trip["id"], "day_id": trip["days"][0]["id"]}).status_code == 404
+    assert integration_client.post(f"/trips/{trip['id']}/nights", json={"previous_day_id": trip["days"][0]["id"], "next_day_id": second["id"], "place_id": place["id"]}).status_code == 422
+    assert integration_client.post(f"/trips/{trip['id']}/departure", json={"place_id": place["id"]}).status_code == 422
+    assert integration_client.post(f"/trips/{trip['id']}/arrival", json={"place_id": place["id"]}).status_code == 422
+
+
 def test_trip_rejects_place_from_another_map(integration_client, database_session, poi_map, auth_user, france_country) -> None:
     from app.statuses.service import create_default_statuses
 
@@ -836,6 +1057,146 @@ def test_google_provider_is_persisted_and_failed_recalculation_keeps_previous_ro
     current = integration_client.get(f"/trips/{trip['id']}").json()["days"][0]
     assert current["route_provider"] == "google"
     assert current["route_geometry"] == previous_geometry
+
+
+def test_route_rejects_result_when_stop_changes_during_provider_call(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Route concurrente"}).json()
+    day = trip["days"][0]
+    stops = [integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index}).json() for index in range(2)]
+
+    def move_stop() -> None:
+        with Session(database_session.bind) as concurrent:
+            concurrent.execute(update(TripStop).where(TripStop.id == stops[1]["id"]).values(longitude=9.0, latitude=50.0, updated_at=datetime.now(UTC).replace(tzinfo=None)))
+            concurrent.commit()
+
+    app.dependency_overrides[get_routing_provider] = lambda: CallbackRoutingProvider(move_stop)
+    try:
+        response = integration_client.post(f"/trip-days/{day['id']}/route", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert response.status_code == 409
+    current = integration_client.get(f"/trips/{trip['id']}").json()["days"][0]
+    assert current["route_status"] != "ready"
+    assert current["route_geometry"] is None
+
+
+def test_route_accepts_documentary_change_during_provider_call(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Documentaire concurrent"}).json()
+    day = trip["days"][0]
+    for index in range(2):
+        integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index})
+
+    def update_description() -> None:
+        with Session(database_session.bind) as concurrent:
+            concurrent.execute(update(Trip).where(Trip.id == trip["id"]).values(description="Carnet concurrent"))
+            concurrent.commit()
+
+    app.dependency_overrides[get_routing_provider] = lambda: CallbackRoutingProvider(update_description)
+    try:
+        response = integration_client.post(f"/trip-days/{day['id']}/route", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert response.status_code == 200, response.text
+    assert integration_client.get(f"/trips/{trip['id']}").json()["description"] == "Carnet concurrent"
+
+
+def test_route_rejects_routing_option_change_during_provider_call(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Options concurrentes"}).json()
+    day = trip["days"][0]
+    for index in range(2):
+        integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index})
+
+    def update_options() -> None:
+        with Session(database_session.bind) as concurrent:
+            concurrent.execute(update(Trip).where(Trip.id == trip["id"]).values(avoid_tolls=True))
+            concurrent.commit()
+
+    app.dependency_overrides[get_routing_provider] = lambda: CallbackRoutingProvider(update_options)
+    try:
+        response = integration_client.post(f"/trip-days/{day['id']}/route", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "TRIP_ROUTING_INPUTS_CHANGED"
+
+
+def test_route_revalidates_editor_access_after_provider_call(integration_client, database_session, poi_map, auth_user) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "ACL concurrente"}).json()
+    day = trip["days"][0]
+    for index in range(2):
+        integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index})
+
+    def remove_access() -> None:
+        with Session(database_session.bind) as concurrent:
+            concurrent.execute(delete(MapMembership).where(MapMembership.map_id == poi_map.id, MapMembership.user_id == auth_user.id))
+            concurrent.commit()
+
+    app.dependency_overrides[get_routing_provider] = lambda: CallbackRoutingProvider(remove_access)
+    try:
+        response = integration_client.post(f"/trip-days/{day['id']}/route", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert response.status_code == 404
+    assert database_session.get(TripDay, day["id"]).route_geometry is None
+
+
+def test_provider_failure_does_not_overwrite_concurrently_staled_route(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Échec concurrent"}).json()
+    day = trip["days"][0]
+    stops = [integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index}).json() for index in range(2)]
+    app.dependency_overrides[get_routing_provider] = lambda: StubRoutingProvider()
+    try:
+        initial = integration_client.post(f"/trip-days/{day['id']}/route", json={}).json()
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    class ConcurrentFailingProvider(CallbackRoutingProvider):
+        def calculate_route(self, coordinates, profile="driving"):
+            from app.trips.routing.base import RoutingError
+            self._callback()
+            raise RoutingError("Provider timeout", "ROUTING_PROVIDER_TIMEOUT")
+
+    def stale_route() -> None:
+        with Session(database_session.bind) as concurrent:
+            concurrent.execute(update(TripStop).where(TripStop.id == stops[1]["id"]).values(longitude=9.0))
+            concurrent.execute(update(TripDay).where(TripDay.id == day["id"]).values(route_status="stale"))
+            concurrent.commit()
+
+    app.dependency_overrides[get_routing_provider] = lambda: ConcurrentFailingProvider(stale_route)
+    try:
+        response = integration_client.post(f"/trip-days/{day['id']}/route/recalculate", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert response.status_code == 502
+    current = integration_client.get(f"/trips/{trip['id']}").json()["days"][0]
+    assert current["route_status"] == "stale"
+    assert current["route_geometry"] == initial["route_geometry"]
+
+
+def test_optimization_rejects_inputs_changed_during_provider_call(integration_client, database_session, poi_map) -> None:
+    trip = integration_client.post(f"/maps/{poi_map.id}/trips", json={"name": "Optimisation concurrente"}).json()
+    day = trip["days"][0]
+    for index in range(3):
+        integration_client.post(f"/trip-days/{day['id']}/stops", json={"stop_type": "free_location", "name": f"Point {index}", "latitude": 48 + index, "longitude": 2 + index})
+
+    def add_stop() -> None:
+        with Session(database_session.bind) as concurrent:
+            concurrent.add(TripStop(trip_day_id=day["id"], stop_type="free_location", name="Ajout concurrent", latitude=50, longitude=5, sort_order=3))
+            concurrent.commit()
+
+    app.dependency_overrides[get_routing_provider] = lambda: CallbackRoutingProvider(add_stop)
+    try:
+        response = integration_client.post(f"/trip-days/{day['id']}/optimize", json={})
+    finally:
+        app.dependency_overrides.pop(get_routing_provider, None)
+
+    assert response.status_code == 409
+    assert len(integration_client.get(f"/trips/{trip['id']}").json()["days"][0]["stops"]) == 4
 
 
 def test_trip_time_planning_settings_summaries_and_permissions(integration_client, database_session, poi_map, auth_user) -> None:

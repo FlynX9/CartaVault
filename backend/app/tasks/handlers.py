@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from app.auth.models import User
 from app.auth.permissions import require_map_role
 from app.imports.schemas import KmzConfirmRequest
-from app.imports.service import confirm_import, get_cached_import, remove_cached_import
+from app.imports.service import cleanup_cached_import_file, confirm_import, get_cached_import, remove_cached_import
 from app.tasks.models import BackgroundTask
-from app.tasks.registry import ProgressCallback, task_handler
+from app.tasks.registry import ProgressCallback, TaskHandlerResult, task_handler
 from app.trips.models import Trip
 from app.trips.pdf_export import create_pdf
 from app.trips.permissions import require_trip_viewer
@@ -31,7 +31,7 @@ def _active_user(session: Session, user_id: UUID) -> User:
 
 
 @task_handler(KMZ_IMPORT_TASK)
-def handle_kmz_import(session: Session, task: BackgroundTask, progress: ProgressCallback) -> dict:
+def handle_kmz_import(session: Session, task: BackgroundTask, progress: ProgressCallback) -> TaskHandlerResult:
     if task.map_id is None:
         raise HTTPException(422, "The import task has no map")
     user = _active_user(session, task.requested_by_user_id)
@@ -47,8 +47,11 @@ def handle_kmz_import(session: Session, task: BackgroundTask, progress: Progress
         force_indexes=request.force_source_indexes,
         progress_callback=progress,
     )
-    remove_cached_import(session, request.import_id)
-    return report.model_dump(mode="json")
+    preview_path = remove_cached_import(session, request.import_id)
+    return TaskHandlerResult(
+        result=report.model_dump(mode="json"),
+        after_commit=(lambda: cleanup_cached_import_file(preview_path),),
+    )
 
 
 @task_handler(TRIP_PDF_TASK)

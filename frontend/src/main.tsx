@@ -17,6 +17,7 @@ import { installButtonFeedback } from './ui/buttonFeedback.ts'
 import { installInteractiveTitles } from './ui/interactiveTitles.ts'
 import { PwaUpdatePrompt } from './components/pwa/PwaUpdatePrompt.tsx'
 import { MediaUploadHost } from './components/media/MediaUploadHost.tsx'
+import { KmzImportHost } from './components/imports/KmzImportHost.tsx'
 import { GlobalFeedbackToasts } from './components/common/GlobalFeedbackToasts.tsx'
 import { applyTheme, loadThemePreference, resolveTheme } from './theme/theme.ts'
 
@@ -36,7 +37,7 @@ if (import.meta.hot) import.meta.hot.dispose(() => {
 
 const router = createBrowserRouter([{
   path: '*',
-  element: <AuthProvider><I18nProvider><App enableNavigationBlocker /><MediaUploadHost /><PwaUpdatePrompt /><GlobalFeedbackToasts /></I18nProvider></AuthProvider>,
+  element: <AuthProvider><I18nProvider><App enableNavigationBlocker /><MediaUploadHost /><KmzImportHost /><PwaUpdatePrompt /><GlobalFeedbackToasts /></I18nProvider></AuthProvider>,
 }])
 
 createRoot(document.getElementById('root')!).render(

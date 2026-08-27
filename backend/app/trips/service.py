@@ -167,7 +167,7 @@ def place_snapshot(session: Session, place_id: UUID, map_id: UUID) -> tuple[Plac
     # A shared row lock serializes trip references with Place moves, which take
     # the exclusive lock before checking blockers.
     place = session.scalar(
-        select(Place).where(Place.id == place_id).with_for_update(read=True).execution_options(populate_existing=True)
+        select(Place).where(Place.id == place_id, Place.deleted_at.is_(None)).with_for_update(read=True).execution_options(populate_existing=True)
     )
     if place is None or place.map_id != map_id: raise HTTPException(422, "Place must belong to the trip map")
     longitude, latitude = session.execute(select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(Place.id == place_id)).one()

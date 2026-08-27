@@ -54,7 +54,7 @@ def run_migrations() -> None:
     from alembic.config import Config
 
     config = Config("/app/alembic.ini" if Path("/app/alembic.ini").exists() else str(DEMO_ROOT.parent / "backend" / "alembic.ini"))
-    command.upgrade(config, "heads")
+    command.upgrade(config, "head")
 
 
 REGIONS = {

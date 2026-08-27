@@ -156,7 +156,7 @@ def prepare_administrator_schema(engine: Engine) -> None:
 
 def run_alembic_upgrade() -> None:
     print("[migration] Applying Alembic migrations.")
-    command.upgrade(_alembic_config(), "heads")
+    command.upgrade(_alembic_config(), "head")
     print("[migration] Alembic migrations completed.")
 
 

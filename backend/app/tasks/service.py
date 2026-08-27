@@ -14,15 +14,32 @@ from sqlalchemy.orm import Session
 from app.config import task_settings
 from app.database import SessionLocal
 from app.tasks.models import BackgroundTask
-from app.tasks.registry import HANDLERS
+from app.tasks.registry import HANDLERS, TaskHandlerResult, clear_rollback_cleanups, pop_rollback_cleanups
 from app.tasks.schemas import TaskRead
 
 logger = logging.getLogger(__name__)
 TERMINAL_STATUSES = frozenset({"succeeded", "failed", "cancelled", "expired"})
+CREATED_TASK_IDS_KEY = "created_task_ids"
 
 
 class TaskCancelled(Exception):
     pass
+
+
+def _run_after_commit(cleanups: tuple[Any, ...]) -> None:
+    for cleanup in cleanups:
+        try:
+            cleanup()
+        except Exception:
+            logger.warning("Unable to complete post-commit cleanup", exc_info=True)
+
+
+def _run_rollback_cleanups(session: Session) -> None:
+    for cleanup in reversed(pop_rollback_cleanups(session)):
+        try:
+            cleanup()
+        except Exception:
+            logger.warning("Unable to compensate storage after transaction rollback", exc_info=True)
 
 
 def to_read(task: BackgroundTask) -> TaskRead:
@@ -64,11 +81,19 @@ def create_task(
     )
     session.add(task)
     session.flush()
+    session.info.setdefault(CREATED_TASK_IDS_KEY, set()).add(task.id)
     return task
 
 
 def submit_task(session: Session, task: BackgroundTask) -> BackgroundTask:
+    created_task_ids = session.info.setdefault(CREATED_TASK_IDS_KEY, set())
+    if task.id not in created_task_ids:
+        return task
+    created_task_ids.discard(task.id)
     if task_settings.mode == "sync":
+        # Persist the task before running it so a handler rollback cannot erase
+        # the task row that must report the failure.
+        session.commit()
         _execute_with_session(session, task)
         return task
     session.commit()
@@ -148,7 +173,9 @@ def _execute_with_session(session: Session, task: BackgroundTask, *, commit_prog
 
     try:
         handler = HANDLERS[task.task_type]
-        task.result_json = handler(session, task, progress)
+        handled = handler(session, task, progress)
+        after_commit = handled.after_commit if isinstance(handled, TaskHandlerResult) else ()
+        task.result_json = handled.result if isinstance(handled, TaskHandlerResult) else handled
         if commit_progress:
             session.refresh(task, attribute_names=["progress_total"])
         task.status = "succeeded"
@@ -158,17 +185,22 @@ def _execute_with_session(session: Session, task: BackgroundTask, *, commit_prog
         task.error_message = None
         task.finished_at = datetime.now(UTC)
         session.commit()
+        clear_rollback_cleanups(session)
+        _run_after_commit(after_commit)
     except TaskCancelled:
         session.rollback()
+        _run_rollback_cleanups(session)
         session.execute(update(BackgroundTask).where(BackgroundTask.id == task.id).values(
             status="cancelled", progress_message="Annulé", finished_at=datetime.now(UTC),
         ))
         session.commit()
     except HTTPException as error:
         session.rollback()
+        _run_rollback_cleanups(session)
         _mark_failed(session, task.id, "invalid_request", str(error.detail))
     except Exception:
         session.rollback()
+        _run_rollback_cleanups(session)
         logger.exception("Background task failed task_id=%s type=%s", task.id, task.task_type)
         if commit_progress and task.attempt_count < task.max_attempts:
             session.execute(update(BackgroundTask).where(BackgroundTask.id == task.id).values(

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
+from app.places.models import Place
 from app.trash.service import trash_deadline
 
 
@@ -83,3 +84,41 @@ def test_retention_preference_controls_the_purge_deadline(auth_user) -> None:
         now=datetime(2026, 1, 1, 12, 0, 0),
     )
     assert (purge_after - deleted_at).days == 14
+
+
+def test_get_trash_does_not_trigger_expired_purge(
+    integration_client,
+    database_session,
+    poi_map,
+    monkeypatch,
+) -> None:
+    created = integration_client.post(
+        "/places",
+        json={
+            "map_id": str(poi_map.id),
+            "name": "Expired but read-only",
+            "latitude": 48.2,
+            "longitude": 2.2,
+        },
+    )
+    place_id = created.json()["id"]
+    assert integration_client.delete(f"/places/{place_id}").status_code == 204
+    place = database_session.get(Place, place_id)
+    assert place is not None
+    place.purge_after = place.deleted_at - timedelta(seconds=1)
+    database_session.commit()
+
+    calls = 0
+
+    def unexpected_purge(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return {"maps": 0, "trips": 0, "places": 0}
+
+    monkeypatch.setattr("app.trash.service.purge_expired_trash", unexpected_purge)
+
+    response = integration_client.get("/trash")
+
+    assert response.status_code == 200
+    assert calls == 0
+    assert database_session.get(Place, place_id) is not None

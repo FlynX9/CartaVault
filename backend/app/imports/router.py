@@ -19,15 +19,24 @@ from app.imports.schemas import (
     KmzImportReport,
     KmzPreviewRead,
 )
-from app.imports.service import cache_preview, confirm_import, get_cached_import, mark_duplicate_items, mark_outside_country_items, remove_cached_import
+from app.imports.service import cache_preview, cleanup_cached_import_file, confirm_import, get_cached_import, mark_duplicate_items, mark_outside_country_items, remove_cached_import
 from app.maps.models import PoiMap
 from app.tasks.handlers import KMZ_IMPORT_TASK
 from app.tasks.models import BackgroundTask
 from app.tasks.service import create_task, submit_task
+from app.tasks.registry import clear_rollback_cleanups, pop_rollback_cleanups
 
 
 router = APIRouter(prefix="/maps/{map_id}/imports/kmz", tags=["imports"])
 logger = logging.getLogger(__name__)
+
+
+def _run_import_rollback_cleanups(database_session: Session) -> None:
+    for cleanup in reversed(pop_rollback_cleanups(database_session)):
+        try:
+            cleanup()
+        except Exception:
+            logger.warning("Unable to compensate KMZ storage after rollback", exc_info=True)
 
 
 @router.post("/preview", response_model=KmzPreviewRead)
@@ -58,8 +67,14 @@ def preview_kmz_import(map_id: UUID, file: UploadFile = File(description="KMZ ar
     boundary_warning = mark_outside_country_items(access.map, items)
     if boundary_warning:
         warnings.append(boundary_warning)
-    result = cache_preview(database_session, map_id, current_user.id, file.filename or "import.kmz", payload, items, warnings)
-    database_session.commit()
+    try:
+        result = cache_preview(database_session, map_id, current_user.id, file.filename or "import.kmz", payload, items, warnings)
+        database_session.commit()
+        clear_rollback_cleanups(database_session)
+    except Exception:
+        database_session.rollback()
+        _run_import_rollback_cleanups(database_session)
+        raise
     return result
 
 
@@ -69,16 +84,27 @@ def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_sessio
 
     require_map_role(database_session, map_id, current_user, "editor")
     cached = get_cached_import(database_session, request.import_id, map_id, current_user.id)
-    report = confirm_import(
-        database_session,
-        map_id,
-        cached,
-        request.selected_source_indexes,
-        download_remote_images=request.download_remote_images,
-        force_indexes=request.force_source_indexes,
-    )
-    remove_cached_import(database_session, request.import_id)
-    database_session.commit()
+    try:
+        report = confirm_import(
+            database_session,
+            map_id,
+            cached,
+            request.selected_source_indexes,
+            download_remote_images=request.download_remote_images,
+            force_indexes=request.force_source_indexes,
+        )
+        preview_path = remove_cached_import(database_session, request.import_id)
+        database_session.commit()
+        clear_rollback_cleanups(database_session)
+    except HTTPException:
+        database_session.rollback()
+        _run_import_rollback_cleanups(database_session)
+        raise
+    except Exception as error:
+        database_session.rollback()
+        _run_import_rollback_cleanups(database_session)
+        raise HTTPException(status_code=500, detail="Unable to confirm the KMZ import") from error
+    cleanup_cached_import_file(preview_path)
     return report
 
 

@@ -293,4 +293,5 @@ export const workspaceFr = {
   'workspace.unsaved.message': 'Des modifications ne sont pas enregistrées. Elles seront perdues si vous quittez cet écran.',
   'workspace.unsaved.discard': 'Quitter sans enregistrer',
   'workspace.unsaved.cancel': 'Continuer l’édition',
+  'imports.kmz.completed': 'Import KMZ terminé.',
 } as const

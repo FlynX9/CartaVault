@@ -20,7 +20,7 @@ scripts. A clean installation must be reproducible with:
 
 ```powershell
 Set-Location backend
-python -m alembic upgrade heads
+python -m alembic upgrade head
 ```
 
 The production migration, administrator bootstrap, backup, restore, and

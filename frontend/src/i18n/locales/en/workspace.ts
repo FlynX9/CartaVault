@@ -295,4 +295,5 @@ export const workspaceEn = {
   'workspace.unsaved.message': 'Some changes have not been saved. They will be lost if you leave this screen.',
   'workspace.unsaved.discard': 'Leave without saving',
   'workspace.unsaved.cancel': 'Continue editing',
+  'imports.kmz.completed': 'KMZ import completed.',
 } as const satisfies Record<keyof typeof workspaceFr, string>

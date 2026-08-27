@@ -72,6 +72,19 @@ def test_s3_backend_returns_missing_without_leaving_partial_file(monkeypatch, tm
     assert not destination.exists()
 
 
+def test_s3_backend_deletes_private_object_key(monkeypatch) -> None:
+    configure_s3(monkeypatch)
+    client = Mock()
+    monkeypatch.setattr("app.photos.object_storage.boto3.client", Mock(return_value=client))
+
+    assert S3ObjectStorage().delete("scope/photo.webp")
+
+    client.delete_object.assert_called_once_with(
+        Bucket="cartavault-test",
+        Key="media/scope/photo.webp",
+    )
+
+
 def test_s3_backend_requires_private_credentials(monkeypatch) -> None:
     monkeypatch.setenv("MEDIA_STORAGE", "s3")
     monkeypatch.delenv("S3_BUCKET", raising=False)

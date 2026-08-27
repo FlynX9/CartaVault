@@ -481,7 +481,7 @@ def bulk_add_to_trip(
     # Share-lock the POIs while creating TripStop references so a concurrent
     # cross-map move cannot pass its dependency check between this read and commit.
     places = database_session.scalars(
-        select(Place).where(Place.id.in_(action_data.place_ids)).order_by(Place.id).with_for_update(read=True)
+        select(Place).where(Place.id.in_(action_data.place_ids), Place.deleted_at.is_(None)).order_by(Place.id).with_for_update(read=True)
     ).all()
     if len(places) != len(action_data.place_ids):
         raise HTTPException(status_code=404, detail="BULK_PLACE_NOT_FOUND")

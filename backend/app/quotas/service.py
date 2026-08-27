@@ -157,6 +157,103 @@ class QuotaService:
         ) or 0
         return int(place_bytes + night_bytes)
 
+    def ensure_map_restore_capacity(self, poi_map: PoiMap) -> None:
+        """Validate the complete post-restore footprint without double-counting retained rows."""
+
+        owner = self.session.scalar(select(User).where(User.id == poi_map.owner_id).with_for_update())
+        if owner is None:
+            raise HTTPException(404, detail="User not found")
+        profile = self.resolve_profile(owner.quota_profile_id, active_only=False)
+
+        active_trips = self.usage(owner.id, QuotaKey.TRIPS_PER_MAP_MAX, poi_map.id)
+        account_usage = {
+            QuotaKey.MAPS_MAX: self.usage(owner.id, QuotaKey.MAPS_MAX) + 1,
+            QuotaKey.TRIPS_TOTAL_MAX: self.usage(owner.id, QuotaKey.TRIPS_TOTAL_MAX) + active_trips,
+            QuotaKey.PHOTOS_TOTAL_MAX: self.usage(owner.id, QuotaKey.PHOTOS_TOTAL_MAX),
+            QuotaKey.STORAGE_BYTES_MAX: self.usage(owner.id, QuotaKey.STORAGE_BYTES_MAX),
+            QuotaKey.MEMBERSHIPS_TOTAL_MAX: self.usage(owner.id, QuotaKey.MEMBERSHIPS_TOTAL_MAX),
+            QuotaKey.PENDING_INVITATIONS_MAX: self.usage(owner.id, QuotaKey.PENDING_INVITATIONS_MAX),
+        }
+        map_usage = {
+            key: self.usage(owner.id, key, poi_map.id)
+            for key in (
+                QuotaKey.PLACES_PER_MAP_MAX,
+                QuotaKey.TAGS_PER_MAP_MAX,
+                QuotaKey.CATEGORIES_PER_MAP_MAX,
+                QuotaKey.STATUSES_PER_MAP_MAX,
+                QuotaKey.TRIPS_PER_MAP_MAX,
+                QuotaKey.MEMBERS_PER_MAP_MAX,
+                QuotaKey.PENDING_INVITATIONS_PER_MAP_MAX,
+            )
+        }
+        for key, usage in {**account_usage, **map_usage}.items():
+            self._ensure_limit(key, profile, usage, getattr(profile, key.value), 0)
+
+        active_place_ids = select(Place.id).where(Place.map_id == poi_map.id, Place.deleted_at.is_(None))
+        active_trip_ids = select(Trip.id).where(Trip.map_id == poi_map.id, Trip.deleted_at.is_(None))
+        active_day_ids = select(TripDay.id).where(TripDay.trip_id.in_(active_trip_ids))
+        nested_usage = {
+            QuotaKey.PHOTOS_PER_PLACE_MAX: self._maximum_group_usage(Photo, Photo.place_id, Photo.place_id.in_(active_place_ids)),
+            QuotaKey.LINKS_PER_PLACE_MAX: self._maximum_group_usage(PlaceLink, PlaceLink.place_id, PlaceLink.place_id.in_(active_place_ids)),
+            QuotaKey.DAYS_PER_TRIP_MAX: self._maximum_group_usage(TripDay, TripDay.trip_id, TripDay.trip_id.in_(active_trip_ids)),
+            QuotaKey.STEPS_PER_DAY_MAX: self._maximum_group_usage(TripStop, TripStop.trip_day_id, TripStop.trip_day_id.in_(active_day_ids)),
+        }
+        for key, usage in nested_usage.items():
+            self._ensure_limit(key, profile, usage, getattr(profile, key.value), 0)
+
+    def _maximum_group_usage(self, model, group_column, *filters) -> int:
+        return int(self.session.scalar(
+            select(func.count())
+            .select_from(model)
+            .where(*filters)
+            .group_by(group_column)
+            .order_by(func.count().desc())
+            .limit(1)
+        ) or 0)
+
+    def ensure_usage_within_limit(
+        self,
+        owner_id: UUID,
+        key: QuotaKey,
+        usage: int,
+    ) -> tuple[int, int | None]:
+        """Validate an existing scope against one account's profile.
+
+        Ownership transfers do not create map-scoped children, but they do
+        change which profile limits those existing children. The caller
+        supplies the intended post-transfer usage while this method preserves
+        the normal owner lock and quota error contract.
+        """
+
+        if key in self.NON_MEASURABLE_KEYS:
+            raise ValueError(f"{key.value} is a configuration limit and has no usage counter")
+        if usage < 0:
+            raise ValueError("quota usage cannot be negative")
+        owner = self.session.scalar(select(User).where(User.id == owner_id).with_for_update())
+        if owner is None:
+            raise HTTPException(404, detail="User not found")
+        profile = self.resolve_profile(owner.quota_profile_id, active_only=False)
+        limit = getattr(profile, key.value)
+        self._ensure_limit(key, profile, usage, limit, 0)
+        return usage, limit
+
+    @staticmethod
+    def _ensure_limit(
+        key: QuotaKey,
+        profile: QuotaProfile,
+        usage: int,
+        limit: int | None,
+        increment: int,
+    ) -> None:
+        if limit is not None and usage + increment > limit:
+            raise HTTPException(
+                409,
+                detail={
+                    "code": f"quota.{key.value.removesuffix('_max')}.limit_reached",
+                    "params": {"limit": limit, "usage": usage, "requested_increment": increment, "quota_profile": profile.name},
+                },
+            )
+
     def ensure_can_create(self, user_id: UUID, key: QuotaKey, *, scope_id: UUID | None = None, increment: int = 1) -> tuple[int, int | None]:
         if increment < 0:
             raise ValueError("quota increment cannot be negative")
@@ -168,12 +265,5 @@ class QuotaService:
         profile = self.resolve_profile(owner.quota_profile_id, active_only=False)
         limit = getattr(profile, key.value)
         usage = self.usage(owner_id, key, scope_id)
-        if limit is not None and usage + increment > limit:
-            raise HTTPException(
-                409,
-                detail={
-                    "code": f"quota.{key.value.removesuffix('_max')}.limit_reached",
-                    "params": {"limit": limit, "usage": usage, "requested_increment": increment, "quota_profile": profile.name},
-                },
-            )
+        self._ensure_limit(key, profile, usage, limit, increment)
         return usage, limit

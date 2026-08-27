@@ -18,7 +18,7 @@ from app.maps.models import MapMembership, PoiMap
 from app.places.history import add_place_history
 from app.places.models import Place
 from app.trash.schemas import TrashItemRead, TrashItemType
-from app.trash.service import permanently_delete_map, purge_expired_trash
+from app.trash.service import lock_and_ensure_restore_capacity, permanently_delete_map, permanently_delete_place, permanently_delete_trip
 from app.trips.models import Trip
 
 router = APIRouter(prefix="/trash", tags=["trash"])
@@ -59,7 +59,6 @@ def list_trash(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[TrashItemRead]:
-    purge_expired_trash(session)
     items: list[TrashItemRead] = []
 
     if item_type in {"all", "map"}:
@@ -130,6 +129,8 @@ def restore_item(item_type: TrashItemType, item_id: UUID, session: Session = Dep
         item = require_place_role(session, item_id, user, "editor", include_deleted=True)
         if item.deleted_at is None:
             raise HTTPException(404, "Deleted place not found")
+    item = lock_and_ensure_restore_capacity(session, item)
+    if item_type == "place":
         add_place_history(session, item.id, user.id, "restored", {})
     item.deleted_at = None
     item.deleted_by_user_id = None
@@ -149,11 +150,10 @@ def permanently_delete_item(item_type: TrashItemType, item_id: UUID, session: Se
         permanently_delete_map(session, item.id)
     elif item_type == "trip":
         item = _deleted_trip(session, item_id, user)
-        session.delete(item)
+        permanently_delete_trip(session, item.id)
     else:
         item = require_place_role(session, item_id, user, "editor", include_deleted=True)
         if item.deleted_at is None:
             raise HTTPException(404, "Deleted place not found")
-        session.delete(item)
-    session.commit()
+        permanently_delete_place(session, item.id)
     return Response(status_code=204)

@@ -207,7 +207,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
-python -m alembic upgrade heads
+python -m alembic upgrade head
 python -m app.cli create-admin
 python -m uvicorn app.main:app --reload
 ```

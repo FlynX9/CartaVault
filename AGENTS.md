@@ -18,6 +18,9 @@ CartaVault is a self-hosted/open-source geospatial application built with:
 Backend code lives in `backend/`.
 Frontend code lives in `frontend/`.
 
+For significant backend work, read `backend/README.md` before changing behavior.
+For significant frontend work, read `frontend/README.md` before changing behavior.
+
 Reuse existing patterns and shared components before creating new abstractions.
 User-visible frontend text must use the existing `t()` i18n system.
 Prefer existing `--cv-*` design tokens and `cv-` classes.
@@ -65,8 +68,75 @@ For non-trivial work, inspect only the layers relevant to the task, such as:
 
 Do not read the entire repository when targeted exploration is sufficient.
 
-Use subagents when specialization, independent review, or context isolation is useful.
-Do not invoke subagents for trivial localized work.
+## Subagent delegation
+
+Use subagents only when they materially improve the task.
+
+### Exploration
+
+Use `explore-fast` when the affected implementation is not yet known or when
+quick repository exploration can significantly reduce the working context.
+
+Do not use it for trivial changes when the relevant file is already known.
+
+### Implementation
+
+Use `frontend` for implementation involving primarily:
+
+- React;
+- TypeScript;
+- CSS;
+- frontend state;
+- frontend interactions;
+- frontend tests.
+
+Use `backend` for implementation involving primarily:
+
+- FastAPI;
+- SQLAlchemy;
+- Pydantic;
+- PostgreSQL/PostGIS;
+- Alembic;
+- backend services;
+- backend tests.
+
+For cross-layer problems, determine the root cause first and use both when
+necessary.
+
+The primary agent remains responsible for integration, final edits and final
+validation.
+
+### Review
+
+Use `ui-review` for meaningful UI/UX changes.
+
+Use `review` after non-trivial implementations or when regression risk is
+significant.
+
+Use `architecture-review` only for non-trivial cross-cutting architectural
+changes.
+
+Use `security-review` only when changes affect security-sensitive areas such as:
+
+- authentication;
+- authorization;
+- sharing;
+- sessions;
+- MFA;
+- credentials;
+- encryption;
+- administration;
+- quotas;
+- privilege boundaries.
+
+Do not invoke expensive or specialized reviewers mechanically.
+
+### General rule
+
+Do not invoke subagents merely because they exist.
+
+Small localized changes should normally be handled directly by the primary
+agent.
 
 ---
 
