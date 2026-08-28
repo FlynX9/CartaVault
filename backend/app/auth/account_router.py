@@ -15,6 +15,7 @@ from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
 from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
 from app.auth.security import hash_password, normalize_email, verify_password
+from app.auth.sensitive_auth_rate_limit import verify_current_password
 from app.auth.sessions import issue_session, revoke_user_sessions
 from app.auth.totp import clear_totp
 from app.config import openroute_service_settings, security_settings
@@ -132,8 +133,7 @@ def reset_preferences(database_session: Session = Depends(get_db), current: User
 
 @router.post("/change-email")
 def change_email(data: EmailChange, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict:
-    if not verify_password(current.user.password_hash, data.current_password)[0]:
-        raise HTTPException(400, "Unable to change email with the supplied credentials")
+    verify_current_password(database_session, current, data.current_password, password_verifier=verify_password)
     old_email = current.user.email
     current.user.email = normalize_email(data.new_email)
     raw_token, csrf_token = _rotate_session(database_session, current)
@@ -147,7 +147,7 @@ def change_email(data: EmailChange, response: Response, database_session: Sessio
 
 @router.post("/change-password", status_code=204)
 def account_password(data: AccountPasswordChange, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> Response:
-    if not verify_password(current.user.password_hash, data.current_password)[0]: raise HTTPException(400, "Current password is incorrect")
+    verify_current_password(database_session, current, data.current_password, password_verifier=verify_password)
     current.user.password_hash = hash_password(data.new_password)
     raw_token, csrf_token = _rotate_session(database_session, current)
     database_session.commit()
@@ -205,7 +205,7 @@ def remove_avatar(database_session: Session = Depends(get_db), current: UserSess
 @router.delete("")
 def delete_account(data: AccountDelete, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> Response:
     user = current.user
-    if not verify_password(user.password_hash, data.current_password)[0]: raise HTTPException(400, "Unable to delete account")
+    verify_current_password(database_session, current, data.current_password, password_verifier=verify_password)
     if database_session.scalar(select(func.count()).select_from(PoiMap).where(PoiMap.owner_id == user.id)): raise HTTPException(409, "Transfer or delete owned maps first")
     if user.is_admin and (database_session.scalar(select(func.count()).select_from(User).where(User.is_admin.is_(True), User.is_active.is_(True))) or 0) <= 1: raise HTTPException(409, "The last active administrator cannot be deleted")
     now = datetime.now(UTC).replace(tzinfo=None); old_avatar = user.avatar_filename

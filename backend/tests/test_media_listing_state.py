@@ -52,15 +52,18 @@ def test_media_listing_performs_zero_physical_io(
     auth_user: User,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import app.media.router as media_router_module
     import app.photos.storage as photo_storage_module
 
     place_id = create_place(integration_client, poi_map)
     first = upload_place_photo(integration_client, place_id, "io-one.png")
     second = upload_place_photo(integration_client, place_id, "io-two.png")
 
-    calls = {"resolve": 0, "dimensions": 0, "storage": 0}
+    calls = {"resolve": 0, "thumbnail": 0, "dimensions": 0, "pil": 0, "storage": 0}
     original_resolve = photo_storage_module.resolve_photo_file
+    original_thumbnail = media_router_module.get_photo_thumbnail
     original_dimensions = photo_storage_module.read_photo_dimensions
+    original_image_open = media_router_module.Image.open
     original_build = photo_storage_module.build_object_storage
 
     def counting_resolve(*args, **kwargs):
@@ -71,18 +74,29 @@ def test_media_listing_performs_zero_physical_io(
         calls["dimensions"] += 1
         return original_dimensions(*args, **kwargs)
 
+    def counting_thumbnail(*args, **kwargs):
+        calls["thumbnail"] += 1
+        return original_thumbnail(*args, **kwargs)
+
+    def counting_image_open(*args, **kwargs):
+        calls["pil"] += 1
+        return original_image_open(*args, **kwargs)
+
     def counting_build(*args, **kwargs):
         calls["storage"] += 1
         return original_build(*args, **kwargs)
 
     monkeypatch.setattr(photo_storage_module, "resolve_photo_file", counting_resolve)
+    monkeypatch.setattr(media_router_module, "resolve_photo_file", counting_resolve)
+    monkeypatch.setattr(media_router_module, "get_photo_thumbnail", counting_thumbnail)
     monkeypatch.setattr(photo_storage_module, "read_photo_dimensions", counting_dimensions)
+    monkeypatch.setattr(media_router_module.Image, "open", counting_image_open)
     monkeypatch.setattr(photo_storage_module, "build_object_storage", counting_build)
 
     response = integration_client.get("/media?page=1&page_size=100")
 
     assert response.status_code == 200
-    assert calls == {"resolve": 0, "dimensions": 0, "storage": 0}, calls
+    assert calls == {"resolve": 0, "thumbnail": 0, "dimensions": 0, "pil": 0, "storage": 0}, calls
 
     integration_client.delete(f"/photos/{first['id']}")
     integration_client.delete(f"/photos/{second['id']}")

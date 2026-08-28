@@ -33,7 +33,7 @@ from app.trips.permissions import ensure_trip_structurally_mutable, require_arri
 from app.trips.routing.registry import routing_preferences, routing_provider_registry
 from app.trips.routing.base import RouteResult, RoutingConstraints, RoutingError, RoutingProvider
 from app.trips.schemas import ApplyPlaceStatuses, ArrivalCreate, ArrivalRead, ArrivalUpdate, DayCreate, DayOptimizationRead, DayRead, DaySummaryRead, DayUpdate, DepartureCreate, DepartureRead, DepartureUpdate, IdOrder, NightCreate, NightRead, NightUpdate, OptimizeConfirm, OptimizeOptions, StopCreate, StopMove, StopRead, StopUpdate, TripCreate, TripDayTimingUpdate, TripListRead, TripLoadSettings, TripOptimizationRead, TripOptimizeConfirm, TripPdfExportOptions, TripRead, TripResizeConfirmationDetail, TripResizeImpact, TripResizeDayImpact, TripSummaryRead, TripUpdate
-from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, PhotoCleanupTarget, TripResizePlan, analyze_trip_resize, apply_day_route_result, apply_trip_resize, day_coordinates, day_last_stop_id, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, stale_route_and_following, resolve_constraint_country, synchronize_trip_dates
+from app.trips.service import CountryRouteError, DAY_COLOR_PALETTE, PhotoCleanupTarget, TripResizePlan, analyze_trip_resize, apply_day_route_result, apply_trip_resize, day_coordinates, day_last_stop_id, load_active_map_trips, load_trip, next_day_color, normalize_day_order, place_snapshot, previous_day_last_stop, resize_trip_days, stale, stale_route_and_following, resolve_constraint_country, synchronize_trip_dates
 from app.trips.optimization_store import OptimizationProposalUnavailable, optimization_proposal_store
 from app.trips.routing.country_validator import CountryRouteValidator
 from app.trips.summary_service import day_summary, trip_summary
@@ -449,8 +449,7 @@ def _resize_confirmation_error(code: Literal["TRIP_RESIZE_CONFIRMATION_REQUIRED"
 @router.get("/maps/{map_id}/trips", response_model=list[TripRead])
 def list_trips(map_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_map_role(session, map_id, user, "viewer")
-    ids = session.scalars(select(Trip.id).where(Trip.map_id == map_id, Trip.deleted_at.is_(None)).order_by(Trip.archived_at.is_not(None), Trip.updated_at.desc())).all()
-    return [_trip_read(session, item) for item in ids]
+    return [TripRead.model_validate(trip) for trip in load_active_map_trips(session, map_id)]
 
 
 @router.get("/trips", response_model=list[TripListRead])

@@ -42,10 +42,10 @@ export async function confirmEmailMfaSetup(challenge_token: string, code: string
 export async function disableEmailMfa(current_password: string): Promise<void> { await sendBodyWithoutResponse('/account/security/email-mfa/disable', 'POST', { current_password }) }
 let pendingTotpSetup: Promise<TotpSetup> | null = null
 
-export function startTotpSetup(): Promise<TotpSetup> {
+export function startTotpSetup(current_password: string): Promise<TotpSetup> {
   if (pendingTotpSetup) return pendingTotpSetup
 
-  pendingTotpSetup = (sendJson('/account/security/totp/setup', 'POST', {}) as Promise<TotpSetup>)
+  pendingTotpSetup = (sendJson('/account/security/totp/setup', 'POST', { current_password }) as Promise<TotpSetup>)
     .finally(() => { pendingTotpSetup = null })
   return pendingTotpSetup
 }

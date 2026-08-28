@@ -1,6 +1,6 @@
 """Validated, reusable filters for list and map place queries."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time
 from typing import Literal
 from uuid import UUID
@@ -114,6 +114,55 @@ def apply_place_filters(statement: Select[tuple[Place]], filters: PlaceFilters) 
     if filters.rating_min is not None:
         statement = statement.where(case((visited_expression, Place.visit_rating), else_=Place.interest_rating) >= filters.rating_min)
     return statement
+
+
+def place_facet_scopes(map_id: UUID, filters: PlaceFilters):
+    """Build the two facet scopes while evaluating expensive common filters once."""
+
+    quick_scope = apply_place_filters(
+        select(
+            Place.id.label("place_id"),
+            Place.is_favorite.label("is_favorite"),
+            Place.status_id.label("status_id"),
+        ).where(Place.map_id == map_id),
+        replace(filters, functional_state=None, is_favorite=None),
+    ).cte("facet_quick_scope").prefix_with("MATERIALIZED")
+
+    filtered_statement = select(quick_scope.c.place_id)
+    if filters.is_favorite is not None:
+        filtered_statement = filtered_statement.where(
+            quick_scope.c.is_favorite.is_(filters.is_favorite)
+        )
+    if filters.functional_state is not None:
+        filtered_statement = filtered_statement.where(
+            select(PlaceStatus.id).where(
+                PlaceStatus.id == quick_scope.c.status_id,
+                PlaceStatus.functional_state == filters.functional_state,
+            ).exists()
+        )
+    filtered_scope = filtered_statement.cte("facet_filtered_scope").prefix_with("MATERIALIZED")
+    return quick_scope, filtered_scope
+
+
+def should_share_place_facet_scope(filters: PlaceFilters) -> bool:
+    """Use scope sharing when text evaluation is the dominant repeated work."""
+
+    return bool(filters.query) and not any((
+        filters.category_ids,
+        filters.tag_ids,
+        filters.status_ids,
+        filters.regions,
+        filters.has_photos is not None,
+        filters.created_from,
+        filters.created_to,
+        filters.updated_from,
+        filters.updated_to,
+        filters.danger_levels,
+        filters.condition_values,
+        filters.has_valid_coordinates is not None,
+        filters.in_trip is not None,
+        filters.rating_min is not None,
+    ))
 
 
 def place_ordering(filters: PlaceFilters):

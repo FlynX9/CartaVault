@@ -12,6 +12,7 @@ from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
 from app.auth.schemas import EmailMfaLoginChallenge, EmailMfaVerification, LoginRequest, PasswordChange, TotpLoginChallenge, TotpLoginVerification, UserSelfRead
 from app.auth.registration_security import record_auth_event
 from app.auth.security import generate_token, hash_password, hash_token, normalize_email, verify_password
+from app.auth.sensitive_auth_rate_limit import verify_current_password
 from app.auth.sessions import issue_session, revoke_user_sessions
 from app.auth.totp import consume_recovery_code, verify_code
 from app.config import security_settings
@@ -182,9 +183,7 @@ def logout(response: Response, database_session: Session = Depends(get_db), user
 
 @router.post("/change-password", status_code=204)
 def change_password(data: PasswordChange, response: Response, database_session: Session = Depends(get_db), user_session: UserSession = Depends(get_current_session)) -> Response:
-    valid, _ = verify_password(user_session.user.password_hash, data.current_password)
-    if not valid:
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    verify_current_password(database_session, user_session, data.current_password, password_verifier=verify_password)
     user_session.user.password_hash = hash_password(data.new_password)
     revoke_user_sessions(database_session, user_session.user_id)
     raw_token, csrf_token = issue_session(database_session, user_session.user_id)

@@ -147,10 +147,9 @@ def next_day_color(days: list[TripDay]) -> str:
     return next((color for color in DAY_COLOR_PALETTE if color not in used), DAY_COLOR_PALETTE[len(days) % len(DAY_COLOR_PALETTE)])
 
 
-def load_trip(session: Session, trip_id: UUID) -> Trip:
-    trip = session.scalar(
+def _trip_graph_statement():
+    return (
         select(Trip)
-        .where(Trip.id == trip_id, Trip.deleted_at.is_(None))
         .options(
             selectinload(Trip.days).selectinload(TripDay.stops),
             selectinload(Trip.nights).selectinload(TripNight.photos),
@@ -159,8 +158,22 @@ def load_trip(session: Session, trip_id: UUID) -> Trip:
         )
         .execution_options(populate_existing=True)
     )
+
+
+def load_trip(session: Session, trip_id: UUID) -> Trip:
+    trip = session.scalar(
+        _trip_graph_statement().where(Trip.id == trip_id, Trip.deleted_at.is_(None))
+    )
     if trip is None: raise HTTPException(404, "Trip not found")
     return trip
+
+
+def load_active_map_trips(session: Session, map_id: UUID) -> list[Trip]:
+    return list(session.scalars(
+        _trip_graph_statement()
+        .where(Trip.map_id == map_id, Trip.deleted_at.is_(None))
+        .order_by(Trip.archived_at.is_not(None), Trip.updated_at.desc())
+    ).all())
 
 
 def place_snapshot(session: Session, place_id: UUID, map_id: UUID) -> tuple[Place, float, float]:

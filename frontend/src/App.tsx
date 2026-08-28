@@ -86,6 +86,7 @@ import { getSetupStatus, type SetupStatus } from "./api/setup";
 import { useConfirmDialog } from "./components/common/useConfirmDialog";
 import { UnsavedNavigationBlocker } from "./components/navigation/UnsavedNavigationBlocker";
 import { ThemeProvider } from "./theme/ThemeProvider";
+import { DisplayDensityProvider } from "./theme/DisplayDensityProvider";
 import { useI18n } from "./i18n/useI18n";
 import { ALLOW_UNSAVED_NAVIGATION_EVENT, UNSAVED_CHANGE_EVENT } from "./hooks/useUnsavedChangeSignal";
 import { PrivacyConsentBanner } from "./components/privacy/PrivacyConsentBanner";
@@ -583,8 +584,8 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     return serialized ? `?${serialized}` : "";
   }, [location.search]);
   const openAdmin = useCallback(
-    () => navigate({ pathname: "/admin/general", search: searchWithoutLegacyMap }),
-    [searchWithoutLegacyMap, navigate],
+    () => runAfterUnsavedCheck(() => navigate({ pathname: "/admin/general", search: searchWithoutLegacyMap })),
+    [runAfterUnsavedCheck, searchWithoutLegacyMap, navigate],
   );
   const openRegistrationRequests = useCallback(() => {
     const search = new URLSearchParams(location.search);
@@ -2415,7 +2416,9 @@ function AppContent({ enableNavigationBlocker = false }: { enableNavigationBlock
 export default function App({ enableNavigationBlocker = false }: { enableNavigationBlocker?: boolean }) {
   return (
     <ThemeProvider>
-      <AppContent enableNavigationBlocker={enableNavigationBlocker} />
+      <DisplayDensityProvider>
+        <AppContent enableNavigationBlocker={enableNavigationBlocker} />
+      </DisplayDensityProvider>
     </ThemeProvider>
   );
 }

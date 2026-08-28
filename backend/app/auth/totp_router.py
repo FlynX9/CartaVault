@@ -13,9 +13,11 @@ from app.auth.dependencies import get_current_session
 from app.auth.models import TotpRecoveryCode, UserSession
 from app.auth.rate_limit import public_auth_rate_limiter, rate_limit_key
 from app.auth.registration_security import record_auth_event
-from app.auth.schemas import TotpConfirmRequest, TotpRecoveryCodesRead, TotpSecurityStatus, TotpSensitiveAction, TotpSetupRead
+from app.auth.router import _set_session_cookies
+from app.auth.schemas import TotpConfirmRequest, TotpRecoveryCodesRead, TotpSecurityStatus, TotpSensitiveAction, TotpSetupRead, TotpSetupRequest
 from app.auth.security import verify_password
-from app.auth.sessions import revoke_user_sessions
+from app.auth.sensitive_auth_rate_limit import verify_current_password
+from app.auth.sessions import issue_session, revoke_user_sessions
 from app.config import security_settings
 from app.auth.totp import clear_totp, consume_recovery_code, enroll_secret, generate_secret, now_utc, provisioning_uri, regenerate_recovery_codes, verify_code
 from app.database import get_db
@@ -29,8 +31,7 @@ def _status(session: Session, current: UserSession) -> TotpSecurityStatus:
 
 
 def _require_factor(session: Session, current: UserSession, payload: TotpSensitiveAction) -> None:
-    if not verify_password(current.user.password_hash, payload.current_password)[0]:
-        raise HTTPException(400, "Current password is incorrect")
+    verify_current_password(session, current, payload.current_password, password_verifier=verify_password)
     if not (verify_code(current.user, payload.code) or consume_recovery_code(session, current.user, payload.code)):
         raise HTTPException(400, "Invalid authentication code")
 
@@ -41,10 +42,11 @@ def status(database_session: Session = Depends(get_db), current: UserSession = D
 
 
 @router.post("/setup", response_model=TotpSetupRead, responses={200: {"headers": {"Cache-Control": {"schema": {"type": "string"}}}}})
-def setup(response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> TotpSetupRead:
+def setup(payload: TotpSetupRequest, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> TotpSetupRead:
     public_auth_rate_limiter.check(rate_limit_key("totp-setup", str(current.user_id)))
     if current.user.totp_enabled:
         raise HTTPException(409, "Two-factor authentication is already enabled")
+    verify_current_password(database_session, current, payload.current_password, password_verifier=verify_password)
     secret = generate_secret()
     enroll_secret(current.user, secret)
     uri = provisioning_uri(secret, current.user.email)
@@ -57,7 +59,7 @@ def setup(response: Response, database_session: Session = Depends(get_db), curre
     return TotpSetupRead(secret=secret, provisioning_uri=uri, qr_code_data_url="data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii"), expires_at=current.user.totp_enrollment_expires_at, account=current.user.email)
 
 
-@router.post("/confirm", response_model=TotpRecoveryCodesRead)
+@router.post("/confirm", response_model=TotpRecoveryCodesRead, responses={200: {"headers": {"Cache-Control": {"schema": {"type": "string"}}, "X-CSRF-Token": {"schema": {"type": "string"}}}}})
 def confirm(payload: TotpConfirmRequest, response: Response, database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> TotpRecoveryCodesRead:
     public_auth_rate_limiter.check(rate_limit_key("totp-enroll-confirm", str(current.user_id)))
     if current.user.totp_enabled or current.user.totp_enrollment_expires_at is None or current.user.totp_enrollment_expires_at < now_utc() or not verify_code(current.user, payload.code):
@@ -70,8 +72,11 @@ def confirm(payload: TotpConfirmRequest, response: Response, database_session: S
     current.user.email_mfa_enabled = False
     current.user.email_mfa_verified_at = None
     recovery_codes = regenerate_recovery_codes(database_session, current.user)
+    revoke_user_sessions(database_session, current.user_id)
+    raw_token, csrf_token = issue_session(database_session, current.user_id, user_agent=current.user_agent)
     record_auth_event(database_session, "totp_enabled", "accepted", actor_user_id=current.user_id)
     database_session.commit()
+    _set_session_cookies(response, raw_token, csrf_token, security_settings.session_days * 86400)
     response.headers["Cache-Control"] = "no-store, private"
     return TotpRecoveryCodesRead(recovery_codes=recovery_codes)
 

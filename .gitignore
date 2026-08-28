@@ -75,3 +75,5 @@ htmlcov/
 
 # Exclude generated docker image
 docker/*.tar
+
+/report

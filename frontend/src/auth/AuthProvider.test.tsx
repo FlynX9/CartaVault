@@ -8,6 +8,7 @@ import { ThemeContext } from '../theme/themeContext'
 import { LoginPage } from '../pages/LoginPage'
 import { AuthProvider } from './AuthProvider'
 import { RequireAuth } from './RequireAuth'
+import { useAuth } from './useAuth'
 
 vi.mock('../api/auth', () => ({ login: vi.fn(), logout: vi.fn(), restoreSession: vi.fn() }))
 
@@ -30,6 +31,14 @@ function renderAuthFlow(initialEntry = '/private') {
       </ThemeContext.Provider>
     </MemoryRouter>,
   )
+}
+
+function AuthStateProbe() {
+  const { login: authenticate, user } = useAuth()
+  return <>
+    <button type="button" onClick={() => void authenticate({ email: 'new@example.test', password: 'correct password' })}>Authenticate</button>
+    <output>{user?.email ?? 'signed out'}</output>
+  </>
 }
 
 describe('AuthProvider', () => {
@@ -69,5 +78,23 @@ describe('AuthProvider', () => {
 
     expect(await screen.findByText('Carte privée')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Connexion à CartaVault' })).not.toBeInTheDocument()
+  })
+
+  it('keeps a newer login when an older session restore resolves late', async () => {
+    let resolveRestore!: (value: typeof user) => void
+    const previousUser = { ...user, email: 'previous@example.test' }
+    const newUser = { ...user, email: 'new@example.test' }
+    vi.mocked(restoreSession).mockImplementationOnce(() => new Promise((resolve) => { resolveRestore = resolve }))
+    vi.mocked(login).mockResolvedValue(newUser)
+
+    render(<AuthProvider><AuthStateProbe /></AuthProvider>)
+    await waitFor(() => expect(restoreSession).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Authenticate' }))
+    expect(await screen.findByText(newUser.email)).toBeVisible()
+
+    resolveRestore(previousUser)
+    await waitFor(() => expect(screen.getByText(newUser.email)).toBeVisible())
+    expect(screen.queryByText(previousUser.email)).not.toBeInTheDocument()
   })
 })

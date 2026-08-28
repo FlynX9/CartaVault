@@ -7,8 +7,8 @@ from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import and_, func, select
+from sqlalchemy.orm import Session, aliased, selectinload
 
 from app.categories.associations import place_categories_table
 from app.categories.icon_catalog import get_category_icon_entry
@@ -33,12 +33,31 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
         raise HTTPException(status_code=404, detail="Map not found")
     active_places = (Place.map_id == map_id, Place.deleted_at.is_(None))
     total = session.scalar(select(func.count()).select_from(Place).where(*active_places)) or 0
-    statement = select(Place).where(*active_places).options(selectinload(Place.categories), selectinload(Place.tags), selectinload(Place.photos), selectinload(Place.status), selectinload(Place.links))
+    primary_category_model = aliased(Category)
+    statement = (
+        select(
+            Place,
+            func.ST_X(Place.location).label("longitude"),
+            func.ST_Y(Place.location).label("latitude"),
+            primary_category_model,
+        )
+        .select_from(Place)
+        .outerjoin(
+            place_categories_table,
+            and_(
+                place_categories_table.c.place_id == Place.id,
+                place_categories_table.c.is_primary.is_(True),
+            ),
+        )
+        .outerjoin(primary_category_model, primary_category_model.id == place_categories_table.c.category_id)
+        .where(*active_places)
+        .options(selectinload(Place.categories), selectinload(Place.tags), selectinload(Place.photos), selectinload(Place.status), selectinload(Place.links))
+    )
     if options.category_ids:
         statement = statement.where(Place.categories.any(Place.categories.property.mapper.class_.id.in_(options.category_ids)))
     if options.status_ids:
         statement = statement.where(Place.status_id.in_(options.status_ids))
-    places = session.scalars(statement.order_by(func.lower(Place.name), Place.id).limit(MAX_PLACES + 1)).all()
+    places = session.execute(statement.order_by(func.lower(Place.name), Place.id).limit(MAX_PLACES + 1)).all()
     if len(places) > MAX_PLACES:
         raise HTTPException(status_code=422, detail="Too many places for one KMZ export")
     warnings: list[str] = []
@@ -47,9 +66,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
     styles: dict[str, str] = {}
     marker_styles: dict[str, tuple[str, str, str | None]] = {}
     custom_count = skipped = skipped_images = 0
-    for place in places:
-        coordinates = session.execute(select(func.ST_X(Place.location), func.ST_Y(Place.location)).where(Place.id == place.id)).one()
-        longitude, latitude = coordinates
+    for place, longitude, latitude, primary_category in places:
         if longitude is None or latitude is None:
             skipped += 1; warnings.append(f"{place.name}: missing coordinates"); continue
         primary = next((photo for photo in place.photos if photo.is_primary), None) or (place.photos[0] if place.photos else None)
@@ -67,14 +84,7 @@ def create_kmz_export(session: Session, map_id: UUID, user_id: UUID, options: Km
                     skipped_images += 1; warnings.append(f"{place.name}: missing or unsafe image")
         data: dict[str, object] = {}
         selected = set(options.fields)
-        primary_category = session.scalar(
-            select(Category)
-            .join(place_categories_table, place_categories_table.c.category_id == Category.id)
-            .where(
-                place_categories_table.c.place_id == place.id,
-                place_categories_table.c.is_primary.is_(True),
-            )
-        ) or next(iter(place.categories), None)
+        primary_category = primary_category or next(iter(place.categories), None)
         category_group = (
             get_category_icon_entry(primary_category.icon).group
             if primary_category and get_category_icon_entry(primary_category.icon)

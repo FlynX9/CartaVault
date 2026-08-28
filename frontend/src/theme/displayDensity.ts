@@ -2,6 +2,14 @@ export type DisplayDensity = '60' | '70' | '80' | '90' | '100' | 'compact' | 'co
 
 export const DISPLAY_DENSITY_STORAGE_KEY = 'cartavault.display-density'
 
+function browserStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
 export function parseDisplayDensity(value: unknown): DisplayDensity {
   if (value === '60' || value === '70' || value === '80' || value === '90' || value === '100') return value
   if (value === 'compact') return '80'
@@ -29,4 +37,9 @@ export function saveDisplayDensity(density: DisplayDensity, storage: Storage | n
 
 export function applyDisplayDensity(density: DisplayDensity, root: HTMLElement = document.documentElement): void {
   root.dataset.density = density
+}
+
+export function initializeDisplayDensity(): void {
+  const density = loadDisplayDensity(browserStorage())
+  applyDisplayDensity(density)
 }

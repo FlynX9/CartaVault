@@ -20,12 +20,12 @@ describe('startTotpSetup', () => {
     const setup = new Promise<TotpSetup>((resolve) => { resolveSetup = resolve })
     vi.mocked(sendJson).mockReturnValue(setup)
 
-    const first = startTotpSetup()
-    const second = startTotpSetup()
+    const first = startTotpSetup('current password')
+    const second = startTotpSetup('current password')
 
     expect(first).toBe(second)
     expect(sendJson).toHaveBeenCalledOnce()
-    expect(sendJson).toHaveBeenCalledWith('/account/security/totp/setup', 'POST', {})
+    expect(sendJson).toHaveBeenCalledWith('/account/security/totp/setup', 'POST', { current_password: 'current password' })
 
     const value: TotpSetup = {
       secret: 'ABCDEFGHIJKLMNOP',

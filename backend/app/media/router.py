@@ -38,6 +38,8 @@ from app.media.service import (
     get_media_access,
     infer_file_state,
     infer_format,
+    media_listing_scope_statement,
+    media_presentation_statement,
     sort_expression,
 )
 from app.media.settings import get_media_upload_policy as get_effective_media_upload_policy
@@ -237,9 +239,9 @@ def list_media(
             detail="min_size must not exceed max_size",
         )
 
-    base = accessible_media_statement(current_user.id)
-    filtered = apply_media_filters(
-        base,
+    page_base = accessible_media_statement(current_user.id)
+    page_filtered = apply_media_filters(
+        page_base,
         query=q,
         map_id=map_id,
         country_code=country_code,
@@ -254,56 +256,106 @@ def list_media(
         min_height=min_height,
         file_state=file_state,
     )
-    total = database_session.scalar(
-        select(func.count()).select_from(filtered.order_by(None).subquery())
-    ) or 0
+    page_ids = (
+        page_filtered.with_only_columns(Photo.id.label("photo_id"))
+        .order_by(sort_expression(sort_by, sort_direction), Photo.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .cte("media_page_ids")
+    )
     rows = database_session.execute(
-        filtered.order_by(
+        media_presentation_statement(current_user.id)
+        .join(page_ids, Photo.id == page_ids.c.photo_id)
+        .order_by(
             sort_expression(sort_by, sort_direction),
             Photo.id,
         )
-        .offset((page - 1) * page_size)
-        .limit(page_size)
     ).all()
 
-    aggregate_source = filtered.with_only_columns(
-        Photo.file_size_bytes.label("file_size_bytes"),
-        Photo.is_primary.label("is_primary"),
-        declared_file_state().label("file_state"),
-    ).order_by(None).subquery()
-    declared_state = aggregate_source.c.file_state
-    aggregate = database_session.execute(
+    scope = media_listing_scope_statement(current_user.id).cte("accessible_media").prefix_with("MATERIALIZED")
+    filtered_scope = apply_media_filters(
+        select(scope),
+        query=q,
+        map_id=map_id,
+        country_code=country_code,
+        media_format=format,
+        uploader_id=uploader_id,
+        is_primary=is_primary,
+        created_from=created_from,
+        created_to=created_to,
+        min_size=min_size,
+        max_size=max_size,
+        min_width=min_width,
+        min_height=min_height,
+        file_state=file_state,
+        columns=scope.c,
+    ).cte("filtered_media")
+    filtered_state = declared_file_state(
+        filtered_scope.c.path,
+        filtered_scope.c.storage_scope_id,
+        filtered_scope.c.width,
+        filtered_scope.c.height,
+    )
+    aggregates = (
         select(
-            func.coalesce(func.sum(aggregate_source.c.file_size_bytes), 0),
-            func.count().filter(aggregate_source.c.is_primary.is_(True)),
-            func.count().filter(declared_state == "missing"),
-            func.count().filter(declared_state == "error"),
+            func.count().label("total_count"),
+            func.coalesce(func.sum(filtered_scope.c.file_size_bytes), 0).label("total_size_bytes"),
+            func.count().filter(filtered_scope.c.is_primary.is_(True)).label("primary_count"),
+            func.count().filter(filtered_state == "missing").label("missing_count"),
+            func.count().filter(filtered_state == "error").label("error_count"),
+        )
+        .select_from(filtered_scope)
+        .cte("media_aggregates")
+    )
+    map_option_rows = (
+        select(
+            scope.c.map_id.label("id"),
+            scope.c.map_name.label("name"),
+            scope.c.country_code.label("country_code"),
+            scope.c.country_name.label("country_name"),
+        )
+        .where(scope.c.map_id.is_not(None))
+        .distinct()
+        .order_by(scope.c.map_name, scope.c.map_id)
+        .subquery()
+    )
+    uploader_option_rows = (
+        select(
+            scope.c.uploader_id.label("id"),
+            scope.c.uploader_name.label("name"),
+        )
+        .where(scope.c.uploader_id.is_not(None))
+        .distinct()
+        .order_by(scope.c.uploader_name, scope.c.uploader_id)
+        .subquery()
+    )
+    format_option_rows = (
+        select(scope.c.mime_type.label("value"))
+        .where(scope.c.mime_type.is_not(None))
+        .distinct()
+        .order_by(scope.c.mime_type)
+        .subquery()
+    )
+    metadata = database_session.execute(
+        select(
+            aggregates,
+            select(func.jsonb_agg(func.jsonb_build_object(
+                "id", map_option_rows.c.id,
+                "name", map_option_rows.c.name,
+                "country_code", map_option_rows.c.country_code,
+                "country_name", map_option_rows.c.country_name,
+            ))).select_from(map_option_rows).scalar_subquery().label("map_options"),
+            select(func.jsonb_agg(func.jsonb_build_object(
+                "id", uploader_option_rows.c.id,
+                "name", uploader_option_rows.c.name,
+            ))).select_from(uploader_option_rows).scalar_subquery().label("uploader_options"),
+            select(func.jsonb_agg(format_option_rows.c.value))
+            .select_from(format_option_rows)
+            .scalar_subquery()
+            .label("format_options"),
         )
     ).one()
-
-    map_options = database_session.execute(
-        base.with_only_columns(
-            PoiMap.id,
-            PoiMap.name,
-            Country.iso_alpha2,
-            Country.name,
-        )
-        .where(PoiMap.id.is_not(None))
-        .distinct()
-        .order_by(PoiMap.name, PoiMap.id)
-    ).all()
-    uploader_options = database_session.execute(
-        base.with_only_columns(User.id, User.display_name)
-        .where(User.id.is_not(None))
-        .distinct()
-        .order_by(User.display_name, User.id)
-    ).all()
-    format_options = database_session.scalars(
-        base.with_only_columns(Photo.mime_type)
-        .where(Photo.mime_type.is_not(None))
-        .distinct()
-        .order_by(Photo.mime_type)
-    ).all()
+    total = metadata.total_count
 
     return MediaPage(
         items=[to_media_read(row, current_user.id) for row in rows],
@@ -313,29 +365,35 @@ def list_media(
         pages=max(1, ceil(total / page_size)),
         aggregates=MediaAggregates(
             total_count=total,
-            total_size_bytes=int(aggregate[0]),
-            primary_count=aggregate[1],
-            missing_count=aggregate[2],
-            error_count=aggregate[3],
+            total_size_bytes=int(metadata.total_size_bytes),
+            primary_count=metadata.primary_count,
+            missing_count=metadata.missing_count,
+            error_count=metadata.error_count,
         ),
         filters=MediaFilterOptions(
             maps=[
                 MediaMapSummary(
-                    id=row.id,
-                    name=row.name,
-                    country_code=row.iso_alpha2,
-                    country_name=row[3],
+                    id=row["id"],
+                    name=row["name"],
+                    country_code=row["country_code"],
+                    country_name=row["country_name"],
                 )
-                for row in map_options
+                for row in sorted(
+                    metadata.map_options or [],
+                    key=lambda item: (item["name"], item["id"]),
+                )
             ],
             formats=[
                 value.rsplit("/", 1)[-1].upper()
-                for value in format_options
+                for value in sorted(metadata.format_options or [])
                 if value
             ],
             uploaders=[
-                MediaUploaderSummary(id=row.id, name=row.display_name)
-                for row in uploader_options
+                MediaUploaderSummary(id=row["id"], name=row["name"])
+                for row in sorted(
+                    metadata.uploader_options or [],
+                    key=lambda item: (item["name"], item["id"]),
+                )
             ],
         ),
     )

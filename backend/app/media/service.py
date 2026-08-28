@@ -54,19 +54,8 @@ def declared_file_state(path=None, scope_id=None, width=None, height=None):
     )
 
 
-def file_state_condition(state: str):
-    return declared_file_state() == state
-
-
-def accessible_media_statement(user_id: UUID) -> Select:
-    """Build the common media query without an administrator bypass.
-
-    An attached photo is governed exclusively by its place's map:
-    ``Photo.map_id`` is a denormalised cache and must never widen access,
-    even when it still references the map the photo historically lived on.
-    Only a photo attached to no place falls back to ``Photo.map_id``, and
-    only a fully orphaned upload stays visible to its uploader alone.
-    """
+def media_presentation_statement(user_id: UUID) -> Select:
+    """Build the presentation joins shared by media reads and listing pages."""
 
     return (
         select(Photo, Place, PoiMap, Country, User, MapMembership.role)
@@ -81,6 +70,21 @@ def accessible_media_statement(user_id: UUID) -> Select:
                 MapMembership.user_id == user_id,
             ),
         )
+    )
+
+
+def accessible_media_statement(user_id: UUID) -> Select:
+    """Build the canonical media query without an administrator bypass.
+
+    An attached photo is governed exclusively by its place's map:
+    ``Photo.map_id`` is a denormalised cache and must never widen access,
+    even when it still references the map the photo historically lived on.
+    Only a photo attached to no place falls back to ``Photo.map_id``, and
+    only a fully orphaned upload stays visible to its uploader alone.
+    """
+
+    return (
+        media_presentation_statement(user_id)
         .where(
             or_(Place.id.is_(None), Place.deleted_at.is_(None)),
             # A trashed map must not become reachable again through /media.
@@ -97,6 +101,34 @@ def accessible_media_statement(user_id: UUID) -> Select:
                 MapMembership.user_id == user_id,
             ),
         )
+    )
+
+
+def media_listing_scope_statement(user_id: UUID) -> Select:
+    """Project the narrow reusable relation needed by catalogue metadata."""
+
+    return accessible_media_statement(user_id).with_only_columns(
+        Photo.id.label("photo_id"),
+        Photo.original_name.label("original_name"),
+        Photo.filename.label("filename"),
+        Photo.description.label("description"),
+        Photo.mime_type.label("mime_type"),
+        Photo.file_size_bytes.label("file_size_bytes"),
+        Photo.width.label("width"),
+        Photo.height.label("height"),
+        Photo.path.label("path"),
+        Photo.storage_scope_id.label("storage_scope_id"),
+        Photo.is_primary.label("is_primary"),
+        Photo.created_at.label("created_at"),
+        Photo.updated_at.label("updated_at"),
+        Photo.uploaded_by_user_id.label("uploaded_by_user_id"),
+        Place.name.label("place_name"),
+        PoiMap.id.label("map_id"),
+        PoiMap.name.label("map_name"),
+        Country.iso_alpha2.label("country_code"),
+        Country.name.label("country_name"),
+        User.id.label("uploader_id"),
+        User.display_name.label("uploader_name"),
     )
 
 
@@ -167,53 +199,68 @@ def apply_media_filters(
     min_width: int | None,
     min_height: int | None,
     file_state: str | None,
+    columns=None,
 ) -> Select:
+    original_name = columns.original_name if columns is not None else Photo.original_name
+    description = columns.description if columns is not None else Photo.description
+    mime_type = columns.mime_type if columns is not None else Photo.mime_type
+    uploaded_by_user_id = columns.uploaded_by_user_id if columns is not None else Photo.uploaded_by_user_id
+    is_primary_column = columns.is_primary if columns is not None else Photo.is_primary
+    created_at = columns.created_at if columns is not None else Photo.created_at
+    file_size_bytes = columns.file_size_bytes if columns is not None else Photo.file_size_bytes
+    width = columns.width if columns is not None else Photo.width
+    height = columns.height if columns is not None else Photo.height
+    path = columns.path if columns is not None else Photo.path
+    storage_scope_id = columns.storage_scope_id if columns is not None else Photo.storage_scope_id
+    place_name = columns.place_name if columns is not None else Place.name
+    authoritative_map_id = columns.map_id if columns is not None else PoiMap.id
+    map_name = columns.map_name if columns is not None else PoiMap.name
+    country_code_column = columns.country_code if columns is not None else Country.iso_alpha2
+
     if query and query.strip():
         pattern = f"%{query.strip()}%"
         statement = statement.where(
             or_(
-                Place.name.ilike(pattern),
-                PoiMap.name.ilike(pattern),
-                Photo.original_name.ilike(pattern),
-                Photo.description.ilike(pattern),
+                place_name.ilike(pattern),
+                map_name.ilike(pattern),
+                original_name.ilike(pattern),
+                description.ilike(pattern),
             )
         )
     if map_id is not None:
-        statement = statement.where(PoiMap.id == map_id)
+        statement = statement.where(authoritative_map_id == map_id)
     if country_code:
-        statement = statement.where(Country.iso_alpha2 == country_code.upper())
+        statement = statement.where(country_code_column == country_code.upper())
     if media_format:
         normalized = media_format.lower().removeprefix("image/")
         statement = statement.where(
-            func.lower(func.replace(Photo.mime_type, "image/", "")) == normalized
+            func.lower(func.replace(mime_type, "image/", "")) == normalized
         )
     if uploader_id is not None:
-        statement = statement.where(Photo.uploaded_by_user_id == uploader_id)
+        statement = statement.where(uploaded_by_user_id == uploader_id)
     if is_primary is not None:
-        statement = statement.where(Photo.is_primary.is_(is_primary))
+        statement = statement.where(is_primary_column.is_(is_primary))
     if created_from is not None:
         statement = statement.where(
-            Photo.created_at >= datetime.combine(created_from, time.min)
+            created_at >= datetime.combine(created_from, time.min)
         )
     if created_to is not None:
         statement = statement.where(
-            Photo.created_at
+            created_at
             < datetime.combine(created_to + timedelta(days=1), time.min)
         )
     if min_size is not None:
-        statement = statement.where(Photo.file_size_bytes >= min_size)
+        statement = statement.where(file_size_bytes >= min_size)
     if max_size is not None:
-        statement = statement.where(Photo.file_size_bytes <= max_size)
+        statement = statement.where(file_size_bytes <= max_size)
     if min_width is not None:
-        statement = statement.where(Photo.width >= min_width)
+        statement = statement.where(width >= min_width)
     if min_height is not None:
-        statement = statement.where(Photo.height >= min_height)
-    if file_state == "missing":
-        statement = statement.where(file_state_condition("missing"))
-    elif file_state == "error":
-        statement = statement.where(file_state_condition("error"))
-    elif file_state == "healthy":
-        statement = statement.where(file_state_condition("healthy"))
+        statement = statement.where(height >= min_height)
+    if file_state in {"missing", "error", "healthy"}:
+        statement = statement.where(
+            declared_file_state(path, storage_scope_id, width, height) == file_state
+        )
     return statement
 
 

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AccountModal } from './AccountModal'
-import { getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getPersonalApiKeys, getTotpStatus, startTotpSetup, updateAccountPreferences, updateAccountProfile } from '../../api/account'
+import { confirmTotpSetup, getAccountPreferences, getAccountProfile, getAccountSessions, getEmailMfaStatus, getPersonalApiKeys, getTotpStatus, startTotpSetup, updateAccountPreferences, updateAccountProfile } from '../../api/account'
 
 vi.mock('../../api/account', () => ({
   accountAvatarUrl: (value: string | null) => value,
@@ -29,6 +29,7 @@ beforeEach(async () => {
   vi.mocked(getAccountPreferences).mockResolvedValue(preferences)
   vi.mocked(getPersonalApiKeys).mockResolvedValue([])
   vi.mocked(startTotpSetup).mockResolvedValue({ secret: 'ABCDEFGHIJKLMNOP', provisioning_uri: 'otpauth://totp/CartaVault:test', qr_code_data_url: 'data:image/png;base64,AAAA', expires_at: '2026-08-13T10:00:00Z', issuer: 'CartaVault', account: 'test@example.test', digits: 6, period: 30 })
+  vi.mocked(confirmTotpSetup).mockResolvedValue({ recovery_codes: ['RECOVERY-ONE', 'RECOVERY-TWO'] })
   vi.mocked(updateAccountProfile).mockResolvedValue(profile)
   vi.mocked(updateAccountPreferences).mockResolvedValue(preferences)
 })
@@ -154,22 +155,46 @@ describe('AccountModal', () => {
     expect(within(satelliteRow!).queryByText('À configurer')).not.toBeInTheDocument()
   })
 
-  it('opens TOTP configuration directly without an intermediate activation step', async () => {
+  it('requires the current password before starting TOTP configuration', async () => {
     render(<AccountModal onClose={vi.fn()} trigger={null} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
     const totpRow = (await screen.findByText('Application d’authentification (TOTP)')).closest('article')
     expect(totpRow).not.toBeNull()
     fireEvent.click(within(totpRow!).getByRole('button', { name: 'Configurer' }))
-    expect(await screen.findByAltText('Code QR de configuration CartaVault')).toBeVisible()
     const dialog = screen.getByRole('dialog', { name: 'Application d’authentification (TOTP)' })
-    expect(within(dialog).getByText('Scannez le QR Code ou ajoutez la clé dans votre application, puis saisissez le code généré.').closest('header')).not.toBeNull()
+    const continueButton = within(dialog).getByRole('button', { name: 'Continuer' })
+    expect(startTotpSetup).not.toHaveBeenCalled()
+    expect(continueButton).toBeDisabled()
+    fireEvent.change(within(dialog).getByLabelText(/Mot de passe actuel/), { target: { value: 'current password' } })
+    fireEvent.click(continueButton)
+    expect(await screen.findByAltText('Code QR de configuration CartaVault')).toBeVisible()
+    expect(within(dialog).getByText('Confirmez votre mot de passe actuel, puis scannez le QR Code et saisissez le code généré.').closest('header')).not.toBeNull()
     expect(within(dialog).getByRole('button', { name: 'Copier' })).toBeVisible()
     expect(within(dialog).getByRole('link', { name: 'Ouvrir' })).toBeVisible()
     expect(within(dialog).getByRole('group', { name: 'Code à 6 chiffres' }).querySelectorAll('input')).toHaveLength(6)
     expect(within(dialog).getByText(/Pour finaliser l’activation/)).toBeVisible()
     expect(within(dialog).getByRole('button', { name: 'Vérifier et activer' })).toBeDisabled()
     expect(startTotpSetup).toHaveBeenCalledOnce()
+    expect(startTotpSetup).toHaveBeenCalledWith('current password')
     expect(screen.queryByRole('button', { name: 'Activer l’authentification à deux facteurs' })).not.toBeInTheDocument()
+  })
+
+  it('preserves recovery-code display after confirming TOTP setup', async () => {
+    render(<AccountModal onClose={vi.fn()} trigger={null} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Sécurité' }))
+    const totpRow = (await screen.findByText('Application d’authentification (TOTP)')).closest('article')
+    fireEvent.click(within(totpRow!).getByRole('button', { name: 'Configurer' }))
+    const dialog = screen.getByRole('dialog', { name: 'Application d’authentification (TOTP)' })
+    fireEvent.change(within(dialog).getByLabelText(/Mot de passe actuel/), { target: { value: 'current password' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continuer' }))
+    await screen.findByAltText('Code QR de configuration CartaVault')
+    for (const [index, input] of Array.from(within(dialog).getByRole('group', { name: 'Code à 6 chiffres' }).querySelectorAll('input')).entries()) {
+      fireEvent.change(input, { target: { value: String(index + 1) } })
+    }
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Vérifier et activer' }))
+    await waitFor(() => expect(confirmTotpSetup).toHaveBeenCalledWith('123456'))
+    expect(await within(dialog).findByText(/RECOVERY-ONE/)).toBeVisible()
+    expect(within(dialog).getByText(/RECOVERY-TWO/)).toBeVisible()
   })
 
   it('uses a neutral secondary TOTP configuration action without chevron', async () => {

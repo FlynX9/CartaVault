@@ -45,6 +45,11 @@ class User(Base):
     totp_last_used_counter: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     email_mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     email_mfa_verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    sensitive_auth_failure_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    sensitive_auth_failure_window_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    email_mfa_last_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    email_mfa_send_count: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default=text("0"))
+    email_mfa_send_window_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     quota_profile_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("quota_profiles.id", ondelete="RESTRICT"),

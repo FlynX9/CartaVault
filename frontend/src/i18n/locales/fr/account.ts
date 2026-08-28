@@ -348,6 +348,8 @@ export const accountFr = {
   'account.securitySection.newEmail': 'Nouvelle adresse',
   'account.securitySection.currentPassword': 'Mot de passe actuel',
   'account.securitySection.currentPasswordPlaceholder': 'Saisissez votre mot de passe actuel',
+  'account.securitySection.continueTotpSetup': 'Continuer',
+  'account.securitySection.totpSetupDescription': 'Confirmez votre mot de passe actuel, puis scannez le QR Code et saisissez le code généré.',
   'account.securitySection.emailPlaceholder': 'exemple@domaine.com',
   'account.securitySection.updateEmailHelp': 'Mettez à jour l’adresse e-mail associée à votre compte.',
   'account.securitySection.updateEmail': 'Modifier l’e-mail',

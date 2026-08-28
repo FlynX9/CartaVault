@@ -20,12 +20,15 @@ import { MediaUploadHost } from './components/media/MediaUploadHost.tsx'
 import { KmzImportHost } from './components/imports/KmzImportHost.tsx'
 import { GlobalFeedbackToasts } from './components/common/GlobalFeedbackToasts.tsx'
 import { applyTheme, loadThemePreference, resolveTheme } from './theme/theme.ts'
+import { initializeDisplayDensity } from './theme/displayDensity.ts'
 
 // Apply the locally known preference before React paints to avoid a light-to-dark flash.
 try {
   applyTheme(resolveTheme(loadThemePreference(window.localStorage)))
+  initializeDisplayDensity()
 } catch {
   applyTheme(resolveTheme('system'))
+  initializeDisplayDensity()
 }
 
 const uninstallButtonFeedback = installButtonFeedback()

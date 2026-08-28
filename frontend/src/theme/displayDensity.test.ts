@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyDisplayDensity,
   DISPLAY_DENSITY_STORAGE_KEY,
+  initializeDisplayDensity,
   loadDisplayDensity,
   parseDisplayDensity,
   saveDisplayDensity,
@@ -36,6 +37,14 @@ describe('CartaVault display density', () => {
     applyDisplayDensity('comfortable', root)
 
     expect(root).toHaveAttribute('data-density', 'comfortable')
+  })
+
+  it('initializes the document from the persisted density before the app mounts', () => {
+    window.localStorage.setItem(DISPLAY_DENSITY_STORAGE_KEY, '80')
+
+    initializeDisplayDensity()
+
+    expect(document.documentElement).toHaveAttribute('data-density', '80')
   })
 
   it('keeps the scaled application grid constrained to the viewport', () => {

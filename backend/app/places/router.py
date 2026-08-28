@@ -10,7 +10,7 @@ from fastapi import (
     status,
 )
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, true, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -29,7 +29,7 @@ from app.maps.models import PoiMap
 from app.maps.models import MapMembership
 from app.maps.schemas import MapSummary
 from app.places.filters import MapBounds, get_map_bounds
-from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_ordering
+from app.places.filtering import PlaceFilters, apply_place_filters, get_place_filters, place_facet_scopes, place_ordering, should_share_place_facet_scope
 from app.places.models import Place
 from app.photos.models import Photo
 from app.annotations.models import PlaceAnnotation
@@ -534,6 +534,156 @@ def get_place_facets(
 ) -> PlaceFacets:
     """Return map-scoped filter counters without loading POIs into Python."""
     require_map_role(database_session, map_id, current_user, "viewer")
+    if not should_share_place_facet_scope(filters):
+        return _get_place_facets_independently(map_id, filters, database_session)
+    return _get_place_facets_with_shared_text_scope(map_id, filters, database_session)
+
+
+def _get_place_facets_with_shared_text_scope(
+    map_id: UUID,
+    filters: PlaceFilters,
+    database_session: Session,
+) -> PlaceFacets:
+    """Build all text-filtered facets from one materialized Place scope."""
+
+    quick_scope, filtered_scope = place_facet_scopes(map_id, filters)
+    filtered_places = select(Place).join(
+        filtered_scope,
+        filtered_scope.c.place_id == Place.id,
+    ).subquery()
+
+    category_rows = (
+        select(
+            Category.id,
+            Category.name,
+            Category.icon,
+            func.count(func.distinct(place_categories_table.c.place_id)).label("count"),
+        )
+        .join(place_categories_table, Category.id == place_categories_table.c.category_id)
+        .join(filtered_scope, filtered_scope.c.place_id == place_categories_table.c.place_id)
+        .group_by(Category.id, Category.name, Category.icon)
+        .order_by(Category.name)
+        .subquery()
+    )
+    tag_rows = (
+        select(
+            Tag.id,
+            Tag.name,
+            Tag.color,
+            func.count(func.distinct(place_tags_table.c.place_id)).label("count"),
+        )
+        .join(place_tags_table, Tag.id == place_tags_table.c.tag_id)
+        .join(filtered_scope, filtered_scope.c.place_id == place_tags_table.c.place_id)
+        .group_by(Tag.id, Tag.name, Tag.color)
+        .order_by(Tag.name)
+        .subquery()
+    )
+    status_rows = (
+        select(
+            PlaceStatus.id,
+            PlaceStatus.name,
+            PlaceStatus.color,
+            PlaceStatus.sort_order,
+            func.count(filtered_places.c.id).label("count"),
+        )
+        .join(filtered_places, filtered_places.c.status_id == PlaceStatus.id)
+        .where(PlaceStatus.is_active.is_(True))
+        .group_by(PlaceStatus.id, PlaceStatus.name, PlaceStatus.color, PlaceStatus.sort_order)
+        .order_by(PlaceStatus.sort_order, PlaceStatus.name)
+        .subquery()
+    )
+
+    def value_rows(column):
+        return (
+            select(column.label("value"), func.count(filtered_places.c.id).label("count"))
+            .where(column.is_not(None), column != "")
+            .group_by(column)
+            .order_by(column)
+            .subquery()
+        )
+
+    region_rows = value_rows(filtered_places.c.region)
+    danger_rows = value_rows(filtered_places.c.danger_level)
+    condition_rows = value_rows(filtered_places.c.condition)
+
+    quick_counts = (
+        select(
+            func.count().label("total"),
+            func.count().filter(
+                select(PlaceStatus.id).where(
+                    PlaceStatus.id == quick_scope.c.status_id,
+                    PlaceStatus.functional_state == "non_visited",
+                ).exists()
+            ).label("non_visited"),
+            func.count().filter(
+                select(PlaceStatus.id).where(
+                    PlaceStatus.id == quick_scope.c.status_id,
+                    PlaceStatus.functional_state == "visited",
+                ).exists()
+            ).label("visited"),
+            func.count().filter(quick_scope.c.is_favorite.is_(True)).label("favorites"),
+        )
+        .select_from(quick_scope)
+        .cte("facet_quick_counts")
+    )
+    filtered_counts = (
+        select(
+            func.count().filter(Place.photos.any()).label("with_photos"),
+            func.count().filter(~Place.photos.any()).label("without_photos"),
+            func.count().filter(Place.location.is_not(None)).label("with_coordinates"),
+            func.count().filter(Place.location.is_(None)).label("without_coordinates"),
+            func.count().filter(Place.trip_stops.any()).label("in_trip"),
+            func.count().filter(~Place.trip_stops.any()).label("not_in_trip"),
+        )
+        .select_from(Place)
+        .join(filtered_scope, filtered_scope.c.place_id == Place.id)
+        .cte("facet_filtered_counts")
+    )
+
+    def objects(rows, *pairs):
+        arguments = [value for pair in pairs for value in pair]
+        return select(func.jsonb_agg(func.jsonb_build_object(*arguments))).select_from(rows).scalar_subquery()
+
+    result = database_session.execute(
+        select(
+            quick_counts,
+            filtered_counts,
+            objects(category_rows, ("id", category_rows.c.id), ("name", category_rows.c.name), ("icon", category_rows.c.icon), ("count", category_rows.c.count)).label("categories"),
+            objects(tag_rows, ("id", tag_rows.c.id), ("name", tag_rows.c.name), ("color", tag_rows.c.color), ("count", tag_rows.c.count)).label("tags"),
+            objects(status_rows, ("id", status_rows.c.id), ("name", status_rows.c.name), ("color", status_rows.c.color), ("sort_order", status_rows.c.sort_order), ("count", status_rows.c.count)).label("statuses"),
+            objects(region_rows, ("value", region_rows.c.value), ("count", region_rows.c.count)).label("regions"),
+            objects(danger_rows, ("value", danger_rows.c.value), ("count", danger_rows.c.count)).label("danger_levels"),
+            objects(condition_rows, ("value", condition_rows.c.value), ("count", condition_rows.c.count)).label("condition_values"),
+        ).select_from(quick_counts.join(filtered_counts, true()))
+    ).one()
+
+    return PlaceFacets(
+        total=int(result.total or 0),
+        non_visited=int(result.non_visited or 0),
+        visited=int(result.visited or 0),
+        favorites=int(result.favorites or 0),
+        categories=[PlaceFacetItem(**row) for row in sorted(result.categories or [], key=lambda row: row["name"])],
+        tags=[PlaceFacetItem(**row) for row in sorted(result.tags or [], key=lambda row: row["name"])],
+        statuses=[PlaceFacetItem(**row) for row in sorted(result.statuses or [], key=lambda row: (row["sort_order"], row["name"]))],
+        regions=[PlaceFacetItem(**row) for row in sorted(result.regions or [], key=lambda row: row["value"])],
+        danger_levels=[PlaceFacetItem(**row) for row in sorted(result.danger_levels or [], key=lambda row: row["value"])],
+        condition_values=[PlaceFacetItem(**row) for row in sorted(result.condition_values or [], key=lambda row: row["value"])],
+        with_photos=int(result.with_photos or 0),
+        without_photos=int(result.without_photos or 0),
+        with_coordinates=int(result.with_coordinates or 0),
+        without_coordinates=int(result.without_coordinates or 0),
+        in_trip=int(result.in_trip or 0),
+        not_in_trip=int(result.not_in_trip or 0),
+    )
+
+
+def _get_place_facets_independently(
+    map_id: UUID,
+    filters: PlaceFilters,
+    database_session: Session,
+) -> PlaceFacets:
+    """Keep the faster independent plans when there is no repeated text filter."""
+
     base = apply_place_filters(select(Place.id).where(Place.map_id == map_id), filters).subquery()
     ids = select(base.c.id)
     categories = [PlaceFacetItem(id=row.id, name=row.name, icon=row.icon, count=row.count) for row in database_session.execute(select(Category.id, Category.name, Category.icon, func.count(func.distinct(place_categories_table.c.place_id)).label("count")).join(place_categories_table, Category.id == place_categories_table.c.category_id).where(place_categories_table.c.place_id.in_(ids)).group_by(Category.id, Category.name, Category.icon).order_by(Category.name)).all()]

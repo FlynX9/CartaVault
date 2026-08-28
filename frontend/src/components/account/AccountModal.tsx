@@ -7,7 +7,6 @@ import { SESSION_EXPIRED_EVENT } from '../../api/client'
 import { useAuth } from '../../auth/useAuth'
 import { notifyNotificationsChanged } from '../notifications/events'
 import { useI18n } from '../../i18n/useI18n'
-import { applyDisplayDensity, saveDisplayDensity } from '../../theme/displayDensity'
 import { saveThemePreference } from '../../theme/theme'
 import type { AccountPreferences, AccountProfile, AccountSession, TotpRecoveryCodes, TotpSecurityStatus, TotpSetup } from '../../types/account'
 import { FieldHelp } from '../common/FieldHelp'
@@ -115,8 +114,6 @@ export function AccountModal({ onClose, trigger }: { onClose: () => void; onOpen
         const next = await updateAccountPreferences(preferences)
         saveThemePreference(next.default_theme, window.localStorage, user?.id)
         setLocale(next.language)
-        applyDisplayDensity(next.density)
-        saveDisplayDensity(next.density, window.localStorage)
         window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next }))
       }
       await refresh()
@@ -247,7 +244,7 @@ function SecuritySection({ profile, sessions, run, refreshProfile, reload }: { p
 
     {dialog === 'email' && <AccountSecurityDialog icon={Mail} title={t('account.securitySection.changeEmail')} description="Mettez à jour l’adresse e-mail associée à votre compte." variant="email-change" onClose={closeDialog}><EmailChangePanel run={run} refreshProfile={refreshProfile} onComplete={closeDialog} /></AccountSecurityDialog>}
     {dialog === 'password' && <AccountSecurityDialog icon={LockKeyhole} title={t('account.securitySection.changePassword')} description="Choisissez un mot de passe fort et unique pour sécuriser votre compte." variant="password-change" onClose={closeDialog}><PasswordChangePanel run={run} onComplete={closeDialog} /></AccountSecurityDialog>}
-    {dialog === 'totp' && totpStatus && <AccountSecurityDialog icon={LockKeyhole} title={t('account.securitySection.authenticatorApp')} description={totpStatus.enabled ? undefined : 'Scannez le QR Code ou ajoutez la clé dans votre application, puis saisissez le code généré.'} variant={totpStatus.enabled ? undefined : 'totp-setup'} onClose={closeDialog}><TotpSection status={totpStatus} run={run} onStatusChange={setTotpStatus} onActivated={() => setEmailMfaStatus((current) => current ? { ...current, enabled: false, verified_at: null } : current)} onCancel={closeDialog} /></AccountSecurityDialog>}
+    {dialog === 'totp' && totpStatus && <AccountSecurityDialog icon={LockKeyhole} title={t('account.securitySection.authenticatorApp')} description={totpStatus.enabled ? undefined : t('account.securitySection.totpSetupDescription')} variant={totpStatus.enabled ? undefined : 'totp-setup'} onClose={closeDialog}><TotpSection status={totpStatus} run={run} onStatusChange={setTotpStatus} onActivated={() => setEmailMfaStatus((current) => current ? { ...current, enabled: false, verified_at: null } : current)} onCancel={closeDialog} /></AccountSecurityDialog>}
     {dialog === 'email-mfa' && emailMfaStatus && <AccountSecurityDialog icon={Mail} title={t('account.securitySection.emailCode')} description="Recevez un code de sécurité à chaque connexion." variant="email-mfa" onClose={closeDialog}><EmailMfaSection status={emailMfaStatus} email={profile.email} run={run} onStatusChange={setEmailMfaStatus} onChangeEmail={() => setDialog('email')} /></AccountSecurityDialog>}
     {dialog === 'recovery' && totpStatus?.enabled && <AccountSecurityDialog icon={ShieldCheck} title={t('account.securitySection.regenerateRecovery')} onClose={closeDialog}><RecoveryCodesPanel status={totpStatus} onStatusChange={setTotpStatus} /></AccountSecurityDialog>}
     {dialog === 'sessions' && <AccountSecurityDialog icon={MonitorSmartphone} title={t('account.securitySection.sessionsDevices')} description="Contrôlez les appareils actuellement connectés à votre compte." onClose={closeDialog} wide><SessionsSection sessions={sessions} run={run} reload={reload} embedded /></AccountSecurityDialog>}
@@ -338,8 +335,9 @@ function EmailMfaSection({ status, email, run, onStatusChange, onChangeEmail }: 
 }
 
 function TotpSection({ status, run, onStatusChange, onActivated, onCancel }: { status: TotpSecurityStatus; run: (action: () => Promise<void>, success: string) => Promise<boolean>; onStatusChange: (status: TotpSecurityStatus) => void; onActivated: () => void; onCancel: () => void }) {
+  const { t } = useI18n()
   const [setup, setSetup] = useState<TotpSetup | null>(null)
-  const [setupLoading, setSetupLoading] = useState(!status.enabled)
+  const [setupLoading, setSetupLoading] = useState(false)
   const [code, setCode] = useState('')
   const [recovery, setRecovery] = useState<TotpRecoveryCodes | null>(null)
   const [password, setPassword] = useState('')
@@ -350,21 +348,17 @@ function TotpSection({ status, run, onStatusChange, onActivated, onCancel }: { s
     return message || 'Impossible de démarrer la configuration TOTP.'
   }
   const loadSetup = () => {
+    if (!password) return
     setSetupLoading(true)
     setError(null)
-    void startTotpSetup()
-      .then(setSetup)
+    void startTotpSetup(password)
+      .then((value) => { setSetup(value); setPassword('') })
       .catch((reason) => setError(setupErrorMessage(reason)))
       .finally(() => setSetupLoading(false))
   }
-  useEffect(() => {
-    if (!status.enabled) loadSetup()
-    // The setup is intentionally started once when the dedicated dialog opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
   return <section className="account-security-dialog__form">
     {!status.enabled && !setup && setupLoading && <p className="account-card-description" role="status">Préparation de la configuration TOTP…</p>}
-    {!status.enabled && !setup && !setupLoading && error && <><p className="form-alert" role="alert">{error}</p><button className="account-button account-button--secondary" type="button" onClick={loadSetup}>Réessayer</button></>}
+    {!status.enabled && !setup && !setupLoading && <><label>{t('account.securitySection.currentPassword')} *<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t('account.securitySection.currentPasswordPlaceholder')} required autoComplete="current-password" /></label>{error && <p className="form-alert" role="alert">{error}</p>}<button className="account-button account-button--primary" type="button" disabled={!password} onClick={loadSetup}>{t('account.securitySection.continueTotpSetup')}</button></>}
     {setup && !recovery && <div className="account-totp-activation"><div className="account-totp-activation__body"><div className="account-totp-activation__setup"><img className="totp-qr-code" src={setup.qr_code_data_url} alt="Code QR de configuration CartaVault" /><div className="totp-setup__key"><strong>Clé de configuration</strong><code>{setup.secret.replace(/(.{4})/g, '$1 ').trim()}</code><div><button className="account-button account-button--secondary" type="button" onClick={() => void copy(setup.secret)}><Copy size={15} />Copier</button><a className="account-button account-button--secondary" href={setup.provisioning_uri}><Link size={15} />Ouvrir</a></div></div></div><div className="totp-setup__code"><strong>Code à 6 chiffres *</strong><TotpCodeInput value={code} onChange={setCode} /></div><aside className="account-email-change-form__notice"><Info size={19} /><p>Pour finaliser l’activation, saisissez le code temporaire généré par votre application d’authentification.</p></aside>{error && <p className="form-alert" role="alert">{error}</p>}</div><div className="dialog-actions"><button className="account-button account-button--secondary" type="button" onClick={onCancel}>Annuler</button><button className="account-button account-button--primary" type="button" disabled={code.length !== 6} onClick={() => void confirmTotpSetup(code).then((value) => { setRecovery(value); setSetup(null); onStatusChange({ ...status, enabled: true, verified_at: new Date().toISOString(), recovery_codes_remaining: value.recovery_codes.length }); onActivated(); notifyNotificationsChanged() }).catch((reason) => setError(reason instanceof Error ? reason.message : 'Code invalide.'))}>Vérifier et activer</button></div></div>}
     {recovery && <><p className="form-alert">Enregistrez ces codes maintenant. Ils ne seront plus affichés.</p><pre className="totp-recovery-codes">{recovery.recovery_codes.join('\n')}</pre><button className="account-button account-button--secondary" type="button" onClick={() => void copy(recovery.recovery_codes.join('\n'))}>Copier tous les codes</button></>}
     {status.enabled && !recovery && <><p className="account-card-description">Activée{status.verified_at ? ` le ${formatDate(status.verified_at)}` : ''}. {status.recovery_codes_remaining} code(s) de récupération restant(s).</p><label>Mot de passe actuel *<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" /></label><label>Code d’authentification *<input inputMode="numeric" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value)} /></label>{error && <p className="form-alert" role="alert">{error}</p>}<button className="account-button account-button--danger-hover" type="button" disabled={!password || !code} onClick={() => void run(() => disableTotp(password, code), 'Authentification à deux facteurs désactivée.').then((ok) => { if (ok) { onStatusChange({ enabled: false, verified_at: null, recovery_codes_remaining: 0 }); notifyNotificationsChanged() } })}>Désactiver</button></>}

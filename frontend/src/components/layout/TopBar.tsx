@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { ACCOUNT_PREFERENCES_UPDATED_EVENT, accountAvatarUrl, getAccountPreferences, updateAccountPreferences } from "../../api/account";
 import type { AccountPreferences } from "../../types/account";
-import { applyDisplayDensity, parseDisplayDensity, saveDisplayDensity, type DisplayDensity } from "../../theme/displayDensity";
+import { parseDisplayDensity, type DisplayDensity } from "../../theme/displayDensity";
 import { getSaasStatus } from "../../api/contact";
 import { useAuth } from "../../auth/useAuth";
 import { API_BASE_URL } from "../../config";
@@ -124,8 +124,6 @@ export function TopBar({ isMapWorkspace, contextLabel, onMapAccessChanged, onOpe
     if (!preferences) return;
     const next = { ...preferences, density };
     setPreferences(next);
-    applyDisplayDensity(density);
-    saveDisplayDensity(density, window.localStorage);
     window.dispatchEvent(new CustomEvent<AccountPreferences>(ACCOUNT_PREFERENCES_UPDATED_EVENT, { detail: next }));
     void updateAccountPreferences(next).then((saved) => {
       setPreferences(saved);

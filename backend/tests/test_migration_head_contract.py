@@ -6,8 +6,8 @@ import pytest
 
 pytestmark = pytest.mark.integration
 
-MERGE_REVISION = "a6c9e3f1b742"
-FORMER_HEADS = {"f5b8d2a4c731", "fd4e8a2b7c91"}
+MERGE_REVISION = "ff6c2b8d3e01"
+FORMER_HEADS = {"a6c9e3f1b742", "fe5b1a7c2d90"}
 
 
 def test_migration_graph_has_one_head(migration_environment) -> None:

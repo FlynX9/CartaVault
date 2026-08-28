@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { ApiError, SESSION_EXPIRED_EVENT, setCsrfToken } from '../api/client'
 import { login as loginRequest, logout as logoutRequest, restoreSession, verifyEmailMfaLogin, verifyTotpLogin } from '../api/auth'
@@ -10,13 +10,17 @@ import { clearAccountPreferencesCache } from '../api/account'
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const sessionRequestVersion = useRef(0)
   const refresh = useCallback(async () => {
+    const requestVersion = ++sessionRequestVersion.current
     try {
       const restored = await restoreSession()
+      if (requestVersion !== sessionRequestVersion.current) return
       setOfflineIdentity(restored)
       setUser(restored)
     }
     catch (error) {
+      if (requestVersion !== sessionRequestVersion.current) return
       if (isNetworkFailure(error)) {
         const offline = await getOfflineIdentity()
         if (offline) { setUser({ ...offline, is_active: true, created_at: '', updated_at: '', last_login_at: null, csrf_token: '' }); return }
@@ -31,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener(SESSION_EXPIRED_EVENT, expire)
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expire)
   }, [user])
-  const login = useCallback(async (payload: LoginPayload): Promise<TotpLoginChallenge | EmailMfaLoginChallenge | null> => { clearAccountPreferencesCache(); const result = await loginRequest(payload); if ('requires_totp' in result || 'requires_email_mfa' in result) return result; setOfflineIdentity(result); setUser(result); return null }, [])
+  const login = useCallback(async (payload: LoginPayload): Promise<TotpLoginChallenge | EmailMfaLoginChallenge | null> => { const requestVersion = ++sessionRequestVersion.current; clearAccountPreferencesCache(); const result = await loginRequest(payload); if ('requires_totp' in result || 'requires_email_mfa' in result) return result; if (requestVersion !== sessionRequestVersion.current) return null; setOfflineIdentity(result); setUser(result); return null }, [])
   const completeTotpLogin = useCallback(async (challengeToken: string, code: string, recovery = false) => { const authenticated = await verifyTotpLogin(challengeToken, code, recovery); setOfflineIdentity(authenticated); setUser(authenticated) }, [])
   const completeEmailMfaLogin = useCallback(async (challengeToken: string, code: string) => { const authenticated = await verifyEmailMfaLogin(challengeToken, code); setOfflineIdentity(authenticated); setUser(authenticated) }, [])
   const logout = useCallback(async () => { const current = user; try { await logoutRequest() } finally { clearAccountPreferencesCache(); if (current) void clearOfflineDataForUser(current.id).catch(() => undefined); setOfflineIdentity(null); setUser(null); setCsrfToken(null) } }, [user])

@@ -255,6 +255,10 @@ class TotpSetupRead(BaseModel):
     period: int = 30
 
 
+class TotpSetupRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=1024)
+
+
 class TotpConfirmRequest(BaseModel):
     code: str = Field(min_length=1, max_length=64)
 

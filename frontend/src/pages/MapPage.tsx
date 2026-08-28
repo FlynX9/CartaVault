@@ -11,7 +11,6 @@ import { PoiMap } from '../components/map/PoiMap'
 import { StatusLegend } from '../components/map/StatusLegend'
 import { EMPTY_MAP_MARKER_FILTER, MapMarkerFilterContext, type MapMarkerFilter } from '../components/map/mapMarkerFilterContext'
 import { getBasemap, type BasemapId } from '../map/basemaps'
-import { applyDisplayDensity, saveDisplayDensity } from '../theme/displayDensity'
 import type { AccountPreferences } from '../types/account'
 import type { DraftPosition, MapBounds, MapFocusRequest, MapPlace, MapView } from '../types/place'
 import type { PlaceStatusSummary } from '../types/status'
@@ -361,8 +360,6 @@ export function MapPage({
       accountPreferencesRef.current = preferences
       setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
       setConfiguredSatelliteProvider(preferences.basemaps?.satellite_provider ?? 'none')
-      applyDisplayDensity(preferences.density)
-      saveDisplayDensity(preferences.density, window.localStorage)
       const explicitSelection = explicitBasemapSelectionRef.current
       if (explicitSelection !== null) {
         if (preferences.preferred_basemap !== explicitSelection) {
@@ -385,8 +382,6 @@ export function MapPage({
       accountPreferencesRef.current = preferences
       setPhotoMarkersEnabled(preferences.photo_markers_enabled === true)
       setConfiguredSatelliteProvider(preferences.basemaps?.satellite_provider ?? 'none')
-      applyDisplayDensity(preferences.density)
-      saveDisplayDensity(preferences.density, window.localStorage)
       // A map-theme click updates basemapId synchronously and persists in the
       // background. Do not let an unrelated preferences event race that click
       // and overwrite the selected renderer/icon with a stale server value.

@@ -350,6 +350,8 @@ export const accountEn = {
   'account.securitySection.newEmail': 'New address',
   'account.securitySection.currentPassword': 'Current password',
   'account.securitySection.currentPasswordPlaceholder': 'Enter your current password',
+  'account.securitySection.continueTotpSetup': 'Continue',
+  'account.securitySection.totpSetupDescription': 'Confirm your current password, then scan the QR code and enter the generated code.',
   'account.securitySection.emailPlaceholder': 'example@domain.com',
   'account.securitySection.updateEmailHelp': 'Update the email address associated with your account.',
   'account.securitySection.updateEmail': 'Change email',
