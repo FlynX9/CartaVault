@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IconVault } from '@tabler/icons-react'
+import { IconMapPin2 } from '@tabler/icons-react'
 import { CircleDot, Images, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Route, Shapes, Spline, Tag, Trash2, X } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n'
@@ -79,7 +79,7 @@ export function MainNavigation({ activePanel, onPanelChange, dashboardActive = f
       <div className="cv-main-navigation__group">
         <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={() => { closeMobileModalLayers(); onOpenDashboard?.() }}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>
         <div className="cv-main-navigation__maps-mobile">
-          <button type="button" className={navClass(mapsActive)} aria-label={t('nav.myMaps')} aria-pressed={mapsActive} onClick={() => selectPanel('maps')}><IconVault className="cv-main-navigation__vault-icon" aria-hidden="true" size={23} stroke={2} /><span>{t('nav.myMaps')}</span></button>
+          <button type="button" className={navClass(mapsActive)} aria-label={t('nav.myMaps')} aria-pressed={mapsActive} onClick={() => selectPanel('maps')}><IconMapPin2 className="cv-main-navigation__vault-icon" aria-hidden="true" size={23} stroke={2} /><span>{t('nav.myMaps')}</span></button>
         </div>
         {activeMapId !== null && (() => { const activeMap = maps.find((map) => map.id === activeMapId); return activeMap ? <div className="cv-main-navigation__active-entry"><button type="button" className={`${navClass(activePanel === 'places')} cv-main-navigation__active-map-mobile`} aria-label={activeMap.name} aria-pressed={activePanel === 'places'} onClick={() => { closeMobileModalLayers(); onPanelChange(activePanel === 'places' ? null : 'places') }}><i className="cv-main-navigation__active-indicator" aria-hidden="true" /><CountryFlag countryCode={activeMap.country.iso_alpha2} fallbackSize={18} /><span className="cv-main-navigation__active-label">{activeMap.name}</span></button><button type="button" className="cv-main-navigation__close-entry" aria-label={`Fermer ${activeMap.name}`} title={`Fermer ${activeMap.name}`} onClick={onCloseMap}><X size={15} aria-hidden="true" /></button></div> : null })()}
         <button type="button" className={navClass(activePanel === 'trips')} aria-label={t('nav.trips')} aria-pressed={activePanel === 'trips'} onClick={() => selectPanel('trips')}><Route size={23} /><span>{t('nav.trips')}</span></button>
