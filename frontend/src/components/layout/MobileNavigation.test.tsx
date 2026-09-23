@@ -16,7 +16,8 @@ describe('MobileNavigation', () => {
     render(<MemoryRouter><MobileNavigation navigationMode={globalMode} activePanel="places" onPanelChange={vi.fn()} activeMapId="map-1" maps={[map]} /></MemoryRouter>)
 
     const navigation = screen.getByRole('navigation', { name: 'Navigation CartaVault' })
-    expect(navigation).toHaveClass('mobile-navigation', 'is-mobile')
+    expect(navigation).toHaveClass('mobile-navigation')
+    expect(navigation).not.toHaveClass('is-mobile')
     expect(navigation).toHaveAttribute('data-navigation-mode', 'GLOBAL_MODE')
     expect(screen.queryByRole('button', { name: map.name })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Réduire le menu' })).not.toBeInTheDocument()
@@ -80,7 +81,7 @@ describe('MobileNavigation', () => {
 
   it('renders exactly four global destinations and no contextual entries', () => {
     const onPanelChange = vi.fn()
-    const { rerender } = render(<MemoryRouter><MobileNavigation navigationMode={globalMode} activePanel="media" onPanelChange={onPanelChange} activeMapId="map-1" activeTrip={{ id: 'trip-1', name: 'Sortie stale', map_id: map.id }} maps={[map]} organizationAvailable /></MemoryRouter>)
+    const { rerender } = render(<MemoryRouter><MobileNavigation navigationMode={globalMode} activePanel="media" onPanelChange={onPanelChange} activeMapId="map-1" activeTrip={{ id: 'trip-1', name: 'Sortie stale', map_id: map.id }} maps={[map]} /></MemoryRouter>)
     const navigation = screen.getByRole('navigation', { name: 'Navigation CartaVault' })
 
     expect(within(navigation).getAllByRole('button')).toHaveLength(4)
@@ -95,7 +96,7 @@ describe('MobileNavigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Corbeille' }))
     expect(onPanelChange).toHaveBeenCalledWith('trash')
 
-    rerender(<MemoryRouter><MobileNavigation navigationMode={globalMode} activePanel="trash" onPanelChange={onPanelChange} organizationAvailable /></MemoryRouter>)
+    rerender(<MemoryRouter><MobileNavigation navigationMode={globalMode} activePanel="trash" onPanelChange={onPanelChange} /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'Corbeille' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Médias' })).toHaveAttribute('aria-pressed', 'false')
   })

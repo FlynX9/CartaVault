@@ -4,8 +4,10 @@ import { CircleDot, Ellipsis, Images, LayoutDashboard, Map as MapIcon, MapPin, R
 
 import { useI18n } from '../../i18n/useI18n'
 import type { NavigationMode } from '../../navigation/navigationMode'
-import type { MobileMapNavigationDestination, NavigationProps } from './MainNavigation'
+import type { NavigationProps } from './MainNavigation'
 import { closeMobileModalLayers } from './mobileNavigationViewport'
+
+export type MobileMapNavigationDestination = 'places' | 'map' | 'trips' | 'categories' | 'tags' | 'statuses' | 'annotations' | 'media' | 'settings'
 
 function navClass(active: boolean): string {
   return active ? 'active cv-main-navigation__item' : 'cv-main-navigation__item'
@@ -13,6 +15,8 @@ function navClass(active: boolean): string {
 
 interface Props extends NavigationProps {
   navigationMode: NavigationMode
+  onMapNavigation?: (destination: MobileMapNavigationDestination, mapId: string) => void
+  mobileMapTripsOpen?: boolean
 }
 
 export function MobileNavigation({ navigationMode, activePanel, onPanelChange, dashboardActive = false, onOpenDashboard, onMapNavigation, mobileMapTripsOpen = false }: Props) {
@@ -67,7 +71,7 @@ export function MobileNavigation({ navigationMode, activePanel, onPanelChange, d
     onMapNavigation?.(destination, navigationMode.mapId)
   }
 
-  return <nav className="main-navigation cv-main-navigation mobile-navigation is-mobile" data-navigation-mode={navigationMode.kind} data-navigation-map-id={navigationMode.kind === 'MAP_MODE' ? navigationMode.mapId : undefined} aria-label={t('nav.main')}>
+  return <nav className="main-navigation cv-main-navigation mobile-navigation" data-navigation-mode={navigationMode.kind} data-navigation-map-id={navigationMode.kind === 'MAP_MODE' ? navigationMode.mapId : undefined} aria-label={t('nav.main')}>
     <div className="main-navigation-links cv-main-navigation__items">
       <div className="cv-main-navigation__group">
         {globalMode

@@ -1,24 +1,24 @@
 /* Desktop rail toggle: an integrated sidebar action. Mobile never renders it. */
-.main-navigation:not(.is-mobile) {
+.main-navigation:not(.mobile-navigation) {
   transition: width 180ms ease, min-width 180ms ease, max-width 180ms ease;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) {
+.main-navigation.is-collapsed:not(.mobile-navigation) {
   width: var(--cv-nav-collapsed-width, 3.75rem) !important;
   min-width: var(--cv-nav-collapsed-width, 3.75rem) !important;
   max-width: var(--cv-nav-collapsed-width, 3.75rem) !important;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .main-navigation-links,
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__items,
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__group,
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__item {
+.main-navigation.is-collapsed:not(.mobile-navigation) .main-navigation-links,
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__items,
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__group,
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__item {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }
 
-.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle {
+.main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-toggle {
   display: flex;
   width: 100%;
   min-height: 3.15rem;
@@ -35,25 +35,25 @@
   transition: color 160ms ease, background-color 160ms ease;
 }
 
-.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle:hover {
+.main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-toggle:hover {
   color: var(--cv-color-teal);
   background: rgb(15 166 138 / 10%);
 }
 
-.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle:focus-visible {
+.main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-toggle:focus-visible {
   color: var(--cv-color-teal);
   background: rgb(15 166 138 / 10%);
   outline: 2px solid rgb(15 166 138 / 45%);
   outline-offset: 2px;
 }
 
-.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle svg {
+.main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-toggle svg {
   flex: 0 0 23px;
   width: 23px;
   height: 23px;
 }
 
-.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-control {
+.main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-control {
   display: flex;
   width: 100%;
   min-height: auto;
@@ -64,47 +64,47 @@
   border-bottom: 1px solid rgb(198 213 222 / 18%);
 }
 
-.main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle span {
+.main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-toggle span {
   font-size: .8rem;
   font-weight: 400;
   white-space: nowrap;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-control {
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__collapse-control {
   width: 100%;
   justify-content: center;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle {
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__collapse-toggle {
   justify-content: center;
   padding-inline: .45rem;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle span {
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__collapse-toggle span {
   display: none;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) {
+.main-navigation.is-collapsed:not(.mobile-navigation) {
   gap: .5rem;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-control {
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__collapse-control {
   padding-bottom: .5rem;
 }
 
-.main-navigation.is-collapsed:not(.is-mobile) .main-navigation-links {
+.main-navigation.is-collapsed:not(.mobile-navigation) .main-navigation-links {
   margin-top: 0;
 }
 
 /* The visual offset in the compact rail is created by the inherited toggle
    margin. Neutralise it only once the control lives in its dedicated row. */
-.main-navigation.is-collapsed:not(.is-mobile) .cv-main-navigation__collapse-toggle {
+.main-navigation.is-collapsed:not(.mobile-navigation) .cv-main-navigation__collapse-toggle {
   margin-bottom: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .main-navigation:not(.is-mobile),
-  .main-navigation:not(.is-mobile) .cv-main-navigation__collapse-toggle {
+  .main-navigation:not(.mobile-navigation),
+  .main-navigation:not(.mobile-navigation) .cv-main-navigation__collapse-toggle {
     transition: none;
   }
 }

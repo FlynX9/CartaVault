@@ -7,7 +7,6 @@ import { CountryFlag } from '../maps/CountryFlag'
 import type { PoiMap } from '../../types/map'
 
 export type WorkspacePanel = 'maps' | 'places' | 'trip' | 'trips' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates' | null
-export type MobileMapNavigationDestination = 'places' | 'map' | 'trips' | 'categories' | 'tags' | 'statuses' | 'annotations' | 'media' | 'settings'
 
 export interface NavigationProps {
   activePanel: WorkspacePanel
@@ -23,9 +22,6 @@ export interface NavigationProps {
   onOpenTrip?: () => void
   onCloseMap?: () => void
   onCloseTrip?: () => void
-  organizationAvailable?: boolean
-  onMapNavigation?: (destination: MobileMapNavigationDestination, mapId: string) => void
-  mobileMapTripsOpen?: boolean
 }
 
 function navClass(active: boolean): string {
@@ -50,17 +46,15 @@ export function MainNavigation({ activePanel, onPanelChange, dashboardActive = f
       <div className="main-navigation-links cv-main-navigation__items">
       <div className="cv-main-navigation__group">
         <button type="button" className={navClass(dashboardActive)} aria-label={t('dashboard.nav')} aria-pressed={dashboardActive} onClick={() => onOpenDashboard?.()}><LayoutDashboard size={23} /><span>{t('dashboard.nav')}</span></button>
-        <div className="cv-main-navigation__maps-mobile">
-          <button type="button" className={navClass(mapsActive)} aria-label={t('nav.myMaps')} aria-pressed={mapsActive} onClick={() => onPanelChange('maps')}><IconMapPin2 className="cv-main-navigation__vault-icon" aria-hidden="true" size={23} stroke={2} /><span>{t('nav.myMaps')}</span></button>
-        </div>
-        {activeMapId !== null && (() => { const activeMap = maps.find((map) => map.id === activeMapId); return activeMap ? <div className="cv-main-navigation__active-entry"><button type="button" className={`${navClass(activePanel === 'places')} cv-main-navigation__active-map-mobile`} aria-label={activeMap.name} aria-pressed={activePanel === 'places'} onClick={() => onPanelChange(activePanel === 'places' ? null : 'places')}><i className="cv-main-navigation__active-indicator" aria-hidden="true" /><CountryFlag countryCode={activeMap.country.iso_alpha2} fallbackSize={18} /><span className="cv-main-navigation__active-label">{activeMap.name}</span></button><button type="button" className="cv-main-navigation__close-entry" aria-label={`Fermer ${activeMap.name}`} title={`Fermer ${activeMap.name}`} onClick={onCloseMap}><X size={15} aria-hidden="true" /></button></div> : null })()}
+        <button type="button" className={navClass(mapsActive)} aria-label={t('nav.myMaps')} aria-pressed={mapsActive} onClick={() => onPanelChange('maps')}><IconMapPin2 className="cv-main-navigation__vault-icon" aria-hidden="true" size={23} stroke={2} /><span>{t('nav.myMaps')}</span></button>
+        {activeMapId !== null && (() => { const activeMap = maps.find((map) => map.id === activeMapId); return activeMap ? <div className="cv-main-navigation__active-entry"><button type="button" className={`${navClass(activePanel === 'places')} cv-main-navigation__active-map`} aria-label={activeMap.name} aria-pressed={activePanel === 'places'} onClick={() => onPanelChange(activePanel === 'places' ? null : 'places')}><i className="cv-main-navigation__active-indicator" aria-hidden="true" /><CountryFlag countryCode={activeMap.country.iso_alpha2} fallbackSize={18} /><span className="cv-main-navigation__active-label">{activeMap.name}</span></button><button type="button" className="cv-main-navigation__close-entry" aria-label={`Fermer ${activeMap.name}`} title={`Fermer ${activeMap.name}`} onClick={onCloseMap}><X size={15} aria-hidden="true" /></button></div> : null })()}
         <button type="button" className={navClass(activePanel === 'trips')} aria-label={t('nav.trips')} aria-pressed={activePanel === 'trips'} onClick={() => onPanelChange('trips')}><Route size={23} /><span>{t('nav.trips')}</span></button>
-         {activeTrip && <div className="cv-main-navigation__active-entry"><button type="button" className={`${navClass(tripOpen)} cv-main-navigation__active-trip`} aria-label={activeTrip.name} aria-pressed={tripOpen} title={activeTrip.name} onClick={onOpenTrip}><i className="cv-main-navigation__active-indicator" aria-hidden="true" />{activeTripMap ? <CountryFlag countryCode={activeTripMap.country.iso_alpha2} fallbackSize={18} /> : <Route size={23} aria-hidden="true" />}<span className="cv-main-navigation__active-label">{activeTrip.name}</span></button><button type="button" className="cv-main-navigation__close-entry" aria-label={`Fermer ${activeTrip.name}`} title={`Fermer ${activeTrip.name}`} onClick={onCloseTrip}><X size={15} aria-hidden="true" /></button></div>}
-         <button type="button" className={`${navClass(activePanel === 'media')} cv-main-navigation__secondary-mobile`} aria-label={t('nav.media')} aria-pressed={activePanel === 'media'} onClick={() => onPanelChange('media')}><Images size={23} /><span>{t('nav.media')}</span></button>
+          {activeTrip && <div className="cv-main-navigation__active-entry"><button type="button" className={`${navClass(tripOpen)} cv-main-navigation__active-trip`} aria-label={activeTrip.name} aria-pressed={tripOpen} title={activeTrip.name} onClick={onOpenTrip}><i className="cv-main-navigation__active-indicator" aria-hidden="true" />{activeTripMap ? <CountryFlag countryCode={activeTripMap.country.iso_alpha2} fallbackSize={18} /> : <Route size={23} aria-hidden="true" />}<span className="cv-main-navigation__active-label">{activeTrip.name}</span></button><button type="button" className="cv-main-navigation__close-entry" aria-label={`Fermer ${activeTrip.name}`} title={`Fermer ${activeTrip.name}`} onClick={onCloseTrip}><X size={15} aria-hidden="true" /></button></div>}
+          <button type="button" className={navClass(activePanel === 'media')} aria-label={t('nav.media')} aria-pressed={activePanel === 'media'} onClick={() => onPanelChange('media')}><Images size={23} /><span>{t('nav.media')}</span></button>
       </div>
       <div className="cv-main-navigation__separator" role="separator" />
         <div className="cv-main-navigation__group cv-main-navigation__group--trash">
-          <button type="button" className={`${navClass(activePanel === 'trash')} cv-main-navigation__secondary-mobile`} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => onPanelChange('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
+           <button type="button" className={navClass(activePanel === 'trash')} aria-label={t('nav.trash')} aria-pressed={activePanel === 'trash'} onClick={() => onPanelChange('trash')}><Trash2 size={23} /><span>{t('nav.trash')}</span></button>
         </div>
       </div>
   </nav>

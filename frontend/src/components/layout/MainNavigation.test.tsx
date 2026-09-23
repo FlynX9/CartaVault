@@ -99,10 +99,10 @@ describe('MainNavigation', () => {
     expect(screen.getByRole('button', { name: 'TEST' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('does not offer Organization on mobile in the trip workspace', () => {
-    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
-    render(<MemoryRouter><MainNavigation activePanel="trip" organizationAvailable={false} onPanelChange={vi.fn()} /></MemoryRouter>)
+  it('does not render an obsolete organization branch', () => {
+    render(<MemoryRouter><MainNavigation activePanel="trip" onPanelChange={vi.fn()} /></MemoryRouter>)
 
     expect(screen.queryByRole('button', { name: 'Organisation' })).not.toBeInTheDocument()
   })
+
 })

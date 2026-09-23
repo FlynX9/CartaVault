@@ -27,11 +27,9 @@ import { addTripArrival, addTripDeparture, addTripNight, addTripStop, deleteTrip
 import { TopBar } from "./components/layout/TopBar";
 import {
   MainNavigation,
-  type MobileMapNavigationDestination,
-  type NavigationProps,
   type WorkspacePanel,
 } from "./components/layout/MainNavigation";
-import { MobileNavigation } from "./components/layout/MobileNavigation";
+import { MobileNavigation, type MobileMapNavigationDestination } from "./components/layout/MobileNavigation";
 import { useMobileNavigationViewport, MOBILE_NAVIGATION_MEDIA_QUERY } from "./components/layout/mobileNavigationViewport";
 import { MapContextNavigation } from "./components/layout/MapContextNavigation";
 import { OrganizationDialog } from "./components/layout/OrganizationDialog";
@@ -2114,7 +2112,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     runAfterUnsavedCheck(applyOpenDashboard);
   };
 
-  const navigationProps: NavigationProps = {
+  const navigationProps = {
     activePanel: dashboardOpen ? null : workspacePanel,
     dashboardActive: dashboardOpen,
     onOpenDashboard: openDashboard,
@@ -2135,7 +2133,6 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     },
     onCloseMap: closeMapFromNavigation,
     onCloseTrip: closeTripFromNavigation,
-    organizationAvailable: workspaceCapabilities?.organization !== false,
     onMapNavigation: handleMobileMapNavigation,
     mobileMapTripsOpen,
   };
