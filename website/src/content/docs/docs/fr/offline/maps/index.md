@@ -59,4 +59,4 @@ Le package conserve POI, catégories, tags, statuts, annotations et miniatures s
 - [Préparer une sortie hors ligne](/docs/fr/offline/trips/)
 - [Préparer les fonds CartaVault Vector](/docs/fr/administration/cartavault-vector/)
 
-<small>Version CartaVault : **master** · ID : `offline.maps`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `offline.maps`</small>

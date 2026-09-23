@@ -55,4 +55,4 @@ Le propriétaire contrôle les membres et le transfert de propriété.
 - [Gérer les membres d’une carte](/docs/fr/maps/members/)
 - [Administrer les utilisateurs](/docs/fr/administration/users/)
 
-<small>Version CartaVault : **master** · ID : `concepts.permissions`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `concepts.permissions`</small>

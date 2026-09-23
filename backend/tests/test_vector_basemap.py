@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import struct
+import sys
+import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import uuid4
 
 import httpx
+import psutil
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
@@ -19,6 +25,8 @@ from app.basemaps.vector_service import archive_path, delete_vector_basemap, rec
 from app.config import vector_basemap_settings
 from app.countries.catalog import load_country_catalog
 from app.tasks.models import BackgroundTask
+from app.tasks.recovery import run_recovery_cycle
+from app.tasks.service import TaskLeaseLost
 
 
 def _pmtiles(path: Path, *, min_zoom: int = 0, max_zoom: int = 14) -> None:
@@ -144,7 +152,7 @@ def test_generation_activates_atomically_and_removes_pbf(monkeypatch: pytest.Mon
     monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
     monkeypatch.setattr(vector_generation, "_download", lambda _url, _part, final, _size, _progress: final.write_bytes(b"pbf"))
     planetiler_work: list[Path] = []
-    monkeypatch.setattr(vector_generation, "_run_planetiler", lambda _pbf, output, work, _policy, _task_id=None, _progress=None, _bounds=None: planetiler_work.append(work) or _pmtiles(output))
+    monkeypatch.setattr(vector_generation, "_run_planetiler", lambda _pbf, output, work, _policy, _task_id=None, _progress=None, _bounds=None, _claim=None, _task=None, _country_code=None: planetiler_work.append(work) or _pmtiles(output))
     result = generate_vector_basemap(database_session, task, lambda *_args: None)
     database_session.refresh(row)
     assert result["country_code"] == "MC"
@@ -171,6 +179,60 @@ def test_failed_update_keeps_previous_archive(monkeypatch: pytest.MonkeyPatch, d
     database_session.refresh(row)
     assert row.state == "error" and row.last_error_code == "GENERATION_FAILED"
     assert archive_path(row) == old
+
+
+def test_retry_after_crash_immediately_after_atomic_activation(
+    monkeypatch: pytest.MonkeyPatch,
+    database_session: Session,
+    auth_user: User,
+    vector_root: Path,
+) -> None:
+    source = VECTOR_COUNTRY_CATALOG["MC"]
+    final = vector_root / source.filename
+    _pmtiles(final)
+    database_session.merge(VectorBasemap(
+        country_code="MC", country_name="Monaco", source_url=source.source_url,
+        state="ready", phase="Disponible", version="old", file_path=source.filename,
+        file_size=final.stat().st_size, min_zoom=0, max_zoom=14,
+        schema="OpenMapTiles 3.16",
+    ))
+    database_session.commit()
+    row, task = request_vector_basemap(database_session, "MC", auth_user.id, reason="manual_update", force=True)
+    assert row is not None and task is not None
+
+    monkeypatch.setattr(vector_generation, "_source_metadata", lambda _url: (1024, None))
+    monkeypatch.setattr(vector_generation, "_check_disk", lambda _root, _size: None)
+    monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
+    monkeypatch.setattr(vector_generation, "_download", lambda _url, _part, pbf, _size, _progress: pbf.write_bytes(b"pbf"))
+    monkeypatch.setattr(vector_generation, "_run_planetiler", lambda _pbf, output, *_args, **_kwargs: _pmtiles(output))
+
+    real_replace = vector_generation.os.replace
+    crashed = False
+
+    def replace_then_crash(source_path, destination_path) -> None:
+        nonlocal crashed
+        real_replace(source_path, destination_path)
+        if not crashed:
+            crashed = True
+            raise SystemExit("injected crash after atomic activation")
+
+    monkeypatch.setattr(vector_generation.os, "replace", replace_then_crash)
+    with pytest.raises(SystemExit):
+        generate_vector_basemap(database_session, task, lambda *_args: None)
+    database_session.rollback()
+
+    # The active path contains a complete validated archive, never a partial.
+    validate_pmtiles(final, 0, 14)
+    assert not (vector_root / "work" / "monaco" / "monaco.tmp.pmtiles").exists()
+
+    monkeypatch.setattr(vector_generation.os, "replace", real_replace)
+    result = generate_vector_basemap(database_session, task, lambda *_args: None)
+    database_session.refresh(row)
+
+    assert result["country_code"] == "MC"
+    assert row.state == "ready"
+    assert archive_path(row) == final
+    validate_pmtiles(final, 0, 14)
 
 
 def test_download_failure_removes_partial_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -263,6 +325,173 @@ def test_planetiler_uses_executable_workdir_for_native_libraries(
     assert f"-Dorg.sqlite.tmpdir={native_tmp}" in calls[0]
     assert f"-Djava.io.tmpdir={native_tmp}" in calls[0]
     assert calls[0].index(f"-Dorg.sqlite.tmpdir={native_tmp}") < calls[0].index("-jar")
+
+
+def _real_planetiler_child(monkeypatch: pytest.MonkeyPatch, code: str, *, ready_path: Path | None = None) -> list[object]:
+    real_popen = vector_generation.subprocess.Popen
+    processes: list[object] = []
+
+    def launch(_arguments, **kwargs):
+        process = real_popen([sys.executable, "-c", code], **kwargs)
+        processes.append(process)
+        if ready_path is not None:
+            deadline = time.monotonic() + 10
+            while not ready_path.exists():
+                if process.poll() is not None:
+                    raise AssertionError("Planetiler test process exited before publishing its child PID")
+                if time.monotonic() >= deadline:
+                    vector_generation._terminate_planetiler_process(process)
+                    raise AssertionError("Planetiler test child did not publish its PID")
+                time.sleep(0.01)
+        return process
+
+    monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
+    monkeypatch.setattr(vector_generation.subprocess, "Popen", launch)
+    return processes
+
+
+def _run_real_planetiler_child(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    code: str,
+    *,
+    timeout_seconds: int = 1,
+    progress=None,
+) -> list[object]:
+    previous_timeout = vector_basemap_settings.planetiler_timeout_seconds
+    object.__setattr__(vector_basemap_settings, "planetiler_timeout_seconds", timeout_seconds)
+    try:
+        processes = _real_planetiler_child(monkeypatch, code)
+        vector_generation._run_planetiler(
+            tmp_path / "source.osm.pbf",
+            tmp_path / "output.tmp.pmtiles",
+            tmp_path,
+            SimpleNamespace(max_zoom=14),
+            progress=progress,
+        )
+        return processes
+    finally:
+        object.__setattr__(vector_basemap_settings, "planetiler_timeout_seconds", previous_timeout)
+
+
+def test_planetiler_real_child_respects_wall_clock_deadline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    processes = _real_planetiler_child(monkeypatch, "import time; time.sleep(30)")
+    previous_timeout = vector_basemap_settings.planetiler_timeout_seconds
+    object.__setattr__(vector_basemap_settings, "planetiler_timeout_seconds", 1)
+    started = time.monotonic()
+    try:
+        with pytest.raises(BasemapGenerationError) as caught:
+            vector_generation._run_planetiler(
+                tmp_path / "source.osm.pbf",
+                tmp_path / "output.tmp.pmtiles",
+                tmp_path,
+                SimpleNamespace(max_zoom=14),
+            )
+    finally:
+        object.__setattr__(vector_basemap_settings, "planetiler_timeout_seconds", previous_timeout)
+    assert caught.value.code == "GENERATION_TIMEOUT"
+    elapsed = time.monotonic() - started
+    print(f"Planetiler timeout elapsed={elapsed:.3f}s")
+    assert elapsed < 12
+    assert processes[0].poll() is not None
+
+
+def test_planetiler_force_kills_sigterm_resistant_real_child(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    child_pid_file = tmp_path / "child.pid"
+    code = (
+        "import pathlib,signal,subprocess,sys,time; "
+        "child=subprocess.Popen([sys.executable,'-c',\"import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(30)\"]); "
+        f"pathlib.Path({str(child_pid_file)!r}).write_text(str(child.pid)); "
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(30)"
+    )
+    processes = _real_planetiler_child(monkeypatch, code, ready_path=child_pid_file)
+    previous_timeout = vector_basemap_settings.planetiler_timeout_seconds
+    object.__setattr__(vector_basemap_settings, "planetiler_timeout_seconds", 1)
+    try:
+        with pytest.raises(BasemapGenerationError, match="durée maximale"):
+            vector_generation._run_planetiler(
+                tmp_path / "source.osm.pbf",
+                tmp_path / "output.tmp.pmtiles",
+                tmp_path,
+                SimpleNamespace(max_zoom=14),
+            )
+    finally:
+        object.__setattr__(vector_basemap_settings, "planetiler_timeout_seconds", previous_timeout)
+    print("Planetiler SIGTERM-resistant child force-kill completed")
+    parent_process = processes[0]
+    child_pid = int(child_pid_file.read_text())
+    assert parent_process.poll() is not None
+    cleanup_deadline = time.monotonic() + 10
+    while psutil.pid_exists(child_pid) and time.monotonic() < cleanup_deadline:
+        # Windows can publish descendant exit after the termination request.
+        time.sleep(0.01)
+    assert not psutil.pid_exists(child_pid)
+
+
+def test_planetiler_reaps_child_when_progress_callback_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    real_popen = vector_generation.subprocess.Popen
+    processes: list[object] = []
+
+    def launch(_arguments, **kwargs):
+        process = real_popen([sys.executable, "-c", "import time; time.sleep(30)"], **kwargs)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
+    monkeypatch.setattr(vector_generation.subprocess, "Popen", launch)
+    monkeypatch.setattr(vector_generation._PlanetilerProgressParser, "feed", lambda _self, _output: 1)
+    with pytest.raises(RuntimeError, match="progress failure"):
+        vector_generation._run_planetiler(
+            tmp_path / "source.osm.pbf",
+            tmp_path / "output.tmp.pmtiles",
+            tmp_path,
+            SimpleNamespace(max_zoom=14),
+            progress=lambda *_args: (_ for _ in ()).throw(RuntimeError("progress failure")),
+        )
+    assert processes[0].poll() is not None
+
+
+@pytest.mark.parametrize(
+    ("control_error", "message"),
+    [
+        (TaskLeaseLost(), ""),
+        (HTTPException(status_code=403, detail="authorization revoked"), "authorization revoked"),
+    ],
+)
+def test_planetiler_control_loss_reaps_real_child(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    control_error: BaseException,
+    message: str,
+) -> None:
+    real_popen = vector_generation.subprocess.Popen
+    processes: list[object] = []
+
+    def launch(_arguments, **kwargs):
+        process = real_popen([sys.executable, "-c", "import time; time.sleep(30)"], **kwargs)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr(vector_generation, "_check_planetiler_runtime", lambda: None)
+    monkeypatch.setattr(vector_generation.subprocess, "Popen", launch)
+    monkeypatch.setattr(vector_generation, "_check_planetiler_control", lambda *_args: (_ for _ in ()).throw(control_error))
+
+    with pytest.raises(type(control_error), match=message or None):
+        vector_generation._run_planetiler(
+            tmp_path / "source.osm.pbf",
+            tmp_path / "output.tmp.pmtiles",
+            tmp_path,
+            SimpleNamespace(max_zoom=14),
+            task_id=uuid4(),
+        )
+    assert processes[0].poll() is not None
+
+
+def test_planetiler_short_real_child_succeeds_without_kill(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    processes = _real_planetiler_child(monkeypatch, "pass")
+    result = _run_real_planetiler_child(monkeypatch, tmp_path, "pass", timeout_seconds=10)
+    assert result == processes
+    assert processes[0].returncode == 0
 
 
 def test_planetiler_limits_alias_extract_to_country_bounds(
@@ -361,16 +590,21 @@ def test_delete_removes_archive_but_keeps_catalog_row(database_session: Session,
     assert not (vector_root / "france.pmtiles").exists()
 
 
-def test_recovery_marks_interrupted_generation(database_session: Session, auth_user: User, vector_root: Path) -> None:
+def test_recovery_leaves_interrupted_generation_to_task_lease_supervisor(database_session: Session, auth_user: User, vector_root: Path) -> None:
     row, task = request_vector_basemap(database_session, "MC", auth_user.id, reason="manual_install")
     assert row is not None and task is not None
     row.state = "generating"
     task.status = "running"
+    task.lease_owner = "dead-worker"
+    task.lease_expires_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=1)
     database_session.commit()
-    recover_vector_basemap_jobs(database_session)
+    assert recover_vector_basemap_jobs(database_session) == []
     database_session.refresh(row); database_session.refresh(task)
-    assert row.state == "error" and row.last_error_code == "INTERRUPTED"
-    assert task.status == "failed" and task.error_code == "INTERRUPTED"
+    assert row.state == "generating"
+    assert task.status == "running"
+    dispatched: list[str] = []
+    run_recovery_cycle(database_session, lambda task_id: dispatched.append(task_id) or True)
+    assert str(task.id) in dispatched
 
 
 def test_admin_can_persist_policy_and_reject_unknown_country(integration_client: TestClient) -> None:

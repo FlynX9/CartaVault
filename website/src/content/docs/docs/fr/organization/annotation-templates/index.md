@@ -57,4 +57,4 @@ La forme d’un modèle utilisé ne peut plus être modifiée.
 - [Dessiner le plan d’un lieu](/docs/fr/places/annotations/)
 - [Importer un profil d’organisation](/docs/fr/organization/import-profiles/)
 
-<small>Version CartaVault : **master** · ID : `organization.annotation-templates`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `organization.annotation-templates`</small>

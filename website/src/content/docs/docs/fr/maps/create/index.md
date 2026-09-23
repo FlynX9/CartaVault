@@ -58,4 +58,4 @@ Le pays fixe le cadrage initial, le masque et les contrôles de coordonnées.
 - [Choisir les champs des lieux](/docs/fr/maps/place-fields/)
 - [Créer ou modifier un lieu](/docs/fr/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `maps.create`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.create`</small>

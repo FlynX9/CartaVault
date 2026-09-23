@@ -61,4 +61,4 @@ Une seule méthode MFA est active : TOTP remplace le code e-mail.
 - [Activer le code MFA par e-mail](/docs/fr/account/security/email-mfa/)
 - [Gérer les sessions et appareils](/docs/fr/account/security/sessions/)
 
-<small>Version CartaVault : **master** · ID : `account.security`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.security`</small>

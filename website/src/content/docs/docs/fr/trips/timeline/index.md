@@ -58,4 +58,4 @@ La chronologie reprend l’ordre et les heures calculées.
 - [Créer et organiser une sortie](/docs/fr/trips/create-plan/)
 - [Exporter une sortie](/docs/fr/trips/exports/)
 
-<small>Version CartaVault : **master** · ID : `trips.timeline`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.timeline`</small>

@@ -57,4 +57,4 @@ Existing values remain stored while a field is hidden.
 - [Browse the map vault](/docs/en/maps/catalog/)
 - [Create or edit a place](/docs/en/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `maps.settings`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.settings`</small>

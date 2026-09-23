@@ -1,0 +1,132 @@
+name: cartavault_res005_consistency
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://res005:res005-test-pass@postgis:5432/res005
+  CARTAVAULT_ENVIRONMENT: test
+  CARTAVAULT_VERSION: res005-consistency-test
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_PUBLIC_URL: http://localhost:${RES005_HTTP_PORT:-18096}
+  FRONTEND_PUBLIC_URL: http://localhost:${RES005_HTTP_PORT:-18096}
+  CORS_ALLOWED_ORIGINS: http://localhost:${RES005_HTTP_PORT:-18096}
+  CARTAVAULT_COOKIE_SECURE: "false"
+  CARTAVAULT_SESSION_SECRET: res005-test-session-secret
+  CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: OuaZ1702C8WnrktWVRr4XAwIki3nWFO1YfE8g4GHMZA=
+  CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: admin@res005.test
+  CARTAVAULT_BOOTSTRAP_ADMIN_NAME: RES-005 Admin
+  CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: Res005Consistency!2026
+  CARTAVAULT_TASK_MODE: sync
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  CARTAVAULT_TASK_CRASH_POINT: ${RES005_CRASH_POINT:-}
+  CARTAVAULT_STORAGE_RECONCILE_INTERVAL_SECONDS: "2"
+  CARTAVAULT_STORAGE_RECONCILE_BATCH_SIZE: "20"
+  CARTAVAULT_STORAGE_ORPHAN_GRACE_SECONDS: "3"
+  CARTAVAULT_STORAGE_DELETE_MAX_ATTEMPTS: "4"
+  CARTAVAULT_STORAGE_DELETE_BASE_BACKOFF_SECONDS: "1"
+  CARTAVAULT_STORAGE_DELETE_CAP_BACKOFF_SECONDS: "2"
+  MEDIA_STORAGE: ${RES005_MEDIA_STORAGE:-local}
+  PHOTO_STORAGE_PATH: /app/storage/photos
+  MEDIA_CACHE_PATH: /app/storage/media-cache
+  AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
+  IMPORT_STORAGE_PATH: /app/storage/imports
+  S3_ENDPOINT: http://minio:9000
+  S3_REGION: us-east-1
+  S3_BUCKET: cartavault-res005
+  S3_ACCESS_KEY: res005-access
+  S3_SECRET_KEY: res005-secret-key
+  S3_PREFIX: carta-media
+  S3_FORCE_PATH_STYLE: "true"
+  S3_USE_SSL: "false"
+  S3_VERIFY_TLS: "false"
+  S3_CONNECT_TIMEOUT_SECONDS: "5"
+  S3_READ_TIMEOUT_SECONDS: "30"
+  S3_MAX_ATTEMPTS: "3"
+  S3_OPERATION_TIMEOUT_SECONDS: "300"
+  S3_RETRY_MODE: standard
+  AWS_MAX_ATTEMPTS: "1"
+  EMAIL_PROVIDER: none
+  EMAIL_FROM_ADDRESS: res005@cartavault.test
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.5@sha256:19b6ffa248d2f864d29d6c338459f02d63c0d7ce341fa86b3bcba8484a130bff
+    environment:
+      POSTGRES_DB: res005
+      POSTGRES_USER: res005
+      POSTGRES_PASSWORD: res005-test-pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U res005 -d res005"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    networks: [test]
+
+  minio:
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: res005-access
+      MINIO_ROOT_PASSWORD: res005-secret-key
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    networks: [test]
+
+  create-bucket:
+    image: cartavault:res005-consistency-test
+    entrypoint: ["python", "-c"]
+    command:
+      - |
+        import boto3
+        from botocore.client import Config
+        client = boto3.client("s3", endpoint_url="http://minio:9000", region_name="us-east-1", aws_access_key_id="res005-access", aws_secret_access_key="res005-secret-key", config=Config(signature_version="s3v4", s3={"addressing_style": "path"}))
+        if not any(item["Name"] == "cartavault-res005" for item in client.list_buckets()["Buckets"]):
+            client.create_bucket(Bucket="cartavault-res005")
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks: [test]
+
+  api:
+    image: cartavault:res005-consistency-test
+    environment:
+      <<: *app-environment
+    ports:
+      - "${RES005_HTTP_PORT:-18096}:8000"
+    volumes:
+      - photos_data:/app/storage/photos
+      - media_cache_data:/app/storage/media-cache
+      - avatars_data:/app/storage/avatars
+      - exports_data:/app/storage/exports
+      - imports_data:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+      start_period: 5s
+    networks: [test]
+
+volumes:
+  postgres_data:
+  minio_data:
+  photos_data:
+  media_cache_data:
+  avatars_data:
+  exports_data:
+  imports_data:
+
+networks:
+  test:
+    driver: bridge

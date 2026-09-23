@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -30,11 +31,19 @@ def _engine_options(url: str) -> dict[str, object]:
             max_overflow=database_settings.max_overflow,
             pool_timeout=database_settings.pool_timeout_seconds,
             pool_recycle=database_settings.pool_recycle_seconds,
+            connect_args={"connect_timeout": database_settings.connect_timeout_seconds},
         )
     return options
 
 
 engine = create_engine(database_url, **_engine_options(database_url))
+
+_readiness_engine_options: dict[str, object] = {"poolclass": NullPool}
+if make_url(database_url).get_backend_name() != "sqlite":
+    _readiness_engine_options["connect_args"] = {
+        "connect_timeout": database_settings.connect_timeout_seconds,
+    }
+readiness_engine = create_engine(database_url, **_readiness_engine_options)
 
 SessionLocal = sessionmaker(
     bind=engine,

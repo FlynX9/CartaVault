@@ -59,4 +59,4 @@ The secret is encrypted on the server and is not returned after activation.
 - [Store recovery codes](/docs/en/account/security/recovery-codes/)
 - [Enable email MFA codes](/docs/en/account/security/email-mfa/)
 
-<small>Version CartaVault : **master** · ID : `account.totp`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.totp`</small>

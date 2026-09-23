@@ -1,0 +1,10 @@
+name: cartavault-operations-test
+
+services:
+  cartavault:
+    environment:
+      CARTAVAULT_TASK_MODE: redis
+
+  worker:
+    image: alpine:3.20
+    command: ["sh", "-c", "while true; do sleep 3600; done"]

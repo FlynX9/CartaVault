@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 import json
 import logging
@@ -118,12 +119,20 @@ class DatabaseOptimizationProposalStore:
         session.commit()
         return None if expired else payload
 
-    def purge_expired(self, session: Session) -> int:
+    def purge_expired(
+        self,
+        session: Session,
+        before_commit: Callable[[], None] | None = None,
+    ) -> int:
+        if before_commit is not None:
+            before_commit()
         result = session.execute(
             delete(RoutingOptimizationProposal).where(
                 RoutingOptimizationProposal.expires_at <= datetime.now(UTC).replace(tzinfo=None)
             )
         )
+        if before_commit is not None:
+            before_commit()
         session.commit()
         return int(result.rowcount or 0)
 

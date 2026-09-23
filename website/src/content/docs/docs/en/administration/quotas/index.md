@@ -70,4 +70,4 @@ Unlimited differs from zero; zero blocks new creation.
 - [Administer users](/docs/en/administration/users/)
 - [Configure the instance](/docs/en/administration/general/)
 
-<small>Version CartaVault : **master** · ID : `admin.quotas`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.quotas`</small>

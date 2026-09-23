@@ -702,7 +702,9 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     suppressedRouteFocusPlaceId.current = null;
     setSelectedPlace(null);
     setPlaces([]);
-    setBounds(null);
+    // Bounds describe the current viewport, not a particular map. Retain them
+    // while changing workspace/map so a remounted MapPage can fetch immediately;
+    // its MapBoundsWatcher will publish a replacement if the viewport changes.
     setRemovedPlaceId(null);
     if (activeMap) {
       setFocusRequest(

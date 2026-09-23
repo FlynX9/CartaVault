@@ -198,6 +198,12 @@ jobs:
           docker compose -f docker/compose.yml -f docker/compose.redis.yml config --quiet
           test "$(docker compose -f docker/compose.yml -f docker/compose.redis.yml config --services | sort | paste -sd ' ' -)" = "cartavault postgis redis worker"
 
+      - name: Validate bounded production Compose logging
+        run: python docker/tests/validate_compose_logging.py
+
+      - name: Exercise recovery operation safety barriers
+        run: sh docker/tests/run_operations_safety_matrix.sh
+
       - name: Build the unified CartaVault image
         run: docker compose -f docker/compose.yml build cartavault
 
@@ -229,7 +235,7 @@ jobs:
       - name: Wait for migrations and readiness
         run: |
           for _ in $(seq 1 36); do
-            if curl --fail --silent http://127.0.0.1:8088/healthz >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:8088/health/ready >/dev/null; then
               exit 0
             fi
             sleep 5
@@ -264,12 +270,12 @@ jobs:
           docker compose -f docker/compose.yml exec -T cartavault sh -c 'printf persisted > /app/storage/photos/container-smoke.txt'
           docker compose -f docker/compose.yml up -d --force-recreate cartavault
           for _ in $(seq 1 24); do
-            if curl --fail --silent http://127.0.0.1:8088/healthz >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:8088/health/ready >/dev/null; then
               break
             fi
             sleep 5
           done
-          curl --fail --silent http://127.0.0.1:8088/healthz >/dev/null
+          curl --fail --silent http://127.0.0.1:8088/health/ready >/dev/null
           docker compose -f docker/compose.yml exec -T cartavault grep -q persisted /app/storage/photos/container-smoke.txt
           docker compose -f docker/compose.yml exec -T cartavault python -m alembic current
 

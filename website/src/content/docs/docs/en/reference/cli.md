@@ -14,8 +14,9 @@ Reference generated from the `argparse` parsers.
 - `python -m app.cli bootstrap-admin`
 - `python -m app.cli create-admin`
 - `python -m app.cli refresh-regions`
+- `python -m app.cli storage-reconcile`
 
-**Options:** `--all`, `--email`, `--limit`, `--name`
+**Options:** `--all`, `--email`, `--grace-seconds`, `--limit`, `--name`, `--repair`
 
 ## `app.setup_cli`
 

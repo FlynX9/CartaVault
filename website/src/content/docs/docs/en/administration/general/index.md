@@ -64,4 +64,4 @@ Configuration toggles are staged until saved.
 - [Configure privacy and compliance](/docs/en/administration/privacy-compliance/)
 - [Monitor instance status](/docs/en/administration/instance-status/)
 
-<small>Version CartaVault : **master** · ID : `admin.general`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.general`</small>

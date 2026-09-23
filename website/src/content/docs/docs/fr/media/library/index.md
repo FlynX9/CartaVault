@@ -58,4 +58,4 @@ Seuls les médias des cartes accessibles sont visibles.
 - [Gérer les photos d’un lieu](/docs/fr/places/photos-media/)
 - [Importer des photos et utiliser les données GPS](/docs/fr/media/upload-exif/)
 
-<small>Version CartaVault : **master** · ID : `media.library`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `media.library`</small>

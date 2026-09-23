@@ -113,9 +113,10 @@ Configurable limits include `KMZ_MAX_UPLOAD_SIZE` (25 MiB), `KMZ_MAX_UNCOMPRESSE
 
 ## Background tasks
 
-The current single-instance mode intentionally runs without Redis or a worker.
-The adoption contract, security model, and migration path for persistent KMZ
-and export jobs are documented in [`docs/async-task-architecture.md`](../docs/async-task-architecture.md).
+The standard single-instance mode uses `CARTAVAULT_TASK_MODE=sync`; Redis and
+the RQ worker are an optional scale-out extension. The authoritative task
+architecture, security model, deployment modes, and recovery contract are
+documented in [`docs/background-tasks.md`](../docs/background-tasks.md).
 
 ## Place statuses, categories, and icons
 
@@ -236,6 +237,29 @@ an hourly maintenance task. The schema change is revision `f2a6c8d4e915`.
 Trips contain a departure, one or more days, intermediate nights, and an arrival. Stops can reference a place or a free location. Route calculations keep distance, driving time, visit time, buffers, safety margins, and planned time distinct. Day colors, visibility toggles, ordering, optimization confirmation, and country validation are supported.
 
 OSRM is the default provider. Google Routes is optional, per-user, and requires an encrypted verified key. Route requests and responses are validated; no provider credential is exposed to the browser. Google optimization proposals reuse the route returned by `ComputeRoutes`, are stored temporarily in Redis, and are applied atomically without a second provider call. The distributed per-user billable-request guard defaults to 120 requests per minute and returns HTTP 429 with `Retry-After` when reached.
+
+## Storage reconciliation
+
+Each API process runs bounded storage-operation retries and referenced-blob
+checks in the background. Operators can inspect the complete local or S3
+namespace without changing data:
+
+```powershell
+python -m app.cli storage-reconcile
+```
+
+Repair is explicit and keeps the configured orphan grace period unless it is
+overridden:
+
+```powershell
+python -m app.cli storage-reconcile --repair
+python -m app.cli storage-reconcile --repair --grace-seconds 86400
+```
+
+The command emits JSON. It exits nonzero when the storage backend cannot be
+scanned or when an attempted deletion remains pending, so it can be monitored
+from an operational job. Unknown objects, unsafe keys, backup/restore objects,
+and objects outside the configured S3 prefix are reported but never deleted.
 
 ## Testing
 

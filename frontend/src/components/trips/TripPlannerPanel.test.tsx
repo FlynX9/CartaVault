@@ -1451,6 +1451,45 @@ describe('TripPlannerPanel', () => {
 
   })
 
+  it('keeps the selected outline exclusive to the chosen timeline block', async () => {
+    const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
+    const anchoredTrip = {
+      ...trip,
+      days: [trip.days[0], secondDay],
+      departure: { id: 'departure-1', trip_id: trip.id, place_id: null, name: 'Maison', latitude: 48, longitude: 2, address: null, notes: null, departure_time: '08:00:00' },
+      arrival: { id: 'arrival-1', trip_id: trip.id, place_id: null, name: 'Retour maison', latitude: 48, longitude: 2, address: null, notes: null },
+      nights: [{ id: 'night-1', trip_id: trip.id, previous_day_id: 'day-1', next_day_id: 'day-2', place_id: null, source_type: 'map', name: 'Hôtel', latitude: 49, longitude: 3, address: '1 rue de Paris', google_place_id: 'ChIJ-hotel-official', notes: null, check_in_time: '20:00:00', check_out_time: '08:00:00' }],
+    } satisfies Trip
+    vi.mocked(listTrips).mockResolvedValue([anchoredTrip])
+    vi.mocked(getTrip).mockResolvedValue(anchoredTrip)
+
+    const baseProps = {
+      poiMap: { id: 'map-1', can_edit: true } as never,
+      trip: anchoredTrip,
+      onTripChange: vi.fn(),
+      onActiveDayChange: vi.fn(),
+      onActiveAnchorTargetChange: vi.fn(),
+      onClose: vi.fn(),
+    }
+
+    const { container, rerender } = render(<TripPlannerPanel {...baseProps} activeDayId="day-1" activeAnchorTarget="departure" />)
+    await waitFor(() => expect(container.querySelector('.trip-panel-departure')).toBeInTheDocument())
+    expect(container.querySelector('.trip-panel-departure')).toHaveClass('is-active')
+    expect(container.querySelector('.trip-panel-day.is-active')).not.toBeInTheDocument()
+    expect(container.querySelector('.trip-panel-arrival')).not.toHaveClass('is-active')
+
+    rerender(<TripPlannerPanel {...baseProps} activeDayId="day-2" activeAnchorTarget="arrival" />)
+    await waitFor(() => expect(container.querySelector('.trip-panel-arrival')).toHaveClass('is-active'))
+    expect(container.querySelector('.trip-panel-day.is-active')).not.toBeInTheDocument()
+    expect(container.querySelector('.trip-panel-departure')).not.toHaveClass('is-active')
+
+    rerender(<TripPlannerPanel {...baseProps} activeDayId="day-1" activeAnchorTarget={null} />)
+    await waitFor(() => expect(container.querySelectorAll('.trip-panel-day.is-active')).toHaveLength(1))
+    expect(container.querySelector('.trip-panel-departure')).not.toHaveClass('is-active')
+    expect(container.querySelector('.trip-panel-arrival')).not.toHaveClass('is-active')
+    expect(container.querySelector('.trip-panel-night.is-active')).not.toBeInTheDocument()
+  })
+
   it('directs an empty night to the map search without opening a dialog', async () => {
     const secondDay = { ...trip.days[0], id: 'day-2', day_number: 2, sort_order: 1 }
     const tripWithoutNight = { ...trip, days: [trip.days[0], secondDay], nights: [] } satisfies Trip

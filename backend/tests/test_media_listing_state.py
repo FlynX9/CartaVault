@@ -136,7 +136,14 @@ def test_catalogue_states_match_filters_and_aggregates(
     place_id = create_place(integration_client, poi_map)
     healthy = upload_place_photo(integration_client, place_id, "healthy.png")
 
-    def insert_photo(sort_order: int, path: str | None, width: int | None, height: int | None) -> Photo:
+    def insert_photo(
+        sort_order: int,
+        path: str | None,
+        width: int | None,
+        height: int | None,
+        *,
+        storage_state: str = "unchecked",
+    ) -> Photo:
         photo = Photo(
             place_id=UUID(place_id),
             map_id=poi_map.id,
@@ -149,6 +156,7 @@ def test_catalogue_states_match_filters_and_aggregates(
             height=height,
             sort_order=sort_order,
             is_primary=False,
+            storage_state=storage_state,
         )
         database_session.add(photo)
         database_session.flush()
@@ -158,6 +166,13 @@ def test_catalogue_states_match_filters_and_aggregates(
     missing = insert_photo(sort_order=9, path=None, width=None, height=None)
     error = insert_photo(sort_order=10, path=f"{scope_id}/{uuid4()}.png", width=None, height=None)
     declared = insert_photo(sort_order=11, path=f"{uuid4()}/{uuid4()}.png", width=10, height=10)
+    reconciled_missing = insert_photo(
+        sort_order=12,
+        path=f"{uuid4()}/{uuid4()}.png",
+        width=10,
+        height=10,
+        storage_state="missing",
+    )
 
     page = integration_client.get("/media", params={"page_size": 100, "sort_by": "created_at"})
     assert page.status_code == 200
@@ -168,6 +183,7 @@ def test_catalogue_states_match_filters_and_aggregates(
         healthy["id"]: "healthy",
         str(declared.id): "healthy",
         str(missing.id): "missing",
+        str(reconciled_missing.id): "missing",
         str(error.id): "error",
     }
     assert items == expected
@@ -175,7 +191,7 @@ def test_catalogue_states_match_filters_and_aggregates(
     # Filters must select exactly the same categories as the listed states.
     for state, ids in (
         ("healthy", {healthy["id"], str(declared.id)}),
-        ("missing", {str(missing.id)}),
+        ("missing", {str(missing.id), str(reconciled_missing.id)}),
         ("error", {str(error.id)}),
     ):
         filtered = integration_client.get("/media", params={"file_state": state, "page_size": 100})
@@ -183,7 +199,7 @@ def test_catalogue_states_match_filters_and_aggregates(
         assert {entry["id"] for entry in filtered.json()["items"]} == set(ids), state
 
     aggregates = payload["aggregates"]
-    assert aggregates["missing_count"] == 1
+    assert aggregates["missing_count"] == 2
     assert aggregates["error_count"] == 1
 
     for media_id in (healthy["id"], str(declared.id)):

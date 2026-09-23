@@ -58,4 +58,4 @@ The avatar is cropped and stored separately.
 - [Configure preferences](/docs/en/account/preferences/)
 - [Understand account security](/docs/en/account/security/overview/)
 
-<small>Version CartaVault : **master** · ID : `account.profile`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.profile`</small>

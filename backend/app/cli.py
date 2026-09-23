@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import json
 import os
 import sys
 
@@ -13,6 +14,7 @@ from app.auth.security import hash_password, normalize_email
 from app.config import security_settings
 from app.database import SessionLocal
 from app.places.models import Place
+from app.photos.reconciliation import deep_reconcile_storage
 from app.places.reverse_geocoding import (
     ReverseGeocodingError,
     apply_region_resolution,
@@ -163,6 +165,23 @@ def refresh_missing_regions(limit: int, *, include_existing: bool = False) -> in
     return 0 if failed == 0 else 1
 
 
+def storage_reconcile(*, repair: bool = False, grace_seconds: int | None = None) -> int:
+    try:
+        with SessionLocal() as session:
+            report = deep_reconcile_storage(
+                session,
+                repair=repair,
+                grace_seconds=grace_seconds,
+            )
+            if not repair:
+                session.rollback()
+    except (SQLAlchemyError, RuntimeError, ValueError):
+        print("Storage reconciliation failed; no unsafe action was taken.", file=sys.stderr)
+        return 1
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return 1 if report["backend_errors"] else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     subcommands = parser.add_subparsers(dest="command", required=True)
@@ -180,6 +199,17 @@ def main() -> int:
             "automatically"
         ),
     )
+    reconcile = subcommands.add_parser("storage-reconcile")
+    reconcile.add_argument(
+        "--repair",
+        action="store_true",
+        help="persist verified state corrections and process eligible cleanup intents",
+    )
+    reconcile.add_argument(
+        "--grace-seconds",
+        type=int,
+        help="override the configured orphan grace period (non-negative)",
+    )
     args = parser.parse_args()
     if args.command == "create-admin":
         return create_admin(args.email, args.name)
@@ -188,6 +218,11 @@ def main() -> int:
             print("--limit must be a positive integer", file=sys.stderr)
             return 2
         return refresh_missing_regions(args.limit, include_existing=args.all)
+    if args.command == "storage-reconcile":
+        if args.grace_seconds is not None and args.grace_seconds < 0:
+            print("--grace-seconds must be non-negative", file=sys.stderr)
+            return 2
+        return storage_reconcile(repair=args.repair, grace_seconds=args.grace_seconds)
     return bootstrap_from_environment()
 
 

@@ -58,4 +58,4 @@ Les annotations sont masquées dans la navigation globale et chargées pour le l
 - [Configurer les modèles d’annotation](/docs/fr/organization/annotation-templates/)
 - [Créer ou modifier un lieu](/docs/fr/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `places.annotations`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.annotations`</small>

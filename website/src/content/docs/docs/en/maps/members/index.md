@@ -58,4 +58,4 @@ An invitation remains pending until accepted.
 - [Understand sharing and permissions](/docs/en/concepts/sharing-permissions/)
 - [Browse the map vault](/docs/en/maps/catalog/)
 
-<small>Version CartaVault : **master** · ID : `maps.members`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.members`</small>

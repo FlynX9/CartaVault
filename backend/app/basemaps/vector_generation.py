@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import shutil
+import signal
 import struct
 import subprocess
 import time
@@ -15,6 +16,12 @@ from pathlib import Path
 from uuid import UUID
 
 import httpx
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover - deployments install the pinned dependency
+    psutil = None
+from fastapi import HTTPException
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
@@ -25,7 +32,7 @@ from app.config import vector_basemap_settings
 from app.tasks.models import BackgroundTask
 from app.database import SessionLocal
 from app.tasks.registry import ProgressCallback, task_handler
-from app.tasks.service import TaskCancelled
+from app.tasks.service import TaskCancelled, TaskClaim, TaskLeaseLost, ensure_task_held
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +54,92 @@ class BasemapGenerationError(RuntimeError):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+
+def _planetiler_popen_kwargs() -> dict[str, object]:
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
+
+
+def _terminate_planetiler_process(process: subprocess.Popen[object]) -> None:
+    """Terminate and reap Planetiler's whole isolated process group."""
+    if process.poll() is not None:
+        return
+    descendants = []
+    if os.name == "nt" and psutil is not None:
+        try:
+            descendants = psutil.Process(process.pid).children(recursive=True)
+        except psutil.Error:
+            pass
+    try:
+        if os.name == "nt":
+            process.send_signal(signal.CTRL_BREAK_EVENT)
+        else:
+            os.killpg(process.pid, signal.SIGTERM)
+    except (OSError, ProcessLookupError):
+        pass
+    try:
+        process.wait(timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+    if os.name == "nt":
+        # CTRL_BREAK can reap the parent before Windows has terminated its
+        # descendants, so terminate captured descendants after the signal.
+        if process.poll() is None:
+            try:
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    check=False,
+                    capture_output=True,
+                    timeout=5,
+                )
+            except (OSError, ProcessLookupError, subprocess.TimeoutExpired):
+                pass
+        if descendants and psutil is not None:
+            for child in descendants:
+                try:
+                    child.kill()
+                except psutil.Error:
+                    pass
+            _, alive = psutil.wait_procs(descendants, timeout=5)
+            if alive:
+                logger.error("Planetiler descendants could not be reaped pids=%s", [child.pid for child in alive])
+    else:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            pass
+    try:
+        process.wait(timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            process.kill()
+        except OSError:
+            pass
+        try:
+            process.wait(timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            logger.error("Planetiler process could not be reaped pid=%s", process.pid)
+
+
+def _check_planetiler_control(
+    task_id: UUID | None,
+    claim: TaskClaim | None,
+    task: BackgroundTask | None,
+    country_code: str | None,
+) -> None:
+    if task_id is None:
+        return
+    with SessionLocal() as check_session:
+        if check_session.scalar(select(BackgroundTask.cancel_requested_at).where(BackgroundTask.id == task_id)) is not None:
+            raise TaskCancelled
+        if claim is not None:
+            ensure_task_held(check_session, claim)
+            check_session.commit()
+        if task is not None and country_code is not None:
+            _authorize_task(check_session, task, country_code)
 
 
 class _PlanetilerProgressParser:
@@ -90,11 +183,75 @@ def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
-def _set_state(session: Session, country_code: str, state: str, phase: str, *, progress: int | None = None) -> None:
+def _authorize_task(
+    session: Session,
+    task: BackgroundTask,
+    country_code: str,
+    *,
+    lock: bool = False,
+) -> None:
+    # The task creator is a snapshot, not a standing authorization.  The
+    # service check reloads the user/membership rows and is intentionally
+    # skipped only for the small legacy/unit-test compatibility path where a
+    # synthetic task has no requester.
+    requester_id = getattr(task, "requested_by_user_id", None)
+    if requester_id is None:
+        return
+    from app.basemaps.vector_service import authorize_vector_basemap_request
+
+    authorize_vector_basemap_request(
+        session,
+        country_code,
+        requester_id,
+        str(task.input_json.get("reason", "")),
+        lock=lock,
+    )
+
+
+def _commit_claimed(
+    session: Session,
+    claim: TaskClaim | None,
+    *,
+    task: BackgroundTask | None = None,
+    country_code: str | None = None,
+    lock_authority: bool = False,
+) -> None:
+    if task is not None and country_code is not None:
+        _authorize_task(session, task, country_code, lock=lock_authority)
+    if claim is not None:
+        ensure_task_held(session, claim)
+    session.commit()
+
+
+def _record_vector_failure(
+    session: Session,
+    country_code: str,
+    *,
+    code: str,
+    message: str,
+    claim: TaskClaim | None,
+) -> None:
+    """Record cleanup state without requiring the revoked authority again."""
+    session.rollback()
+    row = session.get(VectorBasemap, country_code)
+    if row is None:
+        return
+    row.state = "error"
+    row.phase = "Annulé" if code == "CANCELLED" else "Erreur"
+    row.progress = None
+    row.last_error_code = code
+    row.last_error_message = message
+    row.generation_finished_at = _now()
+    if claim is not None:
+        ensure_task_held(session, claim)
+    session.commit()
+
+
+def _set_state(session: Session, country_code: str, state: str, phase: str, *, progress: int | None = None, claim: TaskClaim | None = None, task: BackgroundTask | None = None) -> None:
     session.execute(update(VectorBasemap).where(VectorBasemap.country_code == country_code).values(
         state=state, phase=phase, progress=progress, updated_at=_now(),
     ))
-    session.commit()
+    _commit_claimed(session, claim, task=task, country_code=country_code)
 
 
 def _source_metadata(source_url: str) -> tuple[int | None, datetime | None]:
@@ -185,6 +342,9 @@ def _run_planetiler(
     task_id: UUID | None = None,
     progress: ProgressCallback | None = None,
     bounds: tuple[float, float, float, float] | None = None,
+    claim: TaskClaim | None = None,
+    task: BackgroundTask | None = None,
+    country_code: str | None = None,
 ) -> None:
     _check_planetiler_runtime()
     jar = vector_basemap_settings.planetiler_jar
@@ -210,12 +370,28 @@ def _run_planetiler(
     log_path = work_path / "planetiler.log"
     parser = _PlanetilerProgressParser()
     log_offset = 0
+    process: subprocess.Popen[object] | None = None
+    deadline = time.monotonic() + vector_basemap_settings.planetiler_timeout_seconds
     try:
         # Planetiler is verbose. Writing to a file avoids filling subprocess
         # pipes and deadlocking long country generations.
         with log_path.open("w", encoding="utf-8", errors="replace") as log_file:
-            process = subprocess.Popen(arguments, shell=False, stdout=log_file, stderr=subprocess.STDOUT, text=True)
+            process = subprocess.Popen(
+                arguments,
+                shell=False,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                text=True,
+                **_planetiler_popen_kwargs(),
+            )
             while process.poll() is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    _terminate_planetiler_process(process)
+                    raise BasemapGenerationError(
+                        "GENERATION_TIMEOUT",
+                        "La génération du fond CartaVault a dépassé sa durée maximale.",
+                    )
                 try:
                     with log_path.open("r", encoding="utf-8", errors="replace") as progress_log:
                         progress_log.seek(log_offset)
@@ -226,20 +402,14 @@ def _run_planetiler(
                         progress(parsed_percent, 100, "Génération du fond")
                 except OSError:
                     pass
-                if task_id is not None:
-                    with SessionLocal() as check_session:
-                        cancelled = check_session.scalar(select(BackgroundTask.cancel_requested_at).where(BackgroundTask.id == task_id))
-                    if cancelled is not None:
-                        process.terminate()
-                        try:
-                            process.wait(timeout=15)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                        raise TaskCancelled
-                time.sleep(1)
+                _check_planetiler_control(task_id, claim, task, country_code)
+                time.sleep(min(1, remaining))
     except OSError as error:
         raise BasemapGenerationError("GENERATION_FAILED", "Planetiler n’a pas pu démarrer.") from error
-    if process.returncode != 0:
+    finally:
+        if process is not None:
+            _terminate_planetiler_process(process)
+    if process is None or process.returncode != 0:
         try:
             log_tail = log_path.read_text(encoding="utf-8", errors="replace")[-5000:]
         except OSError:
@@ -305,12 +475,25 @@ def generate_vector_basemap(session: Session, task: BackgroundTask, progress: Pr
 
 
 def _generate_vector_basemap_locked(session: Session, task: BackgroundTask, progress: ProgressCallback) -> dict[str, object]:
+    claim = task if isinstance(task, TaskClaim) else None
     country_code = str(task.input_json.get("country_code", "")).upper()
     source = vector_country_source(country_code)
     if source is None:
         raise BasemapGenerationError("UNSUPPORTED_COUNTRY", "Fond automatique non disponible pour ce pays.")
+    _authorize_task(session, task, country_code)
     logger.info("vector_basemap country=%s job_id=%s phase=queued source=%s", country_code, task.id, source.source_url)
     started = time.monotonic()
+    # The enqueue-time authorization is not a durable grant. Recheck the
+    # current requester before any download or Planetiler work begins.
+    from app.basemaps.vector_service import authorize_vector_basemap_request
+
+    authorize_vector_basemap_request(
+        session,
+        source.country_code,
+        task.requested_by_user_id,
+        str(task.input_json.get("reason", "")),
+        lock=True,
+    )
     root = vector_basemap_settings.maps_path.resolve()
     work_root = (root / "work").resolve()
     work = (work_root / source.slug).resolve()
@@ -338,28 +521,55 @@ def _generate_vector_basemap_locked(session: Session, task: BackgroundTask, prog
             raise BasemapGenerationError("BASEMAP_NOT_FOUND", "Le fond demandé n’existe plus.")
         row.generation_started_at = _now(); row.task_id = task.id; row.source_size = source_size
         row.last_error_code = None; row.last_error_message = None
-        session.commit()
+        _commit_claimed(session, claim, task=task, country_code=country_code)
 
         if task.input_json.get("reason") == "automatic_update" and source_date and row.source_date and source_date <= row.source_date and final_path.is_file():
             row.state = "ready"; row.phase = "Disponible"; row.progress = 100; row.generation_finished_at = _now()
-            session.commit()
+            _commit_claimed(session, claim, task=task, country_code=country_code)
             return {"country_code": country_code, "version": row.version, "unchanged": True}
 
-        _set_state(session, country_code, "downloading", "Téléchargement des données OSM")
+        _set_state(session, country_code, "downloading", "Téléchargement des données OSM", claim=claim, task=task)
         progress(0, max(1, source_size or 1), "Téléchargement des données OSM")
         if source_size is not None and pbf.is_file() and pbf.stat().st_size == source_size:
             progress(source_size, source_size, "Données OSM déjà téléchargées")
         else:
             _download(source.source_url, part, pbf, source_size, progress)
 
-        _set_state(session, country_code, "generating", "Génération du fond")
+        _set_state(session, country_code, "generating", "Génération du fond", claim=claim, task=task)
         progress(0, 1, "Génération du fond")
-        _run_planetiler(pbf, output_tmp, work, policy, task.id, progress, source.bounds)
+        _run_planetiler(
+            pbf,
+            output_tmp,
+            work,
+            policy,
+            task.id,
+            progress,
+            source.bounds,
+            claim,
+            task,
+            country_code,
+        )
 
-        _set_state(session, country_code, "validating", "Validation du fond")
+        _set_state(session, country_code, "validating", "Validation du fond", claim=claim, task=task)
         progress(0, 1, "Validation du fond")
         inspected = validate_pmtiles(output_tmp, policy.min_zoom, policy.max_zoom)
 
+        # Acquire the authority lock before replacing the persistent archive.
+        # If a demotion/revocation committed first, no file is replaced; if it
+        # starts concurrently, it waits until this guarded business commit.
+        _authorize_task(session, task, country_code, lock=True)
+        # Recheck authority while holding the current authority rows. The lock
+        # remains held through activation and the fenced DB commit, so a role
+        # revocation that commits first prevents this publication.
+        authorize_vector_basemap_request(
+            session,
+            source.country_code,
+            task.requested_by_user_id,
+            str(task.input_json.get("reason", "")),
+            lock=True,
+        )
+        if claim is not None:
+            ensure_task_held(session, claim)
         # os.replace is atomic on the persistent volume and leaves the previous
         # archive untouched until validation has completed.
         os.replace(output_tmp, final_path)
@@ -370,39 +580,59 @@ def _generate_vector_basemap_locked(session: Session, task: BackgroundTask, prog
         row.version = _version(country_code, row.source_date); row.file_path = source.filename
         row.file_size = final_path.stat().st_size; row.min_zoom = int(inspected["min_zoom"]); row.max_zoom = int(inspected["max_zoom"])
         row.schema = "OpenMapTiles 3.16"; row.last_error_code = None; row.last_error_message = None
-        session.commit()
+        _commit_claimed(session, claim, task=task, country_code=country_code, lock_authority=True)
         pbf.unlink(missing_ok=True)
         logger.info("vector_basemap country=%s job_id=%s phase=complete duration=%.1f result=ready", country_code, task.id, time.monotonic() - started)
         return {"country_code": country_code, "version": row.version, "file_size": row.file_size}
+    except TaskLeaseLost:
+        session.rollback()
+        raise
     except TaskCancelled:
-        output_tmp.unlink(missing_ok=True); part.unlink(missing_ok=True)
-        row = session.get(VectorBasemap, country_code)
-        if row is not None:
-            row.state = "error"; row.phase = "Annulé"; row.progress = None
-            row.last_error_code = "CANCELLED"; row.last_error_message = "La préparation du fond a été annulée."
-            row.generation_finished_at = _now()
-            session.commit()
+        output_tmp.unlink(missing_ok=True)
+        part.unlink(missing_ok=True)
+        _record_vector_failure(
+            session,
+            country_code,
+            code="CANCELLED",
+            message="La préparation du fond a été annulée.",
+            claim=claim,
+        )
         logger.info("vector_basemap country=%s job_id=%s phase=cancelled duration=%.1f result=cancelled", country_code, task.id, time.monotonic() - started)
         raise
+    except HTTPException as error:
+        output_tmp.unlink(missing_ok=True)
+        part.unlink(missing_ok=True)
+        _record_vector_failure(
+            session,
+            country_code,
+            code="AUTHORIZATION_REVOKED",
+            message=str(error.detail),
+            claim=claim,
+        )
+        raise
     except BasemapGenerationError as error:
-        output_tmp.unlink(missing_ok=True); part.unlink(missing_ok=True)
-        row = session.get(VectorBasemap, country_code)
-        if row is not None:
-            row.state = "error"; row.phase = "Erreur"; row.progress = None
-            row.last_error_code = error.code; row.last_error_message = str(error); row.generation_finished_at = _now()
-            session.commit()
+        output_tmp.unlink(missing_ok=True)
+        part.unlink(missing_ok=True)
+        _record_vector_failure(
+            session,
+            country_code,
+            code=error.code,
+            message=str(error),
+            claim=claim,
+        )
         logger.error("vector_basemap country=%s job_id=%s phase=failed duration=%.1f result=error error_code=%s", country_code, task.id, time.monotonic() - started, error.code)
         raise
     except Exception as error:
-        output_tmp.unlink(missing_ok=True); part.unlink(missing_ok=True)
-        row = session.get(VectorBasemap, country_code)
-        if row is not None:
-            row.state = "error"; row.phase = "Erreur"; row.progress = None
-            row.last_error_code = "GENERATION_FAILED"; row.last_error_message = "La génération du fond CartaVault a échoué."
-            row.generation_finished_at = _now()
-            session.commit()
+        output_tmp.unlink(missing_ok=True)
+        part.unlink(missing_ok=True)
+        _record_vector_failure(
+            session,
+            country_code,
+            code="GENERATION_FAILED",
+            message="La génération du fond CartaVault a échoué.",
+            claim=claim,
+        )
         logger.exception("vector_basemap country=%s job_id=%s phase=failed duration=%.1f result=error error_code=GENERATION_FAILED", country_code, task.id, time.monotonic() - started)
         raise BasemapGenerationError("GENERATION_FAILED", "La génération du fond CartaVault a échoué.") from error
     finally:
         session.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": _GLOBAL_GENERATION_LOCK})
-        session.commit()

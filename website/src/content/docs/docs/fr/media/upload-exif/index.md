@@ -67,4 +67,4 @@ L’extraction EXIF se fait après sélection et ne remplace jamais une validati
 - [Créer ou modifier un lieu](/docs/fr/places/create-edit/)
 - [Gérer les photos d’un lieu](/docs/fr/places/photos-media/)
 
-<small>Version CartaVault : **master** · ID : `media.upload`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `media.upload`</small>

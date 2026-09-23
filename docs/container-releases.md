@@ -11,12 +11,13 @@ Registry     ghcr.io
 Repository   flynx9/cartavault
 Platform     linux/amd64
 Version      semantic version without the leading v
-Example      ghcr.io/flynx9/cartavault:1.0.0-rc.5
+Example      ghcr.io/flynx9/cartavault:1.0.0
 ```
 
-Every immutable version tag identifies one released Git commit. Pre-releases
-also update the mutable `beta` alias; stable releases update `latest`. Never
-use a mutable alias as the only rollback reference.
+Every immutable version tag identifies one released Git commit. A GitHub Release
+marked as a pre-release also updates the mutable `beta` alias; a release not
+marked as a pre-release updates `latest`. The workflow also publishes a
+commit-SHA tag. Never use a mutable alias as the only rollback reference.
 
 The image contains FastAPI, Alembic and the compiled React frontend. It runs as
 the non-root `cartavault` user and does not contain the Python test runner. Base
@@ -41,29 +42,25 @@ repository `GITHUB_TOKEN`; no long-lived registry password is required.
 
 ## Maintainer release procedure
 
-Start only from a clean `master` revision whose push CI completed
-successfully. For the first 1.0 release candidate:
+Start from a clean commit already contained in `master` and with a successful
+push run of the `CI` workflow. Create a GitHub Release for a SemVer tag with a
+leading `v`, such as `v1.0.0`, targeted at that commit. Mark the GitHub Release
+as a pre-release only when publishing a pre-release tag.
 
-```powershell
-git switch master
-git pull --ff-only
-git status --short
-git tag -a v1.0.0-rc.5 -m "CartaVault 1.0.0 release candidate 5"
-git push origin v1.0.0-rc.5
-gh release create v1.0.0-rc.5 --prerelease --generate-notes --verify-tag
-```
-
-Publishing the release starts the container workflow. If it fails, fix the
-cause and publish a new version; do not move or overwrite an immutable release
-tag that users may already have pulled.
+Publishing the GitHub Release triggers
+`.github/workflows/release-container.yml`. The workflow rejects malformed tags,
+commits outside `master`, and commits without successful push CI before building
+and publishing the image. If publication fails, fix the cause and publish a new
+version; do not move or overwrite an immutable release tag that users may have
+already pulled.
 
 ## Verify a published release
 
 ```powershell
-docker pull ghcr.io/flynx9/cartavault:1.0.0-rc.5
-docker buildx imagetools inspect ghcr.io/flynx9/cartavault:1.0.0-rc.5
+docker pull ghcr.io/flynx9/cartavault:1.0.0
+docker buildx imagetools inspect ghcr.io/flynx9/cartavault:1.0.0
 gh attestation verify `
-  oci://ghcr.io/flynx9/cartavault:1.0.0-rc.5 `
+  oci://ghcr.io/flynx9/cartavault:1.0.0 `
   --repo FlynX9/CartaVault
 ```
 
@@ -77,7 +74,7 @@ Use `docker/compose.portainer.yml` and define at least:
 
 ```env
 CARTAVAULT_IMAGE=ghcr.io/flynx9/cartavault
-CARTAVAULT_VERSION=1.0.0-rc.5
+CARTAVAULT_VERSION=1.0.0
 ```
 
 The package is public, so Portainer does not need registry credentials. Before

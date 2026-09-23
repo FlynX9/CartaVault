@@ -24,6 +24,12 @@ class BackgroundTask(Base):
         Index("background_tasks_expires_at_idx", "expires_at"),
         Index("background_tasks_dedupe_idx", "dedupe_key", "status"),
         Index(
+            "background_tasks_recovery_idx",
+            "status",
+            "lease_expires_at",
+            postgresql_where=text("status = 'running'"),
+        ),
+        Index(
             "background_tasks_vector_basemap_active_key",
             "dedupe_key",
             unique=True,
@@ -63,6 +69,21 @@ class BackgroundTask(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # Crash-recovery lease. A running task is owned by ``lease_owner`` until
+    # ``lease_expires_at``; the owner renews both with a periodic heartbeat.
+    # Recovery may only claim a running task once the lease has expired, so a
+    # healthy long-running task can never be stolen. NULL means "unowned".
+    lease_owner: Mapped[str | None] = mapped_column(String(120))
+    # A fresh UUID is assigned on every successful claim.  The owner name is
+    # useful for diagnostics, but is not a sufficient fencing primitive (it
+    # can be reused by a restarted worker).
+    lease_token: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+    @property
+    def claim_token(self) -> UUID | None:
+        """Compatibility spelling for callers that call this a claim token."""
+        return self.lease_token
 
 
 class GeneratedExport(Base):

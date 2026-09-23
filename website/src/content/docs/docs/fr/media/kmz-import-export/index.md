@@ -68,4 +68,4 @@ L’import détecte les conventions courantes et signale les doublons.
 - [Organiser avec catégories, tags et statuts](/docs/fr/organization/categories-tags-statuses/)
 - [Exporter une sortie](/docs/fr/trips/exports/)
 
-<small>Version CartaVault : **master** · ID : `media.map-exchange`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `media.map-exchange`</small>

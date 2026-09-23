@@ -60,4 +60,4 @@ CartaVault avertit lorsqu’un point sort du pays de la carte sans bloquer une e
 - [Organiser avec catégories, tags et statuts](/docs/fr/organization/categories-tags-statuses/)
 - [Dessiner le plan d’un lieu](/docs/fr/places/annotations/)
 
-<small>Version CartaVault : **master** · ID : `places.edit`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.edit`</small>

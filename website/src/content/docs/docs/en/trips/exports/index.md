@@ -58,4 +58,4 @@ PDF combines days, stops, useful details and permitted media.
 - [Browse a trip timeline](/docs/en/trips/timeline/)
 - [Import and export a KMZ map](/docs/en/media/kmz-import-export/)
 
-<small>Version CartaVault : **master** · ID : `trips.exports`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.exports`</small>

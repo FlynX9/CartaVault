@@ -71,11 +71,13 @@
             "type": "string"
           },
           "density": {
-            "default": "compact",
+            "default": "100",
             "enum": [
-              "compact",
-              "comfortable",
-              "spacious"
+              "60",
+              "70",
+              "80",
+              "90",
+              "100"
             ],
             "title": "Density",
             "type": "string"
@@ -1835,6 +1837,18 @@
               }
             ],
             "title": "Longitude"
+          },
+          "map_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Id"
           },
           "taken_at": {
             "anyOf": [
@@ -4677,6 +4691,27 @@
         "title": "EmailDiagnostic",
         "type": "object"
       },
+      "EmailMfaLoginChallenge": {
+        "properties": {
+          "challenge_token": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Challenge Token",
+            "type": "string"
+          },
+          "requires_email_mfa": {
+            "const": true,
+            "default": true,
+            "title": "Requires Email Mfa",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "challenge_token"
+        ],
+        "title": "EmailMfaLoginChallenge",
+        "type": "object"
+      },
       "EmailMfaVerification": {
         "properties": {
           "challenge_token": {
@@ -6272,6 +6307,21 @@
           "country_id"
         ],
         "title": "MapCreate",
+        "type": "object"
+      },
+      "MapDuplicate": {
+        "properties": {
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MapDuplicate",
         "type": "object"
       },
       "MapPlaceFieldConfig": {
@@ -9581,6 +9631,31 @@
         "title": "PlaceMapRead",
         "type": "object"
       },
+      "PlaceMove": {
+        "properties": {
+          "confirm_outside_country": {
+            "default": false,
+            "title": "Confirm Outside Country",
+            "type": "boolean"
+          },
+          "target_map_id": {
+            "format": "uuid",
+            "title": "Target Map Id",
+            "type": "string"
+          },
+          "target_status_id": {
+            "format": "uuid",
+            "title": "Target Status Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_map_id",
+          "target_status_id"
+        ],
+        "title": "PlaceMove",
+        "type": "object"
+      },
       "PlaceRead": {
         "properties": {
           "categories": {
@@ -10167,6 +10242,7 @@
         "type": "object"
       },
       "PlaceUpdate": {
+        "additionalProperties": false,
         "properties": {
           "condition": {
             "anyOf": [
@@ -10271,18 +10347,6 @@
               }
             ],
             "title": "Longitude"
-          },
-          "map_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Map Id"
           },
           "name": {
             "anyOf": [
@@ -13514,6 +13578,21 @@
         "title": "TotpSetupRead",
         "type": "object"
       },
+      "TotpSetupRequest": {
+        "properties": {
+          "current_password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password"
+        ],
+        "title": "TotpSetupRequest",
+        "type": "object"
+      },
       "TransferOwnership": {
         "properties": {
           "email": {
@@ -13725,6 +13804,111 @@
           "safety_margin_value"
         ],
         "title": "TripDayTimingUpdate",
+        "type": "object"
+      },
+      "TripListRead": {
+        "properties": {
+          "country_code": {
+            "title": "Country Code",
+            "type": "string"
+          },
+          "country_name": {
+            "title": "Country Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "day_count": {
+            "title": "Day Count",
+            "type": "integer"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "map_id": {
+            "format": "uuid",
+            "title": "Map Id",
+            "type": "string"
+          },
+          "map_name": {
+            "title": "Map Name",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "stop_count": {
+            "title": "Stop Count",
+            "type": "integer"
+          },
+          "thumbnail_photo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail Photo Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "map_id",
+          "map_name",
+          "country_name",
+          "country_code",
+          "name",
+          "start_date",
+          "end_date",
+          "status",
+          "created_at",
+          "updated_at",
+          "day_count",
+          "stop_count"
+        ],
+        "title": "TripListRead",
         "type": "object"
       },
       "TripLoadSettings": {
@@ -14298,6 +14482,18 @@
               }
             ],
             "title": "Description"
+          },
+          "destructive_change_token": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destructive Change Token"
           },
           "end_date": {
             "anyOf": [
@@ -16158,7 +16354,19 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-CSRF-Token": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "422": {
             "content": {
@@ -16255,6 +16463,16 @@
     "/account/security/totp/setup": {
       "post": {
         "operationId": "setup_account_security_totp_setup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpSetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16272,6 +16490,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Setup",
@@ -19112,6 +19340,9 @@
                     },
                     {
                       "$ref": "#/components/schemas/TotpLoginChallenge"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EmailMfaLoginChallenge"
                     }
                   ],
                   "title": "Response Login Auth Login Post"
@@ -20814,6 +21045,59 @@
           }
         },
         "summary": "Update Map",
+        "tags": [
+          "maps"
+        ]
+      }
+    },
+    "/maps/{map_id}/duplicate": {
+      "post": {
+        "operationId": "duplicate_map_endpoint_maps__map_id__duplicate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "map_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Map Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MapDuplicate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Duplicate Map Endpoint",
         "tags": [
           "maps"
         ]
@@ -25372,6 +25656,60 @@
         ]
       }
     },
+    "/places/{place_id}/move": {
+      "post": {
+        "description": "Atomically move a POI and its attached media to another editable map.",
+        "operationId": "move_place_places__place_id__move_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "place_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Place Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceMove"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move Place",
+        "tags": [
+          "places"
+        ]
+      }
+    },
     "/places/{place_id}/permanent": {
       "delete": {
         "operationId": "permanently_delete_place_places__place_id__permanent_delete",
@@ -28185,6 +28523,31 @@
           }
         },
         "summary": "Visit Status",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/trips": {
+      "get": {
+        "operationId": "list_accessible_trips_trips_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TripListRead"
+                  },
+                  "title": "Response List Accessible Trips Trips Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Accessible Trips",
         "tags": [
           "trips"
         ]

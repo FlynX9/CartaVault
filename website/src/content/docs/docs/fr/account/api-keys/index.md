@@ -67,4 +67,4 @@ Les secrets sont chiffrés et ne sont plus affichés en clair.
 - [Calculer et optimiser les itinéraires](/docs/fr/trips/routing-optimization/)
 - [Gérer les fournisseurs et clés d’instance](/docs/fr/administration/api-keys/)
 
-<small>Version CartaVault : **master** · ID : `account.api-keys`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.api-keys`</small>

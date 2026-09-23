@@ -89,7 +89,7 @@ services:
       demo-reset:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 20

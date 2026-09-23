@@ -57,4 +57,4 @@ The shape of an in-use template can no longer be changed.
 - [Draw a place plan](/docs/en/places/annotations/)
 - [Import an organization profile](/docs/en/organization/import-profiles/)
 
-<small>Version CartaVault : **master** · ID : `organization.annotation-templates`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `organization.annotation-templates`</small>

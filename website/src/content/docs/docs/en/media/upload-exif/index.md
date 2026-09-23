@@ -67,4 +67,4 @@ EXIF extraction happens after selection and never replaces user validation.
 - [Create or edit a place](/docs/en/places/create-edit/)
 - [Manage place photos](/docs/en/places/photos-media/)
 
-<small>Version CartaVault : **master** · ID : `media.upload`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `media.upload`</small>

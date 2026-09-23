@@ -220,7 +220,9 @@ class TripNightPhoto(Base):
     __table_args__ = (
         UniqueConstraint("night_id", "sort_order", name="trip_night_photos_night_order_key"),
         CheckConstraint("file_size_bytes >= 0", name="trip_night_photos_file_size_nonnegative"),
+        CheckConstraint("storage_state IN ('unchecked', 'available', 'missing')", name="trip_night_photos_storage_state_check"),
         Index("trip_night_photos_night_id_idx", "night_id"),
+        Index("trip_night_photos_storage_checked_at_idx", "storage_checked_at"),
     )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -228,6 +230,8 @@ class TripNightPhoto(Base):
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default=text("0"))
+    storage_state: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'unchecked'"))
+    storage_checked_at: Mapped[datetime | None] = mapped_column(DateTime)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 

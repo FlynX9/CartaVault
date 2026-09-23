@@ -63,4 +63,4 @@ Each check has an independent state; an external outage does not hide other serv
 - [Configure media and instance logs](/docs/en/administration/media-logs/)
 - [Install and update CartaVault](/docs/en/self-hosting/install-update/)
 
-<small>Version CartaVault : **master** · ID : `admin.instance`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.instance`</small>

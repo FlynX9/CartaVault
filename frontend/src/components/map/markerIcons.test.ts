@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { getCategoryIconData } from '../../icons/categoryIconData'
+import { getCategoryIconData, loadCategoryIconData } from '../../icons/categoryIconData'
 import { FALLBACK_CATEGORY_ICON_ID } from '../../icons/categoryIconRuntime'
 import { getStatusMarkerIcon } from './markerIcons'
 
 describe('status marker icons', () => {
-  it('uses the API color and keeps selection as a separate visual state', () => {
+  it('uses the API color and keeps selection as a separate visual state', async () => {
+    await loadCategoryIconData('mdi:factory')
     const regular = getStatusMarkerIcon('#D97706', 'mdi:factory', false)
     const selected = getStatusMarkerIcon('#D97706', 'mdi:factory', true)
     const muted = getStatusMarkerIcon('#D97706', 'mdi:factory', false, true)
@@ -19,8 +20,9 @@ describe('status marker icons', () => {
     expect(favorite.options.html).toContain('status-marker favorite')
   })
 
-  it('uses the local MDI and Material Symbol bodies without a network request', () => {
+  it('uses the local MDI and Material Symbol bodies without a network request', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    await Promise.all([loadCategoryIconData('mdi:church'), loadCategoryIconData('material-symbols:location-on-outline')])
     const church = getStatusMarkerIcon('#D97706', 'mdi:church', false)
     const materialSymbol = getStatusMarkerIcon('#D97706', 'material-symbols:location-on-outline', false)
 

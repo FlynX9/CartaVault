@@ -68,4 +68,4 @@ Import detects common conventions and reports duplicates.
 - [Organize with categories, tags and statuses](/docs/en/organization/categories-tags-statuses/)
 - [Export a trip](/docs/en/trips/exports/)
 
-<small>Version CartaVault : **master** · ID : `media.map-exchange`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `media.map-exchange`</small>

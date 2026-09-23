@@ -64,7 +64,7 @@ def test_admin_users_include_and_can_load_private_avatars(
 ) -> None:
     monkeypatch.setenv("AVATAR_STORAGE_PATH", str(tmp_path))
     user = _user(database_session, "Avatar Person")
-    user.avatar_filename = "admin-user-avatar.webp"
+    user.avatar_filename = f"{uuid4()}.webp"
     user.avatar_updated_at = datetime(2026, 7, 30, 12, 0, 0)
     database_session.flush()
     avatar_content = b"private-avatar"

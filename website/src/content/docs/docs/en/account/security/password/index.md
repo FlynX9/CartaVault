@@ -58,4 +58,4 @@ Policy requires at least 12 characters, upper case, lower case, a digit and a sp
 - [Understand account security](/docs/en/account/security/overview/)
 - [Manage sessions and devices](/docs/en/account/security/sessions/)
 
-<small>Version CartaVault : **master** · ID : `account.password`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.password`</small>

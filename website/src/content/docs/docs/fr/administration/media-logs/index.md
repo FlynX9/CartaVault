@@ -63,4 +63,4 @@ Les images ne sont jamais agrandies.
 - [Superviser l’état de l’instance](/docs/fr/administration/instance-status/)
 - [Configurer confidentialité et conformité](/docs/fr/administration/privacy-compliance/)
 
-<small>Version CartaVault : **master** · ID : `admin.media-logs`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.media-logs`</small>

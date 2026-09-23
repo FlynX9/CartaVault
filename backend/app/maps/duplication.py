@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import PurePosixPath
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -16,6 +17,11 @@ from app.categories.models import Category
 from app.maps.models import MapMembership, PoiMap
 from app.places.models import Place, PlaceLink
 from app.photos.models import Photo
+from app.photos.reconciliation import (
+    confirm_storage_write,
+    expedite_storage_write_cleanup,
+    prepare_storage_write_cleanup,
+)
 from app.photos.storage import PhotoStorageError, copy_photo_file, delete_photo_file
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
@@ -65,13 +71,23 @@ def _discard_created_media(created_media_files: list[CreatedMediaFile]) -> None:
 
 
 def _copy_physical_media(
+    session: Session,
     source_path: str,
     source_scope_id: UUID,
     source_photo_id: UUID,
     *,
     target_scope_id: UUID,
     target_photo_id: UUID,
-) -> tuple[str, str, int]:
+) -> tuple[str, str, int, UUID]:
+    target_key = PurePosixPath(
+        str(target_scope_id),
+        f"{target_photo_id}{PurePosixPath(source_path).suffix}",
+    ).as_posix()
+    intent_id = prepare_storage_write_cleanup(
+        session,
+        namespace="media",
+        object_key=target_key,
+    )
     try:
         copied = copy_photo_file(
             source_path,
@@ -81,8 +97,9 @@ def _copy_physical_media(
             target_photo_id=target_photo_id,
         )
     except PhotoStorageError as error:
+        expedite_storage_write_cleanup(session, intent_id)
         raise HTTPException(status_code=500, detail="Unable to duplicate the map media") from error
-    return copied.relative_path, copied.media_type, copied.file_size_bytes
+    return copied.relative_path, copied.media_type, copied.file_size_bytes, intent_id
 
 
 def _duplicate_place_photo(photo: Photo, session: Session, copied_map: PoiMap, new_place_id: UUID) -> CreatedMediaFile | None:
@@ -100,15 +117,18 @@ def _duplicate_place_photo(photo: Photo, session: Session, copied_map: PoiMap, n
         source_scope_id = photo.storage_scope_id
         if source_scope_id is None:
             raise HTTPException(status_code=500, detail="Unable to duplicate the map media")
-        relative_path, media_type, file_size_bytes = _copy_physical_media(
+        relative_path, media_type, file_size_bytes, intent_id = _copy_physical_media(
+            session,
             photo.path,
             source_scope_id,
             photo.id,
             target_scope_id=new_place_id,
             target_photo_id=new_photo_id,
         )
-        overrides.update(path=relative_path, mime_type=media_type, file_size_bytes=file_size_bytes)
+        overrides.update(path=relative_path, mime_type=media_type, file_size_bytes=file_size_bytes, storage_state="available", storage_checked_at=None)
     _copy(photo, Photo, session, **overrides)
+    if photo.path is not None:
+        confirm_storage_write(session, intent_id)
     return (overrides["path"], new_place_id, new_photo_id) if photo.path is not None else None
 
 
@@ -127,15 +147,18 @@ def _duplicate_orphan_photo(photo: Photo, session: Session, copied_map: PoiMap) 
         source_scope_id = photo.storage_scope_id
         if source_scope_id is None:
             raise HTTPException(status_code=500, detail="Unable to duplicate the map media")
-        relative_path, media_type, file_size_bytes = _copy_physical_media(
+        relative_path, media_type, file_size_bytes, intent_id = _copy_physical_media(
+            session,
             photo.path,
             source_scope_id,
             photo.id,
             target_scope_id=new_photo_id,
             target_photo_id=new_photo_id,
         )
-        overrides.update(path=relative_path, mime_type=media_type, file_size_bytes=file_size_bytes)
+        overrides.update(path=relative_path, mime_type=media_type, file_size_bytes=file_size_bytes, storage_state="available", storage_checked_at=None)
     _copy(photo, Photo, session, **overrides)
+    if photo.path is not None:
+        confirm_storage_write(session, intent_id)
     return (overrides["path"], new_photo_id, new_photo_id) if photo.path is not None else None
 
 
@@ -143,7 +166,8 @@ def _duplicate_night_photo(photo: TripNightPhoto, session: Session, new_night_id
     """Copy one trip-night photo into the copied night's storage scope."""
 
     new_photo_id = uuid4()
-    relative_path, media_type, file_size_bytes = _copy_physical_media(
+    relative_path, media_type, file_size_bytes, intent_id = _copy_physical_media(
+        session,
         photo.file_path,
         photo.night_id,
         photo.id,
@@ -159,7 +183,10 @@ def _duplicate_night_photo(photo: TripNightPhoto, session: Session, new_night_id
         file_path=relative_path,
         mime_type=media_type,
         file_size_bytes=file_size_bytes,
+        storage_state="available",
+        storage_checked_at=None,
     )
+    confirm_storage_write(session, intent_id)
     return (relative_path, new_night_id, new_photo_id)
 
 

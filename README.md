@@ -269,7 +269,7 @@ See the [demo guide](demo/README.md) for reset rules, accounts, scenario coverag
 
 ## Documentation
 
-- [Current changelog](CHANGELOG.md) and [draft 1.0.0 release notes](docs/release-notes-v1.0.0.md)
+- [Current changelog](CHANGELOG.md) and [1.0.0 release notes](docs/release-notes-v1.0.0.md)
 - [CartaVault Vector basemaps for offline use](docs/vector-basemap.md)
 
 The bilingual user and administrator guide is published at [cartavault.fr/docs/fr](https://cartavault.fr/docs/fr/) and [cartavault.fr/docs/en](https://cartavault.fr/docs/en/). It is built with the marketing site and includes searchable, generated API, environment, CLI and feature references.
@@ -278,7 +278,8 @@ The bilingual user and administrator guide is published at [cartavault.fr/docs/f
 - [Container releases and GHCR](docs/container-releases.md)
 - [Backup and restore](docs/backup-and-restore.md)
 - [Background tasks and Redis](docs/background-tasks.md)
-- [Security audit](docs/security-audit-2026-07.md)
+- [Current security and operations](docs/security.md)
+- [Historical security audit — July 2026](docs/security-audit-2026-07.md)
 - [Dependency security policy](docs/dependency-security.md)
 - [Administration audit](docs/administration-audit.md)
 - [Instance status](docs/instance-status.md)
@@ -298,8 +299,10 @@ Before publishing or deploying CartaVault:
 
 ## Project status and contributing
 
-CartaVault is actively developed and is in final validation for its first stable
-release. Issues and pull requests are welcome on [GitHub](https://github.com/FlynX9/CartaVault/issues). Please discuss major changes in an issue before implementation so they remain consistent with the permission model, deployment contract and interface.
+CartaVault is actively developed following its 1.0.0 stable release. Issues and
+pull requests are welcome on [GitHub](https://github.com/FlynX9/CartaVault/issues).
+Please discuss major changes in an issue before implementation so they remain
+consistent with the permission model, deployment contract and interface.
 
 ## License
 

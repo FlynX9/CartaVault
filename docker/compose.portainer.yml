@@ -1,5 +1,11 @@
 name: cartavault
 
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 x-cartavault-environment: &cartavault-environment
   DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
   CARTAVAULT_VERSION: ${CARTAVAULT_VERSION:?CARTAVAULT_VERSION is required}
@@ -22,11 +28,28 @@ x-cartavault-environment: &cartavault-environment
   CARTAVAULT_DATABASE_STABLE_CHECKS: ${CARTAVAULT_DATABASE_STABLE_CHECKS:-3}
   CARTAVAULT_DATABASE_CONNECT_TIMEOUT_SECONDS: ${CARTAVAULT_DATABASE_CONNECT_TIMEOUT_SECONDS:-5}
   CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS: ${CARTAVAULT_MIGRATION_LOCK_TIMEOUT_SECONDS:-300}
+  MEDIA_STORAGE: ${MEDIA_STORAGE:-local}
+  MEDIA_CACHE_PATH: /tmp/cartavault-media-cache
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+  S3_PREFIX: ${S3_PREFIX:-media}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+  S3_USE_SSL: ${S3_USE_SSL:-true}
+  S3_VERIFY_TLS: ${S3_VERIFY_TLS:-true}
+  S3_CONNECT_TIMEOUT_SECONDS: ${S3_CONNECT_TIMEOUT_SECONDS:-5}
+  S3_READ_TIMEOUT_SECONDS: ${S3_READ_TIMEOUT_SECONDS:-30}
+  S3_MAX_ATTEMPTS: ${S3_MAX_ATTEMPTS:-3}
+  S3_OPERATION_TIMEOUT_SECONDS: ${S3_OPERATION_TIMEOUT_SECONDS:-300}
+  S3_RETRY_MODE: ${S3_RETRY_MODE:-standard}
   PHOTO_STORAGE_PATH: /app/storage/photos
   AVATAR_STORAGE_PATH: /app/storage/avatars
   EXPORT_STORAGE_PATH: /app/storage/exports
   IMPORT_STORAGE_PATH: /app/storage/imports
   CARTAVAULT_VECTOR_MAP_DIR: /data/maps
+  CARTAVAULT_PLANETILER_TIMEOUT_SECONDS: ${CARTAVAULT_PLANETILER_TIMEOUT_SECONDS:-21600}
   # Standard Portainer/Synology deployment: one application replica, no queue.
   CARTAVAULT_TASK_MODE: sync
   CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE: ${CARTAVAULT_GOOGLE_ROUTES_REQUESTS_PER_MINUTE:-120}
@@ -71,6 +94,7 @@ services:
       retries: 12
       start_period: 15s
     networks: [cartavault_private]
+    logging: *json-logging
 
   cartavault:
     image: ${CARTAVAULT_IMAGE:-ghcr.io/flynx9/cartavault}:${CARTAVAULT_VERSION}
@@ -96,12 +120,13 @@ services:
       postgis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 8
       start_period: 20s
     networks: [cartavault_private]
+    logging: *json-logging
 
 networks:
   cartavault_private:

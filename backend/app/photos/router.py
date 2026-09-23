@@ -23,6 +23,16 @@ from app.auth.permissions import require_photo_role, require_place_role
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.photos.models import Photo
+from app.photos.reconciliation import (
+    abandon_storage_write,
+    active_storage_backend,
+    canonical_media_object_key,
+    confirm_storage_write,
+    enqueue_delete_intent,
+    prepare_storage_write_cleanup,
+    process_storage_operations_best_effort,
+    thumbnail_object_key,
+)
 from app.places.history import add_place_history
 from app.photos.schemas import PhotoCreate, PhotoRead, PhotoReorder, PhotoUpdate
 from app.photos.storage import (
@@ -224,8 +234,15 @@ def upload_place_photo(
         quotas.ensure_can_create(place.map.owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=upload_size)
     photo_id = uuid4()
     maximum, dimension = get_media_upload_policy(database_session, place.map.owner_id)
+    write_intent_id = None
 
     try:
+        object_key = canonical_media_object_key(place_id, photo_id, file.content_type or "")
+        write_intent_id = prepare_storage_write_cleanup(
+            database_session,
+            namespace="media",
+            object_key=object_key,
+        )
         stored_photo = store_photo_file(
             source=file.file,
             content_type=file.content_type,
@@ -234,17 +251,23 @@ def upload_place_photo(
             max_size_bytes=maximum * 1024 * 1024,
             max_dimension=dimension,
         )
-    except UnsupportedPhotoTypeError as error:
+    except (UnsupportedPhotoTypeError, ValueError) as error:
+        if write_intent_id is not None:
+            abandon_storage_write(database_session, write_intent_id)
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=str(error),
         ) from error
     except PhotoTooLargeError as error:
+        if write_intent_id is not None:
+            abandon_storage_write(database_session, write_intent_id)
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=str(error),
         ) from error
     except PhotoStorageError as error:
+        if write_intent_id is not None:
+            abandon_storage_write(database_session, write_intent_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to store the uploaded image",
@@ -257,7 +280,7 @@ def upload_place_photo(
             increment=stored_photo.file_size_bytes,
         )
     except HTTPException:
-        delete_photo_file(stored_photo.relative_path, place_id, photo_id)
+        abandon_storage_write(database_session, write_intent_id)
         raise
 
     next_order = database_session.scalar(select(func.coalesce(func.max(Photo.sort_order), -1) + 1).where(Photo.place_id == place_id))
@@ -277,32 +300,18 @@ def upload_place_photo(
         file_size_bytes=stored_photo.file_size_bytes,
         width=stored_photo.width,
         height=stored_photo.height,
+        storage_state="available",
         uploaded_by_user_id=current_user.id,
     )
 
     try:
         database_session.add(photo)
+        confirm_storage_write(database_session, write_intent_id)
         database_session.flush()
         add_place_history(database_session, place_id, current_user.id, "photo_added", {"photo": {"old": None, "new": {"id": str(photo.id), "original_name": photo.original_name}}})
         database_session.commit()
     except SQLAlchemyError as error:
-        database_session.rollback()
-
-        try:
-            delete_photo_file(
-                stored_photo.relative_path,
-                place_id,
-                photo_id,
-            )
-        except PhotoStorageError as cleanup_error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=(
-                    "Unable to create the photo metadata or clean up "
-                    "the stored image"
-                ),
-            ) from cleanup_error
-
+        abandon_storage_write(database_session, write_intent_id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to create the photo metadata",
@@ -365,7 +374,8 @@ def get_photo_thumbnail_file(
     if photo is None or photo.path is None or photo.storage_scope_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The physical photo file was not found")
     try:
-        thumbnail_path = get_photo_thumbnail(photo.path, photo.storage_scope_id, photo.id)
+        thumbnail_path = get_photo_thumbnail(photo.path, photo.storage_scope_id, photo.id, database_session)
+        database_session.commit()
     except PhotoFileNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The physical photo file was not found") from error
     except (InvalidPhotoPathError, PhotoStorageError) as error:
@@ -567,8 +577,28 @@ def delete_photo(
     stored_path = photo.path
     stored_place_id = photo.place_id
     stored_scope_id = photo.storage_scope_id
+    cleanup_operation_ids: list[UUID] = []
 
     try:
+        if stored_path is not None:
+            cleanup_operation_ids.append(
+                enqueue_delete_intent(
+                    database_session,
+                    backend=active_storage_backend("media"),
+                    namespace="media",
+                    object_key=stored_path,
+                    purpose="photo_delete",
+                )
+            )
+        cleanup_operation_ids.append(
+            enqueue_delete_intent(
+                database_session,
+                backend=active_storage_backend("media"),
+                namespace="media",
+                object_key=thumbnail_object_key(photo_id),
+                purpose="photo_delete",
+            )
+        )
         database_session.delete(photo)
         database_session.flush()
         if stored_place_id is not None:
@@ -595,21 +625,7 @@ def delete_photo(
             detail="Unable to delete the photo metadata",
         ) from error
 
-    if stored_path is not None and stored_scope_id is not None:
-        try:
-            delete_photo_file(
-                stored_path,
-                stored_scope_id,
-                photo_id,
-            )
-        except PhotoStorageError as error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=(
-                    "The photo metadata was deleted, but the physical "
-                    "file cleanup failed"
-                ),
-            ) from error
+    process_storage_operations_best_effort(cleanup_operation_ids, session=database_session)
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,

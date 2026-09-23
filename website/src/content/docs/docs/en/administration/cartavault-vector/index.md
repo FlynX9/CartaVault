@@ -63,4 +63,4 @@ Geofabrik supplies the controlled extract and Planetiler runs only during genera
 - [Manage offline data](/docs/en/account/offline-data/)
 - [Configure the instance](/docs/en/administration/general/)
 
-<small>Version CartaVault : **master** · ID : `admin.vector-basemaps`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.vector-basemaps`</small>

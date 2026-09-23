@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.api_keys import selected_api_key, selected_google_maps_javascript_key
-from app.auth.avatar_storage import AvatarError, delete_avatar, resolve_avatar, store_avatar
+from app.auth.avatar_storage import AvatarError, new_avatar_filename, resolve_avatar, store_avatar
 from app.auth.dependencies import get_current_session
 from app.auth.models import User, UserApiCredential, UserSession
 from app.auth.schemas import AccountDelete, AccountPasswordChange, AccountPreferences, AccountProfileUpdate, EmailChange
@@ -23,6 +23,13 @@ from app.database import get_db
 from app.exports.temporary_exports import remove_for_user
 from app.emails.notifications import notify_email_changed, notify_password_changed
 from app.maps.models import MapInvitation, MapMembership, PoiMap
+from app.photos.reconciliation import (
+    abandon_storage_write,
+    confirm_storage_write,
+    enqueue_delete_intent,
+    prepare_storage_write_cleanup,
+    process_storage_operations_best_effort,
+)
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -181,12 +188,28 @@ def revoke_others(database_session: Session = Depends(get_db), current: UserSess
 @router.post("/avatar")
 async def upload_avatar(file: UploadFile = File(...), database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> dict:
     content = await file.read(5 * 1024 * 1024 + 1); old = current.user.avatar_filename
-    try: filename = store_avatar(content)
-    except AvatarError as error: raise HTTPException(422, str(error)) from error
+    filename = new_avatar_filename()
+    write_intent_id = prepare_storage_write_cleanup(
+        database_session,
+        namespace="avatar",
+        object_key=filename,
+    )
+    try: filename = store_avatar(content, filename=filename)
+    except AvatarError as error:
+        abandon_storage_write(database_session, write_intent_id)
+        raise HTTPException(422, str(error)) from error
     current.user.avatar_filename = filename; current.user.avatar_updated_at = datetime.now(UTC).replace(tzinfo=None)
-    try: database_session.commit()
-    except Exception: delete_avatar(filename); database_session.rollback(); raise
-    delete_avatar(old); return {"avatar_url": f"/account/avatar?v={current.user.avatar_updated_at.isoformat()}"}
+    cleanup_ids = []
+    if old:
+        cleanup_ids.append(enqueue_delete_intent(database_session, backend="local", namespace="avatar", object_key=old, purpose="avatar_replaced"))
+    confirm_storage_write(database_session, write_intent_id)
+    try:
+        database_session.commit()
+    except Exception:
+        abandon_storage_write(database_session, write_intent_id)
+        raise
+    process_storage_operations_best_effort(cleanup_ids, session=database_session)
+    return {"avatar_url": f"/account/avatar?v={current.user.avatar_updated_at.isoformat()}"}
 
 
 @router.get("/avatar")
@@ -199,7 +222,11 @@ def avatar(current: UserSession = Depends(get_current_session)) -> FileResponse:
 
 @router.delete("/avatar", status_code=204)
 def remove_avatar(database_session: Session = Depends(get_db), current: UserSession = Depends(get_current_session)) -> Response:
-    old = current.user.avatar_filename; current.user.avatar_filename = None; current.user.avatar_updated_at = datetime.now(UTC).replace(tzinfo=None); database_session.commit(); delete_avatar(old); return Response(status_code=204)
+    old = current.user.avatar_filename
+    cleanup_ids = [enqueue_delete_intent(database_session, backend="local", namespace="avatar", object_key=old, purpose="avatar_removed")] if old else []
+    current.user.avatar_filename = None; current.user.avatar_updated_at = datetime.now(UTC).replace(tzinfo=None); database_session.commit()
+    process_storage_operations_best_effort(cleanup_ids, session=database_session)
+    return Response(status_code=204)
 
 
 @router.delete("")
@@ -214,6 +241,7 @@ def delete_account(data: AccountDelete, response: Response, database_session: Se
     database_session.execute(delete(MapMembership).where(MapMembership.user_id == user.id))
     database_session.execute(delete(UserApiCredential).where(UserApiCredential.user_id == user.id))
     database_session.execute(update(MapInvitation).where(MapInvitation.email == user.email, MapInvitation.accepted_at.is_(None)).values(revoked_at=now))
+    cleanup_ids = [enqueue_delete_intent(database_session, backend="local", namespace="avatar", object_key=old_avatar, purpose="account_deleted")] if old_avatar else []
     user.display_name = "Utilisateur supprimé"; user.email = f"deleted-{user.id}@invalid.local"; user.is_active = False; user.is_admin = False; user.deleted_at = now; user.avatar_filename = None; user.avatar_updated_at = now
-    database_session.commit(); delete_avatar(old_avatar); remove_for_user(user.id, database_session)
+    database_session.commit(); process_storage_operations_best_effort(cleanup_ids, session=database_session); remove_for_user(user.id, database_session)
     response.delete_cookie(security_settings.session_cookie_name, path="/"); response.delete_cookie(security_settings.csrf_cookie_name, path="/"); response.status_code = 204; return response

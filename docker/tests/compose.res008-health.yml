@@ -1,0 +1,78 @@
+name: cartavault_res008_health
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://res008:res008-test-pass@postgis:5432/res008
+  CARTAVAULT_ENVIRONMENT: test
+  CARTAVAULT_VERSION: res008-health-test
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_PUBLIC_URL: http://localhost:${RES008_HTTP_PORT:-18108}
+  FRONTEND_PUBLIC_URL: http://localhost:${RES008_HTTP_PORT:-18108}
+  CORS_ALLOWED_ORIGINS: http://localhost:${RES008_HTTP_PORT:-18108}
+  CARTAVAULT_COOKIE_SECURE: "false"
+  CARTAVAULT_SESSION_SECRET: res008-test-session-secret
+  CARTAVAULT_SETUP_TOKEN: res008-test-setup-token
+  CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: OuaZ1702C8WnrktWVRr4XAwIki3nWFO1YfE8g4GHMZA=
+  CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: admin@res008.test
+  CARTAVAULT_BOOTSTRAP_ADMIN_NAME: RES-008 Admin
+  CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: Res008Health!2026
+  CARTAVAULT_TASK_MODE: sync
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  CARTAVAULT_DATABASE_CONNECT_TIMEOUT_SECONDS: "2"
+  MEDIA_STORAGE: local
+  PHOTO_STORAGE_PATH: /app/storage/photos
+  MEDIA_CACHE_PATH: /app/storage/media-cache
+  AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
+  IMPORT_STORAGE_PATH: /app/storage/imports
+  EMAIL_PROVIDER: none
+  EMAIL_FROM_ADDRESS: res008@cartavault.test
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.5@sha256:7d7925e334fceb6079c0a5d150e925f192cde2cf1dd78767ca843e2996d39829
+    environment:
+      POSTGRES_DB: res008
+      POSTGRES_USER: res008
+      POSTGRES_PASSWORD: res008-test-pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U res008 -d res008"]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+    networks: [test]
+
+  api:
+    image: cartavault:res008-health-test
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+      CARTAVAULT_INSTANCE_ID: res008-a
+    ports:
+      - "${RES008_HTTP_PORT:-18108}:8000"
+    volumes:
+      - photos_data:/app/storage/photos
+      - avatars_data:/app/storage/avatars
+      - exports_data:/app/storage/exports
+      - imports_data:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 1s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks: [test]
+
+volumes:
+  postgres_data:
+  photos_data:
+  avatars_data:
+  exports_data:
+  imports_data:
+
+networks:
+  test:

@@ -74,4 +74,4 @@ Names already present are ignored to prevent duplicates.
 - [Organize with categories, tags and statuses](/docs/en/organization/categories-tags-statuses/)
 - [Configure annotation templates](/docs/en/organization/annotation-templates/)
 
-<small>Version CartaVault : **master** · ID : `organization.import-profiles`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `organization.import-profiles`</small>

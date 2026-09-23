@@ -59,4 +59,4 @@ Delivery uses branded FR/EN templates.
 - [Enable email MFA codes](/docs/en/account/security/email-mfa/)
 - [Manage instance providers and keys](/docs/en/administration/api-keys/)
 
-<small>Version CartaVault : **master** · ID : `deployment.email`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `deployment.email`</small>

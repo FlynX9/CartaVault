@@ -1,0 +1,12 @@
+name: cartavault-operations-test
+
+services:
+  postgis:
+    image: alpine:3.20
+    command: ["sh", "-c", "while true; do sleep 3600; done"]
+
+  cartavault:
+    image: alpine:3.20
+    command: ["sh", "-c", "while true; do sleep 3600; done"]
+    environment:
+      CARTAVAULT_TASK_MODE: sync

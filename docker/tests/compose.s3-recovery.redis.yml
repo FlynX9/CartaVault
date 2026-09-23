@@ -1,0 +1,45 @@
+name: cartavault-s3-recovery-test
+
+services:
+  redis:
+    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "recovery-test-redis-password"]
+    networks: [test]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a recovery-test-redis-password --no-auth-warning ping | grep -q PONG"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  cartavault:
+    environment:
+      CARTAVAULT_TASK_MODE: redis
+      REDIS_URL: redis://:recovery-test-redis-password@redis:6379/0
+      CARTAVAULT_TASK_QUEUE: cartavault
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    extends:
+      file: compose.s3-recovery.yml
+      service: cartavault
+    ports: !reset []
+    entrypoint: ["python", "-m", "app.tasks.worker"]
+    environment:
+      CARTAVAULT_TASK_MODE: redis
+      REDIS_URL: redis://:recovery-test-redis-password@redis:6379/0
+      CARTAVAULT_TASK_QUEUE: cartavault
+    depends_on:
+      cartavault:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from redis import Redis; from rq import Worker; import os; c=Redis.from_url(os.environ['REDIS_URL']); assert any(w.get_state() in {'idle','busy'} for w in Worker.all(connection=c))"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+
+volumes:
+  redis_data:

@@ -59,4 +59,4 @@ A stop can reference a POI or a free location.
 - [Browse a trip timeline](/docs/en/trips/timeline/)
 - [Prepare a trip offline](/docs/en/offline/trips/)
 
-<small>Version CartaVault : **master** · ID : `trips.planning`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.planning`</small>

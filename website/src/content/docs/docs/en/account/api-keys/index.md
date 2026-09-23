@@ -67,4 +67,4 @@ Secrets are encrypted and never shown in full again.
 - [Calculate and optimize routes](/docs/en/trips/routing-optimization/)
 - [Manage instance providers and keys](/docs/en/administration/api-keys/)
 
-<small>Version CartaVault : **master** · ID : `account.api-keys`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.api-keys`</small>

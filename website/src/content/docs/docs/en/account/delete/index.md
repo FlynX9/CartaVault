@@ -58,4 +58,4 @@ The last active administrator cannot delete their account.
 - [Manage privacy and personal export](/docs/en/account/privacy/)
 - [Manage map members](/docs/en/maps/members/)
 
-<small>Version CartaVault : **master** · ID : `account.delete`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.delete`</small>

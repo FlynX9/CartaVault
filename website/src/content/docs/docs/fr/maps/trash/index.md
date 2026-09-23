@@ -58,4 +58,4 @@ La restauration rend à nouveau visibles les relations associées.
 - [Créer ou modifier un lieu](/docs/fr/places/create-edit/)
 - [Configurer ses préférences](/docs/fr/account/preferences/)
 
-<small>Version CartaVault : **master** · ID : `maps.trash`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.trash`</small>

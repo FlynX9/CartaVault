@@ -14,7 +14,7 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException
 from geoalchemy2.elements import WKTElement
-from sqlalchemy import func, select
+from sqlalchemy import Float, Integer, String, column, delete, func, insert, select, values
 from sqlalchemy.orm import Session
 
 from app.categories.associations import place_categories_table
@@ -34,7 +34,12 @@ from app.imports.schemas import (
 )
 from app.maps.models import PoiMap
 from app.media.settings import get_media_upload_policy
-from app.photos.models import Photo
+from app.photos.models import Photo, StorageOperation
+from app.photos.reconciliation import (
+    canonical_media_object_key,
+    expedite_storage_write_cleanup,
+    prepare_storage_write_cleanup,
+)
 from app.photos.storage import PhotoTooLargeError, UnsupportedPhotoTypeError, delete_photo_file, store_photo_file
 from app.imports.remote_images import RemoteImageError, download_remote_image
 from app.places.models import Place, PlaceLink
@@ -42,12 +47,14 @@ from app.places.schemas import PlaceLinkCreate
 from app.statuses.models import PlaceStatus
 from app.statuses.router import slugify_status_name
 from app.quotas.registry import QuotaKey
+from app.quotas.models import QuotaProfile
 from app.quotas.service import QuotaService
 from app.tasks.models import KmzImportPreview
 from app.tasks.registry import register_rollback_cleanup
 
 
 IMPORT_TTL = timedelta(minutes=15)
+DUPLICATE_LOOKUP_BATCH_SIZE = 250
 ProgressCallback = Callable[[int, int, str], None]
 DEFAULT_IMPORT_ROOT = Path(__file__).resolve().parents[2] / "storage" / "imports"
 IMPORT_ROOT = Path(os.getenv("IMPORT_STORAGE_PATH", str(DEFAULT_IMPORT_ROOT))).expanduser().resolve()
@@ -63,6 +70,17 @@ class CachedKmzImport:
     created_at: datetime
     items: tuple[ParsedPlacemark, ...]
     global_warnings: tuple[str, ...]
+
+
+@dataclass
+class _ImportQuotaSnapshot:
+    owner_id: UUID
+    profile: QuotaProfile
+    storage_usage: int
+    maximum_upload_megabytes: int
+    maximum_image_dimension: int
+    storage_write_intent_ids: list[UUID]
+    photo_rows: list[dict[str, object]]
 
 
 def cache_preview(
@@ -114,6 +132,7 @@ def mark_duplicate_items(database_session: Session, map_id: UUID, items: list[Pa
     """Mark exact, map-local name/coordinate matches without changing data."""
 
     seen_in_file: set[tuple[str, float, float]] = set()
+    database_candidates: list[ParsedPlacemark] = []
     for item in items:
         if item.name is None or item.latitude is None or item.longitude is None:
             continue
@@ -124,11 +143,16 @@ def mark_duplicate_items(database_session: Session, map_id: UUID, items: list[Pa
             item.duplicate_reason = "within_file"
             continue
         seen_in_file.add(signature)
-        existing_id = _find_existing_duplicate(database_session, map_id, item)
-        if existing_id is not None:
-            item.duplicate_place_id = str(existing_id)
-            item.duplicate_reason = "existing_map"
-            item.warnings.append("Already imported or existing on this map; skipped by default")
+        database_candidates.append(item)
+
+    candidates_by_source = {item.source_index: item for item in database_candidates}
+    for source_index, existing_id in _find_existing_duplicates(
+        database_session, map_id, database_candidates
+    ).items():
+        source = candidates_by_source[source_index]
+        source.duplicate_place_id = str(existing_id)
+        source.duplicate_reason = "existing_map"
+        source.warnings.append("Already imported or existing on this map; skipped by default")
 
 
 def mark_outside_country_items(poi_map: PoiMap, items: list[ParsedPlacemark]) -> str | None:
@@ -237,8 +261,10 @@ def confirm_import(
     download_remote_images: bool = False,
     force_indexes: list[int] | None = None,
     progress_callback: ProgressCallback | None = None,
+    authorization_callback: Callable[[], None] | None = None,
 ) -> KmzImportReport:
     """Persist all selected valid points atomically and clean files on failure."""
+    from app.tasks.fault_injection import crash_point
 
     if database_session.get(PoiMap, map_id) is None:
         raise HTTPException(status_code=404, detail=f"Map with id {map_id} was not found")
@@ -262,11 +288,18 @@ def confirm_import(
     if invalid:
         raise HTTPException(status_code=422, detail=f"Selected KMZ items are not importable: {invalid}")
 
+    existing_duplicates = _find_existing_duplicates(
+        database_session,
+        map_id,
+        [item for item in selected if item.duplicate_place_id is None],
+    )
     new_items = [
-        item for item in selected
-        if item.source_index in forced_indexes or (
+        item
+        for item in selected
+        if item.source_index in forced_indexes
+        or (
             item.duplicate_place_id is None
-            and _find_existing_duplicate(database_session, map_id, item) is None
+            and item.source_index not in existing_duplicates
         )
     ]
     quotas = QuotaService(database_session)
@@ -284,6 +317,19 @@ def confirm_import(
     )
     if image_increment:
         quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_TOTAL_MAX, increment=image_increment)
+    quota_profile = quotas.effective_profile(owner_id)
+    maximum_upload_megabytes, maximum_image_dimension = get_media_upload_policy(
+        database_session, owner_id
+    )
+    quota_snapshot = _ImportQuotaSnapshot(
+        owner_id=owner_id,
+        profile=quota_profile,
+        storage_usage=quotas.storage_usage(owner_id),
+        maximum_upload_megabytes=maximum_upload_megabytes,
+        maximum_image_dimension=maximum_image_dimension,
+        storage_write_intent_ids=[],
+        photo_rows=[],
+    )
     stored_files: list[tuple[str, UUID, UUID]] = []
     created_ids: list[UUID] = []
     embedded_images_added = 0
@@ -317,10 +363,13 @@ def confirm_import(
     report_progress("Préparation de l’import")
     category = _get_or_create_import_category(database_session, map_id)
     place_status = _get_or_create_import_status(database_session, map_id)
+    place_rows: list[dict[str, object]] = []
+    link_rows: list[dict[str, object]] = []
+    category_assignments: list[dict[str, UUID | bool]] = []
     for item in selected:
         duplicate_exists = (
             item.duplicate_place_id is not None
-            or _find_existing_duplicate(database_session, map_id, item) is not None
+            or item.source_index in existing_duplicates
         )
         if duplicate_exists and item.source_index not in forced_indexes:
             skipped_count += 1
@@ -333,6 +382,7 @@ def confirm_import(
             continue
         mapped_fields, custom_fields = _item_data(item)
         place = Place(
+            id=uuid4(),
             name=mapped_fields.get("name", f"Point importé {item.source_index + 1}"),
             map_id=map_id,
             status_id=place_status.id,
@@ -343,25 +393,67 @@ def confirm_import(
             danger_level=mapped_fields.get("danger_level"),
             custom_fields=custom_fields,
         )
-        database_session.add(place)
-        database_session.flush()
-        imported_links = _item_links(item)
-        if imported_links:
-            quotas.ensure_can_create(owner_id, QuotaKey.LINKS_PER_PLACE_MAX, scope_id=place.id, increment=len(imported_links))
-            database_session.add_all(
-                PlaceLink(place_id=place.id, url=link.url, label=link.label, sort_order=sort_order)
-                for sort_order, link in enumerate(imported_links)
+        item_links = _item_links(item)
+        if item_links:
+            QuotaService._ensure_limit(
+                QuotaKey.LINKS_PER_PLACE_MAX,
+                quota_snapshot.profile,
+                0,
+                quota_snapshot.profile.links_per_place_max,
+                len(item_links),
+            )
+            link_rows.extend(
+                {
+                    "place_id": place.id,
+                    "url": link.url,
+                    "label": link.label,
+                    "sort_order": sort_order,
+                }
+                for sort_order, link in enumerate(item_links)
             )
         place_image_increment = sum(
             image.source_type == "embedded" or (download_remote_images and image.source_type == "remote_supported")
             for image in item.images
         )
         if place_image_increment:
-            quotas.ensure_can_create(owner_id, QuotaKey.PHOTOS_PER_PLACE_MAX, scope_id=place.id, increment=place_image_increment)
-        database_session.execute(place_categories_table.insert().values(place_id=place.id, category_id=category.id, is_primary=True))
+            QuotaService._ensure_limit(
+                QuotaKey.PHOTOS_PER_PLACE_MAX,
+                quota_snapshot.profile,
+                0,
+                quota_snapshot.profile.photos_per_place_max,
+                place_image_increment,
+            )
+        place_rows.append(
+            {
+                "id": place.id,
+                "name": place.name,
+                "map_id": place.map_id,
+                "status_id": place.status_id,
+                "description": place.description,
+                "location": place.location,
+                "region": place.region,
+                "condition": place.condition,
+                "danger_level": place.danger_level,
+                "custom_fields": place.custom_fields,
+            }
+        )
+        category_assignments.append(
+            {"place_id": place.id, "category_id": category.id, "is_primary": True}
+        )
         image_assignments.append((place, item.images))
         created_ids.append(place.id)
         report_progress(f"POI créé : {place.name}", 1)
+        crash_point("kmz_after_place")
+
+    # The import has no model lifecycle hooks. SQLAlchemy Core preserves column
+    # types, defaults, constraints, and transaction ordering while avoiding one
+    # ORM INSERT round-trip per independent imported row.
+    if place_rows:
+        database_session.execute(insert(Place), place_rows)
+    if link_rows:
+        database_session.execute(insert(PlaceLink), link_rows)
+    if category_assignments:
+        database_session.execute(place_categories_table.insert(), category_assignments)
 
     for place, images in image_assignments:
         for order, image in enumerate(images):
@@ -373,7 +465,7 @@ def confirm_import(
                 image,
                 order,
                 stored_files,
-                owner_id,
+                quota_snapshot,
                 cached.user_id,
             )
             embedded_images_added += 1
@@ -416,7 +508,7 @@ def confirm_import(
                         downloaded_image,
                         order,
                         stored_files,
-                        owner_id,
+                        quota_snapshot,
                         cached.user_id,
                     )
                 except (UnsupportedPhotoTypeError, PhotoTooLargeError):
@@ -429,7 +521,23 @@ def confirm_import(
                     break
                 remote_images_added += 1
                 report_progress(f"Image distante ajoutée à {place.name}", 1)
+    if quota_snapshot.photo_rows:
+        database_session.execute(insert(Photo), quota_snapshot.photo_rows)
+    if quota_snapshot.storage_write_intent_ids:
+        database_session.execute(
+            delete(StorageOperation).where(
+                StorageOperation.id.in_(quota_snapshot.storage_write_intent_ids)
+            )
+        )
     report_progress("Import terminé", progress_total - progress_completed)
+
+    # Preview authorization is intentionally not a durable permission grant.
+    # The caller supplies the existing map policy check so it can reload the
+    # requester and membership in the same session immediately before the
+    # surrounding route/task transaction commits.  If it fails, the caller's
+    # rollback path also runs the registered storage compensation callbacks.
+    if authorization_callback is not None:
+        authorization_callback()
 
     return KmzImportReport(
         created_count=len(created_ids),
@@ -451,49 +559,66 @@ def _store_image(
     image: ParsedImage,
     order: int,
     stored_files: list[tuple[str, UUID, UUID]],
-    quota_owner_id: UUID,
+    quota_snapshot: _ImportQuotaSnapshot,
     uploaded_by_user_id: UUID,
 ) -> None:
     if image.payload is None:
         return
     photo_id = uuid4()
-    maximum, dimension = get_media_upload_policy(database_session, quota_owner_id)
-    stored = store_photo_file(
-        BytesIO(image.payload),
-        image.mime_type,
-        place.id,
-        photo_id,
-        max_size_bytes=maximum * 1024 * 1024,
-        max_dimension=dimension,
+    try:
+        object_key = canonical_media_object_key(place.id, photo_id, image.mime_type)
+    except ValueError as error:
+        raise UnsupportedPhotoTypeError("Only JPEG, PNG and WebP images are supported") from error
+    write_intent_id = prepare_storage_write_cleanup(
+        database_session,
+        namespace="media",
+        object_key=object_key,
     )
+    try:
+        stored = store_photo_file(
+            BytesIO(image.payload),
+            image.mime_type,
+            place.id,
+            photo_id,
+            max_size_bytes=quota_snapshot.maximum_upload_megabytes * 1024 * 1024,
+            max_dimension=quota_snapshot.maximum_image_dimension,
+        )
+    except Exception:
+        expedite_storage_write_cleanup(database_session, write_intent_id)
+        raise
     stored_files.append((stored.relative_path, place.id, photo_id))
     register_rollback_cleanup(
         database_session,
         lambda: delete_photo_file(stored.relative_path, place.id, photo_id),
     )
-    QuotaService(database_session).ensure_can_create(
-        quota_owner_id,
+    QuotaService._ensure_limit(
         QuotaKey.STORAGE_BYTES_MAX,
-        increment=stored.file_size_bytes,
+        quota_snapshot.profile,
+        quota_snapshot.storage_usage,
+        quota_snapshot.profile.storage_bytes_max,
+        stored.file_size_bytes,
     )
-    database_session.add(
-        Photo(
-            id=photo_id,
-            place_id=place.id,
-            map_id=place.map_id,
-            storage_scope_id=place.id,
-            filename=stored.filename,
-            original_name=image.original_name,
-            path=stored.relative_path,
-            sort_order=order,
-            is_primary=order == 0,
-            mime_type=stored.media_type,
-            file_size_bytes=stored.file_size_bytes,
-            width=stored.width,
-            height=stored.height,
-            uploaded_by_user_id=uploaded_by_user_id,
-        )
+    quota_snapshot.storage_usage += stored.file_size_bytes
+    quota_snapshot.photo_rows.append(
+        {
+            "id": photo_id,
+            "place_id": place.id,
+            "map_id": place.map_id,
+            "storage_scope_id": place.id,
+            "filename": stored.filename,
+            "original_name": image.original_name,
+            "path": stored.relative_path,
+            "sort_order": order,
+            "is_primary": order == 0,
+            "mime_type": stored.media_type,
+            "file_size_bytes": stored.file_size_bytes,
+            "width": stored.width,
+            "height": stored.height,
+            "storage_state": "available",
+            "uploaded_by_user_id": uploaded_by_user_id,
+        }
     )
+    quota_snapshot.storage_write_intent_ids.append(write_intent_id)
 
 
 def _get_or_create_import_category(database_session: Session, map_id: UUID) -> Category:
@@ -561,6 +686,54 @@ def _find_existing_duplicate(database_session: Session, map_id: UUID, item: Pars
             ),
         ).limit(1)
     )
+
+
+def _find_existing_duplicates(
+    database_session: Session,
+    map_id: UUID,
+    items: list[ParsedPlacemark],
+) -> dict[int, UUID]:
+    """Find exact map-local duplicates in bounded candidate batches.
+
+    The SQL predicate deliberately mirrors ``_find_existing_duplicate``.  The
+    source index keeps the result stable even when names or coordinates repeat.
+    """
+
+    candidates = [
+        (item.source_index, item.name.strip().lower(), item.longitude, item.latitude)
+        for item in items
+        if item.name is not None and item.latitude is not None and item.longitude is not None
+    ]
+    duplicates: dict[int, UUID] = {}
+    for offset in range(0, len(candidates), DUPLICATE_LOOKUP_BATCH_SIZE):
+        batch = candidates[offset : offset + DUPLICATE_LOOKUP_BATCH_SIZE]
+        candidate_values = values(
+            column("source_index", Integer),
+            column("normalized_name", String),
+            column("longitude", Float),
+            column("latitude", Float),
+            name="kmz_duplicate_candidates",
+        ).data(batch).alias()
+        rows = database_session.execute(
+            select(candidate_values.c.source_index, Place.id).join(
+                Place,
+                (Place.map_id == map_id)
+                & (func.lower(func.btrim(Place.name)) == candidate_values.c.normalized_name)
+                & func.ST_Equals(
+                    Place.location,
+                    func.ST_SetSRID(
+                        func.ST_MakePoint(
+                            candidate_values.c.longitude,
+                            candidate_values.c.latitude,
+                        ),
+                        4326,
+                    ),
+                ),
+            )
+        ).all()
+        for source_index, place_id in rows:
+            duplicates[int(source_index)] = place_id
+    return duplicates
 
 
 def _item_data(item: ParsedPlacemark) -> tuple[dict[str, str], dict[str, str | list[str]]]:

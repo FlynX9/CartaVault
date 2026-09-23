@@ -1,0 +1,146 @@
+name: cartavault-s3-recovery-test
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://cartavault_demo:cartavault-s3-test@postgis:5432/cartavault_demo
+  CARTAVAULT_DEMO_MODE: "true"
+  CARTAVAULT_DEMO_DATABASE_HOSTS: postgis,localhost,127.0.0.1
+  CARTAVAULT_ENVIRONMENT: demo
+  CARTAVAULT_VERSION: 1.0.0-rc.5
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_FRONTEND_DIST: /app/frontend
+  CARTAVAULT_PUBLIC_URL: http://localhost:${S3_TEST_HTTP_PORT:-18089}
+  FRONTEND_PUBLIC_URL: http://localhost:${S3_TEST_HTTP_PORT:-18089}
+  CORS_ALLOWED_ORIGINS: http://localhost:${S3_TEST_HTTP_PORT:-18089}
+  CARTAVAULT_COOKIE_SECURE: "false"
+  CARTAVAULT_SESSION_SECRET: s3-recovery-test-session-secret
+  CARTAVAULT_SETUP_TOKEN: s3-recovery-test-setup-token
+  CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  CARTAVAULT_TASK_MODE: sync
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  MEDIA_STORAGE: ${S3_TEST_MEDIA_STORAGE:-s3}
+  MEDIA_CACHE_PATH: /tmp/cartavault-media-cache
+  S3_ENDPOINT: http://minio:9000
+  S3_REGION: us-east-1
+  S3_BUCKET: cartavault-s3-recovery-test
+  S3_ACCESS_KEY: ${S3_TEST_CLIENT_ACCESS_KEY:-cartavault-test-access}
+  S3_SECRET_KEY: ${S3_TEST_CLIENT_SECRET_KEY:-cartavault-test-secret-key}
+  S3_PREFIX: carta-media
+  S3_FORCE_PATH_STYLE: "true"
+  S3_USE_SSL: "false"
+  S3_VERIFY_TLS: "false"
+  S3_CONNECT_TIMEOUT_SECONDS: "5"
+  S3_READ_TIMEOUT_SECONDS: "30"
+  S3_MAX_ATTEMPTS: "3"
+  S3_OPERATION_TIMEOUT_SECONDS: "300"
+  S3_RETRY_MODE: standard
+  PHOTO_STORAGE_PATH: /app/storage/photos
+  AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
+  IMPORT_STORAGE_PATH: /app/storage/imports
+  CARTAVAULT_VECTOR_MAP_DIR: /data/maps
+  EMAIL_PROVIDER: none
+  EMAIL_FROM_ADDRESS: demo@cartavault.local
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.5@sha256:19b6ffa248d2f864d29d6c338459f02d63c0d7ce341fa86b3bcba8484a130bff
+    environment:
+      POSTGRES_DB: cartavault_demo
+      POSTGRES_USER: cartavault_demo
+      POSTGRES_PASSWORD: cartavault-s3-test
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartavault_demo -d cartavault_demo"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    networks: [test]
+
+  minio:
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: cartavault-test-access
+      MINIO_ROOT_PASSWORD: cartavault-test-secret-key
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    networks: [test]
+
+  create-bucket:
+    image: cartavault:1.0.0-rc.5-demo
+    entrypoint: ["python", "-c"]
+    command:
+      - |
+        import boto3
+        from botocore.client import Config
+        client = boto3.client("s3", endpoint_url="http://minio:9000", region_name="us-east-1", aws_access_key_id="cartavault-test-access", aws_secret_access_key="cartavault-test-secret-key", config=Config(signature_version="s3v4", s3={"addressing_style": "path"}))
+        if not any(item["Name"] == "cartavault-s3-recovery-test" for item in client.list_buckets()["Buckets"]):
+            client.create_bucket(Bucket="cartavault-s3-recovery-test")
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks: [test]
+
+  demo-reset:
+    image: cartavault:1.0.0-rc.5-demo
+    entrypoint: ["python", "/demo/scripts/manage.py"]
+    command: ["reset"]
+    environment:
+      <<: *app-environment
+    volumes:
+      - photos_data:/app/storage/photos
+      - avatars_data:/app/storage/avatars
+      - exports_data:/app/storage/exports
+      - imports_data:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
+    networks: [test]
+
+  cartavault:
+    image: cartavault:1.0.0-rc.5-demo
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      <<: *app-environment
+    ports:
+      - "${S3_TEST_HTTP_PORT:-18089}:8000"
+    volumes:
+      - photos_data:/app/storage/photos
+      - avatars_data:/app/storage/avatars
+      - exports_data:/app/storage/exports
+      - imports_data:/app/storage/imports
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    depends_on:
+      postgis:
+        condition: service_healthy
+      create-bucket:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
+    networks: [test]
+
+volumes:
+  postgres_data:
+  minio_data:
+  photos_data:
+  avatars_data:
+  exports_data:
+  imports_data:
+
+networks:
+  test:

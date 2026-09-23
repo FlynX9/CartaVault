@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,11 +25,13 @@ class Photo(Base):
         CheckConstraint("height IS NULL OR height > 0", name="photos_height_positive"),
         CheckConstraint("focal_x >= 0 AND focal_x <= 1", name="photos_focal_x_range"),
         CheckConstraint("focal_y >= 0 AND focal_y <= 1", name="photos_focal_y_range"),
+        CheckConstraint("storage_state IN ('unchecked', 'available', 'missing')", name="photos_storage_state_check"),
         Index("photos_place_sort_order_key", "place_id", "sort_order", unique=True),
         Index("photos_one_primary_per_place_idx", "place_id", unique=True, postgresql_where=text("is_primary")),
         Index("photos_created_at_idx", "created_at"),
         Index("photos_uploaded_by_user_id_idx", "uploaded_by_user_id"),
         Index("photos_map_id_idx", "map_id"),
+        Index("photos_storage_checked_at_idx", "storage_checked_at"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -98,6 +100,8 @@ class Photo(Base):
     file_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    storage_state: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'unchecked'"))
+    storage_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     uploaded_by_user_id: Mapped[UUID | None] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -120,3 +124,43 @@ class Photo(Base):
     place: Mapped["Place | None"] = relationship(
         back_populates="photos",
     )
+
+
+class StorageOperation(Base):
+    """Durable, credential-free intent to remove one storage object."""
+
+    __tablename__ = "storage_operations"
+    __table_args__ = (
+        CheckConstraint("operation = 'delete'", name="storage_operations_operation_check"),
+        CheckConstraint("backend IN ('local', 's3')", name="storage_operations_backend_check"),
+        CheckConstraint("namespace IN ('media', 'avatar')", name="storage_operations_namespace_check"),
+        CheckConstraint("status IN ('pending', 'failed')", name="storage_operations_status_check"),
+        CheckConstraint("attempt_count >= 0", name="storage_operations_attempt_count_nonnegative"),
+        CheckConstraint("length(object_key) > 0", name="storage_operations_object_key_nonempty"),
+        UniqueConstraint(
+            "operation", "backend", "namespace", "object_key",
+            name="storage_operations_active_identity_key",
+        ),
+        Index(
+            "storage_operations_recovery_idx",
+            "status", "next_attempt_at", "created_at",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    operation: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'delete'"))
+    backend: Mapped[str] = mapped_column(String(16), nullable=False)
+    namespace: Mapped[str] = mapped_column(String(16), nullable=False)
+    object_key: Mapped[str] = mapped_column(Text, nullable=False)
+    purpose: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'pending'"))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    last_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_error_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

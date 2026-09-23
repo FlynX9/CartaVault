@@ -63,4 +63,4 @@ Email verification happens before optional approval.
 - [Administer users](/docs/en/administration/users/)
 - [Configure transactional email](/docs/en/self-hosting/email/)
 
-<small>Version CartaVault : **master** · ID : `admin.registration`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.registration`</small>

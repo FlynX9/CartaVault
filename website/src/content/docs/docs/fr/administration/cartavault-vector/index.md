@@ -63,4 +63,4 @@ Geofabrik fournit l’extrait contrôlé et Planetiler ne s’exécute que penda
 - [Gérer les données hors ligne](/docs/fr/account/offline-data/)
 - [Configurer l’instance](/docs/fr/administration/general/)
 
-<small>Version CartaVault : **master** · ID : `admin.vector-basemaps`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.vector-basemaps`</small>

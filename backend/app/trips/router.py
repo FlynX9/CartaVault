@@ -23,6 +23,15 @@ from app.maps.models import MapMembership, PoiMap
 from app.exports.temporary_exports import get as get_export
 from app.places.models import Place
 from app.photos.models import Photo
+from app.photos.reconciliation import (
+    abandon_storage_write,
+    active_storage_backend,
+    canonical_media_object_key,
+    confirm_storage_write,
+    enqueue_delete_intent,
+    prepare_storage_write_cleanup,
+    process_storage_operations_best_effort,
+)
 from app.media.settings import get_media_upload_policy
 from app.photos.storage import PhotoFileNotFoundError, PhotoStorageError, PhotoTooLargeError, UnsupportedPhotoTypeError, delete_photo_file, resolve_photo_file, store_photo_file
 from app.statuses.models import PlaceStatus
@@ -48,6 +57,21 @@ router = APIRouter(tags=["trips"])
 logger = logging.getLogger(__name__)
 TRIP_RESIZE_TOKEN_VERSION = "v1"
 TRIP_RESIZE_TOKEN_TTL = timedelta(minutes=5)
+
+
+def _enqueue_night_photo_cleanup(
+    session: Session,
+    file_path: str,
+    *,
+    purpose: str,
+) -> UUID:
+    return enqueue_delete_intent(
+        session,
+        backend=active_storage_backend("media"),
+        namespace="media",
+        object_key=file_path,
+        purpose=purpose,
+    )
 
 
 def get_routing_provider() -> RoutingProvider | None:
@@ -699,6 +723,7 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
         trip.end_date = None
     for key, value in values.items(): setattr(trip, key, value)
     cleanup_targets: list[PhotoCleanupTarget] = []
+    cleanup_operation_ids: list[UUID] = []
     if target_day_count is not None:
         if resize_plan is not None:
             cleanup_targets = apply_trip_resize(session, trip, resize_plan)
@@ -706,15 +731,19 @@ def update_trip(trip_id: UUID, data: TripUpdate, session: Session = Depends(get_
             resize_trip_days(session, trip, target_day_count)
     elif trip.status in {"draft", "planned", "in_progress"}:
         synchronize_trip_dates(trip)
+    for target in cleanup_targets:
+        cleanup_operation_ids.append(
+            _enqueue_night_photo_cleanup(
+                session,
+                target.file_path,
+                purpose="trip_resize",
+            )
+        )
     if routing_options_changed:
         for day in trip.days:
             stale(day)
     session.commit()
-    for target in cleanup_targets:
-        try:
-            delete_photo_file(target.file_path, target.night_id, target.photo_id)
-        except PhotoStorageError:
-            logger.warning("Unable to clean up a removed trip night photo", extra={"trip_id": str(trip_id), "photo_id": str(target.photo_id)})
+    process_storage_operations_best_effort(cleanup_operation_ids, session=session)
     return _trip_read(session, trip_id)
 
 
@@ -828,6 +857,15 @@ def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = De
     day = next(item for item in trip.days if item.id == day_id)
     if len(trip.days) <= 1: raise HTTPException(422, "A trip must keep at least one day")
     trip_id = day.trip_id
+    removed_photo_paths = session.scalars(
+        select(TripNightPhoto.file_path)
+        .join(TripNight, TripNight.id == TripNightPhoto.night_id)
+        .where((TripNight.previous_day_id == day_id) | (TripNight.next_day_id == day_id))
+    ).all()
+    cleanup_operation_ids = [
+        _enqueue_night_photo_cleanup(session, path, purpose="trip_day_delete")
+        for path in removed_photo_paths
+    ]
     # Delete links first: SQLAlchemy otherwise tries to null a non-nullable FK before
     # PostgreSQL's ON DELETE CASCADE can remove the overnight row.
     session.execute(delete(TripNight).where((TripNight.previous_day_id == day_id) | (TripNight.next_day_id == day_id)))
@@ -837,6 +875,7 @@ def remove_day(day_id: UUID, session: Session = Depends(get_db), user: User = De
     normalize_day_order(loaded_trip)
     synchronize_trip_dates(loaded_trip)
     session.commit()
+    process_storage_operations_best_effort(cleanup_operation_ids, session=session)
 
 
 @router.post("/trips/{trip_id}/days/reorder", response_model=TripRead)
@@ -1021,7 +1060,14 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
         quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=file.size)
     photo_id = uuid4()
     maximum, dimension = get_media_upload_policy(session, owner_id)
+    write_intent_id = None
     try:
+        object_key = canonical_media_object_key(night.id, photo_id, file.content_type or "")
+        write_intent_id = prepare_storage_write_cleanup(
+            session,
+            namespace="media",
+            object_key=object_key,
+        )
         stored = store_photo_file(
             file.file,
             file.content_type,
@@ -1031,25 +1077,28 @@ def upload_night_photo(night_id: UUID, file: UploadFile = File(...), session: Se
             max_dimension=dimension,
         )
     except PhotoTooLargeError as error:
+        if write_intent_id is not None: abandon_storage_write(session, write_intent_id)
         raise HTTPException(413, str(error)) from error
-    except UnsupportedPhotoTypeError as error:
+    except (UnsupportedPhotoTypeError, ValueError) as error:
+        if write_intent_id is not None: abandon_storage_write(session, write_intent_id)
         raise HTTPException(415, str(error)) from error
     except PhotoStorageError as error:
+        if write_intent_id is not None: abandon_storage_write(session, write_intent_id)
         raise HTTPException(500, str(error)) from error
 
     try:
         quotas.ensure_can_create(owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
     except HTTPException:
-        delete_photo_file(stored.relative_path, night.id, photo_id)
+        abandon_storage_write(session, write_intent_id)
         raise
 
-    night.photos.append(TripNightPhoto(id=photo_id, file_path=stored.relative_path, mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, sort_order=len(night.photos)))
+    night.photos.append(TripNightPhoto(id=photo_id, file_path=stored.relative_path, mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, sort_order=len(night.photos), storage_state="available"))
     try:
+        confirm_storage_write(session, write_intent_id)
         session.commit()
         session.refresh(night)
     except Exception:
-        session.rollback()
-        delete_photo_file(stored.relative_path, night.id, photo_id)
+        abandon_storage_write(session, write_intent_id)
         raise
     return NightRead.model_validate(night)
 
@@ -1101,16 +1150,18 @@ def remove_night_photo(night_id: UUID, photo_id: UUID, session: Session = Depend
 def _remove_night_photo(session: Session, night: TripNight, photo: TripNightPhoto) -> NightRead:
     path, photo_id = photo.file_path, photo.id
     removed_order = photo.sort_order
+    cleanup_operation_id = _enqueue_night_photo_cleanup(
+        session,
+        path,
+        purpose="trip_night_photo_delete",
+    )
     session.delete(photo)
     session.flush()
     for sibling in night.photos:
         if sibling.id != photo.id and sibling.sort_order > removed_order:
             sibling.sort_order -= 1
     session.commit()
-    try:
-        delete_photo_file(path, night.id, photo_id)
-    except PhotoStorageError:
-        pass
+    process_storage_operations_best_effort([cleanup_operation_id], session=session)
     return NightRead.model_validate(night)
 
 
@@ -1118,12 +1169,12 @@ def _remove_night_photo(session: Session, night: TripNight, photo: TripNightPhot
 def remove_night(night_id: UUID, session: Session = Depends(get_db), user: User = Depends(get_current_user)):
     night, access = require_night_role(session, night_id, user, "editor"); trip = _lock_trip_for_mutation(session, access.trip.id); ensure_trip_structurally_mutable(trip); night = next(item for item in trip.nights if item.id == night_id)
     photos = [(photo.file_path, photo.id) for photo in night.photos]
+    cleanup_operation_ids = [
+        _enqueue_night_photo_cleanup(session, path, purpose="trip_night_delete")
+        for path, _photo_id in photos
+    ]
     stale(night.previous_day); stale(night.next_day); session.delete(night); session.commit()
-    for path, photo_id in photos:
-        try:
-            delete_photo_file(path, night_id, photo_id)
-        except PhotoStorageError:
-            pass
+    process_storage_operations_best_effort(cleanup_operation_ids, session=session)
 
 
 @router.post("/trips/{trip_id}/departure", response_model=DepartureRead, status_code=201)

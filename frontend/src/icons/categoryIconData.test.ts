@@ -1,16 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { CATEGORY_ICON_CATALOG } from './categoryIconCatalog'
-import { CATEGORY_ICON_DATA } from './categoryIconData.generated'
-import { getCategoryIconData, getResolvedCategoryIconId, hasCategoryIconData, loadCategoryIconData } from './categoryIconData'
+import { getCategoryIconData, getResolvedCategoryIconId, hasCategoryIconData, loadCategoryIconData, loadLegacyCategoryIconData } from './categoryIconData'
 import { DEFAULT_CATEGORY_ICON_ID, FALLBACK_CATEGORY_ICON_ID } from './categoryIconRuntime'
 
 describe('category icon data', () => {
-  it('keeps the 300 legacy modules and their metadata eager', () => {
+  it('loads the 300 legacy modules once on demand', async () => {
     expect(CATEGORY_ICON_CATALOG).toHaveLength(1500)
-    expect(Object.keys(CATEGORY_ICON_DATA)).toHaveLength(300)
-    expect(Object.keys(CATEGORY_ICON_DATA).every((iconId) => hasCategoryIconData(iconId))).toBe(true)
-    expect(Object.values(CATEGORY_ICON_DATA).every((icon) => Boolean(icon.body))).toBe(true)
+    const firstLoad = loadLegacyCategoryIconData()
+    expect(loadLegacyCategoryIconData()).toBe(firstLoad)
+    const legacyIconData = await firstLoad
+    expect(Object.keys(legacyIconData)).toHaveLength(300)
+    expect(Object.keys(legacyIconData).every((iconId) => hasCategoryIconData(iconId))).toBe(true)
+    expect(Object.values(legacyIconData).every((icon) => Boolean(icon.body))).toBe(true)
   })
 
   it('loads expanded icon modules locally on demand', async () => {

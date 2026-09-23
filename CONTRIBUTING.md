@@ -118,7 +118,12 @@ Use `fix/`, `docs/`, `refactor/`, or `chore/` when more appropriate.
 - Preserve existing local changes that are unrelated to your task.
 - Prefer small, focused changes and keep public API behavior stable.
 - Do not hide errors or weaken valid tests merely to obtain a green result.
-- Keep user-facing copy, documentation, comments, commits, and pull requests in English.
+- Keep contribution discussion, comments, commits, and pull requests in English.
+  Documentation follows its declared purpose and language: operator/developer
+  source documents may remain in their established language, localized
+  user-facing documentation is maintained in French and English where the
+  documentation pipeline requires parity, and historical documents retain
+  their original language and date boundary.
 
 ### Python
 
@@ -172,7 +177,10 @@ npm run build
 
 ### Documentation
 
-Update the affected README files, test documentation, configuration notes, and changelog. Markdown must remain in English.
+Update the affected README files, test documentation, configuration notes, and
+changelog. Do not impose a second translation on every Markdown file: follow
+the document's declared language and keep generated user documentation in
+French/English parity through the documentation generator.
 
 ## Create an Alembic migration
 

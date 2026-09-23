@@ -36,7 +36,7 @@ from app.media.settings import (
     get_max_upload_megabytes,
     set_media_upload_settings,
 )
-from app.media.optimization import MEDIA_OPTIMIZATION_TASK
+from app.media.optimization import MEDIA_OPTIMIZATION_TASK, _require_current_admin
 from app.instance_status.settings import get_log_retention_days, set_log_retention_days
 from app.tasks.schemas import TaskStart
 from app.tasks.service import create_task, submit_task
@@ -75,7 +75,11 @@ def update_media_upload_settings(payload: MediaUploadSettings, session: Session 
 
 @router.post("/media/optimize", response_model=TaskStart, status_code=status.HTTP_202_ACCEPTED)
 def optimize_media(session: Session = Depends(get_db), current: User = Depends(require_admin)) -> TaskStart:
-    task = create_task(session, task_type=MEDIA_OPTIMIZATION_TASK, user_id=current.id, map_id=None, resource_type="instance", dedupe_key="media-optimization", max_attempts=1)
+    # Optimization commits bounded batches.  If the process dies after one of
+    # those commits, the same task must have a recovery attempt available; the
+    # handler is idempotent for already-canonical WebP rows.
+    _require_current_admin(session, current.id, lock=True)
+    task = create_task(session, task_type=MEDIA_OPTIMIZATION_TASK, user_id=current.id, map_id=None, resource_type="instance", dedupe_key="media-optimization", max_attempts=3)
     submit_task(session, task)
     return TaskStart(task_id=task.id, status=task.status)
 

@@ -58,4 +58,4 @@ Annotations are hidden from global browsing and loaded for the selected place.
 - [Configure annotation templates](/docs/en/organization/annotation-templates/)
 - [Create or edit a place](/docs/en/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `places.annotations`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.annotations`</small>

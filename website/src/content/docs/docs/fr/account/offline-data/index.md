@@ -59,4 +59,4 @@ Les packages sont isolés par compte et appareil.
 - [Préparer une sortie hors ligne](/docs/fr/offline/trips/)
 - [Utiliser CartaVault sans réseau](/docs/fr/offline/pwa-navigation/)
 
-<small>Version CartaVault : **master** · ID : `account.offline-data`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.offline-data`</small>

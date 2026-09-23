@@ -132,8 +132,12 @@ def test_kmz_preview_marks_map_and_file_duplicates(monkeypatch: pytest.MonkeyPat
     nearby = ParsedPlacemark(3, "Town Hall", None, 48.8566002, 2.3522)
 
     monkeypatch.setattr(
-        "app.imports.service._find_existing_duplicate",
-        lambda _session, _map_id, item: "existing-place" if item is existing else None,
+        "app.imports.service._find_existing_duplicates",
+        lambda _session, _map_id, items: {
+            item.source_index: "existing-place"
+            for item in items
+            if item is existing
+        },
     )
 
     mark_duplicate_items(object(), object(), [first, existing, repeated, nearby])

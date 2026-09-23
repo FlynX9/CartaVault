@@ -58,4 +58,4 @@ L’avatar est recadré et stocké séparément.
 - [Configurer ses préférences](/docs/fr/account/preferences/)
 - [Comprendre la sécurité du compte](/docs/fr/account/security/overview/)
 
-<small>Version CartaVault : **master** · ID : `account.profile`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.profile`</small>

@@ -60,4 +60,4 @@ CartaVault warns when a point lies outside the map country while allowing intent
 - [Organize with categories, tags and statuses](/docs/en/organization/categories-tags-statuses/)
 - [Draw a place plan](/docs/en/places/annotations/)
 
-<small>Version CartaVault : **master** · ID : `places.edit`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.edit`</small>

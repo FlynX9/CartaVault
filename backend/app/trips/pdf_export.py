@@ -47,6 +47,7 @@ from app.trips.models import Trip, TripDay
 from app.trips.navigation_links import InvalidNavigationCoordinates, NavigationProvider, build_navigation_url
 from app.trips.schemas import TripPdfExportOptions
 from app.trips.summary_service import day_summary, trip_summary
+from app.tasks.service import TaskClaim, ensure_task_held
 
 
 _TEXT = {
@@ -145,6 +146,7 @@ def create_pdf(
     options: TripPdfExportOptions | None = None,
     *,
     task_id: UUID | None = None,
+    claim: TaskClaim | None = None,
 ) -> TemporaryExport:
     export_options = options or TripPdfExportOptions()
     language = locale if locale in _TEXT else "fr"
@@ -155,8 +157,12 @@ def create_pdf(
     labels = _TEXT[language]
     summary = trip_summary(trip)
 
+    # Build into a recognizable partial artifact and activate it atomically. A
+    # crash mid-generation therefore never leaves a half-written file at the
+    # canonical path, and cleanup can identify abandoned partials.
+    partial_path = item.path.with_name(item.path.name + ".part")
     document = SimpleDocTemplate(
-        str(item.path),
+        str(partial_path),
         pagesize=A4,
         rightMargin=15 * mm,
         leftMargin=15 * mm,
@@ -173,7 +179,7 @@ def create_pdf(
 
     for day in sorted(trip.days, key=lambda value: value.sort_order):
         story.append(PageBreak())
-        story.extend(_day_section(trip, day, photos, links, language, styles, export_options))
+        story.extend(_day_section(session, trip, day, photos, links, language, styles, export_options))
 
     def decorate(canvas, _document) -> None:
         canvas.saveState()
@@ -190,13 +196,21 @@ def create_pdf(
             canvas.drawRightString(A4[0] - 15 * mm, 8.5 * mm, f'{labels["page"]} {page_number}')
         canvas.restoreState()
 
+    from app.tasks.fault_injection import crash_point
+
     try:
         document.build(story, onFirstPage=decorate, onLaterPages=decorate)
+        os.replace(partial_path, item.path)
+        crash_point("before_output_commit")
         if session is not None:
+            if claim is not None:
+                ensure_task_held(session, claim)
             session.commit()
+            crash_point("after_output_commit")
     except Exception:
         if session is not None:
             session.rollback()
+        partial_path.unlink(missing_ok=True)
         item.path.unlink(missing_ok=True)
         raise
     return item
@@ -371,6 +385,7 @@ def _day_legend(trip: Trip, locale: str, styles: dict[str, ParagraphStyle]) -> T
 
 
 def _day_section(
+    session: Session,
     trip: Trip,
     day: TripDay,
     photos: dict[UUID, Photo],
@@ -414,6 +429,7 @@ def _day_section(
             day.color or "#0FA68A",
             kind,
             options,
+            session=session,
         )
         if entry_index:
             cards.append(KeepTogether([
@@ -648,13 +664,19 @@ def _stop_timeline_card(
     day_color: str,
     kind: str | None,
     options: TripPdfExportOptions,
+    *,
+    session: Session | None = None,
 ) -> Table:
     color = colors.HexColor(day_color)
     marker = Table([[Paragraph(order, styles["day_number"])]], colWidths=[10 * mm], rowHeights=[10 * mm])
     marker.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
     cells: list[object] = [marker, _stop_description(stop, links, locale, styles, kind)]
     if options.include_place_images:
-        cells.append(_photo(photo, _TEXT[locale], styles))
+        cells.append(
+            _photo(photo, _TEXT[locale], styles)
+            if session is None
+            else _photo(photo, _TEXT[locale], styles, session=session)
+        )
     provider_count = len(options.navigation_providers) if options.include_navigation_qr_codes else 0
     if provider_count:
         cells.append(_navigation_blocks(stop, options.navigation_providers, locale, styles))
@@ -722,11 +744,19 @@ def _stop_description(
     return blocks
 
 
-def _photo(photo: Photo | None, labels: dict[str, str], styles: dict[str, ParagraphStyle]) -> object:
+def _photo(
+    photo: Photo | None,
+    labels: dict[str, str],
+    styles: dict[str, ParagraphStyle],
+    *,
+    session: Session | None = None,
+) -> object:
     if photo is None or photo.path is None or photo.place_id is None:
         return _empty_photo_state(labels, styles)
+    if session is None:
+        return _empty_photo_state(labels, styles)
     try:
-        path = get_photo_thumbnail(photo.path, photo.place_id, photo.id)
+        path = get_photo_thumbnail(photo.path, photo.place_id, photo.id, session)
         with PillowImage.open(path) as source:
             width, height = source.size
         ratio = min((39 * mm) / width, (27 * mm) / height)

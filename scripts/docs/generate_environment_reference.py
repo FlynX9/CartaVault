@@ -6,6 +6,13 @@ from pathlib import Path
 from common import DOCS_ROOT, GENERATED_NOTICE, ROOT, write_or_check
 
 
+EXCLUDED_SOURCES = {
+    # Crash injection is a validation-only hook and is never a deployment
+    # setting exposed by the operator reference.
+    ROOT / "backend" / "app" / "tasks" / "fault_injection.py",
+}
+
+
 def _literal(node: ast.AST | None, name: str) -> str:
     if any(token in name for token in ("PASSWORD", "SECRET", "TOKEN", "KEY")):
         return "sensitive value"
@@ -26,12 +33,16 @@ def _literal(node: ast.AST | None, name: str) -> str:
 def collect() -> list[tuple[str, str, str]]:
     found: dict[str, tuple[str, str]] = {}
     for path in sorted((ROOT / "backend" / "app").rglob("*.py")):
+        if path in EXCLUDED_SOURCES:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call) or not node.args:
                 continue
             func = node.func
-            if not (isinstance(func, ast.Attribute) and func.attr == "getenv"):
+            is_direct_environment_read = isinstance(func, ast.Attribute) and func.attr == "getenv"
+            is_configured_numeric_read = isinstance(func, ast.Name) and func.id in {"_positive_int", "_positive_float"}
+            if not (is_direct_environment_read or is_configured_numeric_read):
                 continue
             if not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, str):
                 continue

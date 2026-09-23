@@ -15,6 +15,15 @@ Configure `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` and `S3_REGION`.
 set `S3_FORCE_PATH_STYLE=true` when the provider requires path-style requests.
 Keep TLS verification enabled in production.
 
+All CartaVault-managed S3 clients use explicit finite bounds. The defaults are
+`S3_CONNECT_TIMEOUT_SECONDS=5`, `S3_READ_TIMEOUT_SECONDS=30`,
+`S3_MAX_ATTEMPTS=3`, `S3_RETRY_MODE=standard` and
+`S3_OPERATION_TIMEOUT_SECONDS=300`. The operation budget applies across
+pagination and multi-object backup/restore workflows; botocore's
+`total_max_attempts` includes the initial request. Lower the operation budget
+for a deployment that requires faster failure, but do not rely on provider
+defaults.
+
 The bucket must be private. CartaVault never returns a permanent public object
 URL: normal map membership and media authorization run before the backend
 materializes and serves an object. Object keys use CartaVault-generated UUIDs,

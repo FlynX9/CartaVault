@@ -74,4 +74,4 @@ Les noms déjà présents sont ignorés pour éviter les doublons.
 - [Organiser avec catégories, tags et statuts](/docs/fr/organization/categories-tags-statuses/)
 - [Configurer les modèles d’annotation](/docs/fr/organization/annotation-templates/)
 
-<small>Version CartaVault : **master** · ID : `organization.import-profiles`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `organization.import-profiles`</small>

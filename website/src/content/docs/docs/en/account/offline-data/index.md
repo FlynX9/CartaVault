@@ -59,4 +59,4 @@ Packages are isolated by account and device.
 - [Prepare a trip offline](/docs/en/offline/trips/)
 - [Use CartaVault without a network](/docs/en/offline/pwa-navigation/)
 
-<small>Version CartaVault : **master** · ID : `account.offline-data`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.offline-data`</small>

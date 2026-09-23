@@ -59,4 +59,4 @@ Choices are staged locally and saved together.
 - [Manage personal API keys](/docs/en/account/api-keys/)
 - [Calculate and optimize routes](/docs/en/trips/routing-optimization/)
 
-<small>Version CartaVault : **master** · ID : `account.preferences`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.preferences`</small>

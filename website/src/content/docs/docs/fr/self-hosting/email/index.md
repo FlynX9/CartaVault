@@ -59,4 +59,4 @@ Les envois utilisent des modèles de marque FR/EN.
 - [Activer le code MFA par e-mail](/docs/fr/account/security/email-mfa/)
 - [Gérer les fournisseurs et clés d’instance](/docs/fr/administration/api-keys/)
 
-<small>Version CartaVault : **master** · ID : `deployment.email`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `deployment.email`</small>

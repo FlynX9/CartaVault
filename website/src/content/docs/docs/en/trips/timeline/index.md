@@ -58,4 +58,4 @@ Timeline uses the saved order and calculated times.
 - [Create and organize a trip](/docs/en/trips/create-plan/)
 - [Export a trip](/docs/en/trips/exports/)
 
-<small>Version CartaVault : **master** · ID : `trips.timeline`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.timeline`</small>

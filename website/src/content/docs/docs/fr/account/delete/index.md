@@ -58,4 +58,4 @@ Le dernier administrateur actif ne peut pas supprimer son compte.
 - [Gérer confidentialité et export personnel](/docs/fr/account/privacy/)
 - [Gérer les membres d’une carte](/docs/fr/maps/members/)
 
-<small>Version CartaVault : **master** · ID : `account.delete`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.delete`</small>

@@ -58,4 +58,4 @@ L’invitation reste en attente jusqu’à son acceptation.
 - [Comprendre le partage et les permissions](/docs/fr/concepts/sharing-permissions/)
 - [Parcourir le coffre de cartes](/docs/fr/maps/catalog/)
 
-<small>Version CartaVault : **master** · ID : `maps.members`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.members`</small>

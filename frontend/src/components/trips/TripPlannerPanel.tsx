@@ -1581,7 +1581,7 @@ export function TripPlannerPanel({ poiMap, trip, activeDayId, activeAnchorTarget
                                       >
                                         <DayVisibilityBubble day={day} hidden={hiddenDayIds.has(day.id)} status={getDayTimelineStatus(day, daySummaries[day.id])} onChange={(visible) => onDayVisibilityChange(day.id, visible)} />
                                           <details
-                                            className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null ? " is-active" : ""}${placeDropDayId === day.id ? " is-drop-target" : ""}`}
+                                            className={`trip-panel-day${day.id === activeDayId && activeNightTarget === null && activeAnchorTarget === null ? " is-active" : ""}${placeDropDayId === day.id ? " is-drop-target" : ""}`}
                                           open={!collapsedDayIds.has(day.id)}
                                           onClick={(event) => {
                                             const target = event.target as HTMLElement;

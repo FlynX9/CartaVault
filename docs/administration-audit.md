@@ -2,6 +2,11 @@
 
 This inventory accompanies the `/admin` console. It classifies settings without exposing secrets and prevents the browser from becoming a deployment-configuration editor.
 
+This is current architecture and roadmap documentation, not a July 2026
+historical audit. For the dated assessment and its original findings, see the
+[historical security audit](security-audit-2026-07.md). For the current
+security posture, see [security and operations](security.md).
+
 ## 1. Managed through the interface
 
 | Item | Storage | Interface |
@@ -45,13 +50,29 @@ These values are neither returned in full to the frontend nor editable in the br
 
 ## 4. Future work
 
-- Persistent administrative audit log.
+- Comprehensive immutable administrator audit log. The current console already
+  exposes a bounded per-user activity timeline and authentication security
+  events; those records are not a complete immutable administrator log.
 - Centralized rate limiting for administrative mutations.
 - Persistent metrics for imports, exports, routing calculations, and Google Routes consumption.
 - Filtered and actionable application-error log in the instance-status page.
 - Quota warnings and notifications before a limit blocks a write.
 - Global management for additional credential providers.
-- Two-factor authentication and enterprise policies.
+- Enterprise authentication policies beyond the available MFA controls.
+
+## 5. Current security controls
+
+- TOTP MFA with setup confirmation, recovery-code regeneration and protected
+  disable/reset operations is available from the account security area.
+- Email MFA with a password-protected enrollment and confirmation flow is
+  available when the configured email provider is usable. TOTP and email MFA
+  are mutually exclusive for one account.
+- Sensitive account and MFA changes require the current password where
+  applicable, use bounded failure/cooldown limits, and rotate or revoke
+  sessions for the operations that change the authenticated security state.
+- Authenticated writes require the session-bound CSRF cookie/header pair.
+- Administrator role/state changes and selected authentication events are
+  recorded without storing passwords, tokens, credentials or raw client IPs.
 
 ## Historical surfaces
 

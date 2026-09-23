@@ -74,4 +74,4 @@ One category can be primary while additional categories enrich a place.
 - [Browse and search places](/docs/en/places/browse-search/)
 - [Import an organization profile](/docs/en/organization/import-profiles/)
 
-<small>Version CartaVault : **master** · ID : `organization.classify`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `organization.classify`</small>

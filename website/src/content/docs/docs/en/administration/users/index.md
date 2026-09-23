@@ -71,4 +71,4 @@ The context menu closes when clicking elsewhere.
 - [Configure quota profiles](/docs/en/administration/quotas/)
 - [Understand account security](/docs/en/account/security/overview/)
 
-<small>Version CartaVault : **master** · ID : `admin.users`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.users`</small>

@@ -58,4 +58,4 @@ The server validates format and uniqueness.
 - [Understand account security](/docs/en/account/security/overview/)
 - [Enable email MFA codes](/docs/en/account/security/email-mfa/)
 
-<small>Version CartaVault : **master** · ID : `account.email`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.email`</small>

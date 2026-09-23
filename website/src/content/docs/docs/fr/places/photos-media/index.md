@@ -59,4 +59,4 @@ Les images sont validées, optimisées et stockées séparément.
 - [Importer des photos et utiliser les données GPS](/docs/fr/media/upload-exif/)
 - [Créer ou modifier un lieu](/docs/fr/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `places.media`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.media`</small>

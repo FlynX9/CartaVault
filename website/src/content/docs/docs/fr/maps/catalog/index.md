@@ -59,4 +59,4 @@ Chaque carte affiche son pays, ses compteurs et le rôle du compte.
 - [Gérer les membres d’une carte](/docs/fr/maps/members/)
 - [Restaurer depuis la corbeille](/docs/fr/maps/trash/)
 
-<small>Version CartaVault : **master** · ID : `maps.catalog`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.catalog`</small>

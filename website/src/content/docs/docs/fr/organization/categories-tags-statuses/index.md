@@ -74,4 +74,4 @@ Une catégorie peut être principale et plusieurs catégories peuvent compléter
 - [Parcourir et rechercher les lieux](/docs/fr/places/browse-search/)
 - [Importer un profil d’organisation](/docs/fr/organization/import-profiles/)
 
-<small>Version CartaVault : **master** · ID : `organization.classify`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `organization.classify`</small>

@@ -57,4 +57,4 @@ Les valeurs existantes restent conservées lorsqu’un champ est masqué.
 - [Parcourir le coffre de cartes](/docs/fr/maps/catalog/)
 - [Créer ou modifier un lieu](/docs/fr/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `maps.settings`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.settings`</small>

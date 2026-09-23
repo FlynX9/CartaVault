@@ -61,4 +61,4 @@ Only one MFA method is active: TOTP replaces email codes.
 - [Enable email MFA codes](/docs/en/account/security/email-mfa/)
 - [Manage sessions and devices](/docs/en/account/security/sessions/)
 
-<small>Version CartaVault : **master** · ID : `account.security`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.security`</small>

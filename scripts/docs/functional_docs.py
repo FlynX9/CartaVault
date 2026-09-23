@@ -27,6 +27,15 @@ SCREENSHOT_ROOTS = (
 # independently documentable product features. Their concrete callers are
 # covered by the functional manifest instead.
 IGNORED_DISCOVERED_SURFACES = {
+    # Structural labels inside the account menu are not independently
+    # navigable product surfaces.
+    "dialog:user-menu-account",
+    "dialog:user-menu-cartavault",
+    "dialog:user-menu-developers",
+    # Release notes are a version artifact; these headings do not describe a
+    # separate product workflow requiring a functional feature entry.
+    "dialog:release-notes-details",
+    "dialog:release-notes-title",
     "dialog:admin-unsaved-title",
     "dialog:confirmation-dialog-title",
     "dialog:empty-state-title",
@@ -368,7 +377,7 @@ def render_report(report: dict[str, Any]) -> str:
 """
 
 
-def generate(*, check: bool, version: str = "master") -> bool:
+def generate(*, check: bool, version: str = "1.0.0 stable") -> bool:
     manifest = load_manifest()
     errors = validate_manifest(manifest)
     if errors:

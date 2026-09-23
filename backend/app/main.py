@@ -1,6 +1,7 @@
 import asyncio
 import os
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from contextlib import suppress
 from pathlib import Path
@@ -12,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 # Infrastructure settings must be available before importing modules that
@@ -39,7 +41,7 @@ from app.categories.router import router as categories_router
 from app.annotations.router import router as annotations_router
 from app.countries.router import router as countries_router
 from app.dashboard.router import router as dashboard_router
-from app.database import SessionLocal, engine, get_db
+from app.database import SessionLocal, database_url, engine, get_db, readiness_engine
 from app.exports.router import router as exports_router
 from app.imports.router import router as imports_router
 from app.instance_status.router import router as instance_status_router
@@ -48,7 +50,7 @@ from app.maps.invitation_router import router as invitations_router
 from app.maps.models import PoiMap
 from app.maps.router import router as maps_router
 from app.map_profiles.router import router as map_profiles_router
-from app.maintenance_leader import release_maintenance_leadership, try_acquire_maintenance_leadership
+from app.maintenance_leader import MaintenanceGenerationLost, MaintenanceLeaderSupervisor
 from app.media.router import router as media_router, upload_router as media_upload_router
 from app.photos.router import router as photos_router
 from app.quotas.router import router as quotas_router
@@ -68,7 +70,9 @@ from app.tasks.router import router as tasks_router
 from app.tasks.cleanup import purge_expired_task_artifacts
 from app.privacy.settings import get_privacy_settings
 from app.privacy.service import purge_expired_privacy_artifacts
-from app.config import legacy_google_routes_api_key_configured
+from app.config import database_settings, legacy_google_routes_api_key_configured, maintenance_leader_settings, storage_reconciliation_settings, task_settings
+from app.photos.reconciliation import run_fast_reconciliation_cycle
+from app.tasks.recovery import dispatcher_for_current_mode, run_recovery_cycle
 from app.trash.router import router as trash_router
 from app.trash.service import purge_expired_trash
 from app.static_frontend import install_frontend, normalize_api_prefix
@@ -76,6 +80,9 @@ from app.basemaps.vector_service import recover_vector_basemap_jobs, schedule_du
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+_readiness_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="cartavault-readiness")
+_readiness_timeout_seconds = min(2, max(1, database_settings.connect_timeout_seconds))
 
 
 DEFAULT_CORS_ALLOWED_ORIGINS = (
@@ -144,23 +151,85 @@ def validate_startup_security_state(session: Session) -> None:
         raise RuntimeError("CartaVault has orphan maps. Run the administrator bootstrap/backfill before starting the application")
 
 
-async def _trash_purge_loop() -> None:
+async def _trash_purge_loop(
+    supervisor: MaintenanceLeaderSupervisor,
+    generation: int,
+    before_commit,
+) -> None:
     while True:
-        await asyncio.sleep(3600)
+        await asyncio.sleep(maintenance_leader_settings.purge_interval_seconds)
         try:
-            await asyncio.to_thread(_purge_expired_maintenance)
+            await supervisor.run_leader_operation(
+                generation,
+                lambda: _purge_expired_maintenance(before_commit=before_commit),
+            )
+        except MaintenanceGenerationLost:
+            return
         except SQLAlchemyError:
             logger.exception("Unable to purge expired trash items")
 
 
-async def _vector_basemap_maintenance_loop() -> None:
+async def _vector_basemap_maintenance_loop(
+    supervisor: MaintenanceLeaderSupervisor,
+    generation: int,
+    before_commit,
+) -> None:
     while True:
         await asyncio.sleep(6 * 3600)
         try:
-            with SessionLocal() as session:
-                schedule_due_updates(session)
+            await supervisor.run_leader_operation(
+                generation,
+                lambda: _schedule_due_vector_updates(before_commit=before_commit),
+            )
+        except MaintenanceGenerationLost:
+            return
         except SQLAlchemyError:
             logger.exception("Unable to schedule CartaVault basemap updates")
+
+
+async def _task_recovery_loop() -> None:
+    # Runs one cycle immediately after startup (crash recovery) and then
+    # periodically so a task orphaned while this process stays alive is still
+    # reclaimed within a bounded delay.
+    while True:
+        try:
+            await asyncio.to_thread(_run_task_recovery_cycle)
+        except SQLAlchemyError:
+            logger.exception("Unable to run task recovery cycle")
+        except Exception:
+            logger.exception("Task recovery cycle interrupted")
+        await asyncio.sleep(task_settings.recovery_interval_seconds)
+
+
+def _run_task_recovery_cycle() -> None:
+    with SessionLocal() as session:
+        run_recovery_cycle(session, dispatcher_for_current_mode())
+
+
+async def _storage_reconciliation_loop() -> None:
+    # Every API process participates. Database SKIP LOCKED claims make this
+    # safe without coupling storage recovery to maintenance leadership.
+    while True:
+        try:
+            await asyncio.to_thread(run_fast_reconciliation_cycle)
+        except SQLAlchemyError:
+            logger.exception("Unable to run storage reconciliation cycle")
+        except Exception:
+            logger.exception("Storage reconciliation cycle interrupted")
+        await asyncio.sleep(storage_reconciliation_settings.interval_seconds)
+
+
+def _start_leader_maintenance(*, before_commit=None) -> list:
+    """Run the leader-only recovery pass before periodic jobs are started."""
+
+    with SessionLocal() as session:
+        purge_expired_trash(session, before_commit=before_commit)
+        purge_expired_task_artifacts(session, before_commit=before_commit)
+        purge_expired_privacy_artifacts(session, get_privacy_settings(session), before_commit)
+        optimization_proposal_store.purge_expired(session, before_commit)
+        pending_vector_jobs = recover_vector_basemap_jobs(session, before_commit=before_commit)
+        pending_vector_jobs.extend(schedule_due_updates(session, before_commit=before_commit))
+    return pending_vector_jobs
 
 
 def _purge_expired_trash() -> None:
@@ -168,12 +237,24 @@ def _purge_expired_trash() -> None:
         purge_expired_trash(session)
 
 
-def _purge_expired_maintenance() -> None:
+def _schedule_due_vector_updates(*, before_commit=None) -> list:
     with SessionLocal() as session:
-        purge_expired_trash(session)
-        purge_expired_task_artifacts(session)
-        purge_expired_privacy_artifacts(session, get_privacy_settings(session))
-        optimization_proposal_store.purge_expired(session)
+        return schedule_due_updates(session, before_commit=before_commit)
+
+
+def _purge_expired_maintenance(*, before_commit=None) -> None:
+    with SessionLocal() as session:
+        trash_result = purge_expired_trash(session, before_commit=before_commit)
+        task_result = purge_expired_task_artifacts(session, before_commit=before_commit)
+        privacy_result = purge_expired_privacy_artifacts(session, get_privacy_settings(session), before_commit)
+        optimization_proposal_store.purge_expired(session, before_commit)
+    logger.info(
+        "maintenance_job_completed job=periodic_purge instance=%s trash=%s tasks=%s privacy=%s",
+        os.getenv("CARTAVAULT_INSTANCE_ID", "unknown"),
+        trash_result,
+        task_result,
+        privacy_result,
+    )
 
 
 @asynccontextmanager
@@ -182,43 +263,91 @@ async def lifespan(_: FastAPI):
     # Re-attach the bounded, sanitized administrative log collector at startup.
     install_instance_log_handler()
     record_instance_log(logging.INFO, "app.instance", "CartaVault instance log collector started")
-    purge_task: asyncio.Task[None] | None = None
-    vector_maintenance_task: asyncio.Task[None] | None = None
-    maintenance_connection = None
+    task_recovery_task: asyncio.Task[None] | None = None
+    storage_reconciliation_task: asyncio.Task[None] | None = None
+    maintenance_supervisor_task: asyncio.Task[None] | None = None
+    leader_purge_task: asyncio.Task[None] | None = None
+    leader_vector_task: asyncio.Task[None] | None = None
     if legacy_google_routes_api_key_configured:
         logger.warning("GOOGLE_MAPS_ROUTES_API_KEY is deprecated and is not used for user routing")
     if not os.getenv("PYTEST_CURRENT_TEST"):
         try:
             with SessionLocal() as session:
                 validate_startup_security_state(session)
-            maintenance_connection = try_acquire_maintenance_leadership(engine)
-            if maintenance_connection is not None:
-                with SessionLocal() as session:
-                    purge_expired_trash(session)
-                    purge_expired_task_artifacts(session)
-                    purge_expired_privacy_artifacts(session, get_privacy_settings(session))
-                    optimization_proposal_store.purge_expired(session)
-                    pending_vector_jobs = recover_vector_basemap_jobs(session)
-                    schedule_due_updates(session)
         except SQLAlchemyError as error:
             raise RuntimeError("CartaVault authentication schema is missing. Apply the schema migration, then run: python -m app.cli create-admin") from error
-        if maintenance_connection is not None:
-            purge_task = asyncio.create_task(_trash_purge_loop())
-            vector_maintenance_task = asyncio.create_task(_vector_basemap_maintenance_loop())
+
+        async def become_leader() -> None:
+            nonlocal leader_purge_task, leader_vector_task
+            if leader_purge_task is not None or leader_vector_task is not None:
+                return
+            generation = maintenance_supervisor.generation
+            if generation is None:
+                raise MaintenanceGenerationLost()
+
+            def before_commit() -> None:
+                if not maintenance_supervisor.is_current_generation(generation):
+                    raise MaintenanceGenerationLost()
+
+            pending_vector_jobs = await maintenance_supervisor.run_leader_operation(
+                generation,
+                lambda: _start_leader_maintenance(before_commit=before_commit),
+            )
+            leader_purge_task = asyncio.create_task(
+                _trash_purge_loop(maintenance_supervisor, generation, before_commit)
+            )
+            leader_vector_task = asyncio.create_task(
+                _vector_basemap_maintenance_loop(maintenance_supervisor, generation, before_commit)
+            )
+            before_commit()
             start_pending_vector_basemap_jobs(pending_vector_jobs)
+            logger.info("maintenance_leader_jobs_started")
+
+        async def lose_leader() -> None:
+            nonlocal leader_purge_task, leader_vector_task
+            tasks = [task for task in (leader_purge_task, leader_vector_task) if task is not None]
+            leader_purge_task = None
+            leader_vector_task = None
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with suppress(asyncio.CancelledError):
+                    await task
+            if tasks:
+                logger.info("maintenance_leader_jobs_stopped")
+
+        maintenance_supervisor = MaintenanceLeaderSupervisor(
+            engine,
+            check_interval_seconds=maintenance_leader_settings.check_interval_seconds,
+            reconnect_initial_seconds=maintenance_leader_settings.reconnect_initial_seconds,
+            reconnect_max_seconds=maintenance_leader_settings.reconnect_max_seconds,
+            reconnect_jitter_seconds=maintenance_leader_settings.reconnect_jitter_seconds,
+        )
+        maintenance_supervisor_task = asyncio.create_task(
+            maintenance_supervisor.run(become_leader, lose_leader),
+            name="maintenance-leader-supervisor",
+        )
+        # In sync mode background work runs in-process, so this process is the
+        # only executor and must also own crash recovery. In Redis mode the
+        # worker process runs the recovery supervisor instead.
+        if task_settings.mode == "sync":
+            task_recovery_task = asyncio.create_task(_task_recovery_loop())
+        storage_reconciliation_task = asyncio.create_task(_storage_reconciliation_loop())
     try:
         yield
     finally:
-        if purge_task is not None:
-            purge_task.cancel()
+        if maintenance_supervisor_task is not None:
+            maintenance_supervisor.stop()
             with suppress(asyncio.CancelledError):
-                await purge_task
-        if vector_maintenance_task is not None:
-            vector_maintenance_task.cancel()
+                await maintenance_supervisor_task
+        if task_recovery_task is not None:
+            task_recovery_task.cancel()
             with suppress(asyncio.CancelledError):
-                await vector_maintenance_task
-        if maintenance_connection is not None:
-            release_maintenance_leadership(maintenance_connection)
+                await task_recovery_task
+        if storage_reconciliation_task is not None:
+            storage_reconciliation_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await storage_reconciliation_task
 
 app = FastAPI(
     title="CartaVault API",
@@ -319,14 +448,34 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+def _probe_readiness_database() -> None:
+    with readiness_engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+
+
+async def _probe_readiness_socket() -> None:
+    database = make_url(database_url)
+    if database.host is None:
+        return
+    _, writer = await asyncio.wait_for(
+        asyncio.open_connection(database.host, database.port or 5432),
+        timeout=_readiness_timeout_seconds,
+    )
+    writer.close()
+
+
 @app.get("/health/ready", include_in_schema=False)
-def readiness(response: Response, session: Session = Depends(get_db)) -> dict[str, str]:
+async def readiness(response: Response) -> dict[str, str]:
     """Return a deliberately minimal readiness signal without diagnostic details."""
 
     try:
-        session.execute(text("SELECT 1"))
-    except SQLAlchemyError:
-        session.rollback()
+        await _probe_readiness_socket()
+        probe = asyncio.get_running_loop().run_in_executor(
+            _readiness_executor,
+            _probe_readiness_database,
+        )
+        await asyncio.wait_for(probe, timeout=_readiness_timeout_seconds)
+    except (SQLAlchemyError, OSError, TimeoutError):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"status": "not_ready"}
     return {"status": "ready"}

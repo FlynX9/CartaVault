@@ -28,7 +28,7 @@ class MediaAccess:
         return self.role in {"owner", "editor"}
 
 
-def declared_file_state(path=None, scope_id=None, width=None, height=None):
+def declared_file_state(path=None, scope_id=None, width=None, height=None, storage_state=None):
     """SQL expression computing one photo's declared state.
 
     Single source of truth for the catalogue's file_state semantics; the
@@ -41,9 +41,10 @@ def declared_file_state(path=None, scope_id=None, width=None, height=None):
     scope_id = scope_id if scope_id is not None else Photo.storage_scope_id
     width = width if width is not None else Photo.width
     height = height if height is not None else Photo.height
+    storage_state = storage_state if storage_state is not None else Photo.storage_state
     return case(
         (
-            or_(path.is_(None), scope_id.is_(None)),
+            or_(path.is_(None), scope_id.is_(None), storage_state == "missing"),
             "missing",
         ),
         (
@@ -118,6 +119,7 @@ def media_listing_scope_statement(user_id: UUID) -> Select:
         Photo.height.label("height"),
         Photo.path.label("path"),
         Photo.storage_scope_id.label("storage_scope_id"),
+        Photo.storage_state.label("storage_state"),
         Photo.is_primary.label("is_primary"),
         Photo.created_at.label("created_at"),
         Photo.updated_at.label("updated_at"),
@@ -163,13 +165,12 @@ def get_media_access(
 def infer_file_state(photo: Photo) -> str:
     """Declared catalogue state, derived from DB metadata only (AUD-021).
 
-    This is the Python mirror of ``file_state_condition``: the listing never
-    touches the storage layer. The physical blob is verified when content is
-    actually served, so a blob removed out-of-band stays declared healthy
-    until a read fails.
+    This is the Python mirror of ``declared_file_state``: the listing never
+    touches the storage layer. Reconciliation persists physical availability,
+    so a confirmed missing blob is no longer declared healthy.
     """
 
-    if photo.path is None or photo.storage_scope_id is None:
+    if photo.path is None or photo.storage_scope_id is None or photo.storage_state == "missing":
         return "missing"
     if photo.width is None or photo.height is None:
         return "error"
@@ -212,6 +213,7 @@ def apply_media_filters(
     height = columns.height if columns is not None else Photo.height
     path = columns.path if columns is not None else Photo.path
     storage_scope_id = columns.storage_scope_id if columns is not None else Photo.storage_scope_id
+    storage_state = columns.storage_state if columns is not None else Photo.storage_state
     place_name = columns.place_name if columns is not None else Place.name
     authoritative_map_id = columns.map_id if columns is not None else PoiMap.id
     map_name = columns.map_name if columns is not None else PoiMap.name
@@ -259,7 +261,7 @@ def apply_media_filters(
         statement = statement.where(height >= min_height)
     if file_state in {"missing", "error", "healthy"}:
         statement = statement.where(
-            declared_file_state(path, storage_scope_id, width, height) == file_state
+            declared_file_state(path, storage_scope_id, width, height, storage_state) == file_state
         )
     return statement
 

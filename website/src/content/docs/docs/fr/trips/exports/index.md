@@ -58,4 +58,4 @@ Le PDF assemble journées, étapes, informations utiles et médias autorisés.
 - [Parcourir la chronologie d’une sortie](/docs/fr/trips/timeline/)
 - [Importer et exporter une carte KMZ](/docs/fr/media/kmz-import-export/)
 
-<small>Version CartaVault : **master** · ID : `trips.exports`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.exports`</small>

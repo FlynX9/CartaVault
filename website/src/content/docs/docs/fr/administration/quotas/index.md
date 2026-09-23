@@ -70,4 +70,4 @@ Illimité est distinct de zéro : zéro bloque une nouvelle création.
 - [Administrer les utilisateurs](/docs/fr/administration/users/)
 - [Configurer l’instance](/docs/fr/administration/general/)
 
-<small>Version CartaVault : **master** · ID : `admin.quotas`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.quotas`</small>

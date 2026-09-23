@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useReducer, useRef, type CSSProperties } from 'react'
-import { divIcon, LatLngBounds, type Marker as LeafletMarker } from 'leaflet'
-import { CircleMarker, MapContainer, Marker, Polyline, Tooltip } from 'react-leaflet'
+import { divIcon, LatLngBounds, type Map as LeafletMap, type Marker as LeafletMarker } from 'leaflet'
+import { CircleMarker, MapContainer, Marker, Polyline, Tooltip, useMap } from 'react-leaflet'
 import { Flag, Play } from 'lucide-react'
 
 import type { BasemapId } from '../../map/basemaps'
@@ -278,7 +278,32 @@ function tripDayEnd(trip: Trip, day: TripDay, dayIndex: number) {
   return arrival ? { key: `arrival:${arrival.id}`, latitude: arrival.latitude, longitude: arrival.longitude } : null
 }
 
+// Dedicated panes give the selected day a guaranteed rendering hierarchy over
+// the rest of the trip, independent of SVG paint order: selected stops above the
+// selected route, above the other stops, above the other routes.
+const TRIP_FOCUS_PANES = {
+  inactiveRoute: 'cv-trip-route-back',
+  inactiveStop: 'cv-trip-stop-back',
+  activeRoute: 'cv-trip-route-front',
+  activeStop: 'cv-trip-stop-front',
+} as const
+
+const TRIP_FOCUS_PANE_Z_INDEX: Record<string, number> = {
+  [TRIP_FOCUS_PANES.inactiveRoute]: 401,
+  [TRIP_FOCUS_PANES.inactiveStop]: 402,
+  [TRIP_FOCUS_PANES.activeRoute]: 403,
+  [TRIP_FOCUS_PANES.activeStop]: 404,
+}
+
+function ensureTripFocusPanes(map: LeafletMap) {
+  for (const name of Object.keys(TRIP_FOCUS_PANE_Z_INDEX)) {
+    if (!map.getPane(name)) map.createPane(name).style.zIndex = String(TRIP_FOCUS_PANE_Z_INDEX[name])
+  }
+}
+
 function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, selectedTimelineKey, showAllDays, hiddenDayIds }: { trip: Trip; activeDayId: string | null; activeNightTarget: TripNightTarget | null; selectedStopId: string | null; selectedTimelineKey: string | null; showAllDays: boolean; hiddenDayIds: ReadonlySet<string> }) {
+  const map = useMap()
+  ensureTripFocusPanes(map)
   const visibleDays = trip.days.filter((day) => !hiddenDayIds.has(day.id))
   const highlightedStopId = selectedTimelineKey?.startsWith('stop:') ? selectedTimelineKey.slice(5) : selectedStopId
   const hasSelectedStop = highlightedStopId !== null && visibleDays.some((day) => day.stops.some((stop) => stop.id === highlightedStopId))
@@ -324,6 +349,21 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
   })
 
   const inactiveOpacity = showAllDays ? .38 : .6
+  const isDayActive = (day: TripDay) =>
+    hasSelectedStop
+      ? day.stops.some((stop) => stop.id === highlightedStopId)
+      : activeNightTarget?.nightId
+        ? activeDayIds.has(day.id)
+        : activeDayId === null || day.id === activeDayId
+  // The focus key remounts the day layers whenever the focus changes so each
+  // route/stop is recreated in the pane matching its active state. The panes
+  // themselves enforce the z-order: selected stops > selected route > other
+  // stops > other routes.
+  const focusKey = hasSelectedStop
+    ? `stop:${highlightedStopId}`
+    : activeNightTarget?.nightId
+      ? `night:${activeNightTarget.nightId}`
+      : `day:${activeDayId ?? 'none'}`
   const selectedEndpointKey = selectedTimelineKey === 'departure' && trip.departure
     ? `departure:${trip.departure.id}`
     : selectedTimelineKey === 'arrival' && (trip.arrival ?? trip.departure)
@@ -332,20 +372,21 @@ function TripOverlay({ trip, activeDayId, activeNightTarget, selectedStopId, sel
         ? selectedTimelineKey
         : null
   return <>
-    {visibleDays.map((day) => {
-      const dayIndex = trip.days.findIndex((item) => item.id === day.id)
-      const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]
-      const containsSelectedStop = day.stops.some((stop) => stop.id === highlightedStopId)
-      const active = hasSelectedStop ? containsSelectedStop : activeNightTarget?.nightId ? activeDayIds.has(day.id) : activeDayId === null || day.id === activeDayId
-      return <Fragment key={day.id}>
-        {day.route_geometry?.coordinates && <Polyline positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 6 : 3, opacity: active ? .95 : inactiveOpacity }} />}
-        {day.stops.map((stop, index) => {
-          const selected = stop.id === highlightedStopId
-          if (selected && stop.place_id) return <Marker key={stop.id} position={[stop.latitude, stop.longitude]} icon={getSelectedTripStopIcon(color, index + 1)} interactive={false} keyboard={false} />
-          return <CircleMarker key={stop.id} center={[stop.latitude, stop.longitude]} radius={selected ? 14 : active ? 10 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: selected || active ? 1 : inactiveOpacity, weight: selected ? 5 : active ? 3 : 2 }}><Tooltip permanent direction="center" className={`trip-stop-number${selected ? ' trip-stop-number--selected' : ''}`}>{index + 1}</Tooltip></CircleMarker>
-        })}
-      </Fragment>
-    })}
+    <Fragment key={focusKey}>
+      {visibleDays.map((day) => {
+        const dayIndex = trip.days.findIndex((item) => item.id === day.id)
+        const color = day.color || TRIP_COLORS[dayIndex % TRIP_COLORS.length]
+        const active = isDayActive(day)
+        return <Fragment key={day.id}>
+          {day.route_geometry?.coordinates && <Polyline pane={active ? TRIP_FOCUS_PANES.activeRoute : TRIP_FOCUS_PANES.inactiveRoute} positions={day.route_geometry.coordinates.map(([longitude, latitude]) => [latitude, longitude])} pathOptions={{ color, weight: active ? 6 : 3, opacity: active ? .95 : inactiveOpacity }} />}
+          {day.stops.map((stop, index) => {
+            const selected = stop.id === highlightedStopId
+            if (selected && stop.place_id) return <Marker key={stop.id} position={[stop.latitude, stop.longitude]} icon={getSelectedTripStopIcon(color, index + 1)} interactive={false} keyboard={false} />
+            return <CircleMarker key={stop.id} pane={active ? TRIP_FOCUS_PANES.activeStop : TRIP_FOCUS_PANES.inactiveStop} center={[stop.latitude, stop.longitude]} radius={selected ? 14 : active ? 10 : 6} pathOptions={{ color: 'white', fillColor: color, fillOpacity: selected || active ? 1 : inactiveOpacity, weight: selected ? 5 : active ? 3 : 2 }}><Tooltip permanent direction="center" className={`trip-stop-number${selected ? ' trip-stop-number--selected' : ''}`}>{index + 1}</Tooltip></CircleMarker>
+          })}
+        </Fragment>
+      })}
+    </Fragment>
     {[...endpoints.values()].map((endpoint) => {
       const startColor = endpoint.colors[0] ?? '#0FA68A'
       const endColor = endpoint.colors.at(-1) ?? startColor

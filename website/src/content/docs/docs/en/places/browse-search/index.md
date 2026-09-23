@@ -59,4 +59,4 @@ Quick filters, categories, tags, statuses, favorites and ratings combine.
 - [Organize with categories, tags and statuses](/docs/en/organization/categories-tags-statuses/)
 - [Create and organize a trip](/docs/en/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `places.browse`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.browse`</small>

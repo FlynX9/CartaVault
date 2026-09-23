@@ -63,4 +63,4 @@ Privacy-respecting mode shows no banner while no optional service collects data.
 - [Configure the instance](/docs/en/administration/general/)
 - [Monitor instance status](/docs/en/administration/instance-status/)
 
-<small>Version CartaVault : **master** · ID : `admin.privacy`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.privacy`</small>

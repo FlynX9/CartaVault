@@ -63,4 +63,4 @@ Le mode respectueux n’affiche pas de bannière tant qu’aucun service optionn
 - [Configurer l’instance](/docs/fr/administration/general/)
 - [Superviser l’état de l’instance](/docs/fr/administration/instance-status/)
 
-<small>Version CartaVault : **master** · ID : `admin.privacy`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.privacy`</small>

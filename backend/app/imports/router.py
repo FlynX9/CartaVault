@@ -21,7 +21,7 @@ from app.imports.schemas import (
 )
 from app.imports.service import cache_preview, cleanup_cached_import_file, confirm_import, get_cached_import, mark_duplicate_items, mark_outside_country_items, remove_cached_import
 from app.maps.models import PoiMap
-from app.tasks.handlers import KMZ_IMPORT_TASK
+from app.tasks.handlers import KMZ_IMPORT_TASK, _current_map_editor
 from app.tasks.models import BackgroundTask
 from app.tasks.service import create_task, submit_task
 from app.tasks.registry import clear_rollback_cleanups, pop_rollback_cleanups
@@ -92,6 +92,9 @@ def confirm_kmz_import(map_id: UUID, request: KmzConfirmRequest, database_sessio
             request.selected_source_indexes,
             download_remote_images=request.download_remote_images,
             force_indexes=request.force_source_indexes,
+            authorization_callback=lambda: _current_map_editor(
+                database_session, map_id, current_user.id, lock=True
+            ),
         )
         preview_path = remove_cached_import(database_session, request.import_id)
         database_session.commit()
@@ -117,7 +120,7 @@ def start_kmz_import(
 ) -> KmzImportJobStart:
     """Start a long KMZ confirmation and expose its measurable progress."""
 
-    require_map_role(database_session, map_id, current_user, "editor")
+    _current_map_editor(database_session, map_id, current_user.id, lock=True)
     get_cached_import(database_session, request.import_id, map_id, current_user.id)
     task = create_task(
         database_session,

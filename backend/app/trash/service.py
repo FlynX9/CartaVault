@@ -3,19 +3,23 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import PurePosixPath
+from collections.abc import Callable
 from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import delete, or_, select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
 from app.maps.models import PoiMap
 from app.places.models import Place
 from app.photos.models import Photo
-from app.photos.storage import InvalidPhotoPathError, PhotoStorageError, delete_photo_file, delete_photo_thumbnail
+from app.photos.reconciliation import (
+    active_storage_backend,
+    enqueue_delete_intent,
+    process_storage_operations_best_effort,
+    thumbnail_object_key,
+)
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
 from app.trips.models import Trip, TripNight, TripNightPhoto
@@ -141,50 +145,32 @@ def _trip_photo_targets(session: Session, trip_ids: list[UUID]) -> list[PhotoCle
     return [PhotoCleanupTarget(path, night_id, photo_id, False) for path, night_id, photo_id in rows]
 
 
-def _cleanup_photo_targets(session: Session, targets: list[PhotoCleanupTarget]) -> None:
-    if not targets:
-        return
-    paths = {target.relative_path for target in targets}
-    thumbnail_ids = {target.photo_id for target in targets if target.has_thumbnail}
-    try:
-        referenced_paths = set(session.scalars(select(Photo.path).where(Photo.path.in_(paths))).all())
-        referenced_paths.update(session.scalars(select(TripNightPhoto.file_path).where(TripNightPhoto.file_path.in_(paths))).all())
-        referenced_thumbnail_ids = set(session.scalars(select(Photo.id).where(Photo.id.in_(thumbnail_ids))).all())
-        referenced_thumbnail_ids.update(session.scalars(select(TripNightPhoto.id).where(TripNightPhoto.id.in_(thumbnail_ids))).all())
-    except SQLAlchemyError:
-        session.rollback()
-        logger.warning("Unable to verify references for purged media; physical cleanup was skipped", exc_info=True)
-        return
-
+def _enqueue_photo_targets(session: Session, targets: list[PhotoCleanupTarget]) -> list[UUID]:
+    operation_ids: list[UUID] = []
     for target in targets:
-        if target.relative_path not in referenced_paths:
-            try:
-                delete_photo_file(target.relative_path, target.storage_scope_id, target.photo_id)
-            except InvalidPhotoPathError:
-                try:
-                    scope, filename = PurePosixPath(target.relative_path).parts
-                    delete_photo_file(target.relative_path, UUID(scope), UUID(PurePosixPath(filename).stem))
-                except (PhotoStorageError, ValueError):
-                    logger.warning(
-                        "Unable to delete purged media",
-                        extra={"photo_id": str(target.photo_id), "relative_path": target.relative_path},
-                        exc_info=True,
+        try:
+            operation_ids.append(
+                enqueue_delete_intent(
+                    session,
+                    backend=active_storage_backend("media"),
+                    namespace="media",
+                    object_key=target.relative_path,
+                    purpose="trash_permanent_delete",
+                )
+            )
+            if target.has_thumbnail:
+                operation_ids.append(
+                    enqueue_delete_intent(
+                        session,
+                        backend=active_storage_backend("media"),
+                        namespace="media",
+                        object_key=thumbnail_object_key(target.photo_id),
+                        purpose="trash_permanent_delete",
                     )
-            except PhotoStorageError:
-                logger.warning(
-                    "Unable to delete purged media",
-                    extra={"photo_id": str(target.photo_id), "relative_path": target.relative_path},
-                    exc_info=True,
                 )
-        if target.has_thumbnail and target.photo_id not in referenced_thumbnail_ids:
-            try:
-                delete_photo_thumbnail(target.photo_id)
-            except PhotoStorageError:
-                logger.warning(
-                    "Unable to delete purged media thumbnail",
-                    extra={"photo_id": str(target.photo_id)},
-                    exc_info=True,
-                )
+        except ValueError:
+            logger.warning("Invalid purged media identity was not queued photo_id=%s", target.photo_id)
+    return operation_ids
 
 
 def _delete_map_rows(session: Session, map_id: UUID) -> None:
@@ -195,13 +181,22 @@ def _delete_map_rows(session: Session, map_id: UUID) -> None:
     session.execute(delete(PoiMap).where(PoiMap.id == map_id))
 
 
-def _commit_and_cleanup(session: Session, targets: list[PhotoCleanupTarget]) -> None:
+def _commit_and_cleanup(
+    session: Session,
+    targets: list[PhotoCleanupTarget],
+    before_commit: Callable[[], None] | None = None,
+) -> None:
+    operation_ids = _enqueue_photo_targets(session, targets)
+    if before_commit is not None:
+        before_commit()
     try:
         session.commit()
     except Exception:
         session.rollback()
         raise
-    _cleanup_photo_targets(session, targets)
+    if before_commit is not None:
+        before_commit()
+    process_storage_operations_best_effort(operation_ids, session=session)
 
 
 def permanently_delete_map(session: Session, map_id: UUID) -> None:
@@ -223,7 +218,12 @@ def permanently_delete_trip(session: Session, trip_id: UUID) -> None:
     _commit_and_cleanup(session, targets)
 
 
-def purge_expired_trash(session: Session, *, now: datetime | None = None) -> dict[str, int]:
+def purge_expired_trash(
+    session: Session,
+    *,
+    now: datetime | None = None,
+    before_commit: Callable[[], None] | None = None,
+) -> dict[str, int]:
     threshold = (now or datetime.now(UTC)).replace(tzinfo=None)
     map_ids = session.scalars(
         select(PoiMap.id).where(PoiMap.deleted_at.is_not(None), PoiMap.purge_after <= threshold)
@@ -251,7 +251,7 @@ def purge_expired_trash(session: Session, *, now: datetime | None = None) -> dic
 
     session.execute(delete(Trip).where(Trip.id.in_(trip_ids)))
     session.execute(delete(Place).where(Place.id.in_(place_ids)))
-    _commit_and_cleanup(session, targets)
+    _commit_and_cleanup(session, targets, before_commit)
     return {
         "maps": len(map_ids),
         "trips": len(trip_ids),

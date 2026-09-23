@@ -56,4 +56,4 @@ A map owns its categories, tags, statuses, members and settings.
 - [Browse and search places](/docs/en/places/browse-search/)
 - [Create and organize a trip](/docs/en/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `concepts.data-model`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `concepts.data-model`</small>

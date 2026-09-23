@@ -59,4 +59,4 @@ Les compteurs respectent les cartes réellement accessibles au compte.
 - [Parcourir et rechercher les lieux](/docs/fr/places/browse-search/)
 - [Créer et organiser une sortie](/docs/fr/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `getting-started.dashboard`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `getting-started.dashboard`</small>

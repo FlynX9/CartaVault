@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.config import _boolean
+from app.config import S3Settings, VectorBasemapSettings, _boolean
 
 
 pytestmark = pytest.mark.unit
@@ -27,3 +27,19 @@ def test_boolean_rejects_ambiguous_values(monkeypatch: pytest.MonkeyPatch) -> No
 
     with pytest.raises(RuntimeError, match="must be a boolean"):
         _boolean("CARTAVAULT_TEST_BOOLEAN", True)
+
+
+def test_external_io_settings_have_finite_defaults() -> None:
+    s3 = S3Settings()
+    vector = VectorBasemapSettings()
+
+    assert s3.connect_timeout_seconds > 0
+    assert s3.read_timeout_seconds > 0
+    assert s3.max_attempts > 0
+    assert s3.operation_timeout_seconds > 0
+    assert vector.planetiler_timeout_seconds > 0
+
+
+def test_s3_retry_mode_rejects_unbounded_legacy_mode() -> None:
+    with pytest.raises(RuntimeError, match="S3_RETRY_MODE"):
+        S3Settings(retry_mode="legacy")

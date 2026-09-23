@@ -59,4 +59,4 @@ Counters are limited to maps the account can actually access.
 - [Browse and search places](/docs/en/places/browse-search/)
 - [Create and organize a trip](/docs/en/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `getting-started.dashboard`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `getting-started.dashboard`</small>

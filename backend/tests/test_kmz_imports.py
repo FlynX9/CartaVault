@@ -1,24 +1,32 @@
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
+from threading import Barrier, Thread
 from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
-from sqlalchemy import func, select
+from fastapi import HTTPException
+from geoalchemy2.elements import WKTElement
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 from starlette.testclient import TestClient
 
 from app.auth.models import User
+from app.countries.models import Country
+from app.imports.kmz_parser import ParsedPlacemark
 from app.imports.remote_images import DownloadedRemoteImage
 from app.maps.models import PoiMap
 from app.imports.remote_images import RemoteImageError
-from app.imports.service import confirm_import, get_cached_import
-from app.photos.models import Photo
+from app.imports.service import CachedKmzImport, confirm_import, get_cached_import
+from app.photos import reconciliation
+from app.photos.models import Photo, StorageOperation
 from app.photos.storage import PhotoStorageError, delete_photo_file
 from app.places.models import Place
 from app.quotas.models import QuotaProfile
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
+from app.statuses.models import PlaceStatus
 
 
 pytestmark = pytest.mark.integration
@@ -189,6 +197,7 @@ def test_embedded_image_import_persists_complete_media_and_exact_storage_usage(
     assert photo.file_size_bytes == len(PNG_BYTES)
     assert (photo_storage / photo.path).read_bytes() == PNG_BYTES
     assert QuotaService(database_session).usage(auth_user.id, QuotaKey.STORAGE_BYTES_MAX) == len(PNG_BYTES)
+    assert database_session.scalar(select(func.count()).select_from(StorageOperation)) == 0
     delete_photo_file(photo.path, photo.storage_scope_id, photo.id)
 
 
@@ -475,6 +484,149 @@ def test_confirm_import_never_commits_the_callers_transaction(
     assert report.created_count == 1
     assert commits == 0
     database_session.rollback()
+
+
+def test_concurrent_kmz_confirmations_preserve_places_quota(test_engine) -> None:
+    """The owner lock allows only one final place slot to be claimed."""
+
+    with Session(test_engine) as seed:
+        country_id = seed.scalar(select(Country.id).where(Country.iso_alpha3 == "FRA"))
+        assert country_id is not None
+        profile = QuotaProfile(
+            name=f"KMZ concurrent {uuid4()}",
+            is_active=True,
+            places_per_map_max=2,
+        )
+        user = User(
+            email=f"kmz-concurrent-{uuid4()}@example.test",
+            display_name="Concurrent importer",
+            password_hash="test-only-not-a-real-password-hash",
+            quota_profile=profile,
+        )
+        poi_map = PoiMap(
+            name=f"Concurrent KMZ {uuid4()}",
+            country_id=country_id,
+            owner=user,
+            is_private=True,
+        )
+        seed.add_all([profile, user, poi_map])
+        seed.flush()
+        status = PlaceStatus(
+            map_id=poi_map.id,
+            name="Existing",
+            slug="existing",
+            functional_state="non_visited",
+            color="#64707A",
+            sort_order=0,
+            is_default=True,
+            is_active=True,
+        )
+        seed.add(status)
+        seed.flush()
+        seed.add(
+            Place(
+                name="Existing place",
+                map_id=poi_map.id,
+                status_id=status.id,
+                location=WKTElement("POINT(2.0 48.0)", srid=4326),
+            )
+        )
+        seed.commit()
+        map_id = poi_map.id
+        user_id = user.id
+        profile_id = profile.id
+
+    start = Barrier(2)
+    outcomes: list[tuple[str, str]] = []
+
+    def confirm(source_index: int) -> None:
+        cached = CachedKmzImport(
+            import_id=uuid4(),
+            map_id=map_id,
+            user_id=user_id,
+            file_name="concurrent.kmz",
+            created_at=datetime.now(UTC),
+            items=(
+                ParsedPlacemark(
+                    source_index,
+                    f"Concurrent place {source_index}",
+                    None,
+                    48.1 + source_index / 1000,
+                    2.1 + source_index / 1000,
+                ),
+            ),
+            global_warnings=(),
+        )
+        with Session(test_engine) as session:
+            start.wait()
+            try:
+                confirm_import(session, map_id, cached, [source_index])
+                session.commit()
+                outcomes.append(("created", ""))
+            except HTTPException as error:
+                session.rollback()
+                outcomes.append(("rejected", error.detail["code"]))
+
+    threads = [Thread(target=confirm, args=(index,)) for index in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert sorted(outcomes) == [
+        ("created", ""),
+        ("rejected", "quota.places_per_map.limit_reached"),
+    ]
+    with Session(test_engine) as verification:
+        assert verification.scalar(
+            select(func.count()).select_from(Place).where(Place.map_id == map_id)
+        ) == 2
+        verification.execute(delete(Place).where(Place.map_id == map_id))
+        verification.execute(delete(PoiMap).where(PoiMap.id == map_id))
+        verification.execute(delete(User).where(User.id == user_id))
+        verification.execute(delete(QuotaProfile).where(QuotaProfile.id == profile_id))
+        verification.commit()
+
+
+def test_rolled_back_kmz_photo_is_recovered_without_memory_cleanup(
+    integration_client: TestClient,
+    database_session: Session,
+    test_engine,
+    auth_user: User,
+    poi_map: PoiMap,
+    photo_storage: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.imports import service as import_service
+
+    preview = preview_import(integration_client, poi_map, image_kmz_payload(embedded=1))
+    cached = get_cached_import(
+        database_session, UUID(preview["import_id"]), poi_map.id, auth_user.id
+    )
+    monkeypatch.setattr(import_service, "register_rollback_cleanup", lambda *_args: None)
+
+    report = confirm_import(database_session, poi_map.id, cached, [0])
+    stored = [path for path in photo_storage.rglob("*") if path.is_file()]
+    assert report.images_added == 1
+    assert len(stored) == 1
+    object_key = stored[0].relative_to(photo_storage).as_posix()
+
+    database_session.rollback()
+    assert database_session.scalar(select(func.count()).select_from(Photo)) == 0
+
+    with Session(test_engine) as cleanup:
+        operation = cleanup.scalar(
+            select(StorageOperation).where(
+                StorageOperation.purpose == "write_cleanup",
+                StorageOperation.object_key == object_key,
+            )
+        )
+        assert operation is not None
+        assert reconciliation.process_storage_operation(
+            cleanup, operation.id, force_terminal=True
+        )
+        cleanup.commit()
+    assert not [path for path in photo_storage.rglob("*") if path.is_file()]
 
 
 def test_preview_cleanup_failure_does_not_turn_committed_task_into_failure(

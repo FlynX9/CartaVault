@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from collections.abc import Callable
 
 from sqlalchemy import delete, or_
 from sqlalchemy.orm import Session
@@ -9,7 +10,11 @@ from app.auth.models import AuthActionToken, AuthSecurityEvent, EmailMfaCode, Us
 from app.privacy.settings import PrivacySettings
 
 
-def purge_expired_privacy_artifacts(session: Session, settings: PrivacySettings) -> None:
+def purge_expired_privacy_artifacts(
+    session: Session,
+    settings: PrivacySettings,
+    before_commit: Callable[[], None] | None = None,
+) -> None:
     """Remove expired security artifacts on the centralized maintenance schedule.
 
     Account deletion already anonymizes a record following a confirmed,
@@ -28,4 +33,6 @@ def purge_expired_privacy_artifacts(session: Session, settings: PrivacySettings)
     session.execute(delete(AuthSecurityEvent).where(
         AuthSecurityEvent.occurred_at < now - timedelta(days=settings.auth_log_retention_days)
     ))
+    if before_commit is not None:
+        before_commit()
     session.commit()

@@ -59,4 +59,4 @@ Les choix sont préparés localement puis enregistrés ensemble.
 - [Gérer ses clés API personnelles](/docs/fr/account/api-keys/)
 - [Calculer et optimiser les itinéraires](/docs/fr/trips/routing-optimization/)
 
-<small>Version CartaVault : **master** · ID : `account.preferences`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.preferences`</small>

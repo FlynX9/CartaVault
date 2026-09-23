@@ -49,9 +49,9 @@ La liste Admin reprend les 250 destinations du catalogue mondial utilisé lors d
 6. `os.replace()` active atomiquement `<pays>.pmtiles`. Pendant une mise à jour, l’ancien fichier reste donc servi jusqu’à cette étape.
 7. Le PBF source est supprimé après succès.
 
-Les jobs sont persistés en base. Une contrainte unique déduplique un pays et un verrou consultatif PostgreSQL limite l’instance à une génération coûteuse à la fois, y compris avec plusieurs processus backend. Au redémarrage, un job réellement interrompu passe en erreur `INTERRUPTED`; un job encore en attente est relancé.
+Les jobs sont persistés en base. Une contrainte unique déduplique un pays et un verrou consultatif PostgreSQL limite l’instance à une génération coûteuse à la fois, y compris avec plusieurs processus backend. La récupération utilise le bail de la tâche : un travail dont le bail expire est redistribué seulement s’il lui reste une tentative ; les préparations de fond vectoriel sont créées avec une seule tentative. Un crash de l’exécuteur rend donc la tâche et la ligne du fond `INTERRUPTED` après expiration, tandis qu’une annulation produit `CANCELLED`. Une nouvelle action **Mettre à jour** ou **Réessayer** crée le travail suivant.
 
-Codes d’erreur stables : `DOWNLOAD_FAILED`, `INSUFFICIENT_DISK`, `GENERATION_FAILED`, `PMTILES_INVALID`, `UNSUPPORTED_COUNTRY`, `INTERRUPTED`, `CANCELLED`.
+Codes d’erreur stables : `DOWNLOAD_FAILED`, `INSUFFICIENT_DISK`, `GENERATION_FAILED`, `PMTILES_INVALID`, `PMTILES_MISSING`, `UNSUPPORTED_COUNTRY`, `INTERRUPTED`, `CANCELLED`.
 
 ## Utilisation online et offline
 
@@ -75,9 +75,15 @@ OSM Standard est le fallback online d’OpenFreeMap, ainsi que le fond utilisé 
 
 ## Ressources et stockage
 
-Planetiler recommande typiquement au moins 5 à 10 fois la taille du PBF en espace temporaire et environ la moitié de sa taille en RAM. CartaVault réserve une marge de 12 fois la taille annoncée du PBF et refuse de démarrer si l’espace est manifestement insuffisant. La JVM utilise par défaut `-Xmx2g`, ajustable comme paramètre d’infrastructure avec `CARTAVAULT_PLANETILER_JAVA_HEAP`. Sur une installation native, `CARTAVAULT_JAVA_EXECUTABLE` permet de cibler explicitement un runtime Java 21 sans modifier le Java système.
+Planetiler recommande typiquement au moins 5 à 10 fois la taille du PBF en espace temporaire et environ la moitié de sa taille en RAM. CartaVault réserve une marge de 12 fois la taille annoncée du PBF et refuse de démarrer si l’espace est manifestement insuffisant. La JVM utilise par défaut `-Xmx2g`, ajustable comme paramètre d’infrastructure avec `CARTAVAULT_PLANETILER_JAVA_HEAP`. Chaque génération possède aussi une limite murale finie, `CARTAVAULT_PLANETILER_TIMEOUT_SECONDS` (6 heures par défaut). À l’échéance, CartaVault termine puis force le groupe de processus Planetiler et marque la tâche en erreur ; une nouvelle action Admin est nécessaire. Sur une installation native, `CARTAVAULT_JAVA_EXECUTABLE` permet de cibler explicitement un runtime Java 21 sans modifier le Java système.
 
-Le volume `vector_maps_data` est persistant dans Compose. Pour Portainer/NAS, `/data/maps` est un bind mount inscriptible sous `${CARTAVAULT_DATA_ROOT}/maps`. Sa sauvegarde évite de régénérer les fonds après restauration.
+Le volume `vector_maps_data` est persistant dans Compose. Pour Portainer/NAS, `/data/maps` est un bind mount inscriptible sous `${CARTAVAULT_DATA_ROOT}/maps`. Les archives PMTiles et les fichiers de travail sont des artefacts dérivés et ne font pas partie de l’ensemble de récupération produit par `docker/backup.sh`. La base contient les métadonnées nécessaires pour les identifier et les régénérer ; sauvegarder `/data/maps` séparément est une optimisation facultative qui évite cette régénération, pas une condition de restauration.
+
+## Restauration sans les archives
+
+Une restauration valide de la base, des médias et de la configuration peut démarrer avec un volume `/data/maps` neuf ou vide. La readiness PostgreSQL et la cartographie online ne dépendent pas de ce volume. Pour un pays dont la base indique une archive installée mais dont le fichier est absent, l’API signale `PMTILES_MISSING`, le fond offline reste indisponible et aucune archive partielle n’est servie.
+
+Après restauration, un administrateur doit ouvrir **Administration → Général → Données cartographiques hors ligne** et cliquer sur **Mettre à jour** pour chaque pays à récupérer. Pour un pays non installé, utiliser **Télécharger et préparer**. Cette opération nécessite l’accès réseau à l’URL Geofabrik contrôlée, Java 21, Planetiler intégré à l’image et l’espace temporaire requis ; elle ne démarre pas automatiquement à partir d’une ligne `ready` dont le fichier manque. Suivre ensuite `Téléchargement → Génération → Validation → Disponible` avant de recréer les packages offline.
 
 ## Mises à jour
 

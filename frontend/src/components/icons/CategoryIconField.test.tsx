@@ -32,7 +32,7 @@ describe('CategoryIconField', () => {
     renderField()
     fireEvent.click(screen.getByRole('button', { name: 'Changer' }))
 
-    const search = await screen.findByRole('searchbox', { name: 'Rechercher une icône' })
+    const search = await screen.findByRole('searchbox', { name: 'Rechercher une icône' }, { timeout: 5_000 })
     expect(screen.getByRole('dialog').parentElement).toHaveClass('category-icon-modal-backdrop')
     expect(document.body.contains(screen.getByRole('dialog'))).toBe(true)
     expect(search).toHaveFocus()

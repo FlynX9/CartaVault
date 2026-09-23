@@ -59,4 +59,4 @@ OSRM reste le moteur sans clé ; Google Routes et ORS dépendent des clés et pr
 - [Gérer ses clés API personnelles](/docs/fr/account/api-keys/)
 - [Gérer les fournisseurs et clés d’instance](/docs/fr/administration/api-keys/)
 
-<small>Version CartaVault : **master** · ID : `trips.routing`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.routing`</small>

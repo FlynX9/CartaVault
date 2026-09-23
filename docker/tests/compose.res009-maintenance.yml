@@ -1,0 +1,115 @@
+name: cartavault_res009_maintenance
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://res009:res009-test-pass@postgis:5432/res009
+  CARTAVAULT_ENVIRONMENT: test
+  CARTAVAULT_VERSION: res009-maintenance-test
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_PUBLIC_URL: http://localhost:${RES009_HTTP_PORT_A:-18109}
+  FRONTEND_PUBLIC_URL: http://localhost:${RES009_HTTP_PORT_A:-18109}
+  CORS_ALLOWED_ORIGINS: http://localhost:${RES009_HTTP_PORT_A:-18109}
+  CARTAVAULT_COOKIE_SECURE: "false"
+  CARTAVAULT_SESSION_SECRET: res009-test-session-secret
+  CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: OuaZ1702C8WnrktWVRr4XAwIki3nWFO1YfE8g4GHMZA=
+  CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: admin@res009.test
+  CARTAVAULT_BOOTSTRAP_ADMIN_NAME: RES-009 Admin
+  CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: Res009Maintenance!2026
+  CARTAVAULT_TASK_MODE: sync
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  CARTAVAULT_MAINTENANCE_LEADER_CHECK_INTERVAL_SECONDS: "1"
+  CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_INITIAL_SECONDS: "1"
+  CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_MAX_SECONDS: "3"
+  CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_JITTER_SECONDS: "0"
+  CARTAVAULT_MAINTENANCE_PURGE_INTERVAL_SECONDS: "2"
+  MEDIA_STORAGE: local
+  PHOTO_STORAGE_PATH: /app/storage/photos
+  MEDIA_CACHE_PATH: /app/storage/media-cache
+  AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
+  IMPORT_STORAGE_PATH: /app/storage/imports
+  EMAIL_PROVIDER: none
+  EMAIL_FROM_ADDRESS: res009@cartavault.test
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.5@sha256:19b6ffa248d2f864d29d6c338459f02d63c0d7ce341fa86b3bcba8484a130bff
+    environment:
+      POSTGRES_DB: res009
+      POSTGRES_USER: res009
+      POSTGRES_PASSWORD: res009-test-pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U res009 -d res009"]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+    networks: [test]
+
+  api-a:
+    image: cartavault:res009-maintenance-test
+    environment:
+      <<: *app-environment
+      CARTAVAULT_INSTANCE_ID: res009-a
+    ports:
+      - "${RES009_HTTP_PORT_A:-18109}:8000"
+    volumes:
+      - photos_a:/app/storage/photos
+      - media_cache_a:/app/storage/media-cache
+      - avatars_a:/app/storage/avatars
+      - exports_a:/app/storage/exports
+      - imports_a:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+      start_period: 5s
+    networks: [test]
+
+  api-b:
+    image: cartavault:res009-maintenance-test
+    environment:
+      <<: *app-environment
+      CARTAVAULT_INSTANCE_ID: res009-b
+      CARTAVAULT_PUBLIC_URL: http://localhost:${RES009_HTTP_PORT_B:-18110}
+      FRONTEND_PUBLIC_URL: http://localhost:${RES009_HTTP_PORT_B:-18110}
+      CORS_ALLOWED_ORIGINS: http://localhost:${RES009_HTTP_PORT_B:-18110}
+    ports:
+      - "${RES009_HTTP_PORT_B:-18110}:8000"
+    volumes:
+      - photos_b:/app/storage/photos
+      - media_cache_b:/app/storage/media-cache
+      - avatars_b:/app/storage/avatars
+      - exports_b:/app/storage/exports
+      - imports_b:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+      start_period: 5s
+    networks: [test]
+
+volumes:
+  postgres_data:
+  photos_a:
+  photos_b:
+  media_cache_a:
+  media_cache_b:
+  avatars_a:
+  avatars_b:
+  exports_a:
+  exports_b:
+  imports_a:
+  imports_b:
+
+networks:
+  test:
+    driver: bridge

@@ -64,4 +64,4 @@ Les toggles de configuration sont mis en attente jusqu’à l’enregistrement.
 - [Configurer confidentialité et conformité](/docs/fr/administration/privacy-compliance/)
 - [Superviser l’état de l’instance](/docs/fr/administration/instance-status/)
 
-<small>Version CartaVault : **master** · ID : `admin.general`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.general`</small>

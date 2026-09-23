@@ -63,4 +63,4 @@ La vérification d’adresse précède l’éventuelle approbation.
 - [Administrer les utilisateurs](/docs/fr/administration/users/)
 - [Configurer les e-mails transactionnels](/docs/fr/self-hosting/email/)
 
-<small>Version CartaVault : **master** · ID : `admin.registration`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.registration`</small>

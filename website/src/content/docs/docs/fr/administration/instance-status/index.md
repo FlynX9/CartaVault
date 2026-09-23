@@ -63,4 +63,4 @@ Chaque contrôle a son propre état : une panne externe ne masque pas les autres
 - [Régler la médiathèque et les journaux](/docs/fr/administration/media-logs/)
 - [Installer et mettre à jour CartaVault](/docs/fr/self-hosting/install-update/)
 
-<small>Version CartaVault : **master** · ID : `admin.instance`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.instance`</small>

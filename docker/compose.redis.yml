@@ -1,5 +1,11 @@
 name: cartavault
 
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 # Optional scale-out extension. The supported beta deployment is compose.yml
 # alone (cartavault + postgis); opt in to this file only when queue isolation is
 # operationally required.
@@ -25,6 +31,7 @@ services:
       retries: 12
       start_period: 10s
     networks: [cartavault_private]
+    logging: *json-logging
 
   cartavault:
     environment:
@@ -57,7 +64,7 @@ services:
       timeout: 8s
       retries: 6
       start_period: 20s
+    logging: *json-logging
 
 volumes:
   redis_data:
-

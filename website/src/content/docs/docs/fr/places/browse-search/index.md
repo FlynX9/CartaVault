@@ -59,4 +59,4 @@ Filtres rapides, catégories, tags, statuts, favoris et notes se combinent.
 - [Organiser avec catégories, tags et statuts](/docs/fr/organization/categories-tags-statuses/)
 - [Créer et organiser une sortie](/docs/fr/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `places.browse`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.browse`</small>

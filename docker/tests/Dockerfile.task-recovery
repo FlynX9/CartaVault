@@ -1,0 +1,38 @@
+# Backend-only image for the RES-004/RES-006 crash-recovery failure matrix.
+# It intentionally skips the frontend/documentation/font/vector stages of the
+# production Dockerfile so the harness rebuilds quickly; none of those assets
+# are needed to exercise background-task execution and recovery.
+FROM python:3.14-slim-trixie@sha256:7bec7ddcddeff7975d6ba9b4be7dd6f6b2f55e7491539145e2978f7f97ce9144
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes fonts-dejavu-core curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system cartavault \
+    && useradd --system --gid cartavault --create-home --home-dir /home/cartavault cartavault
+
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
+
+COPY --chown=cartavault:cartavault backend/alembic.ini ./alembic.ini
+COPY --chown=cartavault:cartavault backend/app ./app
+COPY --chown=cartavault:cartavault backend/migrations ./migrations
+COPY --chown=cartavault:cartavault shared /shared
+
+RUN mkdir -p /app/storage/photos /app/storage/media-cache /app/storage/avatars /app/storage/exports /app/storage/imports \
+    && chown -R cartavault:cartavault /app/storage
+
+USER cartavault
+EXPOSE 8000
+
+HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=24 \
+    CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"
+
+ENTRYPOINT ["python", "-m", "app.container_entrypoint"]

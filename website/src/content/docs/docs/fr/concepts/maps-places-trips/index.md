@@ -56,4 +56,4 @@ Une carte porte ses catégories, tags, statuts, membres et réglages.
 - [Parcourir et rechercher les lieux](/docs/fr/places/browse-search/)
 - [Créer et organiser une sortie](/docs/fr/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `concepts.data-model`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `concepts.data-model`</small>

@@ -58,4 +58,4 @@ La règle exige au moins 12 caractères, majuscule, minuscule, chiffre et caract
 - [Comprendre la sécurité du compte](/docs/fr/account/security/overview/)
 - [Gérer les sessions et appareils](/docs/fr/account/security/sessions/)
 
-<small>Version CartaVault : **master** · ID : `account.password`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.password`</small>

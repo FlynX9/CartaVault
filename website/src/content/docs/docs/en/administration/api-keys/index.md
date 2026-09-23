@@ -63,4 +63,4 @@ Secrets are encrypted and masked after saving.
 - [Prepare CartaVault Vector basemaps](/docs/en/administration/cartavault-vector/)
 - [Configure transactional email](/docs/en/self-hosting/email/)
 
-<small>Version CartaVault : **master** · ID : `admin.api-keys`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.api-keys`</small>

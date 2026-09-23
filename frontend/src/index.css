@@ -7815,9 +7815,29 @@ html[data-theme='dark'] .trip-night-map-popup .trip-night-map-popup__description
 .trip-planner-panel .trip-panel-night small { font-size: 0.6rem; }
 .trip-night-metrics { display: flex !important; grid-auto-flow: column; align-items: center; gap: 0.3rem; }
 .trip-night-metrics > span { display: inline-flex; min-height: 25px; align-items: center; gap: 0.2rem; padding: 0.2rem 0.48rem; color: #fff; background: var(--cv-color-navy); border-radius: 6px; font-size: 0.59rem; font-weight: 720; white-space: nowrap; }
-.trip-planner-panel .trip-panel-day.is-active { border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 42%, #dfe7ec); }
+.trip-planner-panel .trip-panel-day.is-active { border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 65%, #dfe7ec); }
 .trip-planner-panel .trip-panel-departure { --trip-anchor-color: var(--cv-color-teal); background: color-mix(in srgb, var(--trip-anchor-color) 7%, white); border-color: color-mix(in srgb, var(--trip-anchor-color) 30%, white); }
+.trip-planner-panel .trip-panel-departure.is-active {
+  z-index: 2;
+  border-color: color-mix(in srgb, var(--trip-anchor-color) 70%, white);
+  outline: 2px solid color-mix(in srgb, var(--trip-anchor-color) 50%, white);
+  outline-offset: 0;
+  box-shadow:
+    0 5px 11px color-mix(in srgb, var(--trip-anchor-color) 14%, transparent),
+    0 2px 4px rgb(13 27 42 / 11%);
+  transform: translateY(-1px);
+}
 .trip-planner-panel .trip-panel-arrival { --trip-anchor-color: var(--cv-color-slate); background: color-mix(in srgb, var(--trip-anchor-color) 7%, white); border-color: color-mix(in srgb, var(--trip-anchor-color) 30%, white); }
+.trip-planner-panel .trip-panel-arrival.is-active {
+  z-index: 2;
+  border-color: color-mix(in srgb, var(--trip-anchor-color) 70%, white);
+  outline: 2px solid color-mix(in srgb, var(--trip-anchor-color) 50%, white);
+  outline-offset: 0;
+  box-shadow:
+    0 5px 11px color-mix(in srgb, var(--trip-anchor-color) 14%, transparent),
+    0 2px 4px rgb(13 27 42 / 11%);
+  transform: translateY(-1px);
+}
 .trip-planner-panel .trip-panel-departure .trip-timeline-anchor-badge, .trip-planner-panel .trip-panel-arrival .trip-timeline-anchor-badge { background: var(--trip-anchor-color); }
 .trip-planner-panel .trip-panel-insert-day { display: flex; min-height: 1.55rem; align-items: center; margin: -0.35rem 0 0.45rem; }
 .trip-planner-panel .trip-panel-insert-day > button { display: grid; width: 100%; min-height: 1.55rem; grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); align-items: center; padding: 0; background: transparent; border: 0; cursor: pointer; opacity: 0; transition: opacity 140ms ease; }
@@ -12889,13 +12909,19 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   border-bottom-color: color-mix(in srgb, var(--cv-color-gray) 28%, var(--cv-border-subtle, #e9eef1));
 }
 
-.trip-planner-panel .trip-panel-night.is-active {
+.trip-planner-panel .trip-panel-night.is-active:not(.trip-panel-departure):not(.trip-panel-arrival) {
+  z-index: 2;
   background: var(--cv-surface, #fff);
-  border-color: color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 42%, var(--cv-border-subtle, #dfe7ec));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 12%, transparent);
+  border-color: color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 70%, var(--cv-border-subtle, #dfe7ec));
+  outline: 2px solid color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 50%, var(--cv-border-subtle, #dfe7ec));
+  outline-offset: 0;
+  box-shadow:
+    0 5px 11px color-mix(in srgb, var(--trip-night-next-color, var(--cv-color-teal)) 14%, transparent),
+    0 2px 4px rgb(13 27 42 / 11%);
+  transform: translateY(-1px);
 }
 
-.trip-planner-panel .trip-panel-night.is-active .trip-night-header-row {
+.trip-planner-panel .trip-panel-night.is-active:not(.trip-panel-departure):not(.trip-panel-arrival) .trip-night-header-row {
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--trip-night-previous-color, var(--cv-color-teal)) 12%, var(--cv-surface, #fff)),
@@ -12922,8 +12948,8 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
 
 .trip-planner-panel .trip-panel-day.is-active {
   z-index: 2;
-  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, var(--cv-border-subtle, #dfe7ec));
-  outline: 1px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 38%, var(--cv-border-subtle, #dfe7ec));
+  border-color: color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 70%, var(--cv-border-subtle, #dfe7ec));
+  outline: 2px solid color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 50%, var(--cv-border-subtle, #dfe7ec));
   outline-offset: 0;
   box-shadow:
     0 5px 11px color-mix(in srgb, var(--trip-day-color, var(--cv-color-teal)) 14%, transparent),
@@ -12939,7 +12965,7 @@ html[data-theme='dark'] .trip-planner-panel .trip-panel-night .trip-night-placeh
   );
 }
 
-.trip-planner-panel .trip-panel-night.is-active {
+.trip-planner-panel .trip-panel-night.is-active:not(.trip-panel-departure):not(.trip-panel-arrival) {
   z-index: 2;
   border-color: color-mix(
     in srgb,
@@ -13488,11 +13514,11 @@ html[data-theme='dark'] .trip-planner-panel .trip-day-header-metrics > .trip-day
   .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) > .trip-day-header-metrics > :nth-child(5) { grid-column: 6; }
 
   .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) .trip-day-header-metric {
-    justify-items: start;
+    justify-items: center;
   }
 
   .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) .trip-day-header-metric > strong {
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) > .trip-day-header-metrics > span.trip-day-header-metric {
@@ -21102,10 +21128,10 @@ body.cv-panel-dock-split-resizing {
   .trip-planner-panel {
     --trip-header-columns:
       minmax(6rem, 1.4fr)
-      minmax(6.6rem, 1fr)
-      minmax(5.8rem, 1fr)
-      minmax(5.8rem, 1fr)
-      minmax(6.5rem, .85fr);
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      minmax(0, 1fr);
   }
 
   .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) {
@@ -21142,18 +21168,14 @@ body.cv-panel-dock-split-resizing {
   .trip-planner-panel {
     --trip-header-columns:
       minmax(5.6rem, 1.25fr)
-      minmax(6rem, 1fr)
-      minmax(5.6rem, 1fr)
-      minmax(5.6rem, 1fr)
-      minmax(5rem, .65fr);
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      minmax(0, 1fr)
+      minmax(0, 1fr);
   }
 
   .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) {
     grid-template-columns: var(--trip-header-columns);
-  }
-
-  .trip-planner-panel :is(.trip-panel-day > summary, .trip-panel-night .trip-night-header-row) > .trip-day-header-metrics > .trip-day-header-load {
-    min-width: 5rem;
   }
 
   .trip-planner-panel .trip-day-load-segments > i {

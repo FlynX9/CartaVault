@@ -102,13 +102,21 @@ FastAPI serves the same-origin application:
 /api/*     FastAPI API and OpenAPI documentation
 /assets/*  immutable content-hashed Vite assets
 /*         React application and deep-link fallback
-/healthz   lightweight readiness endpoint
+/healthz        lightweight liveness endpoint
+/health/ready   PostgreSQL-backed readiness endpoint
 ```
 
 Unknown `/api/*` routes remain JSON 404 responses. The React shell is not used
 for API failures and `index.html` is not cached as an immutable asset.
-`postgis` uses `pg_isready`; `cartavault` becomes healthy only after migrations
-and the FastAPI lifespan have completed.
+`postgis` uses `pg_isready`; `cartavault` uses `/health/ready` and becomes
+healthy only after migrations and the FastAPI lifespan have completed. During a
+PostgreSQL outage it remains running but becomes unhealthy, then returns to
+healthy automatically when PostgreSQL recovers; Docker does not restart a
+container merely because its health status is unhealthy.
+
+Every supported production Compose service uses Docker's `json-file` logging
+driver with `max-size=10m` and `max-file=5`. This bounds retained container logs
+for the standard, Redis, Portainer, external-PostgreSQL, and SaaS topologies.
 
 ```sh
 docker compose --env-file docker/.env -f docker/compose.yml logs postgis cartavault
@@ -129,6 +137,7 @@ The standard Compose stack uses these named volumes:
 
 ```text
 postgres_data  photos_data  avatars_data  exports_data  imports_data
+vector_maps_data
 ```
 
 The Portainer/Synology stack maps the same data below
@@ -136,6 +145,7 @@ The Portainer/Synology stack maps the same data below
 
 ```text
 postgres/  photos/  avatars/  exports/  imports/
+maps/
 ```
 
 The application runs as non-root UID/GID `999`. Bind mounts must grant that
@@ -176,6 +186,17 @@ For Portainer/Synology, combine `compose.portainer.yml` with
 application/worker to `CARTAVAULT_TASK_MODE=redis`, adds a private authenticated
 Redis service and reuses the same CartaVault image for the worker.
 
+Backup and restore resolve the deployed Compose file set from the running API
+container's Compose labels, rather than trusting an optional overlay argument.
+Redis mode fails closed unless its worker is present in both resolved
+configuration and the deployed project. They stop and verify the worker before
+attempting to stop the API, and start the API before the worker after the
+database/media state is stable. A stop failure is a hard safety barrier: no
+protected backup capture, database rename, local-media replacement, or S3
+namespace mutation is attempted while any writer may still be active. One
+mandatory nonblocking `flock` shared by backup and restore rejects every
+same-project overlap before protected work.
+
 The standard offline export intentionally contains no Redis image. Pull/export
 the pinned Redis image separately when this optional topology is selected.
 See [`docs/background-tasks.md`](../docs/background-tasks.md).
@@ -194,7 +215,8 @@ The change is non-destructive: existing database and media data are reused.
    remove Redis variables unless the optional extension is intentionally used.
 5. Deploy `compose.yml` or `compose.portainer.yml`. The unified container waits
    for PostGIS and runs `alembic upgrade head` before becoming healthy.
-6. Validate `/healthz`, login, a map, a media file and one safe write.
+6. Validate `/healthz`, `/health/ready`, login, a map, a media file and one
+   safe write.
 
 Do not delete the old volumes until the new stack and a restore test are
 accepted. Rolling an application image back is safe only while the migrated

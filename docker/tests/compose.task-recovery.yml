@@ -1,0 +1,121 @@
+name: cartavault-task-recovery
+
+# Disposable crash-recovery validation stack (RES-004 / RES-006). All resources
+# are isolated to this project and torn down after the matrix runs; nothing
+# here touches the development database, Redis, or volumes.
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://taskuser:task-recovery-pass@postgis:5432/taskrecovery
+  CARTAVAULT_ENVIRONMENT: test
+  CARTAVAULT_VERSION: task-recovery-test
+  CARTAVAULT_API_PREFIX: /api
+  CARTAVAULT_PUBLIC_URL: http://localhost:${TASK_HTTP_PORT:-18095}
+  FRONTEND_PUBLIC_URL: http://localhost:${TASK_HTTP_PORT:-18095}
+  CORS_ALLOWED_ORIGINS: http://localhost:${TASK_HTTP_PORT:-18095}
+  CARTAVAULT_COOKIE_SECURE: "false"
+  CARTAVAULT_CREDENTIALS_ENCRYPTION_KEY: OuaZ1702C8WnrktWVRr4XAwIki3nWFO1YfE8g4GHMZA=
+  CARTAVAULT_BOOTSTRAP_ADMIN_EMAIL: admin@task-recovery.test
+  CARTAVAULT_BOOTSTRAP_ADMIN_NAME: Task Recovery Admin
+  CARTAVAULT_BOOTSTRAP_ADMIN_PASSWORD: TaskRecovery!Pass2026
+  CARTAVAULT_TASK_MODE: ${TASK_MODE:-sync}
+  REDIS_URL: redis://redis:6379/0
+  CARTAVAULT_TASK_QUEUE: cartavault
+  CARTAVAULT_TASK_LEASE_SECONDS: ${TASK_LEASE_SECONDS:-12}
+  CARTAVAULT_TASK_HEARTBEAT_SECONDS: ${TASK_HEARTBEAT_SECONDS:-4}
+  CARTAVAULT_TASK_RECOVERY_INTERVAL_SECONDS: ${TASK_RECOVERY_INTERVAL_SECONDS:-4}
+  CARTAVAULT_TASK_STALE_AFTER_SECONDS: ${TASK_STALE_AFTER_SECONDS:-12}
+  CARTAVAULT_TASK_STALL_SECONDS: ${TASK_STALL_SECONDS:-20}
+  CARTAVAULT_PDF_MAP_TILES_ENABLED: "false"
+  EMAIL_PROVIDER: none
+  EMAIL_FROM_ADDRESS: task@task-recovery.test
+  PHOTO_STORAGE_PATH: /app/storage/photos
+  AVATAR_STORAGE_PATH: /app/storage/avatars
+  EXPORT_STORAGE_PATH: /app/storage/exports
+  IMPORT_STORAGE_PATH: /app/storage/imports
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.5@sha256:19b6ffa248d2f864d29d6c338459f02d63c0d7ce341fa86b3bcba8484a130bff
+    environment:
+      POSTGRES_DB: taskrecovery
+      POSTGRES_USER: taskuser
+      POSTGRES_PASSWORD: task-recovery-pass
+    volumes:
+      - task_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskuser -d taskrecovery"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    networks: [tasknet]
+
+  redis:
+    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - task_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    networks: [tasknet]
+
+  api:
+    image: cartavault:task-recovery-test
+    environment:
+      <<: *app-environment
+      CARTAVAULT_TASK_CRASH_POINT: ${TASK_CRASH_POINT:-}
+    ports:
+      - "${TASK_HTTP_PORT:-18095}:8000"
+    volumes:
+      - task_photos_data:/app/storage/photos
+      - task_avatars_data:/app/storage/avatars
+      - task_exports_data:/app/storage/exports
+      - task_imports_data:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 5s
+    networks: [tasknet]
+
+  worker:
+    image: cartavault:task-recovery-test
+    entrypoint: ["python", "-m", "app.tasks.worker"]
+    environment:
+      <<: *app-environment
+      CARTAVAULT_TASK_CRASH_POINT: ${TASK_CRASH_POINT:-}
+    volumes:
+      - task_photos_data:/app/storage/photos
+      - task_avatars_data:/app/storage/avatars
+      - task_exports_data:/app/storage/exports
+      - task_imports_data:/app/storage/imports
+    depends_on:
+      postgis:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # The API container owns migrations; the worker must not query the schema
+      # before it exists.
+      api:
+        condition: service_healthy
+    networks: [tasknet]
+
+volumes:
+  task_postgres_data:
+  task_redis_data:
+  task_photos_data:
+  task_avatars_data:
+  task_exports_data:
+  task_imports_data:
+
+networks:
+  tasknet:
+    driver: bridge

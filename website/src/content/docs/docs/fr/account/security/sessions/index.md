@@ -58,4 +58,4 @@ L’identification du navigateur dépend du user-agent et peut rester génériqu
 - [Comprendre la sécurité du compte](/docs/fr/account/security/overview/)
 - [Changer le mot de passe](/docs/fr/account/security/password/)
 
-<small>Version CartaVault : **master** · ID : `account.sessions`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.sessions`</small>

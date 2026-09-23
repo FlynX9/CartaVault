@@ -53,6 +53,18 @@ It does not replace unit tests, integration tests, linting, frontend builds, or 
 - [ ] Theme, language, density, routing, and basemap preferences persist after refresh.
 - [ ] Account dialogs remain keyboard accessible and appear above map overlays.
 
+## MFA and sensitive account changes
+
+- [ ] TOTP setup requires the current password, displays the enrollment secret/QR code without caching it, and accepts a valid confirmation code only before enrollment expiry.
+- [ ] TOTP confirmation enables MFA, disables email MFA if it was enabled, shows recovery codes once, and rotates the session/CSRF pair.
+- [ ] Login with TOTP enabled presents a challenge; a valid TOTP code creates a fresh session and an invalid or replayed code is rejected.
+- [ ] Recovery codes work for login and are single-use; regeneration requires the current password plus an existing factor.
+- [ ] TOTP disable/reset requires the current password plus the current TOTP or a recovery code, then revokes the affected sessions.
+- [ ] Email MFA setup requires the current password, applies the send cooldown/rate limit, confirms a valid emailed code, and refuses enrollment while TOTP is enabled.
+- [ ] Login with email MFA enabled presents the emailed-code challenge; expired, exhausted, or incorrect codes are rejected.
+- [ ] Email MFA disable requires the current password and removes the factor without exposing the code or secret.
+- [ ] Sensitive password, email, and MFA changes cannot be completed with a missing or invalid CSRF token, and the resulting session/CSRF cookies behave as documented.
+
 # 2. Map creation and management
 
 ## Map list
@@ -329,7 +341,8 @@ git status
 git diff --stat
 ```
 
-- [ ] All project Markdown is in English.
+- [ ] Operator/developer source documentation is maintained in its declared language; localized user-facing documentation is provided in French and English where the documentation pipeline requires parity.
+- [ ] Historical documents retain their original language and date boundary, and are clearly labeled as historical rather than treated as current policy.
 - [ ] Documentation matches the tested behavior.
 - [ ] No generated storage, cache, secret, or local configuration is tracked.
 

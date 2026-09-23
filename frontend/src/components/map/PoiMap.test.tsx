@@ -305,21 +305,22 @@ describe('PoiMap selection lifecycle', () => {
     const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [day] } satisfies Trip
     const commonProps = { places: [], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 13 }, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(), focusRequest: null, layoutKey: 'test', onPopupClose: vi.fn(), basemapId: 'cartavault-light' as const, onBasemapTileError: vi.fn(), trip, tripViewOnly: true }
     const { container, rerender } = render(<PoiMap {...commonProps} selectedTripStopId="stop-1" hiddenTripDayIds={new Set()} />)
+    const tripVectorPaths = () => [...container.querySelectorAll<SVGPathElement>('.leaflet-cv-trip-route-front-pane path, .leaflet-cv-trip-stop-front-pane path, .leaflet-cv-trip-route-back-pane path, .leaflet-cv-trip-stop-back-pane path')]
 
-    await waitFor(() => expect(container.querySelectorAll('.leaflet-overlay-pane path')).toHaveLength(2))
+    await waitFor(() => expect(tripVectorPaths()).toHaveLength(2))
     expect(container.querySelector('.trip-stop-number')).toBeInTheDocument()
     expect(container.querySelector('.trip-stop-number--selected')).toBeInTheDocument()
-    const selectedStopMarker = [...container.querySelectorAll<SVGPathElement>('.leaflet-overlay-pane path')].find((path) => path.getAttribute('stroke-width') === '5')
+    const selectedStopMarker = tripVectorPaths().find((path) => path.getAttribute('stroke-width') === '5')
     expect(selectedStopMarker).toHaveAttribute('stroke', 'white')
 
     const leafletMap = container.querySelector('.leaflet-container')
     rerender(<PoiMap {...commonProps} basemapId="google-satellite" selectedTripStopId="stop-1" hiddenTripDayIds={new Set()} />)
     expect(container.querySelector('.leaflet-container')).toBe(leafletMap)
-    expect(container.querySelectorAll('.leaflet-overlay-pane path')).toHaveLength(2)
+    expect(tripVectorPaths()).toHaveLength(2)
     expect(container.querySelector('.trip-stop-number--selected')).toBeInTheDocument()
 
     rerender(<PoiMap {...commonProps} hiddenTripDayIds={new Set(['day-1'])} />)
-    await waitFor(() => expect(container.querySelectorAll('.leaflet-overlay-pane path')).toHaveLength(0))
+    await waitFor(() => expect(tripVectorPaths()).toHaveLength(0))
     expect(container.querySelector('.trip-stop-number')).not.toBeInTheDocument()
   })
 
@@ -340,9 +341,45 @@ describe('PoiMap selection lifecycle', () => {
     const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [baseDay, selectedDay] } satisfies Trip
     const { container } = render(<PoiMap places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 6 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="selected-route" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} trip={trip} tripViewOnly activeTripDayId="day-1" selectedTripTimelineKey="stop:stop-2" />)
 
-    await waitFor(() => expect(container.querySelector('.leaflet-overlay-pane path[stroke="#DC2626"][stroke-width="6"]')).toBeInTheDocument())
-    expect(container.querySelector('.leaflet-overlay-pane path[stroke="#2563EB"][stroke-width="3"]')).toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.leaflet-cv-trip-route-front-pane path[stroke="#DC2626"][stroke-width="6"]')).toBeInTheDocument())
+    expect(container.querySelector('.leaflet-cv-trip-route-back-pane path[stroke="#2563EB"][stroke-width="3"]')).toBeInTheDocument()
     expect(container.querySelector('.trip-stop-number--selected')).toBeInTheDocument()
+  })
+
+  it('paints the selected day route and stops on top while dimming the other days', async () => {
+    const firstDay = { id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#0FA68A', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed' as const, safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: 1000, route_duration_seconds: 120, visit_duration_minutes: 30, total_duration_minutes: 32, route_geometry: { type: 'LineString' as const, coordinates: [[2, 48], [2.2, 48.2]] as [number, number][] }, route_segments: [], route_status: 'ready', sort_order: 0, stops: [{ id: 'stop-1', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location' as const, name: 'Jour 1', latitude: 48.1, longitude: 2.1, address: null, sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' as const }] }
+    const secondDay = { ...firstDay, id: 'day-2', day_number: 2, color: '#2563EB', sort_order: 1, route_geometry: { type: 'LineString' as const, coordinates: [[2.2, 48.2], [3, 49]] as [number, number][] }, stops: [{ ...firstDay.stops[0], id: 'stop-2', trip_day_id: 'day-2', name: 'Jour 2', latitude: 49, longitude: 3 }] }
+    const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [firstDay, secondDay] } satisfies Trip
+    const commonProps = { places: [] as MapPlace[], selectedPlaceId: null, initialView: { center: [48, 2] as [number, number], zoom: 6 }, onBoundsChange: vi.fn(), onViewChange: vi.fn(), onPlaceSelect: vi.fn(), focusRequest: null, layoutKey: 'day-focus', onPopupClose: vi.fn(), basemapId: 'cartavault-light' as const, onBasemapTileError: vi.fn(), trip, tripViewOnly: true, hiddenTripDayIds: new Set<string>() }
+    const routeByColor = (root: HTMLElement, color: string) => [...root.querySelectorAll<SVGPathElement>('.leaflet-cv-trip-route-front-pane path, .leaflet-cv-trip-route-back-pane path')].find((path) => path.getAttribute('stroke') === color)!
+    const paneZ = (root: HTMLElement, pane: string) => Number(root.querySelector<HTMLElement>(`.leaflet-${pane}-pane`)?.style.zIndex ?? '0')
+
+    const { container, rerender } = render(<PoiMap {...commonProps} activeTripDayId="day-2" />)
+    await waitFor(() => expect(container.querySelector('.leaflet-cv-trip-route-front-pane path[stroke="#2563EB"]')).toBeInTheDocument())
+    // The selected day route and stops are promoted to the front panes, fully opaque.
+    expect(routeByColor(container, '#2563EB')).toHaveAttribute('stroke-width', '6')
+    expect(routeByColor(container, '#2563EB')).toHaveAttribute('stroke-opacity', '0.95')
+    expect(container.querySelector('.leaflet-cv-trip-stop-front-pane path[fill="#2563EB"]')).toBeInTheDocument()
+    // The other days are demoted to the back panes and dimmed.
+    expect(routeByColor(container, '#0FA68A')).toHaveAttribute('stroke-width', '3')
+    expect(routeByColor(container, '#0FA68A')).toHaveAttribute('stroke-opacity', '0.38')
+    expect(container.querySelector('.leaflet-cv-trip-route-back-pane path[stroke="#0FA68A"]')).toBeInTheDocument()
+    expect(container.querySelector('.leaflet-cv-trip-stop-back-pane path[fill="#0FA68A"]')).toBeInTheDocument()
+    // Z-index hierarchy: selected stops > selected route > other stops > other routes.
+    expect(paneZ(container, 'cv-trip-stop-front')).toBeGreaterThan(paneZ(container, 'cv-trip-route-front'))
+    expect(paneZ(container, 'cv-trip-route-front')).toBeGreaterThan(paneZ(container, 'cv-trip-stop-back'))
+    expect(paneZ(container, 'cv-trip-stop-back')).toBeGreaterThan(paneZ(container, 'cv-trip-route-back'))
+
+    rerender(<PoiMap {...commonProps} activeTripDayId="day-1" />)
+    await waitFor(() => expect(container.querySelector('.leaflet-cv-trip-route-front-pane path[stroke="#0FA68A"]')).toBeInTheDocument())
+    expect(routeByColor(container, '#2563EB')).toHaveAttribute('stroke-width', '3')
+    expect(container.querySelector('.leaflet-cv-trip-route-back-pane path[stroke="#2563EB"]')).toBeInTheDocument()
+
+    rerender(<PoiMap {...commonProps} activeTripDayId={null} />)
+    await waitFor(() => expect(container.querySelectorAll('.leaflet-cv-trip-route-front-pane path')).toHaveLength(2))
+    expect(routeByColor(container, '#0FA68A')).toHaveAttribute('stroke-opacity', '0.95')
+    expect(routeByColor(container, '#2563EB')).toHaveAttribute('stroke-opacity', '0.95')
+    expect(container.querySelectorAll('.leaflet-cv-trip-route-back-pane path')).toHaveLength(0)
   })
 
   it('emphasizes both routes and combines their endpoint icons when a transition night is selected', async () => {
@@ -354,8 +391,8 @@ describe('PoiMap selection lifecycle', () => {
     const trip = { id: 'trip-1', map_id: 'map-id', created_by_user_id: 'user-1', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft' as const, routing_profile: 'driving' as const, low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure, arrival, nights: [night], days: [firstDay, secondDay] } satisfies Trip
     const { container } = render(<PoiMap places={[]} selectedPlaceId={null} initialView={{ center: [48, 2], zoom: 6 }} onBoundsChange={vi.fn()} onViewChange={vi.fn()} onPlaceSelect={vi.fn()} focusRequest={null} layoutKey="selected-night" onPopupClose={vi.fn()} basemapId="cartavault-light" onBasemapTileError={vi.fn()} trip={trip} tripViewOnly activeTripDayId="day-1" activeTripNightTarget={{ nightId: 'night-1', previousDayId: 'day-1', nextDayId: 'day-2' }} selectedTripTimelineKey="night:night-1" />)
 
-    await waitFor(() => expect(container.querySelector('.leaflet-overlay-pane path[stroke="#0FA68A"][stroke-width="6"]')).toBeInTheDocument())
-    expect(container.querySelector('.leaflet-overlay-pane path[stroke="#2563EB"][stroke-width="6"]')).toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.leaflet-cv-trip-route-front-pane path[stroke="#0FA68A"][stroke-width="6"]')).toBeInTheDocument())
+    expect(container.querySelector('.leaflet-cv-trip-route-front-pane path[stroke="#2563EB"][stroke-width="6"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"]')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"] .trip-day-endpoint-icon__glyphs')).toBeInTheDocument()
     expect(container.querySelector('[data-endpoint-roles="end-start"]')).toHaveAttribute('data-arrival-side', 'left')

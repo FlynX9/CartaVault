@@ -59,4 +59,4 @@ Migrations apply during startup before readiness.
 - [Configure transactional email](/docs/en/self-hosting/email/)
 - [Use CartaVault without a network](/docs/en/offline/pwa-navigation/)
 
-<small>Version CartaVault : **master** · ID : `deployment.install`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `deployment.install`</small>

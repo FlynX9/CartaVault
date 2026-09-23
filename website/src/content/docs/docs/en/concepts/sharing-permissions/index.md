@@ -55,4 +55,4 @@ The owner controls members and ownership transfer.
 - [Manage map members](/docs/en/maps/members/)
 - [Administer users](/docs/en/administration/users/)
 
-<small>Version CartaVault : **master** · ID : `concepts.permissions`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `concepts.permissions`</small>

@@ -71,4 +71,4 @@ Le menu contextuel se ferme en cliquant ailleurs.
 - [Configurer les profils de quotas](/docs/fr/administration/quotas/)
 - [Comprendre la sécurité du compte](/docs/fr/account/security/overview/)
 
-<small>Version CartaVault : **master** · ID : `admin.users`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.users`</small>

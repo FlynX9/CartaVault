@@ -63,4 +63,4 @@ Images are never enlarged.
 - [Monitor instance status](/docs/en/administration/instance-status/)
 - [Configure privacy and compliance](/docs/en/administration/privacy-compliance/)
 
-<small>Version CartaVault : **master** · ID : `admin.media-logs`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.media-logs`</small>

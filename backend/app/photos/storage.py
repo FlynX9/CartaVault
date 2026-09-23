@@ -1,4 +1,5 @@
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import BinaryIO
@@ -6,8 +7,12 @@ from uuid import UUID
 
 from dotenv import load_dotenv
 from PIL import Image, ImageOps, UnidentifiedImageError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from app.photos.models import StorageOperation
 from app.photos.object_storage import ObjectStorageError, build_object_storage, media_storage_mode
+from app.tasks.fault_injection import crash_point
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -88,9 +93,15 @@ def get_photo_storage_root() -> Path:
     )
 
     if configured_path.is_absolute():
-        return configured_path.resolve()
+        unresolved_root = configured_path.absolute()
+        if _contains_symlink(unresolved_root):
+            raise PhotoStorageError("The media storage root must not use symbolic links")
+        return unresolved_root.resolve()
 
-    storage_root = (BACKEND_ROOT / configured_path).resolve()
+    unresolved_root = (BACKEND_ROOT / configured_path).absolute()
+    if _contains_symlink(unresolved_root):
+        raise PhotoStorageError("The media storage root must not use symbolic links")
+    storage_root = unresolved_root.resolve()
 
     try:
         storage_root.relative_to(BACKEND_ROOT)
@@ -100,6 +111,15 @@ def get_photo_storage_root() -> Path:
         ) from error
 
     return storage_root
+
+
+def _contains_symlink(path: Path) -> bool:
+    current = path
+    while current != current.parent:
+        if current.is_symlink():
+            return True
+        current = current.parent
+    return False
 
 
 def detect_photo_media_type(header: bytes) -> str | None:
@@ -227,6 +247,7 @@ def store_photo_file(
 
     try:
         build_object_storage().put(relative_path, final_path, content_type=detected_type)
+        crash_point("storage_after_write")
     except ObjectStorageError as error:
         final_path.unlink(missing_ok=True)
         _remove_directory_if_empty(place_directory, storage_root)
@@ -409,8 +430,39 @@ def get_photo_thumbnail(
     relative_path: str,
     place_id: UUID,
     photo_id: UUID,
+    session: Session,
 ) -> Path:
     """Return a deterministic, metadata-stripped WebP thumbnail."""
+
+    from app.photos.reconciliation import (
+        acquire_storage_identity_lock,
+        active_storage_backend,
+        process_storage_operation,
+        thumbnail_object_key,
+    )
+
+    thumbnail_key = thumbnail_object_key(photo_id)
+    backend_name = active_storage_backend("media")
+    acquire_storage_identity_lock(
+        session,
+        backend=backend_name,
+        namespace="media",
+        object_key=thumbnail_key,
+    )
+    refresh_id = session.scalar(
+        select(StorageOperation.id).where(
+            StorageOperation.operation == "delete",
+            StorageOperation.backend == backend_name,
+            StorageOperation.namespace == "media",
+            StorageOperation.object_key == thumbnail_key,
+            StorageOperation.purpose == "thumbnail_refresh",
+        )
+    )
+    if refresh_id is not None:
+        process_storage_operation(session, refresh_id, force_terminal=True)
+        session.flush()
+        if session.get(StorageOperation, refresh_id) is not None:
+            raise PhotoStorageError("Unable to refresh the photo thumbnail")
 
     source_path = resolve_photo_file(
         relative_path,
@@ -427,7 +479,6 @@ def get_photo_thumbnail(
         raise PhotoStorageError("Unable to create a safe thumbnail path") from error
 
     backend = build_object_storage()
-    thumbnail_key = PurePosixPath(".thumbnails", f"{photo_id}.webp").as_posix()
     try:
         if media_storage_mode() == "s3" and backend.materialize(thumbnail_key, thumbnail_path):
             return thumbnail_path
@@ -500,9 +551,16 @@ def resolve_photo_file(
 
     try:
         parsed_place_id = UUID(stored_place_id)
-        parsed_photo_id = UUID(Path(stored_filename).stem)
+        filename_parts = Path(stored_filename).stem.split(".")
+        parsed_photo_id = UUID(filename_parts[0])
     except ValueError as error:
         raise InvalidPhotoPathError("The stored photo path is invalid") from error
+
+    if len(filename_parts) not in {1, 2} or (
+        len(filename_parts) == 2
+        and re.fullmatch(r"[0-9a-f]{32}", filename_parts[1]) is None
+    ):
+        raise InvalidPhotoPathError("The stored photo path is invalid")
 
     if (
         parsed_place_id != place_id

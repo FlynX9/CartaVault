@@ -59,4 +59,4 @@ Une étape peut référencer un POI ou un emplacement libre.
 - [Parcourir la chronologie d’une sortie](/docs/fr/trips/timeline/)
 - [Préparer une sortie hors ligne](/docs/fr/offline/trips/)
 
-<small>Version CartaVault : **master** · ID : `trips.planning`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.planning`</small>

@@ -58,4 +58,4 @@ Browser identification depends on the user agent and may remain generic.
 - [Understand account security](/docs/en/account/security/overview/)
 - [Change your password](/docs/en/account/security/password/)
 
-<small>Version CartaVault : **master** · ID : `account.sessions`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.sessions`</small>

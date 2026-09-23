@@ -10,7 +10,8 @@ from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.photos.models import Photo
+from app.photos.models import Photo, StorageOperation
+from app.photos.object_storage import LocalObjectStorage, ObjectStorageError
 from app.places.models import Place
 from app.quotas.registry import QuotaKey
 from app.quotas.service import QuotaService
@@ -121,21 +122,21 @@ def test_permanent_place_delete_cleans_original_and_thumbnail_after_commit(
         real_commit()
         committed = True
 
-    from app.photos import storage as photo_storage_module
+    backend = LocalObjectStorage(photo_storage)
+    real_delete = backend.delete
 
-    real_delete = photo_storage_module.delete_photo_file
-
-    def tracked_delete(*args, **kwargs):
+    def tracked_delete(key):
         cleanup_after_commit.append(committed)
-        return real_delete(*args, **kwargs)
+        return real_delete(key)
 
     monkeypatch.setattr(database_session, "commit", tracked_commit)
-    monkeypatch.setattr("app.trash.service.delete_photo_file", tracked_delete)
+    backend.delete = tracked_delete
+    monkeypatch.setattr("app.photos.reconciliation._backend", lambda _namespace: backend)
 
     response = integration_client.delete(f"/trash/place/{place['id']}")
 
     assert response.status_code == 204
-    assert cleanup_after_commit == [True]
+    assert cleanup_after_commit == [True, True]
     assert database_session.get(Photo, photo["id"]) is None
     assert not original.exists()
     assert not thumbnail.exists()
@@ -174,20 +175,20 @@ def test_storage_failure_does_not_rollback_committed_purge_and_continues(
         integration_client, photo_storage, poi_map.id, "Storage error two"
     )
     assert integration_client.delete(f"/maps/{poi_map.id}").status_code == 204
-    real_delete = __import__("app.photos.storage", fromlist=["delete_photo_file"]).delete_photo_file
+    backend = LocalObjectStorage(photo_storage)
+    real_delete = backend.delete
     calls = 0
     warnings: list[str] = []
 
-    def flaky_delete(*args, **kwargs):
+    def flaky_delete(key):
         nonlocal calls
         calls += 1
         if calls == 1:
-            from app.photos.storage import PhotoStorageError
+            raise ObjectStorageError("injected cleanup failure")
+        return real_delete(key)
 
-            raise PhotoStorageError("injected cleanup failure")
-        return real_delete(*args, **kwargs)
-
-    monkeypatch.setattr("app.trash.service.delete_photo_file", flaky_delete)
+    backend.delete = flaky_delete
+    monkeypatch.setattr("app.photos.reconciliation._backend", lambda _namespace: backend)
     monkeypatch.setattr(
         "app.trash.service.logger.warning",
         lambda message, *args, **kwargs: warnings.append(message),
@@ -200,9 +201,9 @@ def test_storage_failure_does_not_rollback_committed_purge_and_continues(
     assert database_session.get(Place, second["id"]) is None
     assert database_session.get(Photo, first_photo["id"]) is None
     assert database_session.get(Photo, second_photo["id"]) is None
-    assert calls == 2
+    assert calls == 4
     assert first_original.exists() != second_original.exists()
-    assert warnings == ["Unable to delete purged media"]
+    assert database_session.scalar(select(StorageOperation).where(StorageOperation.status == "pending")) is not None
     first_original.unlink(missing_ok=True)
     second_original.unlink(missing_ok=True)
 
@@ -236,7 +237,7 @@ def test_database_failure_rolls_back_without_touching_storage(
 
     monkeypatch.setattr(database_session, "commit", failed_commit)
     monkeypatch.setattr(database_session, "rollback", tracked_rollback)
-    monkeypatch.setattr("app.trash.service.delete_photo_file", tracked_delete)
+    monkeypatch.setattr("app.trash.service.process_storage_operations_best_effort", tracked_delete)
 
     with pytest.raises(SQLAlchemyError, match="injected commit failure"):
         integration_client.delete(f"/trash/place/{place['id']}")

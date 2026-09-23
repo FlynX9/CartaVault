@@ -59,4 +59,4 @@ Le secret est chiffré sur le serveur et n’est plus renvoyé après activation
 - [Conserver les codes de récupération](/docs/fr/account/security/recovery-codes/)
 - [Activer le code MFA par e-mail](/docs/fr/account/security/email-mfa/)
 
-<small>Version CartaVault : **master** · ID : `account.totp`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.totp`</small>

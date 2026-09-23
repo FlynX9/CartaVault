@@ -59,4 +59,4 @@ Le code est à usage unique, de courte durée et limité en tentatives.
 - [Configurer l’authentification TOTP](/docs/fr/account/security/totp/)
 - [Changer l’adresse e-mail](/docs/fr/account/security/email/)
 
-<small>Version CartaVault : **master** · ID : `account.email-mfa`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.email-mfa`</small>

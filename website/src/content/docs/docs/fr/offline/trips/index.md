@@ -59,4 +59,4 @@ Le package reprend les données de la sortie et de sa carte, les tracés enregis
 - [Gérer les données hors ligne](/docs/fr/account/offline-data/)
 - [Créer et organiser une sortie](/docs/fr/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `trips.offline`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.offline`</small>

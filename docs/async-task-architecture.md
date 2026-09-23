@@ -1,5 +1,12 @@
 # Architecture des tâches asynchrones
 
+> **HISTORICAL / SUPERSEDED DESIGN**
+>
+> This proposal describes an earlier Dramatiq and `TASKS_MODE` design. It is
+> not the current CartaVault runtime. The authoritative current architecture,
+> deployment modes, and recovery contract are documented in
+> [`background-tasks.md`](background-tasks.md).
+
 ## Décision actuelle
 
 CartaVault reste volontairement sans Redis ni worker dans les petites

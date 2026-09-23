@@ -60,6 +60,25 @@ def create(map_id: UUID, user_id: UUID, file_name: str, session: Session | None 
     return item
 
 
+def find_task_export(session: Session | None, task_id: UUID | None) -> TemporaryExport | None:
+    """Return the canonical export already committed for a task, if any.
+
+    Recovery re-runs a task after a crash; for output-producing tasks the
+    canonical artifact is bound to ``task_id`` (unique). When it already
+    exists on disk the handler must reuse it instead of producing a second
+    export, which is what makes finalization idempotent.
+    """
+    if session is None or task_id is None:
+        return None
+    model = session.scalar(select(GeneratedExport).where(GeneratedExport.task_id == task_id))
+    if model is None:
+        return None
+    path = export_root() / model.storage_name
+    if not path.is_file() or path.stat().st_size == 0:
+        return None
+    return TemporaryExport(model.id, model.map_id, model.user_id, path, model.file_name, model.expires_at)
+
+
 def get(export_id: UUID, map_id: UUID, user_id: UUID, session: Session | None = None) -> TemporaryExport | None:
     if session is not None:
         model = session.scalar(select(GeneratedExport).where(

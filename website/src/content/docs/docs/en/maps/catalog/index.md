@@ -59,4 +59,4 @@ Each card shows country, counters and the account role.
 - [Manage map members](/docs/en/maps/members/)
 - [Restore items from trash](/docs/en/maps/trash/)
 
-<small>Version CartaVault : **master** · ID : `maps.catalog`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.catalog`</small>

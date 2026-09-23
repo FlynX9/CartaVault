@@ -5,6 +5,12 @@ on OWASP ASVS session/access-control requirements and OWASP API Top 10 BOLA,
 broken authentication, broken object-property authorization, and unrestricted
 resource-consumption risks.
 
+> **Historical assessment — superseded.** This document records the source tree
+> reviewed on 2026-07-29. It is not the current security posture and must not be
+> used as the release-state reference. See the [current security and operations
+> documentation](security.md). The findings below remain historically accurate
+> for that audit boundary.
+
 This is a source and automated-test audit; it is not a penetration test of a
 running production instance. Do not publish details of a newly found critical
 issue in a public issue. Report it through the repository's private security
@@ -124,3 +130,16 @@ place, and the targeted suite remains green. Before opening registration to a
 larger audience, perform a live HTTPS reverse-proxy/CORS test, dependency scan,
 and an independent authenticated penetration test with separate tenant
 accounts.
+
+## Subsequent remediation status
+
+This section records changes made after the 2026-07-29 audit without rewriting
+its historical findings:
+
+| July finding | Status after the audit | Current evidence |
+|---|---|---|
+| Registration enumeration | Fixed | Registration and authentication paths use uniform handling and security-event recording. |
+| Sensitive password/email session handling | Fixed | Sensitive changes revoke existing sessions and issue a new session/CSRF pair. |
+| Public-auth throttling is process-local | Partially fixed | Sensitive authentication and MFA flows have bounded per-user limits; distributed public-auth enforcement remains an operator/reverse-proxy responsibility. |
+| MFA was not implemented | Fixed | TOTP, email MFA, recovery codes, setup confirmation, login challenges, current-password checks, and MFA disable/reset flows are now implemented. |
+| Administrator audit trail was not implemented | Partially fixed; still open in broader form | Per-user administrative activity and hashed authentication-security events are persisted and viewable, but a comprehensive immutable administrator audit log remains future work. |

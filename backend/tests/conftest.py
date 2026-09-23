@@ -33,6 +33,7 @@ from app.maps.models import MapMembership, PoiMap
 from app.main import app
 from app.places.reverse_geocoding import ReverseGeocodingResult, get_reverse_geocoder
 from app.quotas.models import QuotaProfile, UNLIMITED_PROFILE_ID
+from app.photos.models import StorageOperation
 from app.statuses.service import create_default_statuses
 from tests.migration_environment import MigrationTestEnvironment, provision_migration_environment
 
@@ -214,12 +215,22 @@ def database_session(
     try:
         yield session
     finally:
+        prepared_operation_ids = set(
+            session.info.get("prepared_storage_operation_ids", set())
+        )
         session.close()
 
         if transaction.is_active:
             transaction.rollback()
 
         connection.close()
+        if prepared_operation_ids:
+            with test_engine.begin() as cleanup_connection:
+                cleanup_connection.execute(
+                    StorageOperation.__table__.delete().where(
+                        StorageOperation.id.in_(prepared_operation_ids)
+                    )
+                )
 
 
 @pytest.fixture

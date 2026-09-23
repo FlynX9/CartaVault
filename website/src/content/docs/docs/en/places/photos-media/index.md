@@ -59,4 +59,4 @@ Images are validated, optimized and stored separately.
 - [Upload photos and use GPS metadata](/docs/en/media/upload-exif/)
 - [Create or edit a place](/docs/en/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `places.media`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `places.media`</small>

@@ -58,4 +58,4 @@ Restoration makes associated relationships visible again.
 - [Create or edit a place](/docs/en/places/create-edit/)
 - [Configure preferences](/docs/en/account/preferences/)
 
-<small>Version CartaVault : **master** · ID : `maps.trash`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.trash`</small>

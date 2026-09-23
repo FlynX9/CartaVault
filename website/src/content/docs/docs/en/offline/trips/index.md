@@ -59,4 +59,4 @@ The package includes trip and map data, saved routes and CartaVault Vector tiles
 - [Manage offline data](/docs/en/account/offline-data/)
 - [Create and organize a trip](/docs/en/trips/create-plan/)
 
-<small>Version CartaVault : **master** · ID : `trips.offline`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `trips.offline`</small>

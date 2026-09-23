@@ -44,6 +44,16 @@ from app.media.service import (
 )
 from app.media.settings import get_media_upload_policy as get_effective_media_upload_policy
 from app.photos.models import Photo
+from app.photos.reconciliation import (
+    abandon_storage_write,
+    active_storage_backend,
+    canonical_media_object_key,
+    confirm_storage_write,
+    enqueue_delete_intent,
+    prepare_storage_write_cleanup,
+    process_storage_operations_best_effort,
+    thumbnail_object_key,
+)
 from app.photos.storage import (
     InvalidPhotoPathError,
     PhotoFileNotFoundError,
@@ -295,6 +305,7 @@ def list_media(
         filtered_scope.c.storage_scope_id,
         filtered_scope.c.width,
         filtered_scope.c.height,
+        filtered_scope.c.storage_state,
     )
     aggregates = (
         select(
@@ -429,7 +440,14 @@ def upload_unassigned_media(
     from uuid import uuid4
     photo_id = uuid4()
     maximum, dimension = get_effective_media_upload_policy(database_session, current_user.id)
+    write_intent_id = None
     try:
+        object_key = canonical_media_object_key(photo_id, photo_id, file.content_type or "")
+        write_intent_id = prepare_storage_write_cleanup(
+            database_session,
+            namespace="media",
+            object_key=object_key,
+        )
         stored = store_photo_file(
             file.file,
             file.content_type,
@@ -438,32 +456,34 @@ def upload_unassigned_media(
             max_size_bytes=maximum * 1024 * 1024,
             max_dimension=dimension,
         )
-    except (UnsupportedPhotoTypeError, PhotoTooLargeError) as error:
-        database_session.rollback(); raise HTTPException(status_code=415, detail=str(error)) from error
+    except (UnsupportedPhotoTypeError, PhotoTooLargeError, ValueError) as error:
+        if write_intent_id is not None: abandon_storage_write(database_session, write_intent_id)
+        else: database_session.rollback()
+        raise HTTPException(status_code=415, detail=str(error)) from error
     except Exception as error:
-        database_session.rollback(); raise HTTPException(status_code=500, detail="Unable to store media") from error
+        if write_intent_id is not None: abandon_storage_write(database_session, write_intent_id)
+        else: database_session.rollback()
+        raise HTTPException(status_code=500, detail="Unable to store media") from error
     # A storage-quota refusal keeps its 409 contract and must never leave the
     # just-written blob behind.
     try:
         quotas.ensure_can_create(quota_owner_id, QuotaKey.STORAGE_BYTES_MAX, increment=stored.file_size_bytes)
     except HTTPException:
-        delete_photo_file(stored.relative_path, photo_id, photo_id)
+        abandon_storage_write(database_session, write_intent_id)
         raise
     photo = Photo(
         id=photo_id, map_id=validated_map_id, storage_scope_id=photo_id,
         filename=stored.filename, original_name=normalize_original_name(file.filename), path=stored.relative_path,
         mime_type=stored.media_type, file_size_bytes=stored.file_size_bytes, width=stored.width, height=stored.height,
         uploaded_by_user_id=current_user.id, latitude=latitude, longitude=longitude, taken_at=taken_at,
-        sort_order=0, is_primary=False,
+        sort_order=0, is_primary=False, storage_state="available",
     )
     try:
-        database_session.add(photo); database_session.commit()
+        database_session.add(photo)
+        confirm_storage_write(database_session, write_intent_id)
+        database_session.commit()
     except SQLAlchemyError as error:
-        database_session.rollback()
-        try:
-            delete_photo_file(stored.relative_path, photo_id, photo_id)
-        except PhotoStorageError:
-            pass
+        abandon_storage_write(database_session, write_intent_id)
         raise HTTPException(status_code=500, detail="Unable to store media") from error
     row = database_session.execute(accessible_media_statement(current_user.id).where(Photo.id == photo_id)).one()
     return to_media_read(row, current_user.id)
@@ -631,7 +651,9 @@ def get_media_thumbnail(
             access.photo.path,
             access.photo.storage_scope_id,
             access.photo.id,
+            database_session,
         )
+        database_session.commit()
     except PhotoFileNotFoundError as error:
         raise HTTPException(status_code=404, detail="Media file not found") from error
     except (InvalidPhotoPathError, PhotoStorageError) as error:
@@ -785,7 +807,7 @@ def delete_accesses(
     database_session: Session,
     current_user: User,
 ) -> int:
-    stored_files: list[tuple[str, UUID, UUID]] = []
+    cleanup_operation_ids: list[UUID] = []
     affected_places: set[UUID] = set()
     try:
         for access in accesses:
@@ -799,7 +821,24 @@ def delete_accesses(
                     photo.id,
                     require_file=False,
                 )
-                stored_files.append((photo.path, photo.storage_scope_id, photo.id))
+                cleanup_operation_ids.append(
+                    enqueue_delete_intent(
+                        database_session,
+                        backend=active_storage_backend("media"),
+                        namespace="media",
+                        object_key=photo.path,
+                        purpose="media_delete",
+                    )
+                )
+            cleanup_operation_ids.append(
+                enqueue_delete_intent(
+                    database_session,
+                    backend=active_storage_backend("media"),
+                    namespace="media",
+                    object_key=thumbnail_object_key(photo.id),
+                    purpose="media_delete",
+                )
+            )
             database_session.delete(photo)
             if access.place is not None:
                 add_place_history(database_session, access.place.id, current_user.id, "photo_removed", {"photo": {"old": {"id": str(photo.id)}, "new": None}})
@@ -821,17 +860,7 @@ def delete_accesses(
             detail="Unable to delete media",
         ) from error
 
-    for path, place_id, photo_id in stored_files:
-        try:
-            delete_photo_file(path, place_id, photo_id)
-        except PhotoStorageError:
-            # Database deletion remains authoritative. A storage cleanup job can
-            # safely remove any residual file without exposing its path.
-            pass
-        try:
-            delete_photo_thumbnail(photo_id)
-        except PhotoStorageError:
-            pass
+    process_storage_operations_best_effort(cleanup_operation_ids, session=database_session)
     return len(accesses)
 
 

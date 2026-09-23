@@ -23,8 +23,9 @@ queue; the persistent model keeps a later broker migration possible.
   before execution;
 - jobs have bounded timeouts and retry metadata, deterministic RQ IDs and
   application-level deduplication keys;
-- interrupted `running` tasks are explicitly failed as `worker_interrupted` on
-  worker startup rather than being silently lost or duplicated;
+- tasks use a database-backed claim/lease owner; a recovery supervisor detects
+  an expired lease after an API or worker crash and boundedly re-dispatches the
+  task, then records `worker_interrupted` only when its attempts are exhausted;
 - RQ's failed registry is the operational dead-letter queue, while the safe
   failure displayed to users remains in PostgreSQL;
 - imports and exports are referenced through shared storage volumes, never
@@ -33,7 +34,7 @@ queue; the persistent model keeps a later broker migration possible.
 
 ## Deployment modes
 
-The supported beta/mono-instance stack deliberately uses
+The supported mono-instance stack deliberately uses
 `CARTAVAULT_TASK_MODE=sync`: the `cartavault` container executes the same task
 handlers in process and Redis is not required. RQ is an optional scale-out
 extension, not a prerequisite for installing CartaVault.
@@ -62,14 +63,16 @@ fail with HTTP 503 and an auditable `broker_unavailable` task. Completed files
 and their authorization metadata remain available from PostgreSQL/shared
 storage until expiry.
 
-For local development and the standard single-replica beta deployment, keep
+For local development and the standard single-replica deployment, keep
 the base Compose file alone. Do not set Redis mode without the extension.
 
 ## Cleanup and recovery
 
-Task and export expiration is represented in PostgreSQL. Expired or abandoned
-rows are reconciled when a worker starts. KMZ preview and export files use
-unguessable storage names and are resolved only after ownership/role checks.
-Operational cleanup may delete files only after their database expiry; Redis
-keys can be rebuilt from pending PostgreSQL tasks and are never backed up as
-business data.
+Task and export expiration is represented in PostgreSQL. In `sync` mode the API
+process owns recovery; in `redis` mode the worker owns it. Each supervisor
+periodically detects pending dispatches or expired task leases, re-dispatches
+bounded work, and leaves final failure state in PostgreSQL. KMZ preview and
+export files use unguessable storage names and are resolved only after
+ownership/role checks. Operational cleanup may delete files only after their
+database expiry; Redis keys can be rebuilt from pending PostgreSQL tasks and
+are never backed up as business data.

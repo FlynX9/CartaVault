@@ -22,5 +22,8 @@ def write_or_check(path: Path, content: str, *, check: bool) -> bool:
         print(diff.encode(encoding, errors="backslashreplace").decode(encoding))
         return False
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(normalized, encoding="utf-8")
+    # Keep generated artifacts LF-normalized so scoped Git whitespace checks
+    # behave consistently on Windows and Unix.
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(normalized)
     return True

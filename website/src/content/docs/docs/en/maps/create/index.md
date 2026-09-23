@@ -58,4 +58,4 @@ Country controls initial framing, mask and coordinate checks.
 - [Choose place fields](/docs/en/maps/place-fields/)
 - [Create or edit a place](/docs/en/places/create-edit/)
 
-<small>Version CartaVault : **master** · ID : `maps.create`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `maps.create`</small>

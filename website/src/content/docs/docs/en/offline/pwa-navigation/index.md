@@ -59,4 +59,4 @@ The service worker caches the exact application build.
 - [Prepare a trip offline](/docs/en/offline/trips/)
 - [Manage offline data](/docs/en/account/offline-data/)
 
-<small>Version CartaVault : **master** · ID : `offline.pwa-shell`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `offline.pwa-shell`</small>

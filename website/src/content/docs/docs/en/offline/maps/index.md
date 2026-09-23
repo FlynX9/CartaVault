@@ -59,4 +59,4 @@ The package keeps POIs, categories, tags, statuses, annotations and selected thu
 - [Prepare a trip offline](/docs/en/offline/trips/)
 - [Prepare CartaVault Vector basemaps](/docs/en/administration/cartavault-vector/)
 
-<small>Version CartaVault : **master** · ID : `offline.maps`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `offline.maps`</small>

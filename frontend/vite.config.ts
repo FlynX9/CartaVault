@@ -13,6 +13,8 @@ const legacyCategoryIconModules = new Set(legacyCategoryIconIds.map((id) => {
   return resolve(frontendRoot, 'node_modules', '@iconify-icons', prefix, `${name}.js`).replaceAll('\\', '/')
 }))
 
+const isPackageModule = (id: string, packageName: string) => id.replaceAll('\\', '/').includes(`/node_modules/${packageName}/`)
+
 function pwaPrecachePlugin(): Plugin {
   return {
     name: 'cartavault-pwa-precache',
@@ -116,12 +118,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor-react'
-          if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) return 'vendor-leaflet'
-          if (id.includes('node_modules/maplibre-gl') || id.includes('node_modules/@maplibre')) return 'vendor-maplibre'
           const normalizedId = id.replaceAll('\\', '/').split('?')[0]!
+          if (isPackageModule(normalizedId, 'react') || isPackageModule(normalizedId, 'react-dom') || isPackageModule(normalizedId, 'react-router') || isPackageModule(normalizedId, 'react-router-dom')) return 'vendor-react'
+          if (isPackageModule(normalizedId, 'maplibre-gl') || isPackageModule(normalizedId, '@maplibre')) return 'vendor-maplibre'
           if (legacyCategoryIconModules.has(normalizedId)) return 'category-icons-legacy'
-          if (id.includes('node_modules/@iconify/react')) return 'vendor-icons'
+          if (isPackageModule(normalizedId, '@iconify/react')) return 'vendor-icons'
           return undefined
         },
       },

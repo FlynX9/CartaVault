@@ -63,4 +63,4 @@ Les secrets sont chiffrés et masqués après enregistrement.
 - [Préparer les fonds CartaVault Vector](/docs/fr/administration/cartavault-vector/)
 - [Configurer les e-mails transactionnels](/docs/fr/self-hosting/email/)
 
-<small>Version CartaVault : **master** · ID : `admin.api-keys`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `admin.api-keys`</small>

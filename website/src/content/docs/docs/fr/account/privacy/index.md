@@ -58,4 +58,4 @@ Les cookies de session et de sécurité restent nécessaires.
 - [Configurer confidentialité et conformité](/docs/fr/administration/privacy-compliance/)
 - [Supprimer son compte](/docs/fr/account/delete/)
 
-<small>Version CartaVault : **master** · ID : `account.privacy`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.privacy`</small>

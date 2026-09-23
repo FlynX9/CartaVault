@@ -46,9 +46,49 @@ class DatabaseSettings:
     max_overflow: int = _nonnegative_int("CARTAVAULT_DB_MAX_OVERFLOW", 5)
     pool_timeout_seconds: int = _positive_int("CARTAVAULT_DB_POOL_TIMEOUT_SECONDS", 30)
     pool_recycle_seconds: int = _positive_int("CARTAVAULT_DB_POOL_RECYCLE_SECONDS", 1800)
+    connect_timeout_seconds: int = _positive_int("CARTAVAULT_DATABASE_CONNECT_TIMEOUT_SECONDS", 5)
 
 
 database_settings = DatabaseSettings()
+
+
+@dataclass(frozen=True)
+class S3Settings:
+    """Explicit bounds for every CartaVault-managed S3 client operation."""
+
+    connect_timeout_seconds: int = _positive_int("S3_CONNECT_TIMEOUT_SECONDS", 5)
+    read_timeout_seconds: int = _positive_int("S3_READ_TIMEOUT_SECONDS", 30)
+    max_attempts: int = _positive_int("S3_MAX_ATTEMPTS", 3)
+    operation_timeout_seconds: int = _positive_int("S3_OPERATION_TIMEOUT_SECONDS", 300)
+    retry_mode: str = os.getenv("S3_RETRY_MODE", "standard").strip().lower()
+
+    def __post_init__(self) -> None:
+        if self.retry_mode not in {"standard", "adaptive"}:
+            raise RuntimeError("S3_RETRY_MODE must be 'standard' or 'adaptive'")
+
+
+s3_settings = S3Settings()
+
+
+@dataclass(frozen=True)
+class MaintenanceLeaderSettings:
+    """Bounded supervision timings for the session-level maintenance lock."""
+
+    check_interval_seconds: int = _positive_int("CARTAVAULT_MAINTENANCE_LEADER_CHECK_INTERVAL_SECONDS", 2)
+    reconnect_initial_seconds: int = _positive_int("CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_INITIAL_SECONDS", 1)
+    reconnect_max_seconds: int = _positive_int("CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_MAX_SECONDS", 15)
+    reconnect_jitter_seconds: int = _nonnegative_int("CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_JITTER_SECONDS", 1)
+    purge_interval_seconds: int = _positive_int("CARTAVAULT_MAINTENANCE_PURGE_INTERVAL_SECONDS", 3600)
+
+    def __post_init__(self) -> None:
+        if self.reconnect_initial_seconds > self.reconnect_max_seconds:
+            raise RuntimeError(
+                "CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_INITIAL_SECONDS must not exceed "
+                "CARTAVAULT_MAINTENANCE_LEADER_RECONNECT_MAX_SECONDS"
+            )
+
+
+maintenance_leader_settings = MaintenanceLeaderSettings()
 
 
 @dataclass(frozen=True)
@@ -185,6 +225,7 @@ class VectorBasemapSettings:
     java_executable: str = os.getenv("CARTAVAULT_JAVA_EXECUTABLE", "java").strip()
     java_heap: str = os.getenv("CARTAVAULT_PLANETILER_JAVA_HEAP", "2g").strip()
     download_timeout_seconds: int = _positive_int("CARTAVAULT_VECTOR_DOWNLOAD_TIMEOUT_SECONDS", 3600)
+    planetiler_timeout_seconds: int = _positive_int("CARTAVAULT_PLANETILER_TIMEOUT_SECONDS", 21600)
 
     def __post_init__(self) -> None:
         if not self.java_executable:
@@ -257,6 +298,15 @@ class TaskSettings:
     default_timeout_seconds: int = _positive_int("CARTAVAULT_TASK_TIMEOUT_SECONDS", 1800)
     result_ttl_seconds: int = _positive_int("CARTAVAULT_TASK_RESULT_TTL_SECONDS", 86400)
     stale_after_seconds: int = _positive_int("CARTAVAULT_TASK_STALE_AFTER_SECONDS", 3600)
+    # Crash-recovery lease. The owner renews the lease every
+    # ``heartbeat_seconds``; if the process dies the lease expires after
+    # ``lease_seconds`` and the recovery supervisor can reclaim the task. The
+    # lease must comfortably exceed the heartbeat interval plus any expected
+    # transient database pause so a healthy task is never stolen.
+    lease_seconds: int = _positive_int("CARTAVAULT_TASK_LEASE_SECONDS", 120)
+    heartbeat_seconds: int = _positive_int("CARTAVAULT_TASK_HEARTBEAT_SECONDS", 30)
+    recovery_interval_seconds: int = _positive_int("CARTAVAULT_TASK_RECOVERY_INTERVAL_SECONDS", 30)
+    recovery_batch_size: int = _positive_int("CARTAVAULT_TASK_RECOVERY_BATCH_SIZE", 25)
 
     def __post_init__(self) -> None:
         if self.mode not in {"sync", "redis"}:
@@ -265,6 +315,34 @@ class TaskSettings:
             raise RuntimeError("REDIS_URL must be a Redis URL")
         if not self.queue_name:
             raise RuntimeError("CARTAVAULT_TASK_QUEUE cannot be empty")
+        if self.heartbeat_seconds >= self.lease_seconds:
+            raise RuntimeError("CARTAVAULT_TASK_HEARTBEAT_SECONDS must be lower than CARTAVAULT_TASK_LEASE_SECONDS")
 
 
 task_settings = TaskSettings()
+
+
+@dataclass(frozen=True)
+class StorageReconciliationSettings:
+    interval_seconds: int = _positive_int("CARTAVAULT_STORAGE_RECONCILE_INTERVAL_SECONDS", 60)
+    batch_size: int = _positive_int("CARTAVAULT_STORAGE_RECONCILE_BATCH_SIZE", 50)
+    orphan_grace_seconds: int = _nonnegative_int("CARTAVAULT_STORAGE_ORPHAN_GRACE_SECONDS", 86_400)
+    max_attempts: int = _positive_int("CARTAVAULT_STORAGE_DELETE_MAX_ATTEMPTS", 8)
+    base_backoff_seconds: int = _positive_int("CARTAVAULT_STORAGE_DELETE_BASE_BACKOFF_SECONDS", 30)
+    cap_backoff_seconds: int = _positive_int("CARTAVAULT_STORAGE_DELETE_CAP_BACKOFF_SECONDS", 3_600)
+
+    def __post_init__(self) -> None:
+        if self.batch_size > 1_000:
+            raise RuntimeError("CARTAVAULT_STORAGE_RECONCILE_BATCH_SIZE must be at most 1000")
+        if self.max_attempts > 100:
+            raise RuntimeError("CARTAVAULT_STORAGE_DELETE_MAX_ATTEMPTS must be at most 100")
+        if self.cap_backoff_seconds > 604_800:
+            raise RuntimeError("CARTAVAULT_STORAGE_DELETE_CAP_BACKOFF_SECONDS must be at most 604800")
+        if self.base_backoff_seconds > self.cap_backoff_seconds:
+            raise RuntimeError(
+                "CARTAVAULT_STORAGE_DELETE_BASE_BACKOFF_SECONDS must not exceed "
+                "CARTAVAULT_STORAGE_DELETE_CAP_BACKOFF_SECONDS"
+            )
+
+
+storage_reconciliation_settings = StorageReconciliationSettings()

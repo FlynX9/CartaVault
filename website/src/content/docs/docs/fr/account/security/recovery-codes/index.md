@@ -58,4 +58,4 @@ Chaque code ne fonctionne qu’une fois.
 - [Configurer l’authentification TOTP](/docs/fr/account/security/totp/)
 - [Comprendre la sécurité du compte](/docs/fr/account/security/overview/)
 
-<small>Version CartaVault : **master** · ID : `account.recovery-codes`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `account.recovery-codes`</small>

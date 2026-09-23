@@ -58,4 +58,4 @@ Only media from accessible maps is shown.
 - [Manage place photos](/docs/en/places/photos-media/)
 - [Upload photos and use GPS metadata](/docs/en/media/upload-exif/)
 
-<small>Version CartaVault : **master** · ID : `media.library`</small>
+<small>Version CartaVault : **1.0.0 stable** · ID : `media.library`</small>
