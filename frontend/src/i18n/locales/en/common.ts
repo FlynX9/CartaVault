@@ -54,6 +54,7 @@ export const commonEn = {
   'trips.map': 'Map',
   'trips.summary': '{stops} places · {days} days',
   'trips.library.eyebrow': 'Trips',
+  'trips.library.mapTitle': 'Map trips',
   'trips.library.count': '{{count}} trip',
   'trips.library.count_one': '{{count}} trip',
   'trips.library.count_other': '{{count}} trips',

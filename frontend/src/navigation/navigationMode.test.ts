@@ -33,6 +33,17 @@ describe("deriveNavigationMode", () => {
     ).toEqual({ kind: "MAP_MODE", map: maps[1], mapId: "map-2" });
   });
 
+  it("keeps the map trip catalog in MAP_MODE", () => {
+    expect(
+      deriveNavigationMode({
+        pathname: "/maps/map-2/trips",
+        maps,
+        rememberedMapId: "map-1",
+        activeTrip: null,
+      }),
+    ).toEqual({ kind: "MAP_MODE", map: maps[1], mapId: "map-2" });
+  });
+
   it.each(["/maps/unknown", "/maps/map-3/places"]) (
     "returns GLOBAL_MODE for an inaccessible map route %s",
     (pathname) => {

@@ -6,7 +6,7 @@ import { createMemoryRouter, MemoryRouter, RouterProvider, useLocation, useNavig
 import { ApiError } from './api/client'
 import { deleteMap, getMaps } from './api/maps'
 import { getMapPlaces, getPlaceDetails } from './api/places'
-import { getTrip } from './api/trips'
+import { getTrip, listTrips } from './api/trips'
 import App from './App'
 import { MOBILE_NAVIGATION_MEDIA_QUERY } from './components/layout/mobileNavigationViewport'
 
@@ -16,7 +16,7 @@ vi.mock('./api/users', () => ({ getUsers: vi.fn(() => Promise.resolve([])), crea
 vi.mock('./auth/useAuth', () => ({ useAuth: () => ({ user: { id: 'user-id', email: 'admin@example.test', display_name: 'Admin', is_admin: true, is_active: true }, loading: false, logout: vi.fn(), refresh: vi.fn(), login: vi.fn() }) }))
 vi.mock('./auth/RequireAuth', () => ({ RequireAuth: ({ children }: { children: ReactNode }) => children }))
 vi.mock('./api/places', () => ({ getMapPlaces: vi.fn(() => Promise.resolve({ items: [], total: 0, returned: 0, truncated: false })), getPlaces: vi.fn(() => Promise.resolve([])), getPlaceListPosition: vi.fn(() => Promise.resolve({ place_id: 'place-id', matches_filters: false, index: null, page: null, page_size: 100 })), getPlaceFacets: vi.fn(() => Promise.resolve({ categories: [], tags: [], statuses: [], regions: [], access_values: [], danger_levels: [], condition_values: [], with_photos: 0, without_photos: 0, with_coordinates: 0, without_coordinates: 0, in_trip: 0, not_in_trip: 0 })), bulkUpdatePlaces: vi.fn(), bulkAddPlacesToTrip: vi.fn(), getPlaceDetails: vi.fn(() => Promise.resolve({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, status: { id: 'status-id', color: '#2563EB' }, categories: [], tags: [], is_favorite: false })) }))
-vi.mock('./api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(() => Promise.resolve([])), listAccessibleTrips: vi.fn(() => Promise.resolve([])), restoreTripState: vi.fn() }))
+vi.mock('./api/trips', () => ({ getTrip: vi.fn(), listTrips: vi.fn(), listAccessibleTrips: vi.fn(() => Promise.resolve([])), restoreTripState: vi.fn() }))
 vi.mock('./components/map-popup/PlaceMapPopup', () => ({ PlaceMapPopup: ({ placeId, showManagementActions, onClose, variant }: { placeId: string; showManagementActions?: boolean; onClose: () => void; variant?: string }) => <div role={variant === 'inline' ? 'region' : 'dialog'} aria-label={variant === 'inline' ? `Détails inline ${placeId}` : undefined} data-management-actions={String(showManagementActions)}>Popup {placeId}<button onClick={onClose}>Fermer popup</button></div> }))
 vi.mock('./components/notifications/NotificationCenter', () => ({ NotificationCenter: () => null }))
 vi.mock('./components/trips/TripPlannerPanel', () => ({ TripPlannerPanel: ({ tripViewOnly = false, onTripViewOnlyChange, onTripChange, onPreviewStopSelect, onUnsavedChangesGuardChange }: { tripViewOnly?: boolean; onTripViewOnlyChange: (enabled: boolean) => void; onTripChange: (trip: never) => void; onPreviewStopSelect?: (stopId: string | null) => void; onUnsavedChangesGuardChange?: (guard: (() => Promise<boolean>) | null) => void }) => <aside aria-label="Préparation de sortie" data-trip-view={String(tripViewOnly)}><button type="button" onClick={() => onTripViewOnlyChange(true)}>Vue du voyage</button><button type="button" onClick={() => onTripChange({ id: 'trip-1', map_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', created_by_user_id: 'user-id', name: 'Voyage', description: null, start_date: null, end_date: null, status: 'draft', routing_profile: 'driving', low_load_max_minutes: 240, medium_load_max_minutes: 480, low_load_color: '#0FA68A', medium_load_color: '#D97706', high_load_color: '#DC2626', created_at: '', updated_at: '', completed_at: null, archived_at: null, departure: null, arrival: null, nights: [], days: [{ id: 'day-1', trip_id: 'trip-1', day_number: 1, date: null, title: null, color: '#0FA68A', notes: null, planned_start_time: null, planned_end_time: null, target_arrival_time: null, default_stop_buffer_minutes: 0, safety_margin_type: 'fixed', safety_margin_value: 0, max_total_duration_minutes: null, route_distance_meters: null, route_duration_seconds: null, visit_duration_minutes: 60, total_duration_minutes: 60, route_geometry: null, route_segments: null, route_status: null, sort_order: 0, stops: [{ id: 'stop-place', trip_day_id: 'day-1', place_id: 'place-id', stop_type: 'place', name: 'POI', latitude: 48, longitude: 2, address: 'Adresse POI', sort_order: 0, visit_duration_minutes: 30, notes: null, is_required: true, is_locked: false, visit_status: 'planned' }, { id: 'stop-free', trip_day_id: 'day-1', place_id: null, stop_type: 'free_location', name: 'Belvédère libre', latitude: 48.1, longitude: 2.1, address: 'Route des Crêtes', sort_order: 1, visit_duration_minutes: 30, notes: 'Masquée', is_required: true, is_locked: false, visit_status: 'planned' }] }] } as never)}>Charger une sortie</button><button type="button" onClick={() => onPreviewStopSelect?.('stop-place')}>Sélectionner l’étape POI</button><button type="button" onClick={() => onPreviewStopSelect?.('stop-free')}>Sélectionner l’étape libre</button><button type="button" onClick={() => onUnsavedChangesGuardChange?.(() => Promise.resolve(false))}>Simuler des modifications</button></aside> }))
@@ -42,6 +42,7 @@ function BrowserForward() { const navigate = useNavigate(); return <button type=
 beforeEach(() => {
   vi.mocked(getMaps).mockResolvedValue([MAP])
   vi.mocked(getTrip).mockResolvedValue(TRIP)
+  vi.mocked(listTrips).mockResolvedValue([])
   vi.mocked(getPlaceDetails).mockResolvedValue({ id: 'place-id', name: 'POI', map_id: MAP_ID, latitude: 48, longitude: 2, status: { id: 'status-id', color: '#2563EB' }, categories: [], tags: [], is_favorite: false } as never)
 })
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.clearAllMocks(); vi.unstubAllGlobals() })
@@ -376,6 +377,41 @@ describe('map URL workspace', () => {
 
     await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}/categories`))
     expect(screen.getByRole('navigation', { name: 'Navigation CartaVault' })).toHaveAttribute('data-navigation-map-id', MAP_ID)
+  })
+
+  it('routes mobile MAP_MODE Sorties to the current map trip catalog', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === MOBILE_NAVIGATION_MEDIA_QUERY, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+
+    await screen.findByTestId('workspace')
+    const mobileNavigation = await screen.findByRole('navigation', { name: 'Navigation CartaVault' })
+    fireEvent.click(within(mobileNavigation).getByRole('button', { name: 'Sorties' }))
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}/trips`))
+    expect(await screen.findByRole('heading', { name: 'Sorties de la carte' })).toBeVisible()
+    expect(listTrips).toHaveBeenCalledWith(MAP_ID, expect.any(AbortSignal))
+  })
+
+  it('opens and returns from a map-scoped trip without changing its map', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === MOBILE_NAVIGATION_MEDIA_QUERY, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    vi.mocked(listTrips).mockResolvedValue([TRIP] as never)
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}/trips`]}><App /><Path /></MemoryRouter>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/travels/trip-1?from_map=${MAP_ID}`))
+    expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toBeVisible()
+
+    const mobileNavigation = await screen.findByRole('navigation', { name: 'Navigation CartaVault' })
+    fireEvent.click(within(mobileNavigation).getByRole('button', { name: 'Sorties' }))
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}/trips`))
+  })
+
+  it('rejects a trip that does not belong to the requested return map', async () => {
+    vi.mocked(getMaps).mockResolvedValue([MAP, MAP_B])
+    render(<MemoryRouter initialEntries={[`/travels/trip-1?from_map=${MAP_ID_B}`]}><App /><Path /></MemoryRouter>)
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID_B}/trips`))
+    expect(screen.queryByRole('complementary', { name: 'Préparation de sortie' })).not.toBeInTheDocument()
   })
 
   it('opens map settings from Plus for the current map', async () => {

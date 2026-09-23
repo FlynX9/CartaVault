@@ -52,6 +52,7 @@ export const commonFr = {
   'trips.map': 'Carte',
   'trips.summary': '{stops} lieux · {days} jours',
   'trips.library.eyebrow': 'Sorties',
+  'trips.library.mapTitle': 'Sorties de la carte',
   'trips.library.count': '{{count}} sortie',
   'trips.library.count_one': '{{count}} sortie',
   'trips.library.count_other': '{{count}} sorties',

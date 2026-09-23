@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Clock3, ExternalLink, Image, MapPin, Plus, Search } from 'lucide-react'
 
-import { createTrip, listAccessibleTrips } from '../../api/trips'
+import { createTrip, listAccessibleTrips, listTrips } from '../../api/trips'
 import { getPhotoThumbnailUrl } from '../../api/photos'
 import { useI18n } from '../../i18n/useI18n'
 import type { PoiMap } from '../../types/map'
-import type { TripListItem } from '../../types/trip'
+import type { Trip, TripListItem } from '../../types/trip'
 import { CreateTripDialog } from './CreateTripDialog'
 
 interface Props {
   maps: PoiMap[]
+  mapId?: string
+  fixedMapId?: string
   activeTripId?: string | null
   onOpen: (trip: TripListItem) => void
   onCloseActive?: () => void
@@ -19,7 +21,26 @@ function normalize(value: string) {
   return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase()
 }
 
-export function TripsWorkspacePanel({ maps, activeTripId = null, onOpen, onCloseActive = () => undefined }: Props) {
+function toTripListItem(trip: Trip, map: PoiMap | undefined): TripListItem {
+  return {
+    id: trip.id,
+    map_id: trip.map_id,
+    map_name: map?.name ?? '',
+    country_name: map?.country.name ?? '',
+    country_code: map?.country.iso_alpha2 ?? '',
+    name: trip.name,
+    start_date: trip.start_date,
+    end_date: trip.end_date,
+    status: trip.status,
+    created_at: trip.created_at,
+    updated_at: trip.updated_at,
+    day_count: trip.days.length,
+    stop_count: trip.days.reduce((count, day) => count + day.stops.length, 0),
+    thumbnail_photo_id: null,
+  }
+}
+
+export function TripsWorkspacePanel({ maps, mapId, fixedMapId = mapId, activeTripId = null, onOpen, onCloseActive = () => undefined }: Props) {
   const { t, formatDate } = useI18n()
   const [trips, setTrips] = useState<TripListItem[]>([])
   const [query, setQuery] = useState('')
@@ -29,13 +50,20 @@ export function TripsWorkspacePanel({ maps, activeTripId = null, onOpen, onClose
 
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setLoading(true)
-    void listAccessibleTrips()
+    setTrips([])
+    setQuery('')
+    setError(null)
+    const loadTrips = mapId
+      ? listTrips(mapId, controller.signal).then((items) => items.filter((trip) => trip.map_id === mapId).map((trip) => toTripListItem(trip, maps.find((map) => map.id === mapId))))
+      : listAccessibleTrips(controller.signal)
+    void loadTrips
       .then((items) => { if (active) { setTrips(items); setError(null) } })
-      .catch((caught: unknown) => { if (active) setError(caught instanceof Error ? caught.message : t('common.error.generic')) })
+      .catch((caught: unknown) => { if (active && !(caught instanceof Error && caught.name === 'AbortError')) setError(caught instanceof Error ? caught.message : t('common.error.generic')) })
       .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [t])
+    return () => { active = false; controller.abort() }
+  }, [mapId, maps, t])
 
   const filteredTrips = useMemo(() => {
     const normalized = normalize(query.trim())
@@ -43,7 +71,7 @@ export function TripsWorkspacePanel({ maps, activeTripId = null, onOpen, onClose
     return trips.filter((trip) => normalize(`${trip.name} ${trip.map_name} ${trip.country_name}`).includes(normalized))
   }, [query, trips])
 
-  const editableMaps = maps.filter((map) => map.can_edit)
+  const editableMaps = maps.filter((map) => map.can_edit && (!fixedMapId || map.id === fixedMapId))
   const openCreate = () => {
     if (editableMaps.length > 0) setCreateOpen(true)
   }
@@ -52,7 +80,7 @@ export function TripsWorkspacePanel({ maps, activeTripId = null, onOpen, onClose
     <header className="cv-workspace-panel__header">
       <div className="cv-workspace-panel__heading">
         <p className="cv-workspace-panel__eyebrow">{t('trips.library.eyebrow')}</p>
-        <h2 id="workspace-trips-title" className="cv-workspace-panel__title">{t('nav.trips')}</h2>
+        <h2 id="workspace-trips-title" className="cv-workspace-panel__title">{mapId ? t('trips.library.mapTitle') : t('nav.trips')}</h2>
       </div>
       <div className="cv-workspace-panel__header-actions">
         <span className="cv-workspace-panel__count">{t('trips.library.count', { count: trips.length })}</span>
@@ -89,6 +117,6 @@ export function TripsWorkspacePanel({ maps, activeTripId = null, onOpen, onClose
         </li>})}
       </ul>
     </div>
-    {createOpen && <CreateTripDialog maps={editableMaps} onClose={() => setCreateOpen(false)} onCreate={async (mapId, payload) => { const selectedMap = editableMaps.find((map) => map.id === mapId); if (!selectedMap) return; const created = await createTrip(mapId, payload); setCreateOpen(false); onOpen({ id: created.id, map_id: created.map_id, map_name: selectedMap.name, country_name: selectedMap.country.name, country_code: selectedMap.country.iso_alpha2, name: created.name, start_date: created.start_date, end_date: created.end_date, status: created.status, created_at: created.created_at, updated_at: created.updated_at, day_count: created.days.length, stop_count: created.days.reduce((count, day) => count + day.stops.length, 0), thumbnail_photo_id: null }) }} />}
+    {createOpen && <CreateTripDialog fixedMapId={fixedMapId} maps={editableMaps} onClose={() => setCreateOpen(false)} onCreate={async (selectedMapId, payload) => { const selectedMap = editableMaps.find((map) => map.id === selectedMapId); if (!selectedMap || (fixedMapId && selectedMapId !== fixedMapId)) return; const created = await createTrip(selectedMapId, payload); setCreateOpen(false); onOpen({ id: created.id, map_id: created.map_id, map_name: selectedMap.name, country_name: selectedMap.country.name, country_code: selectedMap.country.iso_alpha2, name: created.name, start_date: created.start_date, end_date: created.end_date, status: created.status, created_at: created.created_at, updated_at: created.updated_at, day_count: created.days.length, stop_count: created.days.reduce((count, day) => count + day.stops.length, 0), thumbnail_photo_id: null }) }} />}
   </aside>
 }

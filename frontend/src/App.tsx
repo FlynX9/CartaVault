@@ -388,6 +388,9 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   const mapScopedMediaId = navigationMode.kind === "MAP_MODE" && location.pathname === mapPath(navigationMode.mapId, "/media")
     ? navigationMode.mapId
     : undefined;
+  const mapScopedTripsId = navigationMode.kind === "MAP_MODE" && location.pathname === mapPath(navigationMode.mapId, "/trips")
+    ? navigationMode.mapId
+    : undefined;
   useEffect(() => {
     if (!isMobileNavigation || navigationMode.kind !== "MAP_MODE") {
       setMobileMapTripsOpen(false);
@@ -535,6 +538,12 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     void getTrip(routeTripId, controller.signal)
       .then((loaded) => {
         if (cancelled || controller.signal.aborted || routeTripIdRef.current !== requestedTripId || loaded.id !== requestedTripId) return;
+        const requestedReturnMapId = new URLSearchParams(location.search).get("from_map")?.trim() ?? null;
+        const requestedReturnMap = requestedReturnMapId ? maps.find((map) => map.id === requestedReturnMapId) : null;
+        if (requestedReturnMapId && maps.length > 0 && (!requestedReturnMap || loaded.map_id !== requestedReturnMap.id)) {
+          navigate(requestedReturnMap ? mapPath(requestedReturnMap.id, "/trips") : "/travels", { replace: true });
+          return;
+        }
         setActiveTrip(loaded);
         setOpenedMapId(loaded.map_id);
         setActiveTripDayId(loaded.days[0]?.id ?? null);
@@ -548,7 +557,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
         navigate("/travels", { replace: true });
       });
     return () => { cancelled = true; controller.abort(); };
-  }, [changeActiveTripAnchorTarget, navigate, routeTripId]);
+  }, [changeActiveTripAnchorTarget, location.search, maps, navigate, routeTripId]);
   useEffect(() => {
     if (routeTripId !== null) return;
     // Outside the canonical trip route the trip workspace must not leak any
@@ -590,6 +599,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     else if (location.pathname === "/medias") setWorkspacePanel("media");
     else if (location.pathname === "/trash") setWorkspacePanel("trash");
     else if (activeMapId && location.pathname === mapPath(activeMapId, "/media")) setWorkspacePanel("media");
+    else if (activeMapId && location.pathname === mapPath(activeMapId, "/trips")) setWorkspacePanel("trips");
     else if (location.pathname.endsWith("/categories")) setWorkspacePanel("categories");
     else if (location.pathname.endsWith("/tags")) setWorkspacePanel("tags");
     else if (location.pathname.endsWith("/statuses")) setWorkspacePanel("statuses");
@@ -1598,10 +1608,15 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
       ) : mobileMapTripsOpen || workspacePanel === "trips" ? (
         <TripsWorkspacePanel
           maps={maps}
+          mapId={mapScopedTripsId}
+          fixedMapId={mapScopedTripsId}
           activeTripId={routeTripId}
           onOpen={(item) => {
             // AUD-008: the route effect is the single canonical loader.
-            navigate(`/travels/${item.id}`);
+            if (mapScopedTripsId && item.map_id !== mapScopedTripsId) return;
+            navigate(mapScopedTripsId
+              ? { pathname: `/travels/${item.id}`, search: `?from_map=${encodeURIComponent(mapScopedTripsId)}` }
+              : `/travels/${item.id}`);
           }}
           onCloseActive={closeTripFromNavigation}
         />
@@ -1990,9 +2005,13 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   const applyMobileMapNavigation = (destination: MobileMapNavigationDestination, mapId: string) => {
     if (navigationMode.kind !== "MAP_MODE" || navigationMode.mapId !== mapId) return;
     if (destination === "trips") {
-      setMobileMapTripsOpen(true);
-      setWorkspacePanel(null);
-      setPlacesPanelCollapsed(false);
+      setMobileMapTripsOpen(false);
+      setTripPlannerOpen(false);
+      setTripPlannerCollapsed(false);
+      setTripViewOnly(false);
+      setWorkspacePanel("trips");
+      const targetPath = mapPath(mapId, "/trips");
+      if (location.pathname !== targetPath) navigate({ pathname: targetPath, search: searchWithoutLegacyMap });
       return;
     }
     setMobileMapTripsOpen(false);
@@ -2045,8 +2064,15 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
       setActiveTrip(null);
       setActiveTripDayId(null);
       setTripScreenPanels({ places: true, trip: true });
-      setWorkspacePanel("places");
-      navigate("/travels");
+      const returnMapId = new URLSearchParams(location.search).get("from_map")?.trim() ?? null;
+      const returnMap = returnMapId ? maps.find((map) => map.id === returnMapId) : null;
+      if (returnMap && activeTrip?.map_id === returnMap.id) {
+        setWorkspacePanel("trips");
+        navigate(mapPath(returnMap.id, "/trips"));
+      } else {
+        setWorkspacePanel("places");
+        navigate("/travels");
+      }
     };
     runAfterUnsavedCheck(close);
   }
