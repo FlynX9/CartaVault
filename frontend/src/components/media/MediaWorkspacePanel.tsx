@@ -10,6 +10,7 @@ import { useConfirmDialog } from "../common/useConfirmDialog";
 import { mediaMessages } from "./mediaI18n";
 import { getMaps } from "../../api/maps";
 import type { PoiMap } from "../../types/map";
+import { useI18n } from "../../i18n/useI18n";
 
 const DEFAULT_QUERY: MediaQuery = {
   page: 1,
@@ -313,18 +314,20 @@ function MediaDetails({ media, onClose, onChanged, onOpenPlace, onCreatePlace }:
 }
 
 interface Props {
+  mapId?: string;
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   onClose?: () => void;
   onOpenPlace: (media: MediaItem) => void;
 }
 
-export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onClose, onOpenPlace }: Props) {
+export function MediaWorkspacePanel({ mapId: scopedMapId, collapsed = false, onCollapsedChange, onClose, onOpenPlace }: Props) {
   const floatingWindow = useContext(FloatingPanelWindowContext);
   const panelCollapsed = floatingWindow?.desktop ? floatingWindow.mode === "collapsed" : collapsed;
   const t = mediaMessages();
+  const { t: translate } = useI18n();
   const { confirm, confirmationDialog } = useConfirmDialog();
-  const [query, setQuery] = useState<MediaQuery>(DEFAULT_QUERY);
+  const [query, setQuery] = useState<MediaQuery>(() => ({ ...DEFAULT_QUERY, mapId: scopedMapId ?? DEFAULT_QUERY.mapId }));
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [data, setData] = useState<MediaPage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -335,6 +338,12 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [refresh, setRefresh] = useState(0);
+
+  useEffect(() => {
+    const requiredMapId = scopedMapId ?? "";
+    setQuery((current) => current.mapId === requiredMapId ? current : { ...current, page: 1, mapId: requiredMapId });
+    setSelected(new Set());
+  }, [scopedMapId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
@@ -365,7 +374,8 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
     window.addEventListener("cartavault:media-uploaded", reload);
     return () => window.removeEventListener("cartavault:media-uploaded", reload);
   }, [reload]);
-  const editableSelection = useMemo(() => data?.items.filter((item) => selected.has(item.id) && item.can_edit) ?? [], [data, selected]);
+  const visibleItems = useMemo(() => data?.items.filter((item) => !scopedMapId || item.map?.id === scopedMapId) ?? [], [data, scopedMapId]);
+  const editableSelection = useMemo(() => visibleItems.filter((item) => selected.has(item.id) && item.can_edit), [selected, visibleItems]);
   const countryOptions = useMemo(() => Array.from(new Map((data?.filters.maps ?? []).map((item) => [item.country_code, { code: item.country_code, name: item.country_name }])).values()).sort((left, right) => left.name.localeCompare(right.name)), [data]);
   const pageNumbers = useMemo(() => {
     if (!data) return [];
@@ -412,15 +422,15 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
   };
 
   return (
-    <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${panelCollapsed ? " is-collapsed" : ""}${mobileFiltersOpen ? " mobile-filters-open" : ""}`} aria-label="Médiathèque" tabIndex={-1}>
+    <aside id="workspace-media-panel" className={`country-place-panel cv-workspace-panel media-workspace-panel${panelCollapsed ? " is-collapsed" : ""}${mobileFiltersOpen ? " mobile-filters-open" : ""}`} aria-label={scopedMapId ? translate("nav.mapMedia") : "Médiathèque"} tabIndex={-1}>
       <header className="cv-workspace-panel__header">
         <div className="cv-workspace-panel__heading">
           <p className="cv-workspace-panel__eyebrow">Bibliothèque</p>
-          <h1 className="cv-workspace-panel__title">{t.title}</h1>
+          <h1 className="cv-workspace-panel__title">{scopedMapId ? translate("nav.mapMedia") : t.title}</h1>
         </div>
         <div className="cv-workspace-panel__header-actions">
           <span className="cv-workspace-panel__count">{data?.total ?? 0} médias</span>
-          <button type="button" className="panel-icon-button primary panel-create-action" aria-label="Importer des photos" title="Importer des photos" onClick={() => window.dispatchEvent(new Event("cartavault:open-media-upload"))}>
+          <button type="button" className="panel-icon-button primary panel-create-action" aria-label="Importer des photos" title="Importer des photos" onClick={() => window.dispatchEvent(new CustomEvent("cartavault:open-media-upload", { detail: { mapId: scopedMapId } }))}>
             <IconPlus size={18} aria-hidden="true" />
           </button>
           <button type="button" className={`panel-icon-button media-mobile-filters-toggle${mobileFiltersOpen ? " active" : ""}`} aria-label={mobileFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"} title={mobileFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"} aria-expanded={mobileFiltersOpen} onClick={() => setMobileFiltersOpen((value) => !value)}>
@@ -484,17 +494,17 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
               <ChevronDown className="media-filters__chevron" size={15} aria-hidden="true" />
             </summary>
             <div>
-              <label>
-                Carte
-                <select value={query.mapId} onChange={(event) => change("mapId", event.target.value)}>
-                  <option value="">Toutes</option>
-                  {data?.filters.maps.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                {!scopedMapId && <label>
+                  Carte
+                  <select value={query.mapId} onChange={(event) => change("mapId", event.target.value)}>
+                    <option value="">Toutes</option>
+                    {data?.filters.maps.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>}
               <label>
                 Pays
                 <select value={query.countryCode} onChange={(event) => change("countryCode", event.target.value)}>
@@ -604,9 +614,9 @@ export function MediaWorkspacePanel({ collapsed = false, onCollapsedChange, onCl
           {t.loading}
         </p>
       )}
-      {!loading && data?.items.length === 0 && <p className="media-state">{t.empty}</p>}
+      {!loading && visibleItems.length === 0 && <p className="media-state">{t.empty}</p>}
       <div className={`media-grid ${viewMode}`}>
-        {data?.items.map((media) => {
+        {visibleItems.map((media) => {
           const checked = selected.has(media.id);
           return (
             <article className={`media-card${checked ? " selected" : ""}`} key={media.id}>

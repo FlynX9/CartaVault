@@ -27,6 +27,7 @@ import { addTripArrival, addTripDeparture, addTripNight, addTripStop, deleteTrip
 import { TopBar } from "./components/layout/TopBar";
 import {
   MainNavigation,
+  type MobileMapNavigationDestination,
   type NavigationProps,
   type WorkspacePanel,
 } from "./components/layout/MainNavigation";
@@ -300,7 +301,10 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     }
   }, [navigationCollapsed]);
   useEffect(() => {
-    const openMediaUpload = () => window.dispatchEvent(new CustomEvent("cartavault:show-media-upload", { detail: { maps } }));
+    const openMediaUpload = (event: Event) => {
+      const mapId = (event as CustomEvent<{ mapId?: string }>).detail?.mapId;
+      window.dispatchEvent(new CustomEvent("cartavault:show-media-upload", { detail: { maps, mapId } }));
+    };
     window.addEventListener("cartavault:open-media-upload", openMediaUpload);
     return () => window.removeEventListener("cartavault:open-media-upload", openMediaUpload);
   }, [maps]);
@@ -381,6 +385,9 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     rememberedMapId: openedMapId,
     activeTrip: routeTrip,
   });
+  const mapScopedMediaId = navigationMode.kind === "MAP_MODE" && location.pathname === mapPath(navigationMode.mapId, "/media")
+    ? navigationMode.mapId
+    : undefined;
   useEffect(() => {
     if (!isMobileNavigation || navigationMode.kind !== "MAP_MODE") {
       setMobileMapTripsOpen(false);
@@ -582,6 +589,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     else if (routeTripId) setWorkspacePanel("trip");
     else if (location.pathname === "/medias") setWorkspacePanel("media");
     else if (location.pathname === "/trash") setWorkspacePanel("trash");
+    else if (activeMapId && location.pathname === mapPath(activeMapId, "/media")) setWorkspacePanel("media");
     else if (location.pathname.endsWith("/categories")) setWorkspacePanel("categories");
     else if (location.pathname.endsWith("/tags")) setWorkspacePanel("tags");
     else if (location.pathname.endsWith("/statuses")) setWorkspacePanel("statuses");
@@ -1675,6 +1683,8 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
         />
       ) : workspacePanel === "media" ? (
         <MediaWorkspacePanel
+          key={mapScopedMediaId ?? "global"}
+          mapId={mapScopedMediaId}
           collapsed={collapsedWorkspacePanel === "media"}
           onCollapsedChange={(collapsed) =>
             setCollapsedWorkspacePanel(collapsed ? "media" : null)
@@ -1977,7 +1987,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     runAfterUnsavedCheck(() => applyContextMapChange(mapId));
   };
 
-  const applyMobileMapNavigation = (destination: "places" | "map" | "trips", mapId: string) => {
+  const applyMobileMapNavigation = (destination: MobileMapNavigationDestination, mapId: string) => {
     if (navigationMode.kind !== "MAP_MODE" || navigationMode.mapId !== mapId) return;
     if (destination === "trips") {
       setMobileMapTripsOpen(true);
@@ -1986,21 +1996,43 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
       return;
     }
     setMobileMapTripsOpen(false);
+    if (destination === "settings") {
+      setSettingsMap(navigationMode.map);
+      return;
+    }
     setSelectedPlace(null);
     setMobilePlaceDetailOpen(false);
     setMobilePlaceDetailOrigin(null);
     setTripPlannerOpen(false);
     setTripPlannerCollapsed(false);
     setTripViewOnly(false);
-    setWorkspacePanel(destination === "places" ? "places" : null);
+    const destinationPanel: WorkspacePanel = destination === "places"
+      ? "places"
+      : destination === "media"
+        ? "media"
+        : destination === "categories"
+          ? "categories"
+          : destination === "tags"
+            ? "tags"
+            : destination === "statuses"
+              ? "statuses"
+              : "annotation-templates";
+    const destinationSuffix = destination === "places"
+      ? ""
+      : destination === "map"
+        ? ""
+        : destination === "media"
+          ? "/media"
+          : `/${destination === "annotations" ? "annotations" : destination}`;
+    setWorkspacePanel(destinationPanel);
     if (destination === "places") setPlacesPanelCollapsed(false);
-    const targetPath = mapPath(mapId);
+    const targetPath = mapPath(mapId, destinationSuffix);
     if (location.pathname !== targetPath) {
       navigate({ pathname: targetPath, search: searchWithoutLegacyMap });
     }
   };
 
-  const handleMobileMapNavigation = (destination: "places" | "map" | "trips", mapId: string) => {
+  const handleMobileMapNavigation = (destination: MobileMapNavigationDestination, mapId: string) => {
     runAfterUnsavedCheck(() => applyMobileMapNavigation(destination, mapId));
   };
 

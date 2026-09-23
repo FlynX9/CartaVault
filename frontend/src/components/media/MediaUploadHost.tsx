@@ -12,10 +12,13 @@ const OPEN_EVENT = 'cartavault:show-media-upload'
 export function MediaUploadHost() {
   const [open, setOpen] = useState(false)
   const [maps, setMaps] = useState<PoiMap[]>([])
+  const [mapId, setMapId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     const open = (event: Event) => {
-      setMaps((event as CustomEvent<{ maps?: PoiMap[] }>).detail?.maps ?? [])
+      const detail = (event as CustomEvent<{ maps?: PoiMap[]; mapId?: string }>).detail
+      setMaps(detail?.maps ?? [])
+      setMapId(detail?.mapId)
       setOpen(true)
     }
     window.addEventListener(OPEN_EVENT, open)
@@ -25,6 +28,7 @@ export function MediaUploadHost() {
   if (!open) return null
   return <MediaUploadDialog
     maps={maps}
+    mapId={mapId}
     onClose={() => setOpen(false)}
     onDone={() => {
       window.dispatchEvent(new Event('cartavault:media-uploaded'))

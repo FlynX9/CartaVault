@@ -153,6 +153,17 @@ describe("MediaWorkspacePanel", () => {
     await waitFor(() => expect(getMedia).toHaveBeenLastCalledWith(expect.objectContaining({ query: "chapelle" }), expect.any(AbortSignal)));
   });
 
+  it("pins map-scoped media to the supplied map and hides foreign results", async () => {
+    const foreignMedia = { ...page.items[0], id: "media-2", original_name: "autre-carte.webp", map: { ...page.items[0].map!, id: "map-2", name: "Autre carte" } };
+    vi.mocked(getMedia).mockResolvedValue({ ...page, items: [...page.items, foreignMedia], total: 2 });
+    render(<MediaWorkspacePanel mapId="map-1" onClose={vi.fn()} onOpenPlace={vi.fn()} />);
+
+    expect(await screen.findByText("chapelle.webp")).toBeVisible();
+    await waitFor(() => expect(getMedia).toHaveBeenCalledWith(expect.objectContaining({ mapId: "map-1" }), expect.any(AbortSignal)));
+    expect(screen.queryByText("autre-carte.webp")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Médias de la carte" })).toBeVisible();
+  });
+
   it("shows bulk actions after selecting an item", async () => {
     render(<MediaWorkspacePanel onClose={vi.fn()} onOpenPlace={vi.fn()} />);
     await screen.findByText("chapelle.webp");
@@ -219,6 +230,16 @@ describe("MediaWorkspacePanel", () => {
     await screen.findByText("chapelle.webp");
     fireEvent.click(screen.getByRole("button", { name: "Importer des photos" }));
     expect(onOpenUpload).toHaveBeenCalledOnce();
+    window.removeEventListener("cartavault:open-media-upload", onOpenUpload);
+  });
+
+  it("passes the map scope when requesting an upload", async () => {
+    const onOpenUpload = vi.fn();
+    window.addEventListener("cartavault:open-media-upload", onOpenUpload);
+    render(<MediaWorkspacePanel mapId="map-1" onClose={vi.fn()} onOpenPlace={vi.fn()} />);
+    await screen.findByText("chapelle.webp");
+    fireEvent.click(screen.getByRole("button", { name: "Importer des photos" }));
+    expect(onOpenUpload).toHaveBeenCalledWith(expect.objectContaining({ detail: { mapId: "map-1" } }));
     window.removeEventListener("cartavault:open-media-upload", onOpenUpload);
   });
 });

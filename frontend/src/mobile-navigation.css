@@ -170,6 +170,14 @@ html[data-theme='dark'] .cv-main-navigation.is-mobile {
   box-shadow: 0 .45rem 1rem rgb(0 0 0 / 28%);
 }
 
+.main-navigation.is-mobile .cv-main-navigation__map-plus-menu {
+  min-width: 15rem;
+  max-width: calc(100vw - 1rem);
+  max-height: min(24rem, calc(100vh - var(--cv-mobile-nav-height, 4.15rem) - env(safe-area-inset-bottom) - 1rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .main-navigation.is-mobile .cv-main-navigation__organization-menu button {
   display: flex;
   min-height: 2.25rem;
@@ -191,6 +199,14 @@ html[data-theme='dark'] .cv-main-navigation.is-mobile {
   color: #fff;
   background: rgb(15 166 138 / 18%);
   outline: 0;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__map-plus-menu button {
+  min-height: 2.5rem;
+}
+
+.main-navigation.is-mobile .cv-main-navigation__map-plus-menu button svg {
+  flex: 0 0 1.1rem;
 }
 
 .main-navigation.is-mobile .cv-main-navigation__item,

@@ -366,6 +366,29 @@ describe('map URL workspace', () => {
     expect(tripsNavigation).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('routes the mobile MAP_MODE Plus menu to the current map', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === MOBILE_NAVIGATION_MEDIA_QUERY, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}`]}><App /><Path /></MemoryRouter>)
+
+    await screen.findByTestId('workspace')
+    fireEvent.click(await screen.findByRole('button', { name: 'Plus' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Catégories' }))
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent(`/maps/${MAP_ID}/categories`))
+    expect(screen.getByRole('navigation', { name: 'Navigation CartaVault' })).toHaveAttribute('data-navigation-map-id', MAP_ID)
+  })
+
+  it('opens map settings from Plus for the current map', async () => {
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === MOBILE_NAVIGATION_MEDIA_QUERY, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    render(<MemoryRouter initialEntries={[`/maps/${MAP_ID}`]}><App /></MemoryRouter>)
+
+    await screen.findByTestId('workspace')
+    fireEvent.click(await screen.findByRole('button', { name: 'Plus' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Paramètres de la carte' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Champs des POI' })).toBeVisible()
+  })
+
   it('opens linked and free stop cards from the trip timeline without changing its fitted map view', async () => {
     render(<MemoryRouter initialEntries={['/travels/trip-1']}><App /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Charger une sortie' }))

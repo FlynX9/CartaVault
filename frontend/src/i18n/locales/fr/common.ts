@@ -35,6 +35,8 @@ export const commonFr = {
   'nav.backToMaps': 'Retour aux cartes',
   'nav.chooseMap': 'Choisir une carte',
   'nav.mapActions': 'Actions de la carte',
+  'nav.mapMedia': 'Médias de la carte',
+  'nav.mapSettings': 'Paramètres de la carte',
   'nav.collapse': 'Réduire le menu',
   'nav.expand': 'Développer le menu',
   'nav.maps': 'Cartes',

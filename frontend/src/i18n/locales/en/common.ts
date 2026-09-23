@@ -37,6 +37,8 @@ export const commonEn = {
   'nav.backToMaps': 'Back to maps',
   'nav.chooseMap': 'Choose a map',
   'nav.mapActions': 'Map actions',
+  'nav.mapMedia': 'Map media',
+  'nav.mapSettings': 'Map settings',
   'nav.collapse': 'Collapse menu',
   'nav.expand': 'Expand menu',
   'nav.maps': 'Maps',

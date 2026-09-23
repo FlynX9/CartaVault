@@ -5,16 +5,17 @@ import type { PoiMap } from '../../types/map'
 
 interface MediaUploadDialogProps {
   maps: PoiMap[]
+  mapId?: string
   onClose: () => void
   onDone: () => void
 }
 
-export function MediaUploadDialog({ maps, onClose, onDone }: MediaUploadDialogProps) {
+export function MediaUploadDialog({ maps, mapId: scopedMapId, onClose, onDone }: MediaUploadDialogProps) {
   const { t } = useI18n()
   const fileRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
-  const editableMaps = maps.filter((map) => map.can_edit)
-  const [mapId, setMapId] = useState(editableMaps[0]?.id ?? '')
+  const editableMaps = maps.filter((map) => map.can_edit && (!scopedMapId || map.id === scopedMapId))
+  const [mapId, setMapId] = useState(scopedMapId ?? editableMaps[0]?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

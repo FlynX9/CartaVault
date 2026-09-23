@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconMapPin2 } from '@tabler/icons-react'
-import { Ellipsis, Images, LayoutDashboard, Map as MapIcon, MapPin, Route, Trash2 } from 'lucide-react'
+import { CircleDot, Ellipsis, Images, LayoutDashboard, Map as MapIcon, MapPin, Route, Settings2, Shapes, Spline, Tag, Trash2 } from 'lucide-react'
 
 import { useI18n } from '../../i18n/useI18n'
 import type { NavigationMode } from '../../navigation/navigationMode'
-import type { NavigationProps } from './MainNavigation'
+import type { MobileMapNavigationDestination, NavigationProps } from './MainNavigation'
 import { closeMobileModalLayers } from './mobileNavigationViewport'
 
 function navClass(active: boolean): string {
@@ -18,10 +18,32 @@ interface Props extends NavigationProps {
 export function MobileNavigation({ navigationMode, activePanel, onPanelChange, dashboardActive = false, onOpenDashboard, onMapNavigation, mobileMapTripsOpen = false }: Props) {
   const { t } = useI18n()
   const [plusOpen, setPlusOpen] = useState(false)
+  const plusButtonRef = useRef<HTMLButtonElement>(null)
+  const plusMenuRef = useRef<HTMLDivElement>(null)
   const globalMode = navigationMode.kind === 'GLOBAL_MODE'
   const mapPlacesActive = activePanel === 'places'
   const mapTripsActive = mobileMapTripsOpen || activePanel === 'trip'
   const mapActive = !mapPlacesActive && !mapTripsActive && !plusOpen
+
+  useEffect(() => {
+    if (!plusOpen) return
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return
+      if (!plusButtonRef.current?.contains(event.target) && !plusMenuRef.current?.contains(event.target)) setPlusOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPlusOpen(false)
+    }
+    const closeOnMobileLayerRequest = () => setPlusOpen(false)
+    document.addEventListener('pointerdown', closeOnPointerDown)
+    window.addEventListener('keydown', closeOnEscape)
+    window.addEventListener('cartavault:close-mobile-modal-layers', closeOnMobileLayerRequest)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnPointerDown)
+      window.removeEventListener('keydown', closeOnEscape)
+      window.removeEventListener('cartavault:close-mobile-modal-layers', closeOnMobileLayerRequest)
+    }
+  }, [plusOpen])
 
   const selectPanel = (panel: 'maps' | 'media' | 'trash') => {
     closeMobileModalLayers()
@@ -38,6 +60,12 @@ export function MobileNavigation({ navigationMode, activePanel, onPanelChange, d
     }
     onPanelChange(destination === 'places' ? 'places' : destination === 'trips' ? 'trips' : null)
   }
+  const selectMapAction = (destination: Exclude<MobileMapNavigationDestination, 'places' | 'map' | 'trips'>) => {
+    if (navigationMode.kind !== 'MAP_MODE') return
+    closeMobileModalLayers()
+    setPlusOpen(false)
+    onMapNavigation?.(destination, navigationMode.mapId)
+  }
 
   return <nav className="main-navigation cv-main-navigation mobile-navigation is-mobile" data-navigation-mode={navigationMode.kind} data-navigation-map-id={navigationMode.kind === 'MAP_MODE' ? navigationMode.mapId : undefined} aria-label={t('nav.main')}>
     <div className="main-navigation-links cv-main-navigation__items">
@@ -53,10 +81,15 @@ export function MobileNavigation({ navigationMode, activePanel, onPanelChange, d
             <button type="button" className={navClass(mapPlacesActive)} aria-label={t('nav.places')} aria-pressed={mapPlacesActive} onClick={() => selectMapDestination('places')}><MapPin size={23} /><span>{t('nav.places')}</span></button>
             <button type="button" className={navClass(mapActive)} aria-label={t('nav.map')} aria-pressed={mapActive} onClick={() => selectMapDestination('map')}><MapIcon size={23} /><span>{t('nav.map')}</span></button>
             <button type="button" className={navClass(mapTripsActive)} aria-label={t('nav.mapTrips')} aria-pressed={mapTripsActive} onClick={() => selectMapDestination('trips')}><Route size={23} /><span>{t('nav.mapTrips')}</span></button>
-            <button type="button" className={navClass(plusOpen)} aria-label={t('nav.more')} aria-pressed={plusOpen} aria-expanded={plusOpen} onClick={() => setPlusOpen((open) => !open)}><Ellipsis size={23} /><span>{t('nav.more')}</span></button>
-            {plusOpen && <div className="cv-main-navigation__organization-menu" role="menu" aria-label={t('nav.mapActions')} data-map-id={navigationMode.mapId}>
-              <button type="button" role="menuitem" disabled>{t('nav.mapActions')}</button>
-            </div>}
+             <button ref={plusButtonRef} type="button" className={navClass(plusOpen)} aria-label={t('nav.more')} aria-pressed={plusOpen} aria-expanded={plusOpen} onClick={() => setPlusOpen((open) => !open)}><Ellipsis size={23} /><span>{t('nav.more')}</span></button>
+             {plusOpen && <div ref={plusMenuRef} className="cv-main-navigation__organization-menu cv-main-navigation__map-plus-menu" role="menu" aria-label={t('nav.mapActions')} data-map-id={navigationMode.mapId}>
+               <button type="button" role="menuitem" data-map-id={navigationMode.mapId} onClick={() => selectMapAction('categories')}><Shapes size={17} aria-hidden="true" /><span>{t('nav.categories')}</span></button>
+               <button type="button" role="menuitem" data-map-id={navigationMode.mapId} onClick={() => selectMapAction('tags')}><Tag size={17} aria-hidden="true" /><span>{t('nav.tags')}</span></button>
+               <button type="button" role="menuitem" data-map-id={navigationMode.mapId} onClick={() => selectMapAction('statuses')}><CircleDot size={17} aria-hidden="true" /><span>{t('nav.statuses')}</span></button>
+               <button type="button" role="menuitem" data-map-id={navigationMode.mapId} onClick={() => selectMapAction('annotations')}><Spline size={17} aria-hidden="true" /><span>{t('nav.annotations')}</span></button>
+               <button type="button" role="menuitem" data-map-id={navigationMode.mapId} onClick={() => selectMapAction('media')}><Images size={17} aria-hidden="true" /><span>{t('nav.mapMedia')}</span></button>
+               <button type="button" role="menuitem" data-map-id={navigationMode.mapId} onClick={() => selectMapAction('settings')}><Settings2 size={17} aria-hidden="true" /><span>{t('nav.mapSettings')}</span></button>
+             </div>}
           </>}
       </div>
     </div>

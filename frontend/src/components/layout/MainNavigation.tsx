@@ -7,7 +7,7 @@ import { CountryFlag } from '../maps/CountryFlag'
 import type { PoiMap } from '../../types/map'
 
 export type WorkspacePanel = 'maps' | 'places' | 'trip' | 'trips' | 'media' | 'categories' | 'tags' | 'statuses' | 'trash' | 'annotation-templates' | null
-export type MobileMapNavigationDestination = 'places' | 'map' | 'trips'
+export type MobileMapNavigationDestination = 'places' | 'map' | 'trips' | 'categories' | 'tags' | 'statuses' | 'annotations' | 'media' | 'settings'
 
 export interface NavigationProps {
   activePanel: WorkspacePanel
