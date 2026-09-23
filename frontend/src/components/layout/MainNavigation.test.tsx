@@ -59,7 +59,7 @@ describe('MainNavigation', () => {
     expect(onOpenDashboard).toHaveBeenCalledOnce()
   })
 
-  it('delegates the desktop collapse control and omits it on mobile', () => {
+  it('keeps the desktop collapse control in the desktop component', () => {
     const onCollapsedChange = vi.fn()
     const { unmount } = render(<MemoryRouter><MainNavigation activePanel="maps" onPanelChange={vi.fn()} onCollapsedChange={onCollapsedChange} /></MemoryRouter>)
     fireEvent.click(screen.getByRole('button', { name: 'Réduire le menu' }))
@@ -68,8 +68,8 @@ describe('MainNavigation', () => {
 
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true }))
     render(<MemoryRouter><MainNavigation activePanel="maps" onPanelChange={vi.fn()} /></MemoryRouter>)
-    expect(screen.getByRole('navigation', { name: 'Navigation CartaVault' })).toHaveClass('is-mobile')
-    expect(screen.queryByRole('button', { name: 'Réduire le menu' })).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Navigation CartaVault' })).not.toHaveClass('is-mobile')
+    expect(screen.getByRole('button', { name: 'Réduire le menu' })).toBeInTheDocument()
   })
 
   it('shows the active map in the desktop navigation', () => {

@@ -1,6 +1,7 @@
-/* This stylesheet is imported after index.css deliberately. The component adds
-   .is-mobile from JavaScript, so the dock stays correct even when an embedded
-   browser reports desktop CSS dimensions on a phone. */
+/* This stylesheet is imported after index.css deliberately. MobileNavigation
+   owns the .is-mobile class, so the dock layout follows the same viewport
+   decision as WorkspaceApp even when an embedded browser reports odd CSS
+   dimensions. */
 #root:has(.main-navigation.is-mobile) {
   width: 100%;
   height: 100%;

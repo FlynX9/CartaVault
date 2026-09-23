@@ -27,8 +27,11 @@ import { addTripArrival, addTripDeparture, addTripNight, addTripStop, deleteTrip
 import { TopBar } from "./components/layout/TopBar";
 import {
   MainNavigation,
+  type NavigationProps,
   type WorkspacePanel,
 } from "./components/layout/MainNavigation";
+import { MobileNavigation } from "./components/layout/MobileNavigation";
+import { useMobileNavigationViewport, MOBILE_NAVIGATION_MEDIA_QUERY } from "./components/layout/mobileNavigationViewport";
 import { MapContextNavigation } from "./components/layout/MapContextNavigation";
 import { OrganizationDialog } from "./components/layout/OrganizationDialog";
 import {
@@ -85,6 +88,7 @@ import { SetupPage } from "./pages/SetupPage";
 import { getSetupStatus, type SetupStatus } from "./api/setup";
 import { useConfirmDialog } from "./components/common/useConfirmDialog";
 import { UnsavedNavigationBlocker } from "./components/navigation/UnsavedNavigationBlocker";
+import { deriveNavigationMode } from "./navigation/navigationMode";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { DisplayDensityProvider } from "./theme/DisplayDensityProvider";
 import { useI18n } from "./i18n/useI18n";
@@ -181,6 +185,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   const { t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobileNavigation = useMobileNavigationViewport();
   const dashboardOpen = location.pathname === "/dashboard";
   const isMapWorkspace = !dashboardOpen;
   const adminOpen = location.pathname.startsWith("/admin");
@@ -236,6 +241,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   );
   const [workspacePanel, setWorkspacePanel] =
     useState<WorkspacePanel>("places");
+  const [mobileMapTripsOpen, setMobileMapTripsOpen] = useState(false);
   const organizationPanelOpen = workspacePanel === "categories" || workspacePanel === "tags" || workspacePanel === "statuses" || workspacePanel === "annotation-templates";
   const globalWorkspaceOpen = workspacePanel === "maps" || workspacePanel === "trips" || workspacePanel === "media" || workspacePanel === "trash";
   const mapCanvasActive = isMapWorkspace && !globalWorkspaceOpen;
@@ -369,7 +375,18 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   const tripRouteLoading = workspaceMode === "trip" && routeTrip === null;
   const tripScreenActive = workspaceMode === "trip" && routeTrip !== null;
   const tripMap = maps.find((item) => item.id === routeTrip?.map_id) ?? null;
-  const contextMap = workspaceMode === "trip" ? tripMap : activeMap;
+  const navigationMode = deriveNavigationMode({
+    pathname: location.pathname,
+    maps,
+    rememberedMapId: openedMapId,
+    activeTrip: routeTrip,
+  });
+  useEffect(() => {
+    if (!isMobileNavigation || navigationMode.kind !== "MAP_MODE") {
+      setMobileMapTripsOpen(false);
+    }
+  }, [isMobileNavigation, location.pathname, navigationMode.kind]);
+  const contextMap = navigationMode.kind === "MAP_MODE" ? navigationMode.map : null;
   const [tripStatuses, setTripStatuses] = useState<PlaceStatusSummary[]>([]);
   const [tripPlaces, setTripPlaces] = useState<MapPlace[]>([]);
   const [tripBounds, setTripBounds] = useState<MapBounds | null>(null);
@@ -942,7 +959,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     setRefreshVersion((value) => value + 1);
   };
   const applyPlaceSelection = (place: PreviewPlace | MapPlace, revealClusteredPlace = false, focusPlace = true, fromPlacesList = false) => {
-    const isMobile = window.matchMedia?.('(max-width: 760px)').matches === true;
+    const isMobile = window.matchMedia?.(MOBILE_NAVIGATION_MEDIA_QUERY).matches === true;
     setSelectedPlace(place);
     setMobilePlaceDetailOpen(isMobile);
     setMobilePlaceDetailOrigin(isMobile ? (fromPlacesList ? "list" : "map") : null);
@@ -1570,7 +1587,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
           }
           createRequest={createMapRequest}
         />
-      ) : workspacePanel === "trips" ? (
+      ) : mobileMapTripsOpen || workspacePanel === "trips" ? (
         <TripsWorkspacePanel
           maps={maps}
           activeTripId={routeTripId}
@@ -1896,6 +1913,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
   const timelineSidebar = tripPlannerOpen && contextMap && tripViewOnly ? renderTripPlanner(true) : null;
 
   const applyWorkspacePanelChange = (panel: WorkspacePanel) => {
+    setMobileMapTripsOpen(false);
     const rememberedMapId = activeMapId ?? openedMapId;
     const panelPath = panel === "maps" ? "/maps"
       : panel === "trips" ? "/travels"
@@ -1930,6 +1948,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
 
   const applyContextMapChange = (mapId: string) => {
     if (mapId === activeMapId) return;
+    setMobileMapTripsOpen(false);
     setSelectedPlace(null);
     setCoordinatePrefill(null);
     setDraftPosition(null);
@@ -1958,11 +1977,39 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     runAfterUnsavedCheck(() => applyContextMapChange(mapId));
   };
 
+  const applyMobileMapNavigation = (destination: "places" | "map" | "trips", mapId: string) => {
+    if (navigationMode.kind !== "MAP_MODE" || navigationMode.mapId !== mapId) return;
+    if (destination === "trips") {
+      setMobileMapTripsOpen(true);
+      setWorkspacePanel(null);
+      setPlacesPanelCollapsed(false);
+      return;
+    }
+    setMobileMapTripsOpen(false);
+    setSelectedPlace(null);
+    setMobilePlaceDetailOpen(false);
+    setMobilePlaceDetailOrigin(null);
+    setTripPlannerOpen(false);
+    setTripPlannerCollapsed(false);
+    setTripViewOnly(false);
+    setWorkspacePanel(destination === "places" ? "places" : null);
+    if (destination === "places") setPlacesPanelCollapsed(false);
+    const targetPath = mapPath(mapId);
+    if (location.pathname !== targetPath) {
+      navigate({ pathname: targetPath, search: searchWithoutLegacyMap });
+    }
+  };
+
+  const handleMobileMapNavigation = (destination: "places" | "map" | "trips", mapId: string) => {
+    runAfterUnsavedCheck(() => applyMobileMapNavigation(destination, mapId));
+  };
+
   function closeTripFromNavigation() {
     const close = () => {
       setTripPlannerOpen(false);
       setTripPlannerCollapsed(false);
       setTripViewOnly(false);
+      setMobileMapTripsOpen(false);
       setActiveTrip(null);
       setActiveTripDayId(null);
       setTripScreenPanels({ places: true, trip: true });
@@ -2009,32 +2056,38 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
     runAfterUnsavedCheck(applyOpenDashboard);
   };
 
+  const navigationProps: NavigationProps = {
+    activePanel: dashboardOpen ? null : workspacePanel,
+    dashboardActive: dashboardOpen,
+    onOpenDashboard: openDashboard,
+    onPanelChange: handleWorkspacePanelChange,
+    collapsed: navigationCollapsed,
+    onCollapsedChange: setNavigationCollapsed,
+    maps,
+    activeMapId: activeMapId ?? openedMapId,
+    activeTrip,
+    tripOpen: tripPlannerOpen,
+    onOpenTrip: () => {
+      if (!activeTrip) return;
+      navigate(`/travels/${activeTrip.id}`);
+      setTripScreenPanels({ places: true, trip: true });
+      setWorkspacePanel('trip');
+      setTripPlannerOpen(true);
+      setTripPlannerCollapsed(false);
+    },
+    onCloseMap: closeMapFromNavigation,
+    onCloseTrip: closeTripFromNavigation,
+    organizationAvailable: workspaceCapabilities?.organization !== false,
+    onMapNavigation: handleMobileMapNavigation,
+    mobileMapTripsOpen,
+  };
+
   return (
     <main className={`app-shell${dashboardOpen ? " dashboard-shell" : ""}${navigationCollapsed ? " navigation-collapsed" : ""}`}>
       {enableNavigationBlocker && <UnsavedNavigationBlocker dirty={hasUnsavedChanges} requestLeave={requestUnsavedLeave} skipNextNavigationRef={skipNextNavigationRef} />}
-      <MainNavigation
-        activePanel={dashboardOpen ? null : workspacePanel}
-        dashboardActive={dashboardOpen}
-        onOpenDashboard={openDashboard}
-        onPanelChange={handleWorkspacePanelChange}
-        collapsed={navigationCollapsed}
-        onCollapsedChange={setNavigationCollapsed}
-        maps={maps}
-        activeMapId={activeMapId ?? openedMapId}
-        activeTrip={activeTrip}
-        tripOpen={tripPlannerOpen}
-          onOpenTrip={() => {
-            if (!activeTrip) return
-            navigate(`/travels/${activeTrip.id}`)
-            setTripScreenPanels({ places: true, trip: true })
-           setWorkspacePanel('trip')
-          setTripPlannerOpen(true)
-          setTripPlannerCollapsed(false)
-        }}
-        onCloseMap={closeMapFromNavigation}
-        onCloseTrip={closeTripFromNavigation}
-        organizationAvailable={workspaceCapabilities?.organization !== false}
-      />
+      {isMobileNavigation
+        ? <MobileNavigation {...navigationProps} navigationMode={navigationMode} activeTrip={routeTrip} tripOpen={tripScreenActive && tripPlannerOpen} />
+        : <MainNavigation {...navigationProps} />}
       <div className={`app-body${!dashboardOpen && contextMap && !globalWorkspaceOpen ? ' has-map-context-navigation' : ''}`}>
         <TopBar
           isMapWorkspace={mapCanvasActive}
@@ -2113,7 +2166,7 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
                     }
                   }}
                   onImportKmz={(mapId) => {
-                    if (window.matchMedia?.('(max-width: 760px)').matches === true) return;
+                    if (window.matchMedia?.(MOBILE_NAVIGATION_MEDIA_QUERY).matches === true) return;
                     const target = maps.find((map) => map.id === mapId);
                     if (
                       target?.can_import !== false &&
@@ -2174,11 +2227,11 @@ function WorkspaceApp({ enableNavigationBlocker = false }: { enableNavigationBlo
                   onLegendPanelClose={() => setMapLegendPanelOpen(false)}
                   tripPlannerCollapsed={tripPlannerCollapsed}
                   placesPanelCollapsed={placesPanelCollapsed}
-                   workspacePanelCollapsed={workspacePanel === "places" || workspacePanel === "trip" || organizationPanelOpen ? placesPanelCollapsed : collapsedWorkspacePanel === workspacePanel}
-                  workspacePanelCanFillWidth={false}
-                   workspacePanelId={workspacePanel === "trip" ? "trip" : organizationPanelOpen ? "places" : workspacePanel ?? "places"}
+                    workspacePanelCollapsed={mobileMapTripsOpen || workspacePanel === "places" || workspacePanel === "trip" || organizationPanelOpen ? placesPanelCollapsed : collapsedWorkspacePanel === workspacePanel}
+                   workspacePanelCanFillWidth={false}
+                    workspacePanelId={mobileMapTripsOpen ? "trips" : workspacePanel === "trip" ? "trip" : organizationPanelOpen ? "places" : workspacePanel ?? "places"}
                   placeCreationActive={sidebarState.mode === "create"}
-                   placeListOpen={workspacePanel === "places" || organizationPanelOpen || (workspacePanel === "trip" && tripScreenPanels.places)}
+                    placeListOpen={mobileMapTripsOpen || workspacePanel === "places" || organizationPanelOpen || (workspacePanel === "trip" && tripScreenPanels.places)}
                   statuses={tripScreenActive ? tripStatuses : statuses}
                   focusRequest={tripScreenActive ? tripFocusRequest : focusRequest}
                   popupContent={popupContent}

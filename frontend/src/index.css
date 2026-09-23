@@ -1632,7 +1632,7 @@ html[data-theme='dark'] .action-history-error { color: #fecaca; background: #351
   }
 }
 
-/* Must remain last: ``is-mobile`` is set by MainNavigation, independently of
+/* Must remain last: ``is-mobile`` is set by MobileNavigation, independently of
    CSS viewport calculations (which may be distorted by embedded webviews). */
 .app-shell:has(.main-navigation.is-mobile) {
   grid-template-columns: 1fr !important;

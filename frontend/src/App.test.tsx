@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter, MemoryRouter, RouterProvider, useLocation, useNavigate } from 'react-router-dom'
 
@@ -8,6 +8,7 @@ import { deleteMap, getMaps } from './api/maps'
 import { getMapPlaces, getPlaceDetails } from './api/places'
 import { getTrip } from './api/trips'
 import App from './App'
+import { MOBILE_NAVIGATION_MEDIA_QUERY } from './components/layout/mobileNavigationViewport'
 
 vi.mock('./api/maps', () => ({ getMaps: vi.fn(), deleteMap: vi.fn(), getMapProfiles: vi.fn(() => Promise.resolve([])), getPendingMapInvitations: vi.fn(() => Promise.resolve([])), acceptPendingMapInvitation: vi.fn(), declinePendingMapInvitation: vi.fn() }))
 vi.mock('./api/setup', () => ({ getSetupStatus: vi.fn(() => Promise.resolve({ required: false, locked: true, checks: [] })) }))
@@ -290,7 +291,8 @@ describe('map URL workspace', () => {
     render(<MemoryRouter initialEntries={['/travels/trip-1']}><App /></MemoryRouter>)
 
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
-    const tripsNavigation = await screen.findByRole('button', { name: 'Sorties' })
+    const mapContextNavigation = await screen.findByRole('navigation', { name: 'Navigation de la carte' })
+    const tripsNavigation = within(mapContextNavigation).getByRole('button', { name: 'Sorties' })
     expect(await screen.findByRole('searchbox', { name: 'Rechercher dans mes lieux...' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Lieux' })).toHaveAttribute('aria-pressed', 'true')
     expect(tripsNavigation).toHaveAttribute('aria-pressed', 'true')
@@ -347,10 +349,11 @@ describe('map URL workspace', () => {
   })
 
   it('toggles the Sorties panel when its navigation button is tapped on mobile', async () => {
-    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === '(max-width: 760px)', media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
+    vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({ matches: query === MOBILE_NAVIGATION_MEDIA_QUERY, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() })))
     render(<MemoryRouter initialEntries={['/travels/trip-1']}><App /></MemoryRouter>)
 
-    const tripsNavigation = await screen.findByRole('button', { name: 'Sorties' })
+    const mapContextNavigation = await screen.findByRole('navigation', { name: 'Navigation de la carte' })
+    const tripsNavigation = within(mapContextNavigation).getByRole('button', { name: 'Sorties' })
     expect(await screen.findByRole('complementary', { name: 'Préparation de sortie' })).toHaveAttribute('data-trip-view', 'false')
     expect(tripsNavigation).toHaveAttribute('aria-pressed', 'true')
 
